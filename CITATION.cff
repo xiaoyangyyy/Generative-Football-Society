@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: "Generative Football Society (GFS)"
+message: "If you use this software in research, please cite it."
+type: software
+authors:
+  - family-names: "Contributors"
+    given-names: "GFS"
+version: "1.3.0"
+date-released: 2026-05-08
+license: "MIT"
+repository-code: "https://github.com/<your-org-or-user>/Generative_Football_Society"
+abstract: >
+  Neuro-symbolic multi-agent football society simulation with continuous
+  dynamics, layered memory, tactical controls, and social dialogue emergence.
+keywords:
+  - multi-agent systems
+  - social simulation
+  - football analytics
+  - neuro-symbolic AI
+  - LLM

@@ -1,0 +1,43 @@
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Runtime outputs
+outputs/
+logs/
+*.log
+
+# Cursor / local tooling
+.cursor/
+
+# Tests / coverage
+.coverage
+htmlcov/
+.tox/
+
+# Build / dist
+dist/
+build/
+
+# IDE and OS files
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
