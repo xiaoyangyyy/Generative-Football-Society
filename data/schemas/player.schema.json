@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PlayerProfile",
+  "description": "Mirrors coach schema: condition + channel affinities + dynamics_input + blended abilities",
+  "type": "object",
+  "required": ["player_id", "name", "role", "condition", "abilities", "dynamics_model"],
+  "properties": {
+    "player_id": { "type": "string" },
+    "name": { "type": "string" },
+    "team_id": { "type": "string" },
+    "role": { "type": "string" },
+    "shirt_number": { "type": ["integer", "null"] },
+    "age": { "type": ["integer", "null"] },
+    "club": { "type": "string" },
+    "market_value_eur": { "type": "number" },
+    "international_caps": { "type": "integer" },
+    "squad_role": { "enum": ["starter", "bench"] },
+    "source": { "type": "string" },
+    "transfermarkt_url": { "type": "string" },
+    "dynamics_model": { "type": "string" },
+    "primary_channel": { "type": "string" },
+    "role_embedding": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "condition": {
+      "type": "object",
+      "required": [
+        "technical_quality",
+        "physical_power",
+        "composure",
+        "pace_threat",
+        "vision_playmaking",
+        "defensive_intensity"
+      ],
+      "properties": {
+        "technical_quality": { "type": "number", "minimum": 0, "maximum": 1 },
+        "physical_power": { "type": "number", "minimum": 0, "maximum": 1 },
+        "composure": { "type": "number", "minimum": 0, "maximum": 1 },
+        "pace_threat": { "type": "number", "minimum": 0, "maximum": 1 },
+        "vision_playmaking": { "type": "number", "minimum": 0, "maximum": 1 },
+        "defensive_intensity": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "channel_affinities": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+    },
+    "dynamics_input": {
+      "type": "object",
+      "properties": {
+        "u0": { "type": "number" },
+        "u1": { "type": "number" },
+        "u2": { "type": "number" },
+        "u3": { "type": "number" },
+        "u4": { "type": "number" }
+      }
+    },
+    "abilities": {
+      "type": "object",
+      "description": "Σ_k π_k · channel_template_k (readout for micro engine)"
+    }
+  }
+}

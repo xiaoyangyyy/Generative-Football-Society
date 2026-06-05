@@ -90,9 +90,20 @@ class FusionController:
         chaos_push = 0.0
         for name, sig in expert_signals.items():
             w = weights.get(name, 0.0)
-            status_delta += w * float(sig.get("status", 0.0))
-            volatility += w * float(sig.get("volatility", 0.0))
-            chaos_push += w * float(sig.get("chaos", 0.0))
+            s = float(sig.get("status", 0.0))
+            v = float(sig.get("volatility", 0.0))
+            c = float(sig.get("chaos", 0.0))
+            if np.isfinite(s):
+                status_delta += w * s
+            if np.isfinite(v):
+                volatility += w * v
+            if np.isfinite(c):
+                chaos_push += w * c
+
+        if not np.isfinite(status_delta):
+            status_delta = 0.0
+        if not np.isfinite(volatility):
+            volatility = 0.12
 
         fused = {
             "weights": weights,

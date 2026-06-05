@@ -1,0 +1,1005 @@
+{
+  "home": "Brazil",
+  "away": "Argentina",
+  "seed": 42,
+  "score": "1-2",
+  "xg": "0.33-0.83",
+  "macro_preview": "0-1",
+  "micro_xg": "0.13-1.02",
+  "fusion_meta": {
+    "macro": {
+      "model": "macro_goal_dynamics_v2_calibrated",
+      "lambda_end_home": 0.004,
+      "lambda_end_away": 0.004,
+      "raw_integral_home": 0.5848377314138569,
+      "raw_integral_away": 0.5863727839374087,
+      "minutes": 90.0,
+      "n_steps": 90,
+      "x_home": [
+        0.38331188572407954,
+        0.4178655223721461,
+        0.3856444191693216,
+        0.3495264291867632,
+        -0.638664477618203
+      ],
+      "x_away": [
+        0.3938013437492516,
+        0.4222759886915423,
+        0.3911070000325634,
+        0.3577134780039423,
+        -0.638664477618203
+      ]
+    },
+    "source": "macro_micro_fusion",
+    "micro_xg": [
+      0.12753322776730283,
+      1.0247368763797187
+    ],
+    "eta": 0.55,
+    "xg_final": [
+      0.33,
+      0.83
+    ],
+    "goals": [
+      1,
+      2
+    ]
+  },
+  "substitutions": [
+    {
+      "team_id": "Brazil",
+      "off": "tm_520624",
+      "on": "tm_80562",
+      "minute": 57.5
+    },
+    {
+      "team_id": "Argentina",
+      "off": "tm_255901",
+      "on": "tm_648195",
+      "minute": 57.5
+    },
+    {
+      "team_id": "Brazil",
+      "off": "tm_80562",
+      "on": "tm_520624",
+      "minute": 69.5
+    },
+    {
+      "team_id": "Argentina",
+      "off": "tm_648195",
+      "on": "tm_401578",
+      "minute": 69.5
+    },
+    {
+      "team_id": "Argentina",
+      "off": "tm_54781",
+      "on": "tm_93176",
+      "minute": 81.5
+    }
+  ],
+  "cognitive_triggers": [
+    {
+      "t_sec": 2080.0,
+      "kind": "crowd_surge",
+      "entity_tier": "crowd",
+      "entity_id": "crowd:stadium",
+      "team_id": null,
+      "salience": 1.8574504826245173,
+      "facts": {
+        "clock_min": 34.7,
+        "score": "0-0",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.03-0.44",
+        "psi": 0.832,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.21,
+        "home_possession": 0.357,
+        "event": "psi_surge"
+      }
+    },
+    {
+      "t_sec": 2537.951796526688,
+      "kind": "goal",
+      "entity_tier": "coach",
+      "entity_id": "coach:Argentina",
+      "team_id": "Argentina",
+      "salience": 3.1741469342253392,
+      "facts": {
+        "clock_min": 42.3,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.03-0.54",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.21,
+        "home_possession": 0.376,
+        "event": "goal_scored",
+        "team": "Argentina",
+        "player_id": "tm_576024"
+      }
+    },
+    {
+      "t_sec": 2537.951796526688,
+      "kind": "goal",
+      "entity_tier": "player",
+      "entity_id": "tm_576024",
+      "team_id": "Argentina",
+      "salience": 3.0154395875140723,
+      "facts": {
+        "clock_min": 42.3,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.03-0.54",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.21,
+        "home_possession": 0.376,
+        "event": "goal_scored",
+        "player_id": "tm_576024",
+        "player_name": "Julián Alvarez"
+      }
+    },
+    {
+      "t_sec": 2537.951796526688,
+      "kind": "goal_conceded",
+      "entity_tier": "coach",
+      "entity_id": "coach:Brazil",
+      "team_id": "Brazil",
+      "salience": 2.6980248940915383,
+      "facts": {
+        "clock_min": 42.3,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.03-0.54",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.21,
+        "home_possession": 0.376,
+        "event": "goal_conceded",
+        "team": "Brazil"
+      }
+    },
+    {
+      "t_sec": 2537.951796526688,
+      "kind": "goal",
+      "entity_tier": "crowd",
+      "entity_id": "crowd:stadium",
+      "team_id": null,
+      "salience": 2.2219028539577375,
+      "facts": {
+        "clock_min": 42.3,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.03-0.54",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.21,
+        "home_possession": 0.376,
+        "event": "crowd_goal"
+      }
+    },
+    {
+      "t_sec": 2818.0046492292213,
+      "kind": "yellow_card",
+      "entity_tier": "player",
+      "entity_id": "tm_520624",
+      "team_id": "Brazil",
+      "salience": 1.1272550743225938,
+      "facts": {
+        "clock_min": 47.0,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.03-0.60",
+        "psi": 0.781,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.37,
+        "home_possession": 0.516,
+        "player_id": "tm_520624",
+        "player_name": "Bruno Guimarães"
+      }
+    },
+    {
+      "t_sec": 2820.0,
+      "kind": "crowd_surge",
+      "entity_tier": "crowd",
+      "entity_id": "crowd:stadium",
+      "team_id": null,
+      "salience": 1.9015580464487951,
+      "facts": {
+        "clock_min": 47.0,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.03-0.60",
+        "psi": 0.781,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.37,
+        "home_possession": 0.516,
+        "event": "psi_surge"
+      }
+    },
+    {
+      "t_sec": 3442.1218954511455,
+      "kind": "icon_protest",
+      "entity_tier": "coach",
+      "entity_id": "coach:Brazil",
+      "team_id": "Brazil",
+      "salience": 1.0416190000150654,
+      "facts": {
+        "clock_min": 57.4,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.03-0.74",
+        "psi": -0.05,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.37,
+        "home_possession": 0.434,
+        "event": "icon_protest"
+      }
+    },
+    {
+      "t_sec": 3450.0,
+      "kind": "substitution",
+      "entity_tier": "player",
+      "entity_id": "tm_520624",
+      "team_id": "Brazil",
+      "salience": 1.1,
+      "facts": {
+        "clock_min": 57.5,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.03-0.74",
+        "psi": -0.05,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.37,
+        "home_possession": 0.434,
+        "event": "sub_off",
+        "player_id": "tm_520624",
+        "player_name": "Bruno Guimarães"
+      }
+    },
+    {
+      "t_sec": 3450.0,
+      "kind": "substitution",
+      "entity_tier": "player",
+      "entity_id": "tm_255901",
+      "team_id": "Argentina",
+      "salience": 1.1,
+      "facts": {
+        "clock_min": 57.5,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.03-0.74",
+        "psi": -0.05,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.37,
+        "home_possession": 0.434,
+        "event": "sub_off",
+        "player_id": "tm_255901",
+        "player_name": "Rodrigo De Paul"
+      }
+    },
+    {
+      "t_sec": 4346.487655618521,
+      "kind": "var",
+      "entity_tier": "referee",
+      "entity_id": "referee:center",
+      "team_id": null,
+      "salience": 2.1738504141565276,
+      "facts": {
+        "clock_min": 72.4,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.08-0.86",
+        "psi": 1.58,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.721,
+        "home_possession": 0.431,
+        "event": "var"
+      }
+    },
+    {
+      "t_sec": 4346.487655618521,
+      "kind": "var",
+      "entity_tier": "assistant",
+      "entity_id": "assistant:left",
+      "team_id": null,
+      "salience": 1.6303878106173957,
+      "facts": {
+        "clock_min": 72.4,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.08-0.86",
+        "psi": 1.58,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.721,
+        "home_possession": 0.431,
+        "event": "var",
+        "assistant": "left"
+      }
+    },
+    {
+      "t_sec": 4346.487655618521,
+      "kind": "var",
+      "entity_tier": "assistant",
+      "entity_id": "assistant:right",
+      "team_id": null,
+      "salience": 1.6303878106173957,
+      "facts": {
+        "clock_min": 72.4,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.08-0.86",
+        "psi": 1.58,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.721,
+        "home_possession": 0.431,
+        "event": "var",
+        "assistant": "right"
+      }
+    },
+    {
+      "t_sec": 4356.622095221564,
+      "kind": "red_card",
+      "entity_tier": "coach",
+      "entity_id": "coach:Brazil",
+      "team_id": "Brazil",
+      "salience": 2.5397470579506667,
+      "facts": {
+        "clock_min": 72.6,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.08-0.86",
+        "psi": 1.934,
+        "ref_strictness": 0.57,
+        "ref_controversy": 1.321,
+        "home_possession": 0.476,
+        "event": "red_card",
+        "team": "Brazil"
+      }
+    }
+  ],
+  "cognitive_plans": [
+    {
+      "trigger": {
+        "t_sec": 2080.0,
+        "kind": "crowd_surge",
+        "entity_tier": "crowd",
+        "entity_id": "crowd:stadium",
+        "team_id": null,
+        "salience": 1.8574504826245173,
+        "facts": {
+          "clock_min": 34.7,
+          "score": "0-0",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.03-0.44",
+          "psi": 0.832,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.21,
+          "home_possession": 0.357,
+          "event": "psi_surge"
+        }
+      },
+      "plan": {
+        "chant_narrative": "A collective gasp ripples through the stands as the referee's whistle cuts short a promising Brazilian attack, leaving the roar of anticipation to dissolve into murmurs of disbelief.",
+        "psi_pulse": 0.28,
+        "home_boost_delta": -0.12,
+        "applied_fields": {
+          "psi": 0.804627238120853,
+          "narrative": "A collective gasp ripples through the stands as the referee's whistle cuts short a promising Brazilian attack, leaving the roar of anticipation to dissolve into murmurs of disbelief."
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 2537.951796526688,
+        "kind": "goal",
+        "entity_tier": "coach",
+        "entity_id": "coach:Argentina",
+        "team_id": "Argentina",
+        "salience": 3.1741469342253392,
+        "facts": {
+          "clock_min": 42.3,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.03-0.54",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.21,
+          "home_possession": 0.376,
+          "event": "goal_scored",
+          "team": "Argentina",
+          "player_id": "tm_576024"
+        }
+      },
+      "plan": {
+        "reasoning": "The goal significantly shifts momentum in our favor, allowing us to consolidate control rather than immediately overcommitting. We will maintain a structured defensive shape to absorb any potential Brazilian counter-attack while looking to exploit the space left behind their advancing fullbacks.",
+        "confidence": 0.92,
+        "controls_delta": {
+          "pressing_intensity": -0.05,
+          "risk_budget": 0.02,
+          "line_height": -0.03,
+          "rotation_aggressiveness": 0.05
+        },
+        "tactical_hints": {
+          "through_ball_bias": 0.65,
+          "high_press": 0.35,
+          "low_block": 0.25
+        },
+        "tactical_preset": "possession",
+        "sub_intent": "Monitor fatigue levels for midfield rotation in the second half.",
+        "applied_fields": {
+          "tactical_current": {
+            "pressing_intensity": 0.6670520877873722,
+            "risk_budget": 0.7197933020675651,
+            "line_height": 0.6707744842690315,
+            "rotation_aggressiveness": 0.7519784022332745,
+            "possession_orientation": 0.49640863652659295,
+            "verticality": 0.5460865193341805
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 2537.951796526688,
+        "kind": "goal",
+        "entity_tier": "player",
+        "entity_id": "tm_576024",
+        "team_id": "Argentina",
+        "salience": 3.0154395875140723,
+        "facts": {
+          "clock_min": 42.3,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.03-0.54",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.21,
+          "home_possession": 0.376,
+          "event": "goal_scored",
+          "player_id": "tm_576024",
+          "player_name": "Julián Alvarez"
+        }
+      },
+      "plan": {
+        "narrative": "The net ripples, and the roar of the away end drowns out the silence of the stadium.",
+        "confidence": 0.98,
+        "emotion_bias": {
+          "pride": 0.18,
+          "anger": -0.05,
+          "fear": -0.15,
+          "determination": 0.12
+        },
+        "risk_delta": 0.08,
+        "applied_fields": {
+          "player_id": "tm_576024",
+          "emotion_bias": {
+            "pride": 0.18,
+            "anger": -0.05,
+            "fear": -0.15,
+            "determination": 0.12
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 2537.951796526688,
+        "kind": "goal_conceded",
+        "entity_tier": "coach",
+        "entity_id": "coach:Brazil",
+        "team_id": "Brazil",
+        "salience": 2.6980248940915383,
+        "facts": {
+          "clock_min": 42.3,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.03-0.54",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.21,
+          "home_possession": 0.376,
+          "event": "goal_conceded",
+          "team": "Brazil"
+        }
+      },
+      "plan": {
+        "reasoning": "The team is being overwhelmed in midfield with very low possession and a massive xG deficit, indicating our current setup is too passive against Argentina's dominance. We must immediately increase the defensive line height and pressing intensity to disrupt their rhythm and regain control.",
+        "confidence": 0.85,
+        "controls_delta": {
+          "pressing_intensity": 0.12,
+          "risk_budget": 0.1,
+          "line_height": 0.12,
+          "rotation_aggressiveness": 0.08
+        },
+        "tactical_hints": {
+          "through_ball_bias": 0.7,
+          "high_press": 0.8,
+          "low_block": 0.1
+        },
+        "tactical_preset": "gegenpress",
+        "sub_intent": "Bring on a fresh midfielder to boost energy and ball recovery in the center.",
+        "applied_fields": {
+          "tactical_current": {
+            "pressing_intensity": 0.8370026890499306,
+            "risk_budget": 0.799783734911353,
+            "line_height": 0.8207333193739673,
+            "rotation_aggressiveness": 0.7819226090356172,
+            "possession_orientation": 0.4961188997755127,
+            "verticality": 0.5461830908411222
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 2537.951796526688,
+        "kind": "goal",
+        "entity_tier": "crowd",
+        "entity_id": "crowd:stadium",
+        "team_id": null,
+        "salience": 2.2219028539577375,
+        "facts": {
+          "clock_min": 42.3,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.03-0.54",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.21,
+          "home_possession": 0.376,
+          "event": "crowd_goal"
+        }
+      },
+      "plan": {
+        "chant_narrative": "A collective gasp turns to stunned silence as Argentina's striker finds the net, the roar of the away end drowning out the Brazilian home crowd in disbelief.",
+        "psi_pulse": 0.28,
+        "home_boost_delta": -0.12,
+        "applied_fields": {
+          "psi": 0.9923319597770052,
+          "narrative": "A collective gasp turns to stunned silence as Argentina's striker finds the net, the roar of the away end drowning out the Brazilian home crowd in disbelief."
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 2818.0046492292213,
+        "kind": "yellow_card",
+        "entity_tier": "player",
+        "entity_id": "tm_520624",
+        "team_id": "Brazil",
+        "salience": 1.1272550743225938,
+        "facts": {
+          "clock_min": 47.0,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.03-0.60",
+          "psi": 0.781,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.37,
+          "home_possession": 0.516,
+          "player_id": "tm_520624",
+          "player_name": "Bruno Guimarães"
+        }
+      },
+      "plan": {
+        "narrative": "Stupid foul, but I won't let this yellow card slow down my drive to equalize.",
+        "confidence": 0.85,
+        "emotion_bias": {
+          "pride": 0.1,
+          "anger": 0.15,
+          "fear": -0.05,
+          "determination": 0.2
+        },
+        "risk_delta": 0.02,
+        "applied_fields": {
+          "player_id": "tm_520624",
+          "emotion_bias": {
+            "pride": 0.1,
+            "anger": 0.15,
+            "fear": -0.05,
+            "determination": 0.2
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 2820.0,
+        "kind": "crowd_surge",
+        "entity_tier": "crowd",
+        "entity_id": "crowd:stadium",
+        "team_id": null,
+        "salience": 1.9015580464487951,
+        "facts": {
+          "clock_min": 47.0,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.03-0.60",
+          "psi": 0.781,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.37,
+          "home_possession": 0.516,
+          "event": "psi_surge"
+        }
+      },
+      "plan": {
+        "chant_narrative": "A collective gasp ripples through the stands as the tide turns, Brazil's possession meaningless against Argentina's relentless pressure.",
+        "psi_pulse": -0.28,
+        "home_boost_delta": -0.12,
+        "applied_fields": {
+          "psi": 0.46301611714066104,
+          "narrative": "A collective gasp ripples through the stands as the tide turns, Brazil's possession meaningless against Argentina's relentless pressure."
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 3442.1218954511455,
+        "kind": "icon_protest",
+        "entity_tier": "coach",
+        "entity_id": "coach:Brazil",
+        "team_id": "Brazil",
+        "salience": 1.0416190000150654,
+        "facts": {
+          "clock_min": 57.4,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.03-0.74",
+          "psi": -0.05,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.37,
+          "home_possession": 0.434,
+          "event": "icon_protest"
+        }
+      },
+      "plan": {
+        "reasoning": "The team is frustrated by a controversial call while trailing significantly, risking a loss of discipline and defensive shape. We must immediately calm the players down to prevent further cards and reorganize the midfield to stop conceding space.",
+        "confidence": 0.85,
+        "controls_delta": {
+          "pressing_intensity": -0.1,
+          "risk_budget": -0.05,
+          "line_height": -0.05,
+          "rotation_aggressiveness": -0.1
+        },
+        "tactical_hints": {
+          "through_ball_bias": 0.4,
+          "high_press": 0.3,
+          "low_block": 0.6
+        },
+        "tactical_preset": "low_block",
+        "sub_intent": "Substitute an emotional midfielder for a disciplined defensive anchor to stabilize the backline.",
+        "applied_fields": {
+          "tactical_current": {
+            "pressing_intensity": 0.6170026890499306,
+            "risk_budget": 0.649783734911353,
+            "line_height": 0.6507333193739673,
+            "rotation_aggressiveness": 0.6019226090356172,
+            "possession_orientation": 0.487721291012327,
+            "verticality": 0.5592356145168496
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 3450.0,
+        "kind": "substitution",
+        "entity_tier": "player",
+        "entity_id": "tm_520624",
+        "team_id": "Brazil",
+        "salience": 1.1,
+        "facts": {
+          "clock_min": 57.5,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.03-0.74",
+          "psi": -0.05,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.37,
+          "home_possession": 0.434,
+          "event": "sub_off",
+          "player_id": "tm_520624",
+          "player_name": "Bruno Guimarães"
+        }
+      },
+      "plan": {
+        "narrative": "Time to rest, but the team needs to wake up.",
+        "confidence": 0.9,
+        "emotion_bias": {
+          "pride": -0.1,
+          "anger": 0.1,
+          "fear": 0.0,
+          "determination": 0.1
+        },
+        "risk_delta": -0.02,
+        "applied_fields": {
+          "player_id": "tm_520624",
+          "emotion_bias": {
+            "pride": -0.1,
+            "anger": 0.1,
+            "fear": 0.0,
+            "determination": 0.1
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 3450.0,
+        "kind": "substitution",
+        "entity_tier": "player",
+        "entity_id": "tm_255901",
+        "team_id": "Argentina",
+        "salience": 1.1,
+        "facts": {
+          "clock_min": 57.5,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.03-0.74",
+          "psi": -0.05,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.37,
+          "home_possession": 0.434,
+          "event": "sub_off",
+          "player_id": "tm_255901",
+          "player_name": "Rodrigo De Paul"
+        }
+      },
+      "plan": {
+        "narrative": "My legs are heavy, but the team must keep the pressure on.",
+        "confidence": 0.85,
+        "emotion_bias": {
+          "pride": 0.1,
+          "anger": -0.05,
+          "fear": -0.1,
+          "determination": 0.15
+        },
+        "risk_delta": -0.02,
+        "applied_fields": {
+          "player_id": "tm_255901",
+          "emotion_bias": {
+            "pride": 0.1,
+            "anger": -0.05,
+            "fear": -0.1,
+            "determination": 0.15
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 4346.487655618521,
+        "kind": "var",
+        "entity_tier": "referee",
+        "entity_id": "referee:center",
+        "team_id": null,
+        "salience": 2.1738504141565276,
+        "facts": {
+          "clock_min": 72.4,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.08-0.86",
+          "psi": 1.58,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.721,
+          "home_possession": 0.431,
+          "event": "var"
+        }
+      },
+      "plan": {
+        "reasoning": "The high PSI and significant micro-xg disparity suggest a critical incident requiring VAR intervention to ensure match integrity. However, the referee's elevated controversy score indicates a need for strict procedural adherence rather than leniency during the review.",
+        "strictness_delta": 0.05,
+        "bias_delta": 0.02,
+        "var_recommendation": "review",
+        "calm_delta": -0.05,
+        "applied_fields": {
+          "strictness_base": 0.5700000000000001,
+          "bias_home": 0.01999733375993093
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 4346.487655618521,
+        "kind": "var",
+        "entity_tier": "assistant",
+        "entity_id": "assistant:left",
+        "team_id": null,
+        "salience": 1.6303878106173957,
+        "facts": {
+          "clock_min": 72.4,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.08-0.86",
+          "psi": 1.58,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.721,
+          "home_possession": 0.431,
+          "event": "var",
+          "assistant": "left"
+        }
+      },
+      "plan": {
+        "offside_strictness_delta": 0.02,
+        "recommend_card_review": false,
+        "signal": "VAR check in progress",
+        "applied_fields": {
+          "side": "left",
+          "offside_strictness": 0.87
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 4346.487655618521,
+        "kind": "var",
+        "entity_tier": "assistant",
+        "entity_id": "assistant:right",
+        "team_id": null,
+        "salience": 1.6303878106173957,
+        "facts": {
+          "clock_min": 72.4,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.08-0.86",
+          "psi": 1.58,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.721,
+          "home_possession": 0.431,
+          "event": "var",
+          "assistant": "right"
+        }
+      },
+      "plan": {
+        "offside_strictness_delta": 0.05,
+        "recommend_card_review": false,
+        "signal": "Check offside line",
+        "applied_fields": {
+          "side": "right",
+          "offside_strictness": 0.9
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 4356.622095221564,
+        "kind": "red_card",
+        "entity_tier": "coach",
+        "entity_id": "coach:Brazil",
+        "team_id": "Brazil",
+        "salience": 2.5397470579506667,
+        "facts": {
+          "clock_min": 72.6,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.08-0.86",
+          "psi": 1.934,
+          "ref_strictness": 0.57,
+          "ref_controversy": 1.321,
+          "home_possession": 0.476,
+          "event": "red_card",
+          "team": "Brazil"
+        }
+      },
+      "plan": {
+        "reasoning": "Down a man and trailing late, we must immediately sacrifice offensive risk to protect the goal and prevent a second. The priority shifts to a compact defensive shape to frustrate Argentina's superior numbers.",
+        "confidence": 0.92,
+        "controls_delta": {
+          "pressing_intensity": -0.15,
+          "risk_budget": -0.15,
+          "line_height": -0.12,
+          "rotation_aggressiveness": -0.1
+        },
+        "tactical_hints": {
+          "through_ball_bias": 0.1,
+          "high_press": 0.1,
+          "low_block": 0.9
+        },
+        "tactical_preset": "low_block",
+        "sub_intent": "Bring on a defensive midfielder to reinforce the backline and absorb pressure.",
+        "applied_fields": {
+          "tactical_current": {
+            "pressing_intensity": 0.5670026890499306,
+            "risk_budget": 0.549783734911353,
+            "line_height": 0.5807333193739673,
+            "rotation_aggressiveness": 0.6019226090356172,
+            "possession_orientation": 0.49675712879601025,
+            "verticality": 0.545188482489934
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    }
+  ],
+  "cognitive_tier_usage": {
+    "coach": 4,
+    "referee": 1,
+    "player": 4,
+    "assistant": 2,
+    "crowd": 3
+  },
+  "timeline": [
+    "42' goal_scored (Argentina)",
+    "57' SUB Hulk on for Bruno Guimarães (Brazil)",
+    "57' SUB Enzo Fernández on for Rodrigo De Paul (Argentina)",
+    "69' SUB Bruno Guimarães on for Hulk (Brazil)",
+    "69' SUB Exequiel Palacios on for Enzo Fernández (Argentina)",
+    "72' var_controversy (Brazil)",
+    "72' red_card (Brazil)",
+    "81' SUB Marcos Rojo on for Nicolás Otamendi (Argentina)"
+  ],
+  "player_stats_teams": [
+    "Brazil",
+    "Argentina"
+  ]
+}

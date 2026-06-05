@@ -1,9 +1,36 @@
 import itertools
 import json
+import os
+import time
 import numpy as np
+from src.memory_engine.macro_goal_dynamics import expected_match_xg
+from src.memory_engine.macro_micro_fusion import resolve_unified_score
+from src.simulation.group_context import build_coach_match_context, snapshot_standings_table
+from src.simulation.knockout_bracket import build_qualified_entries, build_r32_pairings
+from src.simulation.match_pipeline import (
+    finalize_match_feedback,
+    micro_layer_enabled,
+    micro_physics_score_enabled,
+    prepare_match_agents,
+    print_micro_match_logs,
+    run_extra_time_micro,
+    run_micro_layer,
+    run_physics_first_micro,
+)
+from src.simulation.score_path import (
+    ScorePathMode,
+    finalize_official_score_from_micro,
+    resolve_score_path_mode,
+    score_path_label,
+)
+from src.simulation.tournament_checkpoint import (
+    load_checkpoint,
+    restore_r32_fixtures,
+    save_checkpoint,
+)
+from src.simulation.venue_policy import resolve_match_venue
+from src.simulation.tactics_sync import apply_coach_tactics_from_llm
 from src.memory_engine.poisson_simulator import (
-    simulate_match_score,
-    simulate_extra_time_score,
     simulate_penalty_shootout,
     score_xg_anomaly_note,
     finalize_stage_xg_context,
@@ -45,6 +72,15 @@ class TournamentManager:
         self.groups = WORLD_CUP_2026_GROUPS
         self.standings = {group: {team: {"pts": 0, "gf": 0, "ga": 0, "gd": 0} for team in teams} for group, teams in self.groups.items()}
         self.qualified_teams = []
+        self.qualified_entries = []
+        self.r32_fixtures: list[tuple[str, str]] = []
+        self.phase = "group"
+        self.match_index = 0
+        self.completed_matches: list[str] = []
+        self.match_results: dict[str, str] = {}
+        self.ko_round: str | None = None
+        self.ko_fixture_index = 0
+        self.post_group_reflection_done = False
 
         # Referee archetypes: configurable distribution + stage morphing.
         self.referee_profiles = referee_profiles or {
@@ -72,27 +108,154 @@ class TournamentManager:
         self.referee_stage_morph_strength = float(np.clip(referee_stage_morph_strength, 0.1, 3.0))
         self.dialogue_engine = SocialDialogueEngine(self.world.feed, turns_per_match=4)
         self.fusion_controller = FusionController()
+        self.base_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "..")
+        )
         self.final_result = {}
 
-    def run_full_tournament(self):
-        from src.simulation.llm_engine import SimulationLLM
-        llm = SimulationLLM()
+    @staticmethod
+    def _match_key(stage_name: str, t1: str, t2: str) -> str:
+        a, b = sorted([t1, t2])
+        return f"{stage_name}::{a}::{b}"
+
+    @staticmethod
+    def _map_micro_score(home_micro: str, fixture_t1: str, goals_home: int, goals_away: int) -> tuple[int, int]:
+        if home_micro == fixture_t1:
+            return int(goals_home), int(goals_away)
+        return int(goals_away), int(goals_home)
+
+    def _reflection_with_retry(self, agent, llm, attempts: int = 6) -> None:
+        for i in range(attempts):
+            try:
+                agent.perform_reflection(llm)
+                return
+            except Exception as exc:
+                wait = min(24.0, 2.0 * (2 ** i))
+                print(
+                    f"  [REFLECTION] {agent.name} attempt {i + 1}/{attempts} failed: {exc} "
+                    f"(retry in {wait:.0f}s)"
+                )
+                time.sleep(wait)
+        raise RuntimeError(f"Reflection failed for {agent.name} after {attempts} attempts")
+
+    def _save_checkpoint(self) -> None:
+        save_checkpoint(
+            self.base_dir,
+            standings=self.standings,
+            qualified_teams=self.qualified_teams,
+            phase=self.phase,
+            group_schedule_progress={},
+            ko_round=self.ko_round,
+            ko_fixture_index=self.ko_fixture_index,
+            r32_fixtures=self.r32_fixtures,
+            completed_matches=self.completed_matches,
+            final_result=self.final_result,
+            match_index=self.match_index,
+            match_results=self.match_results,
+            post_group_reflection_done=self.post_group_reflection_done,
+        )
+
+    def _restore_from_checkpoint(self, ckpt: dict) -> None:
+        self.standings = ckpt.get("standings", self.standings)
+        self.qualified_teams = ckpt.get("qualified_teams", [])
+        self.phase = ckpt.get("phase", "group")
+        self.completed_matches = list(ckpt.get("completed_matches", []))
+        self.match_results = dict(ckpt.get("match_results", {}))
+        self.ko_round = ckpt.get("ko_round")
+        self.ko_fixture_index = int(ckpt.get("ko_fixture_index", 0))
+        self.r32_fixtures = restore_r32_fixtures(ckpt)
+        self.final_result = ckpt.get("final_result", {})
+        self.match_index = int(ckpt.get("match_index", 0))
+        self.post_group_reflection_done = bool(ckpt.get("post_group_reflection_done", False))
+        print(
+            f"[CHECKPOINT] Resumed phase={self.phase} matches_done={len(self.completed_matches)} "
+            f"qualified={len(self.qualified_teams)}"
+        )
+
+    def run_full_tournament(self, *, resume: bool = False):
+        from src.match_engine.calibration.narrative_isolation import resolve_tournament_llm
+
+        llm = resolve_tournament_llm()
+        if resume:
+            ckpt = load_checkpoint(self.base_dir)
+            if ckpt:
+                self._restore_from_checkpoint(ckpt)
+            else:
+                print("[CHECKPOINT] No checkpoint found — starting fresh.")
+
+        if self.phase == "complete":
+            print("[CHECKPOINT] Tournament already marked complete.")
+            return
+
         print("[METRICS] conflict_heat scale: 0.00-1.05 (saturation above 1.00 is allowed by design).")
-        self.simulate_group_stage(llm)
-        self.resolve_advancements()
-        
-        print("\n" + "*"*60 + "\n[V13 GLOBAL SUMMIT] Teams performing deep reflection...\n" + "*"*60)
-        for t_name in self.qualified_teams:
-            self.world.agents[t_name].perform_reflection(llm)
-            
-        for round_name, num_teams in [("Round of 32", 32), ("Round of 16", 16), ("Quarter-Finals", 8), ("Semi-Finals", 4), ("Final", 2)]:
+        if self.phase == "group":
+            self.simulate_group_stage(llm)
+            self.resolve_advancements()
+            self.phase = "post_group"
+            self._save_checkpoint()
+
+        if not self.post_group_reflection_done:
+            print("\n" + "*"*60 + "\n[V13 GLOBAL SUMMIT] Teams performing deep reflection...\n" + "*"*60)
+            for t_name in self.qualified_teams:
+                self._reflection_with_retry(self.world.agents[t_name], llm)
+            self.post_group_reflection_done = True
+            self._save_checkpoint()
+
+        self.phase = "knockout"
+        for round_name, num_teams in [
+            ("Round of 32", 32),
+            ("Round of 16", 16),
+            ("Quarter-Finals", 8),
+            ("Semi-Finals", 4),
+            ("Final", 2),
+        ]:
+            if len(self.qualified_teams) < num_teams:
+                continue
+            self.ko_round = round_name
             self.simulate_knockout_round(round_name, num_teams, llm)
+            self._save_checkpoint()
+
+        self.phase = "complete"
+        self._save_checkpoint()
 
     def simulate_group_stage(self, llm):
         print("\n" + "="*60 + "\n🚀 PHASE 1: GROUP STAGE (CINDERELLA FIELD ACTIVE)\n" + "="*60)
+        def _round_robin_matchdays_4teams(group_teams: list[str]) -> list[list[tuple[str, str]]]:
+            """
+            Standard round-robin (4 teams) in matchdays:
+            3 rounds, each round has 2 matches, and each team plays exactly once per round.
+            Uses the circle method, keeping group_teams[0] fixed.
+            """
+            if len(group_teams) != 4:
+                raise ValueError(f"Expected exactly 4 teams for 4-team round robin, got {len(group_teams)}")
+            t = list(group_teams)
+            rounds: list[list[tuple[str, str]]] = []
+            # Each round: t[0] vs t[3], t[1] vs t[2]; rotate [t1,t2,t3] as [t3,t1,t2]
+            for _ in range(3):
+                rounds.append([(t[0], t[3]), (t[1], t[2])])
+                t = [t[0], t[3], t[1], t[2]]
+            return rounds
+
         for g_name, teams in self.groups.items():
-            for t1, t2 in itertools.combinations(teams, 2):
-                self.play_match(t1, t2, g_name, llm, is_knockout=False)
+            matchdays = _round_robin_matchdays_4teams(teams)
+            for md_idx, md_matches in enumerate(matchdays, start=1):
+                standings_snapshot = snapshot_standings_table(self.standings, g_name)
+                print(f"\n  [GROUP {g_name}] Matchday {md_idx}/3 (parallel kickoff snapshot)")
+                for t1, t2 in md_matches:
+                    mk = self._match_key(g_name, t1, t2)
+                    if mk in self.completed_matches:
+                        continue
+                    fixture_seed = hash((g_name, t1, t2, md_idx)) % 10000
+                    self.play_match(
+                        t1,
+                        t2,
+                        g_name,
+                        llm,
+                        is_knockout=False,
+                        matchday=md_idx,
+                        standings_snapshot=standings_snapshot,
+                        fixture_seed=fixture_seed,
+                    )
 
     def _stage_pressure(self, stage_name, is_knockout):
         # Continuous round-depth pressure, no discrete threshold jumps.
@@ -174,30 +337,72 @@ class TournamentManager:
             "bias_t2": -bias_t1,
         }
 
-    def play_match(self, t1_name, t2_name, stage_name, llm, is_knockout=True):
+    def play_match(
+        self,
+        t1_name,
+        t2_name,
+        stage_name,
+        llm,
+        is_knockout=True,
+        *,
+        matchday: int = 0,
+        standings_snapshot=None,
+        fixture_seed: int = 0,
+    ):
         a1, a2 = self.world.agents[t1_name], self.world.agents[t2_name]
+        home_micro, away_micro, neutral_venue, venue_label = resolve_match_venue(
+            t1_name, t2_name, matchday=matchday, fixture_seed=fixture_seed
+        )
+        ah, aa = self.world.agents[home_micro], self.world.agents[away_micro]
 
-        # 0. REST/RECOVERY between fixtures (smooth by stage pressure)
+        def _venue_for(team: str) -> str:
+            if team == home_micro:
+                return f"{venue_label} — we are HOME"
+            if team == away_micro:
+                return f"{venue_label} — we are AWAY"
+            return venue_label
+
+        print(
+            f"  [VENUE] micro home={home_micro} | {venue_label} | "
+            f"home boost= crowd ψ/morale (not possession skew)"
+        )
+
+        # 0. REST/RECOVERY + cross-match carryover
         pressure = self._stage_pressure(stage_name, is_knockout)
         rest_units = 1.1 + 1.25 * pressure
         a1.recover(rest_units=rest_units)
         a2.recover(rest_units=rest_units)
-        
-        # 1. COACHING (Dynamic Game Theory)
-        t1_tactics_json = llm.coach_decide_tactics(t1_name, a1.get_context_for_llm(), t2_name, a2.get_context_for_llm())
-        t2_tactics_json = llm.coach_decide_tactics(t2_name, a2.get_context_for_llm(), t1_name, a1.get_context_for_llm())
-        
+        prepare_match_agents(ah, aa, self.base_dir)
+
+        # 1. COACHING → full 21-dim tactical vector (group table + venue in context)
+        ctx1 = build_coach_match_context(
+            a1.get_context_for_llm(),
+            group_name=stage_name,
+            matchday=matchday,
+            team=t1_name,
+            opponent=t2_name,
+            standings_snapshot=standings_snapshot,
+            venue_label=_venue_for(t1_name),
+        )
+        ctx2 = build_coach_match_context(
+            a2.get_context_for_llm(),
+            group_name=stage_name,
+            matchday=matchday,
+            team=t2_name,
+            opponent=t1_name,
+            standings_snapshot=standings_snapshot,
+            venue_label=_venue_for(t2_name),
+        )
+        t1_tactics_json = llm.coach_decide_tactics(t1_name, ctx1, t2_name, ctx2)
+        t2_tactics_json = llm.coach_decide_tactics(t2_name, ctx2, t1_name, ctx1)
+
         try:
-            t1_data = json.loads(t1_tactics_json)
-            a1.formation = t1_data.get("formation", a1.formation)
-            a1.set_tactical_controls(t1_data.get("controls", {}))
+            t1_data = apply_coach_tactics_from_llm(a1, t1_tactics_json)
             a1.apply_beliefs_to_tactics(stage_name=stage_name, opponent_style=a2.style_archetype)
             a1.coach_intervention(t1_tactics_json)
             print(f"  [TACTICS] {t1_name}: {t1_data.get('reasoning', 'No reasoning')}")
-            
-            t2_data = json.loads(t2_tactics_json)
-            a2.formation = t2_data.get("formation", a2.formation)
-            a2.set_tactical_controls(t2_data.get("controls", {}))
+
+            t2_data = apply_coach_tactics_from_llm(a2, t2_tactics_json)
             a2.apply_beliefs_to_tactics(stage_name=stage_name, opponent_style=a1.style_archetype)
             a2.coach_intervention(t2_tactics_json)
             print(f"  [TACTICS] {t2_name}: {t2_data.get('reasoning', 'No reasoning')}")
@@ -219,7 +424,7 @@ class TournamentManager:
             f"bias={referee['bias_t1']:+.2f} grievance={ref_1['grievance']:.2f}/{ref_2['grievance']:.2f}"
         )
 
-        # 2. MATH-FIRST MATCH SIMULATION + TACTICAL MATCHUP
+        # 2. Match simulation: physics micro first (spectate) → score; macro-only fallback
         matchup_bonus_1 = compute_matchup_bonus(a1.style_archetype, a2.style_archetype)
         matchup_bonus_2 = -matchup_bonus_1
         tactical_1 = a1.tactical_effects()
@@ -233,12 +438,132 @@ class TournamentManager:
         exp_2 = self.fusion_controller.export_expert_signals(a2, internal_2, ref_2, tactical_2)
         fused_1 = self.fusion_controller.fuse(exp_1, context)
         fused_2 = self.fusion_controller.fuse(exp_2, context)
-        eff_status_1 = a1.get_effective_status(matchup_bonus=matchup_bonus_1 + fused_1["status_delta"])
-        eff_status_2 = a2.get_effective_status(matchup_bonus=matchup_bonus_2 + fused_2["status_delta"])
-        # Tactical risk affects execution variance and shot-quality volatility.
-        eff_status_1 *= max(0.72, 1.0 + np.random.normal(0.0, 0.035 * fused_1["volatility"]))
-        eff_status_2 *= max(0.72, 1.0 + np.random.normal(0.0, 0.035 * fused_2["volatility"]))
-        s1, s2, xg1, xg2 = simulate_match_score(eff_status_1, eff_status_2, is_knockout=is_knockout)
+        def _safe_eff(agent, bonus: float, fused: dict) -> float:
+            delta = 0.55 * float(fused.get("status_delta", 0.0))
+            if not np.isfinite(delta):
+                delta = 0.0
+            val = float(agent.get_effective_status(matchup_bonus=bonus + delta))
+            vol = float(fused.get("volatility", 0.0))
+            if not np.isfinite(vol):
+                vol = 0.0
+            val *= max(0.82, 1.0 + np.random.normal(0.0, 0.016 * vol))
+            if not np.isfinite(val):
+                val = max(12.0, float(agent.status_score))
+            return float(max(12.0, val))
+
+        eff_status_1 = _safe_eff(a1, matchup_bonus_1, fused_1)
+        eff_status_2 = _safe_eff(a2, matchup_bonus_2, fused_2)
+        if home_micro == t1_name:
+            eff_micro_home, eff_micro_away = eff_status_1, eff_status_2
+            internal_micro_h, internal_micro_a = internal_1, internal_2
+            fused_vol_h = float(fused_1.get("volatility", 0.0))
+            fused_vol_a = float(fused_2.get("volatility", 0.0))
+        else:
+            eff_micro_home, eff_micro_away = eff_status_2, eff_status_1
+            internal_micro_h, internal_micro_a = internal_2, internal_1
+            fused_vol_h = float(fused_2.get("volatility", 0.0))
+            fused_vol_a = float(fused_1.get("volatility", 0.0))
+        print(
+            f"  [CTRL] {t1_name} p={a1.tactical_controls['pressing_intensity']:.2f} r={a1.tactical_controls['risk_budget']:.2f} "
+            f"lh={a1.tactical_controls['line_height']:.2f} rot={a1.tactical_controls['rotation_aggressiveness']:.2f} | "
+            f"{t2_name} p={a2.tactical_controls['pressing_intensity']:.2f} r={a2.tactical_controls['risk_budget']:.2f} "
+            f"lh={a2.tactical_controls['line_height']:.2f} rot={a2.tactical_controls['rotation_aggressiveness']:.2f}"
+        )
+        print(
+            f"  [FUSION] {t1_name} Δ={fused_1['status_delta']:+.2f} vol={fused_1['volatility']:.2f} "
+            f"| {t2_name} Δ={fused_2['status_delta']:+.2f} vol={fused_2['volatility']:.2f}"
+        )
+        score_path = resolve_score_path_mode()
+        physics_first = score_path == ScorePathMode.PHYSICS_OFFICIAL
+        micro_replay_mode = score_path == ScorePathMode.MICRO_REPLAY
+        legacy_poisson = score_path == ScorePathMode.POISSON_LEGACY
+        drama_pre = min(1.0, 0.25 + 0.15 * referee["strictness"])
+        micro_summary = None
+        score_meta: dict = {}
+        gfs_seed = int(os.environ.get("GFS_SEED", "42"))
+        seed = gfs_seed + hash((t1_name, t2_name, stage_name)) % 10000
+        rng_score = np.random.default_rng(seed)
+        xg_prior_h, xg_prior_a = 1.0, 1.0
+
+        if physics_first:
+            xg_prior_h, xg_prior_a, _xg_meta = expected_match_xg(
+                ah,
+                aa,
+                eff_micro_home,
+                eff_micro_away,
+                is_knockout=is_knockout,
+                stage_pressure=pressure,
+                fused_volatility_home=fused_vol_h,
+                fused_volatility_away=fused_vol_a,
+                rng=rng_score,
+            )
+            from src.memory_engine.macro_goal_dynamics import clamp_match_xg
+
+            if not np.isfinite(xg_prior_h):
+                xg_prior_h = 1.0
+            if not np.isfinite(xg_prior_a):
+                xg_prior_a = 1.0
+            xg_prior_h = clamp_match_xg(xg_prior_h)
+            xg_prior_a = clamp_match_xg(xg_prior_a)
+            try:
+                micro_summary = run_physics_first_micro(
+                    ah,
+                    aa,
+                    xg_prior_home=xg_prior_h,
+                    xg_prior_away=xg_prior_a,
+                    eff_status_home=eff_micro_home,
+                    eff_status_away=eff_micro_away,
+                    referee=referee,
+                    stage_pressure=pressure,
+                    drama_score=drama_pre,
+                    internal_home=internal_micro_h,
+                    internal_away=internal_micro_a,
+                    seed=seed,
+                    stage_name=stage_name,
+                    neutral_venue=neutral_venue,
+                )
+                print_micro_match_logs(micro_summary, home_micro, away_micro, ah, aa)
+                s1, s2, xg1, xg2, score_meta = finalize_official_score_from_micro(
+                    micro_summary,
+                    home_micro=home_micro,
+                    fixture_home=t1_name,
+                    macro_xg_prior_home=xg_prior_h,
+                    macro_xg_prior_away=xg_prior_a,
+                )
+                score_meta["xg_prior"] = [xg_prior_h, xg_prior_a]
+            except Exception as exc:
+                print(f"  [MICRO] physics-first failed ({exc}); falling back to macro score.")
+                physics_first = False
+                micro_summary = None
+
+        if not physics_first:
+            if legacy_poisson:
+                from src.memory_engine.macro_goal_dynamics import simulate_match_score_dynamics
+
+                s1, s2, xg1, xg2, score_meta = simulate_match_score_dynamics(
+                    a1,
+                    a2,
+                    eff_status_1,
+                    eff_status_2,
+                    is_knockout=is_knockout,
+                    stage_pressure=pressure,
+                    fused_volatility_home=float(fused_1.get("volatility", 0.0)),
+                    fused_volatility_away=float(fused_2.get("volatility", 0.0)),
+                    rng=rng_score,
+                )
+            else:
+                s1, s2, xg1, xg2, score_meta = resolve_unified_score(
+                    a1,
+                    a2,
+                    eff_status_1,
+                    eff_status_2,
+                    is_knockout=is_knockout,
+                    stage_pressure=pressure,
+                    fused_volatility_home=float(fused_1.get("volatility", 0.0)),
+                    fused_volatility_away=float(fused_2.get("volatility", 0.0)),
+                    micro_summary=micro_summary,
+                    rng=rng_score,
+                )
 
         pen_note = ""
         winner_name = None
@@ -246,9 +571,39 @@ class TournamentManager:
         aet1 = aet2 = 0
         et_xg1 = et_xg2 = 0.0
         went_to_extra_time = False
+        reg_s1, reg_s2 = s1, s2
         if is_knockout and s1 == s2:
             went_to_extra_time = True
-            aet1, aet2, et_xg1, et_xg2 = simulate_extra_time_score(eff_status_1, eff_status_2)
+            print(f"  [AET] Full micro extra time ({home_micro} vs {away_micro})...")
+            if physics_first:
+                et_summary = run_extra_time_micro(
+                    ah,
+                    aa,
+                    xg_prior_home=xg_prior_h,
+                    xg_prior_away=xg_prior_a,
+                    eff_status_home=eff_micro_home,
+                    eff_status_away=eff_micro_away,
+                    referee=referee,
+                    stage_pressure=pressure,
+                    drama_score=drama_pre,
+                    internal_home=internal_micro_h,
+                    internal_away=internal_micro_a,
+                    seed=seed,
+                    stage_name=stage_name,
+                    neutral_venue=neutral_venue,
+                )
+                et_gh, et_ga = int(et_summary.goals_micro_home), int(et_summary.goals_micro_away)
+                et_xgh, et_xga = float(et_summary.micro_xg_home), float(et_summary.micro_xg_away)
+                aet1, aet2 = self._map_micro_score(home_micro, t1_name, et_gh, et_ga)
+                et_xg1 = et_xgh if home_micro == t1_name else et_xga
+                et_xg2 = et_xga if home_micro == t1_name else et_xgh
+                print_micro_match_logs(et_summary, home_micro, away_micro, ah, aa)
+            else:
+                from src.memory_engine.macro_goal_dynamics import simulate_extra_time_dynamics
+
+                aet1, aet2, et_xg1, et_xg2 = simulate_extra_time_dynamics(
+                    a1, a2, eff_status_1, eff_status_2, stage_pressure=pressure
+                )
             s1 += aet1
             s2 += aet2
             if s1 == s2:
@@ -267,24 +622,30 @@ class TournamentManager:
             0.25 + abs(s1 - s2) * 0.12 + (0.2 if s1 == s2 else 0.0) + 0.15 * referee["strictness"],
         )
         key_event = f"xG battle {xg1}-{xg2} with styles {a1.style_archetype} vs {a2.style_archetype}{pen_note}"
+        score_model = score_path_label(score_path)
         verdict_json = json.dumps(
             {
                 "winner": winner_name,
                 "score": f"{s1}-{s2}",
                 "key_event": key_event,
                 "drama_score": round(drama_score, 2),
-                "model": "poisson_math_first",
+                "model": score_model,
             },
             ensure_ascii=False,
         )
         print(
-            f"  [MODEL] {t1_name} {s1}-{s2} {t2_name} | xG {xg1}-{xg2} | "
-            f"EffStatus {eff_status_1:.1f}-{eff_status_2:.1f} | Matchup {matchup_bonus_1:+.1f}"
+            f"  [SCORE] {t1_name} {s1}-{s2} {t2_name} | μxG {xg1:.2f}-{xg2:.2f} | "
+            f"EffStatus {eff_status_1:.1f}-{eff_status_2:.1f} | Matchup {matchup_bonus_1:+.1f} | {score_model}"
         )
+        if physics_first:
+            print(
+                f"  [MACRO-PRIOR] team-dynamics xG prior {xg_prior_h:.2f}-{xg_prior_a:.2f} "
+                f"(event density only; goals from physics)"
+            )
         if went_to_extra_time:
             print(
-                f"  [AET] {t1_name} {s1}-{s2} {t2_name} after extra time "
-                f"(ET xG +{et_xg1:.2f}/+{et_xg2:.2f})."
+                f"  [AET] {t1_name} {reg_s1}-{reg_s2} {t2_name} after 90' → "
+                f"{s1}-{s2} after ET (+{aet1}/+{aet2} goals, ET μxG +{et_xg1:.2f}/+{et_xg2:.2f})."
             )
         if is_knockout and pen1 is not None and winner_name:
             print(
@@ -305,16 +666,55 @@ class TournamentManager:
         xg_context_line = "; ".join(list(dict.fromkeys(merged_xg))) if merged_xg else ""
         if xg_context_line:
             print(f"  [XG_CONTEXT] {xg_context_line}")
-        print(
-            f"  [CTRL] {t1_name} p={a1.tactical_controls['pressing_intensity']:.2f} r={a1.tactical_controls['risk_budget']:.2f} "
-            f"lh={a1.tactical_controls['line_height']:.2f} rot={a1.tactical_controls['rotation_aggressiveness']:.2f} | "
-            f"{t2_name} p={a2.tactical_controls['pressing_intensity']:.2f} r={a2.tactical_controls['risk_budget']:.2f} "
-            f"lh={a2.tactical_controls['line_height']:.2f} rot={a2.tactical_controls['rotation_aggressiveness']:.2f}"
-        )
-        print(
-            f"  [FUSION] {t1_name} Δ={fused_1['status_delta']:+.2f} vol={fused_1['volatility']:.2f} "
-            f"| {t2_name} Δ={fused_2['status_delta']:+.2f} vol={fused_2['volatility']:.2f}"
-        )
+
+        aff_on = os.environ.get("MATCH_AFFECTIVE", "").strip().lower() in ("1", "true", "yes")
+        if micro_replay_mode or (aff_on and micro_summary is None):
+            try:
+                if micro_replay_mode:
+                    aff = run_micro_layer(
+                        a1,
+                        a2,
+                        goals_home=s1,
+                        goals_away=s2,
+                        xg_home=xg1,
+                        xg_away=xg2,
+                        referee=referee,
+                        stage_pressure=pressure,
+                        drama_score=drama_score,
+                        internal_home=internal_1,
+                        internal_away=internal_2,
+                        seed=seed,
+                        stage_name=stage_name,
+                    )
+                    print_micro_match_logs(aff, t1_name, t2_name, a1, a2)
+                    print(
+                        f"  [REPLAY] macro score {s1}-{s2} anchored; set MATCH_MICRO_SCORE=1 (default with MICRO) for physics-first."
+                    )
+                    micro_summary = aff
+                else:
+                    from src.match_engine.match_affective_runner import run_match_affective_simulation
+
+                    aff = run_match_affective_simulation(
+                        a1,
+                        a2,
+                        goals_home=s1,
+                        goals_away=s2,
+                        xg_home=xg1,
+                        xg_away=xg2,
+                        referee=referee,
+                        stage_pressure=pressure,
+                        drama_score=drama_score,
+                        internal_home=internal_1,
+                        internal_away=internal_2,
+                        seed=seed,
+                        writeback_agents=True,
+                    )
+                    print(
+                        f"  [AFFECTIVE] ψ={aff.final_psi:+.2f} | coach stress {aff.home_coach_stress:.2f}/{aff.away_coach_stress:.2f} "
+                        f"| ref strict {aff.ref_strictness_mean:.2f} | drift {aff.tactical_drift_home:.2f}/{aff.tactical_drift_away:.2f}"
+                    )
+            except Exception as exc:
+                print(f"  [MICRO/AFFECTIVE] skipped: {exc}")
 
         # Optional LLM narrative layer (no control over scoreline)
         facts_ledger = {
@@ -334,10 +734,19 @@ class TournamentManager:
             "t2_rotation_aggressiveness": round(float(a2.tactical_controls.get("rotation_aggressiveness", 0.5)), 2),
             "drama_score": round(float(drama_score), 2),
             "effective_status": f"{eff_status_1:.1f}-{eff_status_2:.1f}",
+            "t1_tactical_preset": getattr(getattr(a1, "coach_profile", None), "preferred_preset", ""),
+            "t2_tactical_preset": getattr(getattr(a2, "coach_profile", None), "preferred_preset", ""),
+            "t1_through_ball_bias": round(float(getattr(a1, "tactical_vector", {}).get("through_ball_bias", 0.5)), 2),
+            "t2_through_ball_bias": round(float(getattr(a2, "tactical_vector", {}).get("through_ball_bias", 0.5)), 2),
         }
         if xg_context_line:
             facts_ledger["xg_alignment_note"] = xg_context_line
-        facts_ledger["regulation_score"] = f"{s1-aet1}-{s2-aet2}" if went_to_extra_time else f"{s1}-{s2}"
+        if micro_summary is not None and getattr(micro_summary, "cognitive_plans", None):
+            facts_ledger["cognitive_events"] = len(micro_summary.cognitive_plans)
+            facts_ledger["cognitive_tier_usage"] = getattr(
+                micro_summary, "cognitive_tier_usage", {}
+            )
+        facts_ledger["regulation_score"] = f"{reg_s1}-{reg_s2}" if went_to_extra_time else f"{s1}-{s2}"
         facts_ledger["aet_played"] = bool(went_to_extra_time)
         facts_ledger["aet_score"] = f"{s1}-{s2}" if went_to_extra_time else "not_played"
         facts_ledger["went_to_penalties"] = bool(pen1 is not None)
@@ -427,6 +836,11 @@ class TournamentManager:
                 "drama_score": drama_score,
                 "stage_pressure": pressure,
                 "ref_strictness": referee["strictness"],
+                "cognitive_plans": (
+                    micro_summary.cognitive_plans[:6]
+                    if micro_summary is not None and getattr(micro_summary, "cognitive_plans", None)
+                    else []
+                ),
             },
         )
         sig_1 = dialogue_pack.get("signals", {}).get(t1_name, {})
@@ -503,6 +917,21 @@ class TournamentManager:
             stage_pressure=pressure,
         )
         
+        finalize_match_feedback(
+            a1,
+            a2,
+            base_dir=self.base_dir,
+            result_home=res_1,
+            result_away=res_2,
+            score_diff_home=s1 - s2,
+            xg_home=xg1,
+            xg_away=xg2,
+            prof_score=prof_score,
+            social_chaos=social_chaos,
+            stage_name=stage_name,
+            micro_summary=micro_summary if micro_layer_enabled() else None,
+        )
+
         # 7. CASCADE — continuous locker tension; "explosion" headline is rare
         for agent, label in ((a1, t1_name), (a2, t2_name)):
             tense = agent.locker_room_tension()
@@ -510,7 +939,13 @@ class TournamentManager:
             if agent.rare_locker_room_explosion():
                 print(f"  [EMERGENCY] {label} Locker Room Explosion!")
 
-        return winner_name or (t1_name if s1 >= s2 else t2_name)
+        winner = winner_name or (t1_name if s1 >= s2 else t2_name)
+        mk = self._match_key(stage_name, t1_name, t2_name)
+        self.completed_matches.append(mk)
+        self.match_results[mk] = winner
+        self.match_index += 1
+        self._save_checkpoint()
+        return winner
 
     def update_standings(self, g, t1, t2, s1, s2):
         st = self.standings[g]
@@ -520,27 +955,47 @@ class TournamentManager:
         st[t2]["gf"] += s2; st[t2]["ga"] += s1; st[t2]["gd"] = st[t2]["gf"] - st[t2]["ga"]
 
     def resolve_advancements(self):
-        thirds = []
-        for g_name, teams_stats in self.standings.items():
-            sorted_teams = sorted(teams_stats.keys(), key=lambda x: (teams_stats[x]['pts'], teams_stats[x]['gd'], teams_stats[x]['gf']), reverse=True)
-            self.qualified_teams.append(sorted_teams[0])
-            self.qualified_teams.append(sorted_teams[1])
-            thirds.append((g_name, sorted_teams[2], teams_stats[sorted_teams[2]]))
-        thirds.sort(key=lambda x: (x[2]['pts'], x[2]['gd'], x[2]['gf']), reverse=True)
-        for i in range(8): self.qualified_teams.append(thirds[i][1])
+        self.qualified_entries = build_qualified_entries(self.groups, self.standings)
+        self.qualified_teams = [e.team for e in self.qualified_entries]
+        gfs_seed = int(os.environ.get("GFS_SEED", "42"))
+        import random
+
+        self.r32_fixtures = build_r32_pairings(
+            self.qualified_entries, rng=random.Random(gfs_seed + 2026)
+        )
+        print(f"[ADVANCE] {len(self.qualified_teams)} teams qualified; R32 bracket seeded ({len(self.r32_fixtures)} fixtures).")
 
     def simulate_knockout_round(self, round_name, num_teams, llm):
         print(f"\n" + "="*60 + f"\n🏆 {round_name.upper()}\n" + "="*60)
         next_round = []
         current_batch = self.qualified_teams[:num_teams]
-        for i in range(0, len(current_batch), 2):
-            winner = self.play_match(current_batch[i], current_batch[i+1], round_name, llm, is_knockout=True)
+        if round_name == "Round of 32" and self.r32_fixtures:
+            fixtures = list(self.r32_fixtures)
+        else:
+            fixtures = [
+                (current_batch[i], current_batch[i + 1])
+                for i in range(0, len(current_batch), 2)
+            ]
+        for t1, t2 in fixtures:
+            mk = self._match_key(round_name, t1, t2)
+            if mk in self.completed_matches:
+                winner = self.match_results.get(mk)
+                if winner:
+                    print(f"  [SKIP] {t1} vs {t2} (checkpoint) → {winner}")
+                    next_round.append(winner)
+                    continue
+            fixture_seed = hash((round_name, t1, t2)) % 10000
+            winner = self.play_match(
+                t1,
+                t2,
+                round_name,
+                llm,
+                is_knockout=True,
+                fixture_seed=fixture_seed,
+            )
             next_round.append(winner)
             if round_name == "Final":
-                runner_up = current_batch[i] if winner == current_batch[i+1] else current_batch[i+1]
-                self.final_result = {
-                    "champion": winner,
-                    "runner_up": runner_up,
-                }
-            self.world.agents[winner].perform_reflection(llm)
+                runner_up = t2 if winner == t1 else t1
+                self.final_result = {"champion": winner, "runner_up": runner_up}
+            self._reflection_with_retry(self.world.agents[winner], llm)
         self.qualified_teams = next_round

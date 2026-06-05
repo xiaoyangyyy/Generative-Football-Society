@@ -3,13 +3,28 @@ import os
 
 from src.data_engine.loader import load_data
 from src.data_engine.cleaner import clean_results
+from src.data_engine.coach_loader import (
+    attach_coaches_to_agents,
+    default_coaches_path,
+    load_coaches_json,
+    merge_coach_into_tactical_map,
+)
 from src.data_engine.identity_normalizer import normalize_identities
 from src.memory_engine.status_score import compute_team_status
 from src.simulation.engine import WorldEngine
 from src.simulation.tournament_2026 import TournamentManager
 
 
-def build_world_and_tournament(base_dir, require_tactics=False):
+def _attach_team_dynamics_from_rosters(base_dir: str, agents: dict) -> None:
+    from src.data_engine.roster_loader import load_roster_json, roster_path_for_team
+
+    for team_name, agent in agents.items():
+        roster = load_roster_json(roster_path_for_team(base_dir, team_name))
+        if roster and roster.get("team_dynamics"):
+            agent.team_dynamics = dict(roster["team_dynamics"])
+
+
+def build_world_and_tournament(base_dir, require_tactics=False, load_coaches=True):
     raw_dir = os.path.join(base_dir, "data", "raw")
     data = load_data(raw_dir)
     cleaned_df = clean_results(data["results"])
@@ -24,6 +39,22 @@ def build_world_and_tournament(base_dir, require_tactics=False):
     elif require_tactics:
         raise FileNotFoundError(f"Required tactics file not found: {tactics_path}")
 
+    coaches_path = default_coaches_path(base_dir)
+    coaches = {}
+    if load_coaches and os.path.exists(coaches_path):
+        coaches = load_coaches_json(coaches_path)
+        tactical_map = merge_coach_into_tactical_map(tactical_map, coaches)
+
     engine = WorldEngine(stats, tactical_map=tactical_map)
+    if coaches:
+        n = attach_coaches_to_agents(engine.agents, coaches)
+        print(f"Loaded {n} real coach profiles from {coaches_path}")
+
+    _attach_team_dynamics_from_rosters(base_dir, engine.agents)
+
+    from src.simulation.cross_match_state import load_persistence
+
+    load_persistence(base_dir, engine.agents)
+
     tournament = TournamentManager(engine)
     return engine, tournament, tactical_map

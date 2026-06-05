@@ -1,4 +1,15 @@
+import os
+
 import numpy as np
+
+from src.memory_engine.macro_goal_dynamics import (
+    simulate_match_score_from_vectors,
+    team_vector_from_status,
+)
+
+
+def _use_legacy_status_poisson() -> bool:
+    return os.environ.get("MATCH_LEGACY_POISSON", "").strip().lower() in ("1", "true", "yes")
 
 
 def _soft_goal_cap(goals, lam):
@@ -12,12 +23,14 @@ def _soft_goal_cap(goals, lam):
 
 def simulate_match_score(status_a, status_b, is_knockout=False):
     """
-    Simulates a football match score using Poisson distribution based on team status scores.
-
-    Formula:
-    - Base lambda (expected goals) = status / 35.0 with relative-strength tilt
-    - Knockout: slightly lower effective lambdas (caution / tighter margins)
+    Macro match score. Default: λ̇ dynamics on team vectors derived from status.
+    Set MATCH_LEGACY_POISSON=1 for old status/35 Poisson lookup.
     """
+    if not _use_legacy_status_poisson():
+        x_a = team_vector_from_status(status_a)
+        x_b = team_vector_from_status(status_b)
+        return simulate_match_score_from_vectors(x_a, x_b, is_knockout=is_knockout)
+
     shrink = 0.93 if is_knockout else 1.0
     lambda_a = (status_a / 35.0) * (status_a / max(1.0, status_b)) ** 0.5 * shrink
     lambda_b = (status_b / 35.0) * (status_b / max(1.0, status_a)) ** 0.5 * shrink
@@ -45,9 +58,19 @@ def simulate_match_score(status_a, status_b, is_knockout=False):
 
 def simulate_extra_time_score(status_a, status_b):
     """
-    Simulates extra time (30') with reduced scoring intensity.
-    Returns additional goals and ET xG estimate.
+    Extra time (30') via shortened λ dynamics integration.
     """
+    if not _use_legacy_status_poisson():
+        from src.memory_engine.macro_goal_dynamics import EXTRA_TIME_MINUTES, integrate_match_xg, sample_goals_from_xg
+
+        x_a = team_vector_from_status(status_a)
+        x_b = team_vector_from_status(status_b)
+        xg_a, xg_b, _ = integrate_match_xg(
+            x_a, x_b, minutes=EXTRA_TIME_MINUTES, n_steps=30, is_knockout=True
+        )
+        ga, gb = sample_goals_from_xg(xg_a, xg_b, is_knockout=True)
+        return ga, gb, round(xg_a, 2), round(xg_b, 2)
+
     lambda_a = (status_a / 35.0) * (status_a / max(1.0, status_b)) ** 0.5 * 0.30
     lambda_b = (status_b / 35.0) * (status_b / max(1.0, status_a)) ** 0.5 * 0.30
     goals_a = _soft_goal_cap(int(np.random.poisson(lambda_a)), lambda_a)

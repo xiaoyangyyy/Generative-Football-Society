@@ -1,0 +1,95 @@
+{
+  "candidates": [
+    {
+      "id": 0,
+      "action.action_pass_base": 1.72,
+      "action.action_shot_base": 0.5,
+      "action.action_shot_cooldown_sec": 10.0,
+      "focus_loss": 12.332570521097058,
+      "all_pass": false,
+      "passes": 98.5,
+      "shots": 1.0,
+      "goals": 0.25,
+      "gxg": 1.5146926607264142,
+      "micro_xg": 0.18124082009834125
+    },
+    {
+      "id": 1,
+      "action.action_pass_base": 1.76,
+      "action.action_shot_base": 0.54,
+      "action.action_shot_cooldown_sec": 9.5,
+      "focus_loss": 12.019295864438407,
+      "all_pass": false,
+      "passes": 98.25,
+      "shots": 1.5,
+      "goals": 0.25,
+      "gxg": 1.5146926607264142,
+      "micro_xg": 0.23339013946369333
+    },
+    {
+      "id": 2,
+      "action.action_pass_base": 1.68,
+      "action.action_shot_base": 0.56,
+      "action.action_shot_cooldown_sec": 9.0,
+      "focus_loss": 12.426055613672007,
+      "all_pass": false,
+      "passes": 98.0,
+      "shots": 1.25,
+      "goals": 0.5,
+      "gxg": 2.189039564852269,
+      "micro_xg": 0.20108487355891436
+    },
+    {
+      "id": 3,
+      "action.action_pass_base": 1.72,
+      "action.action_shot_base": 0.58,
+      "action.action_shot_cooldown_sec": 8.5,
+      "focus_loss": 12.332570521097058,
+      "all_pass": false,
+      "passes": 98.5,
+      "shots": 1.0,
+      "goals": 0.25,
+      "gxg": 1.5146926607264142,
+      "micro_xg": 0.18124082009834125
+    },
+    {
+      "id": 4,
+      "action.action_pass_base": 1.8,
+      "action.action_shot_base": 0.52,
+      "action.action_shot_cooldown_sec": 9.5,
+      "focus_loss": 12.143464248641088,
+      "all_pass": false,
+      "passes": 97.75,
+      "shots": 2.0,
+      "goals": 0.0,
+      "gxg": 0.0,
+      "micro_xg": 0.29497073409331986
+    },
+    {
+      "id": 5,
+      "action.action_pass_base": 1.72,
+      "action.action_shot_base": 0.62,
+      "action.action_shot_cooldown_sec": 8.0,
+      "focus_loss": 12.25703670140973,
+      "all_pass": false,
+      "passes": 97.75,
+      "shots": 1.5,
+      "goals": 0.5,
+      "gxg": 2.189039564852269,
+      "micro_xg": 0.24543530204614497
+    }
+  ],
+  "best": {
+    "id": 1,
+    "action.action_pass_base": 1.76,
+    "action.action_shot_base": 0.54,
+    "action.action_shot_cooldown_sec": 9.5,
+    "focus_loss": 12.019295864438407,
+    "all_pass": false,
+    "passes": 98.25,
+    "shots": 1.5,
+    "goals": 0.25,
+    "gxg": 1.5146926607264142,
+    "micro_xg": 0.23339013946369333
+  }
+}

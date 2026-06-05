@@ -1,0 +1,50 @@
+{
+  "profile": {
+    "name": "v5_physics_first",
+    "description": "Physics-first micro calibration; StatsBomb logit blend moderate.",
+    "overrides": {},
+    "parameter_count": 20,
+    "tiers": {
+      "0": 2,
+      "1": 14,
+      "2": 3,
+      "3": 1
+    }
+  },
+  "pipelines": {
+    "M0": {
+      "all_pass": false,
+      "failed_hard": [],
+      "failed_soft": [
+        "goals_to_micro_xg_ratio",
+        "micro_xg_per_team_match",
+        "possession_passes_correlation",
+        "shots_goals_correlation"
+      ],
+      "report_path": "reports\\calibration_baselines\\M0.json"
+    },
+    "M1": {
+      "all_pass": false,
+      "failed_hard": [],
+      "failed_soft": [
+        "goals_to_micro_xg_ratio",
+        "micro_xg_per_team_match",
+        "possession_passes_correlation",
+        "shots_goals_correlation"
+      ],
+      "report_path": "reports\\calibration_baselines\\M1.json"
+    },
+    "T0": {
+      "all_pass": false,
+      "failed_hard": [],
+      "failed_soft": [
+        "goals_to_micro_xg_ratio",
+        "micro_xg_per_team_match",
+        "possession_passes_correlation",
+        "shots_goals_correlation"
+      ],
+      "report_path": "reports\\calibration_baselines\\T0.json"
+    }
+  },
+  "all_pass": false
+}

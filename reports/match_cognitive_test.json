@@ -1,0 +1,953 @@
+{
+  "home": "Brazil",
+  "away": "Argentina",
+  "seed": 42,
+  "score": "92-72",
+  "xg": "83.88-84.44",
+  "macro_preview": "170-184",
+  "micro_xg": "6.08-7.52",
+  "fusion_meta": {
+    "macro": {
+      "model": "macro_goal_dynamics_v1",
+      "lambda_end_home": 2.0318361484455507,
+      "lambda_end_away": 1.9883077425821964,
+      "minutes": 90.0,
+      "n_steps": 90,
+      "x_home": [
+        0.3794377607199783,
+        0.41626054341246604,
+        0.38362103823354116,
+        0.34620567166401456,
+        -0.638664477618203
+      ],
+      "x_away": [
+        0.3823501520211972,
+        0.4175167992446798,
+        0.3851088373755025,
+        0.34787709030560043,
+        -0.638664477618203
+      ]
+    },
+    "source": "macro_micro_fusion",
+    "micro_xg": [
+      6.0809648402404335,
+      7.520733957301481
+    ],
+    "eta": 0.55,
+    "xg_final": [
+      83.88,
+      84.44
+    ],
+    "goals": [
+      92,
+      72
+    ]
+  },
+  "substitutions": [
+    {
+      "team_id": "Brazil",
+      "off": "tm_412363",
+      "on": "tm_131789",
+      "minute": 57.5
+    },
+    {
+      "team_id": "Argentina",
+      "off": "tm_355915",
+      "on": "tm_113133",
+      "minute": 57.5
+    },
+    {
+      "team_id": "Brazil",
+      "off": "tm_16306",
+      "on": "tm_435338",
+      "minute": 69.5
+    },
+    {
+      "team_id": "Argentina",
+      "off": "tm_424042",
+      "on": "tm_111873",
+      "minute": 69.5
+    },
+    {
+      "team_id": "Brazil",
+      "off": "tm_79960",
+      "on": "tm_52769",
+      "minute": 81.5
+    },
+    {
+      "team_id": "Argentina",
+      "off": "tm_111873",
+      "on": "tm_424042",
+      "minute": 81.5
+    }
+  ],
+  "cognitive_triggers": [
+    {
+      "t_sec": 242.97541595138392,
+      "kind": "goal",
+      "entity_tier": "coach",
+      "entity_id": "coach:Argentina",
+      "team_id": "Argentina",
+      "salience": 3.080148717566601,
+      "facts": {
+        "clock_min": 4.0,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.07-0.11",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.336,
+        "event": "goal_scored",
+        "team": "Argentina",
+        "player_id": "tm_45320"
+      }
+    },
+    {
+      "t_sec": 242.97541595138392,
+      "kind": "goal",
+      "entity_tier": "player",
+      "entity_id": "tm_45320",
+      "team_id": "Argentina",
+      "salience": 2.926141281688271,
+      "facts": {
+        "clock_min": 4.0,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.07-0.11",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.336,
+        "event": "goal_scored",
+        "player_id": "tm_45320",
+        "player_name": "Ángel Di María"
+      }
+    },
+    {
+      "t_sec": 242.97541595138392,
+      "kind": "goal_conceded",
+      "entity_tier": "coach",
+      "entity_id": "coach:Brazil",
+      "team_id": "Brazil",
+      "salience": 2.618126409931611,
+      "facts": {
+        "clock_min": 4.0,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.07-0.11",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.336,
+        "event": "goal_conceded",
+        "team": "Brazil"
+      }
+    },
+    {
+      "t_sec": 242.97541595138392,
+      "kind": "goal",
+      "entity_tier": "crowd",
+      "entity_id": "crowd:stadium",
+      "team_id": null,
+      "salience": 2.1561041022966205,
+      "facts": {
+        "clock_min": 4.0,
+        "score": "0-1",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.07-0.11",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.336,
+        "event": "crowd_goal"
+      }
+    },
+    {
+      "t_sec": 269.2949402391596,
+      "kind": "goal",
+      "entity_tier": "player",
+      "entity_id": "tm_131225",
+      "team_id": "Argentina",
+      "salience": 2.967869873155215,
+      "facts": {
+        "clock_min": 4.5,
+        "score": "0-2",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.09-0.11",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.358,
+        "event": "goal_scored",
+        "player_id": "tm_131225",
+        "player_name": "Nicolás Tagliafico"
+      }
+    },
+    {
+      "t_sec": 277.1197434945789,
+      "kind": "goal",
+      "entity_tier": "player",
+      "entity_id": "tm_68290",
+      "team_id": "Brazil",
+      "salience": 2.773150878673778,
+      "facts": {
+        "clock_min": 4.6,
+        "score": "1-2",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.10-0.11",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.329,
+        "event": "goal_scored",
+        "player_id": "tm_68290",
+        "player_name": "Neymar"
+      }
+    },
+    {
+      "t_sec": 304.6131427976751,
+      "kind": "goal",
+      "entity_tier": "player",
+      "entity_id": "tm_444523",
+      "team_id": "Brazil",
+      "salience": 2.7915137037016846,
+      "facts": {
+        "clock_min": 5.1,
+        "score": "2-3",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.14-0.12",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.41,
+        "event": "goal_scored",
+        "player_id": "tm_444523",
+        "player_name": "Lucas Paquetá"
+      }
+    },
+    {
+      "t_sec": 426.3975402502701,
+      "kind": "goal",
+      "entity_tier": "coach",
+      "entity_id": "coach:Argentina",
+      "team_id": "Argentina",
+      "salience": 3.004350443005584,
+      "facts": {
+        "clock_min": 7.1,
+        "score": "3-9",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.29-0.29",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.458,
+        "event": "goal_scored",
+        "team": "Argentina",
+        "player_id": "tm_406625"
+      }
+    },
+    {
+      "t_sec": 426.3975402502701,
+      "kind": "goal_conceded",
+      "entity_tier": "coach",
+      "entity_id": "coach:Brazil",
+      "team_id": "Brazil",
+      "salience": 2.5536978765547462,
+      "facts": {
+        "clock_min": 7.1,
+        "score": "3-9",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.29-0.29",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.458,
+        "event": "goal_conceded",
+        "team": "Brazil"
+      }
+    },
+    {
+      "t_sec": 426.3975402502701,
+      "kind": "goal",
+      "entity_tier": "crowd",
+      "entity_id": "crowd:stadium",
+      "team_id": null,
+      "salience": 2.1030453101039086,
+      "facts": {
+        "clock_min": 7.1,
+        "score": "3-9",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.29-0.29",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.458,
+        "event": "crowd_goal"
+      }
+    },
+    {
+      "t_sec": 610.0,
+      "kind": "crowd_surge",
+      "entity_tier": "crowd",
+      "entity_id": "crowd:stadium",
+      "team_id": null,
+      "salience": 0.858607055314568,
+      "facts": {
+        "clock_min": 10.2,
+        "score": "9-16",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.48-0.60",
+        "psi": -0.169,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.351,
+        "event": "psi_surge"
+      }
+    },
+    {
+      "t_sec": 613.6848411542472,
+      "kind": "goal",
+      "entity_tier": "coach",
+      "entity_id": "coach:Argentina",
+      "team_id": "Argentina",
+      "salience": 3.20006870974586,
+      "facts": {
+        "clock_min": 10.2,
+        "score": "9-17",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.48-0.62",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.323,
+        "event": "goal_scored",
+        "team": "Argentina",
+        "player_id": "tm_355915"
+      }
+    },
+    {
+      "t_sec": 613.6848411542472,
+      "kind": "goal_conceded",
+      "entity_tier": "coach",
+      "entity_id": "coach:Brazil",
+      "team_id": "Brazil",
+      "salience": 2.720058403283981,
+      "facts": {
+        "clock_min": 10.2,
+        "score": "9-17",
+        "home_team": "Brazil",
+        "away_team": "Argentina",
+        "micro_xg": "0.48-0.62",
+        "psi": 2.5,
+        "ref_strictness": 0.52,
+        "ref_controversy": 0.05,
+        "home_possession": 0.323,
+        "event": "goal_conceded",
+        "team": "Brazil"
+      }
+    }
+  ],
+  "cognitive_plans": [
+    {
+      "trigger": {
+        "t_sec": 242.97541595138392,
+        "kind": "goal",
+        "entity_tier": "coach",
+        "entity_id": "coach:Argentina",
+        "team_id": "Argentina",
+        "salience": 3.080148717566601,
+        "facts": {
+          "clock_min": 4.0,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.07-0.11",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.336,
+          "event": "goal_scored",
+          "team": "Argentina",
+          "player_id": "tm_45320"
+        }
+      },
+      "plan": {
+        "reasoning": "Rule fallback: react to goal",
+        "confidence": 0.55,
+        "controls_delta": {
+          "pressing_intensity": 0.08,
+          "risk_budget": 0.05
+        },
+        "tactical_hints": {},
+        "applied_fields": {
+          "tactical_current": {
+            "pressing_intensity": 0.7970520877873722,
+            "risk_budget": 0.7497933020675651,
+            "line_height": 0.7007744842690316,
+            "rotation_aggressiveness": 0.7019784022332745,
+            "possession_orientation": 0.49640863652659295,
+            "verticality": 0.5460865193341805
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 242.97541595138392,
+        "kind": "goal",
+        "entity_tier": "player",
+        "entity_id": "tm_45320",
+        "team_id": "Argentina",
+        "salience": 2.926141281688271,
+        "facts": {
+          "clock_min": 4.0,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.07-0.11",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.336,
+          "event": "goal_scored",
+          "player_id": "tm_45320",
+          "player_name": "Ángel Di María"
+        }
+      },
+      "plan": {
+        "narrative": "Focus after goal",
+        "confidence": 0.5,
+        "emotion_bias": {
+          "pride": 0.12,
+          "anger": 0.0,
+          "fear": 0.0,
+          "determination": 0.08
+        },
+        "risk_delta": 0.0,
+        "applied_fields": {
+          "player_id": "tm_45320",
+          "emotion_bias": {
+            "pride": 0.12,
+            "anger": 0.0,
+            "fear": 0.0,
+            "determination": 0.08
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 242.97541595138392,
+        "kind": "goal_conceded",
+        "entity_tier": "coach",
+        "entity_id": "coach:Brazil",
+        "team_id": "Brazil",
+        "salience": 2.618126409931611,
+        "facts": {
+          "clock_min": 4.0,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.07-0.11",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.336,
+          "event": "goal_conceded",
+          "team": "Brazil"
+        }
+      },
+      "plan": {
+        "reasoning": "Rule fallback: react to goal_conceded",
+        "confidence": 0.55,
+        "controls_delta": {
+          "pressing_intensity": -0.06,
+          "risk_budget": -0.03
+        },
+        "tactical_hints": {},
+        "applied_fields": {
+          "tactical_current": {
+            "pressing_intensity": 0.6570026890499305,
+            "risk_budget": 0.669783734911353,
+            "line_height": 0.7007333193739673,
+            "rotation_aggressiveness": 0.7019226090356172,
+            "possession_orientation": 0.4961188997755127,
+            "verticality": 0.5461830908411222
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 242.97541595138392,
+        "kind": "goal",
+        "entity_tier": "crowd",
+        "entity_id": "crowd:stadium",
+        "team_id": null,
+        "salience": 2.1561041022966205,
+        "facts": {
+          "clock_min": 4.0,
+          "score": "0-1",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.07-0.11",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.336,
+          "event": "crowd_goal"
+        }
+      },
+      "plan": {
+        "chant_narrative": "Crowd reacts to goal",
+        "psi_pulse": 0.15,
+        "home_boost_delta": 0.03,
+        "applied_fields": {
+          "psi": 0.990066396699886,
+          "narrative": "Crowd reacts to goal"
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 269.2949402391596,
+        "kind": "goal",
+        "entity_tier": "player",
+        "entity_id": "tm_131225",
+        "team_id": "Argentina",
+        "salience": 2.967869873155215,
+        "facts": {
+          "clock_min": 4.5,
+          "score": "0-2",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.09-0.11",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.358,
+          "event": "goal_scored",
+          "player_id": "tm_131225",
+          "player_name": "Nicolás Tagliafico"
+        }
+      },
+      "plan": {
+        "narrative": "Focus after goal",
+        "confidence": 0.5,
+        "emotion_bias": {
+          "pride": 0.12,
+          "anger": 0.0,
+          "fear": 0.0,
+          "determination": 0.08
+        },
+        "risk_delta": 0.0,
+        "applied_fields": {
+          "player_id": "tm_131225",
+          "emotion_bias": {
+            "pride": 0.12,
+            "anger": 0.0,
+            "fear": 0.0,
+            "determination": 0.08
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 277.1197434945789,
+        "kind": "goal",
+        "entity_tier": "player",
+        "entity_id": "tm_68290",
+        "team_id": "Brazil",
+        "salience": 2.773150878673778,
+        "facts": {
+          "clock_min": 4.6,
+          "score": "1-2",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.10-0.11",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.329,
+          "event": "goal_scored",
+          "player_id": "tm_68290",
+          "player_name": "Neymar"
+        }
+      },
+      "plan": {
+        "narrative": "Focus after goal",
+        "confidence": 0.5,
+        "emotion_bias": {
+          "pride": 0.12,
+          "anger": 0.0,
+          "fear": 0.0,
+          "determination": 0.08
+        },
+        "risk_delta": 0.0,
+        "applied_fields": {
+          "player_id": "tm_68290",
+          "emotion_bias": {
+            "pride": 0.12,
+            "anger": 0.0,
+            "fear": 0.0,
+            "determination": 0.08
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 304.6131427976751,
+        "kind": "goal",
+        "entity_tier": "player",
+        "entity_id": "tm_444523",
+        "team_id": "Brazil",
+        "salience": 2.7915137037016846,
+        "facts": {
+          "clock_min": 5.1,
+          "score": "2-3",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.14-0.12",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.41,
+          "event": "goal_scored",
+          "player_id": "tm_444523",
+          "player_name": "Lucas Paquetá"
+        }
+      },
+      "plan": {
+        "narrative": "Focus after goal",
+        "confidence": 0.5,
+        "emotion_bias": {
+          "pride": 0.12,
+          "anger": 0.0,
+          "fear": 0.0,
+          "determination": 0.08
+        },
+        "risk_delta": 0.0,
+        "applied_fields": {
+          "player_id": "tm_444523",
+          "emotion_bias": {
+            "pride": 0.12,
+            "anger": 0.0,
+            "fear": 0.0,
+            "determination": 0.08
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 426.3975402502701,
+        "kind": "goal",
+        "entity_tier": "coach",
+        "entity_id": "coach:Argentina",
+        "team_id": "Argentina",
+        "salience": 3.004350443005584,
+        "facts": {
+          "clock_min": 7.1,
+          "score": "3-9",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.29-0.29",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.458,
+          "event": "goal_scored",
+          "team": "Argentina",
+          "player_id": "tm_406625"
+        }
+      },
+      "plan": {
+        "reasoning": "Rule fallback: react to goal",
+        "confidence": 0.55,
+        "controls_delta": {
+          "pressing_intensity": 0.08,
+          "risk_budget": 0.05
+        },
+        "tactical_hints": {},
+        "applied_fields": {
+          "tactical_current": {
+            "pressing_intensity": 0.7970520877873722,
+            "risk_budget": 0.7497933020675651,
+            "line_height": 0.6698631367737004,
+            "rotation_aggressiveness": 0.7019784022332745,
+            "possession_orientation": 0.4922092053536148,
+            "verticality": 0.5526221152596851
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 426.3975402502701,
+        "kind": "goal_conceded",
+        "entity_tier": "coach",
+        "entity_id": "coach:Brazil",
+        "team_id": "Brazil",
+        "salience": 2.5536978765547462,
+        "facts": {
+          "clock_min": 7.1,
+          "score": "3-9",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.29-0.29",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.458,
+          "event": "goal_conceded",
+          "team": "Brazil"
+        }
+      },
+      "plan": {
+        "reasoning": "Rule fallback: react to goal_conceded",
+        "confidence": 0.55,
+        "controls_delta": {
+          "pressing_intensity": -0.06,
+          "risk_budget": -0.03
+        },
+        "tactical_hints": {},
+        "applied_fields": {
+          "tactical_current": {
+            "pressing_intensity": 0.6570026890499305,
+            "risk_budget": 0.46180826501820305,
+            "line_height": 0.669821971878636,
+            "rotation_aggressiveness": 0.7019226090356172,
+            "possession_orientation": 0.4986388251876491,
+            "verticality": 0.542254083550602
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 426.3975402502701,
+        "kind": "goal",
+        "entity_tier": "crowd",
+        "entity_id": "crowd:stadium",
+        "team_id": null,
+        "salience": 2.1030453101039086,
+        "facts": {
+          "clock_min": 7.1,
+          "score": "3-9",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.29-0.29",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.458,
+          "event": "crowd_goal"
+        }
+      },
+      "plan": {
+        "chant_narrative": "Crowd reacts to goal",
+        "psi_pulse": 0.15,
+        "home_boost_delta": 0.03,
+        "applied_fields": {
+          "psi": 0.990066396699886,
+          "narrative": "Crowd reacts to goal"
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 610.0,
+        "kind": "crowd_surge",
+        "entity_tier": "crowd",
+        "entity_id": "crowd:stadium",
+        "team_id": null,
+        "salience": 0.858607055314568,
+        "facts": {
+          "clock_min": 10.2,
+          "score": "9-16",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.48-0.60",
+          "psi": -0.169,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.351,
+          "event": "psi_surge"
+        }
+      },
+      "plan": {
+        "chant_narrative": "Crowd reacts to crowd_surge",
+        "psi_pulse": 0.15,
+        "home_boost_delta": 0.03,
+        "applied_fields": {
+          "psi": -0.01896252457563661,
+          "narrative": "Crowd reacts to crowd_surge"
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 613.6848411542472,
+        "kind": "goal",
+        "entity_tier": "coach",
+        "entity_id": "coach:Argentina",
+        "team_id": "Argentina",
+        "salience": 3.20006870974586,
+        "facts": {
+          "clock_min": 10.2,
+          "score": "9-17",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.48-0.62",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.323,
+          "event": "goal_scored",
+          "team": "Argentina",
+          "player_id": "tm_355915"
+        }
+      },
+      "plan": {
+        "reasoning": "Rule fallback: react to goal",
+        "confidence": 0.55,
+        "controls_delta": {
+          "pressing_intensity": 0.08,
+          "risk_budget": 0.05
+        },
+        "tactical_hints": {},
+        "applied_fields": {
+          "tactical_current": {
+            "pressing_intensity": 0.7970520877873722,
+            "risk_budget": 0.7497933020675651,
+            "line_height": 0.679587809304188,
+            "rotation_aggressiveness": 0.7019784022332745,
+            "possession_orientation": 0.49043392418886284,
+            "verticality": 0.5553801284453379
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    },
+    {
+      "trigger": {
+        "t_sec": 613.6848411542472,
+        "kind": "goal_conceded",
+        "entity_tier": "coach",
+        "entity_id": "coach:Brazil",
+        "team_id": "Brazil",
+        "salience": 2.720058403283981,
+        "facts": {
+          "clock_min": 10.2,
+          "score": "9-17",
+          "home_team": "Brazil",
+          "away_team": "Argentina",
+          "micro_xg": "0.48-0.62",
+          "psi": 2.5,
+          "ref_strictness": 0.52,
+          "ref_controversy": 0.05,
+          "home_possession": 0.323,
+          "event": "goal_conceded",
+          "team": "Brazil"
+        }
+      },
+      "plan": {
+        "reasoning": "Rule fallback: react to goal_conceded",
+        "confidence": 0.55,
+        "controls_delta": {
+          "pressing_intensity": -0.06,
+          "risk_budget": -0.03
+        },
+        "tactical_hints": {},
+        "applied_fields": {
+          "tactical_current": {
+            "pressing_intensity": 0.6570026890499305,
+            "risk_budget": 0.400805690796591,
+            "line_height": 0.6795290589444729,
+            "rotation_aggressiveness": 0.7019226090356172,
+            "possession_orientation": 0.49973328428552516,
+            "verticality": 0.5405460069044518
+          }
+        }
+      },
+      "applied": true,
+      "error": "",
+      "cached": false
+    }
+  ],
+  "cognitive_tier_usage": {
+    "coach": 6,
+    "referee": 0,
+    "player": 4,
+    "assistant": 0,
+    "crowd": 3
+  },
+  "timeline": [
+    "4' goal_scored (Argentina)",
+    "4' goal_scored (Argentina)",
+    "4' goal_scored (Brazil)",
+    "4' goal_scored (Argentina)",
+    "5' goal_scored (Brazil)",
+    "5' goal_scored (Brazil)",
+    "5' goal_scored (Argentina)",
+    "6' goal_scored (Argentina)",
+    "6' goal_scored (Argentina)",
+    "6' goal_scored (Argentina)",
+    "6' goal_scored (Argentina)",
+    "7' goal_scored (Argentina)"
+  ],
+  "player_stats_teams": [
+    "Brazil",
+    "Argentina"
+  ]
+}

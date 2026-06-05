@@ -1,0 +1,141 @@
+"""Shared micro-match benchmark simulation and row extraction."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from src.match_engine.calibration.ablation import (
+    AblationSpec,
+    apply_ablation,
+    roster_status_mode,
+    tactical_overrides_for,
+)
+from src.match_engine.match_micro_runner import run_match_micro_simulation
+from src.match_engine.micro_config import MicroMatchConfig
+from src.simulation.world_cup_runner import build_world_and_tournament
+
+DEFAULT_FIXTURES = [
+    ("Mexico", "South Korea"),
+    ("Brazil", "Germany"),
+    ("France", "England"),
+    ("Argentina", "Netherlands"),
+    ("Spain", "Morocco"),
+    ("Portugal", "Uruguay"),
+]
+
+
+def row_from_summary(s) -> dict[str, float]:
+    passes = s.passes_home + s.passes_away
+    completed = (s.pass_completion_home * s.passes_home) + (s.pass_completion_away * s.passes_away)
+    shots = s.shots_home + s.shots_away
+    micro_xg = s.micro_xg_home + s.micro_xg_away
+    goals = s.goals_micro_home + s.goals_micro_away
+    return {
+        "pass_completion": completed / max(1.0, passes),
+        "interceptions_per_pass": (s.pass_intercepts_home + s.pass_intercepts_away) / max(1.0, passes),
+        "passes_per_team_match": passes / 2.0,
+        "passes_home": float(s.passes_home),
+        "passes_away": float(s.passes_away),
+        "shots_home": float(s.shots_home),
+        "shots_away": float(s.shots_away),
+        "goals_home": float(s.goals_micro_home),
+        "goals_away": float(s.goals_micro_away),
+        "micro_xg_home": float(s.micro_xg_home),
+        "micro_xg_away": float(s.micro_xg_away),
+        "through_share": (s.through_balls_home + s.through_balls_away) / max(1.0, passes),
+        "long_pass_share": (s.long_passes_home + s.long_passes_away) / max(1.0, passes),
+        "shots_per_team_match": shots / 2.0,
+        "shots_on_target_rate": (s.shots_on_target_home + s.shots_on_target_away) / max(1.0, shots),
+        "goals_per_team_match": goals / 2.0,
+        "fouls_committed_per_team_match": (s.fouls_committed_home + s.fouls_committed_away) / 2.0,
+        "yellow_cards_per_team_match": (s.yellow_cards_home + s.yellow_cards_away) / 2.0,
+        "red_cards_per_team_match": (s.red_cards_home + s.red_cards_away) / 2.0,
+        "possession_share": float(s.possession_home),
+        "possession_home": float(s.possession_home),
+        "possession_away": 1.0 - float(s.possession_home),
+        "crosses_per_team_match": s.crosses_attempted / 2.0,
+        "headers_per_team_match": float(s.headers_attempted) / 2.0,
+        "tackles_per_team_match": (s.tackles_home + s.tackles_away) / 2.0,
+        "micro_xg_per_team_match": micro_xg / 2.0,
+        "goals_to_micro_xg_ratio": (goals / max(0.05, micro_xg)) if micro_xg > 0.01 else 0.0,
+    }
+
+
+def team_level_rows(rows: list[dict]) -> list[dict[str, float]]:
+    """Expand match rows to team-rows for joint correlation checks."""
+    out: list[dict[str, float]] = []
+    for r in rows:
+        out.append(
+            {
+                "possession_team": float(r.get("possession_home", r.get("possession_share", 0.5))),
+                "passes_team": float(r.get("passes_home", r.get("passes_per_team_match", 0.0))),
+                "shots_team": float(r.get("shots_home", r.get("shots_per_team_match", 0.0))),
+                "goals_team": float(r.get("goals_home", r.get("goals_per_team_match", 0.0))),
+            }
+        )
+        out.append(
+            {
+                "possession_team": float(r.get("possession_away", 1.0 - float(r.get("possession_share", 0.5)))),
+                "passes_team": float(r.get("passes_away", r.get("passes_per_team_match", 0.0))),
+                "shots_team": float(r.get("shots_away", r.get("shots_per_team_match", 0.0))),
+                "goals_team": float(r.get("goals_away", r.get("goals_per_team_match", 0.0))),
+            }
+        )
+    return out
+
+
+def run_micro_benchmark_rows(
+    *,
+    root: str,
+    fixtures: list[tuple[str, str]] | None = None,
+    samples: int = 3,
+    seed_start: int = 42,
+    match_seconds: float = 5400.0,
+    spec: AblationSpec | None = None,
+    cfg: MicroMatchConfig | None = None,
+) -> list[dict[str, Any]]:
+    fixtures = fixtures or DEFAULT_FIXTURES
+    engine, _, _ = build_world_and_tournament(root, require_tactics=False)
+    tac_h, tac_a = (None, None)
+    if spec is not None:
+        cfg = apply_ablation(spec, cfg)
+        tac_h, tac_a = tactical_overrides_for(spec)
+    cfg = cfg or MicroMatchConfig()
+    cfg.use_micro_goals = True
+
+    from src.match_engine.calibration.narrative_isolation import assert_isolated_env
+
+    if spec is not None:
+        assert_isolated_env(spec.name)
+
+    rows: list[dict[str, Any]] = []
+    for home, away in fixtures:
+        if home not in engine.agents or away not in engine.agents:
+            continue
+        for i in range(samples):
+            seed = seed_start + i + hash((home, away)) % 1000
+            eff_h = 68.0
+            eff_a = 62.0
+            if roster_status_mode():
+                eff_h = float(engine.agents[home].status_score)
+                eff_a = float(engine.agents[away].status_score)
+            summary = run_match_micro_simulation(
+                engine.agents[home],
+                engine.agents[away],
+                goals_home=0,
+                goals_away=0,
+                xg_home=0.7,
+                xg_away=0.8,
+                eff_status_home=eff_h,
+                eff_status_away=eff_a,
+                seed=seed,
+                config=cfg,
+                writeback_agents=False,
+                match_seconds=match_seconds,
+                tactical_override_home=tac_h,
+                tactical_override_away=tac_a,
+            )
+            row = row_from_summary(summary)
+            row["fixture"] = f"{home}_vs_{away}"
+            rows.append(row)
+    return rows

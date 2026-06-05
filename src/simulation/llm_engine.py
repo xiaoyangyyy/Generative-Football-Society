@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import time
 from src.config import API_KEY, BASE_URL, MODEL_NAME
@@ -75,8 +76,8 @@ class SimulationLLM:
         self.client = OpenAI(api_key=self.api_key, base_url=BASE_URL)
         self.model = MODEL_NAME
         # Network behavior tuned for long-running third-party gateways.
-        self.request_timeout_s = 45
-        self.max_retries = 4
+        self.request_timeout_s = int(os.environ.get("LLM_TIMEOUT_S", "90"))
+        self.max_retries = int(os.environ.get("LLM_MAX_RETRIES", "6"))
 
     def _extract_json_object(self, content):
         if content is None:
@@ -144,7 +145,7 @@ class SimulationLLM:
                 if attempt == self.max_retries - 1:
                     raise RuntimeError(f"LLM call failed after retries on model={self.model}: {e}") from e
                 # Exponential backoff for transient network timeout/rate-limit spikes.
-                time.sleep(min(8.0, 1.2 * (2 ** attempt)))
+                time.sleep(min(16.0, 1.5 * (2 ** attempt)))
         raise RuntimeError("LLM call failed unexpectedly.")
 
     def coach_decide_tactics(self, team_name, my_info, opp_name, opp_info):
@@ -161,14 +162,23 @@ class SimulationLLM:
         {{
           "formation": "X-Y-Z",
           "style": "Strategy description (short)",
+          "tactical_preset": "one of balanced|gegenpress|possession|counter|low_block|wing_play|direct",
           "reasoning": "Game-theoretic justification (max 3 sentences; no Correction/Wait; no numeric subtraction)",
           "controls": {{
             "pressing_intensity": 0.0-1.0,
             "risk_budget": 0.0-1.0,
             "line_height": 0.0-1.0,
             "rotation_aggressiveness": 0.0-1.0
+          }},
+          "tactical_hints": {{
+            "through_ball_bias": 0.0-1.0,
+            "long_ball_bias": 0.0-1.0,
+            "build_up_short": 0.0-1.0,
+            "high_press": 0.0-1.0,
+            "low_block": 0.0-1.0
           }}
-        }}"""
+        }}
+        tactical_preset and tactical_hints are optional; controls are required."""
         raw = self._call_llm(system, user, json_mode=True, temperature=0.55)
         try:
             data = json.loads(raw)
@@ -245,6 +255,82 @@ Rules:
         }}"""
         return self._call_llm(system, user, json_mode=True)
 
+    def coach_in_match_plan(self, team_name: str, facts_ledger: dict, kind: str, context: str = ""):
+        system = f"""You are the head coach of {team_name} during a live match.
+FACTS_LEDGER is authoritative. Do NOT invent scores or xG.
+Output JSON only. Adjust tactics with small bounded deltas."""
+        user = f"""Trigger: {kind}
+FACTS_LEDGER: {json.dumps(facts_ledger, ensure_ascii=False)}
+Context: {context}
+Return JSON:
+{{
+  "reasoning": "max 2 sentences, qualitative only",
+  "confidence": 0.0-1.0,
+  "controls_delta": {{
+    "pressing_intensity": -0.15 to 0.15,
+    "risk_budget": -0.15 to 0.15,
+    "line_height": -0.15 to 0.15,
+    "rotation_aggressiveness": -0.15 to 0.15
+  }},
+  "tactical_hints": {{"through_ball_bias": 0-1, "high_press": 0-1, "low_block": 0-1}},
+  "tactical_preset": "optional: balanced|gegenpress|possession|counter|low_block|wing_play|direct",
+  "sub_intent": "optional short note"
+}}"""
+        return self._call_llm(system, user, json_mode=True, temperature=0.5)
+
+    def player_in_match_reflection(self, player_name: str, team_name: str, facts_ledger: dict, kind: str):
+        system = f"""You are footballer {player_name} ({team_name}). In-match mental reflection only.
+Do NOT state match scores as predictions. JSON only."""
+        user = f"""Event: {kind}
+FACTS_LEDGER: {json.dumps(facts_ledger, ensure_ascii=False)}
+Return JSON:
+{{
+  "narrative": "one short inner thought",
+  "confidence": 0.0-1.0,
+  "emotion_bias": {{"pride": -0.2 to 0.2, "anger": -0.2 to 0.2, "fear": -0.2 to 0.2, "determination": -0.2 to 0.2}},
+  "risk_delta": -0.12 to 0.12
+}}"""
+        return self._call_llm(system, user, json_mode=True, temperature=0.55)
+
+    def referee_in_match_judgment(self, facts_ledger: dict, kind: str):
+        system = """You are the center referee. FACTS_LEDGER is authoritative.
+Do not assign goals/cards in output — only tendency adjustments. JSON only."""
+        user = f"""Situation: {kind}
+FACTS_LEDGER: {json.dumps(facts_ledger, ensure_ascii=False)}
+Return JSON:
+{{
+  "reasoning": "max 2 sentences",
+  "strictness_delta": -0.12 to 0.12,
+  "bias_delta": -0.08 to 0.08,
+  "var_recommendation": "none|review|var",
+  "calm_delta": -0.15 to 0.15
+}}"""
+        return self._call_llm(system, user, json_mode=True, temperature=0.45)
+
+    def assistant_signal(self, side: str, facts_ledger: dict, kind: str):
+        system = f"""You are assistant referee ({side} line). Signal to center ref only. JSON only."""
+        user = f"""Event: {kind}
+FACTS_LEDGER: {json.dumps(facts_ledger, ensure_ascii=False)}
+Return JSON:
+{{
+  "signal": "short phrase",
+  "offside_strictness_delta": -0.1 to 0.1,
+  "recommend_card_review": true|false
+}}"""
+        return self._call_llm(system, user, json_mode=True, temperature=0.4)
+
+    def crowd_collective_reaction(self, facts_ledger: dict, kind: str):
+        system = """You represent the stadium crowd as one collective voice. JSON only. No invented scores."""
+        user = f"""Moment: {kind}
+FACTS_LEDGER: {json.dumps(facts_ledger, ensure_ascii=False)}
+Return JSON:
+{{
+  "chant_narrative": "short crowd reaction",
+  "psi_pulse": -0.35 to 0.35,
+  "home_boost_delta": -0.15 to 0.15
+}}"""
+        return self._call_llm(system, user, json_mode=True, temperature=0.6)
+
     def generate_locker_room_leak(self, team):
         return self._call_llm("Whistleblower", f"Scandalous internal leak about {team}")
 
@@ -258,3 +344,48 @@ User Counterfactual:
 
 Explain likely social and tactical consequences in 4-8 bullet points."""
         return self._call_llm(system, user, json_mode=False)
+
+
+class NullSimulationLLM:
+    """Deterministic no-op LLM for calibration / narrative-off tournament runs."""
+
+    def coach_decide_tactics(self, team_name, my_info, opp_name, opp_info):
+        return json.dumps(
+            {
+                "formation": "4-3-3",
+                "style": "balanced",
+                "tactical_preset": "balanced",
+                "reasoning": "Calibration mode — default balanced shape.",
+                "controls": {
+                    "pressing_intensity": 0.5,
+                    "risk_budget": 0.5,
+                    "line_height": 0.5,
+                    "rotation_aggressiveness": 0.5,
+                },
+            },
+            ensure_ascii=False,
+        )
+
+    def predict_match_result(self, t1_name, t1_info, t2_name, t2_info, round_name):
+        return json.dumps({"key_event": "Calibration mode — narrative layer skipped."})
+
+    def generate_media_matrix(self, match_verdict, t1_name, t2_name, t1_exposure, t2_exposure, facts_ledger=None):
+        return json.dumps(
+            {
+                "mainstream": "Calibration run — media matrix skipped.",
+                "social_chaos_post": "",
+                "metrics": {"professional_score": 0, "social_chaos": 0},
+            },
+            ensure_ascii=False,
+        )
+
+    def perform_agent_reflection(self, team_name, momentum, hidden_state, patience, memory_context=None):
+        return json.dumps(
+            {
+                "reflection": "Calibration mode — reflection skipped.",
+                "confidence": 0.5,
+                "evidence_memory_ids": [],
+                "suggested_adjustments": {},
+            },
+            ensure_ascii=False,
+        )

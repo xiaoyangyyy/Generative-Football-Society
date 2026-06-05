@@ -1,0 +1,371 @@
+{
+  "version": "1",
+  "profile_default": "v5_physics_first",
+  "profiles": {
+    "v5_physics_first": {
+      "description": "M0 profile — batch-3 r4 (xg_geom+gk; r3 shot pair fixed).",
+      "overrides": {
+        "action.action_cross_base": 0.65,
+        "action.action_pass_base": 1.62,
+        "action.action_shot_base": 0.42,
+        "action.action_shot_cooldown_sec": 10.0,
+        "affective.z_emo_decay": 0.08,
+        "discipline.cross_tick_target": 20.0,
+        "discipline.discipline_foul_target_base": 14.0,
+        "discipline.discipline_yellow_on_foul_base": 0.02,
+        "macro.gamma_xg": 0.88,
+        "macro.lambda0": 0.95,
+        "match.dt_default": 5.5,
+        "pass.intercept_risk_scale": 0.014,
+        "pass.logit_target_blend": 0.7,
+        "pass.pass_b_land_err": 0.3,
+        "pass.pass_intercept_b_dist": 8.5,
+        "possession.possession_strength_beta": 0.38,
+        "shot.gk_b_reflex": 3.34,
+        "shot.shot_sot_z_in_goal": 0.92,
+        "shot.shot_sot_z_wide": -2.4,
+        "shot.xg_geom_base": 0.54
+      },
+      "last_calibration": {
+        "gate": "batch3_r4_full",
+        "all_pass": true,
+        "note": "Full gate 6x3x90min — xg_geom=0.54, gk=3.34, shot pair 2.95/10.0.",
+        "passes_per_team_match": 477.36,
+        "shots_per_team_match": 9.69,
+        "goals_per_team_match": 1.92,
+        "goals_to_micro_xg_ratio": 1.58,
+        "micro_xg_per_team_match": 1.20,
+        "headers_per_team_match": 0.39,
+        "yellow_cards_per_team_match": 0.64
+      }
+    }
+  },
+  "parameters": [
+    {
+      "id": "match.dt_default",
+      "owner": "affective",
+      "affects": [
+        "passes_per_team_match",
+        "possession_share"
+      ],
+      "bounds": [
+        4.0,
+        12.0
+      ],
+      "default": 6.0,
+      "file": "src/match_engine/config.py",
+      "field": "dt_default",
+      "tier": 1
+    },
+    {
+      "id": "pass.logit_target_blend",
+      "owner": "passing",
+      "affects": [
+        "pass_completion",
+        "interceptions_per_pass"
+      ],
+      "bounds": [
+        0.0,
+        0.9
+      ],
+      "default": 0.7,
+      "file": "data/calibration/statsbomb_pass_rates.json",
+      "field": "sim_tuning.logit_target_blend",
+      "tier": 0
+    },
+    {
+      "id": "pass.intercept_risk_scale",
+      "owner": "passing",
+      "affects": [
+        "interceptions_per_pass",
+        "pass_completion"
+      ],
+      "bounds": [
+        0.005,
+        0.05
+      ],
+      "default": 0.014,
+      "file": "data/calibration/statsbomb_pass_rates.json",
+      "field": "sim_tuning.intercept_risk_scale",
+      "tier": 0
+    },
+    {
+      "id": "action.action_pass_base",
+      "owner": "action",
+      "affects": [
+        "passes_per_team_match"
+      ],
+      "bounds": [
+        0.8,
+        1.8
+      ],
+      "default": 1.5,
+      "file": "src/match_engine/micro_config.py",
+      "field": "action_pass_base",
+      "tier": 1
+    },
+    {
+      "id": "action.action_shot_base",
+      "owner": "action",
+      "affects": [
+        "shots_per_team_match"
+      ],
+      "bounds": [
+        0.15,
+        0.65
+      ],
+      "default": 0.36,
+      "file": "src/match_engine/micro_config.py",
+      "field": "action_shot_base",
+      "tier": 1
+    },
+    {
+      "id": "action.action_shot_cooldown_sec",
+      "owner": "action",
+      "affects": [
+        "shots_per_team_match"
+      ],
+      "bounds": [
+        6.0,
+        22.0
+      ],
+      "default": 13.0,
+      "file": "src/match_engine/micro_config.py",
+      "field": "action_shot_cooldown_sec",
+      "tier": 1
+    },
+    {
+      "id": "action.action_cross_base",
+      "owner": "action",
+      "affects": [
+        "crosses_per_team_match"
+      ],
+      "bounds": [
+        0.2,
+        0.85
+      ],
+      "default": 0.65,
+      "file": "src/match_engine/micro_config.py",
+      "field": "action_cross_base",
+      "tier": 1
+    },
+    {
+      "id": "shot.shot_sot_z_in_goal",
+      "owner": "shot",
+      "affects": [
+        "shots_on_target_rate"
+      ],
+      "bounds": [
+        0.2,
+        1.6
+      ],
+      "default": 0.92,
+      "file": "src/match_engine/micro_config.py",
+      "field": "shot_sot_z_in_goal",
+      "tier": 1
+    },
+    {
+      "id": "shot.shot_sot_z_wide",
+      "owner": "shot",
+      "affects": [
+        "shots_on_target_rate"
+      ],
+      "bounds": [
+        -4.0,
+        -1.0
+      ],
+      "default": -2.4,
+      "file": "src/match_engine/micro_config.py",
+      "field": "shot_sot_z_wide",
+      "tier": 1
+    },
+    {
+      "id": "shot.gk_b_reflex",
+      "owner": "shot",
+      "affects": [
+        "goals_per_team_match",
+        "goals_to_micro_xg_ratio"
+      ],
+      "bounds": [
+        1.2,
+        3.35
+      ],
+      "default": 3.18,
+      "file": "src/match_engine/micro_config.py",
+      "field": "gk_b_reflex",
+      "tier": 1
+    },
+    {
+      "id": "shot.xg_geom_base",
+      "owner": "shot",
+      "affects": [
+        "micro_xg_per_team_match",
+        "goals_to_micro_xg_ratio"
+      ],
+      "bounds": [
+        0.15,
+        0.55
+      ],
+      "default": 0.44,
+      "file": "src/match_engine/micro_config.py",
+      "field": "xg_geom_base",
+      "tier": 1
+    },
+    {
+      "id": "discipline.discipline_foul_target_base",
+      "owner": "discipline",
+      "affects": [
+        "fouls_committed_per_team_match"
+      ],
+      "bounds": [
+        8.0,
+        20.0
+      ],
+      "default": 14.0,
+      "file": "src/match_engine/micro_config.py",
+      "field": "discipline_foul_target_base",
+      "tier": 1
+    },
+    {
+      "id": "discipline.discipline_yellow_on_foul_base",
+      "owner": "discipline",
+      "affects": [
+        "yellow_cards_per_team_match"
+      ],
+      "bounds": [
+        0.01,
+        0.06
+      ],
+      "default": 0.02,
+      "file": "src/match_engine/micro_config.py",
+      "field": "discipline_yellow_on_foul_base",
+      "tier": 1
+    },
+    {
+      "id": "discipline.cross_tick_target",
+      "owner": "discipline",
+      "affects": [
+        "crosses_per_team_match",
+        "headers_per_team_match"
+      ],
+      "bounds": [
+        14.0,
+        26.0
+      ],
+      "default": 22.0,
+      "file": "src/match_engine/micro_config.py",
+      "field": "cross_tick_target",
+      "tier": 1
+    },
+    {
+      "id": "possession.possession_strength_beta",
+      "owner": "passing",
+      "affects": [
+        "possession_share",
+        "passes_per_team_match"
+      ],
+      "bounds": [
+        0.1,
+        0.65
+      ],
+      "default": 0.38,
+      "file": "src/match_engine/micro_config.py",
+      "field": "possession_strength_beta",
+      "tier": 1
+    },
+    {
+      "id": "pass.pass_b_land_err",
+      "owner": "passing",
+      "affects": [
+        "pass_completion",
+        "long_pass_share"
+      ],
+      "bounds": [
+        0.1,
+        0.55
+      ],
+      "default": 0.3,
+      "file": "src/match_engine/micro_config.py",
+      "field": "pass_b_land_err",
+      "tier": 1
+    },
+    {
+      "id": "pass.pass_intercept_b_dist",
+      "owner": "passing",
+      "affects": [
+        "interceptions_per_pass"
+      ],
+      "bounds": [
+        4.0,
+        14.0
+      ],
+      "default": 8.5,
+      "file": "src/match_engine/micro_config.py",
+      "field": "pass_intercept_b_dist",
+      "tier": 1
+    },
+    {
+      "id": "macro.lambda0",
+      "owner": "macro",
+      "affects": [
+        "goals_per_team_match"
+      ],
+      "bounds": [
+        0.5,
+        1.4
+      ],
+      "default": 0.95,
+      "file": "src/match_engine/micro_config.py",
+      "field": "lambda0",
+      "tier": 2
+    },
+    {
+      "id": "macro.gamma_xg",
+      "owner": "macro",
+      "affects": [
+        "goals_per_team_match",
+        "goals_to_micro_xg_ratio"
+      ],
+      "bounds": [
+        0.5,
+        1.2
+      ],
+      "default": 0.88,
+      "file": "src/match_engine/micro_config.py",
+      "field": "gamma_xg",
+      "tier": 2
+    },
+    {
+      "id": "wm.planner_blend",
+      "owner": "world_model",
+      "affects": [
+        "pass_completion",
+        "shots_per_team_match"
+      ],
+      "bounds": [
+        0.0,
+        0.75
+      ],
+      "default": 0.45,
+      "file": "env:MATCH_WM_PLANNER_BLEND",
+      "field": null,
+      "tier": 3
+    },
+    {
+      "id": "affective.z_emo_decay",
+      "owner": "affective",
+      "affects": [
+        "fouls_committed_per_team_match",
+        "pass_completion"
+      ],
+      "bounds": [
+        0.02,
+        0.2
+      ],
+      "default": 0.08,
+      "file": "src/match_engine/config.py",
+      "field": "z_emo_decay",
+      "tier": 2
+    }
+  ]
+}

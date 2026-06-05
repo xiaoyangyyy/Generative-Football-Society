@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CoachProfile",
+  "type": "object",
+  "required": ["team_id", "name"],
+  "properties": {
+    "team_id": { "type": "string" },
+    "name": { "type": "string" },
+    "nationality": { "type": "string" },
+    "in_charge_since": { "type": ["integer", "null"] },
+    "previous_role": { "type": "string" },
+    "source": { "type": "string" },
+    "preferred_preset": { "type": "string" },
+    "preset_affinities": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+    },
+    "dynamics_input": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    },
+    "mental": {
+      "type": "object",
+      "properties": {
+        "experience": { "type": "number", "minimum": 0, "maximum": 1 },
+        "tactical_knowledge": { "type": "number", "minimum": 0, "maximum": 1 },
+        "pressure_handling": { "type": "number", "minimum": 0, "maximum": 1 },
+        "adaptability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "discipline": { "type": "number", "minimum": 0, "maximum": 1 },
+        "motivation": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "team_meta": { "type": "object" }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "source": "StatsBomb Open Data — FIFA World Cup 2022 (International)",
+  "fetched_note": "Regenerate with scripts/fetch_pass_calibration_statsbomb.py",
+  "n_passes": 68515,
+  "overall_completion": 0.8224,
+  "intercept_event_ratio": 0.02,
+  "by_length_m": {
+    "short_lt_15": 0.853,
+    "medium_15_30": 0.8832,
+    "long_gte_30": 0.6221
+  },
+  "by_height": {
+    "ground": 0.9291,
+    "low": 0.7052,
+    "high": 0.4418
+  },
+  "failed_outcome_counts": {
+    "Incomplete": 10393,
+    "Out": 1116,
+    "Unknown": 394,
+    "Pass Offside": 224
+  },
+  "sim_targets": {
+    "overall": 0.8224,
+    "short": 0.853,
+    "through": 0.74,
+    "long": 0.6221,
+    "intercept_share_max": 0.05
+  },
+  "sim_tuning": {
+    "logit_target_blend": 0.70,
+    "intercept_risk_scale": 0.014,
+    "pass_mix_targets": {
+      "short": 0.72,
+      "through": 0.06,
+      "long": 0.19,
+      "wall": 0.03
+    }
+  }
+}

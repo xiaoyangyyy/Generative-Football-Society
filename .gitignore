@@ -23,6 +23,14 @@ outputs/
 logs/
 *.log
 
+# Live tournament / LLM cache (regenerated on run)
+data/persistence/
+data/cache/
+
+# Large external dumps (re-fetch via scripts/fetch_football_baseline.py)
+data/external/transfermarkt/*.csv.gz
+data/external/transfermarkt/players.csv.gz
+
 # Cursor / local tooling
 .cursor/
 

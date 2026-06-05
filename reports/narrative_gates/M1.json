@@ -1,0 +1,67 @@
+{
+  "layer": "M1",
+  "reference": "M0",
+  "m0_loss": 158.74604969982394,
+  "layer_loss": 158.74604969982394,
+  "delta_loss": 0.0,
+  "m0_score": 0.3706374664431617,
+  "layer_score": 0.3706374664431617,
+  "score_ratio_vs_m0": 1.0,
+  "delta_z_primary": {
+    "pass_completion": 0.0,
+    "passes_per_team_match": 0.0,
+    "goals_per_team_match": 0.0,
+    "goals_to_micro_xg_ratio": 0.0,
+    "shots_per_team_match": 0.0
+  },
+  "delta_z_all": {
+    "interceptions_per_pass": 0.0,
+    "yellow_cards_per_team_match": 0.0,
+    "red_cards_per_team_match": 0.0,
+    "through_share": 0.0,
+    "possession_share": 0.0,
+    "fouls_committed_per_team_match": 0.0,
+    "shots_on_target_rate": 0.0,
+    "pass_completion": 0.0,
+    "goals_to_micro_xg_ratio": 0.0,
+    "micro_xg_per_team_match": 0.0,
+    "shots_per_team_match": 0.0,
+    "tackles_per_team_match": 0.0,
+    "headers_per_team_match": 0.0,
+    "crosses_per_team_match": 0.0,
+    "long_pass_share": 0.0,
+    "passes_per_team_match": 0.0,
+    "goals_per_team_match": 0.0
+  },
+  "max_abs_delta_z": 0.2,
+  "max_delta_loss": 5.0,
+  "min_score_ratio_vs_m0": 0.95,
+  "violations": [],
+  "failed": [],
+  "all_pass": true,
+  "layer_absolute_pass": false,
+  "m0_evaluation": {
+    "all_pass": false,
+    "score_combined": 0.5662407630278169,
+    "failed_hard": [
+      "passes_per_team_match",
+      "shots_on_target_rate",
+      "fouls_committed_per_team_match",
+      "crosses_per_team_match",
+      "tackles_per_team_match"
+    ],
+    "failed_soft": []
+  },
+  "layer_evaluation": {
+    "all_pass": false,
+    "score_combined": 0.5662407630278169,
+    "failed_hard": [
+      "passes_per_team_match",
+      "shots_on_target_rate",
+      "fouls_committed_per_team_match",
+      "crosses_per_team_match",
+      "tackles_per_team_match"
+    ],
+    "failed_soft": []
+  }
+}

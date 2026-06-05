@@ -3,3 +3,5 @@ pandas
 openai
 python-dotenv
 matplotlib
+torch
+statsbombpy

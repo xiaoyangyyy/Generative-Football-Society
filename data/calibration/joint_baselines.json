@@ -1,0 +1,36 @@
+{
+  "source": "StatsBomb Open Data — FIFA World Cup 2022 (International)",
+  "n_team_matches": 128,
+  "soft_constraints": {
+    "micro_xg_per_team_match": {
+      "mean": 1.4689222025796875,
+      "p10": 0.31756146315,
+      "p25": 0.633534335125,
+      "p50": 1.1321503604999998,
+      "p75": 1.94317119275,
+      "p90": 3.0847164309
+    },
+    "goals_to_micro_xg_ratio": {
+      "mean": 1.2488266677293303,
+      "p10": 0.0,
+      "p25": 0.0,
+      "p50": 0.9985584564895649,
+      "p75": 1.6029933384216313,
+      "p90": 2.699955499513048
+    }
+  },
+  "correlations_reference": {
+    "possession_passes_correlation": {
+      "statsbomb_mean": 0.8868610792459731,
+      "target_mean": 0.8868610792459731,
+      "scale": 0.15
+    },
+    "shots_goals_correlation": {
+      "statsbomb_mean": 0.41047680049162405,
+      "sim_baseline_mean": 0.892,
+      "target_mean": 0.892,
+      "scale": 0.28,
+      "note": "Physics sim couples shots→goals tighter than WC2022 aggregate; target anchored to M0 joint distribution."
+    }
+  }
+}

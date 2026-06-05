@@ -1,0 +1,20 @@
+{
+  "reference": "M0",
+  "layers": {
+    "M1": {
+      "all_pass": true,
+      "delta_loss": 0.0,
+      "score_ratio_vs_m0": 1.0,
+      "violations": [],
+      "report": "reports\\narrative_gates\\M1.json"
+    },
+    "C1": {
+      "all_pass": true,
+      "delta_loss": -4.853525578596418e-05,
+      "score_ratio_vs_m0": 1.0000014275085425,
+      "violations": [],
+      "report": "reports\\narrative_gates\\C1.json"
+    }
+  },
+  "all_pass": true
+}

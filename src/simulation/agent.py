@@ -35,8 +35,14 @@ class SocietyAgent:
         self.media_exposure = float(np.clip(self.media_exposure, 0.05, 1.0))
         
         # --- HIERARCHICAL ROLES ---
+        coach_payload = tactical_info.get("coach") if tactical_info else None
+        self.coach_profile = None
+        self.coach_name = "Head Coach"
+        if coach_payload and isinstance(coach_payload, dict) and coach_payload.get("name"):
+            self.coach_name = str(coach_payload["name"])
+
         self.roles = {
-            "Manager": {"rationality": 0.9, "pressure": 0.0},
+            "Manager": {"name": self.coach_name, "rationality": 0.9, "pressure": 0.0},
             "Icon": {"ego": random.uniform(0.6, 0.95), "patience": 0.8},
             "President": {"media_sensitivity": self.media_exposure}
         }
@@ -177,18 +183,9 @@ class SocietyAgent:
         return "Global"
 
     def _infer_style_archetype(self):
-        desc = self.style_desc.lower()
-        formation = str(self.formation).lower()
+        from src.match_engine.tactical_catalog import infer_archetype_from_text
 
-        if "low-block" in desc or "counter" in desc or "5-" in formation:
-            return "low_block_counter"
-        if "press" in desc or "high pressing" in desc or "4-2-2-2" in formation:
-            return "high_press"
-        if "possession" in desc or "short-passing" in desc or "4-3-3" in formation:
-            return "possession_control"
-        if "direct" in desc or "vertical" in desc or "physical" in desc:
-            return "direct_vertical"
-        return "balanced"
+        return infer_archetype_from_text(self.style_desc, self.formation)
 
     def _initialize_psychology_from_history(self, stats):
         c1 = self._finite(stats.get("c1_win_rate", 50.0), 50.0) / 100.0
@@ -484,6 +481,19 @@ class SocietyAgent:
         self.tactical_controls["rotation_aggressiveness"] = self._clip01(
             controls.get("rotation_aggressiveness", self.tactical_controls["rotation_aggressiveness"])
         )
+        if getattr(self, "_tactical_vector", None) is None:
+            self._tactical_vector = {}
+        for k, v in controls.items():
+            if k in self._tactical_vector or k not in self.tactical_controls:
+                try:
+                    self._tactical_vector[k] = self._clip01(float(v))
+                except (TypeError, ValueError):
+                    pass
+
+    def refresh_tactical_vector(self):
+        from src.match_engine.tactical_profile import sync_agent_controls_from_vector
+
+        self._tactical_vector = sync_agent_controls_from_vector(self)
 
     def tactical_effects(self):
         p = self.tactical_controls["pressing_intensity"]
@@ -953,7 +963,7 @@ class SocietyAgent:
         # 1. Update Momentum (No thresholds, continuous growth)
         surprise_factor = max(0.0, (opp_status - self.status_score) / 100.0)
         if match_result == "win":
-            self.momentum = self.momentum * 0.8 + (surprise_factor * 2.0) + (score_diff * 0.1)
+            self.momentum = self.momentum * 0.8 + (surprise_factor * 1.1) + (score_diff * 0.08)
         else:
             self.momentum *= 0.6 # Fades fast on loss
             
@@ -969,7 +979,7 @@ class SocietyAgent:
         # 4. Decoupled Social Feedback with Gamma-Inversion
         social_impact_base = social_chaos * (1.0 + self.media_exposure ** 3)
         # Flip: (1 - 2.5 * gamma) makes negative chaos POSITIVE for high-momentum weak teams
-        final_social_contribution = social_impact_base * (1.0 - 2.5 * gamma)
+        final_social_contribution = social_impact_base * (1.0 - 1.6 * gamma)
         
         # 5. Internal Pressure Transmission
         pres_pressure = social_chaos * self.roles["President"]["media_sensitivity"]
@@ -981,7 +991,7 @@ class SocietyAgent:
             -final_social_contribution * 0.5 - (pres_pressure * 0.3),
         ])
         
-        upset = bool(match_result == "win" and (opp_status - self.status_score) > 8.0)
+        upset = bool(match_result == "win" and (opp_status - self.status_score) > 12.0)
         referee_controversy = 1.0 if self.referee_grievance > 0.42 else 0.0
 
         appraisal = self._appraise_event(
@@ -1138,6 +1148,32 @@ class SocietyAgent:
         except Exception as e:
             print(f"  [ERROR] Reflection parsing failed for {self.name}: {e}")
 
+    def ingest_micro_cognitive_memory(self, cognitive_plans: list, team_name: str = "") -> None:
+        """Absorb in-match System 2 narratives into episodic memory for cross-match continuity."""
+        if not cognitive_plans:
+            return
+        for rec in cognitive_plans:
+            if not isinstance(rec, dict):
+                continue
+            trig = rec.get("trigger") or {}
+            if team_name and trig.get("team_id") and trig.get("team_id") != team_name:
+                if trig.get("entity_tier") == "coach" and team_name not in str(trig.get("entity_id", "")):
+                    continue
+            plan = rec.get("plan") or {}
+            narrative = str(plan.get("narrative", "") or plan.get("reasoning", "")).strip()
+            if len(narrative) < 8:
+                continue
+            self._register_memory_event(
+                content=f"In-match ({trig.get('kind', 'event')}): {narrative[:200]}",
+                layer="episodic",
+                importance=6.0 + 2.0 * float(trig.get("salience", 0)),
+                emotion=self._emotion_scalar(),
+                event_type="micro_cognitive",
+                tags=["cognitive", str(trig.get("kind", ""))],
+                write_temperature=1.1,
+                metadata={"trigger": trig, "applied": rec.get("applied", False)},
+            )
+
     def apply_llm_reflection(self, reflection):
         reflection = reflection or {}
         suggestion = reflection.get("suggested_adjustments", {}) or {}
@@ -1273,8 +1309,12 @@ class SocietyAgent:
         hs = self.hidden_state
         morale = "High" if hs[0] > 0.4 else "Low"
         top_beliefs = [b.get("claim", "")[:60] for b in sorted(self.beliefs, key=lambda x: x.get("confidence", 0.0), reverse=True)[:2]]
+        coach_line = f"Coach: {self.coach_name}"
+        if self.coach_profile is not None:
+            cp = self.coach_profile
+            coach_line += f" ({cp.nationality}, preset={cp.preferred_preset}, exp={cp.mental.get('experience', 0):.2f})"
         return (
-            f"Psych: {morale}, Stability: {hs[1]:.2f}, Momentum: {self.momentum:.2f}, "
+            f"{coach_line} | Psych: {morale}, Stability: {hs[1]:.2f}, Momentum: {self.momentum:.2f}, "
             f"Icon_Patience: {self.roles['Icon']['patience']:.2f}, Fatigue: {self.fatigue:.2f}, "
             f"InjuryLoad: {self.injury_load:.2f}, Readiness: {self.readiness:.2f}, Style: {self.style_archetype}, "
             f"CoachAuthority: {self.coach_authority:.2f}, IconInfluence: {self.icon_influence:.2f}, "

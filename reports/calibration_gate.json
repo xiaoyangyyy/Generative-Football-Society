@@ -1,0 +1,183 @@
+{
+  "gate": "calibration_full",
+  "pipeline": "M0",
+  "fixtures": [
+    "Mexico_vs_South Korea",
+    "Brazil_vs_Germany",
+    "France_vs_England",
+    "Argentina_vs_Netherlands",
+    "Spain_vs_Morocco",
+    "Portugal_vs_Uruguay"
+  ],
+  "samples_total": 18,
+  "match_seconds": 5400.0,
+  "hard_metrics": {
+    "pass_completion": {
+      "sim_mean": 0.7682667407439796,
+      "target_mean": 0.8083476444657731,
+      "scale": 0.1,
+      "z_abs": 0.40080903721793515,
+      "score": 0.9228173585155043,
+      "pass": true
+    },
+    "interceptions_per_pass": {
+      "sim_mean": 0.032863392545910836,
+      "target_mean": 0.0226040273273468,
+      "scale": 0.1,
+      "z_abs": 0.10259365218564034,
+      "score": 0.9947510951613691,
+      "pass": true
+    },
+    "passes_per_team_match": {
+      "sim_mean": 477.1111111111111,
+      "target_mean": 535.2734375,
+      "scale": 148.18571985953957,
+      "z_abs": 0.39249616254534575,
+      "score": 0.9258652078517459,
+      "pass": true
+    },
+    "through_share": {
+      "sim_mean": 0.0,
+      "target_mean": 0.0036970454089994705,
+      "scale": 0.1,
+      "z_abs": 0.036970454089994706,
+      "score": 0.9993168262317282,
+      "pass": true
+    },
+    "long_pass_share": {
+      "sim_mean": 0.17567664162113578,
+      "target_mean": 0.19587162204268024,
+      "scale": 0.1,
+      "z_abs": 0.20194980421544467,
+      "score": 0.9798146462248606,
+      "pass": true
+    },
+    "shots_per_team_match": {
+      "sim_mean": 9.61111111111111,
+      "target_mean": 11.671875,
+      "scale": 6.2426843542723365,
+      "z_abs": 0.330108615451389,
+      "score": 0.9469719093647561,
+      "pass": true
+    },
+    "shots_on_target_rate": {
+      "sim_mean": 0.36184847926535907,
+      "target_mean": 0.3506452640038837,
+      "scale": 0.17261968100828812,
+      "z_abs": 0.06490114682194018,
+      "score": 0.9978961367997554,
+      "pass": true
+    },
+    "goals_per_team_match": {
+      "sim_mean": 2.138888888888889,
+      "target_mean": 1.5234375,
+      "scale": 1.4825796886582654,
+      "z_abs": 0.4151219618055555,
+      "score": 0.9174445640005657,
+      "pass": true
+    },
+    "fouls_committed_per_team_match": {
+      "sim_mean": 13.166666666666666,
+      "target_mean": 13.8671875,
+      "scale": 5.072181037846273,
+      "z_abs": 0.13811037660256423,
+      "score": 0.9905080971535581,
+      "pass": true
+    },
+    "yellow_cards_per_team_match": {
+      "sim_mean": 0.6666666666666666,
+      "target_mean": 0.34375,
+      "scale": 0.5863019699779287,
+      "z_abs": 0.5507685172519935,
+      "score": 0.8592692331982853,
+      "pass": true
+    },
+    "red_cards_per_team_match": {
+      "sim_mean": 0.027777777777777776,
+      "target_mean": 0.015625,
+      "scale": 0.125,
+      "z_abs": 0.09722222222222221,
+      "score": 0.9952850700976129,
+      "pass": true
+    },
+    "possession_share": {
+      "sim_mean": 0.5297315664288141,
+      "target_mean": 0.5,
+      "scale": 0.13103012208214698,
+      "z_abs": 0.22690634761199768,
+      "score": 0.974585286847186,
+      "pass": true
+    },
+    "crosses_per_team_match": {
+      "sim_mean": 9.277777777777779,
+      "target_mean": 11.609375,
+      "scale": 5.462348809988295,
+      "z_abs": 0.4268488343253967,
+      "score": 0.9129264468483407,
+      "pass": true
+    },
+    "headers_per_team_match": {
+      "sim_mean": 0.4722222222222222,
+      "target_mean": 1.96875,
+      "scale": 1.5606710885680841,
+      "z_abs": 0.9589001736111111,
+      "score": 0.63144478766334,
+      "pass": true
+    },
+    "tackles_per_team_match": {
+      "sim_mean": 20.333333333333332,
+      "target_mean": 17.0703125,
+      "scale": 5.969566913772921,
+      "z_abs": 0.5466093069172113,
+      "score": 0.8612324215932157,
+      "pass": true
+    }
+  },
+  "soft_constraints": {
+    "goals_to_micro_xg_ratio": {
+      "sim_mean": 1.745139926165315,
+      "target_mean": 1.2488266677293303,
+      "scale": 1.1882826822992079,
+      "z_abs": 0.41767271864609556,
+      "score": 0.91647063741586,
+      "pass": true
+    },
+    "micro_xg_per_team_match": {
+      "sim_mean": 1.1905685779058672,
+      "target_mean": 1.4689222025796875,
+      "scale": 0.9708205023165307,
+      "z_abs": 0.2867199693554315,
+      "score": 0.9597291493579568,
+      "pass": true
+    },
+    "possession_passes_correlation": {
+      "correlation": 0.9869242748142625,
+      "metrics": [
+        "possession_team",
+        "passes_team"
+      ],
+      "target_mean": 0.8868610792459731,
+      "scale": 0.15,
+      "z_abs": 0.6670879704552624,
+      "score": 0.8005124609860229,
+      "pass": true,
+      "statsbomb_reference": 0.8868610792459731
+    },
+    "shots_goals_correlation": {
+      "correlation": 0.8876540227363028,
+      "metrics": [
+        "shots_team",
+        "goals_team"
+      ],
+      "target_mean": 0.892,
+      "scale": 0.28,
+      "z_abs": 0.015521347370347254,
+      "score": 0.9998795511424506,
+      "pass": true,
+      "statsbomb_reference": 0.41047680049162405
+    }
+  },
+  "failed_hard": [],
+  "failed_soft": [],
+  "all_pass": true
+}

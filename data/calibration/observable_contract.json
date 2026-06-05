@@ -1,0 +1,120 @@
+{
+  "version": "1",
+  "profile": "v5_physics_first",
+  "description": "Observable contract for micro calibration — hard marginal bands + soft joint constraints.",
+  "gate": {
+    "method": "continuous_score",
+    "min_combined_score": 0.52,
+    "min_metric_score": 0.30
+  },
+  "hard_metrics": {
+    "source": "statsbomb_match_baselines.json",
+    "band": "p10_p90",
+    "sparse_metrics": [
+      "yellow_cards_per_team_match",
+      "red_cards_per_team_match"
+    ],
+    "metrics": [
+      "pass_completion",
+      "interceptions_per_pass",
+      "passes_per_team_match",
+      "through_share",
+      "long_pass_share",
+      "shots_per_team_match",
+      "shots_on_target_rate",
+      "goals_per_team_match",
+      "fouls_committed_per_team_match",
+      "yellow_cards_per_team_match",
+      "red_cards_per_team_match",
+      "possession_share",
+      "crosses_per_team_match",
+      "headers_per_team_match",
+      "tackles_per_team_match"
+    ]
+  },
+  "soft_constraints": [
+    {
+      "id": "goals_to_micro_xg_ratio",
+      "type": "range",
+      "target_mean": 1.0,
+      "note": "Goals should track summed micro xG; scale from joint_baselines IQR."
+    },
+    {
+      "id": "micro_xg_per_team_match",
+      "type": "range",
+      "target_mean": 1.25,
+      "note": "Heuristic xG volume per team; scale from joint_baselines IQR."
+    },
+    {
+      "id": "possession_passes_correlation",
+      "type": "correlation",
+      "metrics": ["possession_team", "passes_team"],
+      "use_team_rows": true,
+      "min_samples": 12,
+      "note": "Higher possession should co-occur with more passes per match."
+    },
+    {
+      "id": "shots_goals_correlation",
+      "type": "correlation",
+      "metrics": ["shots_team", "goals_team"],
+      "use_team_rows": true,
+      "min_samples": 12,
+      "target_mean": 0.892,
+      "scale": 0.28,
+      "statsbomb_reference": 0.41047680049162405,
+      "note": "Sim joint target (M0); StatsBomb WC2022 ref ~0.41 — structural coupling gap."
+    }
+  ],
+  "pipelines": {
+    "M0": {
+      "label": "Pure micro physics",
+      "description": "Micro match only; cognitive and world model off; calibration mode on.",
+      "preset": "M0"
+    },
+    "M1": {
+      "label": "Micro + world model",
+      "description": "M0 with MATCH_WORLD_MODEL=1 (planner blend from checkpoint).",
+      "preset": "M1"
+    },
+    "T0": {
+      "label": "Roster-driven micro",
+      "description": "Micro with agent status_score (no fixed eff_status); cognitive/WM off.",
+      "preset": "T0"
+    },
+    "C1": {
+      "label": "Micro + cognitive",
+      "description": "M0 with MATCH_COGNITIVE=1 (System 2 in-match).",
+      "preset": "C1"
+    }
+  },
+  "layer_gates": {
+    "reference_pipeline": "M0",
+    "require_m0_absolute_pass": true,
+    "M1": {
+      "label": "World model additive gate",
+      "max_delta_loss": 5.0,
+      "max_abs_delta_z": 0.20,
+      "min_score_ratio_vs_m0": 0.95,
+      "primary_metrics": [
+        "pass_completion",
+        "passes_per_team_match",
+        "goals_per_team_match",
+        "goals_to_micro_xg_ratio",
+        "shots_per_team_match"
+      ]
+    },
+    "C1": {
+      "label": "Cognitive additive gate",
+      "max_delta_loss": 8.0,
+      "max_abs_delta_z": 0.35,
+      "min_score_ratio_vs_m0": 0.90,
+      "primary_metrics": [
+        "pass_completion",
+        "passes_per_team_match",
+        "goals_per_team_match",
+        "goals_to_micro_xg_ratio",
+        "fouls_committed_per_team_match"
+      ]
+    }
+  }
+}

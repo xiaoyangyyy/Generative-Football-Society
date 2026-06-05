@@ -1,0 +1,60 @@
+"""Cognitive bus salience and tier caps."""
+
+import os
+import sys
+
+import numpy as np
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from src.match_engine.cognitive.bus import MatchCognitiveBus
+from src.match_engine.cognitive.config import CognitiveMatchConfig
+from src.match_engine.cognitive.salience import base_salience_from_micro, should_fire
+from src.match_engine.micro_events import MicroEvent, MicroEventType
+from src.match_engine.state import (
+    CrowdState,
+    MatchAffectiveState,
+    RefereeAffectiveState,
+    TeamAffectiveState,
+    CoachAffectiveState,
+)
+
+
+def _minimal_state():
+    home = TeamAffectiveState(team_id="H", coach=CoachAffectiveState(team_id="H"))
+    away = TeamAffectiveState(team_id="A", coach=CoachAffectiveState(team_id="A"))
+    ref = RefereeAffectiveState()
+    return MatchAffectiveState(
+        home=home,
+        away=away,
+        referee=ref,
+        crowd=CrowdState(home_team_id="H"),
+    )
+
+
+def test_goal_salience_positive():
+    state = _minimal_state()
+    ev = MicroEvent(120.0, MicroEventType.GOAL_SCORED, "H", intensity=1.0, player_id="p1")
+    sal = base_salience_from_micro(ev, state)
+    assert sal > 0.8
+
+
+def test_cooldown_blocks_repeat():
+    cfg = CognitiveMatchConfig(enabled=True, cooldown_sec=300.0)
+    rng = np.random.default_rng(0)
+    last = {}
+    assert should_fire(1.5, "coach:H", "coach", 100.0, last, cfg, rng) in (True, False)
+    last["coach:H"] = 100.0
+    assert should_fire(1.5, "coach:H", "coach", 150.0, last, cfg, rng) is False
+
+
+def test_bus_queues_goal_trigger():
+    cfg = CognitiveMatchConfig(enabled=True, cooldown_sec=0.0, salience_center=0.3)
+    cfg.tier_caps = (10, 10, 10, 10, 10)
+    bus = MatchCognitiveBus(cfg, np.random.default_rng(1))
+    state = _minimal_state()
+    ev = MicroEvent(60.0, MicroEventType.GOAL_SCORED, "H", intensity=1.0, player_id="p9")
+    bus.ingest_micro_event(ev, state)
+    pending = bus.drain_pending()
+    assert len(pending) >= 1
+    assert any(t.entity_tier == "coach" for t in pending)
