@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, List, Tuple
 
 import numpy as np
 
+from src.match_engine.math_utils import finite_float
+
 from src.match_engine.world_model.action_codec import encode_pass_candidate, encode_shot_action, zero_action
 from src.match_engine.world_model.config import world_model_plan_enabled
 
@@ -35,7 +37,7 @@ def pass_imagination_bonuses(
     for recv, kind, tgt, _lane, _press, _omega in meta:
         act = encode_pass_candidate(state, carrier, recv, kind, tgt, success_p=0.55)
         val = runtime.score_action(obs, act)
-        bonuses.append(blend * (val - baseline))
+        bonuses.append(finite_float(blend * (val - baseline), 0.0))
     return bonuses
 
 
@@ -56,7 +58,7 @@ def shot_imagination_bonus(
     shot_act = encode_shot_action(carrier.position, xg=max(0.05, 0.35 * (1.0 - dist_goal)))
     hold_val = runtime.score_action(obs, zero_action())
     shot_val = runtime.score_shot_action(obs, shot_act, attacking_home=attacking_home)
-    return blend * (shot_val - hold_val)
+    return finite_float(blend * (shot_val - hold_val), 0.0)
 
 
 def action_imagination_adjustments(
@@ -68,6 +70,8 @@ def action_imagination_adjustments(
     labels: List[str],
     *,
     dist_goal: float,
+    tac: dict | None = None,
+    team_shots: int = 0,
 ) -> np.ndarray:
     """Adjust [pass, shot, cross, hold] utilities using world model imagination."""
     if not world_model_plan_enabled():
@@ -75,7 +79,11 @@ def action_imagination_adjustments(
     out = utils.copy()
     if "shot" in labels:
         si = labels.index("shot")
-        out[si] += shot_imagination_bonus(
+        bonus = shot_imagination_bonus(
             runtime, state, carrier, attacking_home, dist_goal=dist_goal
         )
+        lb = float((tac or {}).get("low_block", 0.35))
+        bonus *= max(0.12, 1.0 - 0.58 * lb)
+        bonus *= float(np.exp(-0.05 * team_shots))
+        out[si] += bonus
     return out

@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 GROUPS = {
-    "Group A": ["Mexico", "Czech Republic", "South Africa", "South Korea"],
+    "Group A": ["Mexico", "South Africa", "South Korea", "Czech Republic"],
     "Group B": ["Canada", "Switzerland", "Bosnia and Herzegovina", "Qatar"],
     "Group C": ["Brazil", "Scotland", "Morocco", "Haiti"],
     "Group D": ["United States", "Turkey", "Australia", "Paraguay"],

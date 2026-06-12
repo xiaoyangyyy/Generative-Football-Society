@@ -85,7 +85,9 @@ def team_vector_from_agent(
     delta = _tanh_clip((float(eff_status) - anchor) / 12.0)
     x = x + np.array([0.42, 0.18, 0.22, 0.35, 0.0], dtype=float) * delta
     x = x + np.array([0.0, 0.0, 0.12, 0.08, 0.0], dtype=float) * _tanh_clip(fused_volatility)
-    return np.array([_tanh_clip(v) for v in x], dtype=float)
+    from src.match_engine.math_utils import finite_float
+
+    return np.array([finite_float(_tanh_clip(v), 0.0) for v in x], dtype=float)
 
 
 def lambda_dot(
@@ -157,6 +159,10 @@ def integrate_match_xg(
 
     xg_h = clamp_match_xg(acc_h)
     xg_a = clamp_match_xg(acc_a)
+    from src.match_engine.math_utils import finite_float
+
+    xg_h = finite_float(xg_h, 1.0)
+    xg_a = finite_float(xg_a, 1.0)
     meta = {
         "model": "macro_goal_dynamics_v2_calibrated",
         "lambda_end_home": lam_h,

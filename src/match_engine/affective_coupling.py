@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from src.match_engine.config import AffectiveConfig
-from src.match_engine.math_utils import clip01, sigmoid, softmax, tanh_clip
+from src.match_engine.math_utils import clip01, finite_float, sigmoid, softmax, tanh_clip
 from src.match_engine.micro_events import MicroEvent, apply_micro_event
 from src.match_engine.state import (
     EMOTION_KEYS,
@@ -256,6 +256,7 @@ class AffectiveSpatialCoupling:
         s_spatial = float(sigmoid(player.spatial_cognition_logit))
 
         tau_dec = cfg.tau_dec_base * (1.0 + cfg.d_q * q + cfg.d_fear * fear + cfg.d_anger * anger)
+        tau_dec = max(0.08, finite_float(tau_dec, cfg.tau_dec_base))
         vision = cfg.vision_base * (1.0 - cfg.v_fear * fear - cfg.v_anger * anger)
         vision = float(np.clip(vision, 0.35, 1.15))
 

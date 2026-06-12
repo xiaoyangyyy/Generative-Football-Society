@@ -57,11 +57,25 @@ class ActionEngine:
 
         dist_goal = self.shots._dist_to_goal(carrier.position, attacking_home)
         tac = state.team(carrier.team_id).coach.tactical_current or {}
+        low_block = float(tac.get("low_block", 0.35))
         u_shot = (
             self.cfg.action_shot_base
             + self.shots.shot_utility_max(state, carrier, mod_c) * self._tac_eng.shot_bias(tac)
-            + self.cfg.action_shot_dist_bonus * max(0.0, self.cfg.shot_max_dist - dist_goal)
+            + self.cfg.action_shot_dist_bonus * max(0.0, self.cfg.shot_max_dist - dist_goal) * (1.0 - 0.55 * low_block)
         )
+        side_key = "home_shots" if attacking_home else "away_shots"
+        opp_key = "away_shots" if attacking_home else "home_shots"
+        team_shots = int(self.shots.stats.get(side_key, 0))
+        opp_shots = int(self.shots.stats.get(opp_key, 0))
+        def_block = float(np.clip((low_block - 0.50) / 0.45, 0.0, 1.0))
+        if def_block > 0.05:
+            vol_decay = float(np.exp(-self.cfg.action_shot_volume_decay * def_block * team_shots))
+            u_shot *= vol_decay
+            if team_shots >= 6 and opp_shots <= max(2, team_shots // 4):
+                skew = float(np.exp(-self.cfg.action_shot_skew_decay * def_block * (team_shots - opp_shots)))
+                u_shot *= skew
+        if team_shots + 2 <= opp_shots and dist_goal < self.cfg.shot_max_dist * 0.85:
+            u_shot += 0.14 * min(3.0, (opp_shots - team_shots) ** 0.5)
         u_pass = self.cfg.action_pass_base
         if self.cfg.enable_wall_pass:
             team = state.team(carrier.team_id)
@@ -78,7 +92,7 @@ class ActionEngine:
             u_cross = self.cfg.action_cross_base + 0.32 * float(carrier.abilities.curve) - 0.15 * dist_goal
         elif carrier.role in ("LW", "RW", "LB", "RB"):
             u_cross = self.cfg.action_cross_base * 0.65
-        u_hold = -0.02 + 0.04 * (1.0 - dist_goal)
+        u_hold = -0.02 + 0.04 * (1.0 - dist_goal) + 0.10 * low_block * min(1.0, dist_goal / max(1e-6, self.cfg.shot_max_dist))
 
         utils = np.array([u_pass, u_shot, u_cross, u_hold], dtype=float)
         utils = np.nan_to_num(utils, nan=0.0, posinf=5.0, neginf=-5.0)
@@ -94,6 +108,8 @@ class ActionEngine:
                 utils,
                 labels,
                 dist_goal=dist_goal,
+                tac=tac,
+                team_shots=team_shots,
             )
         tau = self.cfg.action_tau * mod_c.tau_dec
         probs = softmax(utils, tau=max(0.2, tau))

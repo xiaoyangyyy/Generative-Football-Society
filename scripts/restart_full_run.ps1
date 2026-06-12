@@ -20,7 +20,8 @@ Write-Host "Cleaning prior run artifacts..."
 $cleanPaths = @(
     "data\persistence\squad_carryover.json",
     "data\persistence\tournament_checkpoint.json",
-    "outputs\full_run_latest.log"
+    "outputs\full_run_latest.log",
+    "outputs\narrative_debug.jsonl"
 )
 foreach ($p in $cleanPaths) {
     if (Test-Path $p) {
@@ -58,6 +59,8 @@ $env:MATCH_WM_PLANNER_BLEND = "0.45"
 $env:MATCH_WM_SHOT_BLEND = "0.40"
 $env:MATCH_WM_RECORD = "0"
 $env:MATCH_WM_SNAPSHOT_IN_BALL_LOG = "0"
+$env:MATCH_DEBUG_NARRATIVE = "1"
+$env:MATCH_MICRO_STRICT = "1"
 
 $py = "C:\Users\K\AppData\Local\Programs\Python\Python313\python.exe"
 if (-not (Test-Path $py)) { $py = "python" }
@@ -71,7 +74,15 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ""
-Write-Host "Flags: MICRO=1 COGNITIVE=1 physics_first=1 WORLD_MODEL=1 BALL_LOG+WM_snapshot=1 LLM_TIMEOUT=90"
+Write-Host "Preflight: full-stack micro physics (WM + cognitive path)..."
+& $py scripts/verify_micro_stack.py
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: micro preflight failed — fix before full run."
+    exit 1
+}
+
+Write-Host ""
+Write-Host "Flags: MICRO=1 COGNITIVE=1 physics_first=1 WORLD_MODEL=1 DEBUG_NARRATIVE=1 MICRO_STRICT=1 LLM_TIMEOUT=90"
 Write-Host "Log: outputs\full_run_latest.log"
 Write-Host ""
 

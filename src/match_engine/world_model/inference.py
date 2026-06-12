@@ -7,7 +7,7 @@ from typing import Optional
 
 import numpy as np
 
-from src.match_engine.world_model.action_codec import ACTION_DIM, zero_action
+from src.match_engine.math_utils import finite_float
 from src.match_engine.world_model.config import WorldModelConfig, default_checkpoint_path
 from src.match_engine.world_model.model import LatentWorldModel, WorldModelOutput, load_checkpoint
 from src.match_engine.world_model.observation import OBS_DIM, encode_observation
@@ -73,16 +73,18 @@ class WorldModelRuntime:
         return out
 
     def score_action(self, obs: np.ndarray, action: np.ndarray) -> float:
+        obs = np.nan_to_num(np.asarray(obs, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)
+        action = np.nan_to_num(np.asarray(action, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)
         out = self.imagine(obs, action, carry_hidden=False)
         attacking = obs[-1] > 0.5
-        bx = float(out.next_obs[200])
+        bx = finite_float(float(out.next_obs[200]), 0.5)
         progress = bx if attacking else (1.0 - bx)
         progress = float(np.clip(progress, 0, 1))
-        xg_term = float(np.clip(out.xg_delta_attacking, -0.5, 0.5)) * 2.0
-        pass_term = float(out.pass_success) * 0.35
+        xg_term = float(np.clip(finite_float(out.xg_delta_attacking, 0.0), -0.5, 0.5)) * 2.0
+        pass_term = finite_float(float(out.pass_success), 0.5) * 0.35
         turnover = float(action[0:6].dot(np.array([0, 0, 0, 0, 1, 0], dtype=np.float32)))
-        intercept_pen = 0.25 * turnover * (1.0 - float(out.pass_success))
-        return progress * 0.42 + xg_term * 0.33 + pass_term - intercept_pen
+        intercept_pen = 0.25 * turnover * (1.0 - finite_float(float(out.pass_success), 0.5))
+        return finite_float(progress * 0.42 + xg_term * 0.33 + pass_term - intercept_pen, 0.0)
 
     def score_shot_action(
         self,
@@ -91,13 +93,15 @@ class WorldModelRuntime:
         *,
         attacking_home: bool,
     ) -> float:
+        obs = np.nan_to_num(np.asarray(obs, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)
+        action = np.nan_to_num(np.asarray(action, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)
         out = self.imagine(obs, action)
-        bx = float(out.next_obs[200])
+        bx = finite_float(float(out.next_obs[200]), 0.5)
         progress = bx if attacking_home else (1.0 - bx)
         progress = float(np.clip(progress, 0, 1))
-        xg_term = float(np.clip(out.xg_delta_attacking, 0.0, 1.0)) * 1.5
-        goal_term = float(out.shot_goal_prob) * 0.55
-        return progress * 0.35 + xg_term * 0.35 + goal_term
+        xg_term = float(np.clip(finite_float(out.xg_delta_attacking, 0.0), 0.0, 1.0)) * 1.5
+        goal_term = finite_float(float(out.shot_goal_prob), 0.1) * 0.55
+        return finite_float(progress * 0.35 + xg_term * 0.35 + goal_term, 0.0)
 
     def encode_state(self, state, *, attacking_home: bool | None = None) -> np.ndarray:
         return encode_observation(state, attacking_home=attacking_home, cfg=self.cfg)

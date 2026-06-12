@@ -248,7 +248,7 @@ def run_match_micro_simulation(
     affective = AffectiveSpatialCoupling(cfg)
     spatial = SpatialFieldEngine(cfg)
     sie = SpatialIntelligenceEngine(cfg)
-    kinematic = KinematicPositionLayer(cfg)
+    kinematic = KinematicPositionLayer(cfg, sie=sie)
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     wm_runtime = None
     if os.environ.get("MATCH_WORLD_MODEL", "").strip().lower() in ("1", "true", "yes"):

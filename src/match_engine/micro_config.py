@@ -30,10 +30,12 @@ class MicroMatchConfig(AffectiveConfig):
     lane_samples: int = 8
     gamma_offside: float = 8.0
     delta_offside: float = 0.02
+    enable_phi_gradient_move: bool = True  # E1 — phi drives kinematics (gate passed @ scale=0.015)
     w_phi_move: float = 0.50
     w_lane_move: float = 0.22
     w_supp_move: float = 0.18
     w_form_move: float = 0.28
+    phi_move_scale: float = 0.015  # gradient step magnitude per tick (E1 tuned)
     kappa_phase: float = 0.14
     orient_rate: float = 2.5
     max_speed: float = 0.12  # per tick normalized coords
@@ -148,7 +150,11 @@ class MicroMatchConfig(AffectiveConfig):
     action_pass_base: float = 1.62
     action_shot_base: float = 0.42
     action_shot_dist_bonus: float = 2.95
-    action_shot_cooldown_sec: float = 10.0
+    action_shot_cooldown_sec: float = 12.0
+    action_shot_volume_decay: float = 0.065
+    action_shot_skew_decay: float = 0.11
+    shot_finish_xg_scale: float = 1.12
+    shot_finish_save_scale: float = 0.68
     action_cross_base: float = 0.65
     shot_tau: float = 0.38
     action_tau: float = 0.40

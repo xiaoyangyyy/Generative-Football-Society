@@ -8,7 +8,7 @@
         "action.action_cross_base": 0.65,
         "action.action_pass_base": 1.62,
         "action.action_shot_base": 0.42,
-        "action.action_shot_cooldown_sec": 10.0,
+        "action.action_shot_cooldown_sec": 12.0,
         "affective.z_emo_decay": 0.08,
         "discipline.cross_tick_target": 20.0,
         "discipline.discipline_foul_target_base": 14.0,

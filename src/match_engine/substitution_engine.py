@@ -26,6 +26,7 @@ def _pick_sub_off(on_pitch: List["PlayerAffectiveState"], rng: np.random.Generat
     if not field:
         return None
     weights = np.array([1.0 - _stamina_score(p) + 0.05 * p.cognitive_load for p in field], dtype=float)
+    weights = np.nan_to_num(weights, nan=0.1, posinf=1.0, neginf=0.01)
     weights = np.maximum(weights, 0.01)
     weights /= weights.sum()
     return field[int(rng.choice(len(field), p=weights))]
@@ -40,8 +41,14 @@ def _pick_sub_on(
         return None
     same = [p for p in bench if p.role == off_role]
     pool = same if same else bench
-    scores = np.array([_stamina_score(p) + 0.1 * float(p.abilities.pace) for p in pool], dtype=float)
-    scores /= scores.sum()
+    scores = np.array([_stamina_score(p) + 0.1 * float(getattr(p.abilities, "pace", 0.5)) for p in pool], dtype=float)
+    scores = np.nan_to_num(scores, nan=0.1, posinf=1.0, neginf=0.01)
+    scores = np.maximum(scores, 0.01)
+    total = float(scores.sum())
+    if not np.isfinite(total) or total <= 0.0:
+        scores = np.ones(len(pool), dtype=float) / len(pool)
+    else:
+        scores /= total
     return pool[int(rng.choice(len(pool), p=scores))]
 
 

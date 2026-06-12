@@ -22,7 +22,11 @@ from src.match_engine.cognitive.schemas import (
     validate_referee_plan,
 )
 from src.match_engine.math_utils import tanh_clip
-from src.match_engine.tactical_profile import build_tactical_vector_for_agent, sync_agent_controls_from_vector
+from src.match_engine.tactical_profile import (
+    build_tactical_vector_for_agent,
+    compose_llm_tactical_vector,
+    sync_agent_controls_from_vector,
+)
 
 if TYPE_CHECKING:
     from src.match_engine.state import MatchAffectiveState, PlayerAffectiveState
@@ -38,12 +42,13 @@ def apply_coach_plan_to_team(
     plan = validate_coach_plan(plan or {})
     team = state.team(team_id)
     cur = dict(team.coach.tactical_current)
+    delta_scale = 1.0 - 0.45 * float(cur.get("low_block", 0.35)) * float(cur.get("compactness", 0.5))
     for k, d in (plan.get("controls_delta") or {}).items():
         if k in cur:
-            cur[k] = float(np.clip(cur[k] + d, 0.0, 1.0))
+            cur[k] = float(np.clip(cur[k] + float(d) * delta_scale, 0.0, 1.0))
     for k, v in (plan.get("tactical_hints") or {}).items():
         if k in cur:
-            cur[k] = float(np.clip(0.6 * cur[k] + 0.4 * v, 0.0, 1.0))
+            cur[k] = float(np.clip(0.6 * cur[k] + 0.4 * float(v) * delta_scale, 0.0, 1.0))
     team.coach.tactical_current = cur
     applied = {"tactical_current": {k: cur[k] for k in list(cur.keys())[:6]}}
 
@@ -51,7 +56,11 @@ def apply_coach_plan_to_team(
         for k, d in (plan.get("controls_delta") or {}).items():
             if k in agent.tactical_controls:
                 agent.tactical_controls[k] = float(np.clip(agent.tactical_controls[k] + d, 0.0, 1.0))
-        tac = build_tactical_vector_for_agent(agent)
+        tac = (
+            compose_llm_tactical_vector(agent)
+            if getattr(agent, "_tactical_preset_locked", False)
+            else build_tactical_vector_for_agent(agent)
+        )
         sync_agent_controls_from_vector(agent, tac)
         team.coach.tactical_current = dict(tac)
         agent.tactical_vector = tac

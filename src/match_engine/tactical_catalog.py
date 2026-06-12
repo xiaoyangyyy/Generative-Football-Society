@@ -207,6 +207,30 @@ TACTICAL_PRESETS: Dict[str, Dict[str, float]] = {
         "overlap_fullbacks": 0.35,
         "compactness": 0.82,
     },
+    "low_block": {
+        "pressing_intensity": 0.28,
+        "risk_budget": 0.32,
+        "line_height": 0.25,
+        "rotation_aggressiveness": 0.38,
+        "possession_orientation": 0.32,
+        "verticality": 0.48,
+        "width_play": 0.44,
+        "tempo": 0.42,
+        "counter_attack": 0.58,
+        "high_press": 0.14,
+        "low_block": 0.88,
+        "wing_focus": 0.42,
+        "cross_frequency": 0.32,
+        "through_ball_bias": 0.38,
+        "long_ball_bias": 0.48,
+        "build_up_short": 0.32,
+        "offside_trap": 0.18,
+        "counterpress": 0.22,
+        "man_oriented_press": 0.40,
+        "target_man": 0.48,
+        "overlap_fullbacks": 0.32,
+        "compactness": 0.86,
+    },
     "catenaccio": {
         "pressing_intensity": 0.25,
         "risk_budget": 0.28,
@@ -649,14 +673,33 @@ ARCHETYPE_ALIASES: Dict[str, str] = {
     "low_block_counter": "low_block_counter",
     "high_press": "high_press",
     "possession_control": "possession_control",
+    "possession": "possession_control",
+    "positional_play": "positional_play",
+    "positional": "positional_play",
     "direct_vertical": "direct_vertical",
+    "direct": "direct_vertical",
     "balanced": "balanced",
     "tiki_taka": "tiki_taka",
     "gegenpress": "gegenpress",
     "counter": "counter_attack",
+    "counter_attack": "counter_attack",
+    "low_block": "low_block",
+    "park_the_bus": "park_the_bus",
     "wing": "wing_play",
     "long_ball": "long_ball",
 }
+
+
+def resolve_tactical_preset(name: str) -> str:
+    """Map LLM / shorthand preset id to a TACTICAL_PRESETS key."""
+    key = str(name or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if not key:
+        return "balanced"
+    if key in TACTICAL_PRESETS:
+        return key
+    if key in ARCHETYPE_ALIASES:
+        return ARCHETYPE_ALIASES[key]
+    return "balanced"
 
 
 def normalize_formation_key(formation: str) -> str:

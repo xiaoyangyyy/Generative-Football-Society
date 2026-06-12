@@ -61,6 +61,22 @@ class SpatialIntelligenceEngine:
         iy = int(np.clip(p[1] * (ny - 1), 0, ny - 1))
         return float(grid[ix, iy])
 
+    def phi_gradient_at(self, state: MatchAffectiveState, p: np.ndarray, for_home: bool) -> np.ndarray:
+        """Unit gradient of phi field at normalized position (E1 movement driver)."""
+        grid = state.spatial.phi_home if for_home else state.spatial.phi_away
+        nx, ny = grid.shape
+        ix = int(np.clip(p[0] * (nx - 1), 1, nx - 2))
+        iy = int(np.clip(p[1] * (ny - 1), 1, ny - 2))
+        dx = 1.0 / max(1, nx - 1)
+        dy = 1.0 / max(1, ny - 1)
+        gx = (float(grid[ix + 1, iy]) - float(grid[ix - 1, iy])) / (2.0 * dx)
+        gy = (float(grid[ix, iy + 1]) - float(grid[ix, iy - 1])) / (2.0 * dy)
+        g = np.array([gx, gy], dtype=float)
+        norm = float(np.linalg.norm(g))
+        if norm < 1e-8:
+            return np.zeros(2, dtype=float)
+        return g / norm
+
     def def_line_x(self, team: TeamAffectiveState, for_home: bool) -> float:
         xs = [p.position[0] for p in team.players if p.on_pitch and p.role in ("LB", "CB", "RB", "DM")]
         if not xs:

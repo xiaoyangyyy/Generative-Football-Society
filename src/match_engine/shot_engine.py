@@ -218,9 +218,17 @@ class ShotEngine:
         if scheduled_on_target and dist < 0.22:
             on_p = max(on_p, 0.55)
         on_target = bool(rng.random() < on_p)
-        goal = bool(traj.in_goal_mouth and rng.random() > save_p)
+        if traj.in_goal_mouth:
+            xg_scale = float(getattr(cfg, "shot_finish_xg_scale", 1.12))
+            save_scale = float(getattr(cfg, "shot_finish_save_scale", 0.68))
+            p_phys = max(0.08, 1.0 - save_p)
+            p_xg = float(np.clip(xg * (xg_scale - save_scale * save_p), 0.025, 0.72))
+            finish_p = float(np.clip(0.30 * p_phys + 0.70 * p_xg, 0.03, 0.68))
+            goal = bool(rng.random() < finish_p)
+        else:
+            goal = False
         if scheduled_on_target and on_target and not goal:
-            goal = bool(rng.random() < min(0.55, xg + cfg.scheduled_on_target_goal_bonus))
+            goal = bool(rng.random() < min(0.50, xg * 0.85 + cfg.scheduled_on_target_goal_bonus))
         saved = bool(on_target and not goal and rng.random() < save_p)
 
         trk = self.player_tracker

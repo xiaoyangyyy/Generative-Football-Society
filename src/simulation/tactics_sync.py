@@ -48,8 +48,12 @@ def apply_coach_tactics_from_llm(agent: "SocietyAgent", tactics_payload: Any) ->
 
     preset = str(data.get("tactical_preset", "") or "")
     cp = getattr(agent, "coach_profile", None)
-    if cp is not None and preset in TACTICAL_PRESETS:
-        cp.preferred_preset = preset
+    if cp is not None and preset:
+        from src.match_engine.tactical_catalog import resolve_tactical_preset
+
+        resolved = resolve_tactical_preset(preset)
+        cp.preferred_preset = resolved
+        agent._tactical_preset_locked = True
         from src.data_engine.entity_dynamics import preset_affinities
 
         aff = preset_affinities(cp.mental, agent.style_desc)
@@ -58,10 +62,17 @@ def apply_coach_tactics_from_llm(agent: "SocietyAgent", tactics_payload: Any) ->
         cp.preset_affinities = {k: v / s for k, v in aff.items()}
 
     hints = dict(data.get("tactical_hints") or {})
-    tac = build_tactical_vector_for_agent(agent)
-    for k, v in hints.items():
-        if k in tac:
-            tac[k] = float(np.clip(0.55 * tac[k] + 0.45 * float(v), 0.0, 1.0))
+    from src.match_engine.tactical_profile import compose_llm_tactical_vector
+
+    tac = (
+        compose_llm_tactical_vector(agent, hints=hints)
+        if getattr(agent, "_tactical_preset_locked", False)
+        else build_tactical_vector_for_agent(agent)
+    )
+    if hints and not getattr(agent, "_tactical_preset_locked", False):
+        for k, v in hints.items():
+            if k in tac:
+                tac[k] = float(np.clip(0.55 * tac[k] + 0.45 * float(v), 0.0, 1.0))
     sync_agent_controls_from_vector(agent, tac)
     agent.tactical_vector = tac
     agent.semantic_memory["tactical_vector_keys"] = list(tac.keys())[:6]

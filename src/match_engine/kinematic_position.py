@@ -6,13 +6,19 @@ import numpy as np
 
 from src.match_engine.formation import interpolate_anchors, mirror_for_away
 from src.match_engine.math_utils import clip01, sigmoid
+from typing import TYPE_CHECKING
+
 from src.match_engine.micro_config import MicroMatchConfig
 from src.match_engine.state import MatchAffectiveState, PlayerModulators, TeamAffectiveState
 
+if TYPE_CHECKING:
+    from src.match_engine.spatial_intelligence import SpatialIntelligenceEngine
+
 
 class KinematicPositionLayer:
-    def __init__(self, cfg: MicroMatchConfig):
+    def __init__(self, cfg: MicroMatchConfig, sie: "SpatialIntelligenceEngine | None" = None):
         self.cfg = cfg
+        self.sie = sie
 
     def _update_team_phase(self, team: TeamAffectiveState, possession: float, press_against: float) -> None:
         lh = float(team.coach.tactical_current.get("line_height", 0.5))
@@ -72,6 +78,13 @@ class KinematicPositionLayer:
                 vel = w_form * to_anchor + w_supp * (to_ball / dist_ball) * 0.05 + w_ball * (
                     to_ball / dist_ball
                 ) * 0.03
+                if (
+                    cfg.enable_phi_gradient_move
+                    and self.sie is not None
+                    and state.ball.possession_team_id == team.team_id
+                ):
+                    grad = self.sie.phi_gradient_at(state, p.position, is_home)
+                    vel += cfg.w_phi_move * team.phase * grad * cfg.phi_move_scale
 
             p.velocity = (1.0 - 0.35) * p.velocity + 0.35 * vel
             speed = float(np.linalg.norm(p.velocity))

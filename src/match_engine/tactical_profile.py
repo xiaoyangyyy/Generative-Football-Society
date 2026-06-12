@@ -11,6 +11,7 @@ from src.match_engine.tactical_catalog import (
     TACTICAL_PRESETS,
     infer_archetype_from_text,
     normalize_formation_key,
+    resolve_tactical_preset,
 )
 
 if TYPE_CHECKING:
@@ -28,6 +29,57 @@ def blend_vectors(base: Dict[str, float], override: Dict[str, float], weight: fl
         if k in override:
             out[k] = _clip01((1.0 - w) * base.get(k, 0.5) + w * float(override[k]))
     return out
+
+
+def _control_blend_weight(agent: "SocietyAgent") -> float:
+    """LLM knob influence — rises with coach tactical knowledge, preset stays primary."""
+    cp = getattr(agent, "coach_profile", None)
+    tk = float(getattr(cp, "mental", {}).get("tactical_knowledge", 0.5)) if cp else 0.5
+    return _clip01(0.10 + 0.16 * tk)
+
+
+def _apply_formation_adjustments(merged: Dict[str, float], agent: "SocietyAgent") -> Dict[str, float]:
+    from src.match_engine.math_utils import sigmoid
+
+    fk = normalize_formation_key(getattr(agent, "formation", ""))
+    def_n = float(fk[0]) if fk and fk[0].isdigit() else 4.0
+    low_block_sig = float(sigmoid(1.15 * (def_n - 5.0)))
+    wide_sig = float(sigmoid(-1.1 * abs(def_n - 3.0)))
+    press_sig = float(sigmoid(1.0 * (4.0 - def_n)))
+    merged["low_block"] = _clip01(merged["low_block"] + 0.12 * low_block_sig)
+    merged["compactness"] = _clip01(merged["compactness"] + 0.10 * low_block_sig)
+    merged["wing_focus"] = _clip01(merged["wing_focus"] + 0.10 * wide_sig)
+    merged["width_play"] = _clip01(merged["width_play"] + 0.08 * wide_sig)
+    merged["pressing_intensity"] = _clip01(merged["pressing_intensity"] + 0.06 * press_sig)
+    return {k: float(sigmoid(2.0 * merged.get(k, 0.5) - 1.0)) for k in TACTICAL_KEYS}
+
+
+def compose_llm_tactical_vector(
+    agent: "SocietyAgent",
+    *,
+    hints: Optional[Dict[str, float]] = None,
+) -> Dict[str, float]:
+    """
+    Preset-coherent vector: named preset is the manifold anchor; four LLM knobs are
+    a small tangent adjustment via vector_from_controls (no raw control overwrite).
+    """
+    cp = getattr(agent, "coach_profile", None)
+    raw_preset = str(getattr(cp, "preferred_preset", "") or "") if cp else ""
+    preset = resolve_tactical_preset(raw_preset)
+    if cp is not None and preset != raw_preset:
+        cp.preferred_preset = preset
+
+    base = dict(TACTICAL_PRESETS[preset])
+    controls = dict(getattr(agent, "tactical_controls", {}) or {})
+    w_ctrl = _control_blend_weight(agent)
+    merged = blend_vectors(base, vector_from_controls(controls), weight=w_ctrl)
+
+    hint_weight = 0.20
+    for k, v in (hints or {}).items():
+        if k in merged:
+            merged = blend_vectors(merged, {k: float(v)}, weight=hint_weight)
+
+    return _apply_formation_adjustments(merged, agent)
 
 
 def vector_from_controls(controls: Dict[str, float]) -> Dict[str, float]:
@@ -55,7 +107,8 @@ def vector_from_controls(controls: Dict[str, float]) -> Dict[str, float]:
     return v
 
 
-def build_tactical_vector_for_agent(agent: "SocietyAgent") -> Dict[str, float]:
+def _build_tactical_vector_base(agent: "SocietyAgent") -> Dict[str, float]:
+    """Archetype / affinity path — never delegates to preset-locked compose."""
     arch = infer_archetype_from_text(
         getattr(agent, "style_desc", ""),
         getattr(agent, "formation", "4-3-3"),
@@ -68,7 +121,7 @@ def build_tactical_vector_for_agent(agent: "SocietyAgent") -> Dict[str, float]:
         arch = getattr(cp, "preferred_preset", "balanced")
     else:
         if cp is not None:
-            preset = getattr(cp, "preferred_preset", None)
+            preset = resolve_tactical_preset(getattr(cp, "preferred_preset", "") or "")
             if preset in TACTICAL_PRESETS:
                 arch = preset
         if arch not in TACTICAL_PRESETS:
@@ -78,24 +131,17 @@ def build_tactical_vector_for_agent(agent: "SocietyAgent") -> Dict[str, float]:
         base = dict(TACTICAL_PRESETS[arch])
         if cp is not None:
             w = 0.22 + 0.18 * float(getattr(cp, "mental", {}).get("tactical_knowledge", 0.5))
-            coach_base = dict(TACTICAL_PRESETS.get(getattr(cp, "preferred_preset", ""), base))
+            coach_base = dict(TACTICAL_PRESETS.get(resolve_tactical_preset(getattr(cp, "preferred_preset", "")), base))
             base = blend_vectors(base, coach_base, weight=w)
     controls = dict(getattr(agent, "tactical_controls", {}) or {})
     merged = blend_vectors(base, vector_from_controls(controls), weight=0.48)
-    merged = blend_vectors(merged, controls, weight=0.72)
-    fk = normalize_formation_key(getattr(agent, "formation", ""))
-    def_n = float(fk[0]) if fk and fk[0].isdigit() else 4.0
-    from src.match_engine.math_utils import sigmoid
+    return _apply_formation_adjustments(merged, agent)
 
-    low_block_sig = float(sigmoid(1.15 * (def_n - 5.0)))
-    wide_sig = float(sigmoid(-1.1 * abs(def_n - 3.0)))
-    press_sig = float(sigmoid(1.0 * (4.0 - def_n)))
-    merged["low_block"] = _clip01(merged["low_block"] + 0.12 * low_block_sig)
-    merged["compactness"] = _clip01(merged["compactness"] + 0.10 * low_block_sig)
-    merged["wing_focus"] = _clip01(merged["wing_focus"] + 0.10 * wide_sig)
-    merged["width_play"] = _clip01(merged["width_play"] + 0.08 * wide_sig)
-    merged["pressing_intensity"] = _clip01(merged["pressing_intensity"] + 0.06 * press_sig)
-    return {k: float(sigmoid(2.0 * merged.get(k, 0.5) - 1.0)) for k in TACTICAL_KEYS}
+
+def build_tactical_vector_for_agent(agent: "SocietyAgent") -> Dict[str, float]:
+    if getattr(agent, "_tactical_preset_locked", False):
+        return compose_llm_tactical_vector(agent)
+    return _build_tactical_vector_base(agent)
 
 
 def legacy_controls_from_vector(tac: Dict[str, float]) -> Dict[str, float]:

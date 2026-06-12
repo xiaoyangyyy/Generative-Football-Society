@@ -93,6 +93,8 @@ def run_micro_benchmark_rows(
     match_seconds: float = 5400.0,
     spec: AblationSpec | None = None,
     cfg: MicroMatchConfig | None = None,
+    tactical_override_home: dict[str, float] | None = None,
+    tactical_override_away: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:
     fixtures = fixtures or DEFAULT_FIXTURES
     engine, _, _ = build_world_and_tournament(root, require_tactics=False)
@@ -100,6 +102,10 @@ def run_micro_benchmark_rows(
     if spec is not None:
         cfg = apply_ablation(spec, cfg)
         tac_h, tac_a = tactical_overrides_for(spec)
+    if tactical_override_home is not None:
+        tac_h = tactical_override_home
+    if tactical_override_away is not None:
+        tac_a = tactical_override_away
     cfg = cfg or MicroMatchConfig()
     cfg.use_micro_goals = True
 

@@ -46,7 +46,7 @@ from src.simulation.fusion_controller import FusionController
 _MEDICAL_CONCERN_SOFT_THRESHOLD = 0.56
 
 WORLD_CUP_2026_GROUPS = {
-    "Group A": ["Mexico", "Czech Republic", "South Africa", "South Korea"],
+    "Group A": ["Mexico", "South Africa", "South Korea", "Czech Republic"],
     "Group B": ["Canada", "Switzerland", "Bosnia and Herzegovina", "Qatar"],
     "Group C": ["Brazil", "Scotland", "Morocco", "Haiti"],
     "Group D": ["United States", "Turkey", "Australia", "Paraguay"],
@@ -220,24 +220,12 @@ class TournamentManager:
 
     def simulate_group_stage(self, llm):
         print("\n" + "="*60 + "\n🚀 PHASE 1: GROUP STAGE (CINDERELLA FIELD ACTIVE)\n" + "="*60)
-        def _round_robin_matchdays_4teams(group_teams: list[str]) -> list[list[tuple[str, str]]]:
-            """
-            Standard round-robin (4 teams) in matchdays:
-            3 rounds, each round has 2 matches, and each team plays exactly once per round.
-            Uses the circle method, keeping group_teams[0] fixed.
-            """
-            if len(group_teams) != 4:
-                raise ValueError(f"Expected exactly 4 teams for 4-team round robin, got {len(group_teams)}")
-            t = list(group_teams)
-            rounds: list[list[tuple[str, str]]] = []
-            # Each round: t[0] vs t[3], t[1] vs t[2]; rotate [t1,t2,t3] as [t3,t1,t2]
-            for _ in range(3):
-                rounds.append([(t[0], t[3]), (t[1], t[2])])
-                t = [t[0], t[3], t[1], t[2]]
-            return rounds
+        from src.simulation.wc2026_schedule import official_group_matchdays, fixture_meta, validate_groups
+
+        validate_groups(self.groups)
 
         for g_name, teams in self.groups.items():
-            matchdays = _round_robin_matchdays_4teams(teams)
+            matchdays = official_group_matchdays(g_name)
             for md_idx, md_matches in enumerate(matchdays, start=1):
                 standings_snapshot = snapshot_standings_table(self.standings, g_name)
                 print(f"\n  [GROUP {g_name}] Matchday {md_idx}/3 (parallel kickoff snapshot)")
@@ -245,6 +233,12 @@ class TournamentManager:
                     mk = self._match_key(g_name, t1, t2)
                     if mk in self.completed_matches:
                         continue
+                    meta = fixture_meta(g_name, t1, t2)
+                    if meta is not None:
+                        print(
+                            f"  [FIXTURE] #{meta.match_number} {meta.date} "
+                            f"{t1} vs {t2} @ {meta.venue}, {meta.city}"
+                        )
                     fixture_seed = hash((g_name, t1, t2, md_idx)) % 10000
                     self.play_match(
                         t1,
@@ -255,6 +249,7 @@ class TournamentManager:
                         matchday=md_idx,
                         standings_snapshot=standings_snapshot,
                         fixture_seed=fixture_seed,
+                        scheduled_home=t1,
                     )
 
     def _stage_pressure(self, stage_name, is_knockout):
@@ -348,10 +343,11 @@ class TournamentManager:
         matchday: int = 0,
         standings_snapshot=None,
         fixture_seed: int = 0,
+        scheduled_home: str | None = None,
     ):
         a1, a2 = self.world.agents[t1_name], self.world.agents[t2_name]
         home_micro, away_micro, neutral_venue, venue_label = resolve_match_venue(
-            t1_name, t2_name, matchday=matchday, fixture_seed=fixture_seed
+            t1_name, t2_name, matchday=matchday, fixture_seed=fixture_seed, scheduled_home=scheduled_home
         )
         ah, aa = self.world.agents[home_micro], self.world.agents[away_micro]
 
@@ -406,6 +402,21 @@ class TournamentManager:
             a2.apply_beliefs_to_tactics(stage_name=stage_name, opponent_style=a1.style_archetype)
             a2.coach_intervention(t2_tactics_json)
             print(f"  [TACTICS] {t2_name}: {t2_data.get('reasoning', 'No reasoning')}")
+            try:
+                from src.simulation.narrative_debug import log_llm_tactics, narrative_debug_enabled
+
+                if narrative_debug_enabled():
+                    log_llm_tactics(
+                        stage=stage_name,
+                        home=home_micro,
+                        away=away_micro,
+                        agent_home=ah,
+                        agent_away=aa,
+                        llm_home=t1_data if home_micro == t1_name else t2_data,
+                        llm_away=t2_data if away_micro == t2_name else t1_data,
+                    )
+            except Exception as _dbg_exc:
+                print(f"  [DEBUG-NARRATIVE] tactics log skipped: {_dbg_exc}")
         except Exception as e:
             print(f"  [ERROR] Tactics parsing failed: {e}")
 
@@ -532,7 +543,12 @@ class TournamentManager:
                 )
                 score_meta["xg_prior"] = [xg_prior_h, xg_prior_a]
             except Exception as exc:
+                strict = os.environ.get("MATCH_MICRO_STRICT", "").strip().lower() in ("1", "true", "yes")
                 print(f"  [MICRO] physics-first failed ({exc}); falling back to macro score.")
+                if strict:
+                    raise RuntimeError(
+                        f"Micro physics-first failed ({t1_name} vs {t2_name}): {exc}"
+                    ) from exc
                 physics_first = False
                 micro_summary = None
 
@@ -666,6 +682,26 @@ class TournamentManager:
         xg_context_line = "; ".join(list(dict.fromkeys(merged_xg))) if merged_xg else ""
         if xg_context_line:
             print(f"  [XG_CONTEXT] {xg_context_line}")
+
+        try:
+            from src.simulation.narrative_debug import log_match_debug, narrative_debug_enabled
+
+            if narrative_debug_enabled():
+                log_match_debug(
+                    stage=stage_name,
+                    home=home_micro,
+                    away=away_micro,
+                    score_home=s1 if home_micro == t1_name else s2,
+                    score_away=s2 if away_micro == t2_name else s1,
+                    xg_home=xg1 if home_micro == t1_name else xg2,
+                    xg_away=xg2 if away_micro == t2_name else xg1,
+                    agent_home=ah,
+                    agent_away=aa,
+                    micro=micro_summary,
+                    xg_context=xg_context_line,
+                )
+        except Exception as _dbg_exc:
+            print(f"  [DEBUG-NARRATIVE] match log skipped: {_dbg_exc}")
 
         aff_on = os.environ.get("MATCH_AFFECTIVE", "").strip().lower() in ("1", "true", "yes")
         if micro_replay_mode or (aff_on and micro_summary is None):

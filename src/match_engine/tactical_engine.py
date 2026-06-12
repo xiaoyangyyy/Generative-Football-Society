@@ -68,20 +68,33 @@ class TacticalMicroEngine:
         }
 
     def shot_bias(self, tac: Dict[str, float]) -> float:
-        return float(0.95 + 0.45 * tac.get("verticality", 0.5) + 0.28 * tac.get("risk_budget", 0.5))
+        """Continuous shot appetite from tactical posture (not legacy knobs alone)."""
+        vert = float(tac.get("verticality", 0.5))
+        risk = float(tac.get("risk_budget", 0.5))
+        low = float(tac.get("low_block", 0.35))
+        poss = float(tac.get("possession_orientation", 0.5))
+        counter = float(tac.get("counter_attack", 0.45))
+        attack = 0.52 * vert + 0.30 * risk + 0.22 * counter * vert
+        defend = 0.38 * low + 0.22 * (1.0 - poss) * low
+        return float(0.88 + attack - defend)
 
     def step_in_match_pressure(self, state: "MatchAffectiveState", dt: float) -> None:
         """Slow drift of tactical_current under score / possession (continuous)."""
+        from src.match_engine.math_utils import sigmoid
+
         score_h = state.home.score - state.away.score
         for team, swing in ((state.home, score_h), (state.away, -score_h)):
             tac = self.get_team_tactics(team)
             if not tac:
                 continue
             cur = dict(tac)
-            if swing < -1:
-                cur["low_block"] = min(1.0, cur.get("low_block", 0.5) + 0.02 * dt)
-                cur["risk_budget"] = max(0.0, cur.get("risk_budget", 0.5) - 0.015 * dt)
-            elif swing > 1:
-                cur["high_press"] = min(1.0, cur.get("high_press", 0.5) + 0.02 * dt)
-                cur["risk_budget"] = min(1.0, cur.get("risk_budget", 0.5) + 0.012 * dt)
+            lose_w = float(sigmoid(-0.85 * swing))
+            win_w = float(sigmoid(0.85 * swing))
+            lb = cur.get("low_block", 0.5)
+            rb = cur.get("risk_budget", 0.5)
+            hp = cur.get("high_press", 0.5)
+            cur["low_block"] = float(np.clip(lb + 0.018 * dt * lose_w * (1.0 - lb), 0.0, 1.0))
+            cur["risk_budget"] = float(np.clip(rb - 0.012 * dt * lose_w * rb, 0.0, 1.0))
+            cur["high_press"] = float(np.clip(hp + 0.018 * dt * win_w * (1.0 - hp), 0.0, 1.0))
+            cur["risk_budget"] = float(np.clip(cur["risk_budget"] + 0.010 * dt * win_w * (1.0 - rb), 0.0, 1.0))
             team.coach.tactical_current = cur
