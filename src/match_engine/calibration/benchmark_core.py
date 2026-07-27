@@ -119,7 +119,9 @@ def run_micro_benchmark_rows(
         if home not in engine.agents or away not in engine.agents:
             continue
         for i in range(samples):
-            seed = seed_start + i + hash((home, away)) % 1000
+            from src.simulation.random_control import derive_seed
+
+            seed = derive_seed(seed_start, "calibration", home, away, i)
             eff_h = 68.0
             eff_a = 62.0
             if roster_status_mode():

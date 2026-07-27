@@ -1,0 +1,3863 @@
+{
+  "contract": "successful reception timestamp to receiver next marked action timestamp",
+  "correction": "SkillCorner uses receiver possession frame_end-frame_start; StatsBomb uses Ball Receipt timestamp to recipient action",
+  "matches": [
+    {
+      "events": 611,
+      "file": "data/frame_world/v91_temporal_providers/skillcorner_1886347.npz",
+      "match_id": "1886347",
+      "observed": 589,
+      "provider": "skillcorner",
+      "sha256": "9b0fb4aa6a836946aab3a84c6822bcb714288ef62fb6d691f990141ac84cd289",
+      "source": "explicit receiver possession frame_start to frame_end duration"
+    },
+    {
+      "events": 522,
+      "file": "data/frame_world/v91_temporal_providers/skillcorner_1899585.npz",
+      "match_id": "1899585",
+      "observed": 507,
+      "provider": "skillcorner",
+      "sha256": "ce23b4801117784623af4195d0dbdb0e79d7d6daebe7fe351e24f28f76de1950",
+      "source": "explicit receiver possession frame_start to frame_end duration"
+    },
+    {
+      "events": 582,
+      "file": "data/frame_world/v91_temporal_providers/skillcorner_1925299.npz",
+      "match_id": "1925299",
+      "observed": 560,
+      "provider": "skillcorner",
+      "sha256": "6b33da5440c34e1ea1261b1bc8ea79d00841eda9ce08a2023fab63d317c282a7",
+      "source": "explicit receiver possession frame_start to frame_end duration"
+    },
+    {
+      "events": 624,
+      "file": "data/frame_world/v91_temporal_providers/skillcorner_1953632.npz",
+      "match_id": "1953632",
+      "observed": 595,
+      "provider": "skillcorner",
+      "sha256": "52d3a963b6d3e9bab9b08f3e244d387e7fe41e68c926deb64515b2e16c15e1fd",
+      "source": "explicit receiver possession frame_start to frame_end duration"
+    },
+    {
+      "events": 690,
+      "file": "data/frame_world/v91_temporal_providers/skillcorner_1996435.npz",
+      "match_id": "1996435",
+      "observed": 659,
+      "provider": "skillcorner",
+      "sha256": "9bd4727bd2380b12c26df18dcfe69360275bfee1fa40b8d385cd177ac1e68a1c",
+      "source": "explicit receiver possession frame_start to frame_end duration"
+    },
+    {
+      "events": 623,
+      "file": "data/frame_world/v91_temporal_providers/skillcorner_2006229.npz",
+      "match_id": "2006229",
+      "observed": 587,
+      "provider": "skillcorner",
+      "sha256": "2c66246f87191c62b3408511fb94fdd57c509421e56980087b0989b82571ae9d",
+      "source": "explicit receiver possession frame_start to frame_end duration"
+    },
+    {
+      "events": 398,
+      "file": "data/frame_world/v91_temporal_providers/skillcorner_2011166.npz",
+      "match_id": "2011166",
+      "observed": 370,
+      "provider": "skillcorner",
+      "sha256": "11d1dbd5a3559a628c89036b5481f99316dedf60a2ae8a4189caaa17157fa187",
+      "source": "explicit receiver possession frame_start to frame_end duration"
+    },
+    {
+      "events": 519,
+      "file": "data/frame_world/v91_temporal_providers/skillcorner_2013725.npz",
+      "match_id": "2013725",
+      "observed": 498,
+      "provider": "skillcorner",
+      "sha256": "73e32e7e5c8384db79e73bb34422b4bcb25c61f343c719e14481960696f2ee4d",
+      "source": "explicit receiver possession frame_start to frame_end duration"
+    },
+    {
+      "events": 465,
+      "file": "data/frame_world/v91_temporal_providers/skillcorner_2015213.npz",
+      "match_id": "2015213",
+      "observed": 443,
+      "provider": "skillcorner",
+      "sha256": "5a480c7d49f501984be79d1df162856b43841dc452630daccd90df53c05f5299",
+      "source": "explicit receiver possession frame_start to frame_end duration"
+    },
+    {
+      "events": 417,
+      "file": "data/frame_world/v91_temporal_providers/skillcorner_2017461.npz",
+      "match_id": "2017461",
+      "observed": 400,
+      "provider": "skillcorner",
+      "sha256": "657bed39129c98df65ed74b6b43f4a3237dcf0c22a652936bbf86781a99ced86",
+      "source": "explicit receiver possession frame_start to frame_end duration"
+    },
+    {
+      "events": 1024,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3764440.npz",
+      "match_id": "3764440",
+      "observed": 985,
+      "provider": "statsbomb360",
+      "sha256": "1d8b289e2a0c7603672499de7c323eef9c10aeea68ce4853c7898b4d618c0cac",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 925,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3764661.npz",
+      "match_id": "3764661",
+      "observed": 878,
+      "provider": "statsbomb360",
+      "sha256": "b3e0089b742bd862c4fa62328e94144ea40b00723c1cde282d2c4e5c65c4e1d0",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1099,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773369.npz",
+      "match_id": "3773369",
+      "observed": 1063,
+      "provider": "statsbomb360",
+      "sha256": "83b074605c96ae8d49b6251f196d80aa5873dc4b4361792161cc978b1cfe7b58",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 845,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773372.npz",
+      "match_id": "3773372",
+      "observed": 818,
+      "provider": "statsbomb360",
+      "sha256": "a32b9ae09bbb62589d4d9ccdfd2b54b9908c6df79d4f3ffb951925deb8f2e4d8",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 840,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773377.npz",
+      "match_id": "3773377",
+      "observed": 819,
+      "provider": "statsbomb360",
+      "sha256": "a78fc04e572807e8c2dfae018d6bab31b665cc64856d119f3b3fe6bcafce538d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 873,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773386.npz",
+      "match_id": "3773386",
+      "observed": 837,
+      "provider": "statsbomb360",
+      "sha256": "ae209e3592569f9c248926897d45b20c7c9a64393e390bde613301bec009712a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 814,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773387.npz",
+      "match_id": "3773387",
+      "observed": 778,
+      "provider": "statsbomb360",
+      "sha256": "3e2483599fb62016319e86a9f36ff5930e4650a2549db10c163b564fb0f2beee",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 854,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773403.npz",
+      "match_id": "3773403",
+      "observed": 833,
+      "provider": "statsbomb360",
+      "sha256": "85f574d1b614db1b177a8d7a3fba67eef63f05c707eeaa15cd82762a662e9189",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 871,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773415.npz",
+      "match_id": "3773415",
+      "observed": 847,
+      "provider": "statsbomb360",
+      "sha256": "4420d5d850577b5d5ded1b44f0af6d4af70e3a472a5f8cab6ac557c8c8e260ca",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 821,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773428.npz",
+      "match_id": "3773428",
+      "observed": 799,
+      "provider": "statsbomb360",
+      "sha256": "781db43f4c627eecf5c4408e4bae33c1de4b6b8d2e14b18e26bae7d0a767fff3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 929,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773457.npz",
+      "match_id": "3773457",
+      "observed": 913,
+      "provider": "statsbomb360",
+      "sha256": "d772a4584010082c1241e298e4ed7157a8f51cef57a4e52a43fe277f28513307",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 798,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773466.npz",
+      "match_id": "3773466",
+      "observed": 771,
+      "provider": "statsbomb360",
+      "sha256": "d36051dfc4a2e2aefe4a0b78469215b314fd42eb31bdee094a502572410a705c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 847,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773474.npz",
+      "match_id": "3773474",
+      "observed": 820,
+      "provider": "statsbomb360",
+      "sha256": "27cd74bf7afe445b426620cbfa5af78fe83b4507e020bfc4983323304668ce48",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 871,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773477.npz",
+      "match_id": "3773477",
+      "observed": 837,
+      "provider": "statsbomb360",
+      "sha256": "4f8779f3fcbf220f76dd4b6f8d9766866de34c68a6c01e503d036cf702a47319",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 778,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773497.npz",
+      "match_id": "3773497",
+      "observed": 758,
+      "provider": "statsbomb360",
+      "sha256": "15969b78a534f04e7dbbc3ce0d7a0807daad1ef18b0507e461350bdf144ee955",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 774,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773523.npz",
+      "match_id": "3773523",
+      "observed": 733,
+      "provider": "statsbomb360",
+      "sha256": "46e7697320c07830d791ffd624becb07177fd475b31417c013814aed3705ff72",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 975,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773526.npz",
+      "match_id": "3773526",
+      "observed": 947,
+      "provider": "statsbomb360",
+      "sha256": "21d4117df93f759bd3cb6c405f7e469e590c7502232d3dcc3a5252c2c32535e0",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 969,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773547.npz",
+      "match_id": "3773547",
+      "observed": 947,
+      "provider": "statsbomb360",
+      "sha256": "7125ab4e9fff378b047f1665ab3778bf8d3a1ca4a2ee3597d45de3e1eb4cf9bd",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 903,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773552.npz",
+      "match_id": "3773552",
+      "observed": 873,
+      "provider": "statsbomb360",
+      "sha256": "502b386bc78f78f6905a4e44f3c1618e44b1bf1319db4581ba1cd05e4757e9ff",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 963,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773565.npz",
+      "match_id": "3773565",
+      "observed": 936,
+      "provider": "statsbomb360",
+      "sha256": "87f1dbb5936a563083e60598688d459f7a96e26b4093fda771f76acd001851a4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 941,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773571.npz",
+      "match_id": "3773571",
+      "observed": 914,
+      "provider": "statsbomb360",
+      "sha256": "73357e6a7822275f22134587ff3eb12c3ba83108feb1f7c599c6fdad3ed1b558",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 949,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773585.npz",
+      "match_id": "3773585",
+      "observed": 923,
+      "provider": "statsbomb360",
+      "sha256": "03c5bbc91d5edb5812c50fbe1122dc2c3840c878ed6b3ab2dbaddd2eba182535",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 882,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773586.npz",
+      "match_id": "3773586",
+      "observed": 862,
+      "provider": "statsbomb360",
+      "sha256": "a6db9ffd435bde781b4a733e4b80d979d75dc8b5afc0963900c25f1a2140a773",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 661,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773587.npz",
+      "match_id": "3773587",
+      "observed": 637,
+      "provider": "statsbomb360",
+      "sha256": "741e8896558f32490594cc4913b87618387d98da630830e18660c87e76a913b9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1004,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773593.npz",
+      "match_id": "3773593",
+      "observed": 967,
+      "provider": "statsbomb360",
+      "sha256": "67900afa80fba87ae7619b30a4b190877a948a9f715569d4cc2be5a93d8e80a3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 929,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773597.npz",
+      "match_id": "3773597",
+      "observed": 892,
+      "provider": "statsbomb360",
+      "sha256": "52fcff7359ef9100a55c2708344b459e3a7b19fc2ce1e3404ed99317ebcff7e2",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 885,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773625.npz",
+      "match_id": "3773625",
+      "observed": 852,
+      "provider": "statsbomb360",
+      "sha256": "cb816e2494305b5400fa427dc1a5740ae5d0d1f6ecda0c2fb881d36dd05bfe8e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 941,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773631.npz",
+      "match_id": "3773631",
+      "observed": 912,
+      "provider": "statsbomb360",
+      "sha256": "eafe42390124d1f26e1ba1a854defbabaa6da5a86406b0221d2d893ff6f99002",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 966,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773656.npz",
+      "match_id": "3773656",
+      "observed": 947,
+      "provider": "statsbomb360",
+      "sha256": "6c5ac1e73a6eb62bf000bd2141f8c45769d04c3cce08a9d39bb688627de5bbc7",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 903,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773660.npz",
+      "match_id": "3773660",
+      "observed": 876,
+      "provider": "statsbomb360",
+      "sha256": "1ea1b3973bc6d2111c1136e02bd404c5279fb68a7c853e68fae6a39c6a45a499",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 963,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773661.npz",
+      "match_id": "3773661",
+      "observed": 949,
+      "provider": "statsbomb360",
+      "sha256": "874b4803cb47d91542d4483f6efd16b56a05a88fa93391a9482edc5ae735fb6f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 983,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773665.npz",
+      "match_id": "3773665",
+      "observed": 943,
+      "provider": "statsbomb360",
+      "sha256": "1ab0ade91ee0093393469b34e9728bd4ff5a854695e04cb8e595df7959e1e69c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1029,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773672.npz",
+      "match_id": "3773672",
+      "observed": 1003,
+      "provider": "statsbomb360",
+      "sha256": "8dead7026e888f006459e64a7fc32250ae6d62ee1c2d31ef53f5e417da7bedde",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 894,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773689.npz",
+      "match_id": "3773689",
+      "observed": 838,
+      "provider": "statsbomb360",
+      "sha256": "a9a3fc1f7c002d319323549cd91c46576076cbf3c7ad2761bf97268b33e061c0",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 934,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3773695.npz",
+      "match_id": "3773695",
+      "observed": 909,
+      "provider": "statsbomb360",
+      "sha256": "5a4211119376006f9f10ca1a10e3a034d5bdb32b2a923747ff1716f45bde0606",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 751,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788741.npz",
+      "match_id": "3788741",
+      "observed": 727,
+      "provider": "statsbomb360",
+      "sha256": "c359aa665ff23c8e7e0033efc51251bebb83165f8a2a9d35861b2850878dbb22",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 675,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788742.npz",
+      "match_id": "3788742",
+      "observed": 652,
+      "provider": "statsbomb360",
+      "sha256": "8d3578593b2630a2f46a7a6e3b610158de59b75d8ae6947f9ddb30f16405567f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 728,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788743.npz",
+      "match_id": "3788743",
+      "observed": 715,
+      "provider": "statsbomb360",
+      "sha256": "f8f5db5ebd042b8bb23566b3dbd25243228d5937424340e2f01dc7030d255bb9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 632,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788744.npz",
+      "match_id": "3788744",
+      "observed": 606,
+      "provider": "statsbomb360",
+      "sha256": "d4a9b6396a205abcd8e1017dddb9a9a0f98eec3b0dd0f0a3179970b575b907f4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 733,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788745.npz",
+      "match_id": "3788745",
+      "observed": 699,
+      "provider": "statsbomb360",
+      "sha256": "8b036e6c56ab591472e575c8e825a6cb8eeca2e2a25d2ac1172e340d14fc79f6",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 892,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788746.npz",
+      "match_id": "3788746",
+      "observed": 843,
+      "provider": "statsbomb360",
+      "sha256": "d7460fb4f1d8dcf18d39fb6ee8d6ba246f016a6087ee675dcd04054d93bfcb98",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 632,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788747.npz",
+      "match_id": "3788747",
+      "observed": 611,
+      "provider": "statsbomb360",
+      "sha256": "5ef8078cf10a6f32d9782a20e64178a16a1740ba05f0a39ee4376b92a6d84f48",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 553,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788748.npz",
+      "match_id": "3788748",
+      "observed": 532,
+      "provider": "statsbomb360",
+      "sha256": "f563b73d2e9635058d7f7ec69e9b1096a4212038f16857d40a919b3765c82b2d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 681,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788749.npz",
+      "match_id": "3788749",
+      "observed": 664,
+      "provider": "statsbomb360",
+      "sha256": "bf8ec452463d53d7cde7d93c7303aa44c3653c4af8251feed37960333e7dab45",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 831,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788750.npz",
+      "match_id": "3788750",
+      "observed": 805,
+      "provider": "statsbomb360",
+      "sha256": "1ff06cd77f05a4a9314fffba5f713869ecbcb276858f8a46ed143ae0e176dc6d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 857,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788751.npz",
+      "match_id": "3788751",
+      "observed": 836,
+      "provider": "statsbomb360",
+      "sha256": "1990e32738c2ed755de142ec80707852d5534d78f83dd2f7e3f79e4ae7af98df",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 662,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788752.npz",
+      "match_id": "3788752",
+      "observed": 637,
+      "provider": "statsbomb360",
+      "sha256": "92c44da76ef094b8359303c8f3f60e602f0768f5af548e0c58357fdb16d28127",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 668,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788753.npz",
+      "match_id": "3788753",
+      "observed": 646,
+      "provider": "statsbomb360",
+      "sha256": "390a9ffa53dbded83422e3ad789d7aae85f22ebda46cabefeb347aea05362dbb",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 834,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788754.npz",
+      "match_id": "3788754",
+      "observed": 812,
+      "provider": "statsbomb360",
+      "sha256": "4b4bf464a445a23065aea050767843c8e205f35a76d696b5b407bd9d3a108ba5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 594,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788755.npz",
+      "match_id": "3788755",
+      "observed": 573,
+      "provider": "statsbomb360",
+      "sha256": "08a8902b2d572401c40fc285d205e9348491b61afe5b1ce564989afcbc70d723",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 724,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788756.npz",
+      "match_id": "3788756",
+      "observed": 689,
+      "provider": "statsbomb360",
+      "sha256": "2a402501436a4a466597a89dc8e2a5cf254a9b7e96556aae2e0b8eba2d37d00d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 788,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788757.npz",
+      "match_id": "3788757",
+      "observed": 771,
+      "provider": "statsbomb360",
+      "sha256": "4976444f179d5e25edccca8ad1e613295d93b60da68dee9efd834e17ecf7e50f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 639,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788758.npz",
+      "match_id": "3788758",
+      "observed": 610,
+      "provider": "statsbomb360",
+      "sha256": "a12965ede73d1c450faa6b61957b88ac28fdf010eb581a90845f69cca9885318",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 755,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788759.npz",
+      "match_id": "3788759",
+      "observed": 732,
+      "provider": "statsbomb360",
+      "sha256": "b611f36dd36265fe22428a97cb94e388d052f9ef84be14896099c86683532bf4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 622,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788760.npz",
+      "match_id": "3788760",
+      "observed": 586,
+      "provider": "statsbomb360",
+      "sha256": "eb188d4c89ad5f9c7baf33b5d918797682066760fd4661167af0280bbbf563c4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 747,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788761.npz",
+      "match_id": "3788761",
+      "observed": 720,
+      "provider": "statsbomb360",
+      "sha256": "79bc8b0d5aa7d3e0ae81f28ff05fd3d43d9c34da419adedfdb0fa5f907a168d3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 707,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788762.npz",
+      "match_id": "3788762",
+      "observed": 689,
+      "provider": "statsbomb360",
+      "sha256": "d233e3ebc854e8557591b4c95ca1f512149e7e3d63a75b3bb48e90b92c21c78c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 718,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788763.npz",
+      "match_id": "3788763",
+      "observed": 704,
+      "provider": "statsbomb360",
+      "sha256": "b5a9af61828bdba85ca410f1418b6f2519d0ed3213f26da4b16a84c9ce336e73",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 760,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788764.npz",
+      "match_id": "3788764",
+      "observed": 738,
+      "provider": "statsbomb360",
+      "sha256": "c7d675604fd34750ae6fff91426e3ef6ab22fa6213469c7b392c2b7e0eb51dbe",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 760,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788765.npz",
+      "match_id": "3788765",
+      "observed": 733,
+      "provider": "statsbomb360",
+      "sha256": "8839fd8b606a78205d2e09e539700503e377815e2d8a25f51113a70d08cd1667",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 678,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788766.npz",
+      "match_id": "3788766",
+      "observed": 652,
+      "provider": "statsbomb360",
+      "sha256": "6ff87c763ac253db9f875ba53ef522c3d14390e09ce65e63f1ac0071c57bb515",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 682,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788767.npz",
+      "match_id": "3788767",
+      "observed": 652,
+      "provider": "statsbomb360",
+      "sha256": "a145fc632604e8260d72dc9e5cf2f8adc2f9091e3a12537e54debcd51f68f6b2",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 815,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788768.npz",
+      "match_id": "3788768",
+      "observed": 785,
+      "provider": "statsbomb360",
+      "sha256": "c16d14062eef66ad79e4988c998891ab2aad58869729322a268e09762a60673b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 525,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788769.npz",
+      "match_id": "3788769",
+      "observed": 509,
+      "provider": "statsbomb360",
+      "sha256": "15602540231c44db5873a625d34b718370ad8aa335f8f868d9483d96dbdd87f3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 794,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788770.npz",
+      "match_id": "3788770",
+      "observed": 749,
+      "provider": "statsbomb360",
+      "sha256": "31ccbd1f4d2630bc2f34e11d1932d1da80a5d3f83e13c830eaac1b627a8ef2c1",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 731,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788771.npz",
+      "match_id": "3788771",
+      "observed": 701,
+      "provider": "statsbomb360",
+      "sha256": "f87194d20a0fbe24170fc112f7054995e82ddcaaa1d4db1af175850677a4359f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 721,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788772.npz",
+      "match_id": "3788772",
+      "observed": 689,
+      "provider": "statsbomb360",
+      "sha256": "e07bfa001be1a4144363577e9311de16197d02815ae6c70eb13bf1f6b0a6afd0",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 879,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788773.npz",
+      "match_id": "3788773",
+      "observed": 851,
+      "provider": "statsbomb360",
+      "sha256": "e7f7d84d4a6d8a925953e9d1fb13d51e24d7d010c7a9cff3780c0b7a63b539ae",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 724,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788774.npz",
+      "match_id": "3788774",
+      "observed": 694,
+      "provider": "statsbomb360",
+      "sha256": "9f76fbd7d664ccb0b9c512c98621403b70648b9c1716db72f0161cba9b96da4b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 794,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788775.npz",
+      "match_id": "3788775",
+      "observed": 761,
+      "provider": "statsbomb360",
+      "sha256": "be5441f651c43a3386dd9079b4cb08871386579b5935d60feeadd53d467d3a23",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 442,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3788776.npz",
+      "match_id": "3788776",
+      "observed": 427,
+      "provider": "statsbomb360",
+      "sha256": "8ddfbca67986f57f8fd1a92bf936338263bcb5b3d4c0b60d9447ed11d97622cb",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1012,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3794685.npz",
+      "match_id": "3794685",
+      "observed": 975,
+      "provider": "statsbomb360",
+      "sha256": "23416cd894ba960ef9a1e2024077180092959401e5a7c526de340a8701b2feed",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1027,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3794686.npz",
+      "match_id": "3794686",
+      "observed": 993,
+      "provider": "statsbomb360",
+      "sha256": "3f3f076cef548b6a61e05334d95beeb25b972186a575aecbdc54a677e27c872a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 808,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3794687.npz",
+      "match_id": "3794687",
+      "observed": 770,
+      "provider": "statsbomb360",
+      "sha256": "53de1e7ce8133fae2c7b1f76a35127532fe9e6d2ac31878288440ea02255e1a3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 771,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3794688.npz",
+      "match_id": "3794688",
+      "observed": 740,
+      "provider": "statsbomb360",
+      "sha256": "abd65e5612d823f7675967aed379d28c2d01e331adee50dba018ced208b74b34",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 633,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3794689.npz",
+      "match_id": "3794689",
+      "observed": 611,
+      "provider": "statsbomb360",
+      "sha256": "1e492d5be79f9ddff3d61629b514946edbccdc52832f5cc22a0306ef3edafdd7",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 480,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3794690.npz",
+      "match_id": "3794690",
+      "observed": 442,
+      "provider": "statsbomb360",
+      "sha256": "c4e0749112b5071c13c492d500882433e69bb1b7ddf0e5c6aaa04a0f2ee416a5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 898,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3794691.npz",
+      "match_id": "3794691",
+      "observed": 865,
+      "provider": "statsbomb360",
+      "sha256": "2102f0d29c60e97ab6afe0d1a3b48d1903abe4f1535c3a00c0dac11ec45b91ea",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1053,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3794692.npz",
+      "match_id": "3794692",
+      "observed": 999,
+      "provider": "statsbomb360",
+      "sha256": "3c3cbf37c00191a981abf5fa385869925680d01406bbf680f073bbfd6f60a2c2",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 717,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3795107.npz",
+      "match_id": "3795107",
+      "observed": 699,
+      "provider": "statsbomb360",
+      "sha256": "147dd601aa62acf95d9d328cab2fda7d090fb1c802493e9aef020db8a7a0fcde",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 966,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3795108.npz",
+      "match_id": "3795108",
+      "observed": 936,
+      "provider": "statsbomb360",
+      "sha256": "d9aa92e6d4a5437225dcfcec7028bb5f1814c736eab22b5b2b89f26ff23c6bd6",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 508,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3795109.npz",
+      "match_id": "3795109",
+      "observed": 485,
+      "provider": "statsbomb360",
+      "sha256": "a21ba553e5c3fdacd4da97ae44fd3907d5e007a6d054b3b40ac3d63b282ab5ea",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1024,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3795187.npz",
+      "match_id": "3795187",
+      "observed": 992,
+      "provider": "statsbomb360",
+      "sha256": "2b5ca5fbcb181bcdac4bbb7da6b57e05e5da5529f01b0c8ab38bcef954b72568",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 991,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3795220.npz",
+      "match_id": "3795220",
+      "observed": 951,
+      "provider": "statsbomb360",
+      "sha256": "2fa656975074530375677a9b68a546aa8b6dac6fd6ccefe79e2d7428fcf449b2",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1009,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3795221.npz",
+      "match_id": "3795221",
+      "observed": 969,
+      "provider": "statsbomb360",
+      "sha256": "510ab20f7b9b971ebf68a9ed67fdc59861b61b9dbd647dbc2f087c84e3c6f084",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1012,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3795506.npz",
+      "match_id": "3795506",
+      "observed": 975,
+      "provider": "statsbomb360",
+      "sha256": "82c925beaca101781324dff5bda6a004aae846886e582d74a1e0651b76fc0999",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 780,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802643.npz",
+      "match_id": "3802643",
+      "observed": 764,
+      "provider": "statsbomb360",
+      "sha256": "5fa2a6b322753c007615bb0a24b819003d1f9e25f0527691dc33d49b397584fb",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 761,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802665.npz",
+      "match_id": "3802665",
+      "observed": 736,
+      "provider": "statsbomb360",
+      "sha256": "338cca7830ac9a52d4709a1af0e317559fdde632af75504bc86fffd45abda231",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 815,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802676.npz",
+      "match_id": "3802676",
+      "observed": 791,
+      "provider": "statsbomb360",
+      "sha256": "c333efdffc6e35704839143296cc6ad43835290fdd1563cb736243d72c410891",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 763,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802683.npz",
+      "match_id": "3802683",
+      "observed": 743,
+      "provider": "statsbomb360",
+      "sha256": "63f3725b0da3cfb49500173c4b1ace212c307b956555daf017824aedce423852",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 769,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802685.npz",
+      "match_id": "3802685",
+      "observed": 736,
+      "provider": "statsbomb360",
+      "sha256": "04a29f4db7c2b3127b43395584bc20861eed125e246a8c4c76a326aee1dd3194",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 742,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802690.npz",
+      "match_id": "3802690",
+      "observed": 716,
+      "provider": "statsbomb360",
+      "sha256": "fd73a43cf5b943e00a40a50f40e20fa6e4fc600dbac0c560b8057841059f9be8",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 815,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802696.npz",
+      "match_id": "3802696",
+      "observed": 789,
+      "provider": "statsbomb360",
+      "sha256": "d5ad6ede5813e6c9726cd45b4cdd4d0b3b086424ff055bc8b5f577963fecd4ff",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 764,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802699.npz",
+      "match_id": "3802699",
+      "observed": 726,
+      "provider": "statsbomb360",
+      "sha256": "fd5911a538ca8ff435ba0f42a8c1995f08d2f2afc8667134900622ccfdfb9246",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 760,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802709.npz",
+      "match_id": "3802709",
+      "observed": 730,
+      "provider": "statsbomb360",
+      "sha256": "a48184b2529924b03e6627b14f190a84f81854257df80cd071e7cdd5640388bd",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 772,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802752.npz",
+      "match_id": "3802752",
+      "observed": 736,
+      "provider": "statsbomb360",
+      "sha256": "7202dc7511733160811666fa1bac0929aa630a92ca03a353a8d644103f2c59e5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 730,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802793.npz",
+      "match_id": "3802793",
+      "observed": 702,
+      "provider": "statsbomb360",
+      "sha256": "0041958b83e4fdacc29a84569696504e36e43e28190a776676154725a9912623",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 739,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802795.npz",
+      "match_id": "3802795",
+      "observed": 701,
+      "provider": "statsbomb360",
+      "sha256": "4b17e55059f8bfdaced23fb53c7cebbb5a1a879b24349169400020cc7e0e7c47",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1000,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802802.npz",
+      "match_id": "3802802",
+      "observed": 960,
+      "provider": "statsbomb360",
+      "sha256": "94baf09a9892e6c99e48684d49099be92add3c88ff939a654e2509147ed5f1f9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 870,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802805.npz",
+      "match_id": "3802805",
+      "observed": 830,
+      "provider": "statsbomb360",
+      "sha256": "39d51fee9bbffb5681dd098da7f8ec20da2b2736a4516b5acd84fd63d5b7e86a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 716,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802809.npz",
+      "match_id": "3802809",
+      "observed": 680,
+      "provider": "statsbomb360",
+      "sha256": "3acef2a05489278c1ac205c5c85bbcaa5fd1ca83966b7712aa917b22298d3257",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 880,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802818.npz",
+      "match_id": "3802818",
+      "observed": 849,
+      "provider": "statsbomb360",
+      "sha256": "47449f070ea5a9651421ac050cf8d0641a77ed92c530e541192997417fa342e5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 761,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802837.npz",
+      "match_id": "3802837",
+      "observed": 746,
+      "provider": "statsbomb360",
+      "sha256": "7e611adb26093de620559660d89213565e093ee0bbf6d838922bd68f7746c666",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 736,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802839.npz",
+      "match_id": "3802839",
+      "observed": 702,
+      "provider": "statsbomb360",
+      "sha256": "7eac1c2f436df964f0b4d60f06a007f5340117b63526b04026ce7c7334453eff",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 803,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802902.npz",
+      "match_id": "3802902",
+      "observed": 772,
+      "provider": "statsbomb360",
+      "sha256": "f38238d66145dbc906fe52954fa37b15c5b704ed3133347662f843faa270c0a5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 815,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802904.npz",
+      "match_id": "3802904",
+      "observed": 764,
+      "provider": "statsbomb360",
+      "sha256": "81b26a398a45fa07dc1998261f2b47e47e325627be6c0f563845b1989b752f15",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 844,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802907.npz",
+      "match_id": "3802907",
+      "observed": 805,
+      "provider": "statsbomb360",
+      "sha256": "90634adac1824c591b8814def04e5159a1f7572db0b75e6551fd5fe7b01dc38c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 780,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802930.npz",
+      "match_id": "3802930",
+      "observed": 751,
+      "provider": "statsbomb360",
+      "sha256": "f7e4b2e23630102ae1876c4fbc94d841fab562388b39640ca070d24cd5906427",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 771,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802948.npz",
+      "match_id": "3802948",
+      "observed": 749,
+      "provider": "statsbomb360",
+      "sha256": "5e52cc72363765366913204efaa82702df65abe2c8c3931983c7b73b45f7a86a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 842,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802983.npz",
+      "match_id": "3802983",
+      "observed": 822,
+      "provider": "statsbomb360",
+      "sha256": "695940de14d67eaa6792399b19f3dae7611fc9cb58cd4eda37d732529bf877ca",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 931,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3802984.npz",
+      "match_id": "3802984",
+      "observed": 900,
+      "provider": "statsbomb360",
+      "sha256": "5f6b818a3e672c9ab82f4e1ce08099b097dcb7905790141b136eb7bbb81b04cc",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 831,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3803000.npz",
+      "match_id": "3803000",
+      "observed": 812,
+      "provider": "statsbomb360",
+      "sha256": "7a91ee72546443c3338b0da6659ac069912bd95f3726b4dbd1c15c2b6dcf35da",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 680,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835319.npz",
+      "match_id": "3835319",
+      "observed": 658,
+      "provider": "statsbomb360",
+      "sha256": "1cfc0212260d15dda2023ab7565e3286dc879eb2c94f9ea798b313dba468ef29",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 619,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835320.npz",
+      "match_id": "3835320",
+      "observed": 601,
+      "provider": "statsbomb360",
+      "sha256": "6cb8584d1c970c09cb9b70679dd923a6c1cc14c4a3aaf3d9a6720b2d50f0e627",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 653,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835321.npz",
+      "match_id": "3835321",
+      "observed": 634,
+      "provider": "statsbomb360",
+      "sha256": "6bd30c31f36a501899957811c9aca98c591f9ddcbd2d74023304080e82f7eb3b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 581,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835322.npz",
+      "match_id": "3835322",
+      "observed": 566,
+      "provider": "statsbomb360",
+      "sha256": "bdaba194d7f0b77038c4279193fd5165564c8fe260a764b23d30dddc788fad4e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 583,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835323.npz",
+      "match_id": "3835323",
+      "observed": 561,
+      "provider": "statsbomb360",
+      "sha256": "70d645c62ae43ddc7ef11ab8f2ff5d250c676ab8ee8929c2d148670ac5935b81",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 670,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835324.npz",
+      "match_id": "3835324",
+      "observed": 638,
+      "provider": "statsbomb360",
+      "sha256": "b91819aeab6a60f39b7665413d6c895dfefbab84ead5bc4944f0433d394c9f06",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 654,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835325.npz",
+      "match_id": "3835325",
+      "observed": 629,
+      "provider": "statsbomb360",
+      "sha256": "e6b5706544f9157e5cfc8a46b9ff5807da979b8a52b81a40b01ed7a6b93cb358",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 536,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835326.npz",
+      "match_id": "3835326",
+      "observed": 515,
+      "provider": "statsbomb360",
+      "sha256": "395b953cfa68d308b29f8adb12e551e755be74fe2672966338bb481be92e40da",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 627,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835327.npz",
+      "match_id": "3835327",
+      "observed": 611,
+      "provider": "statsbomb360",
+      "sha256": "929adf3ffceab641a4b6e49ee48754e8821d18f66682bead9a2dd9ba436eb738",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 513,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835328.npz",
+      "match_id": "3835328",
+      "observed": 486,
+      "provider": "statsbomb360",
+      "sha256": "3900d4b2c1b88b1cce066057246a19c2de5e6324f6a0b9df119b712cdd402f36",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 728,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835329.npz",
+      "match_id": "3835329",
+      "observed": 699,
+      "provider": "statsbomb360",
+      "sha256": "fcf902995511ce85cf12903f4829770016309d641ddbdcb366957d24a14ace4d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 704,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835330.npz",
+      "match_id": "3835330",
+      "observed": 691,
+      "provider": "statsbomb360",
+      "sha256": "e4fbd5caccecc4adf432d89e06ff21f25753e27b8ef868e135b557bef325752b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 606,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835331.npz",
+      "match_id": "3835331",
+      "observed": 598,
+      "provider": "statsbomb360",
+      "sha256": "492d2302eb646af3397023f4e75b2295acec0ea038e8e90c066ac9c455bdbcb3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 547,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835332.npz",
+      "match_id": "3835332",
+      "observed": 530,
+      "provider": "statsbomb360",
+      "sha256": "1bee7a1e7e156f4f8da20861d4d06bd5f95dfa30f6123fa903c33f2e36de24f4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 756,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835333.npz",
+      "match_id": "3835333",
+      "observed": 731,
+      "provider": "statsbomb360",
+      "sha256": "ac99215c8fed1d4a937e4c2771198c5309a4768086670159cc81812c38dee116",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 493,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835334.npz",
+      "match_id": "3835334",
+      "observed": 478,
+      "provider": "statsbomb360",
+      "sha256": "2c972929c6d4188868506a1b2d6df0894bda7c277561b407930e971aa23202e8",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 579,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835335.npz",
+      "match_id": "3835335",
+      "observed": 549,
+      "provider": "statsbomb360",
+      "sha256": "35b38555d08278d51bdbde75063fabc4afc98d6af7de2a7896712f70c5beb16a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 622,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835336.npz",
+      "match_id": "3835336",
+      "observed": 600,
+      "provider": "statsbomb360",
+      "sha256": "0b1c66c938431df602d7b0e969b481510ef92c666608e24211f963146019ae1f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 734,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835337.npz",
+      "match_id": "3835337",
+      "observed": 718,
+      "provider": "statsbomb360",
+      "sha256": "238129cb560d35ce1ca46acbfc6bc5b2af19d125fe6340a75adc98c92df6cf10",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 600,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835338.npz",
+      "match_id": "3835338",
+      "observed": 577,
+      "provider": "statsbomb360",
+      "sha256": "282968acb1feb07fa8098fbb423ec6f8b6a5fca27085dccfb4caa93a04bcd453",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 689,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835339.npz",
+      "match_id": "3835339",
+      "observed": 661,
+      "provider": "statsbomb360",
+      "sha256": "4cdf515427b4c6a07dd74bc6c2ca46fe9b2adf37a495e42ab503bbc2f58fdb29",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 427,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835340.npz",
+      "match_id": "3835340",
+      "observed": 416,
+      "provider": "statsbomb360",
+      "sha256": "c46ab66b5ff90867c4bc9830ba91738618d5c7447d6447269308ceb652d37c6f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 651,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835341.npz",
+      "match_id": "3835341",
+      "observed": 628,
+      "provider": "statsbomb360",
+      "sha256": "49cc9511f21bb133ff4e23dd8560a6798c695326c4d804d902a0f50ce78c6ae5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 562,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3835342.npz",
+      "match_id": "3835342",
+      "observed": 530,
+      "provider": "statsbomb360",
+      "sha256": "de12638133e5e1aa680ede0805c051975ef9d2ac7a56d1efcdc83d998a3ab913",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 818,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837650.npz",
+      "match_id": "3837650",
+      "observed": 789,
+      "provider": "statsbomb360",
+      "sha256": "d8bea3d6c02d08d327e3996d7cb6de0b0f1f44625c569540fa44357047901f25",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 776,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837659.npz",
+      "match_id": "3837659",
+      "observed": 754,
+      "provider": "statsbomb360",
+      "sha256": "f5d7f124761cbbc02a0cbe1d05f77a03bc23ffbf32e9d562e6569eb90ece21f9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 908,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837662.npz",
+      "match_id": "3837662",
+      "observed": 884,
+      "provider": "statsbomb360",
+      "sha256": "479f24c5283559efc983fa9fa0247003adb489afcd0cab49f3ac874c0539181e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 839,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837680.npz",
+      "match_id": "3837680",
+      "observed": 818,
+      "provider": "statsbomb360",
+      "sha256": "aa8de7dec4f2403a40a0524d2f760e15ea31672cbb08993dcb703d4670745eda",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 723,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837683.npz",
+      "match_id": "3837683",
+      "observed": 686,
+      "provider": "statsbomb360",
+      "sha256": "8c9d7a7416ef599bb4de47dd110e2a8b256b656a35f409407446c771dd20b024",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 880,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837695.npz",
+      "match_id": "3837695",
+      "observed": 852,
+      "provider": "statsbomb360",
+      "sha256": "448b3367548d91e5647be6ade883378633e82efef3aa6f4a1a5f933345713777",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 965,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837717.npz",
+      "match_id": "3837717",
+      "observed": 933,
+      "provider": "statsbomb360",
+      "sha256": "ea75e34b4340c65af8110c4a62fd81d43469a5638f47f449e7bb790bc419e4eb",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 874,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837727.npz",
+      "match_id": "3837727",
+      "observed": 837,
+      "provider": "statsbomb360",
+      "sha256": "897cc7828e31a9113f200caefe0bdb304068b605f4b8f5369d2bd7fa27630ff3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 853,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837747.npz",
+      "match_id": "3837747",
+      "observed": 825,
+      "provider": "statsbomb360",
+      "sha256": "a69cab675556a8c5e36fd470fe574965b685fd94aaa2ac1537a8d3e60f67968f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 797,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837752.npz",
+      "match_id": "3837752",
+      "observed": 765,
+      "provider": "statsbomb360",
+      "sha256": "d6fc5c596e7bb5f372de6ed72a2d7a57f2f1f7d52969a1e4bc4e8d617cce68af",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 814,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837771.npz",
+      "match_id": "3837771",
+      "observed": 779,
+      "provider": "statsbomb360",
+      "sha256": "4ed044b4b5469dc624c44652455fd4fb63a4835836070a6a44882a03c10c98a1",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 826,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837785.npz",
+      "match_id": "3837785",
+      "observed": 804,
+      "provider": "statsbomb360",
+      "sha256": "0835d6829c4eb8ae1ca2ae2998498f85f84c2b358ee3a687779394ed47ae0d79",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 991,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837818.npz",
+      "match_id": "3837818",
+      "observed": 957,
+      "provider": "statsbomb360",
+      "sha256": "da3a155994798604a3b8356203da77c6d90e6d1e534dd08660789146b5dc5fc5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 789,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837827.npz",
+      "match_id": "3837827",
+      "observed": 755,
+      "provider": "statsbomb360",
+      "sha256": "841fcd7c0e4c96e1a59e6ae266351f31929e907760e833e5e23ea8eb366ce730",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 944,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837839.npz",
+      "match_id": "3837839",
+      "observed": 906,
+      "provider": "statsbomb360",
+      "sha256": "1a2e6060bb1a47dbfabdd34dc965835496db0debb41cc8c79c7119838cb79a2a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 732,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837844.npz",
+      "match_id": "3837844",
+      "observed": 709,
+      "provider": "statsbomb360",
+      "sha256": "06accb6f991fbd0992303a0af0e6806b732dba4346902f3d7b1b7e03a372da23",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 782,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837859.npz",
+      "match_id": "3837859",
+      "observed": 763,
+      "provider": "statsbomb360",
+      "sha256": "142a478efcb66d2a596a50c49bc2e6b51b056a00e25d58175b6e241cd248468b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 709,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837876.npz",
+      "match_id": "3837876",
+      "observed": 683,
+      "provider": "statsbomb360",
+      "sha256": "790fba45f4169b4a52a04bfc2202c733247df1510496821d691fe1ae62600496",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 662,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837885.npz",
+      "match_id": "3837885",
+      "observed": 647,
+      "provider": "statsbomb360",
+      "sha256": "2b32ddc9ae1b49f0817979796e66f1f8e9bcb46bc8b90bf3dc7d05790430f07c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 861,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837896.npz",
+      "match_id": "3837896",
+      "observed": 829,
+      "provider": "statsbomb360",
+      "sha256": "eaa36f8e2b0032ac9a5133b6adf210e658831defba8576ceff6b9098127fb565",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 734,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837902.npz",
+      "match_id": "3837902",
+      "observed": 716,
+      "provider": "statsbomb360",
+      "sha256": "42f02127f296568b735af67902f6476bbeeb19e9341aff9b5b4ab399fed1f606",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 736,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837918.npz",
+      "match_id": "3837918",
+      "observed": 695,
+      "provider": "statsbomb360",
+      "sha256": "20856ae2a971063e79574902a651f225cc48a8dbd789bde6802a7d4c212bcd4a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 885,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837928.npz",
+      "match_id": "3837928",
+      "observed": 841,
+      "provider": "statsbomb360",
+      "sha256": "4f49362131339c1d58d0f7c46c9aa90380186c432270b4e6a90cb51809573053",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1053,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837938.npz",
+      "match_id": "3837938",
+      "observed": 1030,
+      "provider": "statsbomb360",
+      "sha256": "79afe6234e3c8cd9343450333e82ab133afed4bd8afb3ff3098f7dfff7d357d5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 897,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837947.npz",
+      "match_id": "3837947",
+      "observed": 869,
+      "provider": "statsbomb360",
+      "sha256": "149e3e896d445809750840417e537a26775b676ef378bebaa200044e8d352c9e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1026,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837954.npz",
+      "match_id": "3837954",
+      "observed": 990,
+      "provider": "statsbomb360",
+      "sha256": "2d6102c8f10486d18ff82d31ce437bde84cf92985af3336d8dfe38989f775dbe",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 853,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837963.npz",
+      "match_id": "3837963",
+      "observed": 813,
+      "provider": "statsbomb360",
+      "sha256": "2ec44bd9c33164c5eb29aaef9d4c3581731c12877c684fee4f409cb2679dcbb9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 769,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837987.npz",
+      "match_id": "3837987",
+      "observed": 752,
+      "provider": "statsbomb360",
+      "sha256": "a995efda74f2b633c1647dacb1faacbbb326d9bda0180f898ee10f939c59aa2e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 951,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3837998.npz",
+      "match_id": "3837998",
+      "observed": 919,
+      "provider": "statsbomb360",
+      "sha256": "cb55888363bde5e356cc1856034725a9c3e62593693686439bb96ead192795a9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 872,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3838004.npz",
+      "match_id": "3838004",
+      "observed": 844,
+      "provider": "statsbomb360",
+      "sha256": "ca619cb2a665fb254d35d16e344d2d8606d82c0b7051780ef9de33a817677158",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 761,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3838017.npz",
+      "match_id": "3838017",
+      "observed": 724,
+      "provider": "statsbomb360",
+      "sha256": "abf74d88dab3269c0ac12d3a5ec0c66d92b020fd08709e4a95038c849f435d41",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 810,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3844384.npz",
+      "match_id": "3844384",
+      "observed": 778,
+      "provider": "statsbomb360",
+      "sha256": "7b720a5edc0c8ca856012c6d795621fa0f23f3834921fa2bd0729881edef1868",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 511,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3844385.npz",
+      "match_id": "3844385",
+      "observed": 496,
+      "provider": "statsbomb360",
+      "sha256": "0063225f53f6446d805ad8cb51945407d308dbdab62fa01ecc421e07d58a83db",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 579,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3844386.npz",
+      "match_id": "3844386",
+      "observed": 559,
+      "provider": "statsbomb360",
+      "sha256": "0fe6280ee2d0024b03b83a77cf14653761fe2e61a2d3cb9aad7b701432b852e5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 843,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3844387.npz",
+      "match_id": "3844387",
+      "observed": 803,
+      "provider": "statsbomb360",
+      "sha256": "4f7fd065f22e089e4d6c8af166a4de61a4bde761d671bbc6e31dac95cb0fbcc3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 607,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3845507.npz",
+      "match_id": "3845507",
+      "observed": 583,
+      "provider": "statsbomb360",
+      "sha256": "9a719e04ef6a523f0ae44408989540f341ec6c17f6d44c343f26c088b25c02e1",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 647,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3847567.npz",
+      "match_id": "3847567",
+      "observed": 625,
+      "provider": "statsbomb360",
+      "sha256": "d5ebe8a823e4cfd5d51773d45d071bf2b031cec8af0578f2f09f6ff12d60676d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 704,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857254.npz",
+      "match_id": "3857254",
+      "observed": 678,
+      "provider": "statsbomb360",
+      "sha256": "205aec2f166f7934e91f15187f7c45514f51df93ad393fd05b5793bd7aa08de6",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1011,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857255.npz",
+      "match_id": "3857255",
+      "observed": 976,
+      "provider": "statsbomb360",
+      "sha256": "8d284831b891e06c7b2196231c84bebd34405de5d3fb7cc4e9845a7cd1c4326d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 578,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857256.npz",
+      "match_id": "3857256",
+      "observed": 556,
+      "provider": "statsbomb360",
+      "sha256": "99ea09537be7537268056b083445615ef16d3de6af2cbd2650baefbd8f028f9a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 661,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857257.npz",
+      "match_id": "3857257",
+      "observed": 641,
+      "provider": "statsbomb360",
+      "sha256": "7abfc9af2df1946d44be99ed90615b0a37a1c3ca90368aac02b928ea8ed36da6",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 705,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857258.npz",
+      "match_id": "3857258",
+      "observed": 675,
+      "provider": "statsbomb360",
+      "sha256": "5312371a18456ac1475a6d7cf0ed43bb1dbe7e59679e9a31d367b83032b5676a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 591,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857259.npz",
+      "match_id": "3857259",
+      "observed": 562,
+      "provider": "statsbomb360",
+      "sha256": "964ecb3e1c73623cf8cb9d3566d916edd24a7e87736f757fe2a0d5f507c3329e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 429,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857260.npz",
+      "match_id": "3857260",
+      "observed": 415,
+      "provider": "statsbomb360",
+      "sha256": "51f6d8ce5592a4a11451655e39236715ff9a4f13aa468a14390dfaae09fa39b1",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 681,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857261.npz",
+      "match_id": "3857261",
+      "observed": 654,
+      "provider": "statsbomb360",
+      "sha256": "eb77e5e2effff794f99d10089682975bacf2acd417f4d327b0837e581aa5031b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 704,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857262.npz",
+      "match_id": "3857262",
+      "observed": 672,
+      "provider": "statsbomb360",
+      "sha256": "d3e9bc4251f56fce62ac78247fa92654c89bd46758747b323b79c717697ebd39",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 781,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857263.npz",
+      "match_id": "3857263",
+      "observed": 752,
+      "provider": "statsbomb360",
+      "sha256": "795ee1f2db46c2a5bf51e3d4affeb7f76de5c084e58160916607592c368b37d6",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 965,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857264.npz",
+      "match_id": "3857264",
+      "observed": 934,
+      "provider": "statsbomb360",
+      "sha256": "58b235cf76e2fdb0df7a6542d124fcb166e323d4fe5f140151e9a6b7be64ba08",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 588,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857265.npz",
+      "match_id": "3857265",
+      "observed": 556,
+      "provider": "statsbomb360",
+      "sha256": "3e8ae7f5cac1933d1e46ae8272a895974b0b3c40808f5a013706dfee83fd04aa",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 773,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857266.npz",
+      "match_id": "3857266",
+      "observed": 739,
+      "provider": "statsbomb360",
+      "sha256": "40bb12c752207ed5461891fc85f77fa03ab37c8c8eb2cdb281dc6256f57ddbab",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 452,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857267.npz",
+      "match_id": "3857267",
+      "observed": 439,
+      "provider": "statsbomb360",
+      "sha256": "f62a45b7b92e5cc692fcb96f93b28b9c4de62c3583749e8688554663cb4e162b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 680,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857268.npz",
+      "match_id": "3857268",
+      "observed": 640,
+      "provider": "statsbomb360",
+      "sha256": "e8f74c5ed16182dd1a7896193e3225cccceab2eb08cdf7e45748c088dbb60365",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 799,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857269.npz",
+      "match_id": "3857269",
+      "observed": 764,
+      "provider": "statsbomb360",
+      "sha256": "fd0f882c01eff6d4e4919ba26d14df7c478a9417a225a6bb5f9770b34210f71a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 697,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857270.npz",
+      "match_id": "3857270",
+      "observed": 664,
+      "provider": "statsbomb360",
+      "sha256": "cf80a4bf0c7d630bfed79b5c73773c0cc658a66b4df2d2e7d3558f5a29fb7a95",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 810,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857271.npz",
+      "match_id": "3857271",
+      "observed": 788,
+      "provider": "statsbomb360",
+      "sha256": "d48dd33c5182634fddcc3203de103a55d9fbc9cc4c11d10130b76e267ca73196",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 771,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857272.npz",
+      "match_id": "3857272",
+      "observed": 720,
+      "provider": "statsbomb360",
+      "sha256": "b512c8ff602a36a61614f67ceaf059a0144ed627a20a45587cfd79deb159440a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 579,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857273.npz",
+      "match_id": "3857273",
+      "observed": 555,
+      "provider": "statsbomb360",
+      "sha256": "9a5f5deca6a70aff7b16143906402b1d73cdcbb6530eab1830a779585a5aa9eb",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 687,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857274.npz",
+      "match_id": "3857274",
+      "observed": 661,
+      "provider": "statsbomb360",
+      "sha256": "2180f155fc6d9d454c5699f5e782d862df65bdcc2a941bec81bc5424d40805c7",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 725,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857275.npz",
+      "match_id": "3857275",
+      "observed": 702,
+      "provider": "statsbomb360",
+      "sha256": "7aa0a98f5a8c661a6d98134a64de2f8ea3b22c1d74ed79d4e64fe95486109a62",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 660,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857276.npz",
+      "match_id": "3857276",
+      "observed": 631,
+      "provider": "statsbomb360",
+      "sha256": "bcf9124c4239968c6e1af43c3b22eb93c8e5e87cc100ed8b226c11c84d2cd6b5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 761,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857277.npz",
+      "match_id": "3857277",
+      "observed": 730,
+      "provider": "statsbomb360",
+      "sha256": "e95b63c7103281e3e39c446a9d2c33544c77471b257e9a8494c214b2d2df84f4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 655,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857278.npz",
+      "match_id": "3857278",
+      "observed": 620,
+      "provider": "statsbomb360",
+      "sha256": "7bf0e7dd95a005c51430d772850f3c4a8bc08dcbefba55f2f9b58fa43cee9bee",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 926,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857279.npz",
+      "match_id": "3857279",
+      "observed": 901,
+      "provider": "statsbomb360",
+      "sha256": "db6f4bead347cd0d2b5ec0c09153341ad48dfb53d0c7868ac5ebcb5afe5e80bc",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 579,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857280.npz",
+      "match_id": "3857280",
+      "observed": 552,
+      "provider": "statsbomb360",
+      "sha256": "d7887b73bb5fd30717759987aa796d104c36977f92a574fc28a717b9d42a9038",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 699,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857281.npz",
+      "match_id": "3857281",
+      "observed": 664,
+      "provider": "statsbomb360",
+      "sha256": "33e3e4ec94a7405f1feda6cc67d41bc42f059b6712ed32b2f306c5f70eecf0c3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 757,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857282.npz",
+      "match_id": "3857282",
+      "observed": 733,
+      "provider": "statsbomb360",
+      "sha256": "855c892228e767b530161413b3e7508a3f2b652ad18ae7315b52567d75fdae64",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 712,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857283.npz",
+      "match_id": "3857283",
+      "observed": 688,
+      "provider": "statsbomb360",
+      "sha256": "ef4941174c74b3ea0117ae00d47e34e2c7cc4ad4d1bc56870656318df3b0549f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 803,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857284.npz",
+      "match_id": "3857284",
+      "observed": 784,
+      "provider": "statsbomb360",
+      "sha256": "4973deb0b3c65141045efad65bcce90b78289346f314eb7f4db72ee85ed38218",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 577,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857285.npz",
+      "match_id": "3857285",
+      "observed": 546,
+      "provider": "statsbomb360",
+      "sha256": "d5f9b47031047192f22cd87c2e37f6c993856242b460488b2dc1d58cdaae5f35",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 747,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857286.npz",
+      "match_id": "3857286",
+      "observed": 731,
+      "provider": "statsbomb360",
+      "sha256": "e3e31f14719c1fe89b4f46427adfa1a78783ac72d2d8c74a88d9ad4bab55b0a4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 748,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857287.npz",
+      "match_id": "3857287",
+      "observed": 728,
+      "provider": "statsbomb360",
+      "sha256": "2c80d4da90df99f200f02a5bb9f2da3accadb497f3c26194b77a063ab882e105",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 579,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857288.npz",
+      "match_id": "3857288",
+      "observed": 559,
+      "provider": "statsbomb360",
+      "sha256": "7f8fc8f11c7fbfeab31ae3c171e9ee30a377d818ccbd75c0e4583948c7abf842",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 578,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857289.npz",
+      "match_id": "3857289",
+      "observed": 555,
+      "provider": "statsbomb360",
+      "sha256": "f3464f9e82ce2f86a838f0b7e95e76066b341949310c156c0fe37e76d5336872",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 790,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857290.npz",
+      "match_id": "3857290",
+      "observed": 745,
+      "provider": "statsbomb360",
+      "sha256": "d12f0bbe6c5c18a1b969c6204b225bda88d940495cd07b36c7fa91ba504cc6e5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1004,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857291.npz",
+      "match_id": "3857291",
+      "observed": 971,
+      "provider": "statsbomb360",
+      "sha256": "cf1f63e2fa20c048dd41ac8637aee8536518ce1ce8d2fb3c74cff3f3c0cab081",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 801,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857292.npz",
+      "match_id": "3857292",
+      "observed": 774,
+      "provider": "statsbomb360",
+      "sha256": "53e0adcf557a742a9e352b19c5662aed1e3db1c8673eaa059640b1ee4e4f15e2",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 627,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857293.npz",
+      "match_id": "3857293",
+      "observed": 611,
+      "provider": "statsbomb360",
+      "sha256": "8e428ad42bd83ee70c59ca191f03cc6dc7034255f4a3e12e1bbe2d080e71e187",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1022,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857294.npz",
+      "match_id": "3857294",
+      "observed": 988,
+      "provider": "statsbomb360",
+      "sha256": "3b15d2793906640120eed21a31f91dd8956a790e05ed4272e2a0f9109c880fd4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 814,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857295.npz",
+      "match_id": "3857295",
+      "observed": 784,
+      "provider": "statsbomb360",
+      "sha256": "78f96f88ccadf3868a2f50ee3a96a45e15663cb2d524b4eb0ccfb8a834e97585",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 930,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857296.npz",
+      "match_id": "3857296",
+      "observed": 893,
+      "provider": "statsbomb360",
+      "sha256": "962fdb6ff7ff4a0fcfc4ce9b53ba20d101c92f9d66340674aeb1981afca586dc",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 647,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857297.npz",
+      "match_id": "3857297",
+      "observed": 623,
+      "provider": "statsbomb360",
+      "sha256": "c4c6580706a0f2666fedc7a9c8ca2df30d11bb121222e2aff2ab152f55d62ee1",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 802,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857298.npz",
+      "match_id": "3857298",
+      "observed": 769,
+      "provider": "statsbomb360",
+      "sha256": "bf1a1d914e1ee173d804202110a2ecfeb7153a4015ebd8a94b6abd49936f5c57",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 634,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857299.npz",
+      "match_id": "3857299",
+      "observed": 614,
+      "provider": "statsbomb360",
+      "sha256": "05538449f7e7b550e834be0a88c85a5c5592a1b5140e6d0187eb646866a28fc4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 615,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857300.npz",
+      "match_id": "3857300",
+      "observed": 586,
+      "provider": "statsbomb360",
+      "sha256": "3241622a06216add7c7b68d612aed4cf764b04b39d5010b26ef1725e5a2e518c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 664,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3857301.npz",
+      "match_id": "3857301",
+      "observed": 637,
+      "provider": "statsbomb360",
+      "sha256": "1a398a9cc38bac2c3564d9015a2a05bcef14d405264ee3ae5e4a903c4dc5adc9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 708,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869117.npz",
+      "match_id": "3869117",
+      "observed": 658,
+      "provider": "statsbomb360",
+      "sha256": "661f91b1669dce53b472b4657de76e39cdd9d9d574b8281e9803385bd95fab2f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 754,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869118.npz",
+      "match_id": "3869118",
+      "observed": 722,
+      "provider": "statsbomb360",
+      "sha256": "fd190d2149a93d26429a2d774dadb794b3b6df34f38bd0629c19e1c0271b1e46",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 809,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869151.npz",
+      "match_id": "3869151",
+      "observed": 779,
+      "provider": "statsbomb360",
+      "sha256": "38da627bb50cc7bf614f73fe8a7d52ed451cd56e204c487457575c726c958349",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 749,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869152.npz",
+      "match_id": "3869152",
+      "observed": 714,
+      "provider": "statsbomb360",
+      "sha256": "50aec54b22d3352d328a32bf30995326704db286e078791060e294cc2842b3aa",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 952,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869219.npz",
+      "match_id": "3869219",
+      "observed": 913,
+      "provider": "statsbomb360",
+      "sha256": "98f70a6a2178b691c869f686638a93356e14746aab724060c99df8f839f439fb",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1096,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869220.npz",
+      "match_id": "3869220",
+      "observed": 1071,
+      "provider": "statsbomb360",
+      "sha256": "16bfbd34ab3d65f388aec4c8add0faf10376271042ba95b4e8c04c5eb1d4b078",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 861,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869253.npz",
+      "match_id": "3869253",
+      "observed": 824,
+      "provider": "statsbomb360",
+      "sha256": "00351d8952d8ad3f9683cc981f4de26327e892604150833909b708d2b44dc582",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 661,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869254.npz",
+      "match_id": "3869254",
+      "observed": 627,
+      "provider": "statsbomb360",
+      "sha256": "7a4675e8b793aa4f4a1a7ae7856cd844ec385dd0623e95787e2c3061239a342c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 853,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869321.npz",
+      "match_id": "3869321",
+      "observed": 806,
+      "provider": "statsbomb360",
+      "sha256": "69bc6e8a15ed3bae73f020832f98e396033bf06498b7080e24961e8cdc710a47",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 654,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869354.npz",
+      "match_id": "3869354",
+      "observed": 616,
+      "provider": "statsbomb360",
+      "sha256": "4f256d14120859effe2a93b0730735bba0d4e9a87556418479b920ccf426ad5d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1086,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869420.npz",
+      "match_id": "3869420",
+      "observed": 1034,
+      "provider": "statsbomb360",
+      "sha256": "45c4f2a52791db02e979dab2562f622aefe45b677de4b8dd95bdbe11e71e3de2",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 638,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869486.npz",
+      "match_id": "3869486",
+      "observed": 607,
+      "provider": "statsbomb360",
+      "sha256": "0c066f5ecb358551e91f8b3460ef11b01c28ef8a23be9ed1c9b9c5f834a6a85e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 708,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869519.npz",
+      "match_id": "3869519",
+      "observed": 683,
+      "provider": "statsbomb360",
+      "sha256": "9339f2dd311a76e107883439813f96859cb03270dfc1ec242d59a1bd1c7a9c16",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 657,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869552.npz",
+      "match_id": "3869552",
+      "observed": 626,
+      "provider": "statsbomb360",
+      "sha256": "4e79f53147d3c52f7c2ad555e9ed8e078986c813b5c3792c73720699d3bbaa4e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 711,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869684.npz",
+      "match_id": "3869684",
+      "observed": 687,
+      "provider": "statsbomb360",
+      "sha256": "4da5bb8471812103e5f94166103b4c78a23d82a21e9673eda87e44068d3e87af",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 797,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3869685.npz",
+      "match_id": "3869685",
+      "observed": 755,
+      "provider": "statsbomb360",
+      "sha256": "1ea28977dd1bea94bff6084a36730f1e4a64c31ac581db07f43509ace4f23585",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 690,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3877060.npz",
+      "match_id": "3877060",
+      "observed": 665,
+      "provider": "statsbomb360",
+      "sha256": "095852272f0d4da4c4866539c0d768e98cd373648160ea74ef9e1aac0756650e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 852,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3877072.npz",
+      "match_id": "3877072",
+      "observed": 821,
+      "provider": "statsbomb360",
+      "sha256": "a231f4dfb788358807c3e85f52a8e02a17d21417d17628fa69b802d8dbd3f23e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 620,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3877090.npz",
+      "match_id": "3877090",
+      "observed": 602,
+      "provider": "statsbomb360",
+      "sha256": "bee7e683b5f3f04ecac2d5bcf33f068c47fdf4e5cb7946251f57911963fbe09f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 463,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893787.npz",
+      "match_id": "3893787",
+      "observed": 452,
+      "provider": "statsbomb360",
+      "sha256": "74ffaec51df02da5632558db06a38a419e391f12bbb9d671347cb8a663f46845",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 521,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893788.npz",
+      "match_id": "3893788",
+      "observed": 496,
+      "provider": "statsbomb360",
+      "sha256": "b2a536f92501b6455f2bdfe056e7d29032214b355ee8cdb2327a0c8c345484e1",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 778,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893789.npz",
+      "match_id": "3893789",
+      "observed": 754,
+      "provider": "statsbomb360",
+      "sha256": "d41c7df77bc0e4c5746d6e5ee6d108942a5d99a5d58be79487b22780f101d5a6",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 465,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893790.npz",
+      "match_id": "3893790",
+      "observed": 445,
+      "provider": "statsbomb360",
+      "sha256": "0008ef61987be32a6046c1888da2e9cc707b788abbee89ea85ad43a34003c7b4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 555,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893791.npz",
+      "match_id": "3893791",
+      "observed": 537,
+      "provider": "statsbomb360",
+      "sha256": "bdeb411f020a488331d50460217dcefa41f8552fe127d9f8dad1d96df5178df4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 484,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893792.npz",
+      "match_id": "3893792",
+      "observed": 461,
+      "provider": "statsbomb360",
+      "sha256": "98128d5393d737c01fa1783073c8ef63e6daa89f15a166f1b13c3d6962e5cd6a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 725,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893793.npz",
+      "match_id": "3893793",
+      "observed": 707,
+      "provider": "statsbomb360",
+      "sha256": "eec9c393df62dac7b644faef083a426e23a0cbf6bcb0c4ff2589f91bc5983713",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 649,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893794.npz",
+      "match_id": "3893794",
+      "observed": 625,
+      "provider": "statsbomb360",
+      "sha256": "1a15f0a644f6af60f9b090904c9be9d8c44aa438f3530168934f170f925207a1",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 644,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893795.npz",
+      "match_id": "3893795",
+      "observed": 626,
+      "provider": "statsbomb360",
+      "sha256": "6022900aea6e79951a21da3e19f3bba9f9a62fa85c6948bfbc3e7d1db19e78df",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 556,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893796.npz",
+      "match_id": "3893796",
+      "observed": 538,
+      "provider": "statsbomb360",
+      "sha256": "2dada77aa939ad2e604ec3dc88a7ecc163008fe942c1315a32674aadfc2e3669",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 472,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893797.npz",
+      "match_id": "3893797",
+      "observed": 446,
+      "provider": "statsbomb360",
+      "sha256": "a78c39bf4d255b0ede31d92a0433e6de393ad5e7fc523b2e841e85f3d00863c7",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 472,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893798.npz",
+      "match_id": "3893798",
+      "observed": 459,
+      "provider": "statsbomb360",
+      "sha256": "a039a2d1e681e4ad2873732ecbae55be95dd821985037815952f947d30b8ab1b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 710,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893799.npz",
+      "match_id": "3893799",
+      "observed": 694,
+      "provider": "statsbomb360",
+      "sha256": "c3c81e2f38585d3845fe376f346848a38fd80346abfb435c68c9c559f5cd9c31",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 509,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893800.npz",
+      "match_id": "3893800",
+      "observed": 490,
+      "provider": "statsbomb360",
+      "sha256": "b8e8186676372ea5519ebc7cef79b6d55b0a2914d66bfcda6074992be3ca0ea1",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 564,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893801.npz",
+      "match_id": "3893801",
+      "observed": 551,
+      "provider": "statsbomb360",
+      "sha256": "73ced32d9cf79a36c15e7c2a36b862b0e0acb6013bd5ca65bbb8e2d9809dcff7",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 409,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893802.npz",
+      "match_id": "3893802",
+      "observed": 382,
+      "provider": "statsbomb360",
+      "sha256": "902ebe01b1777b6d8f88c3e091d8342c74e4c79eb4a533cc748e8e557ad5db96",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 505,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893803.npz",
+      "match_id": "3893803",
+      "observed": 483,
+      "provider": "statsbomb360",
+      "sha256": "fc9e9a9c95d43886d17d0801479bc0c1b25db06f97ca072176cd8e71bb307afc",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 712,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893804.npz",
+      "match_id": "3893804",
+      "observed": 682,
+      "provider": "statsbomb360",
+      "sha256": "14ee8810c9790dd80e2e557fc803d10349110e816277d7d5413d91ddde69c47e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 725,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893805.npz",
+      "match_id": "3893805",
+      "observed": 707,
+      "provider": "statsbomb360",
+      "sha256": "a462d8c4986b76e12e9eba5fab670e43ab396c9bbd22d2e7344dbf1d25b2d124",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 717,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893806.npz",
+      "match_id": "3893806",
+      "observed": 680,
+      "provider": "statsbomb360",
+      "sha256": "eda619807c3b30cc96af2462f4b768c29110e5b3b0f25550208ef469cb210825",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 582,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893807.npz",
+      "match_id": "3893807",
+      "observed": 551,
+      "provider": "statsbomb360",
+      "sha256": "c2f1de7fefac098af8b93157d24874e761a5692de1de60ebe73cc99318d9aa21",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 601,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893808.npz",
+      "match_id": "3893808",
+      "observed": 575,
+      "provider": "statsbomb360",
+      "sha256": "8690df18b90f1b50dc241c2c07ce44f3e2557d60dbdf3dc7dcd0d8ecd7e7dd8f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 505,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893809.npz",
+      "match_id": "3893809",
+      "observed": 478,
+      "provider": "statsbomb360",
+      "sha256": "b6f7bd80b520c6a4c17e6f58787da78a8fa8d1f56621e3ab84e3147845988bc1",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 566,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893810.npz",
+      "match_id": "3893810",
+      "observed": 549,
+      "provider": "statsbomb360",
+      "sha256": "669aee39de28653dc6184a6dc956016c1ce0bc0cd91d58830737d358c217a311",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 649,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893811.npz",
+      "match_id": "3893811",
+      "observed": 615,
+      "provider": "statsbomb360",
+      "sha256": "91c3762ccbf1bd9c9fb016b03dc98f368613d888f16b229539c638a0427a9c38",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 554,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893812.npz",
+      "match_id": "3893812",
+      "observed": 531,
+      "provider": "statsbomb360",
+      "sha256": "016fa7dc4cabff4cb79abd1f30332da5cf06d93a1260f47c04f21812809606e2",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 546,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893813.npz",
+      "match_id": "3893813",
+      "observed": 523,
+      "provider": "statsbomb360",
+      "sha256": "f6bdd2c47b4347c802cddddb69f46f77ecd14fa9b1e43aa4170f2f922056595b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 663,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893814.npz",
+      "match_id": "3893814",
+      "observed": 645,
+      "provider": "statsbomb360",
+      "sha256": "2ffda4ae161b6d91314dda4651cea94cf1c625e9c1791c6dda670c17a66ad195",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 492,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893815.npz",
+      "match_id": "3893815",
+      "observed": 468,
+      "provider": "statsbomb360",
+      "sha256": "12c364bb7d94e04f7b1fa8f1c23103662533e66e0159151591791daf6e341bd6",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 487,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893816.npz",
+      "match_id": "3893816",
+      "observed": 462,
+      "provider": "statsbomb360",
+      "sha256": "797073a07500c95456f52527e44f61c9e5e1889a2deb35d0da3406fdfd08571f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 683,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893817.npz",
+      "match_id": "3893817",
+      "observed": 660,
+      "provider": "statsbomb360",
+      "sha256": "ee96b2d01b463e10ae88d71241cd2e57ffaff2e72c36cd9ac9c1f338f71719fc",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 600,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893818.npz",
+      "match_id": "3893818",
+      "observed": 576,
+      "provider": "statsbomb360",
+      "sha256": "a796e7f8bbdba77d257cc586aa7ca09b1f60da0c2068dc46964e2eccf2a80227",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 489,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893819.npz",
+      "match_id": "3893819",
+      "observed": 476,
+      "provider": "statsbomb360",
+      "sha256": "513fa34f1743b652ea733421885710801df49137830d195520f27dc3dcdab95c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 648,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893820.npz",
+      "match_id": "3893820",
+      "observed": 636,
+      "provider": "statsbomb360",
+      "sha256": "a35b0e88b9293cded3186d6f6bd7015072f7a1c62aafc8f323f441474a69f536",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 547,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893821.npz",
+      "match_id": "3893821",
+      "observed": 520,
+      "provider": "statsbomb360",
+      "sha256": "d19029aaead6198ee37c38f395c8d93933f89213048ffe32c410630c0040e007",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 890,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893822.npz",
+      "match_id": "3893822",
+      "observed": 866,
+      "provider": "statsbomb360",
+      "sha256": "f154286a174186b79a100b11c060447062cfb2edefa6b851cdc675fe8f650862",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 430,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893823.npz",
+      "match_id": "3893823",
+      "observed": 413,
+      "provider": "statsbomb360",
+      "sha256": "195e72d2af7385392409ec2366990727f8cf1df586740d5467c983e97c1c9f4c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 653,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893824.npz",
+      "match_id": "3893824",
+      "observed": 623,
+      "provider": "statsbomb360",
+      "sha256": "b9f8e35fa6346f7265b8c456ce9b78718fe101d8495b7ce3250125ee3d1496a4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 512,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893825.npz",
+      "match_id": "3893825",
+      "observed": 493,
+      "provider": "statsbomb360",
+      "sha256": "ccfd4fa110415462debf5f0ac669c7cdf335d5eb3ce53587856a9617ec87b0fe",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 440,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893826.npz",
+      "match_id": "3893826",
+      "observed": 427,
+      "provider": "statsbomb360",
+      "sha256": "b93d1fe0ac5b4a3e49dda6ea9595cfec199c2a5ba3fe3bf84b9a2ec85873bfe5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 761,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893827.npz",
+      "match_id": "3893827",
+      "observed": 732,
+      "provider": "statsbomb360",
+      "sha256": "cebe84bece7c9e72c48f08be68c74682dc789b5f3ceac3372223fb9d09d07c27",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 805,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893828.npz",
+      "match_id": "3893828",
+      "observed": 784,
+      "provider": "statsbomb360",
+      "sha256": "bd03ce36b857a1288ef0ae6c0671db94a8732708a1b54f3aec18a78062bf467a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 489,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893829.npz",
+      "match_id": "3893829",
+      "observed": 476,
+      "provider": "statsbomb360",
+      "sha256": "468753bbdd70375abee14c5c9ce6ce2fff1d47a6be578854cfe307b02e33a72f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 521,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893830.npz",
+      "match_id": "3893830",
+      "observed": 511,
+      "provider": "statsbomb360",
+      "sha256": "838c761928ea4d5c75731fd0439bc1037a68a9cd7973e3e879ce9674e3f90a19",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 462,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893831.npz",
+      "match_id": "3893831",
+      "observed": 440,
+      "provider": "statsbomb360",
+      "sha256": "aa62fab9f04152d9c320cf7548dc9ccc5cb49c4e4a1f3610985afd0ae060d18b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 576,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893832.npz",
+      "match_id": "3893832",
+      "observed": 549,
+      "provider": "statsbomb360",
+      "sha256": "f957f5988874a38f11c50f834677008523e636ac2ab616924c0c6d1c31bd1be5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 538,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893833.npz",
+      "match_id": "3893833",
+      "observed": 514,
+      "provider": "statsbomb360",
+      "sha256": "ba322aef743ed2a2f318baf45ab476bfd6294cdeb6cbbb24feccaa07aa5e8b53",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 554,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3893834.npz",
+      "match_id": "3893834",
+      "observed": 534,
+      "provider": "statsbomb360",
+      "sha256": "85e6ed1162aefdfc751544bbb2c7e389be49985aec0d7d7d7634a297981f6bf2",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 753,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895052.npz",
+      "match_id": "3895052",
+      "observed": 721,
+      "provider": "statsbomb360",
+      "sha256": "a21e02dbf06355715e44b06d8c4740537f6e72922de8ab34791871ad062b21ad",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 912,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895060.npz",
+      "match_id": "3895060",
+      "observed": 876,
+      "provider": "statsbomb360",
+      "sha256": "a07f0cd3c4b93985ad46f43c0a2abaa5ffef555cd14bfc2923bb8dab7fd873dd",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 794,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895067.npz",
+      "match_id": "3895067",
+      "observed": 766,
+      "provider": "statsbomb360",
+      "sha256": "013e913c1770a10930aa2cf6af51c4984846bbef3d2dd3f29ef290ce7bb6ea5f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 917,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895074.npz",
+      "match_id": "3895074",
+      "observed": 886,
+      "provider": "statsbomb360",
+      "sha256": "236be19ca657006affb2322878029c10479737b1f944d1c583adcc1125f88590",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 853,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895086.npz",
+      "match_id": "3895086",
+      "observed": 827,
+      "provider": "statsbomb360",
+      "sha256": "ba94df090c6a642e7141003c33f2d765df3a307c53c5e557a4bfa03e64018678",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 847,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895095.npz",
+      "match_id": "3895095",
+      "observed": 824,
+      "provider": "statsbomb360",
+      "sha256": "1efee89fa868d6994b5482ca25585e8b2101f9e95d88f8980f6657e8980edd9a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 926,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895107.npz",
+      "match_id": "3895107",
+      "observed": 892,
+      "provider": "statsbomb360",
+      "sha256": "abc5dfb68832ddaa11718c3337bcd726be310ae9bceaa6d5126f2f25852a63c0",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 796,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895113.npz",
+      "match_id": "3895113",
+      "observed": 779,
+      "provider": "statsbomb360",
+      "sha256": "625e374fa741678b8fe97708f2a60bc65688dfdd3510fadadeb87b8f030e1703",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 773,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895121.npz",
+      "match_id": "3895121",
+      "observed": 731,
+      "provider": "statsbomb360",
+      "sha256": "b888a18f9fa8370fdc1022e4d3427671bf7ab5c7db89e03b5445fd21f27a1a67",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 811,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895134.npz",
+      "match_id": "3895134",
+      "observed": 780,
+      "provider": "statsbomb360",
+      "sha256": "9d5dd2f2c51136b13be25bcb1e01d373b39111c05b46df956a1ad881370f9713",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 931,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895139.npz",
+      "match_id": "3895139",
+      "observed": 903,
+      "provider": "statsbomb360",
+      "sha256": "f0ce12c56f0ba0da76951ad67a0e584cc7fff0925cfe30d8c4a00b221d186fe8",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 946,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895153.npz",
+      "match_id": "3895153",
+      "observed": 914,
+      "provider": "statsbomb360",
+      "sha256": "d1c9031aa01402d5f18ad473d7ea02d28087027717f797801cbd6c0097c28496",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 767,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895167.npz",
+      "match_id": "3895167",
+      "observed": 727,
+      "provider": "statsbomb360",
+      "sha256": "d4dd15979600066475a13a031afb7bebc941458ace4b1e7d63335ec7cef3b399",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 921,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895180.npz",
+      "match_id": "3895180",
+      "observed": 898,
+      "provider": "statsbomb360",
+      "sha256": "bdf570d6344cb89ed69ee7a20423b12e08c330f2352313f0e38c2b1ceb713478",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 798,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895182.npz",
+      "match_id": "3895182",
+      "observed": 770,
+      "provider": "statsbomb360",
+      "sha256": "6e217097fb6074ab7c43b1f7ddcc95a451015a22622dd15281159f654a0ef31b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 779,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895194.npz",
+      "match_id": "3895194",
+      "observed": 747,
+      "provider": "statsbomb360",
+      "sha256": "e4443f4ec38422635d554529fa0a64e6f54f34bfe4967d21896265dbf54a62dd",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 826,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895202.npz",
+      "match_id": "3895202",
+      "observed": 790,
+      "provider": "statsbomb360",
+      "sha256": "5d71eccb5c9b1e25db8095b070fdc408f827c753846b6d7b0555d4d711373f06",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1051,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895210.npz",
+      "match_id": "3895210",
+      "observed": 1017,
+      "provider": "statsbomb360",
+      "sha256": "e9fe410268b16ecc3b7b405062ef4890f5a8544da8853f1c0cca86f14f26a1d0",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 909,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895220.npz",
+      "match_id": "3895220",
+      "observed": 878,
+      "provider": "statsbomb360",
+      "sha256": "8bacc39c498842f822bdbb5f0bef36d2886a157ba8cb05854894ff7882768edb",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 860,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895232.npz",
+      "match_id": "3895232",
+      "observed": 832,
+      "provider": "statsbomb360",
+      "sha256": "f7c41592d64bb32f2b57e346fb6ebb72386ec82ded6112de4f83a14e5745e171",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 651,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895244.npz",
+      "match_id": "3895244",
+      "observed": 619,
+      "provider": "statsbomb360",
+      "sha256": "840df77731b7e7faa70045e41c50df0808062dbf23618e44206076a2f21d726c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 774,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895250.npz",
+      "match_id": "3895250",
+      "observed": 760,
+      "provider": "statsbomb360",
+      "sha256": "84ffcb24947287befb01e6d73d54f2c8f03791044fdb50b03dd2811c8c6a33ba",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 801,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895258.npz",
+      "match_id": "3895258",
+      "observed": 765,
+      "provider": "statsbomb360",
+      "sha256": "18fda2013e7f0499599e024e5f26cb7cc5f71df26c8dd1ccaaa8a3e4a6d97da0",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 832,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895275.npz",
+      "match_id": "3895275",
+      "observed": 792,
+      "provider": "statsbomb360",
+      "sha256": "de1b460d4041351e258efb1b6663730f16dc69a965eb99a49a4d93e1b1693ad5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 820,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895286.npz",
+      "match_id": "3895286",
+      "observed": 792,
+      "provider": "statsbomb360",
+      "sha256": "967001b23692e128d74d2ed286715436390e6d10e5cff77c3af0619266637e9c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 739,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895292.npz",
+      "match_id": "3895292",
+      "observed": 713,
+      "provider": "statsbomb360",
+      "sha256": "58c64492299cc50ea1b035d1c7dcbb8ec9aba18f5db1edc9293e76134e5b98c3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 833,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895302.npz",
+      "match_id": "3895302",
+      "observed": 804,
+      "provider": "statsbomb360",
+      "sha256": "3216473fd6213fd637a65a6d72628c2eba0aaed02c5b316b4496cd6132340ee9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 721,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895320.npz",
+      "match_id": "3895320",
+      "observed": 692,
+      "provider": "statsbomb360",
+      "sha256": "5d990429d7d7056877d4950169a96c4db4a392da89c112f57d405abf4df25404",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 697,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895333.npz",
+      "match_id": "3895333",
+      "observed": 658,
+      "provider": "statsbomb360",
+      "sha256": "b57f9ac91215a151fb7c68e61bbdfbfc06118666f1565095deea7663ff30ff30",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 671,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895340.npz",
+      "match_id": "3895340",
+      "observed": 632,
+      "provider": "statsbomb360",
+      "sha256": "d6c20f6c1a0d5421228aac65b60379eae5a2d7d704996bce93b34cac5ed2a4be",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 907,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3895348.npz",
+      "match_id": "3895348",
+      "observed": 856,
+      "provider": "statsbomb360",
+      "sha256": "31f087373ee71ee6438509f3a08d4de40290344579fd6fb741b6f6ddbfba5502",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 755,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3901733.npz",
+      "match_id": "3901733",
+      "observed": 725,
+      "provider": "statsbomb360",
+      "sha256": "ad762a39f4f8809e9927bb6a5cddaee3df181c0a8b6940e9c923605120e12aee",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 746,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3901734.npz",
+      "match_id": "3901734",
+      "observed": 723,
+      "provider": "statsbomb360",
+      "sha256": "bc1f7570614525c3993694a3d1e59a8a6c90b538e482fa044be66b0f8584b25a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 668,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3901735.npz",
+      "match_id": "3901735",
+      "observed": 637,
+      "provider": "statsbomb360",
+      "sha256": "f2fb157a61dfc528ed2313b1bebac16ca3d2008b6de91f1647f16be0ef521f0d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 598,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3901736.npz",
+      "match_id": "3901736",
+      "observed": 581,
+      "provider": "statsbomb360",
+      "sha256": "b180c1608c2d20ca4ae98ef9beff05bf3554cff6b729d1014588cffbd4789f20",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 671,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3901796.npz",
+      "match_id": "3901796",
+      "observed": 646,
+      "provider": "statsbomb360",
+      "sha256": "0ba2ae325ca43baf7d394b183c275bcb31095bbf38506e0c69b689867ef03b3e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 740,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3901797.npz",
+      "match_id": "3901797",
+      "observed": 704,
+      "provider": "statsbomb360",
+      "sha256": "cb93e9517aed1222ebde6e35ea56d4bf32587000aa7496585e83b46ef0cb6321",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 425,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3901832.npz",
+      "match_id": "3901832",
+      "observed": 410,
+      "provider": "statsbomb360",
+      "sha256": "dca2419ce474ba5c4659151eafbeb8f9d031d94152998d84b2aa610aaf56a37e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 623,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3901833.npz",
+      "match_id": "3901833",
+      "observed": 606,
+      "provider": "statsbomb360",
+      "sha256": "e485087903fc28b951618bc3dd70097315f3a1535b731f87e32ba92afc6fbec0",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 754,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3902239.npz",
+      "match_id": "3902239",
+      "observed": 735,
+      "provider": "statsbomb360",
+      "sha256": "1fe59f8ad8e0f71acf74f381b10dda1b90ee0b01057c2c665eabed41a7ae989b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 709,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3902240.npz",
+      "match_id": "3902240",
+      "observed": 674,
+      "provider": "statsbomb360",
+      "sha256": "a0653677774ae5674bd0905577a4ee473548f35f329cda4e499f3c36464de09c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 586,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3902967.npz",
+      "match_id": "3902967",
+      "observed": 561,
+      "provider": "statsbomb360",
+      "sha256": "4ac0f1966a923e2bf6668c7b7ff01ca08320d37ae505b1de0512862d6ceeaf40",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 577,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3902968.npz",
+      "match_id": "3902968",
+      "observed": 541,
+      "provider": "statsbomb360",
+      "sha256": "6e2476b1f37fc63e7c651158d0aa074c6b03a40b463e567bd9399d428e79c302",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 558,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3904628.npz",
+      "match_id": "3904628",
+      "observed": 541,
+      "provider": "statsbomb360",
+      "sha256": "0cff8eb75d11c8c48af595589573e6e41ec0326d4848810333a22cceaa721e1d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 610,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3904629.npz",
+      "match_id": "3904629",
+      "observed": 586,
+      "provider": "statsbomb360",
+      "sha256": "553458e92e861a937db9d3443b16a6e7672286875575a40504f5427ea43511cd",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 545,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3906389.npz",
+      "match_id": "3906389",
+      "observed": 531,
+      "provider": "statsbomb360",
+      "sha256": "052924b63125075e5a7479ef241ab8708fa6895321d8db97b136487fa29b5de6",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 630,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3906390.npz",
+      "match_id": "3906390",
+      "observed": 604,
+      "provider": "statsbomb360",
+      "sha256": "b5a8de01d3ea1d691b8a0bb4a8a8859e59012849028f3e0d356446361e60f35e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 789,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930158.npz",
+      "match_id": "3930158",
+      "observed": 768,
+      "provider": "statsbomb360",
+      "sha256": "665d9430e5f2fc497d85b22a9cea418c0c49928039ad0c6deeb5adba934c04b7",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 700,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930159.npz",
+      "match_id": "3930159",
+      "observed": 660,
+      "provider": "statsbomb360",
+      "sha256": "5756c37b5d49c7f59d626a5b3293dd83f09e7ad349a0fda38ac3026a5246e06d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 710,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930160.npz",
+      "match_id": "3930160",
+      "observed": 684,
+      "provider": "statsbomb360",
+      "sha256": "999d27037d8739eaaa29b0654f4cbf5c24c5a3c1ef9d82283c172487e20ea5b4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 960,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930161.npz",
+      "match_id": "3930161",
+      "observed": 937,
+      "provider": "statsbomb360",
+      "sha256": "f10f00e2a9d080a8cca539428d16526c65fbeee7e3dd72f47633b5d7eebebf67",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 769,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930162.npz",
+      "match_id": "3930162",
+      "observed": 749,
+      "provider": "statsbomb360",
+      "sha256": "268e0942d7d437241a9eb1af2ff7249e8ea4d2b2158606a3af80a91a93f01d48",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 831,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930163.npz",
+      "match_id": "3930163",
+      "observed": 790,
+      "provider": "statsbomb360",
+      "sha256": "7505e9333b8957dd9ea0561d4219f455b83eefe59a572157e6e5fe03db52f932",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 723,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930164.npz",
+      "match_id": "3930164",
+      "observed": 697,
+      "provider": "statsbomb360",
+      "sha256": "122bae0cae29ad50cec16142a549b931def347e27aa489bc23f9bd1da62e274f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 759,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930165.npz",
+      "match_id": "3930165",
+      "observed": 727,
+      "provider": "statsbomb360",
+      "sha256": "c1d1c17606ea2627efeef111092ba5bc0e8e9ac8916ebd87c6f321a54f78e743",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 641,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930166.npz",
+      "match_id": "3930166",
+      "observed": 604,
+      "provider": "statsbomb360",
+      "sha256": "722d7c2c3355bf690051b55c7e3588d623241888d9220b6b2516a9b7fd3cf739",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 770,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930167.npz",
+      "match_id": "3930167",
+      "observed": 733,
+      "provider": "statsbomb360",
+      "sha256": "c35dd581c892d0411fe33a03f9f5653865882f1b7dbe33ef7059a45e92929d49",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 870,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930168.npz",
+      "match_id": "3930168",
+      "observed": 838,
+      "provider": "statsbomb360",
+      "sha256": "0cffab6cc2d5a5348e84745bced850bab2e7c18a734a1fc184f1ef6fcd84b2e9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 627,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930169.npz",
+      "match_id": "3930169",
+      "observed": 598,
+      "provider": "statsbomb360",
+      "sha256": "d95d2c236fc520685c58ef8565cb457593adfd89615688a720b4522be574a179",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 686,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930170.npz",
+      "match_id": "3930170",
+      "observed": 658,
+      "provider": "statsbomb360",
+      "sha256": "65f3d6ec76667dbb77210fbb5b550e87c25b6038801ae350159a3421a07de5b6",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 883,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930171.npz",
+      "match_id": "3930171",
+      "observed": 852,
+      "provider": "statsbomb360",
+      "sha256": "be5888871235a1cf77536b1c076ebc14dd89e000262151af16f7930b1a899221",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 778,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930172.npz",
+      "match_id": "3930172",
+      "observed": 744,
+      "provider": "statsbomb360",
+      "sha256": "e4c2ec659da7fd6ecc4a6f963a02631190dfe2f7e3ad357c188b5a23516c25b2",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 790,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930173.npz",
+      "match_id": "3930173",
+      "observed": 753,
+      "provider": "statsbomb360",
+      "sha256": "12dc577d567984c70f770e9097c2dffc65b4e823ae53741c90c6eead96783692",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 781,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930174.npz",
+      "match_id": "3930174",
+      "observed": 741,
+      "provider": "statsbomb360",
+      "sha256": "bb8dc567c772da7489d83e30a3c4c12a1f40eddd279a79661062185f8a6c8ee0",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 599,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930175.npz",
+      "match_id": "3930175",
+      "observed": 570,
+      "provider": "statsbomb360",
+      "sha256": "5d80d2fa1967070400ac756298e48c80fab63094650c604096226f2a13b5c956",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 784,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930176.npz",
+      "match_id": "3930176",
+      "observed": 744,
+      "provider": "statsbomb360",
+      "sha256": "00fbe6ebf6918bc17b7bc6104980f7a22f5157b3f1b239423046f67de6d3b184",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 645,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930177.npz",
+      "match_id": "3930177",
+      "observed": 621,
+      "provider": "statsbomb360",
+      "sha256": "034e87146c3b7a032b426dafd76b0ba19f827c1d1f8c02e1a78dae1c145926e8",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 807,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930178.npz",
+      "match_id": "3930178",
+      "observed": 793,
+      "provider": "statsbomb360",
+      "sha256": "b0b28a688850dd5b28bd6975b1979ea8fd57669cda69adb7313aff6f8ffa6713",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 803,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930179.npz",
+      "match_id": "3930179",
+      "observed": 749,
+      "provider": "statsbomb360",
+      "sha256": "c5eccac775b0ac416f1ecf4e1d2d1433e16fbf857b63a84a6f41eed359369386",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 590,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930180.npz",
+      "match_id": "3930180",
+      "observed": 552,
+      "provider": "statsbomb360",
+      "sha256": "ba678797a52293f4196cca393fe0bb73d7d6b7b936c09e1ff02dafbf4a4e923b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 823,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930181.npz",
+      "match_id": "3930181",
+      "observed": 793,
+      "provider": "statsbomb360",
+      "sha256": "3df1a20f79bea3de76bcce772a3891239b471eba31d228d2a8293327a18a3a4f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 849,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930182.npz",
+      "match_id": "3930182",
+      "observed": 805,
+      "provider": "statsbomb360",
+      "sha256": "2971bdb90a7c4d66aa9466868d4ec825b224ba6853d1b81e9e3526288337c69e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 562,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930183.npz",
+      "match_id": "3930183",
+      "observed": 532,
+      "provider": "statsbomb360",
+      "sha256": "7341771a0b76d9e02b5b6d7f66aa1fe0bcce2d4e58ca9d06b96c615bbfe4a119",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 542,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3930184.npz",
+      "match_id": "3930184",
+      "observed": 504,
+      "provider": "statsbomb360",
+      "sha256": "8ad80fd948b9d699ebc5f31fb196eb6e6ce5b5c5d262bdeb70605eaae635a987",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 684,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3938637.npz",
+      "match_id": "3938637",
+      "observed": 645,
+      "provider": "statsbomb360",
+      "sha256": "618b7a6201f0a663b21e3acd4b021d6e473aed2431f354f4b7a905f3b7165d87",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 656,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3938638.npz",
+      "match_id": "3938638",
+      "observed": 619,
+      "provider": "statsbomb360",
+      "sha256": "f6461989a2766b1f18ad5c7a9b379a643de52fcf9654df0eb69ffc5b3766a0a8",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 790,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3938639.npz",
+      "match_id": "3938639",
+      "observed": 756,
+      "provider": "statsbomb360",
+      "sha256": "085dab4e99b73e39393dffaf5d4e3a9df3fb9a7b569e14b4c5e2e90e33c2706b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 799,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3938640.npz",
+      "match_id": "3938640",
+      "observed": 765,
+      "provider": "statsbomb360",
+      "sha256": "01ffa61808832163f8dc164910339daf851ed82a5aa10d92da055345356f1ca5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 641,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3938641.npz",
+      "match_id": "3938641",
+      "observed": 606,
+      "provider": "statsbomb360",
+      "sha256": "db14988db6ac1580675223f100de2b77e1ae5b7809189244c0b8e9a4dcb8804f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 635,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3938642.npz",
+      "match_id": "3938642",
+      "observed": 603,
+      "provider": "statsbomb360",
+      "sha256": "3a06b7eb2bcb276a32185447777b342cd090acc10e3502a6cebb925bd4d89053",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 710,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3938643.npz",
+      "match_id": "3938643",
+      "observed": 669,
+      "provider": "statsbomb360",
+      "sha256": "e02302e5b33352e45c510143ff4c98e063fc41d588efa9b071a87e7278037bac",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 740,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3938644.npz",
+      "match_id": "3938644",
+      "observed": 710,
+      "provider": "statsbomb360",
+      "sha256": "64b8c2ae2b1c72d14be5bf8cda0587894b0e0d2430992118c1c73b5c4f6a9bed",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 778,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3938645.npz",
+      "match_id": "3938645",
+      "observed": 732,
+      "provider": "statsbomb360",
+      "sha256": "637b1dc759bf77790ed9aa80a9ac228863d957a8576bb64452796e16aaa881e2",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 802,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3940878.npz",
+      "match_id": "3940878",
+      "observed": 775,
+      "provider": "statsbomb360",
+      "sha256": "d3895fdbf92301d4b35ffefcf2d630b2b3fdcdd9e82bcc6b1f4debacb1b1460e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 768,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3940983.npz",
+      "match_id": "3940983",
+      "observed": 744,
+      "provider": "statsbomb360",
+      "sha256": "2060a069bf3dd4c888e600a8f8b90024c8ac57d80f03456408a734cbbde7a1a9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 973,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3941017.npz",
+      "match_id": "3941017",
+      "observed": 933,
+      "provider": "statsbomb360",
+      "sha256": "15058eeff4048bf4d634511f66d463430bab51660dcb4b6bc3f03727e87c6d99",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 910,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3941018.npz",
+      "match_id": "3941018",
+      "observed": 888,
+      "provider": "statsbomb360",
+      "sha256": "da7929a9f2ec90133bfa864f1a3a6bd75e999dc004a37006faa73e5b01c0a985",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 910,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3941019.npz",
+      "match_id": "3941019",
+      "observed": 863,
+      "provider": "statsbomb360",
+      "sha256": "64a322bcbed0685095fbfd0ca67a5b7ee8a126f25392b92f8f74f3c451bd394d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 784,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3941020.npz",
+      "match_id": "3941020",
+      "observed": 741,
+      "provider": "statsbomb360",
+      "sha256": "3c77097330fb1da4dbd0a1731ba4dbdd3e241096e594e9610575be3bf3e0a80d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 614,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3941021.npz",
+      "match_id": "3941021",
+      "observed": 586,
+      "provider": "statsbomb360",
+      "sha256": "0327d1a767f443e92c3974bffda05253a730da16f911eb24dada3817027a9ff4",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 667,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3941022.npz",
+      "match_id": "3941022",
+      "observed": 634,
+      "provider": "statsbomb360",
+      "sha256": "5e94325f8632bc07986effcb5e43209a49eea51927c87372b68b3cfa14e9b2ef",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 930,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3942226.npz",
+      "match_id": "3942226",
+      "observed": 889,
+      "provider": "statsbomb360",
+      "sha256": "fd6ea70332c5625e6b524e1f547582067d627e26f9546b2a4664236caf0bc8a3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1107,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3942227.npz",
+      "match_id": "3942227",
+      "observed": 1041,
+      "provider": "statsbomb360",
+      "sha256": "80b64e2fe861ae9e2eb939bf82a8554385587bbbf19373d632ba27dc5e96157c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 1235,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3942349.npz",
+      "match_id": "3942349",
+      "observed": 1157,
+      "provider": "statsbomb360",
+      "sha256": "24ca646ebb3a6737bda1f39a80a5b75b7921f580cd565d37540e26fe30416f66",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 636,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3942382.npz",
+      "match_id": "3942382",
+      "observed": 604,
+      "provider": "statsbomb360",
+      "sha256": "598240f7d96f9ea78cfce90e35b7866df1214c51411044c4abaae9db0a019cf3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 670,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3942752.npz",
+      "match_id": "3942752",
+      "observed": 631,
+      "provider": "statsbomb360",
+      "sha256": "8a8abf5d2f6c525c118daba30de0bbfa4314280fd5389d80531bff79825145d7",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 767,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3942819.npz",
+      "match_id": "3942819",
+      "observed": 731,
+      "provider": "statsbomb360",
+      "sha256": "f94f9b8b85a2ef463fc6e7d429f6d5002e01539bb84740bd381aca1042298e1d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 648,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3943043.npz",
+      "match_id": "3943043",
+      "observed": 609,
+      "provider": "statsbomb360",
+      "sha256": "e5b132e01b135178382427c135533d31471d86a3d73e86e668223f1ecd04ae71",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 518,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998836.npz",
+      "match_id": "3998836",
+      "observed": 488,
+      "provider": "statsbomb360",
+      "sha256": "d1191decf7c9b2fa4f5fe198423c024385cef00dabddda9586ee87977d8e37a9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 554,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998837.npz",
+      "match_id": "3998837",
+      "observed": 530,
+      "provider": "statsbomb360",
+      "sha256": "a28aabb84ac71e98615e6eb4ee0da2b4b7fdede6410ff5494d6b6edf826cd6a9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 517,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998838.npz",
+      "match_id": "3998838",
+      "observed": 494,
+      "provider": "statsbomb360",
+      "sha256": "60b0b5cfd184fedcc1b8825952dd275567715287e9a0194ed63650d273509ffe",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 652,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998839.npz",
+      "match_id": "3998839",
+      "observed": 632,
+      "provider": "statsbomb360",
+      "sha256": "32487e315c50d8ec988790a2dfa9863ee4d42d698e47430d6aae02751eef222c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 581,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998840.npz",
+      "match_id": "3998840",
+      "observed": 562,
+      "provider": "statsbomb360",
+      "sha256": "75f792770dcfd3ff2f595b9e098ee9b7599848f00a104a08d87c0adeaac477ad",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 465,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998841.npz",
+      "match_id": "3998841",
+      "observed": 440,
+      "provider": "statsbomb360",
+      "sha256": "cf1eba60dffe28acc7cce63705a4f32283e0f65aa0eb80b175ac023e04714a6d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 538,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998842.npz",
+      "match_id": "3998842",
+      "observed": 520,
+      "provider": "statsbomb360",
+      "sha256": "4951ed6c1e4867eb4c98f9700303a4aa00258debe7e90bc64ace7fe66f642315",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 575,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998843.npz",
+      "match_id": "3998843",
+      "observed": 538,
+      "provider": "statsbomb360",
+      "sha256": "51bc4d6e39bee50bb9f286233abfbbd5e3ad4905ea05cd004a0728c9267ca3fb",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 440,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998844.npz",
+      "match_id": "3998844",
+      "observed": 419,
+      "provider": "statsbomb360",
+      "sha256": "98cc14c99566c26707de686ff3b3604b512a17cbddb33474c0adafbf9a30dc8a",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 674,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998845.npz",
+      "match_id": "3998845",
+      "observed": 645,
+      "provider": "statsbomb360",
+      "sha256": "cf98485a8f80ef9612ace9e296788cc50cb6b4c21cf041bcafc0c9c009b0c7a3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 498,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998846.npz",
+      "match_id": "3998846",
+      "observed": 483,
+      "provider": "statsbomb360",
+      "sha256": "05758d78850a98938994248e3233699315fd9c3e2ab936dceafc2f523d5946e5",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 644,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998847.npz",
+      "match_id": "3998847",
+      "observed": 622,
+      "provider": "statsbomb360",
+      "sha256": "b11a154f28cf2e0dd44ca8505c4e43bd115c7d2dc59533a5addb7884c79c362b",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 473,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998848.npz",
+      "match_id": "3998848",
+      "observed": 449,
+      "provider": "statsbomb360",
+      "sha256": "a570a0f79fbced8f50ae76fb967a9dd498fd4a542024dfac817f4895f15f803d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 598,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998849.npz",
+      "match_id": "3998849",
+      "observed": 571,
+      "provider": "statsbomb360",
+      "sha256": "11c7470527ce536d63a986dcdc5f1ba19ec5d9471f1a29545e8c60aa35d459a9",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 599,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998850.npz",
+      "match_id": "3998850",
+      "observed": 572,
+      "provider": "statsbomb360",
+      "sha256": "aa0dcde8b574ca925cec58bf3da43c45d12cd2f8fa8be11f93ff00e258e16b90",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 537,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998851.npz",
+      "match_id": "3998851",
+      "observed": 509,
+      "provider": "statsbomb360",
+      "sha256": "65815f03d771b0b8b92e96ba85d84b779e367d6f04408878bcd81b59306a5b9c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 672,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998852.npz",
+      "match_id": "3998852",
+      "observed": 647,
+      "provider": "statsbomb360",
+      "sha256": "48396f253b7767a8253fedbf1042c9cb44472af262ceea4cd0e836237889205e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 509,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998853.npz",
+      "match_id": "3998853",
+      "observed": 493,
+      "provider": "statsbomb360",
+      "sha256": "9947f5f6c04fcf617d7f61101d0ca5500e0a89e2f1793b53488ba18f2fa4477f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 512,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998854.npz",
+      "match_id": "3998854",
+      "observed": 486,
+      "provider": "statsbomb360",
+      "sha256": "e67c22dd6d86494fa2cd5dec747e1edbada640759446880fafbc4ea2cd5ffc5e",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 850,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998855.npz",
+      "match_id": "3998855",
+      "observed": 832,
+      "provider": "statsbomb360",
+      "sha256": "4f256d717bcb2a09d61891e57dbcfa1760e0aabb3f2da107d74abbadc0f12877",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 511,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998856.npz",
+      "match_id": "3998856",
+      "observed": 480,
+      "provider": "statsbomb360",
+      "sha256": "6ba4a64d6f06a6525d03fcfad953c9a6707be164a72fde3918dadd96c7de5be3",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 624,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998857.npz",
+      "match_id": "3998857",
+      "observed": 600,
+      "provider": "statsbomb360",
+      "sha256": "cad5e241f414a4d62d795de9c858d6d109c56759307f32301aff337925600935",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 663,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998858.npz",
+      "match_id": "3998858",
+      "observed": 641,
+      "provider": "statsbomb360",
+      "sha256": "70f1e8f6834deee51798ec56346d0641c23de1a0fc8130940f366c98acf4286d",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 476,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_3998859.npz",
+      "match_id": "3998859",
+      "observed": 454,
+      "provider": "statsbomb360",
+      "sha256": "6c9d327c4f77a7fd9c59021ffcc993ccfd970057a288b6c0f1109f0f99e3fb90",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 552,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_4018354.npz",
+      "match_id": "4018354",
+      "observed": 514,
+      "provider": "statsbomb360",
+      "sha256": "94e1142bba81b21055dfccf87e4881d1f9b6570edf257e4fa30ecff45db06ced",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 595,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_4018355.npz",
+      "match_id": "4018355",
+      "observed": 578,
+      "provider": "statsbomb360",
+      "sha256": "7cbbf17fa73e41370c5d0f45faa06cb0407e0638b172b0fbfe8e02360a2e862f",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 703,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_4018356.npz",
+      "match_id": "4018356",
+      "observed": 669,
+      "provider": "statsbomb360",
+      "sha256": "c69387a06fea6450264596c37a2210271cc5e2f7fd092ac7d50552fd24137093",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 637,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_4018357.npz",
+      "match_id": "4018357",
+      "observed": 613,
+      "provider": "statsbomb360",
+      "sha256": "788a3edd953905734ff8f0574b09ee6f7e180d8155a9e628c5fc4a8a556cbb7c",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 792,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_4020005.npz",
+      "match_id": "4020005",
+      "observed": 756,
+      "provider": "statsbomb360",
+      "sha256": "846b87d8fce862517893fda6df8fa08b01061e600c7f299291091880d5e1fbc1",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 808,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_4020077.npz",
+      "match_id": "4020077",
+      "observed": 771,
+      "provider": "statsbomb360",
+      "sha256": "d47145019c002c2eb2ab453b844a6799b66ad9079323d944b9766acbd31e5dfa",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    },
+    {
+      "events": 890,
+      "file": "data/frame_world/v89_temporal_providers/statsbomb360_4020846.npz",
+      "match_id": "4020846",
+      "observed": 864,
+      "provider": "statsbomb360",
+      "sha256": "680303d8fe70184eb88389275034a4f8c7fa1b3eb25b2d74e2bf667bbbdaf427",
+      "source": "explicit Pass-related Ball Receipt event and recipient action timestamps"
+    }
+  ],
+  "parent": "data/frame_world/v89_temporal_providers/manifest.json",
+  "providers": {
+    "skillcorner": {
+      "events": 5451,
+      "matches": 10,
+      "observed": 5208
+    },
+    "statsbomb360": {
+      "events": 306584,
+      "matches": 417,
+      "observed": 294804
+    }
+  },
+  "version": "9.1.0-candidate"
+}

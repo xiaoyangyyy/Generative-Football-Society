@@ -1,88 +1,42 @@
-# Generative Football Society (GFS) V13
+﻿# Generative Football Society
 
-Generative Football Society is a World Cup-scale multi-agent social simulation framework.
+Clean modular entrypoint for a World Cup-scale football society simulator.
 
-It combines:
-- continuous state dynamics
-- affective appraisal and coping
-- structured memory and belief fields
-- constrained LLM reflection
-- multi-expert fusion for match-day decisions
+Current frozen baseline: **v6.0.0**. See `docs/ACCEPTANCE_REPORT.md` and
+`data/releases/v6.0.0.json` for sealed metrics and artifact fingerprints.
 
----
+GFS combines:
 
-## Core Pipeline
+- team status and historical memory
+- multi-agent psychology, beliefs, media pressure, and tactics
+- macro xG dynamics
+- optional 6-second micro match physics
+- optional LLM cognition through an OpenAI-compatible API
+- optional latent world model planning
 
-`Event -> Appraisal -> Emotion -> Coping -> Memory Weight -> Belief Field -> State/Tactics -> Match Outcome`
+## Project Layout
 
-Decision integration:
-- subsystem experts run in parallel (`phys`, `affect`, `social`, `tactic`, `governance`)
-- `FusionController` performs a single soft-gated fusion step
-- fused outputs drive effective status, volatility, and chaos terms
+```text
+gfs.py                 Unified CLI entrypoint
+src/app.py             Stable Python integration API
+src/cli.py             CLI command implementations
+src/simulation/        Tournament, agents, fusion, LLM, match pipeline
+src/match_engine/      Micro physics, spatial, passing, shooting, cognition, WM
+src/memory_engine/     Status, macro xG, Poisson, tournament probability
+src/data_engine/       Raw data, roster, coach, FM import helpers
+data/                  Required bundled datasets and model checkpoint
+docs/                  Design and technical references
+scripts/               Maintenance, calibration, benchmark, and legacy scripts
+tests/                 Unit and smoke tests
+```
 
----
+Generated outputs are ignored by git:
 
-## System 1 / System 2
-
-- **System 1 (continuous math engine)**  
-  Canonical state is latent `z_state`, projected via smooth bounded functions.
-
-- **System 2 (LLM cognition)**  
-  LLM provides bounded, confidence-weighted, evidence-linked suggestions.
-  LLM does not directly decide match outcomes; the math engine remains the source of score generation.
-
----
-
-## Affective Appraisal Model
-
-Appraisal (6D):
-- `impact` in `[-1, 1]`
-- `novelty`, `control`, `certainty`, `norm_violation` in `[0, 1]`
-- `agency` in `[-1, 1]`
-
-Emotion (5D, softmax):
-- `pride`, `anger`, `shame`, `fear`, `determination`
-
-Coping (4D):
-- softmax: `planning`, `self_correction`, `external_blame`
-- bounded shift: `risk_shift = tanh(...)`
-
----
-
-## Memory and Belief
-
-Structured memory includes appraisal/emotion/coping fields and `memory_weight`.
-
-Key behavior:
-- all events are written to memory (no hard write gate)
-- influence decays continuously via exponential weighting
-- retrieval uses all episodic memories with softmax weighting
-- top-k is only for display/export convenience
-
-Belief field:
-- tracks continuous `support` and `contradiction`
-- confidence is continuous (`sigmoid(alpha * (support - contradiction))`)
-- policy effects are softly activated and bounded
-
----
-
-## Canonical State Notice
-
-- canonical affective model: `appraisal + emotion_profile + coping`
-- canonical state model: `z_state`
-- `hidden_state` is retained only as a compatibility read view
-
----
-
-## Key Modules
-
-- `src/simulation/agent.py`
-- `src/simulation/fusion_controller.py`
-- `src/simulation/tournament_2026.py`
-- `src/simulation/social_dialogue.py`
-- `src/simulation/llm_engine.py`
-
----
+- `outputs/`
+- `reports/`
+- `data/persistence/`
+- `data/cache/`
+- `data/world_model/traces/`
 
 ## Install
 
@@ -90,67 +44,103 @@ Belief field:
 pip install -r requirements.txt
 ```
 
-Recommended Python: 3.10+
+Recommended Python: 3.10+.
 
----
+## Unified CLI
 
-## Configuration
+Show top team status rankings:
 
-Environment variables:
-- `API_KEY` or `OPENAI_API_KEY`
-- `BASE_URL` (optional)
-- `MODEL_NAME` (optional)
-- `GFS_SEED` (optional)
+```bash
+python gfs.py status --top 20
+```
 
-Example:
+Run a fast single micro match:
+
+```bash
+python gfs.py micro --home Brazil --away Argentina --fast --seed 42
+```
+
+Run lightweight Monte Carlo:
+
+```bash
+python gfs.py monte-carlo -n 1000 --seed 42
+```
+
+Run full tournament:
+
+```bash
+python gfs.py tournament --seed 42
+```
+
+Run full tournament with micro physics as official score:
+
+```bash
+python gfs.py tournament --micro --micro-score --seed 42
+```
+
+Resume from checkpoint:
+
+```bash
+python gfs.py tournament --resume
+```
+
+## Python API
+
+```python
+from src.app import load_status_table, run_micro_match, run_monte_carlo
+
+stats, team_matches, data = load_status_table()
+summary = run_micro_match("Brazil", "Argentina", fast=True, seed=42)
+rankings = run_monte_carlo(1000, seed=42)
+```
+
+## LLM Configuration
+
+LLM features require a valid OpenAI-compatible endpoint.
 
 ```env
-API_KEY=your_real_key
+API_KEY=your_api_key
 BASE_URL=https://api.openai.com/v1
 MODEL_NAME=gpt-4-turbo-preview
 GFS_SEED=42
 ```
 
----
+Without a real key, non-LLM commands and most deterministic smoke tests can still run.
 
-## Quick Run
+### LLM Architecture
 
-Tactical quick smoke:
+LLM roles remain independent, but share one provider gateway for connection reuse,
+retry policy, and call accounting:
 
-```bash
-python run_world_cup_2026_tactical.py --quick --no-interactive --seed 42
+```text
+coach / player / media / critic roles
+                 |
+           shared LLMGateway
+                 |
+       GenerationPipeline + audit
+                 |
+   tactics / narrative / meta-learning
 ```
 
-Full tournament:
+Generated atmosphere is a causal `NarrativeEvent`, not disposable prose. Its
+bounded signals affect coach pressure, crowd hostility, player anxiety, social
+feedback, memory, and later matches. Raw model output and the publishable version
+are stored separately in generation audits.
+
+Reflection remains a meta-learning mechanism. `MetaLearningController` applies
+LLM proposals at separate time scales: tactical controls are fast variables,
+role dynamics are medium variables, and recurrent weights are slow variables.
+Every update records its proposed delta, applied delta, before/after values, and
+verified memory evidence.
+
+## Legacy Entrypoints
+
+Older root scripts were moved to `scripts/legacy/`. Prefer `python gfs.py ...` for new usage.
+
+## Tests
 
 ```bash
-python run_world_cup_2026_full.py
+python -m pytest tests -q
 ```
 
-Monte Carlo:
-
-```bash
-python main_monte_carlo.py -n 1000 --seed 42
-```
-
----
-
-## Outputs
-
-Generated artifacts are written under `outputs/` during runs.
-
----
-
-## Clean Release Packaging
-
-Use this to avoid shipping `outputs/`, caches, and local env files:
-
-```bash
-python package_release_zip.py --out release.zip
-```
-
----
-
-## License
-
-MIT License. See `LICENSE`.
+Slow calibration and benchmark scripts live under `scripts/`.

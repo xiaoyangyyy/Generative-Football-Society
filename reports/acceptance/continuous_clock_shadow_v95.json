@@ -1,0 +1,442 @@
+{
+  "aggregate": {
+    "elapsed_s": 235.1981524999719,
+    "gated_ticks": 1568,
+    "mean_absolute_completion_drift": 0.07784226295167855,
+    "mean_absolute_possession_drift": 0.12239583333333336,
+    "mean_absolute_target_errors": {
+      "passes": {
+        "baseline": 212.08522222222223,
+        "treatment": 19.33522222222222
+      },
+      "shots": {
+        "baseline": 3.7313333333333336,
+        "treatment": 2.3609999999999998
+      },
+      "xg": {
+        "baseline": 0.8947369887961185,
+        "treatment": 0.6152754763404882
+      }
+    },
+    "mean_xg_drift": -0.2794615124556302,
+    "median_pass_density_reduction": 0.8153737963864546,
+    "plans": 345,
+    "real_rate_targets": {
+      "passes": 23.78977777777778,
+      "shots": 0.5186666666666667,
+      "xg": 0.05777777777777778
+    },
+    "shot_volume_ratio": 0.6470588235294118
+  },
+  "comparison": "deployed v7 default clock vs v9.3 calibrated continuous clock",
+  "deployment_unchanged": true,
+  "gates": {
+    "action_density_reduction": true,
+    "clock_exercised": true,
+    "completion_stable": true,
+    "deterministic_treatment": true,
+    "mirror_possession_bias": true,
+    "real_pass_rate_improved": true,
+    "real_shot_rate_improved": true,
+    "real_xg_rate_improved": true,
+    "verified_v93_artifact": true
+  },
+  "pairs": [
+    {
+      "away": "Argentina",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.7686578225746683,
+        "goals": 3,
+        "passes": 234,
+        "possession_home": 0.44166666666666665,
+        "shots": 7,
+        "xg": 1.5845705603390792
+      },
+      "delta": {
+        "completion": -0.09937882570946455,
+        "goals": 0,
+        "passes": -194,
+        "possession_home": 0.26250000000000007,
+        "shots": -4,
+        "xg": -0.6238400750236377
+      },
+      "home": "Brazil",
+      "seed": 7,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 14,
+            "shot": 8,
+            "terminal": 17
+          },
+          "gated_ticks": 199,
+          "mean_delay_s": 2.9249224066734314,
+          "next_mark_counts": {
+            "pass": 14,
+            "shot": 8,
+            "terminal": 18
+          },
+          "plans": 40,
+          "provider": "skillcorner"
+        },
+        "completion": 0.6692789968652038,
+        "goals": 3,
+        "passes": 40,
+        "possession_home": 0.7041666666666667,
+        "shots": 3,
+        "xg": 0.9607304853154415
+      }
+    },
+    {
+      "away": "Brazil",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.8026129943502824,
+        "goals": 2,
+        "passes": 238,
+        "possession_home": 0.49583333333333335,
+        "shots": 2,
+        "xg": 0.5202019082255512
+      },
+      "delta": {
+        "completion": -0.07047013720742523,
+        "goals": 0,
+        "passes": -189,
+        "possession_home": -0.03750000000000003,
+        "shots": 0,
+        "xg": -0.06985312528392806
+      },
+      "home": "Argentina",
+      "seed": 42,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 34,
+            "shot": 1,
+            "terminal": 13
+          },
+          "gated_ticks": 190,
+          "mean_delay_s": 2.2708387764132754,
+          "next_mark_counts": {
+            "pass": 35,
+            "shot": 1,
+            "terminal": 13
+          },
+          "plans": 49,
+          "provider": "skillcorner"
+        },
+        "completion": 0.7321428571428572,
+        "goals": 2,
+        "passes": 49,
+        "possession_home": 0.4583333333333333,
+        "shots": 2,
+        "xg": 0.45034878294162317
+      }
+    },
+    {
+      "away": "Spain",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.80530594779632,
+        "goals": 2,
+        "passes": 237,
+        "possession_home": 0.525,
+        "shots": 3,
+        "xg": 0.9851027501202358
+      },
+      "delta": {
+        "completion": -0.15363928112965342,
+        "goals": 0,
+        "passes": -200,
+        "possession_home": -0.041666666666666685,
+        "shots": 1,
+        "xg": 0.07100575379862373
+      },
+      "home": "France",
+      "seed": 101,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 16,
+            "shot": 3,
+            "terminal": 17
+          },
+          "gated_ticks": 200,
+          "mean_delay_s": 3.096874662347742,
+          "next_mark_counts": {
+            "pass": 16,
+            "shot": 3,
+            "terminal": 18
+          },
+          "plans": 37,
+          "provider": "skillcorner"
+        },
+        "completion": 0.6516666666666666,
+        "goals": 2,
+        "passes": 37,
+        "possession_home": 0.48333333333333334,
+        "shots": 4,
+        "xg": 1.0561085039188596
+      }
+    },
+    {
+      "away": "France",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.7966698805903731,
+        "goals": 0,
+        "passes": 236,
+        "possession_home": 0.5791666666666667,
+        "shots": 2,
+        "xg": 0.524988533694638
+      },
+      "delta": {
+        "completion": 0.007235043008947728,
+        "goals": 0,
+        "passes": -186,
+        "possession_home": -0.17500000000000004,
+        "shots": -2,
+        "xg": -0.42240890669722164
+      },
+      "home": "Spain",
+      "seed": 313,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 23,
+            "shot": 13,
+            "terminal": 13
+          },
+          "gated_ticks": 190,
+          "mean_delay_s": 2.2558937525749205,
+          "next_mark_counts": {
+            "pass": 23,
+            "shot": 13,
+            "terminal": 14
+          },
+          "plans": 50,
+          "provider": "skillcorner"
+        },
+        "completion": 0.8039049235993209,
+        "goals": 0,
+        "passes": 50,
+        "possession_home": 0.4041666666666667,
+        "shots": 0,
+        "xg": 0.10257962699741642
+      }
+    },
+    {
+      "away": "England",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.8541975308641976,
+        "goals": 3,
+        "passes": 237,
+        "possession_home": 0.675,
+        "shots": 4,
+        "xg": 0.9624659865058505
+      },
+      "delta": {
+        "completion": -0.09320851987518664,
+        "goals": 0,
+        "passes": -190,
+        "possession_home": -0.1625000000000001,
+        "shots": -1,
+        "xg": -0.21020929129169907
+      },
+      "home": "Germany",
+      "seed": 911,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 27,
+            "shot": 6,
+            "terminal": 13
+          },
+          "gated_ticks": 193,
+          "mean_delay_s": 2.431044647034178,
+          "next_mark_counts": {
+            "pass": 27,
+            "shot": 6,
+            "terminal": 14
+          },
+          "plans": 47,
+          "provider": "skillcorner"
+        },
+        "completion": 0.760989010989011,
+        "goals": 3,
+        "passes": 47,
+        "possession_home": 0.5125,
+        "shots": 3,
+        "xg": 0.7522566952141514
+      }
+    },
+    {
+      "away": "Germany",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.7822526613563612,
+        "goals": 3,
+        "passes": 234,
+        "possession_home": 0.575,
+        "shots": 6,
+        "xg": 1.212826271363319
+      },
+      "delta": {
+        "completion": 0.020429330980803573,
+        "goals": 0,
+        "passes": -187,
+        "possession_home": 0.050000000000000044,
+        "shots": -2,
+        "xg": -0.33984256209206154
+      },
+      "home": "England",
+      "seed": 2026,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 16,
+            "shot": 16,
+            "terminal": 14
+          },
+          "gated_ticks": 192,
+          "mean_delay_s": 2.4458517901440886,
+          "next_mark_counts": {
+            "pass": 16,
+            "shot": 16,
+            "terminal": 15
+          },
+          "plans": 47,
+          "provider": "skillcorner"
+        },
+        "completion": 0.8026819923371648,
+        "goals": 3,
+        "passes": 47,
+        "possession_home": 0.625,
+        "shots": 4,
+        "xg": 0.8729837092712576
+      }
+    },
+    {
+      "away": "Morocco",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.7810243183493,
+        "goals": 4,
+        "passes": 233,
+        "possession_home": 0.49166666666666664,
+        "shots": 8,
+        "xg": 1.160891109956056
+      },
+      "delta": {
+        "completion": -0.12717816450314612,
+        "goals": 0,
+        "passes": -194,
+        "possession_home": -0.12083333333333329,
+        "shots": -4,
+        "xg": -0.5873117486702909
+      },
+      "home": "Japan",
+      "seed": 4096,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 18,
+            "shot": 3,
+            "terminal": 17
+          },
+          "gated_ticks": 201,
+          "mean_delay_s": 2.9602622435643124,
+          "next_mark_counts": {
+            "pass": 18,
+            "shot": 3,
+            "terminal": 18
+          },
+          "plans": 39,
+          "provider": "skillcorner"
+        },
+        "completion": 0.6538461538461539,
+        "goals": 4,
+        "passes": 39,
+        "possession_home": 0.37083333333333335,
+        "shots": 4,
+        "xg": 0.573579361285765
+      }
+    },
+    {
+      "away": "Japan",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.8076923076923077,
+        "goals": 1,
+        "passes": 238,
+        "possession_home": 0.38333333333333336,
+        "shots": 2,
+        "xg": 0.66907101238644
+      },
+      "delta": {
+        "completion": -0.05119880119880116,
+        "goals": 0,
+        "passes": -202,
+        "possession_home": 0.1291666666666666,
+        "shots": 0,
+        "xg": -0.053232144384826596
+      },
+      "home": "Morocco",
+      "seed": 8191,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 10,
+            "shot": 6,
+            "terminal": 19
+          },
+          "gated_ticks": 203,
+          "mean_delay_s": 3.2130018836922116,
+          "next_mark_counts": {
+            "pass": 11,
+            "shot": 6,
+            "terminal": 19
+          },
+          "plans": 36,
+          "provider": "skillcorner"
+        },
+        "completion": 0.7564935064935066,
+        "goals": 1,
+        "passes": 36,
+        "possession_home": 0.5125,
+        "shots": 2,
+        "xg": 0.6158388680016134
+      }
+    }
+  ],
+  "policy": "matched fixture and seed; default production path unchanged",
+  "promotion_ready": true,
+  "seconds_per_match": 120.0,
+  "version": "9.5.0-shadow"
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "release": "9.0.0-candidate",
+  "status": "frozen_research_candidate",
+  "parent_research": "8.9.0-candidate",
+  "parent_deployed": "7.0.0",
+  "rollback": "6.0.0",
+  "model": "three-component continuous log-normal mixture survival",
+  "deployment_policy": "evaluated only; not sealed or deployed",
+  "artifacts": [
+    {
+      "path": "data/frame_world/continuous_time_v90_lopo_skillcorner.pt",
+      "bytes": 31670,
+      "sha256": "8c423d454a191d667651832b95a68b4637da66656638af1bb49ef108309feef2"
+    },
+    {
+      "path": "data/frame_world/continuous_time_v90_lopo_statsbomb360.pt",
+      "bytes": 31688,
+      "sha256": "547788c106e22642766970ad315be98248a48c64ccba413796bb0c5cd16ad0a9"
+    },
+    {
+      "path": "reports/acceptance/continuous_time_v90_lopo.json",
+      "bytes": 15297,
+      "sha256": "ce6c6d425b8d8ce4ab72e7b62f234609ac147a143b44bf2a9ec9a3a645fc49dd"
+    },
+    {
+      "path": "reports/acceptance/continuous_router_v90.json",
+      "bytes": 783,
+      "sha256": "0e3a89395126386fec978dc3d9aab74b1dfca9e88db235d32d76d9e2f19c9052"
+    },
+    {
+      "path": "data/frame_world/continuous_router_v90.json",
+      "bytes": 1138,
+      "sha256": "ec198cb78cf483ce418ef6c861fd9ca29f1bfb7e60e617422bb53ca009f7d4c8"
+    }
+  ],
+  "gates": {
+    "both_folds_ready": true,
+    "continuous_gain_both_folds": true,
+    "router_ready": true,
+    "strict_provider_isolation": true
+  },
+  "remaining_boundary": "cross-provider uncertainty coverage and distributional calibration"
+}

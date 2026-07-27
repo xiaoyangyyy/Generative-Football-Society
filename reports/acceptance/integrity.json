@@ -1,0 +1,126 @@
+{
+  "architecture": {
+    "stable_app_api": true,
+    "standings_service": true
+  },
+  "checkpoint": {
+    "ok": true,
+    "version": 6
+  },
+  "compatibility_env_reads": {
+    "core_count": 0,
+    "count": 20,
+    "locations": [
+      "src/cli.py:13",
+      "src/match_engine/calibration/ablation.py:143",
+      "src/match_engine/calibration/ablation.py:147",
+      "src/match_engine/calibration/ablation.py:168",
+      "src/match_engine/calibration/ablation.py:172",
+      "src/match_engine/calibration/ablation.py:173",
+      "src/match_engine/calibration/ablation.py:182",
+      "src/match_engine/calibration/ablation.py:184",
+      "src/match_engine/calibration/apply_params.py:51",
+      "src/match_engine/calibration/apply_params.py:53",
+      "src/match_engine/calibration/apply_params.py:81",
+      "src/match_engine/calibration/apply_params.py:82",
+      "src/match_engine/calibration/narrative_isolation.py:29",
+      "src/match_engine/calibration/narrative_isolation.py:63",
+      "src/match_engine/calibration/narrative_isolation.py:83",
+      "src/match_engine/calibration/narrative_isolation.py:84",
+      "src/match_engine/calibration/narrative_isolation.py:85",
+      "src/match_engine/calibration/narrative_isolation.py:102",
+      "src/match_engine/calibration/narrative_isolation.py:104",
+      "src/simulation/runtime.py:20"
+    ],
+    "policy": "only CLI, calibration sandbox, and runtime boundary may access process environment"
+  },
+  "dataset": {
+    "groups_disjoint": true,
+    "hashes_ok": true,
+    "summary": {
+      "dev": {
+        "goals": 3,
+        "groups": 15,
+        "passes": 2617,
+        "rows": 2694,
+        "shots": 61
+      },
+      "sealed_test": {
+        "goals": 5,
+        "groups": 9,
+        "passes": 1563,
+        "rows": 1616,
+        "shots": 45
+      },
+      "train": {
+        "goals": 30,
+        "groups": 74,
+        "passes": 12756,
+        "rows": 13270,
+        "shots": 421
+      }
+    }
+  },
+  "integrity_ready": true,
+  "real_reference": {
+    "ok": true,
+    "source": "StatsBomb Open Data — FIFA World Cup 2022 (International)",
+    "team_matches": 128
+  },
+  "real_tracking": {
+    "games": [
+      {
+        "candidate_rows": 8789,
+        "events": 799,
+        "game": 1,
+        "hash_ok": true
+      },
+      {
+        "candidate_rows": 10604,
+        "events": 964,
+        "game": 2,
+        "hash_ok": true
+      }
+    ],
+    "ok": true,
+    "sealed_evaluation": {
+      "candidate_ready": true,
+      "distance_baseline": {
+        "events": 964,
+        "mrr": 0.31725438289234975,
+        "top1": 0.0,
+        "top3": 0.5383817427385892
+      },
+      "features": [
+        "distance",
+        "forward_progress",
+        "lateral_change",
+        "receiver_defender_distance",
+        "lane_clearance"
+      ],
+      "gate": {
+        "beats_distance_mrr": true,
+        "beats_distance_top1": true,
+        "minimum_test_events": true
+      },
+      "learned_ranker": {
+        "events": 964,
+        "mrr": 0.4985062540041793,
+        "top1": 0.27282157676348545,
+        "top3": 0.6275933609958506
+      },
+      "random_expected_mrr": 0.2745343040797586,
+      "split": "game1-train_game2-sealed",
+      "test_events": 964,
+      "train_events": 799,
+      "weights": {
+        "distance": -1.0933568499388209,
+        "forward_progress": 0.4424230078923706,
+        "lane_clearance": 0.06769522671074284,
+        "lateral_change": 0.09653109864762432,
+        "receiver_defender_distance": 0.7835019275641192
+      }
+    },
+    "source": "Metrica Sports sample-data"
+  }
+}

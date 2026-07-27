@@ -1,5 +1,5 @@
-"""
-Phase 1b — AffectiveSpatialCoupling
+﻿"""
+Phase 1b 鈥?AffectiveSpatialCoupling
 
 Multi-agent emotion (players, coach, referee, crowd) with continuous modulation
 of spatial/decision channels: tau_dec, vision_scale, move_alpha, shot_bias, foul_impulse.
@@ -224,8 +224,11 @@ class AffectiveSpatialCoupling:
         for i, p in enumerate(team.players):
             if not p.on_pitch:
                 continue
-            decay = -cfg.z_emo_decay * p.z_emo
-            p.z_emo = p.z_emo + dt * (decay + coupling[i] + crowd_vec * p.fan_affinity)
+            prev_z = p.z_emo.copy()
+            decay_factor = float(np.exp(-cfg.z_emo_decay * dt))
+            next_z = p.z_emo * decay_factor + dt * (coupling[i] + crowd_vec * p.fan_affinity)
+            max_drop = 0.35 + 0.08 * float(dt)
+            p.z_emo = np.maximum(next_z, prev_z - max_drop)
 
             e = softmax(p.z_emo, tau=cfg.emotion_tau)
             pride, anger, fear, det = float(e[0]), float(e[1]), float(e[2]), float(e[3])

@@ -1,0 +1,28 @@
+{
+  "version": "8.6.0-candidate",
+  "router": "src/match_engine/frame_world/router.py",
+  "dependencies": [
+    {
+      "artifact": "data/frame_world/frame_world_v85_pass_triplet_lodo_metrica.pt",
+      "sha256": "785cd1752134937ee00cc24dfe23c18766dfc71ae5a3ce4972c3f2b3dc7d63c6"
+    },
+    {
+      "artifact": "data/frame_world/frame_world_v85_pass_triplet_lodo_skillcorner.pt",
+      "sha256": "3a385fd499b3efad10c73348603345eb1ec7124ba10de6462922027f9da834f7"
+    },
+    {
+      "artifact": "data/frame_world/frame_world_v84_pressure_pair.pt",
+      "sha256": "69aa89e985240dd42deb8e941c0eaada27ec122a7d197f3b512e6d20f7ef3c30"
+    },
+    {
+      "artifact": "data/frame_world/frame_world_v83_actor_lodo_metrica.pt",
+      "sha256": "a608cd8e25507dd21d466c7952aa2293069a6c4eac72d0f99b3bb9ab1f7c722e"
+    },
+    {
+      "artifact": "data/frame_world/frame_world_v83_actor_lodo_skillcorner.pt",
+      "sha256": "086ea35256b12a59ffda51876347bed87b869fc4308ca65d9511e8e307f74ce6"
+    }
+  ],
+  "evidence": "reports/acceptance/action_router_v86.json",
+  "ready": true
+}

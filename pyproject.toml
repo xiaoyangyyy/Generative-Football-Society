@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "generative-football-society"
+version = "0.1.0"
+description = "Modular World Cup-scale football society simulator"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "pandas",
+  "openai",
+  "python-dotenv",
+  "matplotlib",
+  "torch",
+  "statsbombpy",
+  "kloppy==3.19.0",
+]
+
+[project.scripts]
+gfs = "src.cli:main"
+
+[tool.pytest.ini_options]
+markers = [
+  "slow: slow calibration or benchmark tests",
+]

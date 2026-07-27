@@ -1,10 +1,10 @@
-"""
+﻿"""
 Continuous entity dynamics for coach / player / team priors.
 
 No hard thresholds or piecewise if/else on roles. Uses:
   - coupled relaxation: dz/dt = -K z + B u  (equilibrium z* = K^{-1} B u)
   - softmax over tactical presets from mental state
-  - ability fields: a_k = σ(w_k · φ) with role embedding φ
+  - ability fields: a_k = 蟽(w_k 路 蠁) with role embedding 蠁
   - team vector: x_team = tanh(M [x_squad; x_coach])
 """
 
@@ -18,7 +18,7 @@ import numpy as np
 from src.match_engine.math_utils import sigmoid, softmax, tanh_clip
 from src.match_engine.tactical_catalog import TACTICAL_KEYS, TACTICAL_PRESETS, infer_archetype_from_text
 
-# Soft reputation prior (σ-bump), not hard attribute overrides
+# Soft reputation prior (蟽-bump), not hard attribute overrides
 COACH_PRESET_HINTS: Dict[str, str] = {
     "Carlo Ancelotti": "possession_control",
     "Marcelo Bielsa": "gegenpress",
@@ -32,7 +32,7 @@ COACH_PRESET_HINTS: Dict[str, str] = {
     "Jesse Marsch": "gegenpress",
     "Vincenzo Montella": "wing_play",
     "Julen Lopetegui": "possession_control",
-    "Hervé Renard": "low_block_counter",
+    "Herv茅 Renard": "low_block_counter",
     "Giorgos Donis": "balanced",
     "Carlos Queiroz": "low_block_counter",
     "Otto Addo": "balanced",
@@ -66,7 +66,7 @@ PLAYER_CONDITION_KEYS: Tuple[str, ...] = (
     "defensive_intensity",
 )
 
-# Playing-channel archetypes (softmax blend → abilities), mirrors tactical presets for coaches
+# Playing-channel archetypes (softmax blend 鈫?abilities), mirrors tactical presets for coaches
 PLAYER_CHANNEL_NAMES: Tuple[str, ...] = (
     "box_finisher",
     "creative_hub",
@@ -171,7 +171,7 @@ COACH_MENTAL_KEYS: Tuple[str, ...] = (
     "motivation",
 )
 
-# Preset affinity rows (mental → style), rows sum to interpretable axes
+# Preset affinity rows (mental 鈫?style), rows sum to interpretable axes
 _PRESET_NAMES = tuple(TACTICAL_PRESETS.keys())
 _PRESET_MATRIX = np.zeros((len(_PRESET_NAMES), len(COACH_MENTAL_KEYS)))
 for i, pname in enumerate(_PRESET_NAMES):
@@ -187,12 +187,22 @@ for i, pname in enumerate(_PRESET_NAMES):
 
 
 def role_embedding(role: str, dim: int = 8) -> np.ndarray:
-    """Fourier features on role index — smooth in role space."""
-    idx = ROLE_INDEX.get(role.upper(), 5)
-    t = 2.0 * math.pi * idx / max(N_ROLES, 1)
-    feats = [1.0, math.sin(t), math.cos(t), math.sin(2 * t), math.cos(2 * t)]
-    # pad / truncate to dim
-    v = np.array(feats[:dim], dtype=float)
+    """Football-semantic axes: keeper, defence, midfield, attack, width, centre, depth, advance."""
+    vectors = {
+        "GK": (1, 0, 0, 0, 0, 1, 1, 0),
+        "CB": (0, 1, 0, 0, 0, 1, 1, 0),
+        "LB": (0, .8, .2, 0, 1, 0, .7, .2),
+        "RB": (0, .8, .2, 0, 1, 0, .7, .2),
+        "DM": (0, .5, .8, 0, 0, 1, .8, .1),
+        "CM": (0, .2, 1, .1, 0, 1, .4, .4),
+        "AM": (0, 0, .8, .5, 0, 1, .1, .8),
+        "LM": (0, .1, .8, .3, 1, 0, .3, .6),
+        "RM": (0, .1, .8, .3, 1, 0, .3, .6),
+        "LW": (0, 0, .3, .9, 1, 0, .1, .9),
+        "RW": (0, 0, .3, .9, 1, 0, .1, .9),
+        "ST": (0, 0, .1, 1, 0, 1, 0, 1),
+    }
+    v = np.asarray(vectors.get(role.upper(), vectors["CM"]), dtype=float)[:dim]
     if v.size < dim:
         v = np.pad(v, (0, dim - v.size))
     return v / max(1e-9, np.linalg.norm(v))
@@ -209,7 +219,7 @@ def squad_observables(
     height_cm: float,
     squad_max_mv: float,
 ) -> np.ndarray:
-    """Normalized exogenous inputs u ∈ R^4 for player ability field."""
+    """Normalized exogenous inputs u 鈭?R^4 for player ability field."""
     mv_norm = log_market_value / max(_log1p_safe(squad_max_mv), 1.0)
     caps_norm = tanh_clip(international_caps / 80.0)
     height_norm = tanh_clip((height_cm - 175.0) / 12.0)
@@ -225,7 +235,7 @@ def player_ability_field(
 ) -> Dict[str, float]:
     """
     Ability vector from observation u and role embedding.
-    a_i = σ(α_i·u + β_i·φ_role + γ_i).
+    a_i = 蟽(伪_i路u + 尾_i路蠁_role + 纬_i).
     Coefficients are fixed smooth weights (calibrated heuristics, not clips).
     """
     keys = ability_keys or (
@@ -277,7 +287,7 @@ def player_exogenous_inputs(
     age: Optional[float] = None,
 ) -> np.ndarray:
     """
-    u_player ∈ R^5 — mirrors coach exogenous block.
+    u_player 鈭?R^5 鈥?mirrors coach exogenous block.
     [mv_norm, caps_norm, height_norm, prestige, age_prime]
     """
     u4 = squad_observables(
@@ -352,7 +362,9 @@ def blend_abilities_from_channels(affinities: Dict[str, float]) -> Dict[str, flo
             continue
         for key in PLAYER_ABILITY_KEYS:
             out[key] = out[key] + w * float(tmpl.get(key, tmpl.get("tech", 0.5)))
-    return {k: float(sigmoid(2.0 * v - 1.0)) for k, v in out.items()}
+    # Templates are already calibrated probabilities; another sigmoid would erase
+    # most of their contrast and make distinct player archetypes converge.
+    return {k: float(np.clip(v, 0.0, 1.0)) for k, v in out.items()}
 
 
 def dominant_channel(affinities: Dict[str, float]) -> str:
@@ -397,10 +409,10 @@ def coach_exogenous_inputs(
     style_desc: str = "",
 ) -> np.ndarray:
     """
-    u_coach = [τ, π_pressure, ρ_rep, σ_style]
-    π_pressure = tanh((25-rank)/8), τ = tanh(tenure/6), etc.
+    u_coach = [蟿, 蟺_pressure, 蟻_rep, 蟽_style]
+    蟺_pressure = tanh((25-rank)/8), 蟿 = tanh(tenure/6), etc.
     """
-    tau = tanh_clip(tenure_years / 6.0)
+    tau = tanh_clip(tenure_years / 5.0)
     pressure = tanh_clip((25.0 - fifa_ranking) / 8.0)
     rep = tanh_clip(reputation_prior)
     style_signal = tanh_clip(0.15 * len(style_desc) / 200.0 + 0.25 * rep)
@@ -426,7 +438,7 @@ def coach_mental_equilibrium(u: np.ndarray) -> Dict[str, float]:
     )
     B = np.array(
         [
-            [1.4, 0.0, 0.35, 0.05],
+            [1.65, 0.0, 0.35, 0.05],
             [0.55, 0.0, 0.50, 0.10],
             [0.20, -0.85, 0.15, 0.0],
             [0.40, 0.0, 0.10, 0.15],
@@ -440,7 +452,7 @@ def coach_mental_equilibrium(u: np.ndarray) -> Dict[str, float]:
 
 
 def coach_reputation_prior(coach_name: str, known_hints: Mapping[str, str]) -> float:
-    """Smooth prior from hint table: σ(2·𝟙_known), no hard add to experience."""
+    """Smooth prior from hint table: 蟽(2路饾煓_known), no hard add to experience."""
     if coach_name in known_hints:
         return float(sigmoid(1.6))
     return float(sigmoid(-0.4))
@@ -464,7 +476,7 @@ def preset_affinities(
 
 
 def blend_preset_from_affinities(affinities: Dict[str, float]) -> Dict[str, float]:
-    """Continuous tactical vector = Σ_k π_k · preset_k."""
+    """Continuous tactical vector = 危_k 蟺_k 路 preset_k."""
     out = {k: 0.0 for k in TACTICAL_KEYS}
     for pname, w in affinities.items():
         if pname not in TACTICAL_PRESETS:
@@ -479,7 +491,7 @@ def dominant_preset(affinities: Dict[str, float]) -> str:
 
 
 def coach_authority_dynamics(mental: Dict[str, float]) -> float:
-    """σ(w·z) — bounded without clip()."""
+    """蟽(w路z) 鈥?bounded without clip()."""
     z = np.array([mental.get(k, 0.5) for k in COACH_MENTAL_KEYS], dtype=float)
     w = np.array([0.35, 0.28, 0.22, 0.08, 0.18, 0.12], dtype=float)
     b = -0.08
@@ -494,7 +506,7 @@ def team_state_vector(
     squad_conditions: Optional[List[Dict[str, float]]] = None,
 ) -> Dict[str, float]:
     """
-    Aggregate team latent x_T ∈ R^5 from squad + coach (steady summary, not discrete tiers).
+    Aggregate team latent x_T 鈭?R^5 from squad + coach (steady summary, not discrete tiers).
     Components: attack, defense, press, morale_field, institutional_pressure
     """
     if not squad_abilities:

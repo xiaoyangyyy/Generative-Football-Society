@@ -1,0 +1,395 @@
+{
+  "version": "8.2.0-candidate",
+  "policy": "strict provider LODO for pass/shot; pressure scored only where known",
+  "folds": [
+    {
+      "held_provider": "metrica",
+      "train_providers": [
+        "skillcorner",
+        "sportec"
+      ],
+      "direction_evidence_available": true,
+      "metrics": {
+        "conditioned": 0.6228739605288046,
+        "zero": 0.6571227050992353,
+        "base": 0.6571227050992353,
+        "positive_conditioned": 0.8880752631173053,
+        "positive_zero": 0.9583657428027257,
+        "ball_event_conditioned": 4.304415736607143,
+        "ball_event_zero": 6.115098214285714,
+        "ball_events": 1750,
+        "f1": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "gates": {
+        "finite": true,
+        "direction_conditioning_gain": true,
+        "positive_conditioning_noninferior": true,
+        "transition_noninferior": true
+      },
+      "ready": true,
+      "artifact": "data/frame_world/frame_world_v82_semantic_lodo_metrica.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.026596890194183688,
+          "dev": {
+            "conditioned": 0.2931564372992254,
+            "zero": 0.29491188400165225,
+            "base": 0.29491188400165225,
+            "positive_conditioned": 0.3110408271150408,
+            "positive_zero": 0.3145615169085481,
+            "ball_event_conditioned": 2.175918404219333,
+            "ball_event_zero": 2.993267078198355,
+            "ball_events": 379,
+            "f1": [
+              0.0,
+              0.0,
+              0.6528509967884627
+            ]
+          }
+        },
+        {
+          "epoch": 2,
+          "loss": 0.02610089372590942,
+          "dev": {
+            "conditioned": 0.2947638079014429,
+            "zero": 0.29491188400165225,
+            "base": 0.29491188400165225,
+            "positive_conditioned": 0.3142645435913562,
+            "positive_zero": 0.3145615169085481,
+            "ball_event_conditioned": 2.9243222528523067,
+            "ball_event_zero": 2.993267078198355,
+            "ball_events": 379,
+            "f1": [
+              0.0,
+              0.0,
+              0.6559080628400269
+            ]
+          }
+        },
+        {
+          "epoch": 3,
+          "loss": 0.02602276281785157,
+          "dev": {
+            "conditioned": 0.2931075711277732,
+            "zero": 0.29491188400165225,
+            "base": 0.29491188400165225,
+            "positive_conditioned": 0.3109428317924008,
+            "positive_zero": 0.3145615169085481,
+            "ball_event_conditioned": 2.153167898233459,
+            "ball_event_zero": 2.993267078198355,
+            "ball_events": 379,
+            "f1": [
+              0.0,
+              0.0,
+              0.6571008094186902
+            ]
+          }
+        },
+        {
+          "epoch": 4,
+          "loss": 0.025950048308251268,
+          "dev": {
+            "conditioned": 0.29339242145662736,
+            "zero": 0.29491188400165225,
+            "base": 0.29491188400165225,
+            "positive_conditioned": 0.3115141116150326,
+            "positive_zero": 0.3145615169085481,
+            "ball_event_conditioned": 2.2857947110500687,
+            "ball_event_zero": 2.993267078198355,
+            "ball_events": 379,
+            "f1": [
+              0.0,
+              0.0,
+              0.6571814056175641
+            ]
+          }
+        },
+        {
+          "epoch": 5,
+          "loss": 0.02609359709766962,
+          "dev": {
+            "conditioned": 0.29357119585560965,
+            "zero": 0.29491188400165225,
+            "base": 0.29491188400165225,
+            "positive_conditioned": 0.31187266532393904,
+            "positive_zero": 0.3145615169085481,
+            "ball_event_conditioned": 2.369034227406444,
+            "ball_event_zero": 2.993267078198355,
+            "ball_events": 379,
+            "f1": [
+              0.0,
+              0.0,
+              0.6583430715296144
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "held_provider": "skillcorner",
+      "train_providers": [
+        "metrica",
+        "sportec"
+      ],
+      "direction_evidence_available": true,
+      "metrics": {
+        "conditioned": 0.2830947674424775,
+        "zero": 0.2831364319760544,
+        "base": 0.2831364319760544,
+        "positive_conditioned": 0.3075437363032788,
+        "positive_zero": 0.30762662110653016,
+        "ball_event_conditioned": 3.0067307229769433,
+        "ball_event_zero": 3.0286285020537296,
+        "ball_events": 590,
+        "f1": [
+          0.06032863849765258,
+          0.0041473919285372465,
+          0.20440375660958093
+        ]
+      },
+      "gates": {
+        "finite": true,
+        "direction_conditioning_gain": true,
+        "positive_conditioning_noninferior": true,
+        "transition_noninferior": true
+      },
+      "ready": true,
+      "artifact": "data/frame_world/frame_world_v82_semantic_lodo_skillcorner.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.05090042035661492,
+          "dev": {
+            "conditioned": 0.4675110752062195,
+            "zero": 0.4738569339813886,
+            "base": 0.4738569339813886,
+            "positive_conditioned": 0.6261054034026066,
+            "positive_zero": 0.6390048617424452,
+            "ball_event_conditioned": 5.469132406600399,
+            "ball_event_zero": 6.073815933780967,
+            "ball_events": 965,
+            "f1": [
+              0.6411198600174978,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        {
+          "epoch": 2,
+          "loss": 0.050227210363921,
+          "dev": {
+            "conditioned": 0.45713899162373545,
+            "zero": 0.4738569339813886,
+            "base": 0.4738569339813886,
+            "positive_conditioned": 0.6050216603293871,
+            "positive_zero": 0.6390048617424452,
+            "ball_event_conditioned": 4.480796272396423,
+            "ball_event_zero": 6.073815933780967,
+            "ball_events": 965,
+            "f1": [
+              0.6411198600174978,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        {
+          "epoch": 3,
+          "loss": 0.04978322800175816,
+          "dev": {
+            "conditioned": 0.45387977581097394,
+            "zero": 0.4738569339813886,
+            "base": 0.4738569339813886,
+            "positive_conditioned": 0.5983965083810461,
+            "positive_zero": 0.6390048617424452,
+            "ball_event_conditioned": 4.170231213347281,
+            "ball_event_zero": 6.073815933780967,
+            "ball_events": 965,
+            "f1": [
+              0.6411198600174978,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        {
+          "epoch": 4,
+          "loss": 0.04616482577779714,
+          "dev": {
+            "conditioned": 0.4511630243613755,
+            "zero": 0.4738569339813886,
+            "base": 0.4738569339813886,
+            "positive_conditioned": 0.592874073457292,
+            "positive_zero": 0.6390048617424452,
+            "ball_event_conditioned": 3.9113573953895373,
+            "ball_event_zero": 6.073815933780967,
+            "ball_events": 965,
+            "f1": [
+              0.6476868327402135,
+              0.1203883495145631,
+              0.0
+            ]
+          }
+        },
+        {
+          "epoch": 5,
+          "loss": 0.043705731995549855,
+          "dev": {
+            "conditioned": 0.44748441180442555,
+            "zero": 0.4738569339813886,
+            "base": 0.4738569339813886,
+            "positive_conditioned": 0.585396428925783,
+            "positive_zero": 0.6390048617424452,
+            "ball_event_conditioned": 3.5608305639553564,
+            "ball_event_zero": 6.073815933780967,
+            "ball_events": 965,
+            "f1": [
+              0.650313339301701,
+              0.11147540983606558,
+              0.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "held_provider": "sportec",
+      "train_providers": [
+        "metrica",
+        "skillcorner"
+      ],
+      "direction_evidence_available": false,
+      "metrics": {
+        "conditioned": 0.24153342066472103,
+        "zero": 0.24153342066472103,
+        "base": 0.24153342066472103,
+        "positive_conditioned": 0.28483422376091316,
+        "positive_zero": 0.28483422376091316,
+        "ball_event_conditioned": 0.0,
+        "ball_event_zero": 0.0,
+        "ball_events": 0,
+        "f1": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "gates": {
+        "finite": true,
+        "direction_conditioning_gain": true,
+        "positive_conditioning_noninferior": true,
+        "transition_noninferior": true
+      },
+      "ready": true,
+      "artifact": "data/frame_world/frame_world_v82_semantic_lodo_sportec.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.025049213162165577,
+          "dev": {
+            "conditioned": 0.34715289507087754,
+            "zero": 0.35070669986237674,
+            "base": 0.35070669986237674,
+            "positive_conditioned": 0.3923068354172414,
+            "positive_zero": 0.39935256885220577,
+            "ball_event_conditioned": 3.879001065738711,
+            "ball_event_zero": 4.660424547230799,
+            "ball_events": 809,
+            "f1": [
+              0.0,
+              0.0,
+              0.6533373971350198
+            ]
+          }
+        },
+        {
+          "epoch": 2,
+          "loss": 0.024343194992486702,
+          "dev": {
+            "conditioned": 0.3456495203180074,
+            "zero": 0.35070669986237674,
+            "base": 0.35070669986237674,
+            "positive_conditioned": 0.38932625331507076,
+            "positive_zero": 0.39935256885220577,
+            "ball_event_conditioned": 3.5484331411543235,
+            "ball_event_zero": 4.660424547230799,
+            "ball_events": 809,
+            "f1": [
+              0.0,
+              0.0,
+              0.6533373971350198
+            ]
+          }
+        },
+        {
+          "epoch": 3,
+          "loss": 0.02427860923995406,
+          "dev": {
+            "conditioned": 0.34474359604562405,
+            "zero": 0.35070669986237674,
+            "base": 0.35070669986237674,
+            "positive_conditioned": 0.38753017527405226,
+            "positive_zero": 0.39935256885220577,
+            "ball_event_conditioned": 3.3492352022376135,
+            "ball_event_zero": 4.660424547230799,
+            "ball_events": 809,
+            "f1": [
+              0.0,
+              0.0,
+              0.658432656085963
+            ]
+          }
+        },
+        {
+          "epoch": 4,
+          "loss": 0.024249020111510308,
+          "dev": {
+            "conditioned": 0.34516864621052074,
+            "zero": 0.35070669986237674,
+            "base": 0.35070669986237674,
+            "positive_conditioned": 0.38837286776670676,
+            "positive_zero": 0.39935256885220577,
+            "ball_event_conditioned": 3.4426957166975893,
+            "ball_event_zero": 4.660424547230799,
+            "ball_events": 809,
+            "f1": [
+              0.0,
+              0.0,
+              0.6593829536284065
+            ]
+          }
+        },
+        {
+          "epoch": 5,
+          "loss": 0.02421147155307107,
+          "dev": {
+            "conditioned": 0.34387762875740996,
+            "zero": 0.35070669986237674,
+            "base": 0.35070669986237674,
+            "positive_conditioned": 0.3858133196740403,
+            "positive_zero": 0.39935256885220577,
+            "ball_event_conditioned": 3.158823114685134,
+            "ball_event_zero": 4.660424547230799,
+            "ball_events": 809,
+            "f1": [
+              0.0,
+              0.0,
+              0.6631279620853081
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "gates": {
+    "strict_lodo": true,
+    "all_folds_ready": true
+  },
+  "candidate_ready": true
+}

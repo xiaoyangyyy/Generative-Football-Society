@@ -7,20 +7,20 @@ from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
 
-from src.memory_engine.macro_goal_dynamics import clamp_match_xg, simulate_match_score_dynamics
-from src.memory_engine.poisson_simulator import _soft_goal_cap
+from src.memory_engine.macro_goal_dynamics import (
+    clamp_match_xg,
+    expected_match_xg,
+    sample_goals_from_xg,
+)
 from src.simulation.score_path import physics_official_enabled, resolve_score_path_mode, ScorePathMode
+from src.simulation.runtime import environment_snapshot, env_float
 
 if TYPE_CHECKING:
     from src.simulation.agent import SocietyAgent
 
 
 def _eta_blend() -> float:
-    raw = os.environ.get("MATCH_MACRO_MICRO_ETA", "0.55")
-    try:
-        return float(np.clip(float(raw), 0.0, 1.0))
-    except ValueError:
-        return 0.55
+    return float(np.clip(env_float(environment_snapshot(), "MATCH_MACRO_MICRO_ETA", 0.55), 0.0, 1.0))
 
 
 def fuse_xg(
@@ -50,7 +50,7 @@ def macro_narrative_xg(
 ) -> Tuple[float, float, Dict[str, Any]]:
     """Macro λ integration → xG prior only (no goal sampling). Phase 4 narrative path."""
     rng = rng or np.random.default_rng()
-    _gh, _ga, xh, xa, meta = simulate_match_score_dynamics(
+    xh, xa, meta = expected_match_xg(
         home,
         away,
         eff_status_home,
@@ -62,7 +62,6 @@ def macro_narrative_xg(
         rng=rng,
     )
     meta = dict(meta)
-    meta["macro_goals_sampled"] = [_gh, _ga]
     meta["narrative_only"] = True
     return float(xh), float(xa), meta
 
@@ -94,7 +93,7 @@ def resolve_unified_score(
         xa_mi = float(getattr(micro_summary, "micro_xg_away", 0.0))
         gh = int(getattr(micro_summary, "goals_micro_home", 0))
         ga = int(getattr(micro_summary, "goals_micro_away", 0))
-        _, xh_m, xa_m, meta_m = simulate_match_score_dynamics(
+        xh_m, xa_m, meta_m = expected_match_xg(
             home,
             away,
             eff_status_home,
@@ -118,7 +117,7 @@ def resolve_unified_score(
         meta["goals"] = [gh, ga]
         return gh, ga, round(xh, 2), round(xa, 2), meta
 
-    gh, ga, xh_m, xa_m, meta_m = simulate_match_score_dynamics(
+    xh_m, xa_m, meta_m = expected_match_xg(
         home,
         away,
         eff_status_home,
@@ -140,25 +139,7 @@ def resolve_unified_score(
         meta["micro_xg"] = [xh_mi, xa_mi]
         meta["eta"] = eta
         meta["source"] = "macro_micro_fusion"
-        if physics_official_enabled() and os.environ.get("MATCH_MICRO_SCORE", "").strip().lower() in (
-            "1",
-            "true",
-            "yes",
-        ):
-            gh = int(getattr(micro_summary, "goals_micro_home", gh))
-            ga = int(getattr(micro_summary, "goals_micro_away", ga))
-            meta["source"] = "physics_official"
-            meta["score_path"] = ScorePathMode.PHYSICS_OFFICIAL.value
-        else:
-            if is_knockout:
-                g1h, g2h = int(rng.poisson(max(0.05, xh))), int(rng.poisson(max(0.05, xh)))
-                g1a, g2a = int(rng.poisson(max(0.05, xa))), int(rng.poisson(max(0.05, xa)))
-                gh, ga = int(round((g1h + g2h) / 2)), int(round((g1a + g2a) / 2))
-            else:
-                gh = int(rng.poisson(max(0.05, xh)))
-                ga = int(rng.poisson(max(0.05, xa)))
-            gh = _soft_goal_cap(gh, xh)
-            ga = _soft_goal_cap(ga, xa)
+    gh, ga = sample_goals_from_xg(xh, xa, rng=rng, is_knockout=is_knockout)
 
     meta["xg_final"] = [round(xh, 2), round(xa, 2)]
     meta["goals"] = [gh, ga]

@@ -1,0 +1,43 @@
+{
+  "version": "8.6.0-candidate",
+  "horizon_seconds": [
+    1,
+    2,
+    3,
+    5
+  ],
+  "summary": {
+    "samples": 112,
+    "route_counts": {
+      "pass_triplet_v85": 96,
+      "pressure_pair_v84": 16,
+      "semantic_shot_v83": 1,
+      "fallback": 1
+    },
+    "finite": true,
+    "bounded": true,
+    "possession_valid": true,
+    "max_speed_mps": 45.000003814697266,
+    "mean_deletion_effect_m": 9.194374326616526,
+    "mean_time_shift_effect_m": 1.9333167755810012,
+    "horizon_effect_m": {
+      "1": 2.329154832022531,
+      "2": 4.6270754518253465,
+      "3": 6.688006926594036,
+      "5": 9.194374326616526
+    },
+    "shot_enabled": true,
+    "sportec_shot_fallback": true
+  },
+  "gates": {
+    "routes_exercised": true,
+    "finite": true,
+    "bounded": true,
+    "possession_contract": true,
+    "plausible_speed": true,
+    "deletion_counterfactual": true,
+    "time_shift_counterfactual": true,
+    "shot_evidence_switch": true
+  },
+  "ready": true
+}

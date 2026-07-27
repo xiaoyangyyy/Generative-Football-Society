@@ -5,3 +5,4 @@ python-dotenv
 matplotlib
 torch
 statsbombpy
+kloppy==3.19.0

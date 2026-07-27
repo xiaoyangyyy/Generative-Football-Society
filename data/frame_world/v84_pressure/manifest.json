@@ -1,0 +1,117 @@
+{
+  "definition": "event-level start of each strong pressure interval; concurrent actors remain separate",
+  "features": [
+    "distance_10m",
+    "closing_speed_10mps",
+    "relative_unit_x",
+    "relative_unit_y"
+  ],
+  "matches": [
+    {
+      "event_onsets": 773,
+      "file": "data/frame_world/v84_pressure/skillcorner_1886347.npz",
+      "geometry_rate": 0.8990944372574385,
+      "geometry_valid": 695,
+      "match_id": "1886347",
+      "merged_onsets": 544,
+      "provider": "skillcorner",
+      "sha256": "ac005bef9bccd7980658f6da28aaf5965e21ddeb54151a634bb2c876886173a8"
+    },
+    {
+      "event_onsets": 703,
+      "file": "data/frame_world/v84_pressure/skillcorner_1899585.npz",
+      "geometry_rate": 0.9103840682788051,
+      "geometry_valid": 640,
+      "match_id": "1899585",
+      "merged_onsets": 488,
+      "provider": "skillcorner",
+      "sha256": "e7a008cfccb82ccc88a9bf51c5c328629f2df4e3d02df434f038a618c6cbbd34"
+    },
+    {
+      "event_onsets": 740,
+      "file": "data/frame_world/v84_pressure/skillcorner_1925299.npz",
+      "geometry_rate": 0.8837837837837837,
+      "geometry_valid": 654,
+      "match_id": "1925299",
+      "merged_onsets": 532,
+      "provider": "skillcorner",
+      "sha256": "aed3dbcce29ebdd6f358fd5dd8db59174d48c8655af87bf754753a55236504fb"
+    },
+    {
+      "event_onsets": 663,
+      "file": "data/frame_world/v84_pressure/skillcorner_1953632.npz",
+      "geometry_rate": 0.9260935143288085,
+      "geometry_valid": 614,
+      "match_id": "1953632",
+      "merged_onsets": 519,
+      "provider": "skillcorner",
+      "sha256": "3185577340fe979be4c296d5f07d145908b2de77e7608793fe2f1f38a96a168a"
+    },
+    {
+      "event_onsets": 858,
+      "file": "data/frame_world/v84_pressure/skillcorner_1996435.npz",
+      "geometry_rate": 0.9417249417249417,
+      "geometry_valid": 808,
+      "match_id": "1996435",
+      "merged_onsets": 596,
+      "provider": "skillcorner",
+      "sha256": "9463a355637dadbfb18f750b45e93e97b3c0c1fb3dac2f982d96bacc929d2607"
+    },
+    {
+      "event_onsets": 748,
+      "file": "data/frame_world/v84_pressure/skillcorner_2006229.npz",
+      "geometry_rate": 0.9171122994652406,
+      "geometry_valid": 686,
+      "match_id": "2006229",
+      "merged_onsets": 540,
+      "provider": "skillcorner",
+      "sha256": "bcf8249595224288447aad1db576cb6c5a95468158d20b6ee16caf9ca745810f"
+    },
+    {
+      "event_onsets": 550,
+      "file": "data/frame_world/v84_pressure/skillcorner_2011166.npz",
+      "geometry_rate": 0.889090909090909,
+      "geometry_valid": 489,
+      "match_id": "2011166",
+      "merged_onsets": 377,
+      "provider": "skillcorner",
+      "sha256": "67932306c67915fff7aca73165ed6561ad2f8f5865789039d00b4894aa836000"
+    },
+    {
+      "event_onsets": 750,
+      "file": "data/frame_world/v84_pressure/skillcorner_2013725.npz",
+      "geometry_rate": 0.8773333333333333,
+      "geometry_valid": 658,
+      "match_id": "2013725",
+      "merged_onsets": 503,
+      "provider": "skillcorner",
+      "sha256": "c334ecc1b9518c8ebd18cda03651eee6ff2a47bf9eaad5fdde7d17ffae7af0dc"
+    },
+    {
+      "event_onsets": 665,
+      "file": "data/frame_world/v84_pressure/skillcorner_2015213.npz",
+      "geometry_rate": 0.8706766917293233,
+      "geometry_valid": 579,
+      "match_id": "2015213",
+      "merged_onsets": 457,
+      "provider": "skillcorner",
+      "sha256": "bad1b2cf6c5e704e4abafad9ef5caf070ac15d5050f46922b2f71ef07edbeedf"
+    },
+    {
+      "event_onsets": 613,
+      "file": "data/frame_world/v84_pressure/skillcorner_2017461.npz",
+      "geometry_rate": 0.9004893964110929,
+      "geometry_valid": 552,
+      "match_id": "2017461",
+      "merged_onsets": 419,
+      "provider": "skillcorner",
+      "sha256": "56e6e68177f1d9f797d209cf1e13cce44a8007d45cd358ead86ffd94a7b27321"
+    }
+  ],
+  "totals": {
+    "event_onsets": 7063,
+    "geometry_valid": 6375,
+    "merged_onsets": 4975
+  },
+  "version": "8.4.0-candidate"
+}

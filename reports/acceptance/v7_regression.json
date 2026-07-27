@@ -1,0 +1,95 @@
+{
+  "version": "7.0.0",
+  "seeds": [
+    7,
+    42,
+    101,
+    2026
+  ],
+  "monte_carlo": {
+    "simulations": 80,
+    "champion_teams": 32,
+    "max_share": 0.07500000000000001,
+    "entropy": 3.3282444293590308,
+    "p95_ms": 8376.323099969886
+  },
+  "micro": {
+    "matches": [
+      {
+        "home": "Brazil",
+        "away": "Argentina",
+        "seed": 42,
+        "goals_micro_home": 0,
+        "goals_micro_away": 3,
+        "shots_home": 0,
+        "shots_away": 4,
+        "passes_home": 75,
+        "passes_away": 100,
+        "pass_completion_home": 0.76,
+        "pass_completion_away": 0.83,
+        "micro_xg_home": 0.026654833068587392,
+        "micro_xg_away": 0.8080272960661601
+      },
+      {
+        "home": "France",
+        "away": "Spain",
+        "seed": 101,
+        "goals_micro_home": 1,
+        "goals_micro_away": 1,
+        "shots_home": 1,
+        "shots_away": 2,
+        "passes_home": 111,
+        "passes_away": 65,
+        "pass_completion_home": 0.8108108108108109,
+        "pass_completion_away": 0.7076923076923077,
+        "micro_xg_home": 0.37866314191738465,
+        "micro_xg_away": 0.525640722931156
+      },
+      {
+        "home": "Germany",
+        "away": "England",
+        "seed": 2026,
+        "goals_micro_home": 1,
+        "goals_micro_away": 2,
+        "shots_home": 1,
+        "shots_away": 4,
+        "passes_home": 78,
+        "passes_away": 99,
+        "pass_completion_home": 0.782051282051282,
+        "pass_completion_away": 0.8484848484848485,
+        "micro_xg_home": 0.056862243368347686,
+        "micro_xg_away": 0.7368994837871343
+      },
+      {
+        "home": "Japan",
+        "away": "Morocco",
+        "seed": 7,
+        "goals_micro_home": 2,
+        "goals_micro_away": 1,
+        "shots_home": 2,
+        "shots_away": 2,
+        "passes_home": 92,
+        "passes_away": 86,
+        "pass_completion_home": 0.8152173913043478,
+        "pass_completion_away": 0.8372093023255814,
+        "micro_xg_home": 0.4296591825196029,
+        "micro_xg_away": 0.5788447342374599
+      }
+    ],
+    "mean_total_goals": 2.75,
+    "p95_ms": 13225.257779937238
+  },
+  "gates": {
+    "monte_probability_mass": true,
+    "monte_deterministic": true,
+    "champion_diversity": true,
+    "champion_concentration": true,
+    "micro_finite": true,
+    "micro_deterministic": true,
+    "micro_score_sane": true,
+    "micro_completion_sane": true,
+    "monte_p95_latency": true,
+    "micro_p95_latency": true
+  },
+  "release_ready": true
+}

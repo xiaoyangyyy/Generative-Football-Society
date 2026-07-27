@@ -10,6 +10,7 @@ import numpy as np
 
 from src.match_engine.world_model.action_codec import ACTION_DIM, encode_from_ball_log_event
 from src.match_engine.world_model.observation import OBS_DIM, synthesize_obs_from_ball_event
+from src.match_engine.world_model.schema import HORIZON_INDEX, HORIZON_SCALE_SECONDS
 
 
 def _load_jsonl_events(path: Path) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
@@ -57,6 +58,8 @@ def transitions_from_ball_log_file(path: Path) -> List[Dict[str, Any]]:
         else:
             nxt = synthesize_obs_from_ball_event(ev_next, meta=meta, attacking_home=ev_next.get("team") == home if home else att)
         act = encode_from_ball_log_event(ev)
+        delta_t = max(0.0, float(ev_next.get("t_sec", 0.0)) - float(ev.get("t_sec", 0.0)))
+        act[HORIZON_INDEX] = float(np.clip(delta_t / HORIZON_SCALE_SECONDS, 0.0, 1.0))
         out.append(
             {
                 "obs": obs.astype(np.float32),
@@ -77,29 +80,36 @@ def load_ball_log_dataset(
     ball_log_dir: str,
     *,
     max_files: int = 500,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return_groups: bool = False,
+):
     root = Path(ball_log_dir)
     if not root.is_dir():
-        return (
+        empty = (
             np.zeros((0, OBS_DIM), dtype=np.float32),
             np.zeros((0, ACTION_DIM), dtype=np.float32),
             np.zeros((0, OBS_DIM), dtype=np.float32),
         )
-    obs_list, act_list, nxt_list = [], [], []
+        return (*empty, np.asarray([], dtype=str)) if return_groups else empty
+    obs_list, act_list, nxt_list, groups = [], [], [], []
     files = sorted(root.glob("*.jsonl"))[:max_files]
     for fp in files:
         for row in transitions_from_ball_log_file(fp):
             obs_list.append(row["obs"])
             act_list.append(row["action"])
             nxt_list.append(row["next_obs"])
+            groups.append(fp.stem)
     if not obs_list:
-        return (
+        empty = (
             np.zeros((0, OBS_DIM), dtype=np.float32),
             np.zeros((0, ACTION_DIM), dtype=np.float32),
             np.zeros((0, OBS_DIM), dtype=np.float32),
         )
-    return (
+        return (*empty, np.asarray([], dtype=str)) if return_groups else empty
+    result = (
         np.stack(obs_list).astype(np.float32),
         np.stack(act_list).astype(np.float32),
         np.stack(nxt_list).astype(np.float32),
     )
+    if return_groups:
+        return (*result, np.asarray(groups, dtype=str))
+    return result

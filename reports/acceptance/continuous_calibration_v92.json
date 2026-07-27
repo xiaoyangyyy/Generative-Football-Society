@@ -1,0 +1,158 @@
+{
+  "version": "9.2.0-candidate",
+  "method": "provider-stratified split conformal absolute residuals; worst source-provider radius",
+  "target_label_policy": "held labels used only for final scoring",
+  "folds": [
+    {
+      "held_provider": "metrica",
+      "calibration_providers": [
+        "skillcorner",
+        "statsbomb360"
+      ],
+      "calibration_observed": {
+        "skillcorner": 400,
+        "statsbomb360": 9502
+      },
+      "source_radii_s": {
+        "skillcorner": {
+          "0.5": 0.9219846725463867,
+          "0.9": 2.1075968742370605
+        },
+        "statsbomb360": {
+          "0.5": 0.722380518913269,
+          "0.9": 2.0144734382629395
+        }
+      },
+      "intervals": {
+        "0.5": {
+          "coverage": 0.5940246045694201,
+          "mean_width_s": 1.8219105005264282,
+          "radius_s": 0.9219846725463867
+        },
+        "0.9": {
+          "coverage": 0.9091974223784417,
+          "mean_width_s": 3.2190194129943848,
+          "radius_s": 2.1075968742370605
+        }
+      },
+      "brier_by_second": {
+        "1": 0.21842855308276612,
+        "2": 0.18999347206346484,
+        "3": 0.1173156274776017,
+        "4": 0.06476865245222099
+      },
+      "integrated_brier": 0.1476265762690134,
+      "gates": {
+        "strict_provider_holdout": true,
+        "two_calibration_providers": true,
+        "coverage_50": true,
+        "coverage_90": true,
+        "ordered_width": true,
+        "nondegenerate_width": true,
+        "integrated_brier": true
+      },
+      "ready": true
+    },
+    {
+      "held_provider": "skillcorner",
+      "calibration_providers": [
+        "metrica",
+        "statsbomb360"
+      ],
+      "calibration_observed": {
+        "metrica": 942,
+        "statsbomb360": 9502
+      },
+      "source_radii_s": {
+        "metrica": {
+          "0.5": 0.7133252620697021,
+          "0.9": 1.8847404718399048
+        },
+        "statsbomb360": {
+          "0.5": 0.6897686719894409,
+          "0.9": 2.0013203620910645
+        }
+      },
+      "intervals": {
+        "0.5": {
+          "coverage": 0.4719662058371736,
+          "mean_width_s": 1.4246779680252075,
+          "radius_s": 0.7133252620697021
+        },
+        "0.9": {
+          "coverage": 0.9178187403993856,
+          "mean_width_s": 3.2707762718200684,
+          "radius_s": 2.0013203620910645
+        }
+      },
+      "brier_by_second": {
+        "1": 0.2556831449515261,
+        "2": 0.2059156786276249,
+        "3": 0.12617053340267242,
+        "4": 0.07400025222380464
+      },
+      "integrated_brier": 0.16544240230140703,
+      "gates": {
+        "strict_provider_holdout": true,
+        "two_calibration_providers": true,
+        "coverage_50": true,
+        "coverage_90": true,
+        "ordered_width": true,
+        "nondegenerate_width": true,
+        "integrated_brier": true
+      },
+      "ready": true
+    },
+    {
+      "held_provider": "statsbomb360",
+      "calibration_providers": [
+        "metrica",
+        "skillcorner"
+      ],
+      "calibration_observed": {
+        "metrica": 942,
+        "skillcorner": 400
+      },
+      "source_radii_s": {
+        "metrica": {
+          "0.5": 0.7387804388999939,
+          "0.9": 1.8797624111175537
+        },
+        "skillcorner": {
+          "0.5": 0.9041181802749634,
+          "0.9": 2.146172046661377
+        }
+      },
+      "intervals": {
+        "0.5": {
+          "coverage": 0.5976774676905787,
+          "mean_width_s": 1.7929056882858276,
+          "radius_s": 0.9041181802749634
+        },
+        "0.9": {
+          "coverage": 0.916234833822397,
+          "mean_width_s": 3.2703800201416016,
+          "radius_s": 2.146172046661377
+        }
+      },
+      "brier_by_second": {
+        "1": 0.22994098265929178,
+        "2": 0.19514691841042342,
+        "3": 0.12351115125542965,
+        "4": 0.06973691925776761
+      },
+      "integrated_brier": 0.1545839928957281,
+      "gates": {
+        "strict_provider_holdout": true,
+        "two_calibration_providers": true,
+        "coverage_50": true,
+        "coverage_90": true,
+        "ordered_width": true,
+        "nondegenerate_width": true,
+        "integrated_brier": true
+      },
+      "ready": true
+    }
+  ],
+  "ready": true
+}

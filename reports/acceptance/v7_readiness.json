@@ -1,0 +1,44 @@
+{
+  "target": "7.0.0-candidate",
+  "frozen_parent": "6.0.0",
+  "capabilities": {
+    "tracking_contract": {
+      "implemented": true,
+      "evidence_ready": true,
+      "skillcorner_ready": true
+    },
+    "joint_pass_model": {
+      "implemented": true,
+      "evidence_ready": true,
+      "observed_auc_gain": 0.028090487755891513,
+      "balanced_accuracy": 0.7440321872557996
+    },
+    "probabilistic_world_model_contract": {
+      "implemented": true,
+      "trained_checkpoint": true,
+      "evidence_ready": true
+    },
+    "audited_meta_adaptation": {
+      "implemented": true,
+      "sealed_data_forbidden": true
+    },
+    "narrative_causal_state": {
+      "implemented": true,
+      "ablation_contract": true
+    },
+    "shot_counterfactual_planner": {
+      "implemented": true,
+      "evidence_ready": true
+    },
+    "model_registry_and_ci": {
+      "implemented": true,
+      "frozen_manifest_verified": true
+    }
+  },
+  "existing_receiver_ranker_ready": true,
+  "domain_generalization": {
+    "skillcorner_third_provider_ready": true,
+    "all_provider_lodo_ready": true
+  },
+  "release_ready": true
+}

@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "provider": "skillcorner",
+  "matches": [
+    {
+      "match_id": "1886347",
+      "frames": 59061,
+      "sampled_frames": 5907,
+      "passes": 902,
+      "receiver_candidates": 2544,
+      "shots": 334,
+      "sha256": {
+        "1886347_dynamic_events.csv": "8e9b3d6edbc308beceede11ad0d4c7b88ee4648244f3c9492953285b68754dcf",
+        "1886347_match.json": "30c608e78663e9f490b3545479a3ce67b171f418c5133d5609cb249a2466abb2",
+        "1886347_phases_of_play.csv": "0ceac56df7cf32b26a543f7fcc08c52679de928fc570dcfd9fc3d6a6a6d38252",
+        "1886347_tracking_extrapolated.jsonl": "3577e2803da95390f8b2f85d47829eb55fbbfee6211c94adc65db0dc78e46b41"
+      }
+    },
+    {
+      "match_id": "1899585",
+      "frames": 60530,
+      "sampled_frames": 6053,
+      "passes": 820,
+      "receiver_candidates": 2387,
+      "shots": 353,
+      "sha256": {
+        "1899585_dynamic_events.csv": "2688f047fa704bb353282b0e21220761466d2a7b2b13a82e2beae14581d5283e",
+        "1899585_match.json": "41de8cb74a0512fcf0cbaaa5c615ae3e7dcaaf6745b9c78a050b59b906b1cb06",
+        "1899585_phases_of_play.csv": "56480b63b50f807ae3193263d1545f6601aec3d23e31ded91bab19154a133b7a",
+        "1899585_tracking_extrapolated.jsonl": "90b6289ec2181192d1793ec6240fbbe8225ff0219c7956710c6278c31a661100"
+      }
+    },
+    {
+      "match_id": "1925299",
+      "frames": 61301,
+      "sampled_frames": 6131,
+      "passes": 963,
+      "receiver_candidates": 2733,
+      "shots": 372,
+      "sha256": {
+        "1925299_dynamic_events.csv": "ac0cfd60f5ce40ffa2135b2177d105053603cab109784b53541f4cfaa2007b3c",
+        "1925299_match.json": "f4345b32c0fdd7c9990df70050b3a74f57b1992cf762e20f2a4d309bd2fba7d2",
+        "1925299_phases_of_play.csv": "8d738c34f931e906b342838639c1abd9c9d35b3ca780931a7caae238fddb9058",
+        "1925299_tracking_extrapolated.jsonl": "48528be40ad82fa3e2b232e1af8d311705f7d6d119925ef199d2b59ea36fd3c9"
+      }
+    },
+    {
+      "match_id": "1953632",
+      "frames": 59250,
+      "sampled_frames": 5925,
+      "passes": 915,
+      "receiver_candidates": 2587,
+      "shots": 173,
+      "sha256": {
+        "1953632_dynamic_events.csv": "d569faa1279af81c9a822f387481f947162568dfcff0236202063434888adc84",
+        "1953632_match.json": "366c8dd6b504d4f4ace5685040648b0f30081043a44f01663b8b7e077e6bfde8",
+        "1953632_phases_of_play.csv": "04934419afbd09a45fbd3e66917cde1bd219841ebbba58e7e7d1db806b135c12",
+        "1953632_tracking_extrapolated.jsonl": "1c2014f97c3eff1ce2475203512c9d126930d7599c036105c9ac442d1de1667e"
+      }
+    },
+    {
+      "match_id": "1996435",
+      "frames": 57621,
+      "sampled_frames": 5763,
+      "passes": 941,
+      "receiver_candidates": 2665,
+      "shots": 425,
+      "sha256": {
+        "1996435_dynamic_events.csv": "f4fb6a44de7e846e521f87a639ee747b13842631e8986aa4666bd4738e477187",
+        "1996435_match.json": "f54179645d3c3f308a7094086283277f2a7c99da5f3919302e622cbd82f9d065",
+        "1996435_phases_of_play.csv": "44cb0e8a65eb21a3c170cb7e010c3de834b3f94fc64f872b0cc5bf51cbc4c57d",
+        "1996435_tracking_extrapolated.jsonl": "f42764d8bde290e8f738fa21141cadbed75408314b0b337bbf1d5a3444540a02"
+      }
+    },
+    {
+      "match_id": "2006229",
+      "frames": 59270,
+      "sampled_frames": 5927,
+      "passes": 921,
+      "receiver_candidates": 2587,
+      "shots": 205,
+      "sha256": {
+        "2006229_dynamic_events.csv": "b5fd3d77295a3f9889fe4d265e77f9108ce5dbbe1b98d5bdc6357a2aec51647c",
+        "2006229_match.json": "87386df74b45eb7ccac80742c603763146cb2b61f47561122355fe246d8795eb",
+        "2006229_phases_of_play.csv": "b116d73a03d3daaa0726c3ff16935cceea25b8fa7cefa4905a2aaa5fc757f418",
+        "2006229_tracking_extrapolated.jsonl": "3ee193ba01f1fe2cbce087eca8a881c21b8b0ea3485ae6c3d7e32e8b2f51e738"
+      }
+    },
+    {
+      "match_id": "2011166",
+      "frames": 71851,
+      "sampled_frames": 7186,
+      "passes": 677,
+      "receiver_candidates": 1975,
+      "shots": 458,
+      "sha256": {
+        "2011166_dynamic_events.csv": "6d12de49f63533c80c491fbaa2921ceedcd6109fe9099159fb8995552f9e1b12",
+        "2011166_match.json": "6b381b8bd338859c394c1992da137436e2e09cd609a81ac94d5f5f941d35d1bc",
+        "2011166_phases_of_play.csv": "bb9c7d126e4c16b6170d653eef539b0a8c3fd12ba115553943f137d4a2d84f1b",
+        "2011166_tracking_extrapolated.jsonl": "8ec2937050930d87e4f52b2d65515f70ef8edd0ae2814bf40155c4448133390e"
+      }
+    },
+    {
+      "match_id": "2013725",
+      "frames": 70251,
+      "sampled_frames": 7026,
+      "passes": 886,
+      "receiver_candidates": 2534,
+      "shots": 361,
+      "sha256": {
+        "2013725_dynamic_events.csv": "71fc82c198fbed111a1f99a1e0f083eb9200610c117bf099189587ad18eee451",
+        "2013725_match.json": "c8b9372fbd2e79ddcbb859b51b5086111ed7f3cd84ca0b457091c7d0e5209df3",
+        "2013725_phases_of_play.csv": "972a56dbab399698717eaa0a537231ac23787af90770b78833ed0417c1a868e4",
+        "2013725_tracking_extrapolated.jsonl": "13eb83329814ed5f5d73da8f8ab5c5979d6c8a7858e89e28a7fa8072f91fb250"
+      }
+    },
+    {
+      "match_id": "2015213",
+      "frames": 72101,
+      "sampled_frames": 7211,
+      "passes": 824,
+      "receiver_candidates": 2294,
+      "shots": 298,
+      "sha256": {
+        "2015213_dynamic_events.csv": "309aa1f76bb437c528b6e6d8b3013c5d91019030bafebcf678dfe721bc55b28a",
+        "2015213_match.json": "300342194bf3dcd9fe356ed30df26fd0ee6e8caeb8ce5d8cfd27cf90cd995dff",
+        "2015213_phases_of_play.csv": "074c82171a12f9e45ea1ad9d4e79b96b39453d15d2b0bea1adafb4dfa7389d45",
+        "2015213_tracking_extrapolated.jsonl": "413990d0024d84856ce1f2a16866b8887472c0cea22c61caef0d1f46505a609e"
+      }
+    },
+    {
+      "match_id": "2017461",
+      "frames": 71451,
+      "sampled_frames": 7146,
+      "passes": 736,
+      "receiver_candidates": 2068,
+      "shots": 335,
+      "sha256": {
+        "2017461_dynamic_events.csv": "b36d955d9810480d78268a46a65ecaa5115ecdbb9855aa00e8d1c175574c61f3",
+        "2017461_match.json": "db27759bf734dc8e3d9e56f047965cc7c74833bc3d0345ee3821ab97681ce4b9",
+        "2017461_phases_of_play.csv": "0b52f9d58e03a9244f8e837d8504218897663edea78358036fbf228d4b39b9ec",
+        "2017461_tracking_extrapolated.jsonl": "59cfa5588efee041da439f44df5b5b92f2b7305571dc831164e3d05f7415787a"
+      }
+    }
+  ],
+  "source": "SkillCorner Open Data",
+  "tracking_sample_rate_hz": 1,
+  "tracking_import_complete": true
+}

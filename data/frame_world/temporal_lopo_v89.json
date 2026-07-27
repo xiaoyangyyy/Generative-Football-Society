@@ -1,0 +1,23 @@
+{
+  "version": "8.9.0-candidate",
+  "policy": "strict bidirectional provider holdout",
+  "dependencies": [
+    {
+      "artifact": "data/frame_world/v89_temporal_providers/manifest.json",
+      "sha256": "314941a73e4d085aae472318985d262b0aca1a203ed696dbd08f33cc253b7466"
+    },
+    {
+      "artifact": "reports/acceptance/temporal_mark_v89_lopo.json",
+      "sha256": "dd8a30cb10e1d2d8684ff2109af5c0401a6f5b566c114c46474ee32b1146a18c"
+    },
+    {
+      "artifact": "data/frame_world/temporal_mark_v89_lopo_skillcorner.pt",
+      "sha256": "2d566f249fa8b148a7d1fa70228ba8b171af1a3579ebec0add1f827cc1b5bde5"
+    },
+    {
+      "artifact": "data/frame_world/temporal_mark_v89_lopo_statsbomb360.pt",
+      "sha256": "209ff4c8292208671775f4b51141a952865a5956d51e1cd78b1679c4456f88aa"
+    }
+  ],
+  "ready": true
+}

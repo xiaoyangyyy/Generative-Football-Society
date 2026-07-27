@@ -1,0 +1,31 @@
+{
+  "checkpoint": "D:\\eeg2street\\data\\world_model\\latent_wm.pt",
+  "dataset_manifest": "D:\\eeg2street\\data\\world_model\\dataset_manifest.json",
+  "gates": {
+    "one_step_mse": true,
+    "pass_balanced_accuracy": false,
+    "shot_evidence": false,
+    "ten_step_mse": true
+  },
+  "groups": 9,
+  "pass": {
+    "balanced_accuracy": 0.5,
+    "ece": 0.3974523510163029,
+    "samples": 480
+  },
+  "release_ready": false,
+  "rollout_mse": {
+    "1": 0.005050959199201316,
+    "10": 0.015056553564355148,
+    "3": 0.007861506219342118,
+    "5": 0.011570258568158388
+  },
+  "shot": {
+    "brier": 0.10841828732001907,
+    "ece": 0.04384714923799038,
+    "goals": 2,
+    "samples": 16
+  },
+  "split": "sealed_test",
+  "starts": 500
+}

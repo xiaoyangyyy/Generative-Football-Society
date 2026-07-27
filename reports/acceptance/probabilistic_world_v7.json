@@ -1,0 +1,23 @@
+{
+  "version": "7.0.0-candidate",
+  "split_policy": "provider-stratified match holdout",
+  "train_events": 309619,
+  "test_events": 78856,
+  "test_matches": 85,
+  "providers": [
+    "sportec",
+    "statsbomb360"
+  ],
+  "events": [
+    "retain",
+    "turnover",
+    "shot",
+    "foul",
+    "out"
+  ],
+  "log_loss": 0.4380856390639921,
+  "global_baseline_log_loss": 0.5709528453341874,
+  "pass_log_loss": 0.45014706626102535,
+  "pass_baseline_log_loss": 0.48777299229869553,
+  "candidate_ready": true
+}

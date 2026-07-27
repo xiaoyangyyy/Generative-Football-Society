@@ -1,0 +1,38 @@
+{
+  "candidate_ready": true,
+  "distance_baseline": {
+    "events": 964,
+    "mrr": 0.31725438289234975,
+    "top1": 0.0,
+    "top3": 0.5383817427385892
+  },
+  "features": [
+    "distance",
+    "forward_progress",
+    "lateral_change",
+    "receiver_defender_distance",
+    "lane_clearance"
+  ],
+  "gate": {
+    "beats_distance_mrr": true,
+    "beats_distance_top1": true,
+    "minimum_test_events": true
+  },
+  "learned_ranker": {
+    "events": 964,
+    "mrr": 0.4985062540041793,
+    "top1": 0.27282157676348545,
+    "top3": 0.6275933609958506
+  },
+  "random_expected_mrr": 0.2745343040797586,
+  "split": "game1-train_game2-sealed",
+  "test_events": 964,
+  "train_events": 799,
+  "weights": {
+    "distance": -1.0933568499388209,
+    "forward_progress": 0.4424230078923706,
+    "lane_clearance": 0.06769522671074284,
+    "lateral_change": 0.09653109864762432,
+    "receiver_defender_distance": 0.7835019275641192
+  }
+}

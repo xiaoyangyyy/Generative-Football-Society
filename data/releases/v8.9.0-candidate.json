@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "release": "8.9.0-candidate",
+  "status": "frozen_research_candidate",
+  "parent_deployed": "7.0.0",
+  "rollback": "6.0.0",
+  "provider_policy": "strict bidirectional leave-one-provider-out",
+  "deployment_policy": "evaluated only; not sealed or deployed",
+  "artifacts": [
+    {
+      "path": "data/frame_world/v89_temporal_providers/manifest.json",
+      "bytes": 165206,
+      "sha256": "314941a73e4d085aae472318985d262b0aca1a203ed696dbd08f33cc253b7466"
+    },
+    {
+      "path": "reports/acceptance/temporal_mark_v89_lopo.json",
+      "bytes": 11244,
+      "sha256": "dd8a30cb10e1d2d8684ff2109af5c0401a6f5b566c114c46474ee32b1146a18c"
+    },
+    {
+      "path": "data/frame_world/temporal_mark_v89_lopo_skillcorner.pt",
+      "bytes": 31266,
+      "sha256": "2d566f249fa8b148a7d1fa70228ba8b171af1a3579ebec0add1f827cc1b5bde5"
+    },
+    {
+      "path": "data/frame_world/temporal_mark_v89_lopo_statsbomb360.pt",
+      "bytes": 31282,
+      "sha256": "209ff4c8292208671775f4b51141a952865a5956d51e1cd78b1679c4456f88aa"
+    },
+    {
+      "path": "data/frame_world/temporal_lopo_v89.json",
+      "bytes": 832,
+      "sha256": "1e6fb708b069dd4671994bc5ea0335cf459fc4f91b4aaa5b6ef65318912badce"
+    }
+  ],
+  "gates": {
+    "both_folds_ready": true,
+    "provider_isolation": true,
+    "quantized_time_gain": true,
+    "continue_gain": true,
+    "mark_gain": true
+  },
+  "next_research_target": "continuous-time survival must beat the continuous train-median baseline in both folds"
+}

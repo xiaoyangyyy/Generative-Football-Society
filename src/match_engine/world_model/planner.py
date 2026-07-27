@@ -8,8 +8,13 @@ import numpy as np
 
 from src.match_engine.math_utils import finite_float
 
-from src.match_engine.world_model.action_codec import encode_pass_candidate, encode_shot_action, zero_action
+from src.match_engine.world_model.action_codec import (
+    encode_high_level_action,
+    encode_pass_candidate,
+    encode_shot_action,
+)
 from src.match_engine.world_model.config import world_model_plan_enabled
+from src.match_engine.shot_decision import ShotEvidence, shot_counterfactual_value
 
 if TYPE_CHECKING:
     from src.match_engine.state import MatchAffectiveState, PlayerAffectiveState
@@ -31,13 +36,33 @@ def pass_imagination_bonuses(
     blend = float(blend if blend is not None else runtime.cfg.planner_blend)
     runtime.reset_hidden()
     obs = runtime.encode_state(state, attacking_home=attacking_home)
-    baseline = runtime.score_action(obs, zero_action())
+    confidence = runtime.planner_confidence(obs, kind="pass")
+    if confidence <= 0.0:
+        return [0.0] * len(meta)
+    hold_action = encode_high_level_action(
+        "hold",
+        target=np.asarray(state.ball.position),
+        horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+    )
+    baseline = runtime.score_action(obs, hold_action)
     bonuses: List[float] = []
 
-    for recv, kind, tgt, _lane, _press, _omega in meta:
-        act = encode_pass_candidate(state, carrier, recv, kind, tgt, success_p=0.55)
+    for candidate in meta:
+        recv, kind, tgt, _lane, _press, _omega = candidate[:6]
+        success_prior = float(candidate[6]) if len(candidate) > 6 else 0.5
+        act = encode_pass_candidate(
+            state,
+            carrier,
+            recv,
+            kind,
+            tgt,
+            success_p=success_prior,
+            horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+        )
         val = runtime.score_action(obs, act)
-        bonuses.append(finite_float(blend * (val - baseline), 0.0))
+        certainty = 1.0 - float(np.clip(runtime.last_uncertainty, 0.0, 1.0))
+        advantage = float(np.clip(val - baseline, -0.35, 0.35))
+        bonuses.append(finite_float(blend * confidence * certainty * advantage, 0.0))
     return bonuses
 
 
@@ -49,16 +74,39 @@ def shot_imagination_bonus(
     *,
     dist_goal: float,
     blend: float | None = None,
+    evidence: ShotEvidence | None = None,
 ) -> float:
     """Additive utility bonus for choosing shot vs pass/hold."""
     if not world_model_plan_enabled():
         return 0.0
+    if evidence is not None and not evidence.enabled:
+        return 0.0
     blend = float(blend if blend is not None else runtime.cfg.shot_planner_blend)
     obs = runtime.encode_state(state, attacking_home=attacking_home)
-    shot_act = encode_shot_action(carrier.position, xg=max(0.05, 0.35 * (1.0 - dist_goal)))
-    hold_val = runtime.score_action(obs, zero_action())
+    confidence = runtime.planner_confidence(obs, kind="shot")
+    if confidence <= 0.0:
+        return 0.0
+    shot_act = encode_shot_action(
+        carrier.position,
+        xg=max(0.05, 0.35 * (1.0 - dist_goal)),
+        horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+    )
+    hold_action = encode_high_level_action(
+        "hold",
+        target=np.asarray(state.ball.position),
+        horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+    )
+    hold_val = runtime.score_action(obs, hold_action)
     shot_val = runtime.score_shot_action(obs, shot_act, attacking_home=attacking_home)
-    return finite_float(blend * (shot_val - hold_val), 0.0)
+    certainty = 1.0 - float(np.clip(runtime.last_uncertainty, 0.0, 1.0))
+    advantage = shot_counterfactual_value(
+        goal_probability=float(np.clip(shot_val, 0.0, 1.0)),
+        rebound_value=0.0, turnover_cost=1.0,
+        best_continuation_value=hold_val,
+        uncertainty=runtime.last_uncertainty,
+    )
+    advantage = float(np.clip(advantage, -0.35, 0.35))
+    return finite_float(blend * confidence * certainty * advantage, 0.0)
 
 
 def action_imagination_adjustments(

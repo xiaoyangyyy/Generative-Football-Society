@@ -1,0 +1,28 @@
+{
+  "version": "9.0.0-candidate",
+  "provider_scope": "skillcorner tracking rollout; bidirectional LODO metrics in training report",
+  "summary": {
+    "feature_samples": 5451,
+    "rollout_samples": 64,
+    "mean_time_shuffle_delta_s": 0.4692709445953369,
+    "non_grid_fraction": 0.9974316358566284,
+    "delay_range_s": [
+      0.08780808746814728,
+      1.9930403232574463
+    ],
+    "finite": true,
+    "bounded": true,
+    "step_consistent": true,
+    "identity_deletion_blocks": true
+  },
+  "gates": {
+    "training_lodo_ready": true,
+    "continuous_gain_both_folds": true,
+    "time_condition_used": true,
+    "not_discrete_grid": true,
+    "execution_boundary": true,
+    "identity_gate": true,
+    "finite_bounded": true
+  },
+  "ready": true
+}

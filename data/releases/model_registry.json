@@ -1,0 +1,554 @@
+{
+  "schema_version": 1,
+  "models": {
+    "joint_pass:7.0.0": {
+      "name": "joint_pass",
+      "version": "7.0.0",
+      "status": "deployed",
+      "artifact": "D:\\eeg2street\\data\\world_model\\joint_pass_v7_candidate.json",
+      "sha256": "07adf74b30f0852093b8fb0837008a50cb24b07ada739f0c10460e0d102a37da",
+      "evidence": {
+        "release_manifest": "data/releases/v7.0.0.json",
+        "release_sha256": "f7e01912493dfb38192ceccb3bf41ab5a3ed2a9fb133359505b6fbe227ca8041",
+        "gates": {
+          "all_provider_lodo": true,
+          "readiness": true,
+          "regression": true,
+          "skillcorner_tracking": true
+        }
+      }
+    },
+    "shot:7.0.0": {
+      "name": "shot",
+      "version": "7.0.0",
+      "status": "deployed",
+      "artifact": "D:\\eeg2street\\data\\world_model\\shot_v7_candidate.json",
+      "sha256": "d96fe2018182db1a342d5c49802a2ac51bfe17609f40d7d35482be0ae23ed524",
+      "evidence": {
+        "release_manifest": "data/releases/v7.0.0.json",
+        "release_sha256": "f7e01912493dfb38192ceccb3bf41ab5a3ed2a9fb133359505b6fbe227ca8041",
+        "gates": {
+          "all_provider_lodo": true,
+          "readiness": true,
+          "regression": true,
+          "skillcorner_tracking": true
+        }
+      }
+    },
+    "probabilistic_world:7.0.0": {
+      "name": "probabilistic_world",
+      "version": "7.0.0",
+      "status": "deployed",
+      "artifact": "D:\\eeg2street\\data\\world_model\\probabilistic_v7_candidate.json",
+      "sha256": "b9c8ff752295a492b42f1a35c6e058cabf64d00e7e0cf57dc766033d17a1cfde",
+      "evidence": {
+        "release_manifest": "data/releases/v7.0.0.json",
+        "release_sha256": "f7e01912493dfb38192ceccb3bf41ab5a3ed2a9fb133359505b6fbe227ca8041",
+        "gates": {
+          "all_provider_lodo": true,
+          "readiness": true,
+          "regression": true,
+          "skillcorner_tracking": true
+        }
+      }
+    },
+    "frame_world:8.0.0-candidate": {
+      "name": "frame_world",
+      "version": "8.0.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\frame_world_v8_candidate.pt",
+      "sha256": "f3ca03cf0cd5451e8e7151b382a87527bdeb44cb33e239ec1edb1dc094d965e6",
+      "evidence": {
+        "report": "reports/acceptance/frame_world_v8.json",
+        "report_sha256": "e4131e45c48e2da93e31fcd40c2fbc85bb19dd01b123df4d7df3db63df9261e8",
+        "data_manifest": "data/frame_world/v8/manifest.json",
+        "gates": {
+          "beats_constant_velocity": true,
+          "long_horizon_gain": true,
+          "uncertainty_50": true,
+          "uncertainty_90": true,
+          "three_providers": true,
+          "all_provider_holdouts": true
+        }
+      }
+    },
+    "controlled_frame_world_metrica:8.1.0-candidate": {
+      "name": "controlled_frame_world_metrica",
+      "version": "8.1.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:/eeg2street/data/frame_world/frame_world_v81_lodo_metrica.pt",
+      "sha256": "3258f03ca4cb514ebe0e9da8869cae9128459627218a17525af04d98d3eb77be",
+      "evidence": {
+        "report": "reports/acceptance/frame_world_v81.json",
+        "report_sha256": "6a94752aa5096ec7e8277c177e58d35f90847f1efbb690274aff8eee79dfacac",
+        "held_provider": "metrica",
+        "gates": {
+          "one_step_noninferior": true,
+          "rollout_finite": true,
+          "rollout_2s_noninferior": true,
+          "plausible_speed": true,
+          "intervention_direction": true,
+          "intervention_finite": true
+        }
+      }
+    },
+    "controlled_frame_world_skillcorner:8.1.0-candidate": {
+      "name": "controlled_frame_world_skillcorner",
+      "version": "8.1.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:/eeg2street/data/frame_world/frame_world_v81_lodo_skillcorner.pt",
+      "sha256": "59431809008376c00f0024fdbdfc95618dc44e72dab2610a1c9fa4ff48a5edb5",
+      "evidence": {
+        "report": "reports/acceptance/frame_world_v81.json",
+        "report_sha256": "6a94752aa5096ec7e8277c177e58d35f90847f1efbb690274aff8eee79dfacac",
+        "held_provider": "skillcorner",
+        "gates": {
+          "one_step_noninferior": true,
+          "rollout_finite": true,
+          "rollout_2s_noninferior": true,
+          "plausible_speed": true,
+          "intervention_direction": true,
+          "intervention_finite": true
+        }
+      }
+    },
+    "controlled_frame_world_sportec:8.1.0-candidate": {
+      "name": "controlled_frame_world_sportec",
+      "version": "8.1.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:/eeg2street/data/frame_world/frame_world_v81_lodo_sportec.pt",
+      "sha256": "939eda200a0d841798cbd4729f2aea7df7769e3db35ae5877e64ea337a9adf4d",
+      "evidence": {
+        "report": "reports/acceptance/frame_world_v81.json",
+        "report_sha256": "6a94752aa5096ec7e8277c177e58d35f90847f1efbb690274aff8eee79dfacac",
+        "held_provider": "sportec",
+        "gates": {
+          "one_step_noninferior": true,
+          "rollout_finite": true,
+          "rollout_2s_noninferior": true,
+          "plausible_speed": true,
+          "intervention_direction": true,
+          "intervention_finite": true
+        }
+      }
+    },
+    "semantic_frame_world_metrica:8.2.0-candidate": {
+      "name": "semantic_frame_world_metrica",
+      "version": "8.2.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:/eeg2street/data/frame_world/frame_world_v82_semantic_lodo_metrica.pt",
+      "sha256": "3babf3786b289ca20b4ebce261dd9500658393c52353987b049533717311ed92",
+      "evidence": {
+        "report": "reports/acceptance/frame_world_v82.json",
+        "report_sha256": "c0da5173a85c7a2739fc3581581fbc806e7db87628acd66b18cf66a455ab4f84",
+        "held_provider": "metrica",
+        "gates": {
+          "finite": true,
+          "direction_conditioning_gain": true,
+          "positive_conditioning_noninferior": true,
+          "transition_noninferior": true
+        }
+      }
+    },
+    "semantic_frame_world_skillcorner:8.2.0-candidate": {
+      "name": "semantic_frame_world_skillcorner",
+      "version": "8.2.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:/eeg2street/data/frame_world/frame_world_v82_semantic_lodo_skillcorner.pt",
+      "sha256": "8ee4d888e8e8f04683f43c67592079c55e6281dfd66c512a9f4f3ed6bd7cb948",
+      "evidence": {
+        "report": "reports/acceptance/frame_world_v82.json",
+        "report_sha256": "c0da5173a85c7a2739fc3581581fbc806e7db87628acd66b18cf66a455ab4f84",
+        "held_provider": "skillcorner",
+        "gates": {
+          "finite": true,
+          "direction_conditioning_gain": true,
+          "positive_conditioning_noninferior": true,
+          "transition_noninferior": true
+        }
+      }
+    },
+    "semantic_frame_world_sportec:8.2.0-candidate": {
+      "name": "semantic_frame_world_sportec",
+      "version": "8.2.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:/eeg2street/data/frame_world/frame_world_v82_semantic_lodo_sportec.pt",
+      "sha256": "8f531bd95f72213fe42ad4390fee41691fa546e30ef4f86fe88b3fe5c270c140",
+      "evidence": {
+        "report": "reports/acceptance/frame_world_v82.json",
+        "report_sha256": "c0da5173a85c7a2739fc3581581fbc806e7db87628acd66b18cf66a455ab4f84",
+        "held_provider": "sportec",
+        "gates": {
+          "finite": true,
+          "direction_conditioning_gain": true,
+          "positive_conditioning_noninferior": true,
+          "transition_noninferior": true
+        }
+      }
+    },
+    "frame_pressure:8.2.0-candidate": {
+      "name": "frame_pressure",
+      "version": "8.2.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:/eeg2street/data/frame_world/frame_world_v82_pressure_skillcorner.pt",
+      "sha256": "f5e15589689e9364069342e39bec94c1c43e7fc94820ceed49a566eca57d9e6a",
+      "evidence": {
+        "report": "reports/acceptance/frame_pressure_v82.json",
+        "report_sha256": "a4642273bb53f313a486ba60e6b02c870c1981ea757fb5b78357a480c261894b",
+        "gates": {
+          "match_disjoint": true,
+          "pressure_f1": true,
+          "finite": true
+        }
+      }
+    },
+    "actor_semantic_frame_world_metrica:8.3.0-candidate": {
+      "name": "actor_semantic_frame_world_metrica",
+      "version": "8.3.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\frame_world_v83_actor_lodo_metrica.pt",
+      "sha256": "a608cd8e25507dd21d466c7952aa2293069a6c4eac72d0f99b3bb9ab1f7c722e",
+      "evidence": {
+        "report": "reports/acceptance/frame_world_v83.json",
+        "strict_lodo": true,
+        "deployed": false
+      }
+    },
+    "actor_semantic_frame_world_skillcorner:8.3.0-candidate": {
+      "name": "actor_semantic_frame_world_skillcorner",
+      "version": "8.3.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\frame_world_v83_actor_lodo_skillcorner.pt",
+      "sha256": "086ea35256b12a59ffda51876347bed87b869fc4308ca65d9511e8e307f74ce6",
+      "evidence": {
+        "report": "reports/acceptance/frame_world_v83.json",
+        "strict_lodo": true,
+        "deployed": false
+      }
+    },
+    "actor_semantic_frame_world_sportec:8.3.0-candidate": {
+      "name": "actor_semantic_frame_world_sportec",
+      "version": "8.3.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\frame_world_v83_actor_lodo_sportec.pt",
+      "sha256": "b572c43cdc83b670aace3feea695222fe1f3533a9d8c5d137940a95d0fb9844a",
+      "evidence": {
+        "report": "reports/acceptance/frame_world_v83.json",
+        "strict_lodo": true,
+        "deployed": false
+      }
+    },
+    "pressure_frame_world_skillcorner:8.3.0-candidate": {
+      "name": "pressure_frame_world_skillcorner",
+      "version": "8.3.0-candidate",
+      "status": "candidate",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\frame_world_v83_pressure_skillcorner.pt",
+      "sha256": "12e09f8cb105e71f2c33a0194136657287c96ba96e76730f1305f8bab1d1eba7",
+      "evidence": {}
+    },
+    "pressure_onset_pair_skillcorner:8.4.0-candidate": {
+      "name": "pressure_onset_pair_skillcorner",
+      "version": "8.4.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\frame_world_v84_pressure_pair.pt",
+      "sha256": "69aa89e985240dd42deb8e941c0eaada27ec122a7d197f3b512e6d20f7ef3c30",
+      "evidence": {
+        "report": "reports/acceptance/frame_pressure_v84.json",
+        "match_held_out": true,
+        "provider_scope": "skillcorner",
+        "deployed": false
+      }
+    },
+    "pass_triplet_metrica:8.5.0-candidate": {
+      "name": "pass_triplet_metrica",
+      "version": "8.5.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\frame_world_v85_pass_triplet_lodo_metrica.pt",
+      "sha256": "785cd1752134937ee00cc24dfe23c18766dfc71ae5a3ce4972c3f2b3dc7d63c6",
+      "evidence": {
+        "report": "reports/acceptance/frame_pass_triplet_v85.json",
+        "strict_lodo": true,
+        "intervention_enabled": true,
+        "deployed": false
+      }
+    },
+    "pass_triplet_skillcorner:8.5.0-candidate": {
+      "name": "pass_triplet_skillcorner",
+      "version": "8.5.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\frame_world_v85_pass_triplet_lodo_skillcorner.pt",
+      "sha256": "3a385fd499b3efad10c73348603345eb1ec7124ba10de6462922027f9da834f7",
+      "evidence": {
+        "report": "reports/acceptance/frame_pass_triplet_v85.json",
+        "strict_lodo": true,
+        "intervention_enabled": true,
+        "deployed": false
+      }
+    },
+    "pass_triplet_sportec:8.5.0-candidate": {
+      "name": "pass_triplet_sportec",
+      "version": "8.5.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\frame_world_v85_pass_triplet_lodo_sportec.pt",
+      "sha256": "e01ecf9710317884ecb7d1475c9e18f4074b7c85eee9f181234154a3ce7e89dd",
+      "evidence": {
+        "report": "reports/acceptance/frame_pass_triplet_v85.json",
+        "strict_lodo": true,
+        "intervention_enabled": false,
+        "deployed": false
+      }
+    },
+    "action_transition_router:8.6.0-candidate": {
+      "name": "action_transition_router",
+      "version": "8.6.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\action_router_v86.json",
+      "sha256": "0a60afa1cfa0a4323c5f9b6f49aaaa4cb710c583411c5ecf1e8d0637a230049e",
+      "evidence": {
+        "report": "reports/acceptance/action_router_v86.json",
+        "closed_loop_seconds": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "deployed": false
+      }
+    },
+    "reception_chain_skillcorner:8.7.0-candidate": {
+      "name": "reception_chain_skillcorner",
+      "version": "8.7.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\reception_chain_v87_skillcorner.pt",
+      "sha256": "527f6e0f3a1a9f0849068f26d263b7fc26be42c4ff9c00740833cba06e62e7cd",
+      "evidence": {
+        "report": "reports/acceptance/reception_chain_v87.json",
+        "external_audit": "reports/acceptance/reception_chain_v87_external.json",
+        "provider_scope": "skillcorner",
+        "deployed": false
+      }
+    },
+    "temporal_mark_skillcorner:8.8.0-candidate": {
+      "name": "temporal_mark_skillcorner",
+      "version": "8.8.0-candidate",
+      "status": "evaluated",
+      "artifact": "data\\frame_world\\temporal_mark_v88_skillcorner.pt",
+      "sha256": "156690ea882b0f5efe5d97cba73471190f7b191751a3a12d3d76321a052e7f16",
+      "evidence": {
+        "report": "reports/acceptance/temporal_mark_v88.json",
+        "report_sha256": "671f33a0f1318ecadce0d59c0f95102cc478e0f5a1e8009e40a312222ba74959",
+        "provider_scope": "skillcorner",
+        "deployed": false
+      }
+    },
+    "event_driven_router:8.8.0-candidate": {
+      "name": "event_driven_router",
+      "version": "8.8.0-candidate",
+      "status": "evaluated",
+      "artifact": "data\\frame_world\\temporal_router_v88.json",
+      "sha256": "7f7da36e9caab7d1ceac045c87cb09ca98ec5f265df70619bc63eca93b0728a4",
+      "evidence": {
+        "report": "reports/acceptance/temporal_router_v88.json",
+        "report_sha256": "5e954b75e231491ff7f7ff1be318ad0018ee35a01f554a6b66ce2a46a9fa07de",
+        "provider_scope": "skillcorner",
+        "deployed": false
+      }
+    },
+    "temporal_mark_lopo_skillcorner:8.9.0-candidate": {
+      "name": "temporal_mark_lopo_skillcorner",
+      "version": "8.9.0-candidate",
+      "status": "evaluated",
+      "artifact": "data\\frame_world\\temporal_mark_v89_lopo_skillcorner.pt",
+      "sha256": "2d566f249fa8b148a7d1fa70228ba8b171af1a3579ebec0add1f827cc1b5bde5",
+      "evidence": {
+        "report": "reports/acceptance/temporal_mark_v89_lopo.json",
+        "report_sha256": "dd8a30cb10e1d2d8684ff2109af5c0401a6f5b566c114c46474ee32b1146a18c",
+        "strict_provider_lodo": true,
+        "providers": [
+          "skillcorner",
+          "statsbomb360"
+        ],
+        "deployed": false
+      }
+    },
+    "temporal_mark_lopo_statsbomb360:8.9.0-candidate": {
+      "name": "temporal_mark_lopo_statsbomb360",
+      "version": "8.9.0-candidate",
+      "status": "evaluated",
+      "artifact": "data\\frame_world\\temporal_mark_v89_lopo_statsbomb360.pt",
+      "sha256": "209ff4c8292208671775f4b51141a952865a5956d51e1cd78b1679c4456f88aa",
+      "evidence": {
+        "report": "reports/acceptance/temporal_mark_v89_lopo.json",
+        "report_sha256": "dd8a30cb10e1d2d8684ff2109af5c0401a6f5b566c114c46474ee32b1146a18c",
+        "strict_provider_lodo": true,
+        "providers": [
+          "skillcorner",
+          "statsbomb360"
+        ],
+        "deployed": false
+      }
+    },
+    "continuous_time_lopo_skillcorner:9.0.0-candidate": {
+      "name": "continuous_time_lopo_skillcorner",
+      "version": "9.0.0-candidate",
+      "status": "evaluated",
+      "artifact": "data\\frame_world\\continuous_time_v90_lopo_skillcorner.pt",
+      "sha256": "8c423d454a191d667651832b95a68b4637da66656638af1bb49ef108309feef2",
+      "evidence": {
+        "report": "reports/acceptance/continuous_time_v90_lopo.json",
+        "report_sha256": "ce6c6d425b8d8ce4ab72e7b62f234609ac147a143b44bf2a9ec9a3a645fc49dd",
+        "strict_provider_lodo": true,
+        "continuous_time": true,
+        "deployed": false
+      }
+    },
+    "continuous_time_lopo_statsbomb360:9.0.0-candidate": {
+      "name": "continuous_time_lopo_statsbomb360",
+      "version": "9.0.0-candidate",
+      "status": "evaluated",
+      "artifact": "data\\frame_world\\continuous_time_v90_lopo_statsbomb360.pt",
+      "sha256": "547788c106e22642766970ad315be98248a48c64ccba413796bb0c5cd16ad0a9",
+      "evidence": {
+        "report": "reports/acceptance/continuous_time_v90_lopo.json",
+        "report_sha256": "ce6c6d425b8d8ce4ab72e7b62f234609ac147a143b44bf2a9ec9a3a645fc49dd",
+        "strict_provider_lodo": true,
+        "continuous_time": true,
+        "deployed": false
+      }
+    },
+    "continuous_event_router:9.0.0-candidate": {
+      "name": "continuous_event_router",
+      "version": "9.0.0-candidate",
+      "status": "evaluated",
+      "artifact": "data\\frame_world\\continuous_router_v90.json",
+      "sha256": "ec198cb78cf483ce418ef6c861fd9ca29f1bfb7e60e617422bb53ca009f7d4c8",
+      "evidence": {
+        "report": "reports/acceptance/continuous_time_v90_lopo.json",
+        "report_sha256": "ce6c6d425b8d8ce4ab72e7b62f234609ac147a143b44bf2a9ec9a3a645fc49dd",
+        "strict_provider_lodo": true,
+        "continuous_time": true,
+        "deployed": false
+      }
+    },
+    "continuous_time_lopo_metrica:9.2.0-candidate": {
+      "name": "continuous_time_lopo_metrica",
+      "version": "9.2.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\continuous_time_v92_lopo_metrica.pt",
+      "sha256": "2cb0ecc39b1b46b8bf0498a803e81e393a778643edbf1c397a1be344fda63ba7",
+      "evidence": {
+        "point_report": "reports/acceptance/continuous_time_v92_lopo.json",
+        "calibration_report": "reports/acceptance/continuous_calibration_v92.json",
+        "strict_three_way_lopo": true,
+        "deployed": false
+      }
+    },
+    "continuous_time_lopo_skillcorner:9.2.0-candidate": {
+      "name": "continuous_time_lopo_skillcorner",
+      "version": "9.2.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\continuous_time_v92_lopo_skillcorner.pt",
+      "sha256": "2270cbf6be1b3eadfa2cd1536ea0b80c818f937a239806d52baf54fc23cbb6d2",
+      "evidence": {
+        "point_report": "reports/acceptance/continuous_time_v92_lopo.json",
+        "calibration_report": "reports/acceptance/continuous_calibration_v92.json",
+        "strict_three_way_lopo": true,
+        "deployed": false
+      }
+    },
+    "continuous_time_lopo_statsbomb360:9.2.0-candidate": {
+      "name": "continuous_time_lopo_statsbomb360",
+      "version": "9.2.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\continuous_time_v92_lopo_statsbomb360.pt",
+      "sha256": "4956e18982a3b77119c8a4cf28adf30cd4819bdd6ec4d193c108d39b369da99b",
+      "evidence": {
+        "point_report": "reports/acceptance/continuous_time_v92_lopo.json",
+        "calibration_report": "reports/acceptance/continuous_calibration_v92.json",
+        "strict_three_way_lopo": true,
+        "deployed": false
+      }
+    },
+    "continuous_interval_router:9.2.0-candidate": {
+      "name": "continuous_interval_router",
+      "version": "9.2.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\continuous_intervals_v92.json",
+      "sha256": "6680a42cf04ed6267dbc868640c4a0364d7e4b1efbad9f75f1ab18f7144b0eac",
+      "evidence": {
+        "point_report": "reports/acceptance/continuous_time_v92_lopo.json",
+        "calibration_report": "reports/acceptance/continuous_calibration_v92.json",
+        "strict_three_way_lopo": true,
+        "deployed": false
+      }
+    },
+    "continuous_time_operational:9.3.0-candidate": {
+      "name": "continuous_time_operational",
+      "version": "9.3.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\continuous_time_v93_operational.pt",
+      "sha256": "574e49ce22bcaea7222cbc5c8233deb4bffeafdf1a8e9c46eb90146c25efe7c3",
+      "evidence": {
+        "operational_report": "reports/acceptance/continuous_operational_v93.json",
+        "conditional_lopo": "reports/acceptance/conditional_calibration_v93.json",
+        "interval_rollout": "reports/acceptance/interval_rollout_v93.json",
+        "deployed": false
+      }
+    },
+    "conditional_interval_router:9.3.0-candidate": {
+      "name": "conditional_interval_router",
+      "version": "9.3.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\continuous_intervals_v93.json",
+      "sha256": "d25948a1be26a9518b5e3977e4c48bd35e9d85c49facb278bf790a470f3ebabc",
+      "evidence": {
+        "operational_report": "reports/acceptance/continuous_operational_v93.json",
+        "conditional_lopo": "reports/acceptance/conditional_calibration_v93.json",
+        "interval_rollout": "reports/acceptance/interval_rollout_v93.json",
+        "deployed": false
+      }
+    },
+    "continuous_time_lopo_metrica:9.4.0-candidate": {
+      "name": "continuous_time_lopo_metrica",
+      "version": "9.4.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\continuous_time_v94_lopo_metrica.pt",
+      "sha256": "ba9bf313dbb99ebd0e3436a431474562018b5982d356436c03b1ff8848f7dbcb",
+      "evidence": {
+        "quality_report": "reports/acceptance/temporal_provider_quality_v94.json",
+        "point_report": "reports/acceptance/continuous_time_v94_lopo.json",
+        "calibration_report": "reports/acceptance/continuous_calibration_v94.json",
+        "official_metrica_game3": true,
+        "deployed": false
+      }
+    },
+    "continuous_time_lopo_skillcorner:9.4.0-candidate": {
+      "name": "continuous_time_lopo_skillcorner",
+      "version": "9.4.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\continuous_time_v94_lopo_skillcorner.pt",
+      "sha256": "e8266ce7e162f714b58169f3ffc935f6d9ed3d2e0492fce2a7921e63c10b7138",
+      "evidence": {
+        "quality_report": "reports/acceptance/temporal_provider_quality_v94.json",
+        "point_report": "reports/acceptance/continuous_time_v94_lopo.json",
+        "calibration_report": "reports/acceptance/continuous_calibration_v94.json",
+        "official_metrica_game3": true,
+        "deployed": false
+      }
+    },
+    "continuous_time_lopo_statsbomb360:9.4.0-candidate": {
+      "name": "continuous_time_lopo_statsbomb360",
+      "version": "9.4.0-candidate",
+      "status": "evaluated",
+      "artifact": "D:\\eeg2street\\data\\frame_world\\continuous_time_v94_lopo_statsbomb360.pt",
+      "sha256": "1c31476dbce1a9220765127d07deadabd429b2c9f5dcac47b62c922b3a272b0d",
+      "evidence": {
+        "quality_report": "reports/acceptance/temporal_provider_quality_v94.json",
+        "point_report": "reports/acceptance/continuous_time_v94_lopo.json",
+        "calibration_report": "reports/acceptance/continuous_calibration_v94.json",
+        "official_metrica_game3": true,
+        "deployed": false
+      }
+    }
+  }
+}

@@ -3,6 +3,12 @@ import random
 import numpy as np
 import json
 
+from src.simulation.memory_service import (
+    attribute_delayed_utility,
+    build_provenance,
+    memory_stream_view,
+)
+
 class SocietyAgent:
     @staticmethod
     def _finite(value, default=0.0):
@@ -557,6 +563,11 @@ class SocietyAgent:
         stage_pressure=0.3,
         metadata=None,
         force_write=False,
+        source="simulation",
+        causal_parent_ids=None,
+        contradicts=None,
+        valid_from=None,
+        valid_until=None,
     ):
         novelty = self._content_novelty(content, layer=layer)
         # Probabilistic write gate (continuous, no hard threshold rule).
@@ -595,6 +606,14 @@ class SocietyAgent:
             "emotion_profile": emotion_profile or dict(self.emotion_profile),
             "coping": coping or dict(self.coping_profile),
             "metadata": metadata or {},
+            "provenance": build_provenance(
+                source, causal_parent_ids, contradicts,
+                valid_from if valid_from is not None else self.memory_clock,
+                valid_until,
+            ),
+            "retrieval_count": 0,
+            "downstream_utility_sum": 0.0,
+            "downstream_utility_count": 0,
             "created_step": self.memory_clock,
             "date": datetime.datetime.now().strftime("%Y-%m-%d"),
         }
@@ -623,19 +642,7 @@ class SocietyAgent:
     @property
     def memory_stream(self):
         # Backward-compatible read view built from canonical layered memories.
-        merged = self.episodic_memory + self.procedural_memory
-        merged = sorted(merged, key=lambda r: r.get("created_step", 0))
-        return [
-            {
-                "content": rec.get("content", ""),
-                "importance": rec.get("importance", 0.0),
-                "speaker": rec.get("speaker"),
-                "date": rec.get("date"),
-                "layer": rec.get("layer", "episodic"),
-                "salience": rec.get("salience", 0.0),
-            }
-            for rec in merged
-        ]
+        return memory_stream_view(self.episodic_memory, self.procedural_memory)
 
     def _control_vector(self, controls):
         c = controls or {}
@@ -831,10 +838,22 @@ class SocietyAgent:
             rc["retrieval_weight"] = float(ww)
             weighted.append(rc)
         weighted.sort(key=lambda r: r.get("retrieval_weight", 0.0), reverse=True)
+        selected = weighted if top_k is None else weighted[: max(1, top_k)]
+        selected_ids = {record.get("id") for record in selected}
+        for record in self.episodic_memory:
+            if record.get("id") in selected_ids:
+                record["retrieval_count"] = int(record.get("retrieval_count", 0)) + 1
         if top_k is None:
-            return weighted
+            return selected
         # top_k is only for display/export convenience, not for core weighting math.
-        return weighted[: max(1, top_k)]
+        return selected
+
+    def record_memory_utility(self, memory_ids, utility):
+        """Attribute delayed downstream utility to retrieved evidence."""
+        return attribute_delayed_utility(
+            self.episodic_memory + self.procedural_memory,
+            memory_ids or [], utility,
+        )
 
     def retrieve_memory_context_display(self, top_k=10, opponent=None):
         return self.retrieve_memory_context(top_k=max(1, int(top_k)), opponent=opponent)
@@ -1175,54 +1194,11 @@ class SocietyAgent:
             )
 
     def apply_llm_reflection(self, reflection):
-        reflection = reflection or {}
-        suggestion = reflection.get("suggested_adjustments", {}) or {}
-        confidence = float(np.clip(reflection.get("confidence", 0.5), 0.0, 1.0))
-        diary = str(reflection.get("reflection", reflection.get("diary", "")))
-        self.reflection_diary = diary
+        from src.simulation.meta_learning import MetaLearningController
 
-        applied = {}
-        # Legacy fields are transformed into bounded deltas.
-        if "new_wh" in reflection:
-            try:
-                suggestion["w_h_delta"] = float(reflection["new_wh"]) - float(self.W_h)
-            except Exception:
-                pass
-        if "new_wx" in reflection:
-            try:
-                suggestion["w_x_delta"] = float(reflection["new_wx"]) - float(self.W_x)
-            except Exception:
-                pass
-        if "new_icon_patience" in reflection:
-            try:
-                suggestion["icon_patience"] = float(reflection["new_icon_patience"]) - float(self.roles["Icon"]["patience"])
-            except Exception:
-                pass
-
-        for key, delta in suggestion.items():
-            safe_delta = float(0.10 * np.tanh(float(delta) / 0.10))
-            weighted = safe_delta * confidence
-            if key in self.tactical_controls:
-                self.tactical_controls[key] = self._clip01(self.tactical_controls[key] + weighted)
-                applied[key] = weighted
-            elif key == "icon_patience":
-                self.roles["Icon"]["patience"] = float(np.clip(self.roles["Icon"]["patience"] + weighted, 0.05, 1.2))
-                applied[key] = weighted
-            elif key == "w_h_delta":
-                self.W_h = float(np.clip(self.W_h + weighted, 0.15, 1.5))
-                applied[key] = weighted
-            elif key == "w_x_delta":
-                self.W_x = float(np.clip(self.W_x + weighted, 0.05, 1.5))
-                applied[key] = weighted
-
-        audit_log = {
-            "agent": self.name,
-            "reflection": diary,
-            "confidence": confidence,
-            "applied_adjustments": applied,
-            "evidence": reflection.get("evidence_memory_ids", []),
-        }
+        audit_log = MetaLearningController().apply(self, reflection)
         self.llm_reflection_audit.append(audit_log)
+        return audit_log
 
     def locker_room_tension(self):
         """Continuous 0..1 display tension; logistic squash keeps most crews mid-band, extremes reserved."""

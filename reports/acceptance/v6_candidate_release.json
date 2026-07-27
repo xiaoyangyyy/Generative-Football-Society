@@ -1,0 +1,44 @@
+{
+  "checkpoint": "data\\world_model\\latent_wm_v6_candidate.pt",
+  "dataset_manifest": "D:\\eeg2street\\data\\world_model\\dataset_manifest.json",
+  "gates": {
+    "one_step_mse": true,
+    "pass_balanced_accuracy": true,
+    "pass_calibration": true,
+    "pass_preserves_prior_ranking": true,
+    "shot_evidence": true,
+    "ten_step_mse": true
+  },
+  "groups": 9,
+  "pass": {
+    "auc": 0.5848445772921546,
+    "balanced_accuracy": 0.5813611219961179,
+    "brier": 0.17432144328392246,
+    "ece": 0.011176031631021675,
+    "physics_prior_auc": 0.5832839710934723,
+    "physics_prior_brier": 0.17477619389738652,
+    "physics_prior_ece": 0.03851927276307479,
+    "samples": 1563
+  },
+  "release_ready": true,
+  "rollout_mse": {
+    "1": 0.004688567742500754,
+    "10": 0.015093878072956486,
+    "3": 0.007303957558752508,
+    "5": 0.010480833570679202
+  },
+  "rollout_nonfinite": {
+    "1": 0,
+    "10": 0,
+    "3": 0,
+    "5": 0
+  },
+  "shot": {
+    "brier": 0.09322486444963715,
+    "ece": 0.06773785609338018,
+    "goals": 5,
+    "samples": 45
+  },
+  "split": "sealed_test",
+  "starts": 1616
+}

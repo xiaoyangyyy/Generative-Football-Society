@@ -1,0 +1,20 @@
+{
+  "provider": "skillcorner",
+  "raw_matches": 10,
+  "raw_frames": 642687,
+  "adapter_sample_frames": 589,
+  "adapter_quality": {
+    "providers": [
+      "skillcorner"
+    ],
+    "matches": 10,
+    "frames": 589,
+    "complete_frame_rate": 0.7521222410865874,
+    "timestamps_monotonic": true,
+    "cross_provider_ready": false
+  },
+  "mean_players": 14.951100739012057,
+  "mean_detected_players": 8.570112796577208,
+  "ball_available_rate": 0.6795954881369117,
+  "candidate_ready": true
+}

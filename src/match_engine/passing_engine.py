@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -33,6 +34,7 @@ from src.match_engine.wall_pass import (
     wall_return_target,
 )
 from src.match_engine.state import MatchAffectiveState, PlayerAffectiveState, PlayerModulators
+from src.match_engine.receiver_ranker import ReceiverRanker, default_receiver_ranker_path
 
 
 @dataclass
@@ -68,6 +70,11 @@ class PassingEngine:
         self._base_dir = base_dir
         self.sie = sie
         self.wm_runtime = wm_runtime
+        ranker_path = default_receiver_ranker_path(base_dir)
+        try:
+            self.receiver_ranker = ReceiverRanker.load(ranker_path) if cfg.enable_receiver_ranker and ranker_path.is_file() else None
+        except (OSError, ValueError, KeyError, json.JSONDecodeError):
+            self.receiver_ranker = None
         self.player_tracker = None
         self._tac_eng = TacticalMicroEngine(cfg)
         self.stats = {
@@ -248,6 +255,22 @@ class PassingEngine:
             kind, base_dir=getattr(self, "_base_dir", ".")
         )
         u *= float(carrier.abilities.pass_skill) * float(mod_carrier.vision_scale)
+        if self.receiver_ranker is not None:
+            defenders = [p.position for p in opp.players if p.on_pitch]
+            nearest = min((float(np.linalg.norm(pos - recv.position)) for pos in defenders), default=0.5)
+            direction = 1.0 if attacking_home else -1.0
+            features = [
+                dist,
+                direction * float(recv.position[0] - carrier.position[0]),
+                abs(float(recv.position[1] - carrier.position[1])),
+                nearest,
+                float(lane),
+            ]
+            # Real tracking informs receiver choice only. Physics and interception
+            # remain responsible for pass completion and the official outcome.
+            u += float(self.cfg.receiver_ranker_blend) * float(
+                np.clip(self.receiver_ranker.score(features), -2.0, 2.0)
+            )
         from src.match_engine.math_utils import finite_float
 
         return finite_float(u, 0.0)
@@ -493,7 +516,17 @@ class PassingEngine:
                     ground_hint=g_h,
                 )
             )
-            meta.append((recv, kind, tgt, lane, press, omega_d))
+            success_prior = self._success_prob(
+                state,
+                carrier,
+                tgt,
+                kind,
+                lane,
+                mod_carrier,
+                omega_desired=omega_d,
+                press=press,
+            )
+            meta.append((recv, kind, tgt, lane, press, omega_d, success_prior))
 
         if self.wm_runtime is not None:
             from src.match_engine.world_model.planner import pass_imagination_bonuses
@@ -507,13 +540,19 @@ class PassingEngine:
         util_arr = np.nan_to_num(np.array(utilities, dtype=float), nan=0.0)
         probs = softmax(util_arr, tau=max(0.15, tau))
         idx = int(rng.choice(len(probs), p=probs))
-        recv, kind, tgt, lane, press, omega_d = meta[idx]
+        recv, kind, tgt, lane, press, omega_d, success_prior = meta[idx]
 
         if getattr(state, "_wm_recorder", None) is not None and getattr(state, "_wm_obs_pre", None) is not None:
             from src.match_engine.world_model.action_codec import encode_pass_candidate
 
             state._wm_last_action = encode_pass_candidate(  # noqa: SLF001
-                state, carrier, recv, kind, tgt, success_p=float(probs[idx])
+                state,
+                carrier,
+                recv,
+                kind,
+                tgt,
+                success_p=success_prior,
+                horizon_s=float(self.cfg.dt_default),
             )
 
         use_physics = cfg.enable_pass_physics and cfg.enable_phase3
@@ -645,6 +684,7 @@ class PassingEngine:
                         intensity=0.75 if outside_f > 0.45 else 0.65,
                     )
                 )
+
         else:
             opp_players = [p for p in opp_team.players if p.on_pitch and p.role != "GK"]
             if intercepted and interceptor_id:
@@ -688,6 +728,11 @@ class PassingEngine:
                         intensity=0.6,
                     )
                 )
+
+        if getattr(state, "_wm_last_action", None) is not None:
+            from src.match_engine.world_model.schema import PASS_OUTCOME_INDEX
+
+            state._wm_last_action[PASS_OUTCOME_INDEX] = 1.0 if completed else 0.0
 
         interceptor_player = None
         if intercepted and interceptor_id:

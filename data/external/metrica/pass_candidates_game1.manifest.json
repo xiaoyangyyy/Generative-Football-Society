@@ -1,0 +1,18 @@
+{
+  "acknowledgement": "Metrica Sports sample tracking and event data",
+  "candidate_rows": 8789,
+  "dataset": "metrica-receiver-choice-game1",
+  "derived_file": "pass_candidates_game1.csv",
+  "derived_sha256": "6e0700a1750eea0c947bac16b82fcef0382404bef5d4f55a27dd718e752a53bb",
+  "dropped": {},
+  "events": 799,
+  "schema_version": 1,
+  "source": "https://github.com/metrica-sports/sample-data",
+  "source_files": {
+    "Sample_Game_1_RawEventsData.csv": "803f312a07572912b9ca2dc9482d31a75e573eae825773253b4ca9472e7760c0",
+    "Sample_Game_1_RawTrackingData_Away_Team.csv": "380e1b23affe778a7e1e8480983291798f118f71b1dbcf8f9729c06977669101",
+    "Sample_Game_1_RawTrackingData_Home_Team.csv": "ed7289a72d41f280b5316647655b1934575d3506c34e181c343294ceafdcb280"
+  },
+  "split_policy": "game-level split is defined by evaluate_receiver_ranker.py",
+  "usage": "receiver ranking only; never completion labels or world-model transition training"
+}

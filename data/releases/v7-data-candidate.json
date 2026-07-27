@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "candidate": "7.0.0",
+  "providers": {
+    "metrica": {
+      "matches": 2,
+      "tracking_complete": true,
+      "candidate_rows": 19393
+    },
+    "sportec": {
+      "matches": 7,
+      "tracking_complete": true,
+      "tracking_frames": 1002644,
+      "passes": 6062,
+      "shots": 171
+    },
+    "statsbomb360": {
+      "matches": 425,
+      "tracking_complete": false,
+      "spatial_context": "event_freeze_frame_360",
+      "passes": 373070,
+      "shots": 10483,
+      "excluded_invalid_upstream": [
+        "3845506"
+      ]
+    },
+    "skillcorner": {
+      "matches": 10,
+      "tracking_complete": true,
+      "tracking_frames": 642687,
+      "passes": 8585,
+      "receiver_candidates": 24374,
+      "event_rows_imported": true
+    }
+  },
+  "continuous_tracking_providers": [
+    "metrica",
+    "sportec",
+    "skillcorner"
+  ],
+  "derived_sha256": {
+    "data/external/metrica/pass_candidates_game1.csv": "6e0700a1750eea0c947bac16b82fcef0382404bef5d4f55a27dd718e752a53bb",
+    "data/external/metrica/pass_candidates_game2.csv": "96867be7d3945533c415f396751f0eefdaa8e0f5044d973405ae3758974c70f2",
+    "data/external/skillcorner/derived/passes.csv": "8284da856f2a7a7444798fd42115af2d7dd4bad9618e621ba833a6e2227cc3b4",
+    "data/external/skillcorner/derived/receiver_candidates.csv": "38a4d00b5276f1c1a1b2a32ea5d573af2bdfa12cd38d4bc8a67ba848c54923a5",
+    "data/external/skillcorner/derived/shots.csv": "46943a2e658a10864ad86fce587329450dd215bf571736cc90bd8eb7af24ead9",
+    "data/external/skillcorner/derived/tracking_1hz.csv": "50cb496f092c0dbf851e28986835e1aa270eeca0cc72243fca6db58763ace4ee",
+    "data/external/sportec/derived/J03WMX_passes.csv": "a9703104679c6a8e69ebbf09c33c7f3bab46fdbcc20c5cfff8c9e0d25e94de05",
+    "data/external/sportec/derived/J03WMX_shots.csv": "1b311d4363023404c53f33681c690bb87b11a9af524068127b31201b5ac0f1c5",
+    "data/external/sportec/derived/J03WN1_passes.csv": "57dd96cb1c3f0d4d785f315075beeedaa71fbc075806bddf0a8f04063332933f",
+    "data/external/sportec/derived/J03WN1_shots.csv": "22f691a4561191309ae66a63fe6611abc1e7252c8a6397d163d4eecf89e2d054",
+    "data/external/sportec/derived/J03WOH_passes.csv": "96387dfcdbc2bb48b59c45e84c6befeccfa1c8052bc664e15aef383521c9b36a",
+    "data/external/sportec/derived/J03WOH_shots.csv": "f13a3560a82cea945ca60512583490ef932a9a1318b55f7d7b2d255fb255f900",
+    "data/external/sportec/derived/J03WOY_passes.csv": "014be358cd6577edaa97f4665458bf35ae8668285f7d7be0c88e9309a205562d",
+    "data/external/sportec/derived/J03WOY_shots.csv": "9bb8ed7a6aaccdfdd5665aa747d413c4baf2ca7bc203e8aa064442efcb3ce982",
+    "data/external/sportec/derived/J03WPY_passes.csv": "212dd6d79fbd51f3fe086e23c8430c1f2855ddcb464fbe968f7f7419c507a314",
+    "data/external/sportec/derived/J03WPY_shots.csv": "2a5376d33a5740915d3af98493c2773fac7a1642670e274ddb2fa17b83495638",
+    "data/external/sportec/derived/J03WQQ_passes.csv": "f0cda2131fb6df3715bcc485e73540a7e4efda7f932d1411cb5de17b6ca983e3",
+    "data/external/sportec/derived/J03WQQ_shots.csv": "7a43e67366c487ab2b56a5fa9b0701ac407e6a931cbda2a92d3eac95569ab0d7",
+    "data/external/sportec/derived/J03WR9_passes.csv": "5facd58c851ca6851d64ff68a9ee7070167645b0a0010f2b0963974af5d75e04",
+    "data/external/sportec/derived/J03WR9_shots.csv": "cb6e251dcd1fd38dad74ca766752becc8face61cedbe94c65d267dc060104a99",
+    "data/external/statsbomb360/derived/passes.csv": "e308f888513d0d3a52d33a7d7423d1ef766905ccaa122f95a0ec021f320af720",
+    "data/external/statsbomb360/derived/shots.csv": "a9bdb908af7b1656abfe450e82158f65fd3eda084446e3ce05484cad763b7843"
+  },
+  "tracking_evidence_ready": true
+}

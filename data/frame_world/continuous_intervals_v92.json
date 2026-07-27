@@ -1,0 +1,35 @@
+{
+  "coverage_levels": [
+    0.5,
+    0.9
+  ],
+  "deployment": "evaluated_only",
+  "method": "provider-stratified split conformal absolute residuals; worst source-provider radius",
+  "providers": {
+    "metrica": {
+      "model": "data/frame_world/continuous_time_v92_lopo_metrica.pt",
+      "model_sha256": "2cb0ecc39b1b46b8bf0498a803e81e393a778643edbf1c397a1be344fda63ba7",
+      "radii_s": {
+        "0.5": 0.9219846725463867,
+        "0.9": 2.1075968742370605
+      }
+    },
+    "skillcorner": {
+      "model": "data/frame_world/continuous_time_v92_lopo_skillcorner.pt",
+      "model_sha256": "2270cbf6be1b3eadfa2cd1536ea0b80c818f937a239806d52baf54fc23cbb6d2",
+      "radii_s": {
+        "0.5": 0.7133252620697021,
+        "0.9": 2.0013203620910645
+      }
+    },
+    "statsbomb360": {
+      "model": "data/frame_world/continuous_time_v92_lopo_statsbomb360.pt",
+      "model_sha256": "4956e18982a3b77119c8a4cf28adf30cd4819bdd6ec4d193c108d39b369da99b",
+      "radii_s": {
+        "0.5": 0.9041181802749634,
+        "0.9": 2.146172046661377
+      }
+    }
+  },
+  "version": "9.2.0-candidate"
+}

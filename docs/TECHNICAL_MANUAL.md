@@ -378,7 +378,7 @@ python run_world_cup_2026_full.py --resume
 |------|------|------|
 | `MATCH_WORLD_MODEL` | 0 | 启用 WM 规划 |
 | `MATCH_WM_PLAN` | 1 | 规划 bonus |
-| `MATCH_WM_PLANNER_BLEND` | 0.45 | 传球 blend 权重 |
+| `MATCH_WM_PLANNER_BLEND` | 0.30 | 质量门控后的传球 blend 上限 |
 | `MATCH_WM_SHOT_BLEND` | 0.40 | 射门 blend |
 | `MATCH_WM_RECORD` | 0 | 录制 trace |
 

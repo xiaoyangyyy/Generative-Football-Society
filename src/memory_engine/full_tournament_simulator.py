@@ -1,5 +1,5 @@
-import random
 import pandas as pd
+import numpy as np
 from itertools import combinations
 from src.memory_engine.probability_engine import calculate_match_probabilities
 from src.memory_engine.poisson_simulator import simulate_match_score, simulate_penalty_shootout
@@ -12,7 +12,7 @@ def get_score(team, stats):
         return stats.loc[team]['final_status_score']
     return 30.0
 
-def play_match_poisson(team_a, team_b, stats, is_knockout=False, verbose=True):
+def play_match_poisson(team_a, team_b, stats, is_knockout=False, verbose=True, rng=None):
     """
     Simulate a single match using Poisson distribution.
     Returns: (winner_code, goals_a, goals_b, penalty_info, log_line)
@@ -21,7 +21,7 @@ def play_match_poisson(team_a, team_b, stats, is_knockout=False, verbose=True):
     sa = get_score(team_a, stats)
     sb = get_score(team_b, stats)
     
-    goals_a, goals_b, xg_a, xg_b = simulate_match_score(sa, sb, is_knockout=is_knockout)
+    goals_a, goals_b, xg_a, xg_b = simulate_match_score(sa, sb, is_knockout=is_knockout, rng=rng)
     
     penalty_str = ""
     
@@ -31,7 +31,7 @@ def play_match_poisson(team_a, team_b, stats, is_knockout=False, verbose=True):
         winner = 'b'
     else:
         if is_knockout:
-            pen_a, pen_b = simulate_penalty_shootout()
+            pen_a, pen_b = simulate_penalty_shootout(rng=rng)
             penalty_str = f" **(Pen {pen_a}-{pen_b})**"
             winner = 'a' if pen_a > pen_b else 'b'
         else:
@@ -54,12 +54,13 @@ def play_match_poisson(team_a, team_b, stats, is_knockout=False, verbose=True):
     return winner, goals_a, goals_b, penalty_str, log
 
 
-def simulate_full_tournament(stats, verbose=True):
+def simulate_full_tournament(stats, verbose=True, rng=None):
     """
     Run one complete 48-team World Cup simulation with Poisson-generated scorelines.
     If verbose=True, generates a full Markdown report.
     If verbose=False (Monte Carlo mode), returns only the champion name.
     """
+    rng = rng or np.random.default_rng()
     report_lines = []
     if verbose:
         report_lines.append("# 2026 World Cup: Full Poisson Match Simulation\n")
@@ -75,7 +76,7 @@ def simulate_full_tournament(stats, verbose=True):
         
         matches = list(combinations(teams, 2))
         for team_a, team_b in matches:
-            winner, ga, gb, pen, log = play_match_poisson(team_a, team_b, stats, is_knockout=False, verbose=verbose)
+            winner, ga, gb, pen, log = play_match_poisson(team_a, team_b, stats, is_knockout=False, verbose=verbose, rng=rng)
             
             if verbose:
                 report_lines.append(log)
@@ -139,7 +140,7 @@ def simulate_full_tournament(stats, verbose=True):
         report_lines.append(f"**Best 8 Third-Places**: {', '.join(best_thirds)}\n")
     
     # --- Knockout stage ---
-    random.shuffle(advancing_teams)
+    advancing_teams = [advancing_teams[index] for index in rng.permutation(len(advancing_teams))]
     
     stage_names = [
         "Round of 32 (1/16 决赛)",
@@ -166,7 +167,7 @@ def simulate_full_tournament(stats, verbose=True):
             team_a = current_pool[i]
             team_b = current_pool[i+1]
             
-            winner, ga, gb, pen, log = play_match_poisson(team_a, team_b, stats, is_knockout=True, verbose=verbose)
+            winner, ga, gb, pen, log = play_match_poisson(team_a, team_b, stats, is_knockout=True, verbose=verbose, rng=rng)
             
             if verbose:
                 report_lines.append(log)

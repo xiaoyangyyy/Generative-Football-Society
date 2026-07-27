@@ -1,0 +1,78 @@
+{
+  "version": "9.1.0-candidate",
+  "method": "source-provider split-conformal absolute-residual intervals around shrinkage-calibrated mixture median",
+  "censoring_policy": "all samples enter time-dependent Brier; interval coverage uses observed event times only",
+  "folds": [
+    {
+      "held_provider": "skillcorner",
+      "calibration_provider": "statsbomb360",
+      "samples": {
+        "calibration_observed": 19081,
+        "test_observed": 5208
+      },
+      "intervals": {
+        "0.5": {
+          "coverage": 0.4656298003072197,
+          "mean_width_s": 1.3545582294464111,
+          "correction_s": 0.6779210567474365
+        },
+        "0.9": {
+          "coverage": 0.9157066052227343,
+          "mean_width_s": 3.2653822898864746,
+          "correction_s": 2.039975166320801
+        }
+      },
+      "brier_by_second": {
+        "1": 0.2479904865198414,
+        "2": 0.1986049825426998,
+        "3": 0.12454263197381304,
+        "4": 0.0738648576016754
+      },
+      "integrated_brier": 0.16125073965950742,
+      "gates": {
+        "coverage_50": true,
+        "coverage_90": true,
+        "ordered_width": true,
+        "nondegenerate_width": true,
+        "integrated_brier": true
+      },
+      "ready": true
+    },
+    {
+      "held_provider": "statsbomb360",
+      "calibration_provider": "skillcorner",
+      "samples": {
+        "calibration_observed": 400,
+        "test_observed": 96155
+      },
+      "intervals": {
+        "0.5": {
+          "coverage": 0.5711403463158442,
+          "mean_width_s": 1.8666561841964722,
+          "correction_s": 0.9339299201965332
+        },
+        "0.9": {
+          "coverage": 0.9212833445998648,
+          "mean_width_s": 3.338693141937256,
+          "correction_s": 2.1563048362731934
+        }
+      },
+      "brier_by_second": {
+        "1": 0.23671739061675506,
+        "2": 0.19650980877473284,
+        "3": 0.12263618985139882,
+        "4": 0.06864573596744841
+      },
+      "integrated_brier": 0.15612728130258377,
+      "gates": {
+        "coverage_50": true,
+        "coverage_90": true,
+        "ordered_width": true,
+        "nondegenerate_width": true,
+        "integrated_brier": true
+      },
+      "ready": true
+    }
+  ],
+  "ready": true
+}

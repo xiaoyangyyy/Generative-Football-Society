@@ -1,0 +1,271 @@
+{
+  "aggregate": {
+    "application_rate": 1.0,
+    "applied": 2941,
+    "cancelled": 0,
+    "elapsed_s": 608.2569422000088,
+    "mean_absolute_target_errors": {
+      "passes": {
+        "baseline": 101.28999999999996,
+        "treatment": 102.53999999999996
+      },
+      "shots": {
+        "baseline": 14.59,
+        "treatment": 14.84
+      },
+      "xg": {
+        "baseline": 0.8866981175954476,
+        "treatment": 0.9062273617842047
+      }
+    },
+    "mean_applied_displacement_m": 0.027750365833775544,
+    "mean_signed_mirror_possession_drift": 0.022680937818552502,
+    "scheduled": 2941,
+    "targets": {
+      "passes": 1070.54,
+      "shots": 23.34,
+      "xg": 2.6
+    }
+  },
+  "deployment_unchanged": true,
+  "gates": {
+    "completion_stable": true,
+    "deterministic": true,
+    "mirror_possession_bias": true,
+    "nontrivial_local_effect": true,
+    "pass_rate_noninferior": true,
+    "production_cadence": true,
+    "queue_exercised": true,
+    "reconciliation_rate": true,
+    "shot_rate_noninferior": true,
+    "xg_rate_noninferior": true,
+    "zero_rng_draws": true
+  },
+  "pairs": [
+    {
+      "away": "Argentina",
+      "baseline": {
+        "completion": 0.7909188877292128,
+        "passes": 971,
+        "possession_home": 0.5056065239551478,
+        "queue": {
+          "enabled": false
+        },
+        "shots": 11,
+        "xg": 2.226365405204153
+      },
+      "delta": {
+        "completion": -0.02366187198657088,
+        "passes": -4,
+        "possession_home": -0.012232415902140692,
+        "shots": 1,
+        "xg": 0.2933202113538105
+      },
+      "home": "Brazil",
+      "seed": 7,
+      "treatment": {
+        "completion": 0.7672570157426419,
+        "passes": 967,
+        "possession_home": 0.49337410805300713,
+        "queue": {
+          "applied": 737,
+          "cancelled": 0,
+          "cancelled_missing": 0,
+          "cancelled_off_pitch": 0,
+          "cancelled_possession": 0,
+          "delay_s": {
+            "max": 1.552750825881958,
+            "mean": 1.0514721688454316,
+            "min": 0.5747894048690796
+          },
+          "enabled": true,
+          "mean_applied_displacement_m": 0.027956408546783537,
+          "mismatch_examples": [],
+          "next_mark_counts": {
+            "pass": 278,
+            "shot": 155,
+            "terminal": 304
+          },
+          "pending": 0,
+          "provider": "skillcorner",
+          "rng_draws": 0,
+          "scheduled": 737,
+          "skipped_possessor_mismatch": 3
+        },
+        "shots": 12,
+        "xg": 2.5196856165579633
+      }
+    },
+    {
+      "away": "Brazil",
+      "baseline": {
+        "completion": 0.7638303074760071,
+        "passes": 973,
+        "possession_home": 0.4108053007135576,
+        "queue": {
+          "enabled": false
+        },
+        "shots": 8,
+        "xg": 1.4365889460760464
+      },
+      "delta": {
+        "completion": -0.007729956705837759,
+        "passes": -1,
+        "possession_home": 0.10091743119266061,
+        "shots": -1,
+        "xg": -0.1831083981244137
+      },
+      "home": "Argentina",
+      "seed": 42,
+      "treatment": {
+        "completion": 0.7561003507701693,
+        "passes": 972,
+        "possession_home": 0.5117227319062182,
+        "queue": {
+          "applied": 730,
+          "cancelled": 0,
+          "cancelled_missing": 0,
+          "cancelled_off_pitch": 0,
+          "cancelled_possession": 0,
+          "delay_s": {
+            "max": 1.664531946182251,
+            "mean": 1.0815377158661412,
+            "min": 0.5748178362846375
+          },
+          "enabled": true,
+          "mean_applied_displacement_m": 0.02685332561987996,
+          "mismatch_examples": [],
+          "next_mark_counts": {
+            "pass": 316,
+            "shot": 136,
+            "terminal": 278
+          },
+          "pending": 0,
+          "provider": "skillcorner",
+          "rng_draws": 0,
+          "scheduled": 730,
+          "skipped_possessor_mismatch": 3
+        },
+        "shots": 7,
+        "xg": 1.2534805479516327
+      }
+    },
+    {
+      "away": "Spain",
+      "baseline": {
+        "completion": 0.7402846195949644,
+        "passes": 970,
+        "possession_home": 0.4597349643221203,
+        "queue": {
+          "enabled": false
+        },
+        "shots": 7,
+        "xg": 1.5332125183669472
+      },
+      "delta": {
+        "completion": 0.02885485390884046,
+        "passes": -3,
+        "possession_home": 0.06014271151885825,
+        "shots": 1,
+        "xg": 0.19421598056243727
+      },
+      "home": "France",
+      "seed": 101,
+      "treatment": {
+        "completion": 0.7691394735038048,
+        "passes": 967,
+        "possession_home": 0.5198776758409785,
+        "queue": {
+          "applied": 739,
+          "cancelled": 0,
+          "cancelled_missing": 0,
+          "cancelled_off_pitch": 0,
+          "cancelled_possession": 0,
+          "delay_s": {
+            "max": 1.5568785667419434,
+            "mean": 0.991027689028496,
+            "min": 0.574884295463562
+          },
+          "enabled": true,
+          "mean_applied_displacement_m": 0.028169401382874354,
+          "mismatch_examples": [],
+          "next_mark_counts": {
+            "pass": 187,
+            "shot": 163,
+            "terminal": 389
+          },
+          "pending": 0,
+          "provider": "skillcorner",
+          "rng_draws": 0,
+          "scheduled": 739,
+          "skipped_possessor_mismatch": 5
+        },
+        "shots": 8,
+        "xg": 1.7274284989293844
+      }
+    },
+    {
+      "away": "France",
+      "baseline": {
+        "completion": 0.7933605389299132,
+        "passes": 963,
+        "possession_home": 0.5147808358817533,
+        "queue": {
+          "enabled": false
+        },
+        "shots": 9,
+        "xg": 1.6570406599710634
+      },
+      "delta": {
+        "completion": -0.028419301460158586,
+        "passes": 3,
+        "possession_home": -0.05810397553516816,
+        "shots": -2,
+        "xg": -0.3825447705468623
+      },
+      "home": "Spain",
+      "seed": 313,
+      "treatment": {
+        "completion": 0.7649412374697546,
+        "passes": 966,
+        "possession_home": 0.4566768603465851,
+        "queue": {
+          "applied": 735,
+          "cancelled": 0,
+          "cancelled_missing": 0,
+          "cancelled_off_pitch": 0,
+          "cancelled_possession": 0,
+          "delay_s": {
+            "max": 1.5283355712890625,
+            "mean": 0.9750557835410242,
+            "min": 0.5747703909873962
+          },
+          "enabled": true,
+          "mean_applied_displacement_m": 0.02802232778556432,
+          "mismatch_examples": [],
+          "next_mark_counts": {
+            "pass": 186,
+            "shot": 155,
+            "terminal": 394
+          },
+          "pending": 0,
+          "provider": "skillcorner",
+          "rng_draws": 0,
+          "scheduled": 735,
+          "skipped_possessor_mismatch": 5
+        },
+        "shots": 7,
+        "xg": 1.2744958894242011
+      }
+    }
+  ],
+  "protocol": {
+    "dt": 5.5,
+    "fixtures": "two mirrored pairs",
+    "macro_actions": "unchanged; max one per tick",
+    "seconds": 5400.0,
+    "subtick_rng_draws": 0
+  },
+  "ready": true,
+  "version": "9.7.0-candidate"
+}

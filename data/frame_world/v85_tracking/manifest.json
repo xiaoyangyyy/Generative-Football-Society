@@ -1,0 +1,26 @@
+{
+  "correction": "Metrica Ball header excluded from player slots",
+  "matches": [
+    {
+      "ball_rate": 0.6084685274899574,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v85_tracking/metrica_game1.npz",
+      "frames": 58003,
+      "match_id": "game1",
+      "provider": "metrica",
+      "sha256": "95f504703ca666ca8c6dcd9e5c3d524d9f5adc8cd0ddc77590ee81640ee1a91d",
+      "visible_rate": 0.68510771908872
+    },
+    {
+      "ball_rate": 0.5898553034730709,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v85_tracking/metrica_game2.npz",
+      "frames": 56463,
+      "match_id": "game2",
+      "provider": "metrica",
+      "sha256": "4db893224215cda299fe15a7051d1ccb7284b48d3c53a63cdb894c6c1b73ac99",
+      "visible_rate": 0.6845416064904933
+    }
+  ],
+  "version": "8.5.0-candidate"
+}

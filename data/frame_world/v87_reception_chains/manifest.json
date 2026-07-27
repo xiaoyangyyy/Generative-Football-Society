@@ -1,0 +1,301 @@
+{
+  "matches": [
+    {
+      "events": 799,
+      "file": "data/frame_world/v87_reception_chains/metrica_game1.jsonl",
+      "linked_within_5s": 769,
+      "match_id": "game1",
+      "next_actions": {
+        "hold": 207,
+        "loss": 0,
+        "pass": 546,
+        "shot": 16,
+        "stoppage": 0,
+        "unknown": 30
+      },
+      "outcomes": {
+        "complete": 773,
+        "offside": 0,
+        "turnover": 25,
+        "unknown": 1
+      },
+      "provider": "metrica",
+      "sha256": "a920cdf08b43c2d581b14c8bc31eae7d293dd6df225cd52ef4403e1113c7343b",
+      "supervision": "inferred_next_event"
+    },
+    {
+      "events": 964,
+      "file": "data/frame_world/v87_reception_chains/metrica_game2.jsonl",
+      "linked_within_5s": 943,
+      "match_id": "game2",
+      "next_actions": {
+        "hold": 215,
+        "loss": 0,
+        "pass": 712,
+        "shot": 16,
+        "stoppage": 0,
+        "unknown": 21
+      },
+      "outcomes": {
+        "complete": 923,
+        "offside": 0,
+        "turnover": 40,
+        "unknown": 1
+      },
+      "provider": "metrica",
+      "sha256": "4255a7d9c3b29486e8344f93fe024e48541971c3c95f077945dc1910f1407e1c",
+      "supervision": "inferred_next_event"
+    },
+    {
+      "events": 902,
+      "file": "data/frame_world/v87_reception_chains/skillcorner_1886347.jsonl",
+      "linked_within_5s": 848,
+      "match_id": "1886347",
+      "next_actions": {
+        "hold": 2,
+        "loss": 40,
+        "pass": 768,
+        "shot": 19,
+        "stoppage": 19,
+        "unknown": 54
+      },
+      "outcomes": {
+        "complete": 734,
+        "offside": 1,
+        "turnover": 167,
+        "unknown": 0
+      },
+      "provider": "skillcorner",
+      "sha256": "8611e665c36f1c1d8f9d7874456378a1eb70ef05a0e75e01212482bed808bf1f",
+      "supervision": "strong"
+    },
+    {
+      "events": 820,
+      "file": "data/frame_world/v87_reception_chains/skillcorner_1899585.jsonl",
+      "linked_within_5s": 758,
+      "match_id": "1899585",
+      "next_actions": {
+        "hold": 2,
+        "loss": 51,
+        "pass": 668,
+        "shot": 17,
+        "stoppage": 20,
+        "unknown": 62
+      },
+      "outcomes": {
+        "complete": 625,
+        "offside": 1,
+        "turnover": 194,
+        "unknown": 0
+      },
+      "provider": "skillcorner",
+      "sha256": "d9ba3ff2a52aea1953c0b01f91bb5f78e793a8ff6a656a53a50be93c51407c38",
+      "supervision": "strong"
+    },
+    {
+      "events": 963,
+      "file": "data/frame_world/v87_reception_chains/skillcorner_1925299.jsonl",
+      "linked_within_5s": 912,
+      "match_id": "1925299",
+      "next_actions": {
+        "hold": 2,
+        "loss": 47,
+        "pass": 822,
+        "shot": 20,
+        "stoppage": 21,
+        "unknown": 51
+      },
+      "outcomes": {
+        "complete": 782,
+        "offside": 1,
+        "turnover": 180,
+        "unknown": 0
+      },
+      "provider": "skillcorner",
+      "sha256": "da20449209a6b0236f65845fd89af4f632721c97559fc92f25a3b997721dd060",
+      "supervision": "strong"
+    },
+    {
+      "events": 915,
+      "file": "data/frame_world/v87_reception_chains/skillcorner_1953632.jsonl",
+      "linked_within_5s": 855,
+      "match_id": "1953632",
+      "next_actions": {
+        "hold": 1,
+        "loss": 42,
+        "pass": 788,
+        "shot": 11,
+        "stoppage": 13,
+        "unknown": 60
+      },
+      "outcomes": {
+        "complete": 770,
+        "offside": 3,
+        "turnover": 142,
+        "unknown": 0
+      },
+      "provider": "skillcorner",
+      "sha256": "88c7b19cad23fa3176b56920b48ca6e2aaf456f1068cc21a9192038209cb488d",
+      "supervision": "strong"
+    },
+    {
+      "events": 941,
+      "file": "data/frame_world/v87_reception_chains/skillcorner_1996435.jsonl",
+      "linked_within_5s": 894,
+      "match_id": "1996435",
+      "next_actions": {
+        "hold": 2,
+        "loss": 38,
+        "pass": 811,
+        "shot": 24,
+        "stoppage": 19,
+        "unknown": 47
+      },
+      "outcomes": {
+        "complete": 771,
+        "offside": 3,
+        "turnover": 167,
+        "unknown": 0
+      },
+      "provider": "skillcorner",
+      "sha256": "b87a9c8ce430a0705ffdb507d05b263ac8f583e246ca0987acfe37c69131e648",
+      "supervision": "strong"
+    },
+    {
+      "events": 921,
+      "file": "data/frame_world/v87_reception_chains/skillcorner_2006229.jsonl",
+      "linked_within_5s": 867,
+      "match_id": "2006229",
+      "next_actions": {
+        "hold": 1,
+        "loss": 33,
+        "pass": 803,
+        "shot": 13,
+        "stoppage": 17,
+        "unknown": 54
+      },
+      "outcomes": {
+        "complete": 762,
+        "offside": 1,
+        "turnover": 158,
+        "unknown": 0
+      },
+      "provider": "skillcorner",
+      "sha256": "d4f5b57762e3337e347537de60d55af0b93ca9a22588bfdad71375f8d1a453df",
+      "supervision": "strong"
+    },
+    {
+      "events": 677,
+      "file": "data/frame_world/v87_reception_chains/skillcorner_2011166.jsonl",
+      "linked_within_5s": 622,
+      "match_id": "2011166",
+      "next_actions": {
+        "hold": 2,
+        "loss": 42,
+        "pass": 542,
+        "shot": 20,
+        "stoppage": 16,
+        "unknown": 55
+      },
+      "outcomes": {
+        "complete": 515,
+        "offside": 2,
+        "turnover": 160,
+        "unknown": 0
+      },
+      "provider": "skillcorner",
+      "sha256": "71c463b409cb9faa431f2ae2d9cc2d8cfec73846d4f2b6263c85536dbd6f312f",
+      "supervision": "strong"
+    },
+    {
+      "events": 886,
+      "file": "data/frame_world/v87_reception_chains/skillcorner_2013725.jsonl",
+      "linked_within_5s": 823,
+      "match_id": "2013725",
+      "next_actions": {
+        "hold": 1,
+        "loss": 52,
+        "pass": 728,
+        "shot": 21,
+        "stoppage": 21,
+        "unknown": 63
+      },
+      "outcomes": {
+        "complete": 670,
+        "offside": 3,
+        "turnover": 213,
+        "unknown": 0
+      },
+      "provider": "skillcorner",
+      "sha256": "7077a62962a3f8e2f6f3f9d84083d23962b9581383458bacc101bc21ad90f78a",
+      "supervision": "strong"
+    },
+    {
+      "events": 824,
+      "file": "data/frame_world/v87_reception_chains/skillcorner_2015213.jsonl",
+      "linked_within_5s": 763,
+      "match_id": "2015213",
+      "next_actions": {
+        "hold": 2,
+        "loss": 46,
+        "pass": 684,
+        "shot": 16,
+        "stoppage": 15,
+        "unknown": 61
+      },
+      "outcomes": {
+        "complete": 630,
+        "offside": 0,
+        "turnover": 194,
+        "unknown": 0
+      },
+      "provider": "skillcorner",
+      "sha256": "61e56c4f2c3d3da057be2dccf6f6696454673e17aa45560669b2730717709af7",
+      "supervision": "strong"
+    },
+    {
+      "events": 736,
+      "file": "data/frame_world/v87_reception_chains/skillcorner_2017461.jsonl",
+      "linked_within_5s": 687,
+      "match_id": "2017461",
+      "next_actions": {
+        "hold": 1,
+        "loss": 43,
+        "pass": 607,
+        "shot": 19,
+        "stoppage": 17,
+        "unknown": 49
+      },
+      "outcomes": {
+        "complete": 541,
+        "offside": 4,
+        "turnover": 191,
+        "unknown": 0
+      },
+      "provider": "skillcorner",
+      "sha256": "da81873d82fd11f2efe4aebc2dcc8a8fce47ad2ca3efed1984159874cc926d93",
+      "supervision": "strong"
+    }
+  ],
+  "next_actions": [
+    "pass",
+    "shot",
+    "loss",
+    "stoppage",
+    "hold",
+    "unknown"
+  ],
+  "outcomes": [
+    "complete",
+    "turnover",
+    "offside",
+    "unknown"
+  ],
+  "policy": "SkillCorner strong; Metrica inferred_next_event evaluation only; Sportec unavailable",
+  "totals": {
+    "events": 10348,
+    "inferred": 1763,
+    "strong": 8585
+  },
+  "version": "8.7.0-candidate"
+}

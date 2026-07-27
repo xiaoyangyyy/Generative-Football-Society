@@ -1,8 +1,8 @@
-"""
-Macro goal-rate dynamics: λ̇ = f(x_T, x_opp, λ, λ_opp).
+﻿"""
+Macro goal-rate dynamics: 位虈 = f(x_T, x_opp, 位, 位_opp).
 
-x_T ∈ R^5 from team_dynamics (attack, defense, press, morale_field, institutional_pressure).
-Match xG = ∫ λ(t) dt over regulation; goals ~ Poisson(xG) with soft tail cap.
+x_T 鈭?R^5 from team_dynamics (attack, defense, press, morale_field, institutional_pressure).
+Match xG = 鈭?位(t) dt over regulation; goals ~ Poisson(xG) with soft tail cap.
 """
 
 from __future__ import annotations
@@ -32,11 +32,11 @@ TEAM_STATE_KEYS: Tuple[str, ...] = (
     "institutional_pressure",
 )
 
-# Regulation match horizon (minutes) for ∫λ dt
+# Regulation match horizon (minutes) for 鈭?dt
 MATCH_MINUTES = 90.0
 EXTRA_TIME_MINUTES = 30.0
 
-# λ is goals-per-minute intensity; ∫λ dt over 90' → regulation xG (typical 0.8–2.6)
+# 位 is goals-per-minute intensity; 鈭?dt over 90' 鈫?regulation xG (typical 0.8鈥?.6)
 XG_PER_TEAM_MIN = 0.28
 XG_PER_TEAM_MAX = 3.6
 LAM_MIN_PER_MINUTE = 0.004
@@ -72,7 +72,7 @@ def team_vector_from_agent(
 ) -> np.ndarray:
     """
     Build x_T from roster team_dynamics, perturbed by effective match status (fusion/tactics).
-    No hard clips — bounded via tanh.
+    No hard clips 鈥?bounded via tanh.
     """
     base = getattr(agent, "team_dynamics", None) if agent is not None else None
     if base and isinstance(base, dict):
@@ -100,7 +100,7 @@ def lambda_dot(
     stage_pressure: float = 0.0,
 ) -> float:
     """
-    λ̇ = drive(x_T, x_opp) - decay(λ) - opp_def coupling.
+    位虈 = drive(x_T, x_opp) - decay(位) - opp_def coupling.
 
     drive: attack advantage vs opponent defense, morale gap, shared press tempo.
     """
@@ -111,7 +111,7 @@ def lambda_dot(
     tempo = float(0.5 * (x_self[2] + x_opp[2]))
     pressure_load = float(x_self[4])
 
-    # Per-minute scoring intensity (not goals-per-90); steady λ ≈ 0.012–0.028
+    # Per-minute scoring intensity (not goals-per-90); steady 位 鈮?0.012鈥?.028
     drive = (
         0.011 * softplus(1.35 * att_def)
         + 0.0055 * softplus(0.9 * morale_gap)
@@ -121,7 +121,7 @@ def lambda_dot(
     decay = 2.85 * float(lam_self) + 0.04 * float(lam_opp) * _sigmoid(att_def)
     ko_drag = 0.0035 if is_knockout else 0.0
     stage_drag = 0.0025 * _tanh_clip(stage_pressure) * _sigmoid(pressure_load)
-    return float(drive - decay - ko_drag - stage_drag)
+    return float(np.clip(drive - decay - ko_drag - stage_drag, -1.95, 2.95))
 
 
 def integrate_match_xg(
@@ -135,7 +135,7 @@ def integrate_match_xg(
     rng: Optional[np.random.Generator] = None,
 ) -> Tuple[float, float, Dict[str, Any]]:
     """
-    Integrate coupled λ dynamics for both teams; return xG = ∫λ dt.
+    Integrate coupled 位 dynamics for both teams; return xG = 鈭?dt.
     """
     rng = rng or np.random.default_rng()
     dt = float(minutes) / max(1, int(n_steps))
@@ -213,7 +213,7 @@ def expected_match_xg(
     fused_volatility_away: float = 0.0,
     rng: Optional[np.random.Generator] = None,
 ) -> Tuple[float, float, Dict[str, Any]]:
-    """Team-dynamics xG prior for micro event density only — does not sample goals."""
+    """Team-dynamics xG prior for micro event density only 鈥?does not sample goals."""
     x_h = team_vector_from_agent(
         agent_home, eff_status_home, fused_volatility=fused_volatility_home
     )

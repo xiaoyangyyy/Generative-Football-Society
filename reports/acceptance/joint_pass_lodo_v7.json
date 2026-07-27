@@ -1,0 +1,106 @@
+{
+  "version": "7.0.0-candidate",
+  "policy": "strict leave-one-provider-out; held provider excluded from fit and calibration",
+  "folds": {
+    "metrica": {
+      "train_providers": [
+        "skillcorner",
+        "sportec",
+        "statsbomb360"
+      ],
+      "calibration_policy": "none for unseen provider; retain physics anchor",
+      "completion": null,
+      "receiver": {
+        "events": 1763,
+        "top1": 0.31366988088485537,
+        "top3": 0.6823596142938173,
+        "mrr": 0.5322379454540543
+      }
+    },
+    "skillcorner": {
+      "train_providers": [
+        "metrica",
+        "sportec",
+        "statsbomb360"
+      ],
+      "calibration_policy": "none for unseen provider; retain physics anchor",
+      "completion": {
+        "samples": 8585,
+        "matches": 10,
+        "balanced_accuracy": 0.7944117647058824,
+        "auc": 0.8814217745921898,
+        "brier": 0.10978741741730806,
+        "ece": 0.01890117524595163,
+        "physics_prior_auc": 0.8827440682155215,
+        "physics_prior_brier": 0.10999540409202097,
+        "worst_match_auc": 0.8485794814429309,
+        "auc_delta_vs_physics": -0.001322293623331694,
+        "positives": 6800,
+        "negatives": 1785,
+        "evidence_sufficient": true
+      },
+      "receiver": {
+        "events": 6828,
+        "top1": 0.4409783245459871,
+        "top3": 0.9600175746924429,
+        "mrr": 0.6871002106173459
+      }
+    },
+    "sportec": {
+      "train_providers": [
+        "metrica",
+        "skillcorner",
+        "statsbomb360"
+      ],
+      "calibration_policy": "none for unseen provider; retain physics anchor",
+      "completion": {
+        "samples": 4751,
+        "matches": 7,
+        "balanced_accuracy": 0.5152728038761323,
+        "auc": 0.39251105961659993,
+        "brier": 0.09026397078896177,
+        "ece": 0.273357509532142,
+        "physics_prior_auc": 0.3872445755213819,
+        "physics_prior_brier": 0.03939541503878776,
+        "worst_match_auc": 0.2959804327570142,
+        "auc_delta_vs_physics": 0.005266484095218016,
+        "positives": 4747,
+        "negatives": 4,
+        "evidence_sufficient": false
+      },
+      "receiver": {
+        "events": 4751,
+        "top1": 0.2902546832245843,
+        "top3": 0.6455483056198695,
+        "mrr": 0.5079711706474493
+      }
+    },
+    "statsbomb360": {
+      "train_providers": [
+        "metrica",
+        "skillcorner",
+        "sportec"
+      ],
+      "calibration_policy": "none for unseen provider; retain physics anchor",
+      "completion": {
+        "samples": 373070,
+        "matches": 418,
+        "balanced_accuracy": 0.5145664760644526,
+        "auc": 0.7763800064803624,
+        "brier": 0.1476253611933953,
+        "ece": 0.11178351890916277,
+        "physics_prior_auc": 0.7678879915288702,
+        "physics_prior_brier": 0.14577616821758277,
+        "worst_match_auc": 0.7117903230334338,
+        "auc_delta_vs_physics": 0.00849201495149221,
+        "positives": 306755,
+        "negatives": 66315,
+        "evidence_sufficient": true
+      },
+      "receiver": null
+    }
+  },
+  "completion_lodo_ready": true,
+  "skillcorner_third_provider_ready": true,
+  "all_provider_lodo_ready": true
+}

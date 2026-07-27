@@ -1,0 +1,31 @@
+{
+  "checkpoint": "data\\world_model\\latent_wm_candidate.pt",
+  "dataset_manifest": "D:\\eeg2street\\data\\world_model\\dataset_manifest.json",
+  "gates": {
+    "one_step_mse": false,
+    "pass_balanced_accuracy": false,
+    "shot_evidence": true,
+    "ten_step_mse": false
+  },
+  "groups": 9,
+  "pass": {
+    "balanced_accuracy": 0.48966468610171965,
+    "ece": 0.024492358532223237,
+    "samples": 1563
+  },
+  "release_ready": false,
+  "rollout_mse": {
+    "1": NaN,
+    "10": NaN,
+    "3": NaN,
+    "5": NaN
+  },
+  "shot": {
+    "brier": 0.09851379526014334,
+    "ece": 0.02636247045463986,
+    "goals": 5,
+    "samples": 45
+  },
+  "split": "sealed_test",
+  "starts": 1616
+}

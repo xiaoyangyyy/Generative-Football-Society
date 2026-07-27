@@ -1,0 +1,246 @@
+{
+  "aggregate": {
+    "elapsed_this_run_s": 600.9556172000011,
+    "gated_ticks": 0,
+    "mean_absolute_completion_drift": 0.009979488477041915,
+    "mean_absolute_possession_drift": 0.030071355759429153,
+    "mean_absolute_target_errors": {
+      "passes": {
+        "baseline": 101.28999999999996,
+        "treatment": 97.28999999999996
+      },
+      "shots": {
+        "baseline": 14.59,
+        "treatment": 16.84
+      },
+      "xg": {
+        "baseline": 0.8866981175954476,
+        "treatment": 1.1942018089192645
+      }
+    },
+    "mean_signed_mirror_possession_drift": 0.024974515800203878,
+    "median_pass_density_reduction": -0.0036238032271111997,
+    "plans": 3893,
+    "real_rate_targets": {
+      "passes": 1070.54,
+      "shots": 23.34,
+      "xg": 2.6
+    }
+  },
+  "comparison": "v7 default tick clock vs v9.3 calibrated continuous clock",
+  "deployment_unchanged": true,
+  "dt_seconds": 5.5,
+  "gates": {
+    "clock_exercised": false,
+    "completion_stable": true,
+    "deterministic_treatment": true,
+    "full_match_horizon": true,
+    "mirror_possession_bias": true,
+    "mirrored_protocol": true,
+    "real_pass_rate_improved": true,
+    "real_shot_rate_improved": false,
+    "real_xg_rate_improved": false,
+    "verified_v93_artifact": true
+  },
+  "long_shadow_ready": false,
+  "pairs": [
+    {
+      "away": "Argentina",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.7909188877292128,
+        "goals": 3,
+        "passes": 971,
+        "possession_home": 0.5056065239551478,
+        "shots": 11,
+        "xg": 2.226365405204153
+      },
+      "delta": {
+        "completion": -0.0005164600564143695,
+        "goals": 0,
+        "passes": 9,
+        "possession_home": 0.01834862385321101,
+        "shots": -7,
+        "xg": -0.9357958392092458
+      },
+      "home": "Brazil",
+      "seed": 7,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 455,
+            "shot": 251,
+            "terminal": 273
+          },
+          "gated_ticks": 0,
+          "mean_delay_s": 2.265912154073618,
+          "next_mark_counts": {
+            "pass": 456,
+            "shot": 251,
+            "terminal": 273
+          },
+          "plans": 980,
+          "provider": "skillcorner"
+        },
+        "completion": 0.7904024276727984,
+        "goals": 3,
+        "passes": 980,
+        "possession_home": 0.5239551478083588,
+        "shots": 4,
+        "xg": 1.290569565994907
+      }
+    },
+    {
+      "away": "Brazil",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.7638303074760071,
+        "goals": 2,
+        "passes": 973,
+        "possession_home": 0.4108053007135576,
+        "shots": 8,
+        "xg": 1.4365889460760464
+      },
+      "delta": {
+        "completion": 0.011564821372185952,
+        "goals": 0,
+        "passes": 2,
+        "possession_home": 0.09174311926605505,
+        "shots": -1,
+        "xg": -0.1291011754423108
+      },
+      "home": "Argentina",
+      "seed": 42,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 455,
+            "shot": 193,
+            "terminal": 326
+          },
+          "gated_ticks": 0,
+          "mean_delay_s": 2.485168005380875,
+          "next_mark_counts": {
+            "pass": 455,
+            "shot": 193,
+            "terminal": 327
+          },
+          "plans": 975,
+          "provider": "skillcorner"
+        },
+        "completion": 0.7753951288481931,
+        "goals": 2,
+        "passes": 975,
+        "possession_home": 0.5025484199796126,
+        "shots": 7,
+        "xg": 1.3074877706337356
+      }
+    },
+    {
+      "away": "Spain",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.7402846195949644,
+        "goals": 2,
+        "passes": 970,
+        "possession_home": 0.4597349643221203,
+        "shots": 7,
+        "xg": 1.5332125183669472
+      },
+      "delta": {
+        "completion": 0.0,
+        "goals": 0,
+        "passes": 0,
+        "possession_home": 0.0,
+        "shots": 0,
+        "xg": 0.0
+      },
+      "home": "France",
+      "seed": 101,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 340,
+            "shot": 171,
+            "terminal": 458
+          },
+          "gated_ticks": 0,
+          "mean_delay_s": 2.9953203276260614,
+          "next_mark_counts": {
+            "pass": 341,
+            "shot": 171,
+            "terminal": 458
+          },
+          "plans": 970,
+          "provider": "skillcorner"
+        },
+        "completion": 0.7402846195949644,
+        "goals": 2,
+        "passes": 970,
+        "possession_home": 0.4597349643221203,
+        "shots": 7,
+        "xg": 1.5332125183669472
+      }
+    },
+    {
+      "away": "France",
+      "baseline": {
+        "clock": {
+          "enabled": false
+        },
+        "completion": 0.7933605389299132,
+        "goals": 0,
+        "passes": 963,
+        "possession_home": 0.5147808358817533,
+        "shots": 9,
+        "xg": 1.6570406599710634
+      },
+      "delta": {
+        "completion": -0.027836672479567337,
+        "goals": 0,
+        "passes": 5,
+        "possession_home": -0.010193679918450549,
+        "shots": -1,
+        "xg": -0.16511775064371115
+      },
+      "home": "Spain",
+      "seed": 313,
+      "treatment": {
+        "clock": {
+          "enabled": true,
+          "executed_mark_counts": {
+            "pass": 317,
+            "shot": 169,
+            "terminal": 481
+          },
+          "gated_ticks": 0,
+          "mean_delay_s": 3.0727472257269315,
+          "next_mark_counts": {
+            "pass": 318,
+            "shot": 169,
+            "terminal": 481
+          },
+          "plans": 968,
+          "provider": "skillcorner"
+        },
+        "completion": 0.7655238664503459,
+        "goals": 0,
+        "passes": 968,
+        "possession_home": 0.5045871559633027,
+        "shots": 8,
+        "xg": 1.4919229093273523
+      }
+    }
+  ],
+  "seconds_per_match": 5400.0,
+  "version": "9.6.0-long-shadow"
+}

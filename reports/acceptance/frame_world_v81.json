@@ -1,0 +1,330 @@
+{
+  "version": "8.1.0-candidate",
+  "policy": "strict leave-one-provider-out; held provider excluded from training and dev selection",
+  "device": "cuda",
+  "folds": [
+    {
+      "held_provider": "metrica",
+      "train_providers": [
+        "skillcorner",
+        "sportec"
+      ],
+      "windows": {
+        "train": 60000,
+        "dev": 12000,
+        "test": 20000
+      },
+      "one_step": {
+        "ade_m": 0.09444601642752026,
+        "baseline_ade_m": 0.09444557975921897,
+        "samples": 475723
+      },
+      "closed_loop": {
+        "finite": true,
+        "bounded": true,
+        "max_speed_mps": 43.78386688232422,
+        "horizons": {
+          "1": {
+            "ade_m": 0.0944606011069357,
+            "baseline_ade_m": 0.0944601649923431
+          },
+          "5": {
+            "ade_m": 0.3867690091805878,
+            "baseline_ade_m": 0.3892747376837316
+          },
+          "10": {
+            "ade_m": 0.9404700067885869,
+            "baseline_ade_m": 0.9432454216145352
+          },
+          "20": {
+            "ade_m": 2.5242016209979177,
+            "baseline_ade_m": 2.525093410909647
+          }
+        }
+      },
+      "intervention": {
+        "ball_forward_displacement_m": 3.90326189994812,
+        "other_entity_response_m": 3.1582435440213885e-06,
+        "finite": true
+      },
+      "gains": {
+        "one_step": false,
+        "rollout_2s": true
+      },
+      "gates": {
+        "one_step_noninferior": true,
+        "rollout_finite": true,
+        "rollout_2s_noninferior": true,
+        "plausible_speed": true,
+        "intervention_direction": true,
+        "intervention_finite": true
+      },
+      "ready": true,
+      "artifact": "data\\frame_world\\frame_world_v81_lodo_metrica.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": -4.959156814534613,
+          "dev": {
+            "ade_m": 0.044281864576056706,
+            "baseline_ade_m": 0.04422076967909654,
+            "samples": 238304
+          }
+        },
+        {
+          "epoch": 2,
+          "loss": -4.97779789782585,
+          "dev": {
+            "ade_m": 0.04422376074854345,
+            "baseline_ade_m": 0.04422076967909654,
+            "samples": 238304
+          }
+        },
+        {
+          "epoch": 3,
+          "loss": -4.977804106854378,
+          "dev": {
+            "ade_m": 0.04430969254160881,
+            "baseline_ade_m": 0.04422076967909654,
+            "samples": 238304
+          }
+        },
+        {
+          "epoch": 4,
+          "loss": -4.977747590491112,
+          "dev": {
+            "ade_m": 0.04425868460423549,
+            "baseline_ade_m": 0.04422076967909654,
+            "samples": 238304
+          }
+        },
+        {
+          "epoch": 5,
+          "loss": -4.977729933312599,
+          "dev": {
+            "ade_m": 0.04424320138731754,
+            "baseline_ade_m": 0.04422076967909654,
+            "samples": 238304
+          }
+        }
+      ]
+    },
+    {
+      "held_provider": "skillcorner",
+      "train_providers": [
+        "metrica",
+        "sportec"
+      ],
+      "windows": {
+        "train": 60000,
+        "dev": 12000,
+        "test": 20000
+      },
+      "one_step": {
+        "ade_m": 0.031286834589121335,
+        "baseline_ade_m": 0.031257352837398465,
+        "samples": 312644
+      },
+      "closed_loop": {
+        "finite": true,
+        "bounded": true,
+        "max_speed_mps": 29.354570388793945,
+        "horizons": {
+          "1": {
+            "ade_m": 0.031252124991448554,
+            "baseline_ade_m": 0.031218347636722005
+          },
+          "5": {
+            "ade_m": 0.27803135510557186,
+            "baseline_ade_m": 0.27729582671382
+          },
+          "10": {
+            "ade_m": 0.9075743246379503,
+            "baseline_ade_m": 0.9044264712579049
+          },
+          "20": {
+            "ade_m": 2.917620366379967,
+            "baseline_ade_m": 2.9040351913539038
+          }
+        }
+      },
+      "intervention": {
+        "ball_forward_displacement_m": 3.9402804374694824,
+        "other_entity_response_m": 1.3851273251930252e-05,
+        "finite": true
+      },
+      "gains": {
+        "one_step": false,
+        "rollout_2s": false
+      },
+      "gates": {
+        "one_step_noninferior": true,
+        "rollout_finite": true,
+        "rollout_2s_noninferior": true,
+        "plausible_speed": true,
+        "intervention_direction": true,
+        "intervention_finite": true
+      },
+      "ready": true,
+      "artifact": "data\\frame_world\\frame_world_v81_lodo_skillcorner.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": -4.937779852684508,
+          "dev": {
+            "ade_m": 0.07182918715432537,
+            "baseline_ade_m": 0.07171757429825112,
+            "samples": 280509
+          }
+        },
+        {
+          "epoch": 2,
+          "loss": -4.961357435267022,
+          "dev": {
+            "ade_m": 0.07176054069047667,
+            "baseline_ade_m": 0.07171757429825112,
+            "samples": 280509
+          }
+        },
+        {
+          "epoch": 3,
+          "loss": -4.961105920913371,
+          "dev": {
+            "ade_m": 0.07176251572911459,
+            "baseline_ade_m": 0.07171757429825112,
+            "samples": 280509
+          }
+        },
+        {
+          "epoch": 4,
+          "loss": -4.961358622287182,
+          "dev": {
+            "ade_m": 0.07178333588275855,
+            "baseline_ade_m": 0.07171757429825112,
+            "samples": 280509
+          }
+        },
+        {
+          "epoch": 5,
+          "loss": -4.961368280776004,
+          "dev": {
+            "ade_m": 0.071754783116675,
+            "baseline_ade_m": 0.07171757429825112,
+            "samples": 280509
+          }
+        }
+      ]
+    },
+    {
+      "held_provider": "sportec",
+      "train_providers": [
+        "metrica",
+        "skillcorner"
+      ],
+      "windows": {
+        "train": 60000,
+        "dev": 12000,
+        "test": 20000
+      },
+      "one_step": {
+        "ade_m": 0.05036029808691935,
+        "baseline_ade_m": 0.05035301511133978,
+        "samples": 456219
+      },
+      "closed_loop": {
+        "finite": true,
+        "bounded": true,
+        "max_speed_mps": 43.7875862121582,
+        "horizons": {
+          "1": {
+            "ade_m": 0.05103439508007638,
+            "baseline_ade_m": 0.05101766349799287
+          },
+          "5": {
+            "ade_m": 0.21167124521305328,
+            "baseline_ade_m": 0.21283017397684068
+          },
+          "10": {
+            "ade_m": 0.633251526565879,
+            "baseline_ade_m": 0.6332700595838969
+          },
+          "20": {
+            "ade_m": 1.9310250501298134,
+            "baseline_ade_m": 1.9255120113597837
+          }
+        }
+      },
+      "intervention": {
+        "ball_forward_displacement_m": 3.9190592765808105,
+        "other_entity_response_m": 2.0300494725233875e-06,
+        "finite": true
+      },
+      "gains": {
+        "one_step": false,
+        "rollout_2s": false
+      },
+      "gates": {
+        "one_step_noninferior": true,
+        "rollout_finite": true,
+        "rollout_2s_noninferior": true,
+        "plausible_speed": true,
+        "intervention_direction": true,
+        "intervention_finite": true
+      },
+      "ready": true,
+      "artifact": "data\\frame_world\\frame_world_v81_lodo_sportec.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": -4.971462431359798,
+          "dev": {
+            "ade_m": 0.07785934848407924,
+            "baseline_ade_m": 0.07785187133882715,
+            "samples": 242438
+          }
+        },
+        {
+          "epoch": 2,
+          "loss": -4.990638732910156,
+          "dev": {
+            "ade_m": 0.07786327272655792,
+            "baseline_ade_m": 0.07785187133882715,
+            "samples": 242438
+          }
+        },
+        {
+          "epoch": 3,
+          "loss": -4.9906274876696,
+          "dev": {
+            "ade_m": 0.07786442878888107,
+            "baseline_ade_m": 0.07785187133882715,
+            "samples": 242438
+          }
+        },
+        {
+          "epoch": 4,
+          "loss": -4.990617528874823,
+          "dev": {
+            "ade_m": 0.07785334612390751,
+            "baseline_ade_m": 0.07785187133882715,
+            "samples": 242438
+          }
+        },
+        {
+          "epoch": 5,
+          "loss": -4.9906137486721605,
+          "dev": {
+            "ade_m": 0.07786389682901852,
+            "baseline_ade_m": 0.07785187133882715,
+            "samples": 242438
+          }
+        }
+      ]
+    }
+  ],
+  "gates": {
+    "all_folds_ready": true,
+    "strict_lodo": true
+  },
+  "candidate_ready": true
+}

@@ -1,0 +1,160 @@
+{
+  "version": "8.3.0-candidate",
+  "policy": "SkillCorner match-held-out actor-aware strong pressure labels",
+  "split": {
+    "train": [
+      "1886347",
+      "1899585",
+      "1925299",
+      "1953632",
+      "1996435",
+      "2006229",
+      "2011166",
+      "2013725"
+    ],
+    "dev": [
+      "2015213"
+    ],
+    "test": [
+      "2017461"
+    ]
+  },
+  "metrics": {
+    "conditioned": 0.3074991474993297,
+    "zero": 0.3080251843253763,
+    "base": 0.3080251843253763,
+    "positive_conditioned": 0.31793706494186424,
+    "positive_zero": 0.3189866688093139,
+    "ball_event_conditioned": 2.24751507168816,
+    "ball_event_zero": 3.0130593769011957,
+    "ball_events": 620,
+    "pressure_local_conditioned": 0.3485066378921396,
+    "pressure_local_zero": 0.33126350252688685,
+    "pressure_local_entities": 18960,
+    "f1": [
+      0.0,
+      0.0,
+      0.6548291633037395
+    ]
+  },
+  "gates": {
+    "match_disjoint": true,
+    "pressure_f1": true,
+    "local_transition_gain": false,
+    "finite": true
+  },
+  "ready": false,
+  "artifact": "data/frame_world/frame_world_v83_pressure_skillcorner.pt",
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.024947400552110147,
+      "dev": {
+        "conditioned": 0.29671096403867026,
+        "zero": 0.2976076128625777,
+        "base": 0.2976076128625777,
+        "positive_conditioned": 0.3296286491565108,
+        "positive_zero": 0.3314053476362193,
+        "ball_event_conditioned": 2.203466521113752,
+        "ball_event_zero": 3.078268660120217,
+        "ball_events": 415,
+        "pressure_local_conditioned": 0.35866685356458455,
+        "pressure_local_zero": 0.3403619039748591,
+        "pressure_local_entities": 11145,
+        "f1": [
+          0.0,
+          0.0,
+          0.6526693987537192
+        ]
+      }
+    },
+    {
+      "epoch": 2,
+      "loss": 0.024417244087336427,
+      "dev": {
+        "conditioned": 0.2976161722031545,
+        "zero": 0.2976076128625777,
+        "base": 0.2976076128625777,
+        "positive_conditioned": 0.3314223133244884,
+        "positive_zero": 0.3314053476362193,
+        "ball_event_conditioned": 2.5116211810743954,
+        "ball_event_zero": 3.078268660120217,
+        "ball_events": 415,
+        "pressure_local_conditioned": 0.36159807960780654,
+        "pressure_local_zero": 0.3403619039748591,
+        "pressure_local_entities": 11145,
+        "f1": [
+          0.0,
+          0.0,
+          0.655424141248373
+        ]
+      }
+    },
+    {
+      "epoch": 3,
+      "loss": 0.024331570429317023,
+      "dev": {
+        "conditioned": 0.2982598447317106,
+        "zero": 0.2976076128625777,
+        "base": 0.2976076128625777,
+        "positive_conditioned": 0.3326977347319743,
+        "positive_zero": 0.3314053476362193,
+        "ball_event_conditioned": 2.4704380586922885,
+        "ball_event_zero": 3.078268660120217,
+        "ball_events": 415,
+        "pressure_local_conditioned": 0.3733751265336281,
+        "pressure_local_zero": 0.3403619039748591,
+        "pressure_local_entities": 11145,
+        "f1": [
+          0.0,
+          0.0,
+          0.6561471222613237
+        ]
+      }
+    },
+    {
+      "epoch": 4,
+      "loss": 0.024161988743028398,
+      "dev": {
+        "conditioned": 0.30147858177896747,
+        "zero": 0.2976076128625777,
+        "base": 0.2976076128625777,
+        "positive_conditioned": 0.3390756266055115,
+        "positive_zero": 0.3314053476362193,
+        "ball_event_conditioned": 2.505334495636354,
+        "ball_event_zero": 3.078268660120217,
+        "ball_events": 415,
+        "pressure_local_conditioned": 0.42329970300331304,
+        "pressure_local_zero": 0.3403619039748591,
+        "pressure_local_entities": 11145,
+        "f1": [
+          0.0,
+          0.0,
+          0.6561080835603996
+        ]
+      }
+    },
+    {
+      "epoch": 5,
+      "loss": 0.024208530657372232,
+      "dev": {
+        "conditioned": 0.309920164577196,
+        "zero": 0.2976076128625777,
+        "base": 0.2976076128625777,
+        "positive_conditioned": 0.3558025255908666,
+        "positive_zero": 0.3314053476362193,
+        "ball_event_conditioned": 2.399696922302246,
+        "ball_event_zero": 3.078268660120217,
+        "ball_events": 415,
+        "pressure_local_conditioned": 0.5615752780207501,
+        "pressure_local_zero": 0.3403619039748591,
+        "pressure_local_entities": 11145,
+        "f1": [
+          0.0,
+          0.0,
+          0.6597985347985348
+        ]
+      }
+    }
+  ]
+}

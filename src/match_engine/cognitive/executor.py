@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
@@ -116,7 +117,28 @@ class CognitiveExecutor:
         if not self.cfg.cache_dir:
             return
         path = Path(self.cfg.cache_dir) / f"{key}.json"
-        path.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+        fd, temporary = tempfile.mkstemp(prefix=f".{key}-", suffix=".tmp", dir=path.parent)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(plan, handle, ensure_ascii=False, indent=2)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.remove(temporary)
+
+    @staticmethod
+    def _validate_plan(trig: CognitiveTriggerEvent, data: Any) -> Dict[str, Any]:
+        if trig.entity_tier == ENTITY_TIER_COACH:
+            return validate_coach_plan(data)
+        if trig.entity_tier == ENTITY_TIER_PLAYER:
+            return validate_player_plan(data)
+        if trig.entity_tier == ENTITY_TIER_REFEREE:
+            return validate_referee_plan(data)
+        if trig.entity_tier == ENTITY_TIER_ASSISTANT:
+            return validate_assistant_plan(data)
+        return validate_crowd_plan(data)
 
     def _call_llm_for_trigger(self, trig: CognitiveTriggerEvent) -> Dict[str, Any]:
         facts = trig.facts
@@ -124,7 +146,9 @@ class CognitiveExecutor:
         if not self.use_llm:
             return _rule_fallback_plan(trig)
 
-        attempts = int(os.environ.get("COGNITIVE_LLM_RETRIES", "5"))
+        # Provider retries belong to LLMGateway; this layer only retries malformed plans.
+        from src.simulation.runtime import environment_snapshot, env_int
+        attempts = max(1, env_int(environment_snapshot(), "COGNITIVE_PLAN_RETRIES", 2))
         last_exc: Exception | None = None
         for attempt in range(attempts):
             try:
@@ -141,15 +165,7 @@ class CognitiveExecutor:
                 else:
                     raw = self.llm.crowd_collective_reaction(facts, kind)
                 data = json.loads(raw) if isinstance(raw, str) else raw
-                if trig.entity_tier == ENTITY_TIER_COACH:
-                    return validate_coach_plan(data)
-                if trig.entity_tier == ENTITY_TIER_PLAYER:
-                    return validate_player_plan(data)
-                if trig.entity_tier == ENTITY_TIER_REFEREE:
-                    return validate_referee_plan(data)
-                if trig.entity_tier == ENTITY_TIER_ASSISTANT:
-                    return validate_assistant_plan(data)
-                return validate_crowd_plan(data)
+                return self._validate_plan(trig, data)
             except Exception as exc:
                 last_exc = exc
                 if attempt < attempts - 1:
@@ -168,23 +184,27 @@ class CognitiveExecutor:
         home_agent: Optional["SocietyAgent"] = None,
         away_agent: Optional["SocietyAgent"] = None,
     ) -> CognitivePlanRecord:
+        # Enrichment must happen before cache-key construction and LLM execution.
+        if trig.entity_tier == ENTITY_TIER_PLAYER:
+            for player in state.home.players + state.away.players:
+                if player.player_id == trig.entity_id:
+                    trig.facts["player_name"] = player.name
+                    break
+
         key = _cache_key(trig)
         cached = self._load_cache(key)
         plan: Dict[str, Any]
         from_cache = False
         if cached is not None:
-            plan = cached
-            from_cache = True
+            try:
+                plan = self._validate_plan(trig, cached)
+                from_cache = True
+            except (TypeError, ValueError, KeyError):
+                plan = self._call_llm_for_trigger(trig)
+                self._save_cache(key, plan)
         else:
             plan = self._call_llm_for_trigger(trig)
             self._save_cache(key, plan)
-
-        # Enrich player facts with name for LLM
-        if trig.entity_tier == ENTITY_TIER_PLAYER:
-            for p in state.home.players + state.away.players:
-                if p.player_id == trig.entity_id:
-                    trig.facts["player_name"] = p.name
-                    break
 
         rec = CognitivePlanRecord(trigger=trig, plan=plan, cached=from_cache)
         try:

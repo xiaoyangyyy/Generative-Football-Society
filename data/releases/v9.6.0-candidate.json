@@ -1,0 +1,40 @@
+{
+  "artifacts": [
+    {
+      "bytes": 6467,
+      "path": "reports/acceptance/continuous_clock_long_shadow_v96.json",
+      "sha256": "589318db2d3ec78ea192468a2266758fe79a7445b2697dc219e2453f90ceebbc"
+    },
+    {
+      "bytes": 5392,
+      "path": "scripts/evaluate_continuous_clock_long_shadow_v96.py",
+      "sha256": "f01a85d0fe81fa8ac6929242376cea520ce634544c0715119a74dca0732429e3"
+    },
+    {
+      "bytes": 3953,
+      "path": "data/releases/v9.5.0-candidate.json",
+      "sha256": "bbdf8b1be10932cdd839ea1613953bab4f02c76b9c7ef0c24cf1d68ec7852766"
+    },
+    {
+      "bytes": 11582,
+      "path": "reports/acceptance/continuous_clock_shadow_v95.json",
+      "sha256": "964a8314c7833f9ea9aaaa7822ccf1a9e7803061a5b71362f899336cbfd1421d"
+    }
+  ],
+  "decision": "reject v9.5 production promotion; require independent sub-tick reception queue",
+  "gates": {
+    "cadence_confounding_detected": true,
+    "deployment_unchanged": true,
+    "deterministic": true,
+    "full_90_minute_shadow": true,
+    "production_cadence_tested": true,
+    "promotion_rejected": true,
+    "shot_xg_regression_detected": true
+  },
+  "parent_deployed": "7.0.0",
+  "parent_research": "9.5.0-candidate",
+  "release": "9.6.0-candidate",
+  "rollback": "6.0.0",
+  "schema_version": 2,
+  "status": "frozen_negative_evidence"
+}

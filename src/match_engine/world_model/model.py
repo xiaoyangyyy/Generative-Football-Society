@@ -26,10 +26,10 @@ except ImportError:
 class WorldModelOutput:
     next_obs: np.ndarray
     pass_success: float
-    xg_delta_attacking: float
+    progress_delta: float
     shot_goal_prob: float
     latent: np.ndarray
-
+    uncertainty: float = 0.0
 
 if _TORCH:
 
@@ -37,6 +37,7 @@ if _TORCH:
         def __init__(self, cfg: WorldModelConfig):
             super().__init__()
             self.cfg = cfg
+            self.checkpoint_version = 6
             d = cfg.latent_dim
             h = cfg.hidden_dim
             self.encoder = nn.Sequential(
@@ -46,6 +47,49 @@ if _TORCH:
                 nn.Linear(h, d),
             )
             self.ln_latent = nn.LayerNorm(d)
+            component = max(16, d // 2)
+            attn_heads = 4 if component % 4 == 0 else (2 if component % 2 == 0 else 1)
+            self.grid_encoder = nn.Sequential(
+                nn.Conv2d(5, 16, kernel_size=3, padding=1),
+                nn.SiLU(),
+                nn.Conv2d(16, 16, kernel_size=3, padding=1),
+                nn.SiLU(),
+                nn.Flatten(),
+                nn.Linear(16 * 8 * 5, component),
+            )
+            self.player_token = nn.Linear(4, component)
+            self.player_slot_embedding = nn.Embedding(22, component)
+            self.player_team_embedding = nn.Embedding(2, component)
+            self.graph_message = nn.Sequential(
+                nn.Linear(component * 2 + 6, component),
+                nn.SiLU(),
+                nn.Linear(component, component),
+            )
+            self.graph_update = nn.Sequential(
+                nn.Linear(component * 2, component),
+                nn.LayerNorm(component),
+                nn.SiLU(),
+            )
+            player_layer = nn.TransformerEncoderLayer(
+                d_model=component,
+                nhead=attn_heads,
+                dim_feedforward=max(64, component * 2),
+                batch_first=True,
+                dropout=0.05,
+                activation="gelu",
+            )
+            self.player_encoder = nn.TransformerEncoder(player_layer, num_layers=1)
+            self.context_encoder = nn.Sequential(
+                nn.Linear(19, component),
+                nn.LayerNorm(component),
+                nn.SiLU(),
+            )
+            self.structured_fuse = nn.Sequential(
+                nn.Linear(component * 3, h),
+                nn.LayerNorm(h),
+                nn.SiLU(),
+                nn.Linear(h, d),
+            )
             self.action_embed = nn.Linear(ACTION_DIM, d)
             kind = (cfg.transition_type or "gru").lower()
             if kind == "transformer":
@@ -70,9 +114,84 @@ if _TORCH:
             self.head_pass = nn.Linear(d, 1)
             self.head_xg = nn.Linear(d, 1)
             self.head_shot = nn.Linear(d, 1)
+            extra_heads = max(0, int(cfg.ensemble_size) - 1)
+            self.extra_pass_heads = nn.ModuleList(nn.Linear(d, 1) for _ in range(extra_heads))
+            self.extra_xg_heads = nn.ModuleList(nn.Linear(d, 1) for _ in range(extra_heads))
+            self.extra_shot_heads = nn.ModuleList(nn.Linear(d, 1) for _ in range(extra_heads))
+            nn.init.zeros_(self.head_shot.weight)
+            nn.init.zeros_(self.head_shot.bias)
+            for head in self.extra_shot_heads:
+                nn.init.zeros_(head.weight)
+                nn.init.zeros_(head.bias)
+
+        def decode_next(self, obs: torch.Tensor, z_next: torch.Tensor) -> torch.Tensor:
+            decoded = self.decoder(z_next)
+            if self.checkpoint_version >= 3:
+                delta = torch.tanh(decoded) * float(self.cfg.residual_scale)
+                return torch.clamp(obs + delta, 0.0, 1.0)
+            return decoded
 
         def encode(self, obs: torch.Tensor) -> torch.Tensor:
-            return self.ln_latent(self.encoder(obs))
+            if self.checkpoint_version < 4:
+                return self.ln_latent(self.encoder(obs))
+            grid = obs[:, :200].reshape(-1, 5, 8, 5)
+            players = obs[:, 210:298].reshape(-1, 22, 4)
+            context = torch.cat([obs[:, 200:210], obs[:, 298:307]], dim=-1)
+            grid_z = self.grid_encoder(grid)
+            slots = torch.arange(22, device=obs.device).unsqueeze(0)
+            teams = torch.cat(
+                [
+                    torch.zeros(11, dtype=torch.long, device=obs.device),
+                    torch.ones(11, dtype=torch.long, device=obs.device),
+                ]
+            ).unsqueeze(0)
+            player_tokens = (
+                self.player_token(players)
+                + self.player_slot_embedding(slots)
+                + self.player_team_embedding(teams)
+            )
+            if self.checkpoint_version >= 5:
+                positions = players[:, :, :2]
+                velocities = players[:, :, 2:4]
+                delta = positions[:, None, :, :] - positions[:, :, None, :]
+                rel_velocity = velocities[:, None, :, :] - velocities[:, :, None, :]
+                distance = torch.linalg.vector_norm(delta, dim=-1, keepdim=True)
+                same_team = (
+                    teams[:, :, None] == teams[:, None, :]
+                ).to(player_tokens.dtype).unsqueeze(-1).expand(players.shape[0], -1, -1, -1)
+                edge = torch.cat([delta, distance, rel_velocity, same_team], dim=-1)
+                source = player_tokens[:, :, None, :].expand(-1, -1, 22, -1)
+                target = player_tokens[:, None, :, :].expand(-1, 22, -1, -1)
+                messages = self.graph_message(torch.cat([source, target, edge], dim=-1))
+                mask = (~torch.eye(22, dtype=torch.bool, device=obs.device)).view(1, 22, 22, 1)
+                messages = (messages * mask).sum(dim=2) / 21.0
+                player_tokens = player_tokens + self.graph_update(
+                    torch.cat([player_tokens, messages], dim=-1)
+                )
+            player_z = self.player_encoder(player_tokens).mean(dim=1)
+            context_z = self.context_encoder(context)
+            return self.ln_latent(self.structured_fuse(torch.cat([grid_z, player_z, context_z], dim=-1)))
+
+        def outcome_ensemble(self, z: torch.Tensor, action: Optional[torch.Tensor] = None):
+            if self.checkpoint_version < 4:
+                return (
+                    self.head_pass(z).unsqueeze(0),
+                    self.head_xg(z).unsqueeze(0),
+                    self.head_shot(z).unsqueeze(0),
+                )
+            pass_logits = torch.stack([self.head_pass(z), *[head(z) for head in self.extra_pass_heads]], dim=0)
+            progress = torch.stack([self.head_xg(z), *[head(z) for head in self.extra_xg_heads]], dim=0)
+            shot_logits = torch.stack([self.head_shot(z), *[head(z) for head in self.extra_shot_heads]], dim=0)
+            if self.checkpoint_version >= 6 and action is not None:
+                pass_logits = 0.45 * torch.tanh(pass_logits)
+                pass_prior = action[:, 13:14].clamp(0.02, 0.98)
+                pass_logits = pass_logits + torch.logit(pass_prior).unsqueeze(0)
+            if self.checkpoint_version >= 5 and action is not None:
+                shot_logits = 0.35 * torch.tanh(shot_logits)
+                xg_prior = action[:, 13:14].clamp(0.01, 0.78)
+                prior_logit = torch.logit(xg_prior).unsqueeze(0)
+                shot_logits = shot_logits + prior_logit
+            return pass_logits, progress, shot_logits
 
         def _transition_step(
             self,
@@ -105,10 +224,11 @@ if _TORCH:
         ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
             z = self.encode(obs)
             z_next, h_new = self._transition_step(z, action, h)
-            next_obs = self.decoder(z_next)
-            pass_logit = self.head_pass(z_next)
-            xg_delta = self.head_xg(z_next)
-            shot_logit = self.head_shot(z_next)
+            next_obs = self.decode_next(obs, z_next)
+            pass_all, xg_all, shot_all = self.outcome_ensemble(z_next, action)
+            pass_logit = pass_all.mean(dim=0)
+            xg_delta = xg_all.mean(dim=0)
+            shot_logit = shot_all.mean(dim=0)
             return z_next, next_obs, pass_logit, xg_delta, shot_logit, h_new
 
         def imagine(
@@ -121,7 +241,8 @@ if _TORCH:
         ) -> WorldModelOutput:
             self.eval()
             with torch.no_grad():
-                z = self.encode(torch.from_numpy(obs).float().unsqueeze(0))
+                current_obs = torch.from_numpy(obs).float().unsqueeze(0)
+                z = self.encode(current_obs)
                 act = torch.from_numpy(action).float().unsqueeze(0)
                 h_t = None
                 if h is not None:
@@ -130,17 +251,29 @@ if _TORCH:
                         h_t = h_t.unsqueeze(0)
                 for _ in range(max(1, steps)):
                     z, h_t = self._transition_step(z, act, h_t)
-                next_obs_t = self.decoder(z)
-                ps = torch.sigmoid(self.head_pass(z)).item()
-                xg = self.head_xg(z).item()
-                sg = torch.sigmoid(self.head_shot(z)).item()
+                    current_obs = self.decode_next(current_obs, z)
+                    z = self.encode(current_obs)
+                next_obs_t = current_obs
+                pass_all, xg_all, shot_all = self.outcome_ensemble(z, act)
+                pass_probs = torch.sigmoid(pass_all).reshape(-1)
+                shot_probs = torch.sigmoid(shot_all).reshape(-1)
+                progress_vals = xg_all.reshape(-1)
+                ps = pass_probs.mean().item()
+                xg = progress_vals.mean().item()
+                sg = shot_probs.mean().item()
+                uncertainty = (
+                    pass_probs.std(unbiased=False)
+                    + shot_probs.std(unbiased=False)
+                    + 0.5 * progress_vals.std(unbiased=False)
+                ).item()
                 h_out = h_t.squeeze(0).numpy() if h_t is not None else z.squeeze(0).numpy()
             return WorldModelOutput(
                 next_obs=next_obs_t.squeeze(0).numpy().astype(np.float32),
                 pass_success=float(ps),
-                xg_delta_attacking=float(xg),
+                progress_delta=float(xg),
                 shot_goal_prob=float(sg),
                 latent=h_out.astype(np.float32),
+                uncertainty=float(uncertainty),
             )
 
 else:
@@ -170,7 +303,7 @@ def save_checkpoint(
         "obs_dim": OBS_DIM,
         "action_dim": ACTION_DIM,
         "meta": meta or {},
-        "version": 2,
+        "version": 6,
     }
     torch.save(payload, path)
 
@@ -181,8 +314,11 @@ def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Di
     payload = torch.load(path, map_location="cpu", weights_only=False)
     cfg = WorldModelConfig(**payload.get("cfg", {}))
     model = LatentWorldModel(cfg)
+    model.checkpoint_version = int(payload.get("version", 2))
+    if model.checkpoint_version < 4:
+        cfg.imagination_steps = 1
     try:
-        model.load_state_dict(payload["state_dict"], strict=True)
+        model.load_state_dict(payload["state_dict"], strict=model.checkpoint_version >= 5)
     except RuntimeError as exc:
         raise RuntimeError(
             f"Checkpoint incompatible ({exc}). Retrain: python scripts/ensure_world_model.py"

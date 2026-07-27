@@ -1,4 +1,4 @@
-"""Build 11-player squads for affective simulation from SocietyAgent priors."""
+﻿"""Build 11-player squads for affective simulation from SocietyAgent priors."""
 
 from __future__ import annotations
 
@@ -86,7 +86,8 @@ def build_team_squad(
 
     fatigue = float(np.clip(getattr(agent, "fatigue", 0.0), 0.0, 1.0))
     stamina_logit = float(np.arctanh(np.clip(1.0 - fatigue * 0.85, 0.05, 0.95)))
-    morale_base = float(np.clip(agent.psychology_profile.get("confidence", 0.5), 0.05, 0.98))
+    psychology_profile = getattr(agent, "psychology_profile", {}) or {}
+    morale_base = float(np.clip(psychology_profile.get("confidence", 0.5), 0.05, 0.98))
     morale_logit = float(np.arctanh(np.clip(morale_base * 2 - 1, -0.95, 0.95)))
     team_emo = _emotion_logits_from_agent(agent)
 

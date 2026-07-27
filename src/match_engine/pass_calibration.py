@@ -16,6 +16,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict
 
+from src.simulation.runtime import environment_snapshot, env_bool
+
 _DEFAULT: Dict[str, Any] = {
     "overall_completion": 0.8224,
     "sim_targets": {
@@ -101,10 +103,11 @@ def logit_target_blend(*, base_dir: str = ".") -> float:
     Blend micro physics log-odds with StatsBomb per-kind target (0..1, no clipping).
   0.88 ≈ pull full-match completion toward WC2022 overall 82.24%.
     """
-    override = os.environ.get("CALIBRATION_LOGIT_BLEND", "").strip()
+    values = environment_snapshot()
+    override = values.get("CALIBRATION_LOGIT_BLEND", "").strip()
     if override:
         return float(override)
-    if os.environ.get("CALIBRATION_NO_BLEND", "").strip().lower() in ("1", "true", "yes"):
+    if env_bool(values, "CALIBRATION_NO_BLEND", False):
         return 0.0
     cal = load_pass_calibration(base_dir)
     tuning = cal.get("sim_tuning", {})
@@ -116,7 +119,7 @@ def logit_target_blend(*, base_dir: str = ".") -> float:
 
 def intercept_risk_scale(*, base_dir: str = ".") -> float:
     """Scale geometric intercept risk → ~2% intercept/pass (StatsBomb WC2022)."""
-    override = os.environ.get("CALIBRATION_INTERCEPT_RISK_SCALE", "").strip()
+    override = environment_snapshot().get("CALIBRATION_INTERCEPT_RISK_SCALE", "").strip()
     if override:
         return float(override)
     cal = load_pass_calibration(base_dir)

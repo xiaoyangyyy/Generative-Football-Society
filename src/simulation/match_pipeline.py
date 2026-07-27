@@ -6,6 +6,7 @@ import os
 from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
+from src.simulation.runtime import environment_snapshot, env_bool
 
 from src.data_engine.roster_loader import load_roster_json, roster_path_for_team
 from src.memory_engine.macro_micro_fusion import resolve_unified_score
@@ -50,7 +51,7 @@ from src.simulation.score_path import (
 
 
 def micro_layer_enabled() -> bool:
-    return os.environ.get("MATCH_MICRO", "").strip().lower() in ("1", "true", "yes")
+    return env_bool(environment_snapshot(), "MATCH_MICRO", False)
 
 
 def micro_physics_score_enabled() -> bool:
@@ -292,7 +293,7 @@ def finalize_match_feedback(
         away.ingest_micro_cognitive_memory(plans, away.team_name)
         _save_cognitive_match_log(base_dir, home, away, micro_summary, stage_name)
 
-    if os.environ.get("SAVE_CARRYOVER", "1").strip().lower() not in ("0", "false", "no"):
+    if env_bool(environment_snapshot(), "SAVE_CARRYOVER", True):
         from src.simulation.cross_match_state import save_persistence
 
         save_persistence(base_dir, {home.team_name: home, away.team_name: away})

@@ -1,0 +1,66 @@
+{
+  "gates": {
+    "arrays_valid": true,
+    "clock_median_range_s": true,
+    "minimum_observed": true,
+    "no_orphan_v92_arrays": true,
+    "observed_rate": true,
+    "three_metrica_matches": true,
+    "three_providers": true
+  },
+  "providers": [
+    {
+      "continue_rate": 0.7596153846153846,
+      "delay_quantiles_s": {
+        "q05": 0.0,
+        "q25": 0.0,
+        "q50": 1.08,
+        "q75": 1.88,
+        "q90": 3.0,
+        "q95": 3.8
+      },
+      "matches": 3,
+      "observed_events": 2808,
+      "observed_rate": 0.9753386592566864,
+      "provider": "metrica",
+      "shot_given_continue_rate": 0.02156586966713549,
+      "valid": true
+    },
+    {
+      "continue_rate": 0.9303362437302619,
+      "delay_quantiles_s": {
+        "q05": 0.0,
+        "q25": 0.4,
+        "q50": 1.1,
+        "q75": 2.0,
+        "q90": 3.1,
+        "q95": 3.8
+      },
+      "matches": 10,
+      "observed_events": 5208,
+      "observed_rate": 0.9554210236653825,
+      "provider": "skillcorner",
+      "shot_given_continue_rate": 0.025159744408945688,
+      "valid": true
+    },
+    {
+      "continue_rate": 0.9262764412965903,
+      "delay_quantiles_s": {
+        "q05": 0.0,
+        "q25": 0.376,
+        "q50": 1.131,
+        "q75": 1.986,
+        "q90": 3.117,
+        "q95": 3.786
+      },
+      "matches": 417,
+      "observed_events": 294804,
+      "observed_rate": 0.9615765989092712,
+      "provider": "statsbomb360",
+      "shot_given_continue_rate": 0.024425971362654265,
+      "valid": true
+    }
+  ],
+  "ready": true,
+  "version": "9.4.0-candidate"
+}

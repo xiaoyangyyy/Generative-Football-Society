@@ -1,0 +1,74 @@
+{
+    "artifacts":  [
+                      {
+                          "bytes":  11582,
+                          "path":  "reports/acceptance/continuous_clock_shadow_v95.json",
+                          "sha256":  "964a8314c7833f9ea9aaaa7822ccf1a9e7803061a5b71362f899336cbfd1421d"
+                      },
+                      {
+                          "bytes":  32348,
+                          "path":  "data/frame_world/continuous_time_v93_operational.pt",
+                          "sha256":  "574e49ce22bcaea7222cbc5c8233deb4bffeafdf1a8e9c46eb90146c25efe7c3"
+                      },
+                      {
+                          "bytes":  2149,
+                          "path":  "data/frame_world/continuous_intervals_v93.json",
+                          "sha256":  "d25948a1be26a9518b5e3977e4c48bd35e9d85c49facb278bf790a470f3ebabc"
+                      },
+                      {
+                          "bytes":  4860,
+                          "path":  "data/releases/snapshots/v9.5/src__match_engine__continuous_micro_clock.py",
+                          "sha256":  "568ea19310eb40c47bff4a85312429be332fd82611297d8bcf9327f0c3d67b28"
+                      },
+                      {
+                          "bytes":  9907,
+                          "path":  "data/releases/snapshots/v9.5/src__match_engine__action_engine.py",
+                          "sha256":  "90539eeb993190891badadea65e1b035baf927adffd5dbbc34eb2fb538ff76ea"
+                      },
+                      {
+                          "bytes":  26701,
+                          "path":  "data/releases/snapshots/v9.5/src__match_engine__match_micro_runner.py",
+                          "sha256":  "e53dbdfb85dc3738165162bd965b3a4e4883af69c5e853780e9b387a665b652b"
+                      },
+                      {
+                          "bytes":  9201,
+                          "path":  "data/releases/snapshots/v9.5/src__match_engine__micro_config.py",
+                          "sha256":  "946bdc3d25f6f1887c7fd109de927edf852b630a93ea320c69de1bae8b185145"
+                      },
+                      {
+                          "bytes":  10188,
+                          "path":  "data/releases/snapshots/v9.5/src__match_engine__state.py",
+                          "sha256":  "25439769713b3798976a07d2a5332879293efe0d9ffc739c67be0c4343be5613"
+                      },
+                      {
+                          "bytes":  4755,
+                          "path":  "data/releases/snapshots/v9.5/scripts__evaluate_continuous_clock_shadow_v95.py",
+                          "sha256":  "4fd5b23316dff6a3bdb6aefeea10b613d4ad614c5bf2d65fe41cad7049c5252d"
+                      },
+                      {
+                          "bytes":  2050,
+                          "path":  "data/releases/snapshots/v9.5/tests__test_continuous_micro_clock.py",
+                          "sha256":  "d76ddd0095db7e37b982b977f419eed655e55ff930de4d04cf28d50dd07054ca"
+                      }
+                  ],
+    "deployment_policy":  "shadow accepted; explicit production release decision still required",
+    "gates":  {
+                  "action_density_reduction":  true,
+                  "clock_exercised":  true,
+                  "completion_stable":  true,
+                  "deployment_unchanged":  true,
+                  "deterministic_treatment":  true,
+                  "mirror_possession_bias":  true,
+                  "real_pass_rate_improved":  true,
+                  "real_shot_rate_improved":  true,
+                  "real_xg_rate_improved":  true,
+                  "verified_v93_artifact":  true
+              },
+    "parent_deployed":  "7.0.0",
+    "parent_research":  "9.4.0-candidate",
+    "release":  "9.5.0-candidate",
+    "rollback":  "6.0.0",
+    "schema_version":  2,
+    "status":  "frozen_shadow_candidate",
+    "temporal_parent":  "9.3.0-candidate"
+}

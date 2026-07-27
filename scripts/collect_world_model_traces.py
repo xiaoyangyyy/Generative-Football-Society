@@ -7,6 +7,9 @@ import argparse
 import os
 import sys
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(errors="replace")
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
@@ -24,6 +27,22 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--pairs", type=int, default=24, help="Number of random pair matches")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--run-tag", default="", help="Unique prefix for parallel collection shards")
+    parser.add_argument(
+        "--shot-boost", type=float, default=0.0,
+        help="Collection-only logit boost for rare shot transitions",
+    )
+    parser.add_argument(
+        "--episode-seconds",
+        type=float,
+        default=5400.0,
+        help="Simulated seconds per dense training episode",
+    )
+    parser.add_argument(
+        "--full-resolution",
+        action="store_true",
+        help="Use production grid and tick rate (much slower)",
+    )
     args = parser.parse_args()
 
     import numpy as np
@@ -42,8 +61,9 @@ def main() -> None:
     teams = [t for group in WORLD_CUP_2026_GROUPS.values() for t in group]
     rng = np.random.default_rng(args.seed)
     engine, _, _ = build_world_and_tournament(base_dir, require_tactics=False)
-    cfg = MicroMatchConfig()
+    cfg = MicroMatchConfig() if args.full_resolution else MicroMatchConfig.fast_demo()
     cfg.use_micro_goals = True
+    cfg.action_shot_base += float(args.shot_boost)
     wm_cfg = WorldModelConfig.from_env()
     trace_root = default_trace_dir(base_dir)
     total = 0
@@ -51,7 +71,8 @@ def main() -> None:
     for i in range(args.pairs):
         t1, t2 = rng.choice(teams, size=2, replace=False)
         a1, a2 = engine.agents[t1], engine.agents[t2]
-        rec = TransitionRecorder.for_match(base_dir, t1, t2, f"trace_{i}")
+        tag = f"{args.run_tag}_" if args.run_tag else ""
+        rec = TransitionRecorder.for_match(base_dir, t1, t2, f"{tag}trace_{i}")
         seed = args.seed + i * 17
 
         # Tick-level recording via lightweight loop inside runner hook:
@@ -70,10 +91,15 @@ def main() -> None:
             config=cfg,
             writeback_agents=False,
             stage_name="wm_collect",
+            match_seconds=max(cfg.dt_default, float(args.episode_seconds)),
         )
         rec.close()
         total += rec.count
-        print(f"[{i+1}/{args.pairs}] {t1} vs {t2} → {rec.count} transitions ({rec.path})")
+        label = f"{t1} vs {t2}".encode("ascii", "replace").decode("ascii")
+        print(
+            f"[{i+1}/{args.pairs}] {label}: {rec.count} transitions "
+            f"actions={rec.action_counts} pass_ok={rec.pass_successes} goals={rec.shot_goals}"
+        )
 
     print(f"\nDone. {total} transitions under {trace_root}")
 

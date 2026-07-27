@@ -38,6 +38,9 @@ from src.memory_engine.poisson_simulator import (
 from src.simulation.tactical_matchup import compute_matchup_bonus
 from src.simulation.social_dialogue import SocialDialogueEngine
 from src.simulation.fusion_controller import FusionController
+from src.simulation.narrative_events import NarrativeEventBus
+from src.simulation.standings import apply_group_result
+from src.simulation.runtime import environment_snapshot, env_bool, env_int
 
 # Note:
 # These 48-team groups follow the 2026 final draw structure, while play-off slots
@@ -108,6 +111,7 @@ class TournamentManager:
         self.referee_stage_morph_strength = float(np.clip(referee_stage_morph_strength, 0.1, 3.0))
         self.dialogue_engine = SocialDialogueEngine(self.world.feed, turns_per_match=4)
         self.fusion_controller = FusionController()
+        self.narrative_event_bus = NarrativeEventBus()
         self.base_dir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "..", "..")
         )
@@ -239,7 +243,9 @@ class TournamentManager:
                             f"  [FIXTURE] #{meta.match_number} {meta.date} "
                             f"{t1} vs {t2} @ {meta.venue}, {meta.city}"
                         )
-                    fixture_seed = hash((g_name, t1, t2, md_idx)) % 10000
+                    from src.simulation.random_control import derive_seed
+
+                    fixture_seed = derive_seed(0, "group_fixture", g_name, md_idx, t1, t2)
                     self.play_match(
                         t1,
                         t2,
@@ -491,8 +497,10 @@ class TournamentManager:
         drama_pre = min(1.0, 0.25 + 0.15 * referee["strictness"])
         micro_summary = None
         score_meta: dict = {}
-        gfs_seed = int(os.environ.get("GFS_SEED", "42"))
-        seed = gfs_seed + hash((t1_name, t2_name, stage_name)) % 10000
+        gfs_seed = env_int(environment_snapshot(), "GFS_SEED", 42)
+        from src.simulation.random_control import derive_seed, named_rng
+
+        seed = derive_seed(gfs_seed, "match", stage_name, t1_name, t2_name)
         rng_score = np.random.default_rng(seed)
         xg_prior_h, xg_prior_a = 1.0, 1.0
 
@@ -543,7 +551,7 @@ class TournamentManager:
                 )
                 score_meta["xg_prior"] = [xg_prior_h, xg_prior_a]
             except Exception as exc:
-                strict = os.environ.get("MATCH_MICRO_STRICT", "").strip().lower() in ("1", "true", "yes")
+                strict = env_bool(environment_snapshot(), "MATCH_MICRO_STRICT", False)
                 print(f"  [MICRO] physics-first failed ({exc}); falling back to macro score.")
                 if strict:
                     raise RuntimeError(
@@ -618,12 +626,13 @@ class TournamentManager:
                 from src.memory_engine.macro_goal_dynamics import simulate_extra_time_dynamics
 
                 aet1, aet2, et_xg1, et_xg2 = simulate_extra_time_dynamics(
-                    a1, a2, eff_status_1, eff_status_2, stage_pressure=pressure
+                    a1, a2, eff_status_1, eff_status_2, stage_pressure=pressure,
+                    rng=named_rng(seed, "extra_time"),
                 )
             s1 += aet1
             s2 += aet2
             if s1 == s2:
-                pen1, pen2 = simulate_penalty_shootout()
+                pen1, pen2 = simulate_penalty_shootout(named_rng(seed, "penalties"))
                 winner_name = t1_name if pen1 > pen2 else t2_name
                 pen_note = f" (Pens {pen1}-{pen2})"
             else:
@@ -703,7 +712,7 @@ class TournamentManager:
         except Exception as _dbg_exc:
             print(f"  [DEBUG-NARRATIVE] match log skipped: {_dbg_exc}")
 
-        aff_on = os.environ.get("MATCH_AFFECTIVE", "").strip().lower() in ("1", "true", "yes")
+        aff_on = env_bool(environment_snapshot(), "MATCH_AFFECTIVE", False)
         if micro_replay_mode or (aff_on and micro_summary is None):
             try:
                 if micro_replay_mode:
@@ -814,12 +823,23 @@ class TournamentManager:
         narrative_json = llm.predict_match_result(
             t1_name, a1.get_context_for_llm(), t2_name, a2.get_context_for_llm(), stage_name
         )
+        atmosphere_chaos = 0.0
         try:
             narrative = json.loads(narrative_json)
             if isinstance(narrative, dict) and narrative.get("key_event"):
                 verdict_data = json.loads(verdict_json)
                 verdict_data["llm_key_event"] = narrative.get("key_event")
+                verdict_data["narrative_signals"] = narrative.get("signals", {})
                 verdict_json = json.dumps(verdict_data, ensure_ascii=False)
+                event_record = self.narrative_event_bus.publish(
+                    narrative,
+                    [a1, a2],
+                    stage=stage_name,
+                )
+                atmosphere_chaos = sum(
+                    float(item.get("feedback", {}).get("chaos_delta", 0.0))
+                    for item in event_record.get("applied", {}).values()
+                )
         except Exception:
             pass
 
@@ -840,6 +860,7 @@ class TournamentManager:
                 float(metrics.get("social_chaos", 0.0))
                 + 0.5 * (ref_1["chaos_delta"] + ref_2["chaos_delta"])
                 + 0.25 * (fused_1["chaos_push"] + fused_2["chaos_push"])
+                + 0.35 * atmosphere_chaos
             )
             mainstream = media_data.get("mainstream", "")
             social_post = media_data.get("social_chaos_post", "")
@@ -984,16 +1005,12 @@ class TournamentManager:
         return winner
 
     def update_standings(self, g, t1, t2, s1, s2):
-        st = self.standings[g]
-        st[t1]["pts"] += (3 if s1 > s2 else (1 if s1 == s2 else 0))
-        st[t2]["pts"] += (3 if s2 > s1 else (1 if s1 == s2 else 0))
-        st[t1]["gf"] += s1; st[t1]["ga"] += s2; st[t1]["gd"] = st[t1]["gf"] - st[t1]["ga"]
-        st[t2]["gf"] += s2; st[t2]["ga"] += s1; st[t2]["gd"] = st[t2]["gf"] - st[t2]["ga"]
+        apply_group_result(self.standings[g], t1, t2, int(s1), int(s2))
 
     def resolve_advancements(self):
         self.qualified_entries = build_qualified_entries(self.groups, self.standings)
         self.qualified_teams = [e.team for e in self.qualified_entries]
-        gfs_seed = int(os.environ.get("GFS_SEED", "42"))
+        gfs_seed = env_int(environment_snapshot(), "GFS_SEED", 42)
         import random
 
         self.r32_fixtures = build_r32_pairings(
@@ -1020,7 +1037,9 @@ class TournamentManager:
                     print(f"  [SKIP] {t1} vs {t2} (checkpoint) → {winner}")
                     next_round.append(winner)
                     continue
-            fixture_seed = hash((round_name, t1, t2)) % 10000
+            from src.simulation.random_control import derive_seed
+
+            fixture_seed = derive_seed(0, "knockout_fixture", round_name, t1, t2)
             winner = self.play_match(
                 t1,
                 t2,

@@ -1,0 +1,453 @@
+{
+  "version": "8.3.0-candidate",
+  "policy": "actor-aware strict provider LODO; pressure intervention enabled only from training evidence",
+  "folds": [
+    {
+      "held_provider": "metrica",
+      "train_providers": [
+        "skillcorner",
+        "sportec"
+      ],
+      "pressure_enabled_from_training_evidence": true,
+      "direction_evidence_available": true,
+      "metrics": {
+        "conditioned": 0.6224978330276562,
+        "zero": 0.6571227050992353,
+        "base": 0.6571227050992353,
+        "positive_conditioned": 0.8873033552330579,
+        "positive_zero": 0.9583657428027257,
+        "ball_event_conditioned": 4.284531127929688,
+        "ball_event_zero": 6.115098214285714,
+        "ball_events": 1750,
+        "pressure_local_conditioned": 0.0,
+        "pressure_local_zero": 0.0,
+        "pressure_local_entities": 0,
+        "f1": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "gates": {
+        "finite": true,
+        "direction_conditioning_gain": true,
+        "positive_conditioning_noninferior": true,
+        "transition_noninferior": true
+      },
+      "ready": true,
+      "artifact": "data/frame_world/frame_world_v83_actor_lodo_metrica.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.027501430571535413,
+          "dev": {
+            "conditioned": 0.29519177445664685,
+            "zero": 0.29491188400165225,
+            "base": 0.29491188400165225,
+            "positive_conditioned": 0.31512285832341974,
+            "positive_zero": 0.3145615169085481,
+            "ball_event_conditioned": 2.5849592931037844,
+            "ball_event_zero": 2.993267078198355,
+            "ball_events": 379,
+            "pressure_local_conditioned": 0.35213054206055383,
+            "pressure_local_zero": 0.3326701721540511,
+            "pressure_local_entities": 10490,
+            "f1": [
+              0.0,
+              0.0,
+              0.6528509967884627
+            ]
+          }
+        },
+        {
+          "epoch": 2,
+          "loss": 0.027097308609102453,
+          "dev": {
+            "conditioned": 0.2940191952514043,
+            "zero": 0.29491188400165225,
+            "base": 0.29491188400165225,
+            "positive_conditioned": 0.31277116030257845,
+            "positive_zero": 0.3145615169085481,
+            "ball_event_conditioned": 2.1534934106791552,
+            "ball_event_zero": 2.993267078198355,
+            "ball_events": 379,
+            "pressure_local_conditioned": 0.34799386343578703,
+            "pressure_local_zero": 0.3326701721540511,
+            "pressure_local_entities": 10490,
+            "f1": [
+              0.0,
+              0.0,
+              0.6571411050469124
+            ]
+          }
+        },
+        {
+          "epoch": 3,
+          "loss": 0.026983286368147452,
+          "dev": {
+            "conditioned": 0.2939916610339471,
+            "zero": 0.29491188400165225,
+            "base": 0.29491188400165225,
+            "positive_conditioned": 0.3127159444597018,
+            "positive_zero": 0.3145615169085481,
+            "ball_event_conditioned": 2.2778827194173608,
+            "ball_event_zero": 2.993267078198355,
+            "ball_events": 379,
+            "pressure_local_conditioned": 0.34303662142830876,
+            "pressure_local_zero": 0.3326701721540511,
+            "pressure_local_entities": 10490,
+            "f1": [
+              0.0,
+              0.0,
+              0.6570202329858982
+            ]
+          }
+        },
+        {
+          "epoch": 4,
+          "loss": 0.026778660904692143,
+          "dev": {
+            "conditioned": 0.2950686990260551,
+            "zero": 0.29491188400165225,
+            "base": 0.29491188400165225,
+            "positive_conditioned": 0.3148760258584454,
+            "positive_zero": 0.3145615169085481,
+            "ball_event_conditioned": 2.1876803828418097,
+            "ball_event_zero": 2.993267078198355,
+            "ball_events": 379,
+            "pressure_local_conditioned": 0.3644137376143435,
+            "pressure_local_zero": 0.3326701721540511,
+            "pressure_local_entities": 10490,
+            "f1": [
+              0.0,
+              0.0,
+              0.6637931034482759
+            ]
+          }
+        },
+        {
+          "epoch": 5,
+          "loss": 0.026502756753518264,
+          "dev": {
+            "conditioned": 0.29873416063937075,
+            "zero": 0.29491188400165225,
+            "base": 0.29491188400165225,
+            "positive_conditioned": 0.3222274012885737,
+            "positive_zero": 0.3145615169085481,
+            "ball_event_conditioned": 2.1509608266221503,
+            "ball_event_zero": 2.993267078198355,
+            "ball_events": 379,
+            "pressure_local_conditioned": 0.4274015373906371,
+            "pressure_local_zero": 0.3326701721540511,
+            "pressure_local_entities": 10490,
+            "f1": [
+              0.0,
+              0.0,
+              0.6630504148053605
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "held_provider": "skillcorner",
+      "train_providers": [
+        "metrica",
+        "sportec"
+      ],
+      "pressure_enabled_from_training_evidence": false,
+      "direction_evidence_available": true,
+      "metrics": {
+        "conditioned": 0.2827321761703804,
+        "zero": 0.2831364319760544,
+        "base": 0.2831364319760544,
+        "positive_conditioned": 0.30682242367168056,
+        "positive_zero": 0.30762662110653016,
+        "ball_event_conditioned": 2.8161573357501273,
+        "ball_event_zero": 3.0286285020537296,
+        "ball_events": 590,
+        "pressure_local_conditioned": 0.0,
+        "pressure_local_zero": 0.0,
+        "pressure_local_entities": 0,
+        "f1": [
+          0.057592385762152185,
+          0.0,
+          0.0
+        ]
+      },
+      "gates": {
+        "finite": true,
+        "direction_conditioning_gain": true,
+        "positive_conditioning_noninferior": true,
+        "transition_noninferior": true
+      },
+      "ready": true,
+      "artifact": "data/frame_world/frame_world_v83_actor_lodo_skillcorner.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.05086169925098326,
+          "dev": {
+            "conditioned": 0.45832233143328827,
+            "zero": 0.4738569339813886,
+            "base": 0.4738569339813886,
+            "positive_conditioned": 0.6074270878686483,
+            "positive_zero": 0.6390048617424452,
+            "ball_event_conditioned": 4.593554766561083,
+            "ball_event_zero": 6.073815933780967,
+            "ball_events": 965,
+            "pressure_local_conditioned": 0.0,
+            "pressure_local_zero": 0.0,
+            "pressure_local_entities": 0,
+            "f1": [
+              0.6411198600174978,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        {
+          "epoch": 2,
+          "loss": 0.050052046994952595,
+          "dev": {
+            "conditioned": 0.4655188601068829,
+            "zero": 0.4738569339813886,
+            "base": 0.4738569339813886,
+            "positive_conditioned": 0.6220557634220567,
+            "positive_zero": 0.6390048617424452,
+            "ball_event_conditioned": 5.279298136024278,
+            "ball_event_zero": 6.073815933780967,
+            "ball_events": 965,
+            "pressure_local_conditioned": 0.0,
+            "pressure_local_zero": 0.0,
+            "pressure_local_entities": 0,
+            "f1": [
+              0.6411198600174978,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        {
+          "epoch": 3,
+          "loss": 0.05003056952766344,
+          "dev": {
+            "conditioned": 0.4620468728573675,
+            "zero": 0.4738569339813886,
+            "base": 0.4738569339813886,
+            "positive_conditioned": 0.614998126200734,
+            "positive_zero": 0.6390048617424452,
+            "ball_event_conditioned": 4.948459308999808,
+            "ball_event_zero": 6.073815933780967,
+            "ball_events": 965,
+            "pressure_local_conditioned": 0.0,
+            "pressure_local_zero": 0.0,
+            "pressure_local_entities": 0,
+            "f1": [
+              0.6411198600174978,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        {
+          "epoch": 4,
+          "loss": 0.0495871593262635,
+          "dev": {
+            "conditioned": 0.4771924757661098,
+            "zero": 0.4738569339813886,
+            "base": 0.4738569339813886,
+            "positive_conditioned": 0.6457851705737514,
+            "positive_zero": 0.6390048617424452,
+            "ball_event_conditioned": 6.391654094636749,
+            "ball_event_zero": 6.073815933780967,
+            "ball_events": 965,
+            "pressure_local_conditioned": 0.0,
+            "pressure_local_zero": 0.0,
+            "pressure_local_entities": 0,
+            "f1": [
+              0.6411198600174978,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        {
+          "epoch": 5,
+          "loss": 0.04712274466075149,
+          "dev": {
+            "conditioned": 0.4788736928720549,
+            "zero": 0.4738569339813886,
+            "base": 0.4738569339813886,
+            "positive_conditioned": 0.6492026279539526,
+            "positive_zero": 0.6390048617424452,
+            "ball_event_conditioned": 6.551853539659569,
+            "ball_event_zero": 6.073815933780967,
+            "ball_events": 965,
+            "pressure_local_conditioned": 0.0,
+            "pressure_local_zero": 0.0,
+            "pressure_local_entities": 0,
+            "f1": [
+              0.6318225650916104,
+              0.09393346379647749,
+              0.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "held_provider": "sportec",
+      "train_providers": [
+        "metrica",
+        "skillcorner"
+      ],
+      "pressure_enabled_from_training_evidence": true,
+      "direction_evidence_available": false,
+      "metrics": {
+        "conditioned": 0.24153342066472103,
+        "zero": 0.24153342066472103,
+        "base": 0.24153342066472103,
+        "positive_conditioned": 0.28483422376091316,
+        "positive_zero": 0.28483422376091316,
+        "ball_event_conditioned": 0.0,
+        "ball_event_zero": 0.0,
+        "ball_events": 0,
+        "pressure_local_conditioned": 0.0,
+        "pressure_local_zero": 0.0,
+        "pressure_local_entities": 0,
+        "f1": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "gates": {
+        "finite": true,
+        "direction_conditioning_gain": true,
+        "positive_conditioning_noninferior": true,
+        "transition_noninferior": true
+      },
+      "ready": true,
+      "artifact": "data/frame_world/frame_world_v83_actor_lodo_sportec.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.025743496328668326,
+          "dev": {
+            "conditioned": 0.346448654511571,
+            "zero": 0.35070669986237674,
+            "base": 0.35070669986237674,
+            "positive_conditioned": 0.39091061030084273,
+            "positive_zero": 0.39935256885220577,
+            "ball_event_conditioned": 3.6557867099681802,
+            "ball_event_zero": 4.660424547230799,
+            "ball_events": 809,
+            "pressure_local_conditioned": 0.33681662467660434,
+            "pressure_local_zero": 0.3315166179106803,
+            "pressure_local_entities": 10435,
+            "f1": [
+              0.0,
+              0.0,
+              0.6533373971350198
+            ]
+          }
+        },
+        {
+          "epoch": 2,
+          "loss": 0.025544181969777053,
+          "dev": {
+            "conditioned": 0.34787234586863214,
+            "zero": 0.35070669986237674,
+            "base": 0.35070669986237674,
+            "positive_conditioned": 0.39373321213483503,
+            "positive_zero": 0.39935256885220577,
+            "ball_event_conditioned": 3.9493150864307607,
+            "ball_event_zero": 4.660424547230799,
+            "ball_events": 809,
+            "pressure_local_conditioned": 0.33832985074199096,
+            "pressure_local_zero": 0.3315166179106803,
+            "pressure_local_entities": 10435,
+            "f1": [
+              0.0,
+              0.0,
+              0.6589516678012253
+            ]
+          }
+        },
+        {
+          "epoch": 3,
+          "loss": 0.025257503727869113,
+          "dev": {
+            "conditioned": 0.34594548829508437,
+            "zero": 0.35070669986237674,
+            "base": 0.35070669986237674,
+            "positive_conditioned": 0.38991302657576987,
+            "positive_zero": 0.39935256885220577,
+            "ball_event_conditioned": 3.3124446892473105,
+            "ball_event_zero": 4.660424547230799,
+            "ball_events": 809,
+            "pressure_local_conditioned": 0.3548575139468403,
+            "pressure_local_zero": 0.3315166179106803,
+            "pressure_local_entities": 10435,
+            "f1": [
+              0.0,
+              0.0,
+              0.6587566431837845
+            ]
+          }
+        },
+        {
+          "epoch": 4,
+          "loss": 0.025021963505720606,
+          "dev": {
+            "conditioned": 0.3452451894280695,
+            "zero": 0.35070669986237674,
+            "base": 0.35070669986237674,
+            "positive_conditioned": 0.38852463663089376,
+            "positive_zero": 0.39935256885220577,
+            "ball_event_conditioned": 3.029551596812471,
+            "ball_event_zero": 4.660424547230799,
+            "ball_events": 809,
+            "pressure_local_conditioned": 0.3648516060464052,
+            "pressure_local_zero": 0.3315166179106803,
+            "pressure_local_entities": 10435,
+            "f1": [
+              0.0,
+              0.0,
+              0.6705979329148437
+            ]
+          }
+        },
+        {
+          "epoch": 5,
+          "loss": 0.02481461870389021,
+          "dev": {
+            "conditioned": 0.34780737931350697,
+            "zero": 0.35070669986237674,
+            "base": 0.35070669986237674,
+            "positive_conditioned": 0.3936044032210933,
+            "positive_zero": 0.39935256885220577,
+            "ball_event_conditioned": 3.191003462292797,
+            "ball_event_zero": 4.660424547230799,
+            "ball_events": 809,
+            "pressure_local_conditioned": 0.39601240062119575,
+            "pressure_local_zero": 0.3315166179106803,
+            "pressure_local_entities": 10435,
+            "f1": [
+              0.0,
+              0.0,
+              0.661172042312934
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "gates": {
+    "strict_lodo": true,
+    "evidence_switch": true,
+    "all_folds_ready": true
+  },
+  "candidate_ready": true
+}

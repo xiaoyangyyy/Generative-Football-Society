@@ -14,42 +14,31 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 import numpy as np
+from src.simulation.runtime import environment_snapshot, env_bool, env_int
 
 if TYPE_CHECKING:
     from src.match_engine.state import MatchAffectiveState, PlayerAffectiveState
 
 
 def ball_path_log_enabled() -> bool:
-    return os.environ.get("MATCH_BALL_LOG", "").strip().lower() in ("1", "true", "yes")
+    return env_bool(environment_snapshot(), "MATCH_BALL_LOG", False)
 
 
 def ball_path_log_txt_enabled() -> bool:
     """Human .txt log is optional; jsonl is the default analysis format."""
-    if os.environ.get("MATCH_BALL_LOG_TXT", "").strip().lower() in ("0", "false", "no"):
-        return False
-    if os.environ.get("MATCH_BALL_LOG_TXT", "").strip().lower() in ("1", "true", "yes"):
-        return True
-    return False
+    return env_bool(environment_snapshot(), "MATCH_BALL_LOG_TXT", False)
 
 
 def ball_log_wm_snapshot_enabled() -> bool:
-    if os.environ.get("MATCH_WM_SNAPSHOT_IN_BALL_LOG", "").strip().lower() in ("0", "false", "no"):
-        return False
-    if os.environ.get("MATCH_WM_SNAPSHOT_IN_BALL_LOG", "").strip().lower() in ("1", "true", "yes"):
-        return True
-    return False
+    return env_bool(environment_snapshot(), "MATCH_WM_SNAPSHOT_IN_BALL_LOG", False)
 
 
 def ball_path_log_max_entries() -> int:
-    raw = os.environ.get("MATCH_BALL_LOG_MAX", "800")
-    try:
-        return max(50, int(raw))
-    except ValueError:
-        return 800
+    return max(50, env_int(environment_snapshot(), "MATCH_BALL_LOG_MAX", 800))
 
 
 def ball_path_log_dir(base_dir: str) -> Path:
-    custom = os.environ.get("MATCH_BALL_LOG_DIR", "").strip()
+    custom = environment_snapshot().get("MATCH_BALL_LOG_DIR", "").strip()
     if custom:
         return Path(custom)
     return Path(base_dir) / "outputs" / "ball_log"

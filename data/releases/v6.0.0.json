@@ -1,0 +1,94 @@
+{
+  "artifacts": [
+    {
+      "bytes": 1635058,
+      "path": "data/world_model/latent_wm.pt",
+      "sha256": "8beefe259823a689dcffdbcedd68a4ed3b78262711d17db5967e6cf059e4c5e8"
+    },
+    {
+      "bytes": 34378,
+      "path": "data/world_model/dataset_manifest.json",
+      "sha256": "e9fbc0c68adc0af05fc39b705b2c8db4251b99746f6fa42746f778eca99454d3"
+    },
+    {
+      "bytes": 1830,
+      "path": "data/world_model/receiver_ranker.json",
+      "sha256": "93ba37d11a5e15ef48f5b80f645806c2512645734ccbd56055deb40b2ef57dc6"
+    },
+    {
+      "bytes": 1378546,
+      "path": "data/external/metrica/pass_candidates_game1.csv",
+      "sha256": "6e0700a1750eea0c947bac16b82fcef0382404bef5d4f55a27dd718e752a53bb"
+    },
+    {
+      "bytes": 961,
+      "path": "data/external/metrica/pass_candidates_game1.manifest.json",
+      "sha256": "978d5564a8496350d00d4f941de727e2d409a77f12128fc8c5d19a4bc5f9a291"
+    },
+    {
+      "bytes": 1660677,
+      "path": "data/external/metrica/pass_candidates_game2.csv",
+      "sha256": "96867be7d3945533c415f396751f0eefdaa8e0f5044d973405ae3758974c70f2"
+    },
+    {
+      "bytes": 962,
+      "path": "data/external/metrica/pass_candidates_game2.manifest.json",
+      "sha256": "0b1f311f384bff44b16d2eefbe6561bfe17b5ff2c1bfc0ba19e5b90affb27231"
+    }
+  ],
+  "calibration_profile": "v5_physics_first",
+  "mutation_policy": "new research must create a new version; do not overwrite sealed data or this manifest",
+  "release": "6.0.0",
+  "schema_version": 1,
+  "sealed_metrics": {
+    "checkpoint": "data/world_model/latent_wm.pt",
+    "dataset_manifest": "data/world_model/dataset_manifest.json",
+    "gates": {
+      "one_step_mse": true,
+      "pass_balanced_accuracy": true,
+      "pass_calibration": true,
+      "pass_preserves_prior_ranking": true,
+      "shot_evidence": true,
+      "ten_step_mse": true
+    },
+    "groups": 9,
+    "pass": {
+      "auc": 0.5848445772921546,
+      "balanced_accuracy": 0.5813611219961179,
+      "brier": 0.17432144328392246,
+      "ece": 0.011176031631021675,
+      "physics_prior_auc": 0.5832839710934723,
+      "physics_prior_brier": 0.17477619389738652,
+      "physics_prior_ece": 0.03851927276307479,
+      "samples": 1563
+    },
+    "release_ready": true,
+    "rollout_mse": {
+      "1": 0.004688567742500754,
+      "10": 0.015093878072956486,
+      "3": 0.007303957558752508,
+      "5": 0.010480833570679202
+    },
+    "rollout_nonfinite": {
+      "1": 0,
+      "10": 0,
+      "3": 0,
+      "5": 0
+    },
+    "shot": {
+      "brier": 0.09322486444963715,
+      "ece": 0.06773785609338018,
+      "goals": 5,
+      "samples": 45
+    },
+    "split": "sealed_test",
+    "starts": 1616
+  },
+  "source_snapshot": {
+    "files": 262,
+    "sha256": "540af51d3c130ba50633b485c55140a92e518fd8b18868b49568192b89c1eaba"
+  },
+  "status": "frozen",
+  "tests": "132 passed, 2 skipped",
+  "world_model_version": 6
+}

@@ -1,0 +1,87 @@
+{
+  "architecture": {
+    "macro_tick_s": 5.5,
+    "rng_draws": 0,
+    "subtick_queue": true,
+    "transition_contract": "damped learned residual only"
+  },
+  "artifacts": [
+    {
+      "bytes": 7478,
+      "path": "reports/acceptance/subtick_reception_shadow_v97.json",
+      "sha256": "c1196607f96971cbfa5a957743857e8c11f889b87a095ad7d508c5d559dd9d4d"
+    },
+    {
+      "bytes": 32348,
+      "path": "data/frame_world/continuous_time_v93_operational.pt",
+      "sha256": "574e49ce22bcaea7222cbc5c8233deb4bffeafdf1a8e9c46eb90146c25efe7c3"
+    },
+    {
+      "bytes": 2149,
+      "path": "data/frame_world/continuous_intervals_v93.json",
+      "sha256": "d25948a1be26a9518b5e3977e4c48bd35e9d85c49facb278bf790a470f3ebabc"
+    },
+    {
+      "bytes": 53256,
+      "path": "data/frame_world/frame_world_v85_pass_triplet_lodo_skillcorner.pt",
+      "sha256": "3a385fd499b3efad10c73348603345eb1ec7124ba10de6462922027f9da834f7"
+    },
+    {
+      "bytes": 6756,
+      "path": "data/releases/snapshots/v9.7/src__match_engine__subtick_reception_queue.py",
+      "sha256": "214b819b20b2c930caa9095144132917d1f65e811bcc17b2082179fbdddc0e14"
+    },
+    {
+      "bytes": 10512,
+      "path": "data/releases/snapshots/v9.7/src__match_engine__action_engine.py",
+      "sha256": "c0339561f10cf7a20557ea98288f8ee6e0bb08e1b6f0be06088fa450065af071"
+    },
+    {
+      "bytes": 27635,
+      "path": "data/releases/snapshots/v9.7/src__match_engine__match_micro_runner.py",
+      "sha256": "2c59eb2051f77cd42d234e6b71409232411e0cd4e352cfc9fcafef2b5b5b7e8a"
+    },
+    {
+      "bytes": 9443,
+      "path": "data/releases/snapshots/v9.7/src__match_engine__micro_config.py",
+      "sha256": "ca0f020523d5dd4092ca95403de1fb7871839ae6e20483468343845988db94b6"
+    },
+    {
+      "bytes": 10262,
+      "path": "data/releases/snapshots/v9.7/src__match_engine__state.py",
+      "sha256": "c730411298143ece5e72a5d1387d53bbdce8c2d8137c17db70eb40609ddae4c0"
+    },
+    {
+      "bytes": 3774,
+      "path": "data/releases/snapshots/v9.7/scripts__evaluate_subtick_reception_shadow_v97.py",
+      "sha256": "bfa9b499a994bbf791b410b51ac18eae04ba257362c55e44c4776d85fadfe2e5"
+    },
+    {
+      "bytes": 2125,
+      "path": "data/releases/snapshots/v9.7/tests__test_subtick_reception_queue.py",
+      "sha256": "f5acf5f9bfc1dd492979ac952e509eb3a5d45497e912e4668585cedead63429f"
+    }
+  ],
+  "deployment_policy": "evaluated full-match shadow; default-off and not deployed",
+  "gates": {
+    "completion_stable": true,
+    "deployment_unchanged": true,
+    "deterministic": true,
+    "immutable_source_snapshot": true,
+    "mirror_possession_bias": true,
+    "nontrivial_local_effect": true,
+    "pass_rate_noninferior": true,
+    "production_cadence": true,
+    "queue_exercised": true,
+    "reconciliation_rate": true,
+    "shot_rate_noninferior": true,
+    "xg_rate_noninferior": true,
+    "zero_rng_draws": true
+  },
+  "parent_deployed": "7.0.0",
+  "parent_research": "9.6.0-candidate",
+  "release": "9.7.0-candidate",
+  "rollback": "6.0.0",
+  "schema_version": 2,
+  "status": "frozen_dual_clock_candidate"
+}

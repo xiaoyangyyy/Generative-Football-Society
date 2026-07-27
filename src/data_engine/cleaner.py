@@ -6,12 +6,18 @@ def clean_results(df):
     """
     df = df.copy()
     # Convert date
-    df['date'] = pd.to_datetime(df['date'])
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
     
     # Keep only completed matches; do not convert future fixtures into artificial 0-0 draws.
     df['home_score'] = pd.to_numeric(df['home_score'], errors='coerce')
     df['away_score'] = pd.to_numeric(df['away_score'], errors='coerce')
-    df = df.dropna(subset=['home_score', 'away_score']).copy()
+    df = df.dropna(subset=['date', 'home_team', 'away_team', 'home_score', 'away_score']).copy()
+    df = df[df['home_team'].astype(str).str.strip() != df['away_team'].astype(str).str.strip()].copy()
+    df = df[(df['home_score'] >= 0) & (df['away_score'] >= 0)].copy()
+    df = df.drop_duplicates(
+        subset=['date', 'home_team', 'away_team', 'home_score', 'away_score', 'tournament'],
+        keep='last',
+    )
     
     df['goal_diff_home'] = df['home_score'] - df['away_score']
     

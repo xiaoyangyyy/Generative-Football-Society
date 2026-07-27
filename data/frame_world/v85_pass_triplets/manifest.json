@@ -1,0 +1,200 @@
+{
+  "defender_policy": "visible opponent nearest to ball-receiver segment at aligned pass frame",
+  "matches": [
+    {
+      "file": "data/frame_world/v85_pass_triplets/metrica_game1.npz",
+      "match_id": "game1",
+      "median_lane_distance_m": 2.606201171875,
+      "passes": 799,
+      "provider": "metrica",
+      "sha256": "2f96a27d5d63e62445763bb7668bfb40c532a74e12b91b20e7a094be0224a126",
+      "valid_rate": 0.9574468085106383,
+      "valid_triplets": 765
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/metrica_game2.npz",
+      "match_id": "game2",
+      "median_lane_distance_m": 2.705413818359375,
+      "passes": 964,
+      "provider": "metrica",
+      "sha256": "2aa4a03ddc84e726a5520bd4c2b11cd71327c75b1aacd58cd26709f541865949",
+      "valid_rate": 0.9802904564315352,
+      "valid_triplets": 945
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/skillcorner_1886347.npz",
+      "match_id": "1886347",
+      "median_lane_distance_m": 2.57424259185791,
+      "passes": 902,
+      "provider": "skillcorner",
+      "sha256": "9c2396108c632b0edb0ebdde2094b898ae16f4ebe11813fa7e2297019749b685",
+      "valid_rate": 0.8048780487804879,
+      "valid_triplets": 726
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/skillcorner_1899585.npz",
+      "match_id": "1899585",
+      "median_lane_distance_m": 2.219852089881897,
+      "passes": 820,
+      "provider": "skillcorner",
+      "sha256": "ae97df9b8b3252be2c5c958e244edfdd203b269f742901b7316d2fdfc069c686",
+      "valid_rate": 0.7926829268292683,
+      "valid_triplets": 650
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/skillcorner_1925299.npz",
+      "match_id": "1925299",
+      "median_lane_distance_m": 2.8127074241638184,
+      "passes": 963,
+      "provider": "skillcorner",
+      "sha256": "a6f2f326f1246a18a111de46102efb841f6ab47b4b99d923b7311ceca6ea3088",
+      "valid_rate": 0.7300103842159917,
+      "valid_triplets": 703
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/skillcorner_1953632.npz",
+      "match_id": "1953632",
+      "median_lane_distance_m": 3.158233404159546,
+      "passes": 915,
+      "provider": "skillcorner",
+      "sha256": "e1f6c304fc1f1e61169a2904276f75aba42468feca5bb3c84c34f16c7e95f70b",
+      "valid_rate": 0.7989071038251366,
+      "valid_triplets": 731
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/skillcorner_1996435.npz",
+      "match_id": "1996435",
+      "median_lane_distance_m": 2.405686855316162,
+      "passes": 941,
+      "provider": "skillcorner",
+      "sha256": "683ef9b78beacfc4c522b6442d64c26ec566a682f946522ab32b259428504469",
+      "valid_rate": 0.8799149840595112,
+      "valid_triplets": 828
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/skillcorner_2006229.npz",
+      "match_id": "2006229",
+      "median_lane_distance_m": 2.651175856590271,
+      "passes": 921,
+      "provider": "skillcorner",
+      "sha256": "053ab56ce36ab53b4ed8026813398f754d2956d252071f19d87dd80a9254ca16",
+      "valid_rate": 0.8034744842562432,
+      "valid_triplets": 740
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/skillcorner_2011166.npz",
+      "match_id": "2011166",
+      "median_lane_distance_m": 2.131097435951233,
+      "passes": 677,
+      "provider": "skillcorner",
+      "sha256": "4f641ca870cfeb6c69d768969edaca2de82a381ccfebe76c4ac90d3ac382cb8f",
+      "valid_rate": 0.7503692762186115,
+      "valid_triplets": 508
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/skillcorner_2013725.npz",
+      "match_id": "2013725",
+      "median_lane_distance_m": 2.3369996547698975,
+      "passes": 886,
+      "provider": "skillcorner",
+      "sha256": "87a076a380c94e5505f8482e5e0498e6009435ede456661da56f8577c0963d91",
+      "valid_rate": 0.7505643340857788,
+      "valid_triplets": 665
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/skillcorner_2015213.npz",
+      "match_id": "2015213",
+      "median_lane_distance_m": 2.5666310787200928,
+      "passes": 824,
+      "provider": "skillcorner",
+      "sha256": "47813214e36e7c03c044f54c2e6c50a03038fe6149dc104954a38883f5a04678",
+      "valid_rate": 0.7293689320388349,
+      "valid_triplets": 601
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/skillcorner_2017461.npz",
+      "match_id": "2017461",
+      "median_lane_distance_m": 2.1448581218719482,
+      "passes": 736,
+      "provider": "skillcorner",
+      "sha256": "44dc746ce14cc10feca6aef39d06353a0285a2678fa46d43d919f90e7e641aa5",
+      "valid_rate": 0.7432065217391305,
+      "valid_triplets": 547
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/sportec_J03WMX.npz",
+      "match_id": "J03WMX",
+      "median_lane_distance_m": 3.2004661560058594,
+      "passes": 950,
+      "provider": "sportec",
+      "sha256": "9fa3f3ce00a5d1b229361df66226cd42373892f7678c66ee2cc906ce1503619e",
+      "valid_rate": 0.98,
+      "valid_triplets": 931
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/sportec_J03WN1.npz",
+      "match_id": "J03WN1",
+      "median_lane_distance_m": 2.4057633876800537,
+      "passes": 696,
+      "provider": "sportec",
+      "sha256": "9b9f02aef8cd451eed96c65079dae50dda0209e4744a5d40a2359a4671ae8a14",
+      "valid_rate": 0.9640804597701149,
+      "valid_triplets": 671
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/sportec_J03WOH.npz",
+      "match_id": "J03WOH",
+      "median_lane_distance_m": 2.848335862159729,
+      "passes": 732,
+      "provider": "sportec",
+      "sha256": "7fec18e21be54e07e870ebecfd5e62adaf6e0d747385464dfcbf0c8fc6b8b95d",
+      "valid_rate": 0.9699453551912568,
+      "valid_triplets": 710
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/sportec_J03WOY.npz",
+      "match_id": "J03WOY",
+      "median_lane_distance_m": 2.1050302982330322,
+      "passes": 842,
+      "provider": "sportec",
+      "sha256": "3256cd1b6deadcaffd331f2c85259a355f372e643f48235d13f7167a4bb5ac7a",
+      "valid_rate": 0.9714964370546318,
+      "valid_triplets": 818
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/sportec_J03WPY.npz",
+      "match_id": "J03WPY",
+      "median_lane_distance_m": 2.9941537380218506,
+      "passes": 856,
+      "provider": "sportec",
+      "sha256": "5acd1a1f0bdca4afc996b3773f6731474ee8c682fc6cac73f74bdfa09f188971",
+      "valid_rate": 0.9848130841121495,
+      "valid_triplets": 843
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/sportec_J03WQQ.npz",
+      "match_id": "J03WQQ",
+      "median_lane_distance_m": 3.272315263748169,
+      "passes": 877,
+      "provider": "sportec",
+      "sha256": "5949950ccf65bdaff666d033b7c66d00e51a2ceb8b659c65361e12263179f39a",
+      "valid_rate": 0.9794754846066135,
+      "valid_triplets": 859
+    },
+    {
+      "file": "data/frame_world/v85_pass_triplets/sportec_J03WR9.npz",
+      "match_id": "J03WR9",
+      "median_lane_distance_m": 3.4506771564483643,
+      "passes": 869,
+      "provider": "sportec",
+      "sha256": "c490d3ca802cc34cc59a2e99da2f229ff9f75abbc014cf843f513b8de28c1ae8",
+      "valid_rate": 0.9746835443037974,
+      "valid_triplets": 847
+    }
+  ],
+  "totals": {
+    "passes": 16170,
+    "valid_triplets": 14088
+  },
+  "version": "8.5.0-candidate"
+}

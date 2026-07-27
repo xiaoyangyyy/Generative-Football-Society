@@ -1,0 +1,58 @@
+{
+  "artifacts": [
+    {
+      "bytes": 31790,
+      "path": "data/frame_world/continuous_time_v94_lopo_metrica.pt",
+      "sha256": "ba9bf313dbb99ebd0e3436a431474562018b5982d356436c03b1ff8848f7dbcb"
+    },
+    {
+      "bytes": 31862,
+      "path": "data/frame_world/continuous_time_v94_lopo_skillcorner.pt",
+      "sha256": "e8266ce7e162f714b58169f3ffc935f6d9ed3d2e0492fce2a7921e63c10b7138"
+    },
+    {
+      "bytes": 31880,
+      "path": "data/frame_world/continuous_time_v94_lopo_statsbomb360.pt",
+      "sha256": "1c31476dbce1a9220765127d07deadabd429b2c9f5dcac47b62c922b3a272b0d"
+    },
+    {
+      "bytes": 1632,
+      "path": "reports/acceptance/temporal_provider_quality_v94.json",
+      "sha256": "a5ad4308e57c7e53e834f1db55048b8bcb5b1bc83ef4ec5606594fe3069d0a5c"
+    },
+    {
+      "bytes": 11606,
+      "path": "reports/acceptance/continuous_time_v94_lopo.json",
+      "sha256": "48c0bcb8d9b28fb39d56aac3d398466cc63cea991b3b56df1c0a1b4c3b11f7f8"
+    },
+    {
+      "bytes": 4378,
+      "path": "reports/acceptance/continuous_calibration_v94.json",
+      "sha256": "6a0fa40b7be4450287442fa4d90874cd16fb7167653944680a0bb8d7961c9b65"
+    },
+    {
+      "bytes": 168541,
+      "path": "data/frame_world/v94_temporal_providers/manifest.json",
+      "sha256": "69521474c29034ae7992c1ce6e8f40ccfc2fc0b18e74d08b2aef093ff52070da"
+    },
+    {
+      "bytes": 84040,
+      "path": "data/frame_world/v94_temporal_providers/metrica_game3.npz",
+      "sha256": "d36d8e422961eda7a6a60e596d074aa0f16f89a238def7eba76e1b1ba40f0616"
+    }
+  ],
+  "deployment_policy": "evaluated only",
+  "gates": {
+    "coverage_lopo": true,
+    "deployment_unchanged": true,
+    "official_source_integrity": true,
+    "point_lopo": true,
+    "three_metrica_matches": true
+  },
+  "parent_deployed": "7.0.0",
+  "parent_research": "9.3.0-candidate",
+  "release": "9.4.0-candidate",
+  "rollback": "6.0.0",
+  "schema_version": 2,
+  "status": "frozen_research_candidate"
+}

@@ -1,4 +1,4 @@
-"""Build full tactical vectors from agent archetype + coach knobs."""
+﻿"""Build full tactical vectors from agent archetype + coach knobs."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def blend_vectors(base: Dict[str, float], override: Dict[str, float], weight: fl
 
 
 def _control_blend_weight(agent: "SocietyAgent") -> float:
-    """LLM knob influence — rises with coach tactical knowledge, preset stays primary."""
+    """LLM knob influence 鈥?rises with coach tactical knowledge, preset stays primary."""
     cp = getattr(agent, "coach_profile", None)
     tk = float(getattr(cp, "mental", {}).get("tactical_knowledge", 0.5)) if cp else 0.5
     return _clip01(0.10 + 0.16 * tk)
@@ -51,7 +51,7 @@ def _apply_formation_adjustments(merged: Dict[str, float], agent: "SocietyAgent"
     merged["wing_focus"] = _clip01(merged["wing_focus"] + 0.10 * wide_sig)
     merged["width_play"] = _clip01(merged["width_play"] + 0.08 * wide_sig)
     merged["pressing_intensity"] = _clip01(merged["pressing_intensity"] + 0.06 * press_sig)
-    return {k: float(sigmoid(2.0 * merged.get(k, 0.5) - 1.0)) for k in TACTICAL_KEYS}
+    return {k: float(sigmoid(4.0 * merged.get(k, 0.5) - 2.0)) for k in TACTICAL_KEYS}
 
 
 def compose_llm_tactical_vector(
@@ -108,7 +108,7 @@ def vector_from_controls(controls: Dict[str, float]) -> Dict[str, float]:
 
 
 def _build_tactical_vector_base(agent: "SocietyAgent") -> Dict[str, float]:
-    """Archetype / affinity path — never delegates to preset-locked compose."""
+    """Archetype / affinity path 鈥?never delegates to preset-locked compose."""
     arch = infer_archetype_from_text(
         getattr(agent, "style_desc", ""),
         getattr(agent, "formation", "4-3-3"),

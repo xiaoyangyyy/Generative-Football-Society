@@ -1,0 +1,31 @@
+{
+  "version": "8.8.0-candidate",
+  "provider_scope": "skillcorner",
+  "counterfactual_note": "Feature rows are permuted only at the selected decoder, preserving the other factual output for separate timing and mark tests.",
+  "summary": {
+    "test_match": "2017461",
+    "feature_samples": 547,
+    "rollout_samples": 64,
+    "time_shuffle_changed_fraction": 0.7239488363265991,
+    "time_shuffle_mean_step_delta": 1.0712980031967163,
+    "action_shuffle_changed_fraction": 0.4936014711856842,
+    "mean_termination_effect_m": 7.958329546265304,
+    "delay_range_steps": [
+      2,
+      5
+    ],
+    "finite": true,
+    "bounded": true,
+    "identity_deletion_blocks": true
+  },
+  "gates": {
+    "held_match": true,
+    "time_condition_used": true,
+    "action_condition_used": true,
+    "effect_termination": true,
+    "identity_gate": true,
+    "valid_schedule": true,
+    "finite_bounded": true
+  },
+  "ready": true
+}

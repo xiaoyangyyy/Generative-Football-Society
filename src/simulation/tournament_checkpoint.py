@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -48,8 +49,17 @@ def save_checkpoint(
         "match_results": match_results or {},
         "post_group_reflection_done": post_group_reflection_done,
     }
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+    directory = os.path.dirname(path)
+    fd, temporary = tempfile.mkstemp(prefix=".tournament-", suffix=".json.tmp", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.remove(temporary)
     return path
 
 
@@ -58,7 +68,16 @@ def load_checkpoint(base_dir: str) -> Optional[Dict[str, Any]]:
     if not os.path.isfile(path):
         return None
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        payload = json.load(f)
+    if payload.get("version") != CHECKPOINT_VERSION:
+        raise ValueError(
+            f"Unsupported tournament checkpoint version: {payload.get('version')!r}"
+        )
+    required = {"phase", "standings", "qualified_teams", "match_index"}
+    missing = sorted(required.difference(payload))
+    if missing:
+        raise ValueError(f"Invalid tournament checkpoint; missing: {', '.join(missing)}")
+    return payload
 
 
 def clear_checkpoint(base_dir: str) -> None:

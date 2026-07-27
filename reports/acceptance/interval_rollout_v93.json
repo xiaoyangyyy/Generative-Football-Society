@@ -1,0 +1,420 @@
+{
+  "version": "9.3.0-candidate",
+  "contexts": 40,
+  "spread_m": {
+    "median": 43.96225562855068,
+    "max": 76.6652532020906,
+    "max_reachable_ratio": 0.5637150970741955
+  },
+  "gates": {
+    "contexts": true,
+    "ordered_interventions": true,
+    "finite_bounded": true,
+    "deterministic": true,
+    "nontrivial_intervention": true,
+    "reachable_spread": true
+  },
+  "ready": true,
+  "records": [
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 76.6652532020906,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 75.50575111677902,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 36.767593587472554,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 34.11415687775174,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 5,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 35.35429147071224,
+      "reachable_bound_m": 113.5
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 52.63836029046082,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 74.5051308812527,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 7,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 52.050824993350105,
+      "reachable_bound_m": 158.5
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 60.511193174513565,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 59.413817458808936,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 53.29016662943867,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 7,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 36.10779602147495,
+      "reachable_bound_m": 158.5
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 39.510773448894106,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 42.43766842796907,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 7,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 34.48137219341252,
+      "reachable_bound_m": 158.5
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 5,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 60.22109438707785,
+      "reachable_bound_m": 113.5
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 5,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 22.53635247293494,
+      "reachable_bound_m": 113.5
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 5,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 40.46003966215843,
+      "reachable_bound_m": 113.5
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 69.13138752538119,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game1",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 67.67009060485904,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 54.84421052095729,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 60.821130133415835,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 7,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 55.95997985784472,
+      "reachable_bound_m": 158.5
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 52.25921174099985,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 37.37025986051955,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 30.47994728341482,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 60.79714333500164,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 25.45402727021083,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 7,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 42.27743197786695,
+      "reachable_bound_m": 158.5
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 7,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 23.518944154992365,
+      "reachable_bound_m": 158.5
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 5,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 34.9638090349164,
+      "reachable_bound_m": 113.5
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 48.85386092194935,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 5,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 45.48684282913228,
+      "reachable_bound_m": 113.5
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 40.35453548134375,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 7,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 51.537325517119974,
+      "reachable_bound_m": 158.5
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 33.85556737778595,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 7,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 32.87814176380799,
+      "reachable_bound_m": 158.5
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 2,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 29.39111924450527,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 70.71491327287704,
+      "reachable_bound_m": 136.0
+    },
+    {
+      "match": "game2",
+      "lower_step": 0,
+      "median_step": 3,
+      "upper_step": 6,
+      "finite": true,
+      "bounded": true,
+      "max_counterfactual_spread_m": 40.568905335952344,
+      "reachable_bound_m": 136.0
+    }
+  ]
+}

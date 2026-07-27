@@ -1,0 +1,442 @@
+﻿{
+    "version":  "9.1.0-candidate",
+    "model":  "three-component log-normal mixture survival",
+    "policy":  "strict bidirectional provider LODO; continuous baseline gate",
+    "folds":  [
+                  {
+                      "held_provider":  "skillcorner",
+                      "train_providers":  [
+                                              "statsbomb360"
+                                          ],
+                      "samples":  {
+                                      "train":  120000,
+                                      "dev":  20000,
+                                      "test":  5451
+                                  },
+                      "thresholds":  {
+                                         "continue":  0.49500000000000005,
+                                         "pass_shot":  0.52
+                                     },
+                      "metrics":  {
+                                      "time_mae_s":  0.90982633829116821,
+                                      "survival_nll":  0.5227913666899938,
+                                      "event_2s_brier":  0.19860498336520038,
+                                      "continue_balanced_accuracy":  0.579765708200213,
+                                      "pass_shot_balanced_accuracy":  0.6811692449750623,
+                                      "observed_events":  5208
+                                  },
+                      "continuous_train_median_baseline_mae_s":  0.9214362502098083,
+                      "time_gain_s":  0.0116099119186403,
+                      "gates":  {
+                                    "strict_provider_holdout":  true,
+                                    "continuous_time_gain":  true,
+                                    "continue_gain":  true,
+                                    "mark_gain":  true,
+                                    "calibrated":  true,
+                                    "finite":  true
+                                },
+                      "ready":  true,
+                      "artifact":  "data/frame_world/continuous_time_v91_lopo_skillcorner.pt",
+                      "history":  [
+                                      {
+                                          "epoch":  1,
+                                          "loss":  1.2909518107454827,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8804351091384888,
+                                                      "survival_nll":  1.150371628189087,
+                                                      "event_2s_brier":  0.20088341720268862,
+                                                      "continue_balanced_accuracy":  0.6662998090698211,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  2,
+                                          "loss":  1.1067015909134073,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8803563714027405,
+                                                      "survival_nll":  1.0178645137786866,
+                                                      "event_2s_brier":  0.19894370045111184,
+                                                      "continue_balanced_accuracy":  0.6766156502754982,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  3,
+                                          "loss":  1.0127047488029968,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8804811835289001,
+                                                      "survival_nll":  0.98855958776474,
+                                                      "event_2s_brier":  0.19873352138833794,
+                                                      "continue_balanced_accuracy":  0.6708124292126652,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  4,
+                                          "loss":  0.9945955540271516,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8833146691322327,
+                                                      "survival_nll":  0.9828306938171387,
+                                                      "event_2s_brier":  0.1988243651548412,
+                                                      "continue_balanced_accuracy":  0.6769364393492376,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  5,
+                                          "loss":  0.990892441475645,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8752327561378479,
+                                                      "survival_nll":  0.9821683860778808,
+                                                      "event_2s_brier":  0.19900630774781622,
+                                                      "continue_balanced_accuracy":  0.6748342656201637,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  6,
+                                          "loss":  0.9888234105515987,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8768776655197144,
+                                                      "survival_nll":  0.9832758750915528,
+                                                      "event_2s_brier":  0.19899260209566522,
+                                                      "continue_balanced_accuracy":  0.6775126641947372,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  7,
+                                          "loss":  0.9875003152705254,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8741159439086914,
+                                                      "survival_nll":  0.9807256296157837,
+                                                      "event_2s_brier":  0.19858777384219578,
+                                                      "continue_balanced_accuracy":  0.6786617085584714,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  8,
+                                          "loss":  0.9862602297295915,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8759760856628418,
+                                                      "survival_nll":  0.9796249374389648,
+                                                      "event_2s_brier":  0.19811617382223007,
+                                                      "continue_balanced_accuracy":  0.6835079420926272,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  9,
+                                          "loss":  0.985330762254431,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8742324113845825,
+                                                      "survival_nll":  0.9784838609695434,
+                                                      "event_2s_brier":  0.1982202837942485,
+                                                      "continue_balanced_accuracy":  0.6825453937369801,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  10,
+                                          "loss":  0.984676386447663,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8736310601234436,
+                                                      "survival_nll":  0.9756302677154541,
+                                                      "event_2s_brier":  0.1978769019620064,
+                                                      "continue_balanced_accuracy":  0.6807975008375655,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  11,
+                                          "loss":  0.9836232165072827,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8743957877159119,
+                                                      "survival_nll":  0.9815325569152832,
+                                                      "event_2s_brier":  0.1982444893550498,
+                                                      "continue_balanced_accuracy":  0.6838565353012165,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  12,
+                                          "loss":  0.9824329769357721,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8737446665763855,
+                                                      "survival_nll":  0.9747821899414062,
+                                                      "event_2s_brier":  0.19757933414977874,
+                                                      "continue_balanced_accuracy":  0.6822858462136818,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  13,
+                                          "loss":  0.981344802075244,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8714068531990051,
+                                                      "survival_nll":  0.9727361553192139,
+                                                      "event_2s_brier":  0.19755894319874961,
+                                                      "continue_balanced_accuracy":  0.6793930207020713,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  14,
+                                          "loss":  0.9804215885223226,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8720264434814453,
+                                                      "survival_nll":  0.9747047716140748,
+                                                      "event_2s_brier":  0.1976235260902335,
+                                                      "continue_balanced_accuracy":  0.6808008518245019,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  15,
+                                          "loss":  0.9803260602849595,
+                                          "dev":  {
+                                                      "time_mae_s":  0.8716642260551453,
+                                                      "survival_nll":  0.9779570798873901,
+                                                      "event_2s_brier":  0.1980375587591399,
+                                                      "continue_balanced_accuracy":  0.6858098165296614,
+                                                      "pass_shot_balanced_accuracy":  0.7721631109910883,
+                                                      "observed_events":  19081
+                                                  }
+                                      }
+                                  ]
+                  },
+                  {
+                      "held_provider":  "statsbomb360",
+                      "train_providers":  [
+                                              "skillcorner"
+                                          ],
+                      "samples":  {
+                                      "train":  5034,
+                                      "dev":  417,
+                                      "test":  100000
+                                  },
+                      "thresholds":  {
+                                         "continue":  0.505,
+                                         "pass_shot":  0.36000000000000004
+                                     },
+                      "metrics":  {
+                                      "time_mae_s":  0.89874535799026489,
+                                      "survival_nll":  1.1949797803497315,
+                                      "event_2s_brier":  0.19650980902788476,
+                                      "continue_balanced_accuracy":  0.6283975135210526,
+                                      "pass_shot_balanced_accuracy":  0.7546956342841533,
+                                      "observed_events":  96155
+                                  },
+                      "continuous_train_median_baseline_mae_s":  0.9138302206993103,
+                      "time_gain_s":  0.0150848627090453,
+                      "gates":  {
+                                    "strict_provider_holdout":  true,
+                                    "continuous_time_gain":  true,
+                                    "continue_gain":  true,
+                                    "mark_gain":  true,
+                                    "calibrated":  true,
+                                    "finite":  true
+                                },
+                      "ready":  true,
+                      "artifact":  "data/frame_world/continuous_time_v91_lopo_statsbomb360.pt",
+                      "history":  [
+                                      {
+                                          "epoch":  1,
+                                          "loss":  2.5643153190612793,
+                                          "dev":  {
+                                                      "time_mae_s":  1.0094621181488037,
+                                                      "survival_nll":  2.1484570503234863,
+                                                      "event_2s_brier":  0.22860376030786617,
+                                                      "continue_balanced_accuracy":  0.5,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  2,
+                                          "loss":  1.859946894645691,
+                                          "dev":  {
+                                                      "time_mae_s":  1.028290867805481,
+                                                      "survival_nll":  1.6168427467346191,
+                                                      "event_2s_brier":  0.22451372722989227,
+                                                      "continue_balanced_accuracy":  0.5,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  3,
+                                          "loss":  1.4827589392662048,
+                                          "dev":  {
+                                                      "time_mae_s":  1.0270967483520508,
+                                                      "survival_nll":  1.3552054166793823,
+                                                      "event_2s_brier":  0.2166609543885755,
+                                                      "continue_balanced_accuracy":  0.5310286418232214,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  4,
+                                          "loss":  1.3219719290733338,
+                                          "dev":  {
+                                                      "time_mae_s":  0.981113612651825,
+                                                      "survival_nll":  1.2486326694488525,
+                                                      "event_2s_brier":  0.21191393115656537,
+                                                      "continue_balanced_accuracy":  0.5705266399753619,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  5,
+                                          "loss":  1.248451817035675,
+                                          "dev":  {
+                                                      "time_mae_s":  0.9737304449081421,
+                                                      "survival_nll":  1.2280542850494385,
+                                                      "event_2s_brier":  0.21738898636802015,
+                                                      "continue_balanced_accuracy":  0.5675238681860179,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  6,
+                                          "loss":  1.212873136997223,
+                                          "dev":  {
+                                                      "time_mae_s":  0.9700832962989807,
+                                                      "survival_nll":  1.1882201433181763,
+                                                      "event_2s_brier":  0.21033073956490209,
+                                                      "continue_balanced_accuracy":  0.5756852479211579,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  7,
+                                          "loss":  1.1947897911071776,
+                                          "dev":  {
+                                                      "time_mae_s":  0.9616923332214355,
+                                                      "survival_nll":  1.1762032508850098,
+                                                      "event_2s_brier":  0.21207754704096782,
+                                                      "continue_balanced_accuracy":  0.5398059747459193,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  8,
+                                          "loss":  1.1810644507408141,
+                                          "dev":  {
+                                                      "time_mae_s":  0.9560919404029846,
+                                                      "survival_nll":  1.1572093963623047,
+                                                      "event_2s_brier":  0.21087758058172865,
+                                                      "continue_balanced_accuracy":  0.5477363720357253,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  9,
+                                          "loss":  1.1671672463417053,
+                                          "dev":  {
+                                                      "time_mae_s":  0.9524818658828735,
+                                                      "survival_nll":  1.1478235721588135,
+                                                      "event_2s_brier":  0.2114293464689397,
+                                                      "continue_balanced_accuracy":  0.5523560209424083,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  10,
+                                          "loss":  1.1512916207313537,
+                                          "dev":  {
+                                                      "time_mae_s":  0.9481680393218994,
+                                                      "survival_nll":  1.123488187789917,
+                                                      "event_2s_brier":  0.2099053021319036,
+                                                      "continue_balanced_accuracy":  0.5117801047120418,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  11,
+                                          "loss":  1.1287105202674865,
+                                          "dev":  {
+                                                      "time_mae_s":  0.9446806311607361,
+                                                      "survival_nll":  1.093916416168213,
+                                                      "event_2s_brier":  0.21134251471849572,
+                                                      "continue_balanced_accuracy":  0.5241761626116415,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  12,
+                                          "loss":  1.080132246017456,
+                                          "dev":  {
+                                                      "time_mae_s":  0.9437506198883057,
+                                                      "survival_nll":  1.0259530544281006,
+                                                      "event_2s_brier":  0.21097978919419325,
+                                                      "continue_balanced_accuracy":  0.5976285802279027,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  13,
+                                          "loss":  0.9858364999294281,
+                                          "dev":  {
+                                                      "time_mae_s":  0.9411382079124451,
+                                                      "survival_nll":  0.8949019908905029,
+                                                      "event_2s_brier":  0.2107355716421576,
+                                                      "continue_balanced_accuracy":  0.5887742531567601,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  14,
+                                          "loss":  0.8378270983695983,
+                                          "dev":  {
+                                                      "time_mae_s":  0.939504086971283,
+                                                      "survival_nll":  0.7354122400283813,
+                                                      "event_2s_brier":  0.21154026381745128,
+                                                      "continue_balanced_accuracy":  0.5779950723744995,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      },
+                                      {
+                                          "epoch":  15,
+                                          "loss":  0.6883319914340973,
+                                          "dev":  {
+                                                      "time_mae_s":  0.9394718408584595,
+                                                      "survival_nll":  0.5942158699035645,
+                                                      "event_2s_brier":  0.2095096788155794,
+                                                      "continue_balanced_accuracy":  0.5574376347397598,
+                                                      "pass_shot_balanced_accuracy":  0.6364394413174901,
+                                                      "observed_events":  400
+                                                  }
+                                      }
+                                  ]
+                  }
+              ],
+    "ready":  true
+}

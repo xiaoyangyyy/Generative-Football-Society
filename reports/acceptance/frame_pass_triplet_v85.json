@@ -1,0 +1,347 @@
+{
+  "version": "8.5.0-candidate",
+  "policy": "strict provider LODO joint ball/receiver/interceptor transition",
+  "folds": [
+    {
+      "held_provider": "metrica",
+      "train_providers": [
+        "skillcorner"
+      ],
+      "intervention_supported": true,
+      "samples": {
+        "train": 6043,
+        "dev": 541,
+        "test": 1709
+      },
+      "metrics": {
+        "conditioned": {
+          "ball": 4.303841329164991,
+          "receiver": 0.4140002059266887,
+          "defender": 0.5925225469367137,
+          "joint": 1.770121360676131
+        },
+        "zero": {
+          "ball": 6.165435844586564,
+          "receiver": 0.412708485593846,
+          "defender": 0.6025347812891425,
+          "joint": 2.393559703823184
+        },
+        "receiver_shuffled": {
+          "ball": 6.189243162633941,
+          "receiver": 0.41047248371586315,
+          "defender": 0.6153198563613133,
+          "joint": 2.4050118342370395
+        },
+        "defender_shuffled": {
+          "ball": 5.4830344765419285,
+          "receiver": 0.415544776626328,
+          "defender": 0.592434101316788,
+          "joint": 2.1636711181616817
+        },
+        "events": 1709
+      },
+      "gates": {
+        "strict_lodo": true,
+        "evidence_policy": true,
+        "joint_gain": true,
+        "ball_gain": true,
+        "receiver_noninferior": true,
+        "defender_noninferior": true,
+        "receiver_identity_specific": true,
+        "defender_identity_specific": true
+      },
+      "ready": true,
+      "artifact": "data/frame_world/frame_world_v85_pass_triplet_lodo_metrica.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.5189108438789845,
+          "dev_joint": 0.7563804601785656
+        },
+        {
+          "epoch": 2,
+          "loss": 0.3783271213372548,
+          "dev_joint": 0.6616597099210183
+        },
+        {
+          "epoch": 3,
+          "loss": 0.32578382392724353,
+          "dev_joint": 0.575924484361048
+        },
+        {
+          "epoch": 4,
+          "loss": 0.28225599850217503,
+          "dev_joint": 0.5407827906746667
+        },
+        {
+          "epoch": 5,
+          "loss": 0.2640967306991418,
+          "dev_joint": 0.5312346865641652
+        },
+        {
+          "epoch": 6,
+          "loss": 0.26124964095652103,
+          "dev_joint": 0.5302431925681368
+        },
+        {
+          "epoch": 7,
+          "loss": 0.2575569761296113,
+          "dev_joint": 0.5240708484520387
+        },
+        {
+          "epoch": 8,
+          "loss": 0.2567480131983757,
+          "dev_joint": 0.5249545331803356
+        },
+        {
+          "epoch": 9,
+          "loss": 0.25496857178707916,
+          "dev_joint": 0.5224014653589574
+        },
+        {
+          "epoch": 10,
+          "loss": 0.2529333507021268,
+          "dev_joint": 0.5201826412884893
+        },
+        {
+          "epoch": 11,
+          "loss": 0.25219473987817764,
+          "dev_joint": 0.5189601527417947
+        },
+        {
+          "epoch": 12,
+          "loss": 0.25115403595070046,
+          "dev_joint": 0.5169422780740283
+        }
+      ]
+    },
+    {
+      "held_provider": "skillcorner",
+      "train_providers": [
+        "metrica"
+      ],
+      "intervention_supported": true,
+      "samples": {
+        "train": 764,
+        "dev": 945,
+        "test": 6584
+      },
+      "metrics": {
+        "conditioned": {
+          "ball": 2.3756741585157912,
+          "receiver": 0.25842165628296493,
+          "defender": 0.3796462421718519,
+          "joint": 1.0045806856568693
+        },
+        "zero": {
+          "ball": 2.8672694719576457,
+          "receiver": 0.2590018813549241,
+          "defender": 0.40367562744771,
+          "joint": 1.17664899358676
+        },
+        "receiver_shuffled": {
+          "ball": 5.765682308526115,
+          "receiver": 0.26120938999829574,
+          "defender": 0.4209985802558908,
+          "joint": 2.1492967595934336
+        },
+        "defender_shuffled": {
+          "ball": 2.3906552950927438,
+          "receiver": 0.2581826554179047,
+          "defender": 0.3839701088201956,
+          "joint": 1.010936019776948
+        },
+        "events": 6584
+      },
+      "gates": {
+        "strict_lodo": true,
+        "evidence_policy": true,
+        "joint_gain": true,
+        "ball_gain": true,
+        "receiver_noninferior": true,
+        "defender_noninferior": true,
+        "receiver_identity_specific": true,
+        "defender_identity_specific": true
+      },
+      "ready": true,
+      "artifact": "data/frame_world/frame_world_v85_pass_triplet_lodo_skillcorner.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 1.4594735304514568,
+          "dev_joint": 2.3228833260780077
+        },
+        {
+          "epoch": 2,
+          "loss": 1.4310721158981323,
+          "dev_joint": 2.26597109732384
+        },
+        {
+          "epoch": 3,
+          "loss": 1.3873757521311443,
+          "dev_joint": 2.182675149369282
+        },
+        {
+          "epoch": 4,
+          "loss": 1.3269991079966228,
+          "dev_joint": 2.0707142771026232
+        },
+        {
+          "epoch": 5,
+          "loss": 1.2463055849075317,
+          "dev_joint": 1.9321283438008088
+        },
+        {
+          "epoch": 6,
+          "loss": 1.1513256231943767,
+          "dev_joint": 1.7796012326733355
+        },
+        {
+          "epoch": 7,
+          "loss": 1.051056404908498,
+          "dev_joint": 1.6344755976708898
+        },
+        {
+          "epoch": 8,
+          "loss": 0.9575467904408773,
+          "dev_joint": 1.5160118627800512
+        },
+        {
+          "epoch": 9,
+          "loss": 0.8835405707359314,
+          "dev_joint": 1.4374131460038442
+        },
+        {
+          "epoch": 10,
+          "loss": 0.8394970099131266,
+          "dev_joint": 1.3960756924207038
+        },
+        {
+          "epoch": 11,
+          "loss": 0.8158777554829916,
+          "dev_joint": 1.3742688052868717
+        },
+        {
+          "epoch": 12,
+          "loss": 0.7991263270378113,
+          "dev_joint": 1.3591734036776966
+        }
+      ]
+    },
+    {
+      "held_provider": "sportec",
+      "train_providers": [
+        "metrica",
+        "skillcorner"
+      ],
+      "intervention_supported": false,
+      "samples": {
+        "train": 6807,
+        "dev": 1486,
+        "test": 5679
+      },
+      "metrics": {
+        "conditioned": {
+          "ball": 1.6911614349682287,
+          "receiver": 0.30995142117712066,
+          "defender": 0.39371441678065483,
+          "joint": 0.7982757576420013
+        },
+        "zero": {
+          "ball": 1.6911614349682287,
+          "receiver": 0.30995142117712066,
+          "defender": 0.39371441678065483,
+          "joint": 0.7982757576420013
+        },
+        "receiver_shuffled": {
+          "ball": 1.6911614349682287,
+          "receiver": 0.30995142117712066,
+          "defender": 0.39371441678065483,
+          "joint": 0.7982757576420013
+        },
+        "defender_shuffled": {
+          "ball": 1.6911614349682287,
+          "receiver": 0.30995142117712066,
+          "defender": 0.39371441678065483,
+          "joint": 0.7982757576420013
+        },
+        "events": 5679
+      },
+      "gates": {
+        "strict_lodo": true,
+        "evidence_policy": true,
+        "joint_gain": true,
+        "ball_gain": true,
+        "receiver_noninferior": true,
+        "defender_noninferior": true,
+        "receiver_identity_specific": true,
+        "defender_identity_specific": true
+      },
+      "ready": true,
+      "artifact": "data/frame_world/frame_world_v85_pass_triplet_lodo_sportec.pt",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.5951767784577829,
+          "dev_joint": 1.3673721748170644
+        },
+        {
+          "epoch": 2,
+          "loss": 0.44990018341276383,
+          "dev_joint": 1.3143500049534589
+        },
+        {
+          "epoch": 3,
+          "loss": 0.39268182935538115,
+          "dev_joint": 1.2281345677193958
+        },
+        {
+          "epoch": 4,
+          "loss": 0.3527383119971664,
+          "dev_joint": 1.1927199040682874
+        },
+        {
+          "epoch": 5,
+          "loss": 0.34078424285959313,
+          "dev_joint": 1.1807047560269548
+        },
+        {
+          "epoch": 6,
+          "loss": 0.338343584979022,
+          "dev_joint": 1.1711665085475507
+        },
+        {
+          "epoch": 7,
+          "loss": 0.334489737395887,
+          "dev_joint": 1.159663067317533
+        },
+        {
+          "epoch": 8,
+          "loss": 0.33331482940249973,
+          "dev_joint": 1.157807162333198
+        },
+        {
+          "epoch": 9,
+          "loss": 0.3313751286930508,
+          "dev_joint": 1.1481831517653809
+        },
+        {
+          "epoch": 10,
+          "loss": 0.33045891368830643,
+          "dev_joint": 1.1513291055603165
+        },
+        {
+          "epoch": 11,
+          "loss": 0.3294768653534077,
+          "dev_joint": 1.1524392295279489
+        },
+        {
+          "epoch": 12,
+          "loss": 0.328998198111852,
+          "dev_joint": 1.1479706120309192
+        }
+      ]
+    }
+  ],
+  "ready": true
+}

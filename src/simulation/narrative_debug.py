@@ -7,6 +7,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
+from src.simulation.runtime import environment_snapshot, env_bool
 
 if TYPE_CHECKING:
     from src.match_engine.state import MicroMatchSummary
@@ -14,11 +15,11 @@ if TYPE_CHECKING:
 
 
 def narrative_debug_enabled() -> bool:
-    return os.environ.get("MATCH_DEBUG_NARRATIVE", "").strip().lower() in ("1", "true", "yes")
+    return env_bool(environment_snapshot(), "MATCH_DEBUG_NARRATIVE", False)
 
 
 def _debug_log_path() -> Path:
-    base = Path(os.environ.get("GFS_BASE_DIR", Path.cwd()))
+    base = Path(environment_snapshot().get("GFS_BASE_DIR", str(Path.cwd())))
     if not base.is_absolute():
         base = Path.cwd()
     out = base / "outputs" / "narrative_debug.jsonl"

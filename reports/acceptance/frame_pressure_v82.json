@@ -1,0 +1,141 @@
+{
+  "version": "8.2.0-candidate",
+  "policy": "SkillCorner match-held-out strong pressure labels",
+  "split": {
+    "train": [
+      "1886347",
+      "1899585",
+      "1925299",
+      "1953632",
+      "1996435",
+      "2006229",
+      "2011166",
+      "2013725"
+    ],
+    "dev": [
+      "2015213"
+    ],
+    "test": [
+      "2017461"
+    ]
+  },
+  "metrics": {
+    "conditioned": 0.3065706925741755,
+    "zero": 0.3080251843253763,
+    "base": 0.3080251843253763,
+    "positive_conditioned": 0.3160845097903397,
+    "positive_zero": 0.3189866688093139,
+    "ball_event_conditioned": 2.3543308425814873,
+    "ball_event_zero": 3.0130593769011957,
+    "ball_events": 620,
+    "f1": [
+      0.0,
+      0.0,
+      0.6589795918367347
+    ]
+  },
+  "gates": {
+    "match_disjoint": true,
+    "pressure_f1": true,
+    "finite": true
+  },
+  "ready": true,
+  "artifact": "data/frame_world/frame_world_v82_pressure_skillcorner.pt",
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.024012603023547237,
+      "dev": {
+        "conditioned": 0.2957039718836553,
+        "zero": 0.2976076128625777,
+        "base": 0.2976076128625777,
+        "positive_conditioned": 0.3276332964281712,
+        "positive_zero": 0.3314053476362193,
+        "ball_event_conditioned": 2.2646782886551087,
+        "ball_event_zero": 3.078268660120217,
+        "ball_events": 415,
+        "f1": [
+          0.0,
+          0.0,
+          0.6526693987537192
+        ]
+      }
+    },
+    {
+      "epoch": 2,
+      "loss": 0.023393229770837194,
+      "dev": {
+        "conditioned": 0.2963988387184443,
+        "zero": 0.2976076128625777,
+        "base": 0.2976076128625777,
+        "positive_conditioned": 0.3290101833023665,
+        "positive_zero": 0.3314053476362193,
+        "ball_event_conditioned": 2.5616574275924497,
+        "ball_event_zero": 3.078268660120217,
+        "ball_events": 415,
+        "f1": [
+          0.0,
+          0.0,
+          0.6536426078144353
+        ]
+      }
+    },
+    {
+      "epoch": 3,
+      "loss": 0.023410278672384002,
+      "dev": {
+        "conditioned": 0.2954832645741347,
+        "zero": 0.2976076128625777,
+        "base": 0.2976076128625777,
+        "positive_conditioned": 0.32719597497531727,
+        "positive_zero": 0.3314053476362193,
+        "ball_event_conditioned": 2.170352915108922,
+        "ball_event_zero": 3.078268660120217,
+        "ball_events": 415,
+        "f1": [
+          0.0,
+          0.0,
+          0.6561080835603996
+        ]
+      }
+    },
+    {
+      "epoch": 4,
+      "loss": 0.023372008638866876,
+      "dev": {
+        "conditioned": 0.29575748866765744,
+        "zero": 0.2976076128625777,
+        "base": 0.2976076128625777,
+        "positive_conditioned": 0.32773933726437077,
+        "positive_zero": 0.3314053476362193,
+        "ball_event_conditioned": 2.287550861864205,
+        "ball_event_zero": 3.078268660120217,
+        "ball_events": 415,
+        "f1": [
+          0.0,
+          0.0,
+          0.656182582037016
+        ]
+      }
+    },
+    {
+      "epoch": 5,
+      "loss": 0.023268979200619763,
+      "dev": {
+        "conditioned": 0.29530312681145693,
+        "zero": 0.2976076128625777,
+        "base": 0.2976076128625777,
+        "positive_conditioned": 0.32683903751398224,
+        "positive_zero": 0.3314053476362193,
+        "ball_event_conditioned": 2.0933653911912296,
+        "ball_event_zero": 3.078268660120217,
+        "ball_events": 415,
+        "f1": [
+          0.0,
+          0.0,
+          0.6561080835603996
+        ]
+      }
+    }
+  ]
+}

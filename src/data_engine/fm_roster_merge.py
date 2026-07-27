@@ -1,8 +1,9 @@
-"""Merge FM export abilities into Transfermarkt roster JSON."""
+﻿"""Merge FM export abilities into Transfermarkt roster JSON."""
 
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -13,7 +14,9 @@ from src.match_engine.formation import roles_for_formation
 
 
 def normalize_player_name(name: str) -> str:
-    s = re.sub(r"[^a-z0-9 ]", "", str(name).lower())
+    raw = unicodedata.normalize("NFKD", str(name).lower())
+    ascii_name = raw.encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^a-z0-9 ]", "", ascii_name)
     return re.sub(r"\s+", " ", s).strip()
 
 

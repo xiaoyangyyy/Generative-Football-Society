@@ -1,8 +1,8 @@
 import json
-import os
 import re
-import time
-from src.config import API_KEY, BASE_URL, MODEL_NAME
+
+from src.simulation.generation_pipeline import GenerationPipeline
+from src.simulation.llm_gateway import LLMGateway, get_shared_llm_gateway
 
 
 def _sanitize_coach_reasoning(text):
@@ -59,94 +59,25 @@ def _sanitize_media_payload(parsed, facts_ledger):
     return parsed
 
 class SimulationLLM:
-    def __init__(self):
-        self.api_key = API_KEY or ""
-        if self.api_key.strip() in {"", "your_default_key", "your_api_key_here"}:
-            raise ValueError(
-                "Missing valid API_KEY/OPENAI_API_KEY. "
-                "LLM simulation runs in strict mode and will not fallback."
-            )
-        try:
-            from openai import OpenAI
-        except Exception as e:
-            raise RuntimeError(
-                "OpenAI SDK is not installed. Please run `pip install -r requirements.txt` "
-                "or `pip install openai` before enabling LLM features."
-            ) from e
-        self.client = OpenAI(api_key=self.api_key, base_url=BASE_URL)
-        self.model = MODEL_NAME
-        # Network behavior tuned for long-running third-party gateways.
-        self.request_timeout_s = int(os.environ.get("LLM_TIMEOUT_S", "90"))
-        self.max_retries = int(os.environ.get("LLM_MAX_RETRIES", "6"))
+    def __init__(self, gateway: LLMGateway | None = None):
+        self.gateway = gateway or get_shared_llm_gateway()
+        self.client = self.gateway.client
+        self.model = self.gateway.config.model
+        self.request_timeout_s = self.gateway.config.timeout_s
+        self.max_retries = self.gateway.config.max_retries
+        self.generation_pipeline = GenerationPipeline()
+        self.generation_audits = []
 
     def _extract_json_object(self, content):
-        if content is None:
-            raise RuntimeError("Empty LLM response content.")
-        text = str(content).strip()
-        if not text:
-            raise RuntimeError("Blank LLM response content.")
-
-        # Fast path: already JSON object text.
-        try:
-            parsed = json.loads(text)
-            if isinstance(parsed, dict):
-                return parsed
-        except Exception:
-            pass
-
-        # Try fenced code blocks first.
-        fenced = re.findall(r"```(?:json)?\s*([\s\S]*?)```", text, flags=re.IGNORECASE)
-        for block in fenced:
-            try:
-                parsed = json.loads(block.strip())
-                if isinstance(parsed, dict):
-                    return parsed
-            except Exception:
-                continue
-
-        # Last resort: take widest object span.
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            candidate = text[start : end + 1]
-            try:
-                parsed = json.loads(candidate)
-                if isinstance(parsed, dict):
-                    return parsed
-            except Exception:
-                pass
-
-        raise RuntimeError(f"Unable to extract JSON object from model output: {text[:260]}")
+        return self.gateway.extract_json_object(content)
 
     def _call_llm(self, system_prompt, user_prompt, json_mode=False, temperature=0.8):
-        for attempt in range(self.max_retries):
-            try:
-                kwargs = {
-                    "model": self.model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "temperature": temperature,
-                    "timeout": self.request_timeout_s,
-                }
-                if json_mode:
-                    kwargs["response_format"] = {"type": "json_object"}
-                
-                response = self.client.chat.completions.create(**kwargs)
-                content = response.choices[0].message.content
-                if json_mode:
-                    parsed = self._extract_json_object(content)
-                    return json.dumps(parsed, ensure_ascii=False)
-                if content is None:
-                    raise RuntimeError("Empty LLM response content.")
-                return content
-            except Exception as e:
-                if attempt == self.max_retries - 1:
-                    raise RuntimeError(f"LLM call failed after retries on model={self.model}: {e}") from e
-                # Exponential backoff for transient network timeout/rate-limit spikes.
-                time.sleep(min(16.0, 1.5 * (2 ** attempt)))
-        raise RuntimeError("LLM call failed unexpectedly.")
+        return self.gateway.complete(
+            system_prompt,
+            user_prompt,
+            json_mode=json_mode,
+            temperature=temperature,
+        )
 
     def coach_decide_tactics(self, team_name, my_info, opp_name, opp_info):
         system = f"""You are the Head Coach of {team_name}.
@@ -196,8 +127,23 @@ class SimulationLLM:
         The REAL score, xG, and winner are computed elsewhere — you must NOT invent or imply them.
         Output MUST be JSON. key_event must not contain scorelines (e.g. 3-2), xG numbers, or tactical control decimals; avoid digit-heavy sentences when possible."""
         user = f"""Match backdrop: {t1_name} ({t1_info}) vs {t2_name} ({t2_info}). Stage: {round_name}
-        Return JSON format: {{"key_event": "one short atmospheric phrase without invented match statistics"}}"""
-        return self._call_llm(system, user, json_mode=True, temperature=0.55)
+        Return JSON format:
+        {{
+          "key_event": "one short atmospheric event without invented match statistics",
+          "signals": {{
+            "coach_pressure": -1.0 to 1.0,
+            "crowd_hostility": -1.0 to 1.0,
+            "player_anxiety": -1.0 to 1.0,
+            "media_amplification": 0.0 to 1.0,
+            "unity_signal": -1.0 to 1.0
+          }},
+          "targets": ["optional exact team names: {t1_name}, {t2_name}"],
+          "persistence": 0.0 to 1.0
+        }}"""
+        raw = self._call_llm(system, user, json_mode=True, temperature=0.55)
+        audit = self.generation_pipeline.validate_atmosphere(json.loads(raw))
+        self.generation_audits.append(audit)
+        return json.dumps(audit.published, ensure_ascii=False)
 
     def generate_media_matrix(self, match_verdict, t1_name, t2_name, t1_exposure, t2_exposure, facts_ledger=None):
         system = """You are a Media Matrix Engine. Output MUST be JSON.
@@ -223,8 +169,9 @@ Rules:
         raw = self._call_llm(system, user, json_mode=True, temperature=0.45)
         try:
             data = json.loads(raw)
-            data = _sanitize_media_payload(data, ledger)
-            return json.dumps(data, ensure_ascii=False)
+            audit = self.generation_pipeline.validate_media(data, ledger)
+            self.generation_audits.append(audit)
+            return json.dumps(audit.published, ensure_ascii=False)
         except Exception:
             return raw
 

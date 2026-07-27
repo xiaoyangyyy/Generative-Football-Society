@@ -1,0 +1,24 @@
+{
+  "version": "8.8.0-candidate",
+  "router": "src/match_engine/frame_world/router.py",
+  "provider_scope": "skillcorner",
+  "dependencies": [
+    {
+      "artifact": "data/frame_world/temporal_mark_v88_skillcorner.pt",
+      "sha256": "156690ea882b0f5efe5d97cba73471190f7b191751a3a12d3d76321a052e7f16"
+    },
+    {
+      "artifact": "data/frame_world/frame_world_v85_pass_triplet_lodo_skillcorner.pt",
+      "sha256": "3a385fd499b3efad10c73348603345eb1ec7124ba10de6462922027f9da834f7"
+    },
+    {
+      "artifact": "data/frame_world/reception_chain_v87_skillcorner.pt",
+      "sha256": "527f6e0f3a1a9f0849068f26d263b7fc26be42c4ff9c00740833cba06e62e7cd"
+    }
+  ],
+  "evidence": [
+    "reports/acceptance/temporal_router_v88.json",
+    "reports/acceptance/temporal_mark_v88.json"
+  ],
+  "ready": true
+}

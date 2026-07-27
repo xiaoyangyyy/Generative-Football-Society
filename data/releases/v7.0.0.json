@@ -1,0 +1,105 @@
+{
+  "artifacts": [
+    {
+      "bytes": 4198,
+      "path": "data/world_model/joint_pass_v7_candidate.json",
+      "sha256": "07adf74b30f0852093b8fb0837008a50cb24b07ada739f0c10460e0d102a37da"
+    },
+    {
+      "bytes": 1478,
+      "path": "data/world_model/shot_v7_candidate.json",
+      "sha256": "d96fe2018182db1a342d5c49802a2ac51bfe17609f40d7d35482be0ae23ed524"
+    },
+    {
+      "bytes": 1303,
+      "path": "data/world_model/probabilistic_v7_candidate.json",
+      "sha256": "b9c8ff752295a492b42f1a35c6e058cabf64d00e7e0cf57dc766033d17a1cfde"
+    },
+    {
+      "bytes": 3699,
+      "path": "data/releases/v7-data-candidate.json",
+      "sha256": "bbe029631d0b556fd3c13f9798c7c2c8f08ef78bda9fb50e3b3d146edafa2a51"
+    },
+    {
+      "bytes": 961,
+      "path": "data/external/metrica/pass_candidates_game1.manifest.json",
+      "sha256": "978d5564a8496350d00d4f941de727e2d409a77f12128fc8c5d19a4bc5f9a291"
+    },
+    {
+      "bytes": 962,
+      "path": "data/external/metrica/pass_candidates_game2.manifest.json",
+      "sha256": "0b1f311f384bff44b16d2eefbe6561bfe17b5ff2c1bfc0ba19e5b90affb27231"
+    },
+    {
+      "bytes": 4410,
+      "path": "data/external/sportec/derived/manifest.json",
+      "sha256": "d2575550f6dcc3cdfeca8b4e324970f9c050d50e58d7cb8e1f0e2ac2ac4e3aa3"
+    },
+    {
+      "bytes": 145681,
+      "path": "data/external/statsbomb360/derived/manifest.json",
+      "sha256": "c56d0ce3df71c60a452d3ec109370393ccf0c8a620e66acf04529830a59511eb"
+    },
+    {
+      "bytes": 6538,
+      "path": "data/external/skillcorner/derived/manifest.json",
+      "sha256": "ac25e06d129bc89ff45f58483565019cc4d394e0da6b27fe8921351f1d1a4d7b"
+    },
+    {
+      "bytes": 1097,
+      "path": "reports/acceptance/joint_pass_v7.json",
+      "sha256": "0bd6aad91fa8c06384e5755500282b4a1baf77e6218f66160c114e74480d47c6"
+    },
+    {
+      "bytes": 3292,
+      "path": "reports/acceptance/joint_pass_lodo_v7.json",
+      "sha256": "7eb3bec7828b2342be9a73ec50d8736d7a41099f30a0bbc02f5dfdfb558bff61"
+    },
+    {
+      "bytes": 659,
+      "path": "reports/acceptance/shot_v7.json",
+      "sha256": "38ac8f42c8aa3f463ae59589088d76cf2291ae83e025dc25da181eea22be9214"
+    },
+    {
+      "bytes": 524,
+      "path": "reports/acceptance/probabilistic_world_v7.json",
+      "sha256": "1aaee2fe833f057fc267ae23f1799f92374db10b18d392f558377042e9ca72bb"
+    },
+    {
+      "bytes": 512,
+      "path": "reports/acceptance/skillcorner_tracking_v7.json",
+      "sha256": "fb492bfee65ced141f1e4cde3ffaca14bf56230ecfa0a42b4b92e371ce16a6ce"
+    },
+    {
+      "bytes": 2593,
+      "path": "reports/acceptance/v7_regression.json",
+      "sha256": "b82b6a7172647139e0580d9970ab85e677094dcdeba9a4c5ba17e4966041b6b3"
+    },
+    {
+      "bytes": 1167,
+      "path": "reports/acceptance/v7_readiness.json",
+      "sha256": "485766aad59ec1064cd50de0092f80539f7c5a8e7110912b102a97bd17c275ea"
+    }
+  ],
+  "gates": {
+    "all_provider_lodo": true,
+    "readiness": true,
+    "regression": true,
+    "skillcorner_tracking": true
+  },
+  "mutation_policy": "sealed artifacts are immutable; new research requires a new version",
+  "parent": {
+    "manifest": "data/releases/v6.0.0.json",
+    "release": "6.0.0",
+    "sha256": "f38fb76a7d09aa99fbd3e0a09354341b1b10bc51e1598ab3df6bef18cae22943"
+  },
+  "release": "7.0.0",
+  "rollback": "6.0.0",
+  "schema_version": 2,
+  "source_snapshot": {
+    "files": 288,
+    "sha256": "8392c5fc3a396581e33e90f0dfd2d2018a9386397e1900c7fbfabc1dd993b82f"
+  },
+  "status": "frozen",
+  "tests": "149 passed, 2 skipped"
+}

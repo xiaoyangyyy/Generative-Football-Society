@@ -1,0 +1,48 @@
+{
+  "artifacts": [
+    {
+      "bytes": 32348,
+      "path": "data/frame_world/continuous_time_v93_operational.pt",
+      "sha256": "574e49ce22bcaea7222cbc5c8233deb4bffeafdf1a8e9c46eb90146c25efe7c3"
+    },
+    {
+      "bytes": 2149,
+      "path": "data/frame_world/continuous_intervals_v93.json",
+      "sha256": "d25948a1be26a9518b5e3977e4c48bd35e9d85c49facb278bf790a470f3ebabc"
+    },
+    {
+      "bytes": 3901,
+      "path": "reports/acceptance/continuous_operational_v93.json",
+      "sha256": "518dff047ff3769a4dcc5a73f11526dfcdb7ff3386afa59b8ae55b4cf1605556"
+    },
+    {
+      "bytes": 2907,
+      "path": "reports/acceptance/operational_calibration_v93.json",
+      "sha256": "9950cb4f3e0fd826f3b1177a8c800cf17e61d2700dd15ee11940a28468fedea5"
+    },
+    {
+      "bytes": 7075,
+      "path": "reports/acceptance/conditional_calibration_v93.json",
+      "sha256": "37479f68ea2f2a0953d555974c31d4e727007f548cd78982c9c2e3ddd84e736d"
+    },
+    {
+      "bytes": 10480,
+      "path": "reports/acceptance/interval_rollout_v93.json",
+      "sha256": "8c50b267b2458c33149e3bf50ac28fd9c11669e591789da1d1b3fa9f30f12b52"
+    }
+  ],
+  "deployment_policy": "evaluated only; production promotion requires explicit release decision",
+  "gates": {
+    "calibration_holdout": true,
+    "conditional_lopo": true,
+    "deployment_unchanged": true,
+    "operational_model": true,
+    "real_tracking_rollout": true
+  },
+  "parent_deployed": "7.0.0",
+  "parent_research": "9.2.0-candidate",
+  "release": "9.3.0-candidate",
+  "rollback": "6.0.0",
+  "schema_version": 2,
+  "status": "frozen_operational_research_candidate"
+}

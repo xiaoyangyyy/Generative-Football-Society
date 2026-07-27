@@ -24,12 +24,30 @@ jobs:
 
       - name: Compile project
         run: |
-          python -m compileall src run_world_cup_2026_tactical.py
+          python -m compileall -q src scripts
 
-      - name: Parser smoke test
+      - name: Release boundary
         run: |
-          python smoke_llm_json_parser.py
+          python scripts/audit_release_boundary.py
 
-      - name: Tactical quick smoke test
+      - name: Test suite
         run: |
-          python run_world_cup_2026_tactical.py --quick --no-interactive
+          python -m pytest -q
+
+      - name: Frozen release integrity
+        run: |
+          python scripts/verify_acceptance.py
+          python scripts/verify_release_manifest.py data/releases/v6.0.0.json
+          python scripts/verify_v7_release.py --artifacts-only
+          python scripts/verify_release_manifest.py data/releases/v8.9.0-candidate.json
+          python scripts/verify_temporal_lopo_v89.py
+          python scripts/verify_release_manifest.py data/releases/v9.0.0-candidate.json
+          python scripts/verify_continuous_v90.py
+          python scripts/verify_continuous_v92.py
+          python scripts/verify_continuous_v93.py
+          python scripts/verify_continuous_v94.py
+          python scripts/verify_continuous_v95.py
+          python scripts/verify_continuous_v96.py
+          python scripts/verify_continuous_v97.py
+          python scripts/verify_large_shadow_v98.py
+          python scripts/verify_strict_mirror_v99.py

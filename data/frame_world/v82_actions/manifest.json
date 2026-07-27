@@ -1,0 +1,540 @@
+{
+  "classes": [
+    "pass",
+    "shot",
+    "pressure"
+  ],
+  "matches": [
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 823,
+      "alignment_p95_ms": 40.41406250034924,
+      "availability": {
+        "pass": true,
+        "pressure": false,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/metrica_game1.jsonl",
+      "labels_file": "data/frame_world/v82_actions/metrica_game1.npz",
+      "labels_sha256": "1ee237432cf7cf4dbf3a1dec83008f09b2edad8ac966dc7e525b6ace345ff258",
+      "mapped_actor_visible_rate": 0.9805352798053528,
+      "match_id": "game1",
+      "positive_frames": {
+        "pass": 798,
+        "pressure": 0,
+        "shot": 24
+      },
+      "provider": "metrica",
+      "strong_counts": {
+        "pass": 799,
+        "shot": 24
+      },
+      "target_mapping_rate": 0.9708029197080292,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 988,
+      "alignment_p95_ms": 40.27343750021828,
+      "availability": {
+        "pass": true,
+        "pressure": false,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/metrica_game2.jsonl",
+      "labels_file": "data/frame_world/v82_actions/metrica_game2.npz",
+      "labels_sha256": "23f17e4f28c9b23d133090c6b6ac1857f5db29843bcf7ce2b658bfd79172f809",
+      "mapped_actor_visible_rate": 1.0,
+      "match_id": "game2",
+      "positive_frames": {
+        "pass": 964,
+        "pressure": 0,
+        "shot": 24
+      },
+      "provider": "metrica",
+      "strong_counts": {
+        "pass": 964,
+        "shot": 24
+      },
+      "target_mapping_rate": 0.9757085020242915,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 1698,
+      "alignment_p95_ms": 0.3906250003637979,
+      "availability": {
+        "pass": true,
+        "pressure": true,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/skillcorner_1886347.jsonl",
+      "labels_file": "data/frame_world/v82_actions/skillcorner_1886347.npz",
+      "labels_sha256": "3023062c4f3e593fa4b8f49630ed26505015a3ceab65fc27931e4a4429893546",
+      "mapped_actor_visible_rate": 0.5171388818618771,
+      "match_id": "1886347",
+      "positive_frames": {
+        "pass": 902,
+        "pressure": 14887,
+        "shot": 23
+      },
+      "provider": "skillcorner",
+      "strong_counts": {
+        "pass": 902,
+        "pressure": 773,
+        "shot": 23
+      },
+      "target_mapping_rate": 0.9975967619529471,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 1545,
+      "alignment_p95_ms": 0.3906250003637979,
+      "availability": {
+        "pass": true,
+        "pressure": true,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/skillcorner_1899585.jsonl",
+      "labels_file": "data/frame_world/v82_actions/skillcorner_1899585.npz",
+      "labels_sha256": "5bda76444679dfebb73c35d9c3a9dd764d42dd54e9e338b4a40813fe608b464c",
+      "mapped_actor_visible_rate": 0.8695392427749982,
+      "match_id": "1899585",
+      "positive_frames": {
+        "pass": 820,
+        "pressure": 12549,
+        "shot": 22
+      },
+      "provider": "skillcorner",
+      "strong_counts": {
+        "pass": 820,
+        "pressure": 703,
+        "shot": 22
+      },
+      "target_mapping_rate": 0.9970129191247853,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 1724,
+      "alignment_p95_ms": 0.3906250003637979,
+      "availability": {
+        "pass": true,
+        "pressure": true,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/skillcorner_1925299.jsonl",
+      "labels_file": "data/frame_world/v82_actions/skillcorner_1925299.npz",
+      "labels_sha256": "4f5e5dafad863c4e068ec47936209d24585d094bb667957d9e9cdee738b4cfff",
+      "mapped_actor_visible_rate": 0.3787948331256967,
+      "match_id": "1925299",
+      "positive_frames": {
+        "pass": 963,
+        "pressure": 14267,
+        "shot": 21
+      },
+      "provider": "skillcorner",
+      "strong_counts": {
+        "pass": 963,
+        "pressure": 740,
+        "shot": 21
+      },
+      "target_mapping_rate": 0.9979017769326601,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 1593,
+      "alignment_p95_ms": 0.3906250003637979,
+      "availability": {
+        "pass": true,
+        "pressure": true,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/skillcorner_1953632.jsonl",
+      "labels_file": "data/frame_world/v82_actions/skillcorner_1953632.npz",
+      "labels_sha256": "bf132fcfd29fa867126f3358ad22c5081d8e81e94b77f4e9841b8c0b81bc0d2d",
+      "mapped_actor_visible_rate": 0.8927761825600725,
+      "match_id": "1953632",
+      "positive_frames": {
+        "pass": 915,
+        "pressure": 12304,
+        "shot": 15
+      },
+      "provider": "skillcorner",
+      "strong_counts": {
+        "pass": 915,
+        "pressure": 663,
+        "shot": 15
+      },
+      "target_mapping_rate": 0.9981109264016926,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 1828,
+      "alignment_p95_ms": 0.3906250003637979,
+      "availability": {
+        "pass": true,
+        "pressure": true,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/skillcorner_1996435.jsonl",
+      "labels_file": "data/frame_world/v82_actions/skillcorner_1996435.npz",
+      "labels_sha256": "0b343159b173a5b1e0007e95dd7ab5871cc25f12831b0574555c42ac947a2ab9",
+      "mapped_actor_visible_rate": 0.7058084772370486,
+      "match_id": "1996435",
+      "positive_frames": {
+        "pass": 941,
+        "pressure": 14955,
+        "shot": 29
+      },
+      "provider": "skillcorner",
+      "strong_counts": {
+        "pass": 941,
+        "pressure": 858,
+        "shot": 29
+      },
+      "target_mapping_rate": 0.9974882260596546,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 1684,
+      "alignment_p95_ms": 0.3906250003637979,
+      "availability": {
+        "pass": true,
+        "pressure": true,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/skillcorner_2006229.jsonl",
+      "labels_file": "data/frame_world/v82_actions/skillcorner_2006229.npz",
+      "labels_sha256": "e793926bd295e665c6f64172c262cd2b809e1ef650cd95ba5c3e26d7974093d5",
+      "mapped_actor_visible_rate": 0.757555585141792,
+      "match_id": "2006229",
+      "positive_frames": {
+        "pass": 921,
+        "pressure": 14086,
+        "shot": 15
+      },
+      "provider": "skillcorner",
+      "strong_counts": {
+        "pass": 921,
+        "pressure": 748,
+        "shot": 15
+      },
+      "target_mapping_rate": 0.9980029290374118,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 1258,
+      "alignment_p95_ms": 0.3906250003637979,
+      "availability": {
+        "pass": true,
+        "pressure": true,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/skillcorner_2011166.jsonl",
+      "labels_file": "data/frame_world/v82_actions/skillcorner_2011166.npz",
+      "labels_sha256": "8916dadde031db18df708054c7363822823087cbd5b2e09c1ea989345906883c",
+      "mapped_actor_visible_rate": 0.4408845551105694,
+      "match_id": "2011166",
+      "positive_frames": {
+        "pass": 677,
+        "pressure": 10778,
+        "shot": 31
+      },
+      "provider": "skillcorner",
+      "strong_counts": {
+        "pass": 677,
+        "pressure": 550,
+        "shot": 31
+      },
+      "target_mapping_rate": 0.9963433745429218,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 1661,
+      "alignment_p95_ms": 0.3906250003637979,
+      "availability": {
+        "pass": true,
+        "pressure": true,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/skillcorner_2013725.jsonl",
+      "labels_file": "data/frame_world/v82_actions/skillcorner_2013725.npz",
+      "labels_sha256": "06f4f97ec8e7dbf4eca81dff6ea33282f68d9bbd14d1ea2ca8cdd5c5fc9b0c28",
+      "mapped_actor_visible_rate": 0.6120543917677325,
+      "match_id": "2013725",
+      "positive_frames": {
+        "pass": 886,
+        "pressure": 12694,
+        "shot": 25
+      },
+      "provider": "skillcorner",
+      "strong_counts": {
+        "pass": 886,
+        "pressure": 750,
+        "shot": 25
+      },
+      "target_mapping_rate": 0.996765894891584,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 1511,
+      "alignment_p95_ms": 0.3906250003637979,
+      "availability": {
+        "pass": true,
+        "pressure": true,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/skillcorner_2015213.jsonl",
+      "labels_file": "data/frame_world/v82_actions/skillcorner_2015213.npz",
+      "labels_sha256": "2a80feefac406d80ca3f2f659b045014061e3f9754edf2c729d4285436c9ab38",
+      "mapped_actor_visible_rate": 0.5643693107932379,
+      "match_id": "2015213",
+      "positive_frames": {
+        "pass": 824,
+        "pressure": 12227,
+        "shot": 22
+      },
+      "provider": "skillcorner",
+      "strong_counts": {
+        "pass": 824,
+        "pressure": 665,
+        "shot": 22
+      },
+      "target_mapping_rate": 0.9973992197659298,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 1.0,
+      "aligned": 1372,
+      "alignment_p95_ms": 0.3906250003637979,
+      "availability": {
+        "pass": true,
+        "pressure": true,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/skillcorner_2017461.jsonl",
+      "labels_file": "data/frame_world/v82_actions/skillcorner_2017461.npz",
+      "labels_sha256": "67cce88c2f95fce7626a7f10183bb1565d71a9e37d1c49535d0e26e2adaa7785",
+      "mapped_actor_visible_rate": 0.4148683022893247,
+      "match_id": "2017461",
+      "positive_frames": {
+        "pass": 736,
+        "pressure": 11428,
+        "shot": 23
+      },
+      "provider": "skillcorner",
+      "strong_counts": {
+        "pass": 736,
+        "pressure": 613,
+        "shot": 23
+      },
+      "target_mapping_rate": 0.9972101419545417,
+      "weak_count": 0
+    },
+    {
+      "actor_mapping_rate": 0.9783728115345005,
+      "aligned": 1200,
+      "alignment_p95_ms": 53.999900817871094,
+      "availability": {
+        "pass": true,
+        "pressure": false,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/sportec_J03WMX.jsonl",
+      "labels_file": "data/frame_world/v82_actions/sportec_J03WMX.npz",
+      "labels_sha256": "c07d274ec272aec3cd49e3b455e8ef0e7e4dc159886e14e8bfe55bece5d95382",
+      "mapped_actor_visible_rate": 0.7473684210526316,
+      "match_id": "J03WMX",
+      "positive_frames": {
+        "pass": 950,
+        "pressure": 0,
+        "shot": 21
+      },
+      "provider": "sportec",
+      "strong_counts": {
+        "pass": 950,
+        "shot": 21
+      },
+      "target_mapping_rate": 0.9588053553038105,
+      "weak_count": 229
+    },
+    {
+      "actor_mapping_rate": 0.9707112970711297,
+      "aligned": 910,
+      "alignment_p95_ms": 55.1184058189392,
+      "availability": {
+        "pass": true,
+        "pressure": false,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/sportec_J03WN1.jsonl",
+      "labels_file": "data/frame_world/v82_actions/sportec_J03WN1.npz",
+      "labels_sha256": "b0d00f16c9cc26bf130fa46ad2fa661a3ae150ae5f8462974d7af91ae4b381f4",
+      "mapped_actor_visible_rate": 1.0,
+      "match_id": "J03WN1",
+      "positive_frames": {
+        "pass": 696,
+        "pressure": 0,
+        "shot": 21
+      },
+      "provider": "sportec",
+      "strong_counts": {
+        "pass": 696,
+        "shot": 21
+      },
+      "target_mapping_rate": 0.9358437935843794,
+      "weak_count": 193
+    },
+    {
+      "actor_mapping_rate": 0.9643799472295514,
+      "aligned": 957,
+      "alignment_p95_ms": 52.82816886901855,
+      "availability": {
+        "pass": true,
+        "pressure": false,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/sportec_J03WOH.jsonl",
+      "labels_file": "data/frame_world/v82_actions/sportec_J03WOH.npz",
+      "labels_sha256": "c512044ef19753f73465b106d60793bfb64c27ff04767d1c2da413211d5985a2",
+      "mapped_actor_visible_rate": 0.948016415868673,
+      "match_id": "J03WOH",
+      "positive_frames": {
+        "pass": 731,
+        "pressure": 0,
+        "shot": 27
+      },
+      "provider": "sportec",
+      "strong_counts": {
+        "pass": 732,
+        "shot": 27
+      },
+      "target_mapping_rate": 0.9366754617414248,
+      "weak_count": 198
+    },
+    {
+      "actor_mapping_rate": 0.9745370370370371,
+      "aligned": 1059,
+      "alignment_p95_ms": 55.182456970214766,
+      "availability": {
+        "pass": true,
+        "pressure": false,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/sportec_J03WOY.jsonl",
+      "labels_file": "data/frame_world/v82_actions/sportec_J03WOY.npz",
+      "labels_sha256": "02eee13874c80dd6975befd39647a23f02dbfe6e2d744dd98cbae5b04e2e5189",
+      "mapped_actor_visible_rate": 1.0,
+      "match_id": "J03WOY",
+      "positive_frames": {
+        "pass": 842,
+        "pressure": 0,
+        "shot": 22
+      },
+      "provider": "sportec",
+      "strong_counts": {
+        "pass": 842,
+        "shot": 22
+      },
+      "target_mapping_rate": 0.9467592592592593,
+      "weak_count": 195
+    },
+    {
+      "actor_mapping_rate": 0.9704880817253121,
+      "aligned": 1090,
+      "alignment_p95_ms": 54.97466325759887,
+      "availability": {
+        "pass": true,
+        "pressure": false,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/sportec_J03WPY.jsonl",
+      "labels_file": "data/frame_world/v82_actions/sportec_J03WPY.npz",
+      "labels_sha256": "2b8b3d53d819106713bb6e8d294d3d879973c9836e5d3904fecd752e69a8c01a",
+      "mapped_actor_visible_rate": 1.0,
+      "match_id": "J03WPY",
+      "positive_frames": {
+        "pass": 855,
+        "pressure": 0,
+        "shot": 26
+      },
+      "provider": "sportec",
+      "strong_counts": {
+        "pass": 856,
+        "shot": 26
+      },
+      "target_mapping_rate": 0.9557321225879682,
+      "weak_count": 208
+    },
+    {
+      "actor_mapping_rate": 0.9701327433628318,
+      "aligned": 1120,
+      "alignment_p95_ms": 55.01961708068848,
+      "availability": {
+        "pass": true,
+        "pressure": false,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/sportec_J03WQQ.jsonl",
+      "labels_file": "data/frame_world/v82_actions/sportec_J03WQQ.npz",
+      "labels_sha256": "ba3de28dca07adf5c8af1e230cde9c0a12f531534c7fc4d2a38717f9d22e0ca0",
+      "mapped_actor_visible_rate": 1.0,
+      "match_id": "J03WQQ",
+      "positive_frames": {
+        "pass": 877,
+        "pressure": 0,
+        "shot": 27
+      },
+      "provider": "sportec",
+      "strong_counts": {
+        "pass": 877,
+        "shot": 27
+      },
+      "target_mapping_rate": 0.9502212389380531,
+      "weak_count": 216
+    },
+    {
+      "actor_mapping_rate": 0.9698324022346368,
+      "aligned": 1069,
+      "alignment_p95_ms": 53.08980941772461,
+      "availability": {
+        "pass": true,
+        "pressure": false,
+        "shot": true
+      },
+      "events_file": "data/frame_world/v82_actions/sportec_J03WR9.jsonl",
+      "labels_file": "data/frame_world/v82_actions/sportec_J03WR9.npz",
+      "labels_sha256": "49cd61538a4b9bcab687d41693be809c3f4a73f6acb57a56f5f2afb281cbf900",
+      "mapped_actor_visible_rate": 0.8341013824884793,
+      "match_id": "J03WR9",
+      "positive_frames": {
+        "pass": 868,
+        "pressure": 0,
+        "shot": 27
+      },
+      "provider": "sportec",
+      "strong_counts": {
+        "pass": 869,
+        "shot": 27
+      },
+      "target_mapping_rate": 0.9452513966480447,
+      "weak_count": 173
+    }
+  ],
+  "pressure_policy": "SkillCorner strong labels only; Sportec tackles retained as weak_proxy and excluded from frame targets; Metrica pressure unavailable",
+  "tolerance_ms": 61,
+  "totals": {
+    "pass": 16170,
+    "pressure": 7063,
+    "shot": 445
+  },
+  "version": "8.2.0-candidate"
+}

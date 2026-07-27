@@ -1,0 +1,47 @@
+{
+  "version": "7.0.0-candidate",
+  "split_policy": "provider-stratified match holdout",
+  "rows": {
+    "train": 338376,
+    "dev": 79083,
+    "test": 68067
+  },
+  "providers": [
+    "metrica",
+    "skillcorner",
+    "sportec",
+    "statsbomb360"
+  ],
+  "completion": {
+    "samples": 55404,
+    "matches": 66,
+    "balanced_accuracy": 0.7440321872557996,
+    "auc": 0.8035084151053561,
+    "brier": 0.12195463294218739,
+    "ece": 0.011631887868407107,
+    "physics_prior_auc": 0.7754179273494646,
+    "physics_prior_brier": 0.14997734532118506,
+    "worst_match_auc": 0.7553503461112157
+  },
+  "receiver": {
+    "events": 1950,
+    "top1": 0.381025641025641,
+    "top3": 0.84,
+    "mrr": 0.6193174603174604
+  },
+  "threshold": 0.82,
+  "gate": {
+    "auc_gain": true,
+    "brier_gain": true,
+    "ece_bounded": true,
+    "cross_match_stable": true,
+    "enough_matches": true
+  },
+  "calibration": {
+    "scale": 1.5131267789093197,
+    "bias": -2.002263038582254,
+    "isotonic_blocks": 25,
+    "fit_split": "dev"
+  },
+  "candidate_ready": true
+}

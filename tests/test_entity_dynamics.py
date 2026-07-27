@@ -15,6 +15,8 @@ def test_role_embedding_smooth():
     e_gk = role_embedding("GK")
     e_st = role_embedding("ST")
     assert not np.allclose(e_gk, e_st)
+    assert e_gk[0] > e_st[0]
+    assert e_st[3] > e_gk[3]
 
 
 def test_player_abilities_bounded_sigmoid():

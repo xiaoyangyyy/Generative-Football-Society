@@ -1,0 +1,73 @@
+{
+  "deployment": "operational_candidate",
+  "method": "provider-stratified predicted-mark Mondrian conformal with global fallback below 100 samples",
+  "providers": {
+    "metrica": {
+      "model": "data/frame_world/continuous_time_v93_operational.pt",
+      "model_sha256": "574e49ce22bcaea7222cbc5c8233deb4bffeafdf1a8e9c46eb90146c25efe7c3",
+      "radii_s": {
+        "global": {
+          "0.5": 0.7261040210723877,
+          "0.9": 1.8664982318878174
+        },
+        "pass": {
+          "0.5": 0.7069727182388306,
+          "0.9": 1.994385004043579
+        },
+        "shot": {
+          "0.5": 0.7261040210723877,
+          "0.9": 1.8664982318878174
+        },
+        "terminal": {
+          "0.5": 0.7494544982910156,
+          "0.9": 1.7745344638824463
+        }
+      }
+    },
+    "skillcorner": {
+      "model": "data/frame_world/continuous_time_v93_operational.pt",
+      "model_sha256": "574e49ce22bcaea7222cbc5c8233deb4bffeafdf1a8e9c46eb90146c25efe7c3",
+      "radii_s": {
+        "global": {
+          "0.5": 0.9301464557647705,
+          "0.9": 2.111985445022583
+        },
+        "pass": {
+          "0.5": 0.7930165529251099,
+          "0.9": 2.036983013153076
+        },
+        "shot": {
+          "0.5": 0.9301464557647705,
+          "0.9": 2.111985445022583
+        },
+        "terminal": {
+          "0.5": 0.9328116178512573,
+          "0.9": 2.205068588256836
+        }
+      }
+    },
+    "statsbomb360": {
+      "model": "data/frame_world/continuous_time_v93_operational.pt",
+      "model_sha256": "574e49ce22bcaea7222cbc5c8233deb4bffeafdf1a8e9c46eb90146c25efe7c3",
+      "radii_s": {
+        "global": {
+          "0.5": 0.725778341293335,
+          "0.9": 2.085474729537964
+        },
+        "pass": {
+          "0.5": 0.6638711094856262,
+          "0.9": 2.0851449966430664
+        },
+        "shot": {
+          "0.5": 0.7278807163238525,
+          "0.9": 2.332801103591919
+        },
+        "terminal": {
+          "0.5": 0.7781195640563965,
+          "0.9": 2.00199556350708
+        }
+      }
+    }
+  },
+  "version": "9.3.0-candidate"
+}

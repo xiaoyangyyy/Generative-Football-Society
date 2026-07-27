@@ -1,0 +1,205 @@
+{
+  "candidate": "8.0.0",
+  "entity_count": 33,
+  "matches": [
+    {
+      "ball_rate": 0.6084685274899574,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v8/metrica_game1.npz",
+      "frames": 58003,
+      "match_id": "game1",
+      "provider": "metrica",
+      "sha256": "f977b8c8656ab8be349e33a6b265a4863852c9f1092bad63ae0892cca1c8bfba",
+      "visible_rate": 0.7220347536882888
+    },
+    {
+      "ball_rate": 0.5898553034730709,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v8/metrica_game2.npz",
+      "frames": 56463,
+      "match_id": "game2",
+      "provider": "metrica",
+      "sha256": "51dbd5b06d0501973095a0a40d1b9e3c82140424455c8acc0838acbd3927745d",
+      "visible_rate": 0.7203462283426153
+    },
+    {
+      "ball_rate": 0.6055011686595982,
+      "complete_outfield_rate": 0.4491548389282206,
+      "file": "data/frame_world/v8/skillcorner_1886347.npz",
+      "frames": 59042,
+      "match_id": "1886347",
+      "provider": "skillcorner",
+      "sha256": "963a4d2fee1cc8cf21faab65007bfa78c35d2fbe18ee20a9bc3ca4fd8224bba7",
+      "visible_rate": 0.30924467738938793
+    },
+    {
+      "ball_rate": 0.5259539587843532,
+      "complete_outfield_rate": 0.3559352844937284,
+      "file": "data/frame_world/v8/skillcorner_1899585.npz",
+      "frames": 60511,
+      "match_id": "1899585",
+      "provider": "skillcorner",
+      "sha256": "9ae2c536f38de4bf0cf7f78a6fb33e689fc4d6ef3aabddab5d12563940b322f9",
+      "visible_rate": 0.2632869656055523
+    },
+    {
+      "ball_rate": 0.630168728174668,
+      "complete_outfield_rate": 0.4342384386932541,
+      "file": "data/frame_world/v8/skillcorner_1925299.npz",
+      "frames": 61282,
+      "match_id": "1925299",
+      "provider": "skillcorner",
+      "sha256": "ec9df0739ed2b69b1e9c4fe0c371eda3c83cbea29cc9dca04acdeb7f9a1207db",
+      "visible_rate": 0.3209578570206487
+    },
+    {
+      "ball_rate": 0.5915483446168391,
+      "complete_outfield_rate": 0.5070993229896507,
+      "file": "data/frame_world/v8/skillcorner_1953632.npz",
+      "frames": 59231,
+      "match_id": "1953632",
+      "provider": "skillcorner",
+      "sha256": "f04e82660ac039598c10f0ab6ac0191b236eb7b49645b670fff03bd47f7f84d2",
+      "visible_rate": 0.32492045780695306
+    },
+    {
+      "ball_rate": 0.6024269990625325,
+      "complete_outfield_rate": 0.5405715079337523,
+      "file": "data/frame_world/v8/skillcorner_1996435.npz",
+      "frames": 57602,
+      "match_id": "1996435",
+      "provider": "skillcorner",
+      "sha256": "10a8a358f23c084e259e358579837a914f7353f6bc38b420a74f220378977401",
+      "visible_rate": 0.34975953065602733
+    },
+    {
+      "ball_rate": 0.6055762771936338,
+      "complete_outfield_rate": 0.524497476835834,
+      "file": "data/frame_world/v8/skillcorner_2006229.npz",
+      "frames": 59251,
+      "match_id": "2006229",
+      "provider": "skillcorner",
+      "sha256": "5934bed45213fb979fb73a734dcdfc2c40aba479cb20a7fd42ec511c0ad32654",
+      "visible_rate": 0.3310825082609525
+    },
+    {
+      "ball_rate": 0.5275247925521149,
+      "complete_outfield_rate": 0.30339674829656615,
+      "file": "data/frame_world/v8/skillcorner_2011166.npz",
+      "frames": 59292,
+      "match_id": "2011166",
+      "provider": "skillcorner",
+      "sha256": "1397db0486a4eae64e94549f228f8df74ea90ea3da0160f264ad3ed6b6c197ca",
+      "visible_rate": 0.2459307709763083
+    },
+    {
+      "ball_rate": 0.6261621355120439,
+      "complete_outfield_rate": 0.3930307085505001,
+      "file": "data/frame_world/v8/skillcorner_2013725.npz",
+      "frames": 56792,
+      "match_id": "2013725",
+      "provider": "skillcorner",
+      "sha256": "f434f41bc4fb7e4386ba32b48e5c974a9d62f69d4ce1ebd8d42c746cd7c5b82b",
+      "visible_rate": 0.3039128430380719
+    },
+    {
+      "ball_rate": 0.6114320056091617,
+      "complete_outfield_rate": 0.3980000667757337,
+      "file": "data/frame_world/v8/skillcorner_2015213.npz",
+      "frames": 59902,
+      "match_id": "2015213",
+      "provider": "skillcorner",
+      "sha256": "45e4527f92047fe116cab31aea8f3fa4f9a9ef92150ef51d46498e68bfa596d1",
+      "visible_rate": 0.3023458517598947
+    },
+    {
+      "ball_rate": 0.5453192362964484,
+      "complete_outfield_rate": 0.3086635187846438,
+      "file": "data/frame_world/v8/skillcorner_2017461.npz",
+      "frames": 58452,
+      "match_id": "2017461",
+      "provider": "skillcorner",
+      "sha256": "548b0fe9ed546b0cea20323322fef48bcac63ea121f3828cbfcfe0151d7f0a54",
+      "visible_rate": 0.25226085531977543
+    },
+    {
+      "ball_rate": 1.0,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v8/sportec_J03WMX.npz",
+      "frames": 58388,
+      "match_id": "J03WMX",
+      "provider": "sportec",
+      "sha256": "4ad635aa482ee1ff9d9ae5b6ddb180fc77f578a53766a67a0e9726e5f6e3c913",
+      "visible_rate": 0.696969696969697
+    },
+    {
+      "ball_rate": 1.0,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v8/sportec_J03WN1.npz",
+      "frames": 56626,
+      "match_id": "J03WN1",
+      "provider": "sportec",
+      "sha256": "1d75472a149938f266f0c06b02f304ed2a70b122310803e8c109139ab6583ffc",
+      "visible_rate": 0.6689394206965641
+    },
+    {
+      "ball_rate": 1.0,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v8/sportec_J03WOH.npz",
+      "frames": 54887,
+      "match_id": "J03WOH",
+      "provider": "sportec",
+      "sha256": "aff03cbd62918a1702b7547f28b1f09b83c35932d77a976b5d7d7e5602671f9d",
+      "visible_rate": 0.696969696969697
+    },
+    {
+      "ball_rate": 1.0,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v8/sportec_J03WOY.npz",
+      "frames": 57016,
+      "match_id": "J03WOY",
+      "provider": "sportec",
+      "sha256": "ec5f99fed4b8cb0d4d7a1c77c23625cef42ffbcd67af0e46fe7075f8172285e8",
+      "visible_rate": 0.696969696969697
+    },
+    {
+      "ball_rate": 1.0,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v8/sportec_J03WPY.npz",
+      "frames": 58486,
+      "match_id": "J03WPY",
+      "provider": "sportec",
+      "sha256": "63d9d0b711e629ac4282d1042eb32a6fd08c5b743a5dcab05b4dd3d1b82e5dd7",
+      "visible_rate": 0.696969696969697
+    },
+    {
+      "ball_rate": 1.0,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v8/sportec_J03WQQ.npz",
+      "frames": 56939,
+      "match_id": "J03WQQ",
+      "provider": "sportec",
+      "sha256": "7c6564c4ccf08b82ec0d8fc1872b6e69b31ba0608cf2c3dfe6e0f5bf14005f80",
+      "visible_rate": 0.685689150590185
+    },
+    {
+      "ball_rate": 1.0,
+      "complete_outfield_rate": 1.0,
+      "file": "data/frame_world/v8/sportec_J03WR9.npz",
+      "frames": 58725,
+      "match_id": "J03WR9",
+      "provider": "sportec",
+      "sha256": "36474b1a7954133cc1360a8e7b0cb4d289fa176c3c1c257d1fdc83aab2cc9e42",
+      "visible_rate": 0.696969696969697
+    }
+  ],
+  "providers": [
+    "metrica",
+    "skillcorner",
+    "sportec"
+  ],
+  "sample_rate_hz": 10,
+  "schema_version": 1,
+  "split_policy": "match and provider holdout only",
+  "total_frames": 1106890
+}

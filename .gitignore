@@ -1,4 +1,4 @@
-# Python cache and build artifacts
+﻿# Python cache and build artifacts
 __pycache__/
 *.py[cod]
 *.pyo
@@ -21,15 +21,24 @@ env/
 # Runtime outputs
 outputs/
 logs/
+reports/*
+!reports/acceptance/
+reports/acceptance/*
+!reports/acceptance/*.json
+reports/acceptance/*.checkpoint.json
+reports/acceptance/*smoke*.json
 *.log
 
 # Live tournament / LLM cache (regenerated on run)
 data/persistence/
 data/cache/
+data/world_model/traces/
 
 # Large external dumps (re-fetch via scripts/fetch_football_baseline.py)
 data/external/transfermarkt/*.csv.gz
 data/external/transfermarkt/players.csv.gz
+data/external/*/raw/
+data/external/*/derived/*.csv
 
 # Cursor / local tooling
 .cursor/

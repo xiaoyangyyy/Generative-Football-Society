@@ -1,0 +1,35 @@
+{
+  "gate": {
+    "completion_shift_bounded": true,
+    "finite": true,
+    "pass_volume_shift_bounded": true
+  },
+  "metrics": {
+    "completion": {
+      "baseline_mean": 0.7773828192594332,
+      "max_abs_delta": 0.09497369959088242,
+      "mean_delta": 0.019671868299090053,
+      "treatment_mean": 0.7970546875585233
+    },
+    "passes": {
+      "baseline_mean": 176.375,
+      "max_abs_delta": 3.0,
+      "mean_delta": 0.5,
+      "treatment_mean": 176.875
+    },
+    "shots": {
+      "baseline_mean": 4.0,
+      "max_abs_delta": 3.0,
+      "mean_delta": -0.125,
+      "treatment_mean": 3.875
+    },
+    "xg": {
+      "baseline_mean": 0.847813263923336,
+      "max_abs_delta": 0.5657318196018997,
+      "mean_delta": 0.0017514020088890692,
+      "treatment_mean": 0.8495646659322249
+    }
+  },
+  "samples": 8,
+  "simulation_safe": true
+}

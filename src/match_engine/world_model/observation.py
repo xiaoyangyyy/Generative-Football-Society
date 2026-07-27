@@ -41,11 +41,11 @@ def encode_observation(
     sg = state.spatial
 
     grids = [
-        _downsample(sg.rho_home, gx, gy),
-        _downsample(sg.rho_away, gx, gy),
-        _downsample(sg.press, gx, gy),
-        _downsample(sg.phi_home, gx, gy),
-        _downsample(sg.phi_away, gx, gy),
+        np.clip(_downsample(sg.rho_home, gx, gy) / 2.0, 0.0, 1.0),
+        np.clip(_downsample(sg.rho_away, gx, gy) / 2.0, 0.0, 1.0),
+        np.clip(_downsample(sg.press, gx, gy) / 2.0, 0.0, 1.0),
+        np.clip(_downsample(sg.phi_home, gx, gy), 0.0, 1.0),
+        np.clip(_downsample(sg.phi_away, gx, gy), 0.0, 1.0),
     ]
     grid_flat = np.concatenate([g.ravel() for g in grids])
 
@@ -103,7 +103,11 @@ def encode_observation(
 
     obs = np.concatenate([grid_flat, global_feats, player_feats, tactics, attack_flag])
     assert obs.shape[0] == OBS_DIM, (obs.shape[0], OBS_DIM)
-    return np.nan_to_num(obs, nan=0.0, posinf=1.0, neginf=0.0).astype(np.float32)
+    return np.clip(
+        np.nan_to_num(obs, nan=0.0, posinf=1.0, neginf=0.0),
+        0.0,
+        1.0,
+    ).astype(np.float32)
 
 
 def decode_ball_xy(obs: np.ndarray) -> tuple[float, float]:

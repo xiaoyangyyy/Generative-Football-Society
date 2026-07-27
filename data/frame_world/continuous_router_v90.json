@@ -1,0 +1,30 @@
+{
+  "version": "9.0.0-candidate",
+  "dependencies": [
+    {
+      "artifact": "data/frame_world/continuous_time_v90_lopo_skillcorner.pt",
+      "sha256": "8c423d454a191d667651832b95a68b4637da66656638af1bb49ef108309feef2"
+    },
+    {
+      "artifact": "data/frame_world/continuous_time_v90_lopo_statsbomb360.pt",
+      "sha256": "547788c106e22642766970ad315be98248a48c64ccba413796bb0c5cd16ad0a9"
+    },
+    {
+      "artifact": "data/frame_world/frame_world_v85_pass_triplet_lodo_skillcorner.pt",
+      "sha256": "3a385fd499b3efad10c73348603345eb1ec7124ba10de6462922027f9da834f7"
+    },
+    {
+      "artifact": "data/frame_world/v89_temporal_providers/manifest.json",
+      "sha256": "314941a73e4d085aae472318985d262b0aca1a203ed696dbd08f33cc253b7466"
+    },
+    {
+      "artifact": "reports/acceptance/continuous_time_v90_lopo.json",
+      "sha256": "ce6c6d425b8d8ce4ab72e7b62f234609ac147a143b44bf2a9ec9a3a645fc49dd"
+    },
+    {
+      "artifact": "reports/acceptance/continuous_router_v90.json",
+      "sha256": "0e3a89395126386fec978dc3d9aab74b1dfca9e88db235d32d76d9e2f19c9052"
+    }
+  ],
+  "ready": true
+}

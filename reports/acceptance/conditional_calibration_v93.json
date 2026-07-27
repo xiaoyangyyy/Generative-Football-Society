@@ -1,0 +1,250 @@
+{
+  "version": "9.3.0-candidate",
+  "method": "predicted-mark Mondrian conformal; worst source-provider radius; minimum group 100",
+  "folds": [
+    {
+      "held_provider": "metrica",
+      "source_calibration": {
+        "skillcorner": {
+          "global_radius_s": 2.1075968742370605,
+          "groups": {
+            "pass": {
+              "samples": 191,
+              "radius_s": 1.9690145254135132,
+              "fallback": false
+            },
+            "shot": {
+              "samples": 49,
+              "radius_s": 2.1075968742370605,
+              "fallback": true
+            },
+            "terminal": {
+              "samples": 160,
+              "radius_s": 2.2887611389160156,
+              "fallback": false
+            }
+          }
+        },
+        "statsbomb360": {
+          "global_radius_s": 2.0144734382629395,
+          "groups": {
+            "pass": {
+              "samples": 4723,
+              "radius_s": 2.043492317199707,
+              "fallback": false
+            },
+            "shot": {
+              "samples": 1253,
+              "radius_s": 2.2184996604919434,
+              "fallback": false
+            },
+            "terminal": {
+              "samples": 3526,
+              "radius_s": 1.857635498046875,
+              "fallback": false
+            }
+          }
+        }
+      },
+      "final_radii_s": {
+        "pass": 2.043492317199707,
+        "shot": 2.2184996604919434,
+        "terminal": 2.2887611389160156
+      },
+      "target_groups": {
+        "pass": {
+          "coverage": 0.8920780711825488,
+          "mean_width_s": 3.2673375606536865,
+          "radius_s": 2.043492317199707,
+          "samples": 871,
+          "ready": true
+        },
+        "shot": {
+          "coverage": 0.8571428571428571,
+          "mean_width_s": 3.4513728618621826,
+          "radius_s": 2.2184996604919434,
+          "samples": 147,
+          "ready": true
+        },
+        "terminal": {
+          "coverage": 0.941944847605225,
+          "mean_width_s": 3.2321524620056152,
+          "radius_s": 2.2887611389160156,
+          "samples": 689,
+          "ready": true
+        }
+      },
+      "overall_coverage": 0.9091974223784417,
+      "gates": {
+        "strict_holdout": true,
+        "conditional_coverage": true,
+        "overall_coverage": true,
+        "finite": true
+      },
+      "ready": true
+    },
+    {
+      "held_provider": "skillcorner",
+      "source_calibration": {
+        "metrica": {
+          "global_radius_s": 1.8847404718399048,
+          "groups": {
+            "pass": {
+              "samples": 421,
+              "radius_s": 1.9655749797821045,
+              "fallback": false
+            },
+            "shot": {
+              "samples": 47,
+              "radius_s": 1.8847404718399048,
+              "fallback": true
+            },
+            "terminal": {
+              "samples": 474,
+              "radius_s": 1.8279496431350708,
+              "fallback": false
+            }
+          }
+        },
+        "statsbomb360": {
+          "global_radius_s": 2.0013203620910645,
+          "groups": {
+            "pass": {
+              "samples": 5247,
+              "radius_s": 2.0594687461853027,
+              "fallback": false
+            },
+            "shot": {
+              "samples": 986,
+              "radius_s": 2.23225736618042,
+              "fallback": false
+            },
+            "terminal": {
+              "samples": 3269,
+              "radius_s": 1.7852327823638916,
+              "fallback": false
+            }
+          }
+        }
+      },
+      "final_radii_s": {
+        "pass": 2.0594687461853027,
+        "shot": 2.23225736618042,
+        "terminal": 1.8279496431350708
+      },
+      "target_groups": {
+        "pass": {
+          "coverage": 0.9208188489764387,
+          "mean_width_s": 3.4591896533966064,
+          "radius_s": 2.0594687461853027,
+          "samples": 2589,
+          "ready": true
+        },
+        "shot": {
+          "coverage": 0.9529652351738241,
+          "mean_width_s": 3.69140625,
+          "radius_s": 2.23225736618042,
+          "samples": 489,
+          "ready": true
+        },
+        "terminal": {
+          "coverage": 0.9004694835680751,
+          "mean_width_s": 2.896178722381592,
+          "radius_s": 1.8279496431350708,
+          "samples": 2130,
+          "ready": true
+        }
+      },
+      "overall_coverage": 0.9155145929339478,
+      "gates": {
+        "strict_holdout": true,
+        "conditional_coverage": true,
+        "overall_coverage": true,
+        "finite": true
+      },
+      "ready": true
+    },
+    {
+      "held_provider": "statsbomb360",
+      "source_calibration": {
+        "metrica": {
+          "global_radius_s": 1.8797624111175537,
+          "groups": {
+            "pass": {
+              "samples": 357,
+              "radius_s": 1.945913553237915,
+              "fallback": false
+            },
+            "shot": {
+              "samples": 98,
+              "radius_s": 1.8797624111175537,
+              "fallback": true
+            },
+            "terminal": {
+              "samples": 487,
+              "radius_s": 1.867537021636963,
+              "fallback": false
+            }
+          }
+        },
+        "skillcorner": {
+          "global_radius_s": 2.146172046661377,
+          "groups": {
+            "pass": {
+              "samples": 181,
+              "radius_s": 1.9405157566070557,
+              "fallback": false
+            },
+            "shot": {
+              "samples": 58,
+              "radius_s": 2.146172046661377,
+              "fallback": true
+            },
+            "terminal": {
+              "samples": 161,
+              "radius_s": 2.2392373085021973,
+              "fallback": false
+            }
+          }
+        }
+      },
+      "final_radii_s": {
+        "pass": 1.945913553237915,
+        "shot": 2.146172046661377,
+        "terminal": 2.2392373085021973
+      },
+      "target_groups": {
+        "pass": {
+          "coverage": 0.8911279560134522,
+          "mean_width_s": 3.198338270187378,
+          "radius_s": 1.945913553237915,
+          "samples": 37466,
+          "ready": true
+        },
+        "shot": {
+          "coverage": 0.9007081735025081,
+          "mean_width_s": 3.400273084640503,
+          "radius_s": 2.146172046661377,
+          "samples": 13556,
+          "ready": true
+        },
+        "terminal": {
+          "coverage": 0.9324534161490683,
+          "mean_width_s": 3.217632532119751,
+          "radius_s": 2.2392373085021973,
+          "samples": 45080,
+          "ready": true
+        }
+      },
+      "overall_coverage": 0.9118644773261743,
+      "gates": {
+        "strict_holdout": true,
+        "conditional_coverage": true,
+        "overall_coverage": true,
+        "finite": true
+      },
+      "ready": true
+    }
+  ],
+  "ready": true
+}

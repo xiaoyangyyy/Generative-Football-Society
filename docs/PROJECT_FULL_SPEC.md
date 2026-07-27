@@ -895,7 +895,7 @@ pass_completion, interceptions_per_pass, passes_per_team_match, through_share, l
 | `MATCH_WORLD_MODEL` | 0 |
 | `MATCH_WM_PLAN` | 1 |
 | `MATCH_WM_RECORD` | 0 |
-| `MATCH_WM_PLANNER_BLEND` | 0.45 |
+| `MATCH_WM_PLANNER_BLEND` | 0.30 |
 | `MATCH_WM_SHOT_BLEND` | 0.40 |
 | `MATCH_WM_TRANSITION` | gru |
 

@@ -1,0 +1,11 @@
+{
+  "active": "7.0.0",
+  "manifest": "data/releases/v7.0.0.json",
+  "manifest_sha256": "f7e01912493dfb38192ceccb3bf41ab5a3ed2a9fb133359505b6fbe227ca8041",
+  "rollback": {
+    "manifest": "data/releases/v6.0.0.json",
+    "manifest_sha256": "f38fb76a7d09aa99fbd3e0a09354341b1b10bc51e1598ab3df6bef18cae22943",
+    "release": "6.0.0"
+  },
+  "schema_version": 1
+}

@@ -12,6 +12,7 @@ import numpy as np
 from src.match_engine.world_model.action_codec import ACTION_DIM, zero_action
 from src.match_engine.world_model.config import default_trace_dir
 from src.match_engine.world_model.observation import OBS_DIM
+from src.match_engine.world_model.schema import PASS_OUTCOME_INDEX, SHOT_GOAL_INDEX
 
 
 def _pad_vector(vec, dim: int) -> np.ndarray:
@@ -30,6 +31,9 @@ class TransitionRecorder:
         self.path = self.trace_dir / f"{match_slug}.jsonl"
         self._fp = open(self.path, "a", encoding="utf-8")
         self.count = 0
+        self.action_counts = {"pass": 0, "shot": 0, "hold": 0, "cross": 0, "other": 0}
+        self.pass_successes = 0
+        self.shot_goals = 0
 
     @classmethod
     def for_match(cls, base_dir: str, home: str, away: str, stage: str) -> "TransitionRecorder":
@@ -44,6 +48,14 @@ class TransitionRecorder:
         *,
         meta: Optional[Dict[str, Any]] = None,
     ) -> None:
+        action = _pad_vector(action, ACTION_DIM)
+        labels = ("pass", "shot", "hold", "cross")
+        kind = next((labels[index] for index in range(4) if action[index] > 0.5), "other")
+        self.action_counts[kind] += 1
+        if kind == "pass":
+            self.pass_successes += int(action[PASS_OUTCOME_INDEX] > 0.5)
+        if kind == "shot":
+            self.shot_goals += int(action[SHOT_GOAL_INDEX] > 0.5)
         row = {
             "obs": obs.tolist(),
             "action": action.tolist(),
@@ -63,17 +75,23 @@ def load_trace_batches(
     *,
     max_files: int = 200,
     max_rows_per_file: int = 5000,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return_groups: bool = False,
+    allowed_files: set[str] | None = None,
+):
     """Load all jsonl traces into (obs, action, next_obs) arrays."""
     root = Path(trace_dir)
     if not root.is_dir():
-        return (
+        empty = (
             np.zeros((0, OBS_DIM), dtype=np.float32),
             np.zeros((0, ACTION_DIM), dtype=np.float32),
             np.zeros((0, OBS_DIM), dtype=np.float32),
         )
-    obs_list, act_list, nxt_list = [], [], []
-    files = sorted(root.glob("*.jsonl"))[:max_files]
+        return (*empty, np.asarray([], dtype=str)) if return_groups else empty
+    obs_list, act_list, nxt_list, groups = [], [], [], []
+    files = [
+        fp for fp in sorted(root.glob("*.jsonl"))
+        if not fp.name.startswith("_") and (allowed_files is None or fp.name in allowed_files)
+    ][:max_files]
     for fp in files:
         with open(fp, encoding="utf-8") as f:
             for i, line in enumerate(f):
@@ -86,14 +104,19 @@ def load_trace_batches(
                 obs_list.append(_pad_vector(row["obs"], OBS_DIM))
                 act_list.append(_pad_vector(row["action"], ACTION_DIM))
                 nxt_list.append(_pad_vector(row["next_obs"], OBS_DIM))
+                groups.append(fp.stem)
     if not obs_list:
-        return (
+        empty = (
             np.zeros((0, OBS_DIM), dtype=np.float32),
             np.zeros((0, ACTION_DIM), dtype=np.float32),
             np.zeros((0, OBS_DIM), dtype=np.float32),
         )
-    return (
+        return (*empty, np.asarray([], dtype=str)) if return_groups else empty
+    result = (
         np.array(obs_list, dtype=np.float32),
         np.array(act_list, dtype=np.float32),
         np.array(nxt_list, dtype=np.float32),
     )
+    if return_groups:
+        return (*result, np.asarray(groups, dtype=str))
+    return result

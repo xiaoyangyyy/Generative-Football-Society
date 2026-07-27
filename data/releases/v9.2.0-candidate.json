@@ -1,0 +1,58 @@
+{
+  "artifacts": [
+    {
+      "bytes": 31790,
+      "path": "data/frame_world/continuous_time_v92_lopo_metrica.pt",
+      "sha256": "2cb0ecc39b1b46b8bf0498a803e81e393a778643edbf1c397a1be344fda63ba7"
+    },
+    {
+      "bytes": 31862,
+      "path": "data/frame_world/continuous_time_v92_lopo_skillcorner.pt",
+      "sha256": "2270cbf6be1b3eadfa2cd1536ea0b80c818f937a239806d52baf54fc23cbb6d2"
+    },
+    {
+      "bytes": 31880,
+      "path": "data/frame_world/continuous_time_v92_lopo_statsbomb360.pt",
+      "sha256": "4956e18982a3b77119c8a4cf28adf30cd4819bdd6ec4d193c108d39b369da99b"
+    },
+    {
+      "bytes": 1130,
+      "path": "data/frame_world/continuous_intervals_v92.json",
+      "sha256": "6680a42cf04ed6267dbc868640c4a0364d7e4b1efbad9f75f1ab18f7144b0eac"
+    },
+    {
+      "bytes": 1599,
+      "path": "reports/acceptance/temporal_provider_quality_v92.json",
+      "sha256": "a50ad02ddce9fc51b9749f6be0b03d2e9e4d6ad4c10efa469cac181a21507ce1"
+    },
+    {
+      "bytes": 11579,
+      "path": "reports/acceptance/continuous_time_v92_lopo.json",
+      "sha256": "97934d68454673512f8055b411a7f57a18a0c92286cb77dc73abd2c2554e38b0"
+    },
+    {
+      "bytes": 4375,
+      "path": "reports/acceptance/continuous_calibration_v92.json",
+      "sha256": "c07e6cdb32db7751b29552b15eb6808e8cd2dd5f9535bae56f47c3aa25fe6c85"
+    },
+    {
+      "bytes": 167671,
+      "path": "data/frame_world/v92_temporal_providers/manifest.json",
+      "sha256": "d41b713d8b19f71699e3b65fbc0373ca7680b7a25833a883c5449d8ba36fe7a2"
+    }
+  ],
+  "deployment_policy": "evaluated only; not sealed or deployed",
+  "gates": {
+    "deployment_unchanged": true,
+    "multi_source_coverage": true,
+    "point_metrics": true,
+    "provider_quality": true,
+    "three_lopo_folds": true
+  },
+  "parent_deployed": "7.0.0",
+  "parent_research": "9.1.0-candidate",
+  "release": "9.2.0-candidate",
+  "rollback": "6.0.0",
+  "schema_version": 2,
+  "status": "frozen_research_candidate"
+}

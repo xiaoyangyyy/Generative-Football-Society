@@ -1,0 +1,17 @@
+{
+  "version": "8.7.0-candidate",
+  "scope": "metrica inferred_next_event external audit; not promotion evidence",
+  "metrics": {
+    "balanced_accuracy": 0.6027980535279804,
+    "tpr": 0.5389294403892944,
+    "tnr": 0.6666666666666666,
+    "next_action_macro_f1": 0.25728438349487004,
+    "next_action_f1": {
+      "pass": 0.6112692088787707,
+      "shot": 0.16058394160583941,
+      "terminal": 0.0
+    },
+    "events": 1707,
+    "next_action_events": 1250
+  }
+}

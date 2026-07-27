@@ -4,26 +4,9 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Mapping, Tuple
 
-
-def _env_bool(key: str, default: bool = False) -> bool:
-    raw = os.environ.get(key, "1" if default else "0").strip().lower()
-    return raw in ("1", "true", "yes", "on")
-
-
-def _env_float(key: str, default: float) -> float:
-    try:
-        return float(os.environ.get(key, str(default)))
-    except ValueError:
-        return default
-
-
-def _env_int(key: str, default: int) -> int:
-    try:
-        return int(os.environ.get(key, str(default)))
-    except ValueError:
-        return default
+from src.simulation.runtime import environment_snapshot, env_bool, env_float
 
 
 def _parse_tier_caps(raw: str, default: Tuple[int, ...]) -> Tuple[int, ...]:
@@ -48,22 +31,26 @@ class CognitiveMatchConfig:
     half_time_window_sec: float = 120.0
 
     @classmethod
-    def from_env(cls, base_dir: str = "") -> "CognitiveMatchConfig":
-        cache = os.environ.get("MATCH_COGNITIVE_CACHE", "").strip()
+    def from_mapping(cls, values: Mapping[str, str], base_dir: str = "") -> "CognitiveMatchConfig":
+        cache = values.get("MATCH_COGNITIVE_CACHE", "").strip()
         if not cache and base_dir:
             cache = os.path.join(base_dir, "data", "cache", "cognitive")
         return cls(
-            enabled=_env_bool("MATCH_COGNITIVE", False),
-            sync_llm=_env_bool("MATCH_COGNITIVE_SYNC", False),
+            enabled=env_bool(values, "MATCH_COGNITIVE", False),
+            sync_llm=env_bool(values, "MATCH_COGNITIVE_SYNC", False),
             cache_dir=cache,
-            salience_center=_env_float("MATCH_COGNITIVE_S0", 0.55),
-            cooldown_sec=_env_float("MATCH_COGNITIVE_COOLDOWN", 180.0),
-            crowd_numeric=_env_bool("MATCH_CROWD_LLM_NUMERIC", True),
+            salience_center=env_float(values, "MATCH_COGNITIVE_S0", 0.55),
+            cooldown_sec=env_float(values, "MATCH_COGNITIVE_COOLDOWN", 180.0),
+            crowd_numeric=env_bool(values, "MATCH_CROWD_LLM_NUMERIC", True),
             tier_caps=_parse_tier_caps(
-                os.environ.get("MATCH_COGNITIVE_MAX_PER_TIER", ""),
+                values.get("MATCH_COGNITIVE_MAX_PER_TIER", ""),
                 (6, 4, 4, 2, 3),
             ),
         )
+
+    @classmethod
+    def from_env(cls, base_dir: str = "") -> "CognitiveMatchConfig":
+        return cls.from_mapping(environment_snapshot(), base_dir)
 
 
 def cognitive_enabled() -> bool:

@@ -6,6 +6,14 @@ from typing import Any, Dict, TYPE_CHECKING
 
 import numpy as np
 
+from src.match_engine.world_model.schema import (
+    HORIZON_INDEX,
+    HORIZON_SCALE_SECONDS,
+    PASS_OUTCOME_INDEX,
+    SHOT_GOAL_INDEX,
+    SHOT_ON_TARGET_INDEX,
+)
+
 if TYPE_CHECKING:
     from src.match_engine.state import MatchAffectiveState, PlayerAffectiveState
 
@@ -53,6 +61,7 @@ def encode_pass_candidate(
     target: np.ndarray,
     *,
     success_p: float = 0.5,
+    horizon_s: float = 10.0,
 ) -> np.ndarray:
     a = np.zeros(ACTION_DIM, dtype=np.float32)
     a[0:6] = _TYPE_PASS
@@ -60,7 +69,8 @@ def encode_pass_candidate(
     a[7] = float(np.clip(target[1], 0, 1))
     a[8:12] = _kind_onehot(kind)
     a[12] = _receiver_slot(state, carrier, receiver)
-    a[13] = float(np.clip(success_p, 0, 1))
+    a[13] = float(np.clip(np.nan_to_num(success_p, nan=0.5, posinf=1.0, neginf=0.0), 0, 1))
+    a[HORIZON_INDEX] = float(np.clip(horizon_s / HORIZON_SCALE_SECONDS, 0, 1))
     return a
 
 
@@ -69,6 +79,7 @@ def encode_shot_action(
     *,
     shot_kind: str = "power",
     xg: float = 0.1,
+    horizon_s: float = 10.0,
 ) -> np.ndarray:
     a = np.zeros(ACTION_DIM, dtype=np.float32)
     a[0:6] = _TYPE_SHOT
@@ -77,6 +88,7 @@ def encode_shot_action(
     kind_idx = {"power": 0, "curved": 1, "knuckle": 2, "header": 3}.get(shot_kind, 0)
     a[8 + kind_idx] = 1.0
     a[13] = float(np.clip(xg, 0, 1))
+    a[HORIZON_INDEX] = float(np.clip(horizon_s / HORIZON_SCALE_SECONDS, 0, 1))
     return a
 
 
@@ -89,7 +101,12 @@ def encode_intercept_action(land_xy: np.ndarray, *, success: float = 1.0) -> np.
     return a
 
 
-def encode_high_level_action(action: str, target: np.ndarray | None = None) -> np.ndarray:
+def encode_high_level_action(
+    action: str,
+    target: np.ndarray | None = None,
+    *,
+    horizon_s: float = 10.0,
+) -> np.ndarray:
     a = np.zeros(ACTION_DIM, dtype=np.float32)
     if action == "shot":
         a[0:6] = _TYPE_SHOT
@@ -106,6 +123,7 @@ def encode_high_level_action(action: str, target: np.ndarray | None = None) -> n
     if target is not None:
         a[6] = float(np.clip(target[0], 0, 1))
         a[7] = float(np.clip(target[1], 0, 1))
+    a[HORIZON_INDEX] = float(np.clip(horizon_s / HORIZON_SCALE_SECONDS, 0, 1))
     return a
 
 
@@ -114,7 +132,15 @@ def encode_from_ball_log_event(event: Dict[str, Any]) -> np.ndarray:
     et = event.get("type", "")
     if et == "shot":
         xy = np.array(event.get("from_xy", [0.5, 0.5]), dtype=float)
-        return encode_shot_action(xy, shot_kind=str(event.get("kind", "power")), xg=float(event.get("xg", 0.1)))
+        action = encode_shot_action(
+            xy,
+            shot_kind=str(event.get("kind", "power")),
+            xg=float(event.get("xg", 0.1)),
+        )
+        outcome = str(event.get("outcome", "")).upper()
+        action[SHOT_GOAL_INDEX] = 1.0 if outcome == "GOAL" else 0.0
+        action[SHOT_ON_TARGET_INDEX] = 1.0 if outcome in {"GOAL", "SAVED", "ON_TARGET"} else 0.0
+        return action
     if et == "pass":
         land = event.get("land_xy", event.get("to_xy", [0.5, 0.5]))
         tgt = np.array(land, dtype=float)
@@ -129,9 +155,9 @@ def encode_from_ball_log_event(event: Dict[str, Any]) -> np.ndarray:
         a[8:12] = _kind_onehot(str(event.get("kind", "short")))
         a[13] = float(event.get("p_success", 0.5))
         if outcome == "COMPLETE":
-            a[14] = 1.0
+            a[PASS_OUTCOME_INDEX] = 1.0
         elif outcome == "INTERCEPTED":
-            a[14] = 0.0
+            a[PASS_OUTCOME_INDEX] = 0.0
         return a
     if et == "intercept":
         xy = np.array(event.get("land_xy", [0.5, 0.5]), dtype=float)

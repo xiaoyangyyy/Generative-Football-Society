@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from enum import Enum
 from typing import Any, Dict, Tuple
+from src.simulation.runtime import environment_snapshot, env_bool
 
 
 class ScorePathMode(str, Enum):
@@ -17,7 +18,7 @@ class ScorePathMode(str, Enum):
 
 
 def _env_truthy(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
+    return env_bool(environment_snapshot(), name, False)
 
 
 def _micro_enabled() -> bool:
@@ -29,7 +30,7 @@ def resolve_score_path_mode() -> ScorePathMode:
         return ScorePathMode.POISSON_LEGACY
     if not _micro_enabled():
         return ScorePathMode.MACRO_UNIFIED
-    raw = os.environ.get("MATCH_MICRO_SCORE", "").strip().lower()
+    raw = environment_snapshot().get("MATCH_MICRO_SCORE", "").strip().lower()
     if raw in ("0", "false", "no"):
         return ScorePathMode.MICRO_REPLAY
     return ScorePathMode.PHYSICS_OFFICIAL
@@ -55,7 +56,7 @@ def xg_supplement_allowed() -> bool:
 
 
 def scheduled_shots_allowed() -> bool:
-    raw = os.environ.get("MATCH_SCHEDULED_SHOTS", "").strip().lower()
+    raw = environment_snapshot().get("MATCH_SCHEDULED_SHOTS", "").strip().lower()
     if raw in ("0", "false", "off", "none", "pure"):
         return False
     if raw in ("1", "true", "yes", "calibrated"):

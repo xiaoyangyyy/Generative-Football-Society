@@ -1,0 +1,33 @@
+{
+  "version": "7.0.0-candidate",
+  "split_policy": "provider-stratified match holdout",
+  "rows": {
+    "train": 7507,
+    "dev": 1557,
+    "test": 1590
+  },
+  "providers": [
+    "sportec",
+    "statsbomb360"
+  ],
+  "test": {
+    "shots": 1590,
+    "goals": 194,
+    "matches": 64,
+    "auc": 0.7483974832363454,
+    "brier": 0.09217408822588334,
+    "baseline_brier": 0.10718509613316261
+  },
+  "calibration": {
+    "isotonic_blocks": 15,
+    "fit_split": "dev"
+  },
+  "gate": {
+    "shots": true,
+    "goals": true,
+    "matches": true,
+    "providers": true,
+    "proper_score_gain": true
+  },
+  "candidate_ready": true
+}
