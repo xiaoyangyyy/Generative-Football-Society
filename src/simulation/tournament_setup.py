@@ -1,5 +1,8 @@
 """Tournament setup, tactics, referee, and expert-fusion stages."""
 
+import copy
+import inspect
+
 import numpy as np
 
 from src.simulation.group_context import build_coach_match_context
@@ -71,17 +74,30 @@ class TournamentSetupMixin:
         self, *, a1, a2, ah, aa, t1_name, t2_name, stage_name,
         home_micro, away_micro, llm, ctx1, ctx2,
     ):
-        t1_tactics_json = llm.coach_decide_tactics(t1_name, ctx1, t2_name, ctx2)
-        t2_tactics_json = llm.coach_decide_tactics(t2_name, ctx2, t1_name, ctx1)
+        packets = self._build_prematch_world_model_packets(
+            ah=ah, aa=aa, home_micro=home_micro, away_micro=away_micro,
+        )
+        t1_packet = packets[t1_name]
+        t2_packet = packets[t2_name]
+        t1_tactics_json = self._request_coach_tactics(
+            llm, t1_name, ctx1, t2_name, ctx2, t1_packet,
+        )
+        t2_tactics_json = self._request_coach_tactics(
+            llm, t2_name, ctx2, t1_name, ctx1, t2_packet,
+        )
         try:
-            t1_data = apply_coach_tactics_from_llm(a1, t1_tactics_json)
+            t1_data = apply_coach_tactics_from_llm(
+                a1, t1_tactics_json, decision_support=t1_packet,
+            )
             a1.apply_beliefs_to_tactics(
                 stage_name=stage_name, opponent_style=a2.style_archetype,
             )
             a1.coach_intervention(t1_tactics_json)
             print(f"  [TACTICS] {t1_name}: {t1_data.get('reasoning', 'No reasoning')}")
 
-            t2_data = apply_coach_tactics_from_llm(a2, t2_tactics_json)
+            t2_data = apply_coach_tactics_from_llm(
+                a2, t2_tactics_json, decision_support=t2_packet,
+            )
             a2.apply_beliefs_to_tactics(
                 stage_name=stage_name, opponent_style=a1.style_archetype,
             )
@@ -95,6 +111,91 @@ class TournamentSetupMixin:
             )
         except Exception as exc:
             print(f"  [ERROR] Tactics parsing failed: {exc}")
+
+    @staticmethod
+    def _request_coach_tactics(
+        llm, team_name, my_info, opp_name, opp_info, decision_support,
+    ):
+        """Keep third-party coach adapters compatible while adding evidence."""
+        method = llm.coach_decide_tactics
+        try:
+            parameters = inspect.signature(method).parameters.values()
+            accepts_packet = any(
+                parameter.name == "world_model_decision_support"
+                or parameter.kind == inspect.Parameter.VAR_KEYWORD
+                for parameter in parameters
+            )
+        except (TypeError, ValueError):
+            accepts_packet = False
+        if accepts_packet:
+            return method(
+                team_name, my_info, opp_name, opp_info,
+                world_model_decision_support=decision_support,
+            )
+        return method(team_name, my_info, opp_name, opp_info)
+
+    def _build_prematch_world_model_packets(
+        self, *, ah, aa, home_micro, away_micro,
+    ):
+        """Create symmetric pre-match evidence from one immutable base state."""
+        from src.match_engine.world_model.config import world_model_plan_enabled
+        from src.match_engine.world_model.decision_support import (
+            build_prematch_tactical_packet,
+        )
+
+        unavailable = {
+            "version": 1,
+            "available": False,
+            "reason": "world_model_planning_disabled",
+            "recommended_tactical_preset": "none",
+            "candidates": [],
+        }
+        if not world_model_plan_enabled():
+            return {home_micro: dict(unavailable), away_micro: dict(unavailable)}
+
+        if not hasattr(self, "_prematch_world_model_runtime"):
+            from src.match_engine.world_model.inference import WorldModelRuntime
+
+            self._prematch_world_model_runtime = WorldModelRuntime.load_default(
+                self.base_dir,
+            )
+        runtime = self._prematch_world_model_runtime
+        if runtime is None:
+            missing = dict(unavailable)
+            missing["reason"] = "world_model_unavailable"
+            return {home_micro: dict(missing), away_micro: dict(missing)}
+
+        try:
+            from src.match_engine.macro_bridge import build_match_affective_state
+
+            base_state = build_match_affective_state(ah, aa)
+
+            def representative_state(team_id):
+                state = copy.deepcopy(base_state)
+                team = state.team(team_id)
+                carrier = next(
+                    (player for player in team.players if player.role == "CM"),
+                    team.players[0],
+                )
+                state.ball.position = carrier.position.copy()
+                state.ball.velocity = np.zeros(2, dtype=float)
+                state.ball.possessor_id = carrier.player_id
+                state.ball.possession_team_id = team.team_id
+                return state
+
+            packets = {
+                home_micro: build_prematch_tactical_packet(
+                    runtime, representative_state(home_micro), home_micro,
+                ),
+                away_micro: build_prematch_tactical_packet(
+                    runtime, representative_state(away_micro), away_micro,
+                ),
+            }
+            return packets
+        except Exception as exc:
+            failed = dict(unavailable)
+            failed["reason"] = f"world_model_error:{type(exc).__name__}"
+            return {home_micro: dict(failed), away_micro: dict(failed)}
 
     @staticmethod
     def _log_match_tactics(

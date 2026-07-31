@@ -4,6 +4,7 @@ import json
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from src.match_engine.cognitive.config import CognitiveMatchConfig
 from src.match_engine.cognitive.events import CognitiveTriggerEvent, ENTITY_TIER_COACH
@@ -17,10 +18,14 @@ from src.match_engine.state import (
 )
 from src.match_engine.world_model.decision_support import (
     COACH_ACTIONS,
+    PREMATCH_TACTICAL_CANDIDATES,
     build_coach_decision_packet,
+    build_prematch_tactical_packet,
 )
 from src.match_engine.world_model.observation import OBS_DIM
 from src.match_engine.world_model.probabilistic import ProbabilisticFuture
+from src.simulation.llm_engine import SimulationLLM
+from src.simulation.tactics_sync import reconcile_world_model_tactical_choice
 
 
 def _state():
@@ -86,6 +91,79 @@ def test_decision_packet_closes_recommendation_when_quality_gate_is_closed():
     assert not packet["available"]
     assert packet["reason"] == "quality_gate_closed"
     assert packet["recommended_action"] == "none"
+
+
+def test_prematch_packet_ranks_auditable_tactical_policy_mixtures():
+    packet = build_prematch_tactical_packet(_Runtime(), _state(), "Home")
+    assert packet["available"]
+    assert packet["evaluation_scope"] == "short_horizon_tactical_policy_proxy"
+    assert len(packet["candidates"]) == len(PREMATCH_TACTICAL_CANDIDATES)
+    assert packet["recommended_tactical_preset"] in PREMATCH_TACTICAL_CANDIDATES
+    for candidate in packet["candidates"]:
+        assert sum(candidate["policy_action_weights"].values()) == pytest.approx(1.0)
+        assert 0.0 <= candidate["uncertainty"] <= 1.0
+        assert 0.0 <= candidate["fatigue_cost_proxy"] <= 1.0
+
+
+def test_prematch_packet_closes_quality_gate_without_model_confidence():
+    packet = build_prematch_tactical_packet(
+        _Runtime(confidence=0.0), _state(), "Home",
+    )
+    assert not packet["available"]
+    assert packet["reason"] == "quality_gate_closed"
+    assert packet["recommended_tactical_preset"] == "none"
+
+
+def test_tactical_choice_is_constrained_to_evaluated_candidates():
+    packet = build_prematch_tactical_packet(
+        _Runtime(), _state(), "Home",
+        candidate_presets=("balanced", "low_block"),
+    )
+    reconciled = reconcile_world_model_tactical_choice(
+        {
+            "tactical_preset": "route_one",
+            "world_model_rationale": "x" * 500,
+        },
+        packet,
+    )
+    assert reconciled["tactical_preset"] == packet["recommended_tactical_preset"]
+    assert reconciled["world_model_audit"]["selection_constrained"]
+    assert len(reconciled["world_model_rationale"]) == 300
+
+
+class _PromptGateway:
+    def __init__(self):
+        self.client = object()
+        self.config = SimpleNamespace(model="fake", timeout_s=1, max_retries=1)
+        self.user_prompt = ""
+
+    def complete(self, system_prompt, user_prompt, **kwargs):
+        self.user_prompt = user_prompt
+        return json.dumps({
+            "formation": "4-3-3",
+            "style": "balanced",
+            "tactical_preset": "balanced",
+            "reasoning": "Use the bounded evidence.",
+            "controls": {},
+            "world_model_rationale": "The quality gate is open.",
+        })
+
+    @staticmethod
+    def extract_json_object(content):
+        return json.loads(content)
+
+
+def test_prematch_llm_prompt_receives_world_model_packet():
+    gateway = _PromptGateway()
+    llm = SimulationLLM(gateway=gateway)
+    packet = build_prematch_tactical_packet(_Runtime(), _state(), "Home")
+    response = json.loads(llm.coach_decide_tactics(
+        "Home", "ready", "Away", "tired",
+        world_model_decision_support=packet,
+    ))
+    assert "WORLD_MODEL_DECISION_SUPPORT" in gateway.user_prompt
+    assert packet["recommended_tactical_preset"] in gateway.user_prompt
+    assert response["world_model_rationale"] == "The quality gate is open."
 
 
 class _LLM:

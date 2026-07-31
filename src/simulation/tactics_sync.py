@@ -7,7 +7,11 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import numpy as np
 
-from src.match_engine.tactical_catalog import TACTICAL_PRESETS, infer_archetype_from_text
+from src.match_engine.tactical_catalog import (
+    TACTICAL_PRESETS,
+    infer_archetype_from_text,
+    resolve_tactical_preset,
+)
 from src.match_engine.tactical_profile import (
     build_tactical_vector_for_agent,
     legacy_controls_from_vector,
@@ -29,12 +33,60 @@ def parse_coach_tactics_payload(raw: Any) -> Dict[str, Any]:
     return {}
 
 
-def apply_coach_tactics_from_llm(agent: "SocietyAgent", tactics_payload: Any) -> Dict[str, Any]:
+def reconcile_world_model_tactical_choice(
+    tactics: Dict[str, Any],
+    decision_support: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Constrain an evidence-backed LLM choice to evaluated tactical candidates."""
+    data = dict(tactics or {})
+    packet = decision_support or {}
+    available = bool(packet.get("available"))
+    candidates = {
+        resolve_tactical_preset(item.get("tactical_preset"))
+        for item in packet.get("candidates", [])
+        if isinstance(item, dict) and item.get("tactical_preset")
+    }
+    recommended = resolve_tactical_preset(
+        packet.get("recommended_tactical_preset")
+    )
+    requested = resolve_tactical_preset(data.get("tactical_preset"))
+    selected = requested
+    constrained = False
+    if available and candidates and requested not in candidates:
+        selected = recommended if recommended in candidates else sorted(candidates)[0]
+        constrained = True
+    if available and candidates:
+        data["tactical_preset"] = selected
+    rationale = str(data.get("world_model_rationale", "") or "")[:300]
+    if rationale:
+        data["world_model_rationale"] = rationale
+    data["world_model_audit"] = {
+        "evidence_available": available,
+        "evidence_reason": str(packet.get("reason", "not_provided")),
+        "recommended_tactical_preset": recommended if available else "none",
+        "requested_tactical_preset": requested,
+        "selected_tactical_preset": selected,
+        "disagreed_with_recommendation": bool(
+            available and selected != recommended
+        ),
+        "selection_constrained": constrained,
+    }
+    return data
+
+
+def apply_coach_tactics_from_llm(
+    agent: "SocietyAgent",
+    tactics_payload: Any,
+    *,
+    decision_support: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
     Apply formation, style text, controls, and optional tactical_preset to agent + full vector.
     Returns parsed dict for logging.
     """
-    data = parse_coach_tactics_payload(tactics_payload)
+    data = reconcile_world_model_tactical_choice(
+        parse_coach_tactics_payload(tactics_payload), decision_support,
+    )
     if data.get("formation"):
         agent.formation = str(data["formation"]).split(" - ")[0].strip()
     style = str(data.get("style", ""))
@@ -49,8 +101,6 @@ def apply_coach_tactics_from_llm(agent: "SocietyAgent", tactics_payload: Any) ->
     preset = str(data.get("tactical_preset", "") or "")
     cp = getattr(agent, "coach_profile", None)
     if cp is not None and preset:
-        from src.match_engine.tactical_catalog import resolve_tactical_preset
-
         resolved = resolve_tactical_preset(preset)
         cp.preferred_preset = resolved
         agent._tactical_preset_locked = True

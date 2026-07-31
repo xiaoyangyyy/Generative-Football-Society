@@ -79,16 +79,34 @@ class SimulationLLM:
             temperature=temperature,
         )
 
-    def coach_decide_tactics(self, team_name, my_info, opp_name, opp_info):
+    def coach_decide_tactics(
+        self,
+        team_name,
+        my_info,
+        opp_name,
+        opp_info,
+        world_model_decision_support=None,
+    ):
         system = f"""You are the Head Coach of {team_name}.
         GAME THEORY: infer opponent tendencies and pick formation/controls to exploit weaknesses.
+        WORLD MODEL: when a decision packet is supplied, treat it as uncertain,
+        short-horizon evidence rather than a full-match forecast. Select only one
+        evaluated tactical candidate when its quality gate is open. You may
+        disagree with its recommendation, but explain the opponent-specific reason.
         Reasoning rules (required):
         - At most 3 sentences in "reasoning".
         - No arithmetic of stat numbers (no "0.78 - 0.24", no "Correction:", no "Wait,", no "Re-evaluating").
         - Qualitative comparisons only (e.g. "we are fresher" / "they look fragile"), not recalculated decimals.
         - One coherent narrative; never publicly revise your own line mid-answer."""
+        decision_packet = json.dumps(
+            world_model_decision_support or {
+                "available": False, "reason": "not_provided",
+            },
+            ensure_ascii=False,
+        )
         user = f"""MY STATE: {my_info}
         OPPONENT: {opp_name} | STATE: {opp_info}
+        WORLD_MODEL_DECISION_SUPPORT: {decision_packet}
         Return STRICT JSON format:
         {{
           "formation": "X-Y-Z",
@@ -107,7 +125,8 @@ class SimulationLLM:
             "build_up_short": 0.0-1.0,
             "high_press": 0.0-1.0,
             "low_block": 0.0-1.0
-          }}
+          }},
+          "world_model_rationale": "brief evidence-based explanation, or why the quality gate is closed"
         }}
         tactical_preset and tactical_hints are optional; controls are required."""
         raw = self._call_llm(system, user, json_mode=True, temperature=0.55)
@@ -302,7 +321,14 @@ Explain likely social and tactical consequences in 4-8 bullet points."""
 class NullSimulationLLM:
     """Deterministic no-op LLM for calibration / narrative-off tournament runs."""
 
-    def coach_decide_tactics(self, team_name, my_info, opp_name, opp_info):
+    def coach_decide_tactics(
+        self,
+        team_name,
+        my_info,
+        opp_name,
+        opp_info,
+        world_model_decision_support=None,
+    ):
         return json.dumps(
             {
                 "formation": "4-3-3",
