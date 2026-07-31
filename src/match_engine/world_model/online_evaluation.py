@@ -153,19 +153,27 @@ def aggregate_online_calibration(
         min_samples=min_residual_samples,
         outcome_family="regime",
     )
-    checkpoint_signatures = sorted({
-        str(record.get("checkpoint_signature"))
+    memory_scopes = sorted({
+        (
+            str(record.get("checkpoint_signature")),
+            str(record.get(
+                "environment_signature", "environment_unspecified",
+            )),
+        )
         for records in policy_record_clusters
         for record in records
         if record.get("checkpoint_signature")
     })
     residual_memory_profiles = {
-        signature: compile_contextual_residual_memory(
-            logs,
-            checkpoint_signature=signature,
-            min_samples=min_residual_samples,
-        ).summary()
-        for signature in checkpoint_signatures
+        f"{checkpoint_signature}|{environment_signature}": (
+            compile_contextual_residual_memory(
+                logs,
+                checkpoint_signature=checkpoint_signature,
+                environment_signature=environment_signature,
+                min_samples=min_residual_samples,
+            ).summary()
+        )
+        for checkpoint_signature, environment_signature in memory_scopes
     }
     gates["randomized_policy_adoption"] = (
         randomized_effect["ready"] if require_policy_effect else True
@@ -209,7 +217,7 @@ def aggregate_online_calibration(
             "required_policy_horizon_key": required_horizon_key,
             "required_policy_outcome": required_outcome,
             "world_model_outcome_calibration": outcome_calibration,
-            "contextual_residual_memory_by_checkpoint": (
+            "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
         },
@@ -226,5 +234,6 @@ def aggregate_online_calibration(
             "Randomized bridge effects are causal only for action selection inside this simulator.",
             "Short-horizon outcome uncertainty is clustered by match when multiple logs exist.",
             "Outcome forecast trust is checkpoint- and policy-regime-specific.",
+            "Residual memory is isolated by checkpoint and policy-environment fingerprint.",
         ],
     }

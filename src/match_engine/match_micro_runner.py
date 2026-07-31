@@ -67,9 +67,12 @@ def _resolve_cognitive_layer(
     executor = CognitiveExecutor(
         cog_cfg, llm, use_llm=bool(llm),
         world_model_runtime=world_model_runtime,
+        policy_environment_signature=(
+            _policy_environment_signature(cfg, cog_cfg)
+        ),
         outcome_residual_memory=(
             _load_policy_residual_memory(
-                base_dir, world_model_runtime, cog_cfg,
+                base_dir, world_model_runtime, cfg, cog_cfg,
             )
             if world_model_runtime is not None else None
         ),
@@ -77,7 +80,17 @@ def _resolve_cognitive_layer(
     return bus, executor
 
 
-def _load_policy_residual_memory(base_dir, world_model_runtime, cog_cfg):
+def _policy_environment_signature(cfg, cog_cfg):
+    from src.match_engine.world_model.residual_memory import (
+        policy_environment_signature,
+    )
+
+    return policy_environment_signature(cfg, cog_cfg)
+
+
+def _load_policy_residual_memory(
+    base_dir, world_model_runtime, cfg, cog_cfg,
+):
     from src.match_engine.world_model.residual_memory import (
         load_contextual_residual_memory,
     )
@@ -87,6 +100,7 @@ def _load_policy_residual_memory(base_dir, world_model_runtime, cog_cfg):
         checkpoint_signature=str(getattr(
             world_model_runtime, "checkpoint_signature", "runtime_unspecified",
         )),
+        environment_signature=_policy_environment_signature(cfg, cog_cfg),
         min_samples=cog_cfg.world_model_residual_min_samples,
     )
 

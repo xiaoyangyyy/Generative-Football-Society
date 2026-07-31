@@ -112,6 +112,28 @@ def test_decision_packet_closes_recommendation_when_quality_gate_is_closed():
     assert packet["recommended_action"] == "none"
 
 
+def test_decision_packet_rejects_incompatible_residual_memory():
+    class _IncompatibleMemory:
+        checkpoint_signature = "different-checkpoint"
+        environment_signature = "env-a"
+
+        def calibrate(self, prediction, **kwargs):
+            raise AssertionError("incompatible memory must not be consulted")
+
+    packet = build_coach_decision_packet(
+        _Runtime(),
+        _state(),
+        "Home",
+        residual_memory=_IncompatibleMemory(),
+        environment_signature="env-b",
+    )
+
+    assert packet["available"]
+    assert packet["contextual_residual_memory"]["reason"] == (
+        "checkpoint_mismatch"
+    )
+
+
 def test_prematch_packet_ranks_auditable_tactical_policy_mixtures():
     packet = build_prematch_tactical_packet(_Runtime(), _state(), "Home")
     assert packet["available"]
@@ -332,7 +354,11 @@ def test_cross_match_residual_memory_reaches_llm_and_policy_bridge():
             return output
 
         def summary(self):
-            return {"active_groups": 3, "residual_rows": 24}
+            return {
+                "active_groups": 3,
+                "residual_rows": 24,
+                "drift": {"status": "watch"},
+            }
 
     llm = _LLM()
     executor = CognitiveExecutor(
@@ -350,6 +376,9 @@ def test_cross_match_residual_memory_reaches_llm_and_policy_bridge():
     ), state)
     adoption = state._wm_coach_decision_adoption[-1]
     assert record.plan["world_model_residual_memory_factor"] == 0.25
+    assert record.plan["world_model_residual_memory_drift"]["status"] == (
+        "watch"
+    )
     assert adoption["intervention_strength"] < 0.09
     packet = llm.facts["world_model_decision_support"]
     assert packet["contextual_residual_memory"]["active_groups"] == 3

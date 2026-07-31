@@ -249,6 +249,32 @@ hard-bounded to `±0.10` in candidate ranking, and memory trust can only reduce
 the execution bridge. Conformal coverage relies on historical exchangeability
 and should be re-audited under simulator, checkpoint, or policy drift.
 
+Checkpoint identity alone is not enough: every decision now also carries a
+SHA-256 policy-environment fingerprint over the complete micro-match and
+cognitive configurations. Residuals are compiled only when both checkpoint and
+environment fingerprints match, so a changed action temperature, physics
+constant, cognitive cadence, experiment rate, or horizon cannot silently borrow
+corrections from an incompatible regime.
+
+The residual stream is continuously checked using two adjacent rolling windows
+(up to 16 observations each). The monitor compares standardized mean shift,
+residual-scale and RMSE ratios, a two-sample KS distance, and total-variation
+drift across zone, score state, and match phase. It exposes three operational
+states:
+
+- `stable`: apply the validated correction and conformal interval normally.
+- `watch`: halve the point correction, widen the interval by 50%, and cap
+  cross-match memory trust at `0.75`.
+- `quarantined`: remove the point correction entirely and cap memory trust at
+  `0.50`; the raw checkpoint forecast remains visible to the LLM.
+
+This state is part of the LLM evidence packet, the adopted-decision audit, and
+the aggregate online report. Quarantine is not permanent: as new observations
+arrive, the two rolling windows move forward; once both describe the new stable
+regime, memory returns to `stable`. These thresholds are simulator safety
+defaults rather than claims of real-football statistical validity and must be
+recalibrated for materially different data rates or utility scales.
+
 These estimates still do not establish long-horizon match improvement or real
 football validity. Aggregate experiments should keep the checkpoint, control
 rate, tactics, and simulator configuration fixed.

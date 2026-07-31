@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -26,10 +27,12 @@ class ResidualCorrection:
 @dataclass
 class ContextualResidualMemory:
     checkpoint_signature: str
+    environment_signature: str
     groups: dict[tuple[str, ...], ResidualCorrection]
     rows: int
     source_logs: int
     min_samples: int
+    drift: dict[str, Any]
 
     def _keys(self, context: dict[str, Any], action: str, horizon: str):
         team = str(context.get("team_id", "unknown"))
@@ -56,33 +59,58 @@ class ContextualResidualMemory:
         output = dict(prediction)
         raw = float(output.get("raw_policy_utility", output["policy_utility"]))
         output["raw_policy_utility"] = raw
+        if self.drift["status"] == "quarantined":
+            output["policy_utility"] = raw
+            output["residual_memory"] = {
+                "scope": "quarantined_distribution_drift",
+                "samples": self.rows,
+                "trust_factor": 0.5,
+                "checkpoint_signature": self.checkpoint_signature,
+                "environment_signature": self.environment_signature,
+                "drift": self.drift,
+            }
+            output["residual_memory_trust_factor"] = 0.5
+            return output
         for key in self._keys(context, str(action), str(horizon_key)):
             correction = self.groups.get(key)
             if correction is None:
                 continue
-            corrected = raw + correction.bias
+            watch = self.drift["status"] == "watch"
+            bias_scale = 0.5 if watch else 1.0
+            interval_scale = 1.5 if watch else 1.0
+            corrected = raw + bias_scale * correction.bias
+            trust = min(
+                correction.trust_factor,
+                0.75 if watch else 1.0,
+            )
             output["policy_utility"] = corrected
             output["residual_memory"] = {
                 "scope": correction.scope,
                 "samples": correction.samples,
                 "calibration_samples": correction.calibration_samples,
-                "bias_correction": correction.bias,
+                "bias_correction": bias_scale * correction.bias,
                 "interval_90": [
-                    corrected - correction.interval_radius_90,
-                    corrected + correction.interval_radius_90,
+                    corrected - interval_scale * correction.interval_radius_90,
+                    corrected + interval_scale * correction.interval_radius_90,
                 ],
-                "interval_radius_90": correction.interval_radius_90,
+                "interval_radius_90": (
+                    interval_scale * correction.interval_radius_90
+                ),
                 "validation_skill_vs_raw": correction.validation_skill_vs_raw,
-                "trust_factor": correction.trust_factor,
+                "trust_factor": trust,
                 "checkpoint_signature": self.checkpoint_signature,
+                "environment_signature": self.environment_signature,
+                "drift": self.drift,
             }
-            output["residual_memory_trust_factor"] = correction.trust_factor
+            output["residual_memory_trust_factor"] = trust
             return output
         output["residual_memory"] = {
             "scope": "insufficient_contextual_history",
             "samples": 0,
             "trust_factor": 1.0,
             "checkpoint_signature": self.checkpoint_signature,
+            "environment_signature": self.environment_signature,
+            "drift": self.drift,
         }
         output["residual_memory_trust_factor"] = 1.0
         return output
@@ -92,16 +120,19 @@ class ContextualResidualMemory:
         for correction in self.groups.values():
             scopes[correction.scope] = scopes.get(correction.scope, 0) + 1
         return {
-            "version": 1,
+            "version": 2,
             "checkpoint_signature": self.checkpoint_signature,
+            "environment_signature": self.environment_signature,
             "source_logs": self.source_logs,
             "residual_rows": self.rows,
             "active_groups": len(self.groups),
             "groups_by_scope": scopes,
             "minimum_samples": self.min_samples,
+            "drift": self.drift,
             "policy": (
-                "Use only same-checkpoint historical residuals; corrections "
-                "and trust remain advisory and bounded."
+                "Use only same-checkpoint and same-policy-environment "
+                "historical residuals; corrections and trust remain advisory "
+                "and bounded."
             ),
         }
 
@@ -136,6 +167,7 @@ def _residual_rows(
     logs: Iterable[dict[str, Any]],
     *,
     checkpoint_signature: str,
+    environment_signature: str,
 ) -> list[dict[str, Any]]:
     rows = []
     for payload in logs:
@@ -144,6 +176,10 @@ def _residual_rows(
             if str(record.get("checkpoint_signature")) != checkpoint_signature:
                 continue
             if int(record.get("policy_utility_version", 0)) != 1:
+                continue
+            if str(record.get(
+                "environment_signature", "environment_unspecified",
+            )) != environment_signature:
                 continue
             baseline = record.get("outcome_baseline") or {}
             team = str(record.get("team_id", "unknown"))
@@ -189,6 +225,118 @@ def _residual_rows(
                     "uncertainty": float(np.clip(uncertainty, 0.05, 1.0)),
                 })
     return rows
+
+
+def policy_environment_signature(micro_cfg, cognitive_cfg) -> str:
+    """Fingerprint decision-relevant simulator and bridge settings."""
+    payload = {
+        "policy_utility_version": 1,
+        # Conservative isolation is intentional: physics, scheduling, affective
+        # coupling, and cognitive cadence can all alter downstream policy value.
+        "micro": asdict(micro_cfg),
+        "cognitive": asdict(cognitive_cfg),
+    }
+    encoded = json.dumps(
+        payload, sort_keys=True, default=str, separators=(",", ":"),
+    ).encode("utf-8")
+    return "policy-env:" + hashlib.sha256(encoded).hexdigest()[:24]
+
+
+def _total_variation(
+    reference: list[dict[str, Any]],
+    recent: list[dict[str, Any]],
+    key: str,
+) -> float:
+    values = sorted({
+        str(row["context"].get(key, "unknown"))
+        for row in [*reference, *recent]
+    })
+    if not values:
+        return 0.0
+    return 0.5 * sum(abs(
+        sum(str(row["context"].get(key, "unknown")) == value for row in reference)
+        / max(1, len(reference))
+        - sum(str(row["context"].get(key, "unknown")) == value for row in recent)
+        / max(1, len(recent))
+    ) for value in values)
+
+
+def detect_residual_drift(
+    rows: list[dict[str, Any]],
+    *,
+    minimum_rows: int = 16,
+) -> dict[str, Any]:
+    if len(rows) < max(8, int(minimum_rows)):
+        return {
+            "status": "insufficient_history",
+            "samples": len(rows),
+            "minimum_samples": max(8, int(minimum_rows)),
+            "memory_trust_ceiling": 1.0,
+        }
+    window = min(16, len(rows) // 2)
+    reference = rows[-2 * window:-window]
+    recent = rows[-window:]
+    reference_residual = np.asarray([
+        row["actual"] - row["predicted"] for row in reference
+    ], dtype=float)
+    recent_residual = np.asarray([
+        row["actual"] - row["predicted"] for row in recent
+    ], dtype=float)
+    reference_scale = max(0.05, float(np.std(reference_residual)))
+    recent_scale = max(0.05, float(np.std(recent_residual)))
+    mean_shift = abs(float(
+        np.mean(recent_residual) - np.mean(reference_residual)
+    )) / reference_scale
+    scale_ratio = max(
+        recent_scale / reference_scale,
+        reference_scale / recent_scale,
+    )
+    reference_rmse = math.sqrt(float(np.mean(np.square(reference_residual))))
+    recent_rmse = math.sqrt(float(np.mean(np.square(recent_residual))))
+    rmse_ratio = recent_rmse / max(0.05, reference_rmse)
+    combined = np.sort(np.concatenate([reference_residual, recent_residual]))
+    ks_distance = max((
+        abs(
+            float(np.mean(reference_residual <= threshold))
+            - float(np.mean(recent_residual <= threshold))
+        )
+        for threshold in combined
+    ), default=0.0)
+    context_keys = ("zone", "score_state", "match_phase")
+    context_tv = float(np.mean([
+        _total_variation(reference, recent, key) for key in context_keys
+    ]))
+    quarantined = (
+        mean_shift > 3.0
+        or rmse_ratio > 3.0
+        or (ks_distance > 0.55 and rmse_ratio > 1.5)
+    )
+    watch = (
+        mean_shift > 1.5
+        or scale_ratio > 2.0
+        or rmse_ratio > 1.75
+        or ks_distance > 0.40
+        or context_tv > 0.45
+    )
+    status = "quarantined" if quarantined else "watch" if watch else "stable"
+    return {
+        "status": status,
+        "samples": len(rows),
+        "window_samples": window,
+        "standardized_mean_shift": mean_shift,
+        "scale_ratio": scale_ratio,
+        "rmse_ratio": rmse_ratio,
+        "ks_distance": ks_distance,
+        "context_total_variation": context_tv,
+        "memory_trust_ceiling": (
+            0.5 if status == "quarantined"
+            else 0.75 if status == "watch"
+            else 1.0
+        ),
+        "recovery_policy": (
+            "Re-evaluate adjacent rolling windows as fresh matches arrive."
+        ),
+    }
 
 
 def _fit_group(
@@ -260,13 +408,17 @@ def compile_contextual_residual_memory(
     logs: Iterable[dict[str, Any]],
     *,
     checkpoint_signature: str,
+    environment_signature: str = "environment_unspecified",
     min_samples: int = 8,
 ) -> ContextualResidualMemory:
     payloads = list(logs)
     minimum = max(8, int(min_samples))
     rows = _residual_rows(
-        payloads, checkpoint_signature=checkpoint_signature,
+        payloads,
+        checkpoint_signature=checkpoint_signature,
+        environment_signature=environment_signature,
     )
+    drift = detect_residual_drift(rows)
     grouped: dict[tuple[str, ...], list[dict[str, Any]]] = {}
     for row in rows:
         for key in _contextual_keys(row):
@@ -280,10 +432,12 @@ def compile_contextual_residual_memory(
             groups[key] = correction
     return ContextualResidualMemory(
         checkpoint_signature=checkpoint_signature,
+        environment_signature=environment_signature,
         groups=groups,
         rows=len(rows),
         source_logs=len(payloads),
         min_samples=minimum,
+        drift=drift,
     )
 
 
@@ -291,6 +445,7 @@ def load_contextual_residual_memory(
     base_dir: str | Path,
     *,
     checkpoint_signature: str,
+    environment_signature: str = "environment_unspecified",
     min_samples: int = 8,
 ) -> ContextualResidualMemory:
     log_dir = Path(base_dir) / "data" / "persistence" / "cognitive_log"
@@ -306,5 +461,6 @@ def load_contextual_residual_memory(
     return compile_contextual_residual_memory(
         payloads,
         checkpoint_signature=checkpoint_signature,
+        environment_signature=environment_signature,
         min_samples=min_samples,
     )

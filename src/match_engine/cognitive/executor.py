@@ -152,12 +152,14 @@ class CognitiveExecutor:
         use_llm: bool = True,
         world_model_runtime=None,
         outcome_residual_memory=None,
+        policy_environment_signature: str = "environment_unspecified",
     ) -> None:
         self.cfg = cfg
         self.llm = llm
         self.use_llm = use_llm and llm is not None
         self.world_model_runtime = world_model_runtime
         self.outcome_residual_memory = outcome_residual_memory
+        self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
             Path(cfg.cache_dir).mkdir(parents=True, exist_ok=True)
@@ -268,6 +270,7 @@ class CognitiveExecutor:
                         self.cfg.world_model_residual_min_samples
                     ),
                     residual_memory=self.outcome_residual_memory,
+                    environment_signature=self.policy_environment_signature,
                 )
             )
 
@@ -397,6 +400,9 @@ class CognitiveExecutor:
                     checkpoint_signature=str(packet.get(
                         "checkpoint_signature", "runtime_unspecified"
                     )),
+                    environment_signature=str(packet.get(
+                        "environment_signature", "environment_unspecified"
+                    )),
                 )
                 if adoption is not None:
                     rec.plan["world_model_adoption_id"] = adoption[
@@ -422,6 +428,11 @@ class CognitiveExecutor:
                     )
                     rec.plan["world_model_residual_memory_factor"] = (
                         residual_memory_factor
+                    )
+                    rec.plan["world_model_residual_memory_drift"] = (
+                        (packet.get("contextual_residual_memory") or {}).get(
+                            "drift", {"status": "unavailable"},
+                        )
                     )
         except Exception as exc:
             rec.error = str(exc)

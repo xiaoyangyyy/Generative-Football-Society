@@ -296,3 +296,46 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
     ]
     assert calibration["overall"]["active"]
     assert calibration["overall"]["trust_factor"] == 1.0
+
+
+def test_online_report_isolates_residual_profiles_by_policy_environment():
+    records = []
+    for environment, residual in (("env-a", 0.1), ("env-b", 0.3)):
+        for _ in range(8):
+            records.append({
+                "checkpoint_signature": "checkpoint-a",
+                "environment_signature": environment,
+                "policy_utility_version": 1,
+                "team_id": "Home",
+                "intervention_actual_action": "pass",
+                "outcome_baseline": {
+                    "opponent_team_id": "Away",
+                    "zone": "middle",
+                    "score_state": "level",
+                    "match_phase": "early",
+                },
+                "multi_horizon_regime_outcomes": {
+                    "60s": {
+                        "policy_utility": residual,
+                        "world_model_prediction": {
+                            "raw_policy_utility": 0.0,
+                            "policy_utility": 0.0,
+                            "uncertainty": 0.2,
+                        },
+                    },
+                },
+            })
+    report = aggregate_online_calibration([{
+        "home": "Home",
+        "away": "Away",
+        "world_model_decision_adoption": {"records": records},
+    }], min_residual_samples=8)
+    profiles = report["decision_adoption"][
+        "contextual_residual_memory_by_policy_environment"
+    ]
+
+    assert set(profiles) == {
+        "checkpoint-a|env-a", "checkpoint-a|env-b",
+    }
+    assert profiles["checkpoint-a|env-a"]["residual_rows"] == 8
+    assert profiles["checkpoint-a|env-b"]["residual_rows"] == 8

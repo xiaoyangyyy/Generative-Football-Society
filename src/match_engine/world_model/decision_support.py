@@ -329,6 +329,7 @@ def build_coach_decision_packet(
     outcome_horizons_s: tuple[float, ...] = (0.0, 60.0, 180.0),
     residual_min_samples: int = 6,
     residual_memory=None,
+    environment_signature: str = "environment_unspecified",
 ) -> dict[str, Any]:
     """Compare strategic candidates without granting the LLM direct state writes."""
     from src.match_engine.world_model.outcome_calibration import (
@@ -349,6 +350,29 @@ def build_coach_decision_packet(
             "candidates": [],
             "policy_outcome_calibration": outcome_calibration,
         }
+    memory_rejection = None
+    if residual_memory is not None:
+        memory_checkpoint = getattr(
+            residual_memory, "checkpoint_signature", None,
+        )
+        memory_environment = getattr(
+            residual_memory, "environment_signature", None,
+        )
+        runtime_checkpoint = str(getattr(
+            runtime, "checkpoint_signature", "runtime_unspecified",
+        ))
+        if (
+            memory_checkpoint is not None
+            and str(memory_checkpoint) != runtime_checkpoint
+        ):
+            memory_rejection = "checkpoint_mismatch"
+            residual_memory = None
+        elif (
+            memory_environment is not None
+            and str(memory_environment) != str(environment_signature)
+        ):
+            memory_rejection = "policy_environment_mismatch"
+            residual_memory = None
     try:
         observation, candidates = _evaluate_action_candidates(
             runtime, state, team_id, horizon_s=horizon_s,
@@ -372,6 +396,7 @@ def build_coach_decision_packet(
             "checkpoint_signature": str(
                 getattr(runtime, "checkpoint_signature", "runtime_unspecified")
             ),
+            "environment_signature": str(environment_signature),
             "horizon_s": float(horizon_s),
             "observation_coverage": observation_coverage(observation),
             "recommended_action": best["action"] if best else "none",
@@ -384,10 +409,12 @@ def build_coach_decision_packet(
             "contextual_residual_memory": (
                 residual_memory.summary()
                 if residual_memory is not None else {
-                    "version": 1,
+                    "version": 2,
                     "active_groups": 0,
                     "residual_rows": 0,
-                    "reason": "no_same_checkpoint_history",
+                    "reason": (
+                        memory_rejection or "no_compatible_history"
+                    ),
                 }
             ),
             "policy": (
