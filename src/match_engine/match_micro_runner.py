@@ -44,6 +44,7 @@ def _resolve_cognitive_layer(
     seed: int,
     home_agent: "SocietyAgent",
     away_agent: "SocietyAgent",
+    world_model_runtime=None,
 ):
     from src.match_engine.cognitive.config import CognitiveMatchConfig
 
@@ -62,7 +63,10 @@ def _resolve_cognitive_layer(
         llm = SimulationLLM()
     except Exception:
         llm = None
-    executor = CognitiveExecutor(cog_cfg, llm, use_llm=bool(llm))
+    executor = CognitiveExecutor(
+        cog_cfg, llm, use_llm=bool(llm),
+        world_model_runtime=world_model_runtime,
+    )
     return bus, executor
 
 
@@ -726,7 +730,10 @@ def run_match_micro_simulation(
     phi_sum_h = 0.0
     phi_sum_a = 0.0
     subs_done: dict = {}
-    cognitive_bus, cognitive_executor = _resolve_cognitive_layer(cfg, seed, home_agent, away_agent)
+    cognitive_bus, cognitive_executor = _resolve_cognitive_layer(
+        cfg, seed, home_agent, away_agent,
+        world_model_runtime=wm_runtime,
+    )
     processed_subs: set = set()
 
     wm_recorder = getattr(home_agent, "_wm_recorder", None) or getattr(away_agent, "_wm_recorder", None)

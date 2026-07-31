@@ -53,6 +53,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
         out["tactical_preset"] = str(plan["tactical_preset"])
     if plan.get("sub_intent"):
         out["sub_intent"] = str(plan["sub_intent"])[:120]
+    action = str(plan.get("world_model_action", "none")).lower()
+    out["world_model_action"] = (
+        action if action in {"hold", "pass", "cross", "shot", "none"}
+        else "none"
+    )
+    if plan.get("world_model_rationale"):
+        out["world_model_rationale"] = str(
+            plan["world_model_rationale"]
+        )[:300]
     return out
 
 

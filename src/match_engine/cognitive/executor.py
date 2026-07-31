@@ -94,10 +94,12 @@ class CognitiveExecutor:
         llm: Optional["SimulationLLM"] = None,
         *,
         use_llm: bool = True,
+        world_model_runtime=None,
     ) -> None:
         self.cfg = cfg
         self.llm = llm
         self.use_llm = use_llm and llm is not None
+        self.world_model_runtime = world_model_runtime
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
             Path(cfg.cache_dir).mkdir(parents=True, exist_ok=True)
@@ -190,6 +192,19 @@ class CognitiveExecutor:
                 if player.player_id == trig.entity_id:
                     trig.facts["player_name"] = player.name
                     break
+        elif trig.entity_tier == ENTITY_TIER_COACH and trig.team_id:
+            from src.match_engine.world_model.decision_support import (
+                build_coach_decision_packet,
+            )
+
+            trig.facts["world_model_decision_support"] = (
+                build_coach_decision_packet(
+                    self.world_model_runtime,
+                    state,
+                    trig.team_id,
+                    horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+                )
+            )
 
         key = _cache_key(trig)
         cached = self._load_cache(key)

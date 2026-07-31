@@ -205,6 +205,10 @@ Rules:
     def coach_in_match_plan(self, team_name: str, facts_ledger: dict, kind: str, context: str = ""):
         system = f"""You are the head coach of {team_name} during a live match.
 FACTS_LEDGER is authoritative. Do NOT invent scores or xG.
+If world_model_decision_support is present, treat it as uncertain model evidence:
+- compare candidates by risk_adjusted_value and effective_confidence;
+- respect quality_gate_closed or available=false;
+- you may disagree, but explain why without inventing outcomes.
 Output JSON only. Adjust tactics with small bounded deltas."""
         user = f"""Trigger: {kind}
 FACTS_LEDGER: {json.dumps(facts_ledger, ensure_ascii=False)}
@@ -221,7 +225,9 @@ Return JSON:
   }},
   "tactical_hints": {{"through_ball_bias": 0-1, "high_press": 0-1, "low_block": 0-1}},
   "tactical_preset": "optional: balanced|gegenpress|possession|counter|low_block|wing_play|direct",
-  "sub_intent": "optional short note"
+  "sub_intent": "optional short note",
+  "world_model_action": "hold|pass|cross|shot|none",
+  "world_model_rationale": "brief explanation tied to uncertainty and candidate evidence"
 }}"""
         return self._call_llm(system, user, json_mode=True, temperature=0.5)
 
