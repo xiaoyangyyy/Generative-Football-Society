@@ -136,6 +136,42 @@ def load_manifest(path: str | Path) -> dict:
     return payload
 
 
+def verify_trace_manifest(
+    manifest: Mapping, *, base_dir: str | Path | None = None,
+) -> Path:
+    """Verify that frozen trace files still match their manifest contract."""
+    root = Path(str(manifest["source_root"]))
+    if not root.is_absolute():
+        root = Path(base_dir or Path.cwd()) / root
+    root = root.resolve()
+    seen_groups: set[str] = set()
+    seen_hashes: set[str] = set()
+    for entry in manifest["files"]:
+        path = (root / str(entry["path"])).resolve()
+        if path.parent != root:
+            raise ValueError(f"Trace path escapes source root: {entry['path']}")
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing trace file: {path}")
+        if entry["group"] in seen_groups:
+            raise ValueError(f"Duplicate trace group: {entry['group']}")
+        seen_groups.add(str(entry["group"]))
+        digest = file_sha256(path)
+        if digest != entry["sha256"]:
+            raise ValueError(f"Trace hash mismatch: {entry['path']}")
+        if digest in seen_hashes:
+            raise ValueError(f"Duplicate trace content: {entry['path']}")
+        seen_hashes.add(digest)
+        if path.stat().st_size != int(entry["bytes"]):
+            raise ValueError(f"Trace size mismatch: {entry['path']}")
+        actual = _inspect_trace(path)
+        expected = tuple(
+            int(entry[name]) for name in ("rows", "passes", "shots", "goals")
+        )
+        if actual != expected:
+            raise ValueError(f"Trace statistics mismatch: {entry['path']}")
+    return root
+
+
 def files_for_split(manifest: Mapping, splits: Iterable[str]) -> set[str]:
     allowed = set(splits)
     if "sealed_test" in allowed and allowed != {"sealed_test"}:

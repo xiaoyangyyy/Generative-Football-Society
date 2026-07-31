@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from pathlib import Path
 
@@ -14,30 +13,18 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.data_engine.dataset_registry import files_for_split, load_manifest, write_json_atomic
+from src.data_engine.dataset_registry import (
+    files_for_split,
+    load_manifest,
+    verify_trace_manifest,
+    write_json_atomic,
+)
+from src.match_engine.world_model.evaluation import (
+    TransitionMetricAccumulator,
+    binary_auc,
+    expected_calibration_error,
+)
 from src.match_engine.world_model.schema import PASS_OUTCOME_INDEX, SHOT_GOAL_INDEX
-
-
-def _ece(prob: np.ndarray, truth: np.ndarray, bins: int = 8) -> float:
-    if not len(prob):
-        return math.nan
-    score = 0.0
-    edges = np.linspace(0.0, 1.0, bins + 1)
-    for low, high in zip(edges[:-1], edges[1:]):
-        mask = (prob >= low) & (prob < high if high < 1.0 else prob <= high)
-        if mask.any():
-            score += float(mask.mean()) * abs(float(prob[mask].mean()) - float(truth[mask].mean()))
-    return score
-
-
-def _auc(prob: np.ndarray, truth: np.ndarray) -> float:
-    positive, negative = prob[truth], prob[~truth]
-    if not len(positive) or not len(negative):
-        return 0.5
-    return float(
-        (positive[:, None] > negative[None, :]).mean()
-        + 0.5 * (positive[:, None] == negative[None, :]).mean()
-    )
 
 
 def _load_rows(trace_dir: Path, names: set[str]) -> dict[str, list[dict]]:
@@ -59,12 +46,12 @@ def main() -> int:
     from src.match_engine.world_model.inference import WorldModelRuntime
 
     manifest = load_manifest(args.manifest)
-    trace_dir = Path(manifest["source_root"])
+    trace_dir = verify_trace_manifest(manifest, base_dir=ROOT)
     sealed = files_for_split(manifest, {"sealed_test"})
     groups = _load_rows(trace_dir, sealed)
     runtime = WorldModelRuntime.load(args.checkpoint)
     horizons = (1, 3, 5, 10)
-    errors = {h: [] for h in horizons}
+    transition_metrics = {h: TransitionMetricAccumulator() for h in horizons}
     pass_prob, pass_true, pass_prior, shot_prob, shot_true = [], [], [], [], []
     starts = 0
     for rows in groups.values():
@@ -73,6 +60,7 @@ def main() -> int:
                 break
             base = rows[start]
             current = np.asarray(base["obs"], dtype=np.float32)
+            initial = current.copy()
             for step in range(1, max(horizons) + 1):
                 index = start + step - 1
                 if index >= len(rows):
@@ -88,9 +76,11 @@ def main() -> int:
                     if action[1] > 0.5:
                         shot_prob.append(output.shot_goal_prob)
                         shot_true.append(action[SHOT_GOAL_INDEX])
-                if step in errors:
+                if step in transition_metrics:
                     target = np.asarray(rows[index]["next_obs"], dtype=np.float32)
-                    errors[step].append(float(np.mean((current - target) ** 2)))
+                    transition_metrics[step].update(
+                        current, target, initial, uncertainty=output.uncertainty,
+                    )
             starts += 1
         if starts >= args.max_starts:
             break
@@ -100,26 +90,31 @@ def main() -> int:
     pred = pp >= runtime.pass_threshold
     tpr = float(pred[pt].mean()) if pt.any() else 0.5
     tnr = float((~pred[~pt]).mean()) if (~pt).any() else 0.5
-    finite_errors = {h: np.asarray(v)[np.isfinite(v)] for h, v in errors.items()}
+    rollout = {str(h): transition_metrics[h].finalize() for h in horizons}
     metrics = {
         "checkpoint": args.checkpoint,
         "dataset_manifest": args.manifest,
         "split": "sealed_test",
         "groups": len(groups),
         "starts": starts,
-        "rollout_mse": {str(h): float(np.mean(v)) if len(v) else None for h, v in finite_errors.items()},
-        "rollout_nonfinite": {str(h): len(errors[h]) - len(finite_errors[h]) for h in horizons},
+        "rollout": rollout,
+        "rollout_mse": {
+            str(h): rollout[str(h)].get("mse") for h in horizons
+        },
+        "rollout_nonfinite": {
+            str(h): rollout[str(h)]["nonfinite"] for h in horizons
+        },
         "pass": {
             "samples": len(pp),
             "balanced_accuracy": 0.5 * (tpr + tnr),
-            "auc": _auc(pp, pt),
+            "auc": binary_auc(pp, pt),
             "brier": float(np.mean((pp - pt) ** 2)),
-            "ece": _ece(pp, pt),
-            "physics_prior_auc": _auc(prior, pt),
+            "ece": expected_calibration_error(pp, pt),
+            "physics_prior_auc": binary_auc(prior, pt),
             "physics_prior_brier": float(np.mean((prior - pt) ** 2)),
-            "physics_prior_ece": _ece(prior, pt),
+            "physics_prior_ece": expected_calibration_error(prior, pt),
         },
-        "shot": {"samples": len(sp), "goals": int(st.sum()), "brier": float(np.mean((sp-st)**2)) if len(sp) else None, "ece": _ece(sp, st)},
+        "shot": {"samples": len(sp), "goals": int(st.sum()), "brier": float(np.mean((sp-st)**2)) if len(sp) else None, "ece": expected_calibration_error(sp, st)},
     }
     enough_shots = len(sp) >= 40 and st.sum() >= 3
     metrics["gates"] = {
