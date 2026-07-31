@@ -11,6 +11,7 @@ from src.match_engine.world_model.action_codec import encode_high_level_action
 from src.match_engine.world_model.schema import observation_coverage
 from src.match_engine.world_model.policy_prediction import (
     build_multi_horizon_policy_predictions,
+    summarize_multi_horizon_predictions,
 )
 from src.match_engine.tactical_catalog import TACTICAL_PRESETS, resolve_tactical_preset
 
@@ -70,10 +71,19 @@ def _evaluate_action_candidates(
     horizon_s: float,
     uncertainty_penalty: float,
     prediction_horizons_s: tuple[float, ...],
+    residual_memory=None,
 ) -> tuple[np.ndarray, list[dict[str, Any]]]:
     """Run the shared short-horizon action counterfactuals once."""
     attacking_home = team_id == state.home.team_id
     observation = runtime.encode_state(state, attacking_home=attacking_home)
+    from src.match_engine.world_model.policy_outcomes import (
+        capture_policy_outcome_baseline,
+    )
+
+    decision_context = capture_policy_outcome_baseline(
+        state, team_id=team_id,
+    )
+    decision_context["team_id"] = str(team_id)
     candidates = []
     for action_name in COACH_ACTIONS:
         target = _candidate_target(state, action_name, attacking_home)
@@ -114,13 +124,30 @@ def _evaluate_action_candidates(
             attacking_home=attacking_home,
             base_horizon_s=horizon_s,
             outcome_horizons_s=prediction_horizons_s,
+            residual_memory=residual_memory,
+            decision_context=decision_context,
         )
+        forecast_summary = summarize_multi_horizon_predictions(
+            multi_horizon_predictions,
+        )
+        forecast_adjustment = (
+            0.20
+            * float(np.clip(
+                forecast_summary["policy_utility"], -0.5, 0.5,
+            ))
+            * float(np.clip(
+                forecast_summary["effective_confidence"], 0.0, 1.0,
+            ))
+        )
+        risk_adjusted += forecast_adjustment
         candidates.append({
             "action": action_name,
             "target": [float(target[0]), float(target[1])],
             "physics_prior": prior,
             "expected_value": finite_float(expected_value, 0.0),
             "risk_adjusted_value": finite_float(risk_adjusted, -1.0),
+            "multi_horizon_forecast_adjustment": forecast_adjustment,
+            "multi_horizon_forecast_summary": forecast_summary,
             "confidence": confidence,
             "effective_confidence": effective_confidence,
             "uncertainty": uncertainty,
@@ -192,6 +219,7 @@ def build_prematch_tactical_packet(
             runtime, state, team_id, horizon_s=horizon_s,
             uncertainty_penalty=uncertainty_penalty,
             prediction_horizons_s=(0.0,),
+            residual_memory=None,
         )
         by_action = {item["action"]: item for item in action_evidence}
         tactical_candidates = []
@@ -257,6 +285,9 @@ def build_prematch_tactical_packet(
             "available": best is not None,
             "reason": "ok" if best is not None else "quality_gate_closed",
             "team_id": team_id,
+            "checkpoint_signature": str(
+                getattr(runtime, "checkpoint_signature", "runtime_unspecified")
+            ),
             "horizon_s": float(horizon_s),
             "evaluation_scope": "short_horizon_tactical_policy_proxy",
             "observation_coverage": observation_coverage(observation),
@@ -297,6 +328,7 @@ def build_coach_decision_packet(
     uncertainty_penalty: float = 0.25,
     outcome_horizons_s: tuple[float, ...] = (0.0, 60.0, 180.0),
     residual_min_samples: int = 6,
+    residual_memory=None,
 ) -> dict[str, Any]:
     """Compare strategic candidates without granting the LLM direct state writes."""
     from src.match_engine.world_model.outcome_calibration import (
@@ -322,6 +354,7 @@ def build_coach_decision_packet(
             runtime, state, team_id, horizon_s=horizon_s,
             uncertainty_penalty=uncertainty_penalty,
             prediction_horizons_s=outcome_horizons_s,
+            residual_memory=residual_memory,
         )
         eligible = [
             candidate for candidate in candidates
@@ -336,6 +369,9 @@ def build_coach_decision_packet(
             "available": best is not None,
             "reason": "ok" if best is not None else "quality_gate_closed",
             "team_id": team_id,
+            "checkpoint_signature": str(
+                getattr(runtime, "checkpoint_signature", "runtime_unspecified")
+            ),
             "horizon_s": float(horizon_s),
             "observation_coverage": observation_coverage(observation),
             "recommended_action": best["action"] if best else "none",
@@ -345,6 +381,15 @@ def build_coach_decision_packet(
             "candidates": candidates,
             "online_calibration": _online_calibration_diagnostics(runtime),
             "policy_outcome_calibration": outcome_calibration,
+            "contextual_residual_memory": (
+                residual_memory.summary()
+                if residual_memory is not None else {
+                    "version": 1,
+                    "active_groups": 0,
+                    "residual_rows": 0,
+                    "reason": "no_same_checkpoint_history",
+                }
+            ),
             "policy": (
                 "Use as uncertain evidence; retain bounded controls and never "
                 "invent score, xG, or outcome facts."

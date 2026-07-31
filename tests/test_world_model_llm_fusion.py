@@ -100,6 +100,7 @@ def test_decision_packet_compares_all_actions_and_recommends_risk_adjusted_best(
             np.isfinite(prediction["policy_utility"])
             for prediction in candidate["multi_horizon_predictions"].values()
         )
+        assert abs(candidate["multi_horizon_forecast_adjustment"]) <= 0.1
 
 
 def test_decision_packet_closes_recommendation_when_quality_gate_is_closed():
@@ -315,3 +316,50 @@ def test_executor_uses_realized_prediction_residuals_to_reduce_bridge_strength()
     assert calibration["by_action_horizon"]["shot"]["180s"][
         "trust_factor"
     ] == 0.25
+
+
+def test_cross_match_residual_memory_reaches_llm_and_policy_bridge():
+    class _Memory:
+        def calibrate(self, prediction, **kwargs):
+            output = dict(prediction)
+            output["raw_policy_utility"] = output["policy_utility"]
+            output["policy_utility"] += 0.05
+            output["residual_memory_trust_factor"] = 0.25
+            output["residual_memory"] = {
+                "scope": "action_horizon",
+                "trust_factor": 0.25,
+            }
+            return output
+
+        def summary(self):
+            return {"active_groups": 3, "residual_rows": 24}
+
+    llm = _LLM()
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(
+            enabled=True, world_model_action_control_rate=0.0,
+        ),
+        llm,
+        world_model_runtime=_Runtime(),
+        outcome_residual_memory=_Memory(),
+    )
+    state = _state()
+    record = executor.process_trigger(CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    ), state)
+    adoption = state._wm_coach_decision_adoption[-1]
+    assert record.plan["world_model_residual_memory_factor"] == 0.25
+    assert adoption["intervention_strength"] < 0.09
+    packet = llm.facts["world_model_decision_support"]
+    assert packet["contextual_residual_memory"]["active_groups"] == 3
+    shot = next(
+        candidate for candidate in packet["candidates"]
+        if candidate["action"] == "shot"
+    )
+    assert shot["multi_horizon_predictions"]["180s"][
+        "residual_memory"
+    ]["scope"] == "action_horizon"
+    assert shot["multi_horizon_forecast_summary"][
+        "contextual_memory_active"
+    ]

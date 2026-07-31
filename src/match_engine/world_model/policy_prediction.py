@@ -8,7 +8,10 @@ import numpy as np
 
 from src.match_engine.math_utils import finite_float
 from src.match_engine.world_model.action_codec import encode_high_level_action
-from src.match_engine.world_model.policy_experiment import policy_horizon_key
+from src.match_engine.world_model.policy_experiment import (
+    policy_horizon_key,
+    policy_horizon_seconds,
+)
 
 
 def _probabilistic_proxy(
@@ -61,6 +64,8 @@ def build_multi_horizon_policy_predictions(
     attacking_home: bool,
     base_horizon_s: float,
     outcome_horizons_s: Iterable[float],
+    residual_memory=None,
+    decision_context: dict[str, Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
     predictions = {}
     for requested in outcome_horizons_s:
@@ -93,11 +98,59 @@ def build_multi_horizon_policy_predictions(
             if isinstance(value, (int, float, np.floating)) else value
             for key, value in prediction.items()
         }
+        horizon_key = policy_horizon_key(requested)
+        if residual_memory is not None:
+            prediction = residual_memory.calibrate(
+                prediction,
+                context=decision_context or {},
+                action=action_name,
+                horizon_key=horizon_key,
+            )
         uncertainty = float(np.clip(
             float(prediction.get("uncertainty", 1.0)), 0.0, 1.0,
         ))
         prediction["effective_confidence"] = float(
-            confidence * (1.0 - uncertainty)
+            confidence
+            * (1.0 - uncertainty)
+            * float(prediction.get("residual_memory_trust_factor", 1.0))
         )
-        predictions[policy_horizon_key(requested)] = prediction
+        predictions[horizon_key] = prediction
     return predictions
+
+
+def summarize_multi_horizon_predictions(
+    predictions: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Collapse forecasts into a bounded, near-term-weighted ranking signal."""
+    if not predictions:
+        return {
+            "policy_utility": 0.0,
+            "effective_confidence": 0.0,
+            "memory_trust_floor": 1.0,
+            "contextual_memory_active": False,
+        }
+    weighted_value = weighted_confidence = total_weight = 0.0
+    memory_factors = []
+    memory_active = False
+    for horizon_key, prediction in predictions.items():
+        horizon_s = policy_horizon_seconds(horizon_key)
+        weight = 1.0 / (1.0 + horizon_s / 60.0)
+        weighted_value += weight * float(prediction.get("policy_utility", 0.0))
+        weighted_confidence += weight * float(
+            prediction.get("effective_confidence", 0.0)
+        )
+        total_weight += weight
+        memory_factors.append(float(
+            prediction.get("residual_memory_trust_factor", 1.0)
+        ))
+        memory_active = memory_active or (
+            (prediction.get("residual_memory") or {}).get("scope")
+            not in {None, "insufficient_contextual_history"}
+        )
+    return {
+        "policy_utility": weighted_value / max(total_weight, 1e-8),
+        "effective_confidence": weighted_confidence / max(total_weight, 1e-8),
+        "memory_trust_floor": min(memory_factors, default=1.0),
+        "contextual_memory_active": memory_active,
+        "horizon_weighting": "inverse_1_plus_minutes",
+    }

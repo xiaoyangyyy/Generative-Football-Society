@@ -14,6 +14,9 @@ from src.match_engine.world_model.policy_experiment import (
 from src.match_engine.world_model.outcome_calibration import (
     policy_outcome_calibration,
 )
+from src.match_engine.world_model.residual_memory import (
+    compile_contextual_residual_memory,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -150,6 +153,20 @@ def aggregate_online_calibration(
         min_samples=min_residual_samples,
         outcome_family="regime",
     )
+    checkpoint_signatures = sorted({
+        str(record.get("checkpoint_signature"))
+        for records in policy_record_clusters
+        for record in records
+        if record.get("checkpoint_signature")
+    })
+    residual_memory_profiles = {
+        signature: compile_contextual_residual_memory(
+            logs,
+            checkpoint_signature=signature,
+            min_samples=min_residual_samples,
+        ).summary()
+        for signature in checkpoint_signatures
+    }
     gates["randomized_policy_adoption"] = (
         randomized_effect["ready"] if require_policy_effect else True
     )
@@ -192,6 +209,9 @@ def aggregate_online_calibration(
             "required_policy_horizon_key": required_horizon_key,
             "required_policy_outcome": required_outcome,
             "world_model_outcome_calibration": outcome_calibration,
+            "contextual_residual_memory_by_checkpoint": (
+                residual_memory_profiles
+            ),
         },
         "gates": gates,
         "ready": all(gates.values()),

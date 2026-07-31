@@ -38,6 +38,7 @@ def register_coach_action_decision(
     outcome_horizons_s: tuple[float, ...] = (0.0, 60.0, 180.0),
     action_predictions: dict[str, dict[str, Any]] | None = None,
     outcome_prediction_trust_factor: float = 1.0,
+    checkpoint_signature: str = "runtime_unspecified",
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -83,6 +84,8 @@ def register_coach_action_decision(
         "decision_id": decision_id,
         "team_id": str(team_id),
         "trigger_kind": str(trigger_kind),
+        "checkpoint_signature": str(checkpoint_signature),
+        "policy_utility_version": 1,
         "created_t_sec": created,
         "expires_t_sec": created + horizon,
         "llm_selected_action": selected,

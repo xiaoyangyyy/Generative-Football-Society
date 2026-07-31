@@ -151,11 +151,13 @@ class CognitiveExecutor:
         *,
         use_llm: bool = True,
         world_model_runtime=None,
+        outcome_residual_memory=None,
     ) -> None:
         self.cfg = cfg
         self.llm = llm
         self.use_llm = use_llm and llm is not None
         self.world_model_runtime = world_model_runtime
+        self.outcome_residual_memory = outcome_residual_memory
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
             Path(cfg.cache_dir).mkdir(parents=True, exist_ok=True)
@@ -265,6 +267,7 @@ class CognitiveExecutor:
                     residual_min_samples=(
                         self.cfg.world_model_residual_min_samples
                     ),
+                    residual_memory=self.outcome_residual_memory,
                 )
             )
 
@@ -342,9 +345,25 @@ class CognitiveExecutor:
                         ),
                     )
                 )
+                prediction_horizons = selected_candidate.get(
+                    "multi_horizon_predictions", {}
+                )
+                memory_factors = [
+                    float(prediction.get(
+                        "residual_memory_trust_factor", 1.0,
+                    ))
+                    for prediction in prediction_horizons.values()
+                ]
+                residual_memory_factor = (
+                    min(memory_factors) if memory_factors else 1.0
+                )
                 intervention_strength = _policy_intervention_strength(
                     rec.plan, packet, self.cfg,
-                ) * reliability_factor * prediction_factor
+                ) * (
+                    reliability_factor
+                    * prediction_factor
+                    * residual_memory_factor
+                )
                 adoption = register_coach_action_decision(
                     state,
                     team_id=trig.team_id,
@@ -375,6 +394,9 @@ class CognitiveExecutor:
                         if candidate.get("action")
                     },
                     outcome_prediction_trust_factor=prediction_factor,
+                    checkpoint_signature=str(packet.get(
+                        "checkpoint_signature", "runtime_unspecified"
+                    )),
                 )
                 if adoption is not None:
                     rec.plan["world_model_adoption_id"] = adoption[
@@ -397,6 +419,9 @@ class CognitiveExecutor:
                     )
                     rec.plan["world_model_prediction_trust_audit"] = (
                         prediction_audit
+                    )
+                    rec.plan["world_model_residual_memory_factor"] = (
+                        residual_memory_factor
                     )
         except Exception as exc:
             rec.error = str(exc)

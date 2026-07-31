@@ -49,6 +49,27 @@ def capture_policy_outcome_baseline(
     attacking_home = str(team_id) == str(state.home.team_id)
     team = state.home if attacking_home else state.away
     opponent = state.away if attacking_home else state.home
+    oriented_x = (
+        float(state.ball.position[0])
+        if attacking_home else 1.0 - float(state.ball.position[0])
+    )
+    zone = (
+        "defensive" if oriented_x < 0.34
+        else "middle" if oriented_x < 0.67
+        else "final_third"
+    )
+    goal_diff = float(team.score - opponent.score)
+    score_state = (
+        "leading" if goal_diff > 0
+        else "trailing" if goal_diff < 0
+        else "level"
+    )
+    clock_seconds = float(getattr(state, "clock_seconds", 0.0))
+    match_phase = (
+        "early" if clock_seconds < 30.0 * 60.0
+        else "middle" if clock_seconds < 70.0 * 60.0
+        else "late"
+    )
     return {
         "ball_x": float(state.ball.position[0]),
         "xg_for": float(
@@ -57,7 +78,12 @@ def capture_policy_outcome_baseline(
         "xg_against": float(
             state.micro_xg_away if attacking_home else state.micro_xg_home
         ),
-        "goal_diff": float(team.score - opponent.score),
+        "goal_diff": goal_diff,
+        "opponent_team_id": str(opponent.team_id),
+        "zone": zone,
+        "score_state": score_state,
+        "match_phase": match_phase,
+        "clock_seconds": clock_seconds,
     }
 
 

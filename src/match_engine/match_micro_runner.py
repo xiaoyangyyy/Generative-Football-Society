@@ -45,6 +45,7 @@ def _resolve_cognitive_layer(
     home_agent: "SocietyAgent",
     away_agent: "SocietyAgent",
     world_model_runtime=None,
+    base_dir: str = "",
 ):
     from src.match_engine.cognitive.config import CognitiveMatchConfig
 
@@ -66,8 +67,28 @@ def _resolve_cognitive_layer(
     executor = CognitiveExecutor(
         cog_cfg, llm, use_llm=bool(llm),
         world_model_runtime=world_model_runtime,
+        outcome_residual_memory=(
+            _load_policy_residual_memory(
+                base_dir, world_model_runtime, cog_cfg,
+            )
+            if world_model_runtime is not None else None
+        ),
     )
     return bus, executor
+
+
+def _load_policy_residual_memory(base_dir, world_model_runtime, cog_cfg):
+    from src.match_engine.world_model.residual_memory import (
+        load_contextual_residual_memory,
+    )
+
+    return load_contextual_residual_memory(
+        base_dir,
+        checkpoint_signature=str(getattr(
+            world_model_runtime, "checkpoint_signature", "runtime_unspecified",
+        )),
+        min_samples=cog_cfg.world_model_residual_min_samples,
+    )
 
 
 def _process_cognitive_tick(
@@ -778,6 +799,7 @@ def run_match_micro_simulation(
     cognitive_bus, cognitive_executor = _resolve_cognitive_layer(
         cfg, seed, home_agent, away_agent,
         world_model_runtime=wm_runtime,
+        base_dir=base_dir,
     )
     processed_subs: set = set()
 

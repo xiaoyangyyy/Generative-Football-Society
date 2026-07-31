@@ -155,6 +155,11 @@ def test_v6_graph_checkpoint_round_trip(tmp_path):
     loaded, _, meta = load_checkpoint(str(path))
     assert loaded.checkpoint_version == 6
     assert meta["quality"] == 0.0
+    from src.match_engine.world_model.inference import WorldModelRuntime
+
+    runtime = WorldModelRuntime.load(str(path))
+    assert runtime.checkpoint_signature.startswith("sha256:")
+    assert len(runtime.checkpoint_signature) == len("sha256:") + 64
 
 
 def test_v6_zero_pass_residual_preserves_physics_prior():

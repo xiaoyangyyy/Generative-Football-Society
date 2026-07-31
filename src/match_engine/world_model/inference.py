@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 from typing import Optional
 
@@ -36,6 +38,18 @@ class WorldModelRuntime:
         self.model = model
         self.cfg = cfg
         self.meta = meta or {}
+        signature_payload = {
+            "checkpoint_version": int(getattr(model, "checkpoint_version", 2)),
+            "transition_kind": str(getattr(model, "transition_kind", "unknown")),
+            "latent_dim": int(cfg.latent_dim),
+            "hidden_dim": int(cfg.hidden_dim),
+            "validation": self.meta.get("validation", {}),
+        }
+        self.checkpoint_signature = "meta:" + hashlib.sha256(
+            json.dumps(
+                signature_payload, sort_keys=True, default=str,
+            ).encode("utf-8")
+        ).hexdigest()[:16]
         self._hidden: Optional[np.ndarray] = None
         self.last_uncertainty = 1.0
         version = int(getattr(model, "checkpoint_version", 2))
@@ -68,6 +82,11 @@ class WorldModelRuntime:
             raise FileNotFoundError(f"World model checkpoint not found: {path}")
         model, cfg, meta = load_checkpoint(path)
         rt = cls(model, cfg, meta)
+        digest = hashlib.sha256()
+        with open(path, "rb") as checkpoint_file:
+            for chunk in iter(lambda: checkpoint_file.read(1024 * 1024), b""):
+                digest.update(chunk)
+        rt.checkpoint_signature = "sha256:" + digest.hexdigest()
         kind = getattr(model, "transition_kind", cfg.transition_type)
         print(f"  [WORLD_MODEL] transition={kind} latent={cfg.latent_dim} (meta rows={meta.get('rows', '?')})")
         print(

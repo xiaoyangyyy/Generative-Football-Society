@@ -228,6 +228,27 @@ LLM evidence packets. After the minimum sample count, the longest available
 action-specific calibration can reduce the policy bridge; sparse history remains
 neutral and calibration can never increase confidence or reopen a quality gate.
 
+Completed cognitive match logs also form a cross-match contextual residual
+memory. Every record carries a SHA-256 checkpoint signature and policy-utility
+schema version; observations from another checkpoint are rejected. Context uses
+team, opponent, executed action, horizon, pitch zone, score state, and match
+phase, with conservative backoff in this order:
+
+```text
+team+opponent+context → team+action → action+context → action+horizon → horizon
+```
+
+Each group is fitted chronologically with at least eight samples: the first half
+estimates a median residual bias, then separate validation and calibration
+quarters decide whether the correction improves MSE and construct a 90%
+split-conformal interval. Harmful corrections are reset to zero. At the next
+match, same-checkpoint memory is loaded before the first LLM
+coach trigger; corrected forecasts, intervals, evidence scope, and trust are
+included in the decision packet. A confidence-weighted forecast adjustment is
+hard-bounded to `±0.10` in candidate ranking, and memory trust can only reduce
+the execution bridge. Conformal coverage relies on historical exchangeability
+and should be re-audited under simulator, checkpoint, or policy drift.
+
 These estimates still do not establish long-horizon match improvement or real
 football validity. Aggregate experiments should keep the checkpoint, control
 rate, tactics, and simulator configuration fixed.
