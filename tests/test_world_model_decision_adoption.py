@@ -4,15 +4,22 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from src.match_engine.world_model.decision_adoption import (
+    capture_policy_outcome_baseline,
     decision_adoption_diagnostics,
     finalize_decision_adoption,
     observe_executed_action,
+    observe_policy_intervention_outcome,
     pending_policy_action_bias,
-    policy_bridge_reliability_factor,
-    randomized_policy_effect_from_counts,
     record_policy_intervention_result,
     register_coach_action_decision,
+)
+from src.match_engine.world_model.policy_experiment import (
+    policy_bridge_reliability_factor,
+    randomized_adoption_effect_from_counts,
+    randomized_outcome_effect,
 )
 
 
@@ -223,7 +230,7 @@ def test_randomized_control_is_deterministic_and_applies_zero_bias():
 
 
 def test_randomized_effect_and_reliability_feedback_are_conservative():
-    positive = randomized_policy_effect_from_counts(
+    positive = randomized_adoption_effect_from_counts(
         treatment=8,
         treatment_adopted=7,
         control=8,
@@ -243,6 +250,100 @@ def test_randomized_effect_and_reliability_feedback_are_conservative():
                 "policy_opportunity_observed": True,
                 "experiment_arm": arm,
                 "adopted": adopted,
+            })
+    state = SimpleNamespace(_wm_coach_decision_adoption=records)
+    assert policy_bridge_reliability_factor(state, min_per_arm=2) == 0.25
+
+
+def test_policy_outcome_tracks_progress_retention_xg_and_score_delta():
+    home = SimpleNamespace(team_id="A", score=0)
+    away = SimpleNamespace(team_id="B", score=0)
+    state = SimpleNamespace(
+        clock_seconds=10.0,
+        home=home,
+        away=away,
+        ball=SimpleNamespace(
+            position=[0.40, 0.50], possession_team_id="A",
+        ),
+        micro_xg_home=0.2,
+        micro_xg_away=0.1,
+    )
+    record = register_coach_action_decision(
+        state,
+        team_id="A",
+        trigger_kind="clock",
+        llm_selected_action="pass",
+        world_model_recommended_action="pass",
+        recommendation_confidence=0.8,
+        horizon_s=10.0,
+        intervention_enabled=True,
+        intervention_strength=0.3,
+    )
+    baseline = capture_policy_outcome_baseline(state, team_id="A")
+    record_policy_intervention_result(
+        state,
+        decision_id=record["decision_id"],
+        actual_action="pass",
+        t_sec=11.0,
+        outcome_baseline=baseline,
+    )
+    state.ball.position[0] = 0.60
+    state.ball.possession_team_id = "A"
+    state.micro_xg_home = 0.3
+    observe_policy_intervention_outcome(state, team_id="A", t_sec=11.0)
+    outcome = record["short_horizon_outcome"]
+    assert outcome["progress"] == pytest.approx(0.2)
+    assert outcome["retained_possession"]
+    assert outcome["xg_net_delta"] == pytest.approx(0.1)
+    assert outcome["policy_utility"] == pytest.approx(0.115)
+
+
+def test_policy_outcome_effect_uses_propensity_weights_and_match_clusters():
+    def row(arm, value, propensity):
+        return {
+            "experiment_arm": arm,
+            "experiment_treatment_propensity": propensity,
+            "short_horizon_outcome": {"policy_utility": value},
+        }
+
+    effect = randomized_outcome_effect(
+        [
+            [row("treatment", 1.0, 0.8), row("control", 0.0, 0.8)],
+            [row("treatment", 1.0, 0.6), row("control", 0.0, 0.6)],
+        ],
+        min_per_arm=2,
+    )
+    assert effect["ready"]
+    assert effect["cluster_robust"]
+    assert effect["clusters"] == 2
+    assert effect["average_treatment_effect"] == pytest.approx(1.0)
+    assert effect["causal_interpretation"] == (
+        "within_simulator_short_horizon_outcome"
+    )
+    segregated = randomized_outcome_effect(
+        [
+            [row("treatment", 1.0, 0.8), row("treatment", 0.8, 0.8)],
+            [row("control", 0.0, 0.8), row("control", 0.2, 0.8)],
+        ],
+        min_per_arm=2,
+    )
+    assert segregated["ready"]
+    assert not segregated["cluster_robust"]
+
+
+def test_outcome_evidence_overrides_positive_adoption_feedback():
+    records = []
+    for arm, adopted, utility in (
+        ("treatment", True, 0.0),
+        ("control", False, 1.0),
+    ):
+        for _ in range(2):
+            records.append({
+                "policy_opportunity_observed": True,
+                "experiment_arm": arm,
+                "experiment_treatment_propensity": 0.5,
+                "adopted": adopted,
+                "short_horizon_outcome": {"policy_utility": utility},
             })
     state = SimpleNamespace(_wm_coach_decision_adoption=records)
     assert policy_bridge_reliability_factor(state, min_per_arm=2) == 0.25

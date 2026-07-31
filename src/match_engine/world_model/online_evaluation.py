@@ -5,8 +5,9 @@ from __future__ import annotations
 import math
 from typing import Any, Iterable
 
-from src.match_engine.world_model.decision_adoption import (
-    randomized_policy_effect_from_counts,
+from src.match_engine.world_model.policy_experiment import (
+    randomized_adoption_effect_from_counts,
+    randomized_outcome_effect,
 )
 
 
@@ -34,6 +35,7 @@ def aggregate_online_calibration(
     interventions_applied = intervention_adopted = 0
     randomized_treatment = randomized_treatment_adopted = 0
     randomized_control = randomized_control_adopted = 0
+    policy_record_clusters: list[list[dict[str, Any]]] = []
     for payload in logs:
         calibration = payload.get("world_model_online_calibration") or {}
         if calibration.get("calibration_target") not in (
@@ -60,6 +62,9 @@ def aggregate_online_calibration(
         randomized_control_adopted += int(
             randomized.get("control_adopted", 0)
         )
+        records = adoption.get("records") or []
+        if isinstance(records, list):
+            policy_record_clusters.append(records)
 
     summaries = {}
     all_finite = True
@@ -99,15 +104,26 @@ def aggregate_online_calibration(
         "consistent_same_target": target_mismatches == 0,
         "finite_metrics": all_finite,
     }
-    randomized_effect = randomized_policy_effect_from_counts(
+    randomized_effect = randomized_adoption_effect_from_counts(
         treatment=randomized_treatment,
         treatment_adopted=randomized_treatment_adopted,
         control=randomized_control,
         control_adopted=randomized_control_adopted,
         min_per_arm=min_policy_arm,
     )
-    gates["randomized_policy_effect"] = (
+    randomized_outcome = randomized_outcome_effect(
+        policy_record_clusters,
+        min_per_arm=min_policy_arm,
+    )
+    gates["randomized_policy_adoption"] = (
         randomized_effect["ready"] if require_policy_effect else True
+    )
+    gates["randomized_policy_outcome"] = (
+        (
+            randomized_outcome["ready"]
+            and randomized_outcome["cluster_robust"]
+        )
+        if require_policy_effect else True
     )
     return {
         "version": 2,
@@ -128,13 +144,19 @@ def aggregate_online_calibration(
             ),
             "causal_interpretation": False,
             "randomized_policy_effect": randomized_effect,
+            "randomized_outcome_effect": randomized_outcome,
         },
         "gates": gates,
         "ready": all(gates.values()),
-        "policy_effect_ready": randomized_effect["ready"],
+        "policy_effect_ready": (
+            randomized_effect["ready"]
+            and randomized_outcome["ready"]
+            and randomized_outcome["cluster_robust"]
+        ),
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
             "Randomized bridge effects are causal only for action selection inside this simulator.",
+            "Short-horizon outcome uncertainty is clustered by match when multiple logs exist.",
         ],
     }

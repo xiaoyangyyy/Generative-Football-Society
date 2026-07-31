@@ -55,6 +55,7 @@ def test_action_engine_consumes_bridge_and_audits_actual_sample():
 
     assert record["intervention_applied"] is True
     assert record["intervention_actual_action"] == actual_action
+    assert record["outcome_baseline"] is not None
     assert record["adopted"] is (actual_action == "hold")
     assert record["resolution"] in {
         "matching_action_after_bounded_bias",

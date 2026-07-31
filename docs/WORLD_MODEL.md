@@ -186,9 +186,25 @@ evidence can only reduce later bias strength (`1.0`, `0.85`, `0.60`, or `0.25`);
 the experiment can never increase it beyond the confidence-derived bound.
 
 This randomized estimate supports a causal claim only about action selection in
-the configured simulator. It does not by itself prove an improvement in goals,
-xG, match utility, or real football outcomes. Aggregate experiments should keep
-the checkpoint, control rate, tactics, and simulator configuration fixed.
+the configured simulator. The next transition also records attack-oriented ball
+progress, possession retention, net xG change, and score-difference change. A
+declared short-horizon utility combines them as:
+
+```text
+goal_diff + 0.35*xg_net + 0.15*progress + 0.05*retention_edge
+```
+
+Outcome effects use stabilized inverse-propensity weighting, so reports remain
+valid if treatment propensities differ, and persisted multi-match reports use
+match-clustered standard errors. Strict policy readiness requires both arms and
+requires each arm to appear across at least two match clusters. Single-match
+estimates remain explicitly exploratory. Outcome evidence takes priority over
+adoption evidence when reducing future bias: making the LLM-selected action more
+frequent is not treated as proof that the action is better.
+
+These estimates still do not establish long-horizon match improvement or real
+football validity. Aggregate experiments should keep the checkpoint, control
+rate, tactics, and simulator configuration fixed.
 
 Both diagnostics are stored in the per-match cognitive log. Aggregate them with:
 

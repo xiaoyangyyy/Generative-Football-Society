@@ -2,28 +2,17 @@
 
 from __future__ import annotations
 
-import hashlib
 import math
 from typing import Any
 
+from src.match_engine.world_model.policy_experiment import (
+    randomized_adoption_effect,
+    randomized_experiment_arm,
+    randomized_outcome_effect,
+)
+
 
 TRACKED_ACTIONS = {"hold", "pass", "cross", "shot"}
-
-
-def _randomized_experiment_arm(
-    decision_id: str,
-    *,
-    seed: int,
-    control_rate: float,
-) -> str:
-    rate = min(0.5, max(0.0, float(control_rate)))
-    if rate <= 0.0:
-        return "treatment"
-    digest = hashlib.sha256(
-        f"policy-bridge-v1:{int(seed)}:{decision_id}".encode("utf-8")
-    ).digest()
-    draw = int.from_bytes(digest[:8], "big") / float(2**64)
-    return "control" if draw < rate else "treatment"
 
 
 def register_coach_action_decision(
@@ -66,7 +55,7 @@ def register_coach_action_decision(
     control_rate = min(0.5, max(0.0, float(experiment_control_rate)))
     bridge_eligible = bool(intervention_enabled and strength > 0.0)
     experiment_arm = (
-        _randomized_experiment_arm(
+        randomized_experiment_arm(
             decision_id,
             seed=int(getattr(state, "_wm_policy_experiment_seed", 0)),
             control_rate=control_rate,
@@ -149,6 +138,7 @@ def record_policy_intervention_result(
     decision_id: str,
     actual_action: str,
     t_sec: float,
+    outcome_baseline: dict[str, float] | None = None,
 ) -> None:
     records = getattr(state, "_wm_coach_decision_adoption", None) or []
     for record in records:
@@ -160,6 +150,8 @@ def record_policy_intervention_result(
         record["intervention_applied"] = arm == "treatment"
         record["intervention_t_sec"] = float(t_sec)
         record["intervention_actual_action"] = actual
+        record["outcome_baseline"] = outcome_baseline
+        record["short_horizon_outcome"] = None
         record["observed_actions"].append({
             "t_sec": float(t_sec), "action": actual,
         })
@@ -180,103 +172,82 @@ def record_policy_intervention_result(
         return
 
 
-def randomized_policy_effect_from_counts(
+def capture_policy_outcome_baseline(
+    state,
     *,
-    treatment: int,
-    treatment_adopted: int,
-    control: int,
-    control_adopted: int,
-    min_per_arm: int = 2,
-) -> dict[str, Any]:
-    """Build a two-arm difference-in-proportions causal report."""
-    treatment = max(0, int(treatment))
-    control = max(0, int(control))
-    treatment_adopted = min(treatment, max(0, int(treatment_adopted)))
-    control_adopted = min(control, max(0, int(control_adopted)))
-    treatment_rate = treatment_adopted / max(1, treatment)
-    control_rate = control_adopted / max(1, control)
-    effect = treatment_rate - control_rate
-    # Agresti-Caffo add-two correction avoids a falsely zero standard error
-    # when a small arm happens to have all successes or all failures.
-    treatment_adjusted = (treatment_adopted + 1.0) / (treatment + 2.0)
-    control_adjusted = (control_adopted + 1.0) / (control + 2.0)
-    standard_error = math.sqrt(
-        treatment_adjusted * (1.0 - treatment_adjusted) / (treatment + 2.0)
-        + control_adjusted * (1.0 - control_adjusted) / (control + 2.0)
-    )
-    minimum = max(2, int(min_per_arm))
-    ready = treatment >= minimum and control >= minimum
+    team_id: str,
+) -> dict[str, float]:
+    """Capture only simulator-native quantities available before sampling."""
+    attacking_home = str(team_id) == str(state.home.team_id)
+    team = state.home if attacking_home else state.away
+    opponent = state.away if attacking_home else state.home
     return {
-        "evaluation_kind": "randomized_zero_bias_policy_bridge",
-        "opportunities": treatment + control,
-        "treatment": treatment,
-        "treatment_adopted": treatment_adopted,
-        "treatment_adoption_rate": treatment_rate,
-        "control": control,
-        "control_adopted": control_adopted,
-        "control_adoption_rate": control_rate,
-        "average_treatment_effect": effect,
-        "standard_error": standard_error,
-        "confidence_interval": [
-            max(-1.0, effect - 1.96 * standard_error),
-            min(1.0, effect + 1.96 * standard_error),
-        ],
-        "minimum_per_arm": minimum,
-        "ready": ready,
-        "causal_interpretation": (
-            "within_simulator_action_selection"
-            if ready else "insufficient_randomized_samples"
+        "ball_x": float(state.ball.position[0]),
+        "xg_for": float(
+            state.micro_xg_home if attacking_home else state.micro_xg_away
         ),
+        "xg_against": float(
+            state.micro_xg_away if attacking_home else state.micro_xg_home
+        ),
+        "goal_diff": float(team.score - opponent.score),
     }
 
 
-def randomized_policy_effect(
-    records: list[dict[str, Any]],
-    *,
-    min_per_arm: int = 2,
-) -> dict[str, Any]:
-    """Estimate the randomized bridge effect on selected-action adoption."""
-    opportunities = [
-        record for record in records
-        if record.get("policy_opportunity_observed")
-        and record.get("experiment_arm") in {"treatment", "control"}
-        and record.get("adopted") is not None
-    ]
-    treatment = [
-        record for record in opportunities
-        if record["experiment_arm"] == "treatment"
-    ]
-    control = [
-        record for record in opportunities
-        if record["experiment_arm"] == "control"
-    ]
-    return randomized_policy_effect_from_counts(
-        treatment=len(treatment),
-        treatment_adopted=sum(bool(record["adopted"]) for record in treatment),
-        control=len(control),
-        control_adopted=sum(bool(record["adopted"]) for record in control),
-        min_per_arm=min_per_arm,
-    )
-
-
-def policy_bridge_reliability_factor(
+def observe_policy_intervention_outcome(
     state,
     *,
-    min_per_arm: int = 2,
-) -> float:
-    """Conservatively reduce future bias only after adverse randomized evidence."""
-    records = list(getattr(state, "_wm_coach_decision_adoption", None) or [])
-    effect = randomized_policy_effect(records, min_per_arm=min_per_arm)
-    if not effect["ready"]:
-        return 1.0
-    low, high = effect["confidence_interval"]
-    if high <= 0.0:
-        return 0.25
-    if effect["average_treatment_effect"] <= 0.0:
-        return 0.60
-    if low > 0.0:
-        return 1.0
-    return 0.85
+    team_id: str,
+    t_sec: float,
+) -> None:
+    """Attach the immediate transition outcome to a randomized opportunity."""
+    records = getattr(state, "_wm_coach_decision_adoption", None) or []
+    attacking_home = str(team_id) == str(state.home.team_id)
+    team = state.home if attacking_home else state.away
+    opponent = state.away if attacking_home else state.home
+    direction = 1.0 if attacking_home else -1.0
+    for record in reversed(records):
+        baseline = record.get("outcome_baseline")
+        if (
+            str(record.get("team_id")) != str(team_id)
+            or not record.get("policy_opportunity_observed")
+            or baseline is None
+            or record.get("short_horizon_outcome") is not None
+            or float(record.get("intervention_t_sec") or 0.0) > float(t_sec)
+        ):
+            continue
+        xg_for = float(
+            state.micro_xg_home if attacking_home else state.micro_xg_away
+        )
+        xg_against = float(
+            state.micro_xg_away if attacking_home else state.micro_xg_home
+        )
+        progress = direction * (
+            float(state.ball.position[0]) - float(baseline["ball_x"])
+        )
+        xg_net = (
+            xg_for - float(baseline["xg_for"])
+            - xg_against + float(baseline["xg_against"])
+        )
+        goal_delta = (
+            float(team.score - opponent.score) - float(baseline["goal_diff"])
+        )
+        retained = str(state.ball.possession_team_id) == str(team_id)
+        retention_edge = 1.0 if retained else -1.0
+        utility = (
+            goal_delta
+            + 0.35 * xg_net
+            + 0.15 * progress
+            + 0.05 * retention_edge
+        )
+        record["short_horizon_outcome"] = {
+            "observed_t_sec": float(t_sec),
+            "progress": progress,
+            "retained_possession": retained,
+            "xg_net_delta": xg_net,
+            "goal_diff_delta": goal_delta,
+            "policy_utility": utility,
+        }
+        return
 
 
 def observe_executed_action(
@@ -333,7 +304,8 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     intervention_adopted = [
         record for record in interventions if record["adopted"]
     ]
-    randomized_effect = randomized_policy_effect(records)
+    randomized_effect = randomized_adoption_effect(records)
+    randomized_outcome = randomized_outcome_effect([records])
     return {
         "version": 2,
         "registered": len(records),
@@ -348,6 +320,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         ),
         "causal_ordering": "decision_then_future_team_action",
         "randomized_policy_effect": randomized_effect,
+        "randomized_outcome_effect": randomized_outcome,
         "records": records,
         "interpretation": (
             "A bounded intervention changes one action logit but does not force "

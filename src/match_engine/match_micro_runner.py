@@ -644,6 +644,7 @@ def _finish_world_model_tick(
     )
     from src.match_engine.world_model.action_codec import decode_action_kind
     from src.match_engine.world_model.decision_adoption import (
+        observe_policy_intervention_outcome,
         observe_executed_action,
     )
 
@@ -651,6 +652,11 @@ def _finish_world_model_tick(
         state,
         team_id=str(getattr(state, "_wm_actor_team_id_pre", "")),
         action_kind=decode_action_kind(action),
+        t_sec=t1,
+    )
+    observe_policy_intervention_outcome(
+        state,
+        team_id=str(getattr(state, "_wm_actor_team_id_pre", "")),
         t_sec=t1,
     )
     calibration = None

@@ -302,8 +302,10 @@ class CognitiveExecutor:
                 and bool(packet.get("available"))
             ):
                 from src.match_engine.world_model.decision_adoption import (
-                    policy_bridge_reliability_factor,
                     register_coach_action_decision,
+                )
+                from src.match_engine.world_model.policy_experiment import (
+                    policy_bridge_reliability_factor,
                 )
 
                 reliability_factor = policy_bridge_reliability_factor(

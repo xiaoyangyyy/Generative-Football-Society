@@ -148,6 +148,7 @@ class ActionEngine:
         if carrier.role in ("LW", "RW", "LB", "RB"):
             feasible_actions.add("cross")
         from src.match_engine.world_model.decision_adoption import (
+            capture_policy_outcome_baseline,
             pending_policy_action_bias,
             record_policy_intervention_result,
         )
@@ -163,6 +164,10 @@ class ActionEngine:
             utils[selected_index] += min(
                 0.5, max(0.0, float(policy_intent["logit_bias"]))
             )
+        policy_outcome_baseline = (
+            capture_policy_outcome_baseline(state, team_id=carrier.team_id)
+            if policy_intent is not None else None
+        )
 
         def record_policy_result(actual_action: str) -> None:
             if policy_intent is not None:
@@ -171,6 +176,7 @@ class ActionEngine:
                     decision_id=policy_intent["decision_id"],
                     actual_action=actual_action,
                     t_sec=float(state.clock_seconds),
+                    outcome_baseline=policy_outcome_baseline,
                 )
 
         tau = self.cfg.action_tau * mod_c.tau_dec

@@ -199,6 +199,20 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                     "control": 1,
                     "control_adopted": 0,
                 },
+                "records": [
+                    {
+                        "experiment_arm": "treatment",
+                        "experiment_treatment_propensity": 0.8,
+                        "short_horizon_outcome": {
+                            "policy_utility": float(adopted),
+                        },
+                    },
+                    {
+                        "experiment_arm": "control",
+                        "experiment_treatment_propensity": 0.8,
+                        "short_horizon_outcome": {"policy_utility": 0.0},
+                    },
+                ],
             },
         }
 
@@ -229,3 +243,7 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
     )
     assert policy_ready["ready"]
     assert policy_ready["policy_effect_ready"]
+    outcome = policy_ready["decision_adoption"]["randomized_outcome_effect"]
+    assert outcome["ready"]
+    assert outcome["cluster_robust"]
+    assert outcome["average_treatment_effect"] == pytest.approx(0.5)
