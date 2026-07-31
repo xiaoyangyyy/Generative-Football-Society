@@ -119,6 +119,14 @@ def test_tactical_choice_is_constrained_to_evaluated_candidates():
         _Runtime(), _state(), "Home",
         candidate_presets=("balanced", "low_block"),
     )
+    packet["fusion_reliability"] = {
+        "evidence_tier": "matched_seed_simulator",
+        "guidance": "moderate_support",
+        "adjusted_recommendation_trust": 0.64,
+        "matched_seed_samples": 16,
+        "historical_match_records": 5,
+    }
+    packet["strategy_memory"] = {"opponent_specific_matches": 2}
     reconciled = reconcile_world_model_tactical_choice(
         {
             "tactical_preset": "route_one",
@@ -131,6 +139,11 @@ def test_tactical_choice_is_constrained_to_evaluated_candidates():
     assert reconciled["world_model_audit"]["selected_evidence"]
     assert reconciled["world_model_audit"]["balanced_evidence"]
     assert reconciled["world_model_audit"]["recommendation_margin"] >= 0.0
+    assert reconciled["world_model_audit"]["historical_evidence_tier"] == (
+        "matched_seed_simulator"
+    )
+    assert reconciled["world_model_audit"]["matched_seed_samples"] == 16
+    assert reconciled["world_model_audit"]["opponent_specific_history"] == 2
     assert len(reconciled["world_model_rationale"]) == 300
 
 

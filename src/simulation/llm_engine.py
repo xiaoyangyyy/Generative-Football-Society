@@ -93,6 +93,10 @@ class SimulationLLM:
         short-horizon evidence rather than a full-match forecast. Select only one
         evaluated tactical candidate when its quality gate is open. You may
         disagree with its recommendation, but explain the opponent-specific reason.
+        If fusion_reliability is present, use adjusted_recommendation_trust and
+        its evidence_tier to calibrate reliance. It can never reopen a closed gate.
+        strategy_memory is observational context, not proof that a tactic caused
+        past results. Matched-seed evidence is causal only inside the simulator.
         Reasoning rules (required):
         - At most 3 sentences in "reasoning".
         - No arithmetic of stat numbers (no "0.78 - 0.24", no "Correction:", no "Wait,", no "Re-evaluating").

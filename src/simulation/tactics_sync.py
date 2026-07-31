@@ -99,6 +99,8 @@ def reconcile_world_model_tactical_choice(
     rationale = str(data.get("world_model_rationale", "") or "")[:300]
     if rationale:
         data["world_model_rationale"] = rationale
+    reliability = packet.get("fusion_reliability") or {}
+    strategy_memory = packet.get("strategy_memory") or {}
     data["world_model_audit"] = {
         "evidence_available": available,
         "evidence_reason": str(packet.get("reason", "not_provided")),
@@ -123,6 +125,22 @@ def reconcile_world_model_tactical_choice(
         "selected_evidence": evidence_for(selected),
         "balanced_evidence": evidence_for("balanced"),
         "rationale": rationale,
+        "historical_evidence_tier": str(
+            reliability.get("evidence_tier", "not_available")
+        ),
+        "historical_guidance": str(reliability.get("guidance", "")),
+        "adjusted_recommendation_trust": _finite_metric(
+            reliability.get("adjusted_recommendation_trust")
+        ),
+        "matched_seed_samples": int(_finite_metric(
+            reliability.get("matched_seed_samples")
+        )),
+        "historical_match_records": int(_finite_metric(
+            reliability.get("historical_match_records")
+        )),
+        "opponent_specific_history": int(_finite_metric(
+            strategy_memory.get("opponent_specific_matches")
+        )),
     }
     return data
 

@@ -123,3 +123,18 @@ python scripts/evaluate_tactical_counterfactual.py \
 
 Matched-seed estimates are causal only for the configured simulator; they do
 not establish real-world football validity.
+
+Successful full-fidelity counterfactual runs are also registered in
+`data/persistence/tactical_counterfactuals.jsonl`. Before the next match, the
+fusion layer combines this registry with the outcome-linked audit log to build:
+
+- a team- and opponent-scoped strategy-memory summary;
+- an evidence tier (`insufficient_history`, `observational_only`, or
+  `matched_seed_simulator`);
+- a conservative adjusted recommendation trust value.
+
+Observational results can only lower the recommendation to advisory status.
+Only matched-seed runs of at least ten simulated minutes, with fast mode off,
+can provide simulator-level directional support. Historical evidence never
+reopens a closed checkpoint/coverage quality gate. Use `--no-register` for
+diagnostic counterfactual runs that must not influence later decisions.

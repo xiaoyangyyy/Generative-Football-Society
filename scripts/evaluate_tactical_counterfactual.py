@@ -23,6 +23,9 @@ from src.match_engine.tactical_profile import build_tactical_vector_for_agent  #
 from src.simulation.fusion_audit import (  # noqa: E402
     evaluate_matched_seed_tactical_policy,
 )
+from src.simulation.counterfactual_evidence import (  # noqa: E402
+    append_counterfactual_evidence,
+)
 from src.simulation.world_cup_runner import build_world_and_tournament  # noqa: E402
 
 
@@ -46,6 +49,11 @@ def main() -> int:
     parser.add_argument("--root-seed", type=int, default=42)
     parser.add_argument("--match-seconds", type=float, default=900.0)
     parser.add_argument("--fast", action="store_true")
+    parser.add_argument(
+        "--no-register",
+        action="store_true",
+        help="Do not append the result to persistent fusion evidence.",
+    )
     parser.add_argument(
         "--out",
         default=str(ROOT / "reports/evaluation/tactical_counterfactual.json"),
@@ -102,6 +110,7 @@ def main() -> int:
         "opponent": args.opponent,
         "match_seconds": float(args.match_seconds),
         "fast_mode": bool(args.fast),
+        "root_seed": int(args.root_seed),
         "utility": "goal_diff + 0.35*xg_diff + 0.15*possession_edge",
         "opponent_policy": "held_fixed_from_current_agent_profile",
     })
@@ -111,6 +120,8 @@ def main() -> int:
         json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
     )
+    if not args.no_register:
+        append_counterfactual_evidence(ROOT, report)
     print(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False))
     return 0
 

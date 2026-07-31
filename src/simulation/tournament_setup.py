@@ -77,6 +77,9 @@ class TournamentSetupMixin:
         packets = self._build_prematch_world_model_packets(
             ah=ah, aa=aa, home_micro=home_micro, away_micro=away_micro,
         )
+        packets = self._enrich_prematch_packets_with_history(
+            packets, t1_name=t1_name, t2_name=t2_name,
+        )
         t1_packet = packets[t1_name]
         t2_packet = packets[t2_name]
         t1_tactics_json = self._request_coach_tactics(
@@ -196,6 +199,43 @@ class TournamentSetupMixin:
             failed = dict(unavailable)
             failed["reason"] = f"world_model_error:{type(exc).__name__}"
             return {home_micro: dict(failed), away_micro: dict(failed)}
+
+    def _enrich_prematch_packets_with_history(
+        self, packets, *, t1_name, t2_name,
+    ):
+        """Attach persistent strategy memory and conservative trust guidance."""
+        try:
+            from src.simulation.fusion_audit import (
+                fusion_audit_path,
+                load_fusion_audits,
+            )
+            from src.simulation.counterfactual_evidence import (
+                counterfactual_evidence_path,
+                load_counterfactual_evidence,
+            )
+            from src.simulation.fusion_reliability import (
+                enrich_decision_packet_with_history,
+            )
+
+            audits = load_fusion_audits(fusion_audit_path(self.base_dir))
+            counterfactuals = load_counterfactual_evidence(
+                counterfactual_evidence_path(self.base_dir)
+            )
+            return {
+                t1_name: enrich_decision_packet_with_history(
+                    packets[t1_name], team=t1_name, opponent=t2_name,
+                    audit_records=audits,
+                    counterfactual_records=counterfactuals,
+                ),
+                t2_name: enrich_decision_packet_with_history(
+                    packets[t2_name], team=t2_name, opponent=t1_name,
+                    audit_records=audits,
+                    counterfactual_records=counterfactuals,
+                ),
+            }
+        except (OSError, TypeError, ValueError) as exc:
+            print(f"  [WORLD_MODEL] Historical fusion context skipped: {exc}")
+            return packets
 
     @staticmethod
     def _log_match_tactics(
