@@ -50,6 +50,10 @@ def _probabilistic_proxy(
         "xg_net_delta": xg_net,
         "goal_diff_delta": goal_delta,
         "uncertainty": float(future.state_uncertainty),
+        "epistemic_uncertainty": float(future.epistemic_uncertainty),
+        "aleatoric_uncertainty": float(future.aleatoric_uncertainty),
+        "uncertainty_source": future.uncertainty_source,
+        "uncertainty_components": future.uncertainty_components,
     }
 
 

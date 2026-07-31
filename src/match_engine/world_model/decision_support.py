@@ -16,7 +16,7 @@ from src.match_engine.world_model.policy_prediction import (
 from src.match_engine.tactical_catalog import TACTICAL_PRESETS, resolve_tactical_preset
 
 
-DECISION_PACKET_VERSION = 2
+DECISION_PACKET_VERSION = 3
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -107,6 +107,15 @@ def _evaluate_action_candidates(
         else:
             expected_value = runtime.score_action(observation, action)
         uncertainty = float(np.clip(future.state_uncertainty, 0.0, 1.0))
+        epistemic_uncertainty = float(np.clip(
+            future.epistemic_uncertainty, 0.0, 1.0,
+        ))
+        aleatoric_uncertainty = float(np.clip(
+            future.aleatoric_uncertainty, 0.0, 1.0,
+        ))
+        learnable_uncertainty = max(
+            epistemic_uncertainty, 1.0 - confidence,
+        )
         effective_confidence = confidence * (1.0 - uncertainty)
         turnover = float(future.event_probabilities["turnover"])
         risk_adjusted = (
@@ -151,6 +160,11 @@ def _evaluate_action_candidates(
             "confidence": confidence,
             "effective_confidence": effective_confidence,
             "uncertainty": uncertainty,
+            "epistemic_uncertainty": epistemic_uncertainty,
+            "aleatoric_uncertainty": aleatoric_uncertainty,
+            "learnable_uncertainty": learnable_uncertainty,
+            "uncertainty_source": future.uncertainty_source,
+            "uncertainty_components": future.uncertainty_components,
             "event_probabilities": {
                 key: float(value)
                 for key, value in future.event_probabilities.items()

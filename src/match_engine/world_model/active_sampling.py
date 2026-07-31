@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 
 from src.match_engine.world_model.schema import observation_coverage
+from src.match_engine.world_model.uncertainty import bounded_uncertainty
 
 
 @dataclass(order=True)
@@ -29,7 +30,9 @@ class ActiveSamplingQueue:
     def score(
         obs: np.ndarray,
         *,
-        uncertainty: float,
+        uncertainty: float | None = None,
+        epistemic_uncertainty: float | None = None,
+        aleatoric_uncertainty: float = 0.0,
         event_count: int = 0,
         target_event_count: int = 100,
         planner_advantage: float = 0.0,
@@ -37,15 +40,24 @@ class ActiveSamplingQueue:
         coverage = observation_coverage(obs)
         rarity = float(1.0 / np.sqrt(1.0 + max(0, event_count)))
         target_pressure = float(np.clip((target_event_count - event_count) / max(1, target_event_count), 0.0, 1.0))
+        epistemic = (
+            uncertainty
+            if epistemic_uncertainty is None else epistemic_uncertainty
+        )
+        epistemic = bounded_uncertainty(epistemic)
         components = {
-            "uncertainty": max(0.0, float(uncertainty)),
+            "uncertainty": epistemic,
+            "epistemic_uncertainty": epistemic,
+            "aleatoric_uncertainty": bounded_uncertainty(
+                aleatoric_uncertainty, default=0.0,
+            ),
             "coverage": coverage,
             "rarity": rarity,
             "target_pressure": target_pressure,
             "planner_advantage": abs(float(planner_advantage)),
         }
         priority = coverage * (
-            0.50 * components["uncertainty"]
+            0.50 * components["epistemic_uncertainty"]
             + 0.20 * rarity
             + 0.20 * target_pressure
             + 0.10 * components["planner_advantage"]

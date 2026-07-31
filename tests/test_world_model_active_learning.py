@@ -113,6 +113,28 @@ def test_compatible_cross_match_memory_reduces_false_novelty():
     ]
 
 
+def test_information_value_uses_epistemic_not_aleatoric_uncertainty():
+    noisy = _candidate("hold", 0.50, 0.9, 0.10)
+    learnable = _candidate("pass", 0.46, 0.9, 0.18)
+    for prediction in noisy["multi_horizon_predictions"].values():
+        prediction["epistemic_uncertainty"] = 0.1
+        prediction["aleatoric_uncertainty"] = 0.8
+    for prediction in learnable["multi_horizon_predictions"].values():
+        prediction["epistemic_uncertainty"] = 0.8
+        prediction["aleatoric_uncertainty"] = 0.1
+
+    advice = build_active_learning_advice(
+        [noisy, learnable], [], context=_context(),
+    )
+    evidence = {item["action"]: item for item in advice["candidate_evidence"]}
+
+    assert advice["exploration_action"] == "pass"
+    assert evidence["pass"]["information_value"] > evidence["hold"][
+        "information_value"
+    ]
+    assert evidence["hold"]["aleatoric_uncertainty"] == 0.8
+
+
 def test_diagnostics_measure_later_uncertainty_reduction_in_same_context():
     baseline = {
         "opponent_team_id": "Away",

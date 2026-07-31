@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from src.match_engine.event_clock import CompetingRiskClock
 from src.match_engine.hierarchical_policy import HierarchicalPolicy
@@ -122,6 +123,14 @@ def test_graph_and_active_sampling_contracts():
     low = queue.add("low", obs, uncertainty=0.01, event_count=100)
     high = queue.add("high", obs, uncertainty=0.8, event_count=1)
     assert high.priority > low.priority
+    noisy = queue.add(
+        "noisy", obs,
+        epistemic_uncertainty=0.01,
+        aleatoric_uncertainty=0.99,
+        event_count=100,
+    )
+    assert noisy.reason["aleatoric_uncertainty"] == 0.99
+    assert noisy.priority == pytest.approx(low.priority)
     assert queue.highest(1)[0].payload == "high"
 
 

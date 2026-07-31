@@ -93,10 +93,20 @@ def _coverage_counts(
     return action_counts, contextual_counts
 
 
-def _forecast_information(candidate: dict[str, Any]) -> tuple[float, float]:
+def _forecast_information(
+    candidate: dict[str, Any],
+) -> tuple[float, float, float]:
     predictions = candidate.get("multi_horizon_predictions") or {}
-    uncertainties = [
-        _bounded(item.get("uncertainty", 1.0), 0.0, 1.0, 1.0)
+    epistemic_values = [
+        _bounded(
+            item.get("epistemic_uncertainty", item.get("uncertainty", 1.0)),
+            0.0, 1.0, 1.0,
+        )
+        for item in predictions.values()
+        if isinstance(item, dict)
+    ]
+    aleatoric_values = [
+        _bounded(item.get("aleatoric_uncertainty", 0.0), 0.0, 1.0, 0.0)
         for item in predictions.values()
         if isinstance(item, dict)
     ]
@@ -105,15 +115,33 @@ def _forecast_information(candidate: dict[str, Any]) -> tuple[float, float]:
         for item in predictions.values()
         if isinstance(item, dict)
     ]
-    uncertainty = (
-        float(np.mean(uncertainties)) if uncertainties
-        else _bounded(candidate.get("uncertainty", 1.0), 0.0, 1.0, 1.0)
+    epistemic = (
+        float(np.mean(epistemic_values)) if epistemic_values
+        else _bounded(
+            candidate.get(
+                "learnable_uncertainty",
+                candidate.get("epistemic_uncertainty", candidate.get(
+                    "uncertainty", 1.0,
+                )),
+            ),
+            0.0, 1.0, 1.0,
+        )
+    )
+    epistemic = max(
+        epistemic,
+        _bounded(candidate.get("learnable_uncertainty", 0.0), 0.0, 1.0, 0.0),
+    )
+    aleatoric = (
+        float(np.mean(aleatoric_values)) if aleatoric_values
+        else _bounded(
+            candidate.get("aleatoric_uncertainty", 0.0), 0.0, 1.0, 0.0,
+        )
     )
     disagreement = (
         float(np.clip((max(utilities) - min(utilities)) / 0.25, 0.0, 1.0))
         if len(utilities) >= 2 else 0.0
     )
-    return uncertainty, disagreement
+    return epistemic, aleatoric, disagreement
 
 
 def _cross_match_coverage(candidate: dict[str, Any]) -> tuple[int, int]:
@@ -184,7 +212,7 @@ def build_active_learning_advice(
     scored = []
     for candidate in candidates:
         action = str(candidate.get("action", "unknown"))
-        uncertainty, disagreement = _forecast_information(candidate)
+        epistemic, aleatoric, disagreement = _forecast_information(candidate)
         memory_action_samples, memory_context_samples = (
             _cross_match_coverage(candidate)
         )
@@ -195,8 +223,8 @@ def build_active_learning_advice(
         action_novelty = 1.0 / math.sqrt(1.0 + action_samples)
         context_novelty = 1.0 / math.sqrt(1.0 + context_samples)
         information_value = float(np.clip(
-            0.45 * uncertainty
-            + 0.30 * context_novelty
+            0.55 * epistemic
+            + 0.20 * context_novelty
             + 0.15 * action_novelty
             + 0.10 * disagreement,
             0.0, 1.0,
@@ -215,7 +243,9 @@ def build_active_learning_advice(
         evidence = {
             "action": action,
             "information_value": information_value,
-            "model_uncertainty": uncertainty,
+            "model_uncertainty": epistemic,
+            "epistemic_uncertainty": epistemic,
+            "aleatoric_uncertainty": aleatoric,
             "multi_horizon_disagreement": disagreement,
             "action_samples": action_samples,
             "context_action_samples": context_samples,
@@ -271,8 +301,8 @@ def build_active_learning_advice(
     }
 
 
-def _prediction_uncertainty(
-    record: dict[str, Any], action: str, horizon: str,
+def _prediction_uncertainty_component(
+    record: dict[str, Any], action: str, horizon: str, field: str,
 ) -> float | None:
     prediction = (
         (record.get("action_outcome_predictions") or {})
@@ -281,7 +311,10 @@ def _prediction_uncertainty(
     )
     if not isinstance(prediction, dict):
         return None
-    return _bounded(prediction.get("uncertainty", 1.0), 0.0, 1.0, 1.0)
+    fallback = prediction.get("uncertainty", 1.0) if field == (
+        "epistemic_uncertainty"
+    ) else 0.0
+    return _bounded(prediction.get(field, fallback), 0.0, 1.0, fallback)
 
 
 def active_learning_diagnostics(
@@ -299,7 +332,8 @@ def active_learning_diagnostics(
         if record.get("intervention_actual_action")
         == (record.get("active_learning") or {}).get("exploration_action")
     ]
-    reductions = []
+    epistemic_reductions = []
+    aleatoric_changes = []
     for cluster in clusters:
         for index, record in enumerate(cluster):
             learning = record.get("active_learning") or {}
@@ -316,10 +350,22 @@ def active_learning_diagnostics(
                 if _record_context(later) != current_context:
                     continue
                 for horizon in predictions:
-                    before = _prediction_uncertainty(record, action, horizon)
-                    after = _prediction_uncertainty(later, action, horizon)
+                    before = _prediction_uncertainty_component(
+                        record, action, horizon, "epistemic_uncertainty",
+                    )
+                    after = _prediction_uncertainty_component(
+                        later, action, horizon, "epistemic_uncertainty",
+                    )
+                    before_aleatoric = _prediction_uncertainty_component(
+                        record, action, horizon, "aleatoric_uncertainty",
+                    )
+                    after_aleatoric = _prediction_uncertainty_component(
+                        later, action, horizon, "aleatoric_uncertainty",
+                    )
                     if before is not None and after is not None:
-                        reductions.append(before - after)
+                        epistemic_reductions.append(before - after)
+                    if before_aleatoric is not None and after_aleatoric is not None:
+                        aleatoric_changes.append(after_aleatoric - before_aleatoric)
                 break
     actions = sorted({
         str(record.get("intervention_actual_action"))
@@ -334,12 +380,22 @@ def active_learning_diagnostics(
         "explored_actions": actions,
         "explored_action_count": len(actions),
         "explored_context_count": len(contexts),
-        "uncertainty_reduction_pairs": len(reductions),
+        "uncertainty_reduction_pairs": len(epistemic_reductions),
+        "epistemic_reduction_pairs": len(epistemic_reductions),
         "mean_later_uncertainty_reduction": (
-            float(np.mean(reductions)) if reductions else 0.0
+            float(np.mean(epistemic_reductions))
+            if epistemic_reductions else 0.0
+        ),
+        "mean_later_epistemic_reduction": (
+            float(np.mean(epistemic_reductions))
+            if epistemic_reductions else 0.0
+        ),
+        "mean_later_aleatoric_change": (
+            float(np.mean(aleatoric_changes)) if aleatoric_changes else 0.0
         ),
         "positive_uncertainty_reduction_rate": (
-            sum(value > 0.0 for value in reductions) / max(1, len(reductions))
+            sum(value > 0.0 for value in epistemic_reductions)
+            / max(1, len(epistemic_reductions))
         ),
         "interpretation": (
             "Uncertainty reduction is descriptive until model updates are "

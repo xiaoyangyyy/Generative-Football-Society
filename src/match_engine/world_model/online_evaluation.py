@@ -20,6 +20,9 @@ from src.match_engine.world_model.residual_memory import (
 from src.match_engine.world_model.active_learning import (
     active_learning_diagnostics,
 )
+from src.match_engine.world_model.uncertainty import (
+    uncertainty_decomposition_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -39,6 +42,7 @@ def aggregate_online_calibration(
     required_policy_horizon_s: float = 0.0,
     min_residual_samples: int = 20,
     require_outcome_calibration: bool = False,
+    require_uncertainty_decomposition: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -157,6 +161,9 @@ def aggregate_online_calibration(
         outcome_family="regime",
     )
     active_learning = active_learning_diagnostics(policy_record_clusters)
+    uncertainty_decomposition = uncertainty_decomposition_diagnostics(
+        policy_record_clusters,
+    )
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -196,8 +203,16 @@ def aggregate_online_calibration(
         )
         if require_outcome_calibration else True
     )
+    decomposition_ready = bool(
+        uncertainty_decomposition["samples"] >= max(2, min_residual_samples)
+        and uncertainty_decomposition["mean_composition_identity_error"]
+        <= 1e-6
+    )
+    gates["world_model_uncertainty_decomposition"] = (
+        decomposition_ready if require_uncertainty_decomposition else True
+    )
     return {
-        "version": 3,
+        "version": 4,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -222,6 +237,7 @@ def aggregate_online_calibration(
             "required_policy_outcome": required_outcome,
             "world_model_outcome_calibration": outcome_calibration,
             "active_learning": active_learning,
+            "uncertainty_decomposition": uncertainty_decomposition,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -233,6 +249,7 @@ def aggregate_online_calibration(
             and required_outcome["ready"]
             and required_outcome["cluster_robust"]
         ),
+        "uncertainty_decomposition_ready": decomposition_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",

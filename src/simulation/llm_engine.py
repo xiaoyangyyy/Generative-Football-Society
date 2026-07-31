@@ -235,6 +235,8 @@ If world_model_decision_support is present, treat it as uncertain model evidence
 - online calibration can reduce trust but never reopen a closed quality gate;
 - active_learning is optional: choose decision_mode=explore only when eligible,
   only select its exploration_action, and weigh information value against regret;
+- epistemic uncertainty is reducible model ignorance and may motivate learning;
+  aleatoric uncertainty is irreducible match randomness and must only price risk;
 - never describe exploration as guaranteed learning or override its safety budget;
 - you may disagree, but explain why without inventing outcomes.
 Output JSON only. Adjust tactics with small bounded deltas."""

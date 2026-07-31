@@ -127,9 +127,10 @@ def test_pass_imagination_uses_independent_pass_quality_gate():
     pass_branch = runtime.imagine_pass(observation, action)
     assert general.uncertainty == 1.0
     assert pass_branch.uncertainty < 1.0
-    assert pass_branch.uncertainty == pytest.approx(
+    assert pass_branch.epistemic_uncertainty == pytest.approx(
         1.0 - runtime.planner_confidence(observation, kind="pass")
     )
+    assert pass_branch.uncertainty >= pass_branch.epistemic_uncertainty
 
 
 class _ObservingRuntime:
@@ -212,6 +213,8 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                                 "world_model_prediction": {
                                     "policy_utility": float(adopted),
                                     "uncertainty": 0.1,
+                                    "epistemic_uncertainty": 0.1,
+                                    "aleatoric_uncertainty": 0.0,
                                 },
                             },
                             "60s": {
@@ -219,6 +222,8 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                                 "world_model_prediction": {
                                     "policy_utility": float(adopted),
                                     "uncertainty": 0.1,
+                                    "epistemic_uncertainty": 0.1,
+                                    "aleatoric_uncertainty": 0.0,
                                 },
                             },
                         },
@@ -233,6 +238,8 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                                 "world_model_prediction": {
                                     "policy_utility": 0.0,
                                     "uncertainty": 0.1,
+                                    "epistemic_uncertainty": 0.1,
+                                    "aleatoric_uncertainty": 0.0,
                                 },
                             },
                             "60s": {
@@ -240,6 +247,8 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                                 "world_model_prediction": {
                                     "policy_utility": 0.0,
                                     "uncertainty": 0.1,
+                                    "epistemic_uncertainty": 0.1,
+                                    "aleatoric_uncertainty": 0.0,
                                 },
                             },
                         },
@@ -278,9 +287,14 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
         required_policy_horizon_s=60.0,
         min_residual_samples=2,
         require_outcome_calibration=True,
+        require_uncertainty_decomposition=True,
     )
     assert policy_ready["ready"]
     assert policy_ready["policy_effect_ready"]
+    assert policy_ready["uncertainty_decomposition_ready"]
+    assert policy_ready["gates"][
+        "world_model_uncertainty_decomposition"
+    ]
     outcome = policy_ready["decision_adoption"]["randomized_outcome_effect"]
     assert outcome["ready"]
     assert outcome["cluster_robust"]
@@ -337,6 +351,10 @@ def test_online_report_isolates_residual_profiles_by_policy_environment():
         "contextual_residual_memory_by_policy_environment"
     ]
 
+    assert not report["uncertainty_decomposition_ready"]
+    assert report["decision_adoption"]["uncertainty_decomposition"][
+        "legacy_predictions"
+    ] == 16
     assert set(profiles) == {
         "checkpoint-a|env-a", "checkpoint-a|env-b",
     }

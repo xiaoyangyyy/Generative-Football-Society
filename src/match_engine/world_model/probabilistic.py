@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+
+from src.match_engine.world_model.uncertainty import (
+    ensemble_uncertainty_decomposition,
+)
 
 EVENTS = ("retain", "turnover", "shot", "foul", "out")
 
@@ -59,11 +64,22 @@ class ProbabilisticFuture:
     event_time_s: tuple[float, float]
     progress_quantiles: tuple[float, float, float]
     state_uncertainty: float
+    epistemic_uncertainty: float | None = None
+    aleatoric_uncertainty: float | None = None
+    uncertainty_source: str = "legacy_total_as_epistemic_proxy"
+    uncertainty_components: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         total = sum(self.event_probabilities.values())
         if set(self.event_probabilities) != set(EVENTS) or not np.isclose(total, 1.0, atol=1e-6):
             raise ValueError("event probabilities must cover the canonical simplex")
+        if self.epistemic_uncertainty is None:
+            object.__setattr__(
+                self, "epistemic_uncertainty",
+                float(np.clip(self.state_uncertainty, 0.0, 1.0)),
+            )
+        if self.aleatoric_uncertainty is None:
+            object.__setattr__(self, "aleatoric_uncertainty", 0.0)
 
 
 def future_from_ensemble(
@@ -73,6 +89,7 @@ def future_from_ensemble(
     progress_samples: np.ndarray,
     action_kind: str,
     horizon_s: float,
+    progress_aleatoric: float = 0.0,
 ) -> ProbabilisticFuture:
     passes = np.clip(np.asarray(pass_probabilities, dtype=float), 0.0, 1.0)
     shots = np.clip(np.asarray(shot_probabilities, dtype=float), 0.0, 1.0)
@@ -84,11 +101,21 @@ def future_from_ensemble(
     turnover = max(0.01, 1.0 - retain)
     raw = np.array([retain, turnover, shot, 0.025, 0.015], dtype=float)
     raw /= raw.sum()
-    uncertainty = float(np.clip(np.std(passes) + np.std(shots) + np.std(progress), 0.0, 1.0))
+    decomposition = ensemble_uncertainty_decomposition(
+        passes,
+        shots,
+        progress,
+        progress_aleatoric=progress_aleatoric,
+    )
+    uncertainty = decomposition["total_uncertainty"]
     expected_time = max(0.1, float(horizon_s) * (0.45 + 0.4 * uncertainty))
     return ProbabilisticFuture(
         dict(zip(EVENTS, raw.tolist())),
         (expected_time, max(0.05, expected_time * (0.2 + uncertainty))),
         tuple(float(v) for v in np.quantile(progress, [0.1, 0.5, 0.9])),
         uncertainty,
+        epistemic_uncertainty=decomposition["epistemic_uncertainty"],
+        aleatoric_uncertainty=decomposition["aleatoric_uncertainty"],
+        uncertainty_source=decomposition["source"],
+        uncertainty_components=decomposition["components"],
     )

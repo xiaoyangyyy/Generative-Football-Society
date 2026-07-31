@@ -257,6 +257,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.active_learning import (
         active_learning_diagnostics,
     )
+    from src.match_engine.world_model.uncertainty import (
+        uncertainty_decomposition_diagnostics,
+    )
 
     records = list(getattr(state, "_wm_coach_decision_adoption", None) or [])
     resolved = [record for record in records if record["resolved"]]
@@ -277,7 +280,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 3,
+        "version": 4,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -295,6 +298,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         "randomized_regime_horizon_outcomes": regime_horizon_outcomes,
         "world_model_outcome_calibration": outcome_calibration,
         "active_learning": active_learning_diagnostics([records]),
+        "uncertainty_decomposition": (
+            uncertainty_decomposition_diagnostics([records])
+        ),
         "records": records,
         "interpretation": (
             "A bounded intervention changes one action logit but does not force "

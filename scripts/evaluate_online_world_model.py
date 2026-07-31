@@ -50,6 +50,14 @@ def main() -> int:
         action="store_true",
         help="Fail readiness until realized utility forecasts are calibrated.",
     )
+    parser.add_argument(
+        "--require-uncertainty-decomposition",
+        action="store_true",
+        help=(
+            "Fail readiness until enough realized forecasts carry a valid "
+            "epistemic/aleatoric decomposition."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -74,6 +82,9 @@ def main() -> int:
         required_policy_horizon_s=args.required_policy_horizon,
         min_residual_samples=args.min_residual_samples,
         require_outcome_calibration=args.require_outcome_calibration,
+        require_uncertainty_decomposition=(
+            args.require_uncertainty_decomposition
+        ),
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

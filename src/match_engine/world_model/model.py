@@ -10,6 +10,9 @@ import numpy as np
 from src.match_engine.world_model.action_codec import ACTION_DIM
 from src.match_engine.world_model.config import WorldModelConfig
 from src.match_engine.world_model.observation import OBS_DIM
+from src.match_engine.world_model.uncertainty import (
+    ensemble_uncertainty_decomposition,
+)
 
 try:
     import torch
@@ -30,6 +33,16 @@ class WorldModelOutput:
     shot_goal_prob: float
     latent: np.ndarray
     uncertainty: float = 0.0
+    epistemic_uncertainty: float | None = None
+    aleatoric_uncertainty: float | None = None
+    uncertainty_source: str = "legacy_total_as_epistemic_proxy"
+    uncertainty_components: dict | None = None
+
+    def __post_init__(self) -> None:
+        if self.epistemic_uncertainty is None:
+            self.epistemic_uncertainty = float(self.uncertainty)
+        if self.aleatoric_uncertainty is None:
+            self.aleatoric_uncertainty = 0.0
 
 if _TORCH:
 
@@ -261,11 +274,11 @@ if _TORCH:
                 ps = pass_probs.mean().item()
                 xg = progress_vals.mean().item()
                 sg = shot_probs.mean().item()
-                uncertainty = (
-                    pass_probs.std(unbiased=False)
-                    + shot_probs.std(unbiased=False)
-                    + 0.5 * progress_vals.std(unbiased=False)
-                ).item()
+                decomposition = ensemble_uncertainty_decomposition(
+                    pass_probs.detach().cpu().numpy(),
+                    shot_probs.detach().cpu().numpy(),
+                    progress_vals.detach().cpu().numpy(),
+                )
                 h_out = h_t.squeeze(0).numpy() if h_t is not None else z.squeeze(0).numpy()
             return WorldModelOutput(
                 next_obs=next_obs_t.squeeze(0).numpy().astype(np.float32),
@@ -273,7 +286,15 @@ if _TORCH:
                 progress_delta=float(xg),
                 shot_goal_prob=float(sg),
                 latent=h_out.astype(np.float32),
-                uncertainty=float(uncertainty),
+                uncertainty=float(decomposition["total_uncertainty"]),
+                epistemic_uncertainty=float(
+                    decomposition["epistemic_uncertainty"]
+                ),
+                aleatoric_uncertainty=float(
+                    decomposition["aleatoric_uncertainty"]
+                ),
+                uncertainty_source=str(decomposition["source"]),
+                uncertainty_components=dict(decomposition["components"]),
             )
 
 else:

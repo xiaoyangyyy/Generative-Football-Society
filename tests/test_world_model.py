@@ -204,6 +204,13 @@ def test_runtime_predicts_declared_policy_utility_at_requested_horizon():
     assert np.isfinite(prediction["policy_utility"])
     assert 0.0 <= prediction["retention_probability"] <= 1.0
     assert 0.0 <= prediction["uncertainty"] <= 1.0
+    assert 0.0 <= prediction["epistemic_uncertainty"] <= 1.0
+    assert 0.0 <= prediction["aleatoric_uncertainty"] <= 1.0
+    assert prediction["uncertainty"] == pytest.approx(
+        1.0
+        - (1.0 - prediction["epistemic_uncertainty"])
+        * (1.0 - prediction["aleatoric_uncertainty"])
+    )
     longer = runtime.predict_policy_utility(
         observation,
         zero_action(),
@@ -214,6 +221,12 @@ def test_runtime_predicts_declared_policy_utility_at_requested_horizon():
     assert longer["rollout_steps"] == 3
     assert longer["segment_horizon_s"] == 60.0
     assert longer["uncertainty"] >= prediction["uncertainty"]
+    assert longer["epistemic_uncertainty"] >= prediction[
+        "epistemic_uncertainty"
+    ]
+    assert longer["aleatoric_uncertainty"] >= prediction[
+        "aleatoric_uncertainty"
+    ]
 
 
 @pytest.mark.skipif(

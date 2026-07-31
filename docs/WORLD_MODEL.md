@@ -280,10 +280,36 @@ regime, memory returns to `stable`. These thresholds are simulator safety
 defaults rather than claims of real-football statistical validity and must be
 recalibrated for materially different data rates or utility scales.
 
+### Reducible and irreducible uncertainty
+
+World-model forecasts expose three separate quantities. `epistemic_uncertainty`
+is estimated from disagreement among independently bootstrapped outcome heads,
+plus the checkpoint's held-out quality gap; it represents model ignorance that
+additional representative data may reduce. `aleatoric_uncertainty` uses the
+within-head Bernoulli variance of pass/shot events and the held-out progress
+residual scale; it represents match randomness that a larger dataset should not
+be expected to remove. `uncertainty` composes both monotonically and remains the
+quantity used for risk penalties and interval calibration.
+
+The decomposition follows total-variance semantics but remains a simulator
+proxy: the transition decoder itself is not a deep ensemble, so its epistemic
+term is backed by validation quality and outcome-head disagreement rather than
+independent transition networks. New checkpoints persist `progress_rmse` from
+held-out data; older checkpoints use a conservative weighted-transition-error
+fallback. Long-horizon rollouts compound both components separately before
+recomposition. Every forecast also carries its source and component audit.
+
+The LLM is explicitly told that epistemic uncertainty may justify bounded data
+acquisition, while aleatoric uncertainty can only increase caution. The online
+report audits realized-error correlations and verifies the composition identity.
+Deployments may make this mandatory with
+`--require-uncertainty-decomposition`; legacy forecasts remain readable but
+cannot satisfy that gate.
+
 ### Risk-constrained active learning
 
 The coach packet now distinguishes exploitation from data acquisition. For each
-action, the active-learning layer combines the model uncertainty proxy,
+action, the active-learning layer combines epistemic uncertainty,
 multi-horizon forecast disagreement, global action novelty, and novelty in the
 current team/opponent/zone/score/phase context. This produces an auditable
 `information_value`; it is not treated as match value.
@@ -313,11 +339,11 @@ These estimates still do not establish long-horizon match improvement or real
 football validity. Aggregate experiments should keep the checkpoint, control
 rate, tactics, and simulator configuration fixed.
 
-Both diagnostics are stored in the per-match cognitive log. Aggregate them with:
+All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
 python scripts/evaluate_online_world_model.py \
   --min-transitions 50 --min-policy-arm 8 --min-residual-samples 20 \
   --required-policy-horizon 60 --require-policy-effect \
-  --require-outcome-calibration
+  --require-outcome-calibration --require-uncertainty-decomposition
 ```

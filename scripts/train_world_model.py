@@ -229,8 +229,12 @@ def main() -> None:
         vo = torch.from_numpy(obs[val_idx])
         va = torch.from_numpy(act[val_idx])
         vn = torch.from_numpy(nxt[val_idx])
-        _z, vp, vpl, _vx, vsl, _h = model(vo, va, h=None)
+        _z, vp, vpl, vxp, vsl, _h = model(vo, va, h=None)
         weighted_mse = float(((((vp - vn) ** 2) * obs_weights).mean()).item())
+        progress_target = torch.from_numpy(xg[val_idx]).float().view(-1)
+        progress_rmse = float(torch.sqrt(torch.mean(
+            (vxp.view(-1) - progress_target) ** 2
+        )).item())
         pm = pass_mask[val_idx] > 0.5
         sm = shot_mask[val_idx] > 0.5
         pass_logits = vpl.view(-1)[torch.from_numpy(pm)]
@@ -286,6 +290,7 @@ def main() -> None:
         planner_quality = min(pass_planner_quality, shot_planner_quality)
     validation = {
         "weighted_obs_mse": weighted_mse,
+        "progress_rmse": progress_rmse,
         "pass_balanced_accuracy": pass_balanced_accuracy,
         "shot_brier": shot_brier,
         "transition_quality": transition_quality,

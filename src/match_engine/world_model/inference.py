@@ -22,6 +22,10 @@ from src.match_engine.world_model.schema import (
 )
 from src.match_engine.world_model.probabilistic import ProbabilisticFuture, future_from_ensemble
 from src.match_engine.world_model.online_calibration import OnlineTransitionCalibrator
+from src.match_engine.world_model.uncertainty import (
+    compose_uncertainty,
+    compound_uncertainty,
+)
 
 try:
     import torch
@@ -68,6 +72,14 @@ class WorldModelRuntime:
         self.pass_calibration_scale = float(calibration.get("scale", 1.0))
         self.pass_calibration_bias = float(calibration.get("bias", 0.0))
         self.pass_threshold = float(validation.get("pass_threshold", 0.5))
+        self.progress_aleatoric_scale = float(np.clip(
+            validation.get(
+                "progress_rmse",
+                np.sqrt(max(0.0, float(validation.get("weighted_obs_mse", 0.02)))),
+            ),
+            0.0,
+            1.0,
+        ))
         self.online_calibrator = OnlineTransitionCalibrator(
             expected_weighted_mse=float(
                 validation.get("weighted_obs_mse", 0.02)
@@ -142,9 +154,27 @@ class WorldModelRuntime:
         quality_uncertainty = 1.0 - self.planner_confidence(
             clean_obs, kind=quality_kind,
         )
-        out.uncertainty = float(
-            np.clip(max(quality_uncertainty, 2.0 * float(out.uncertainty)), 0.0, 1.0)
+        model_epistemic = float(out.epistemic_uncertainty or 0.0)
+        epistemic = float(np.clip(
+            max(quality_uncertainty, 2.0 * model_epistemic), 0.0, 1.0,
+        ))
+        aleatoric = float(np.clip(
+            float(out.aleatoric_uncertainty or 0.0)
+            + 0.10 * self.progress_aleatoric_scale,
+            0.0,
+            0.50,
+        ))
+        out.epistemic_uncertainty = epistemic
+        out.aleatoric_uncertainty = aleatoric
+        out.uncertainty = compose_uncertainty(epistemic, aleatoric)
+        out.uncertainty_source = (
+            "bootstrap_heads_plus_validation_quality_and_progress_residual"
         )
+        out.uncertainty_components = {
+            **(out.uncertainty_components or {}),
+            "validation_quality_epistemic": quality_uncertainty,
+            "progress_residual_aleatoric": self.progress_aleatoric_scale,
+        }
         self.last_uncertainty = out.uncertainty
         if carry_hidden and self.model.transition_kind == "gru":
             self._hidden = out.latent.reshape(1, 1, -1)
@@ -206,12 +236,16 @@ class WorldModelRuntime:
             z = self.model.encode(obs_t)
             z_next, _ = self.model._transition_step(z, action_t, None)
             pass_heads, progress_heads, shot_heads = self.model.outcome_ensemble(z_next, action_t)
-            pass_probability = torch.sigmoid(pass_heads).reshape(-1).numpy()
+            pass_probability = torch.sigmoid(
+                self.pass_calibration_scale * pass_heads
+                + self.pass_calibration_bias
+            ).reshape(-1).numpy()
             shot_probability = torch.sigmoid(shot_heads).reshape(-1).numpy()
             progress = progress_heads.reshape(-1).numpy()
         return future_from_ensemble(
             pass_probabilities=pass_probability, shot_probabilities=shot_probability,
             progress_samples=progress, action_kind=action_kind, horizon_s=horizon_s,
+            progress_aleatoric=self.progress_aleatoric_scale,
         )
 
     def predict_policy_utility(
@@ -259,11 +293,15 @@ class WorldModelRuntime:
         xg_net = float(np.clip(
             output.progress_delta * rollout_steps, -1.0, 1.0,
         ))
-        uncertainty = float(np.clip(
-            1.0 - (1.0 - float(output.uncertainty)) ** rollout_steps,
-            0.0,
-            1.0,
-        ))
+        epistemic_uncertainty = compound_uncertainty(
+            output.epistemic_uncertainty, rollout_steps,
+        )
+        aleatoric_uncertainty = compound_uncertainty(
+            output.aleatoric_uncertainty, rollout_steps,
+        )
+        uncertainty = compose_uncertainty(
+            epistemic_uncertainty, aleatoric_uncertainty,
+        )
         utility = (
             goal_delta
             + 0.35 * xg_net
@@ -281,6 +319,10 @@ class WorldModelRuntime:
             "xg_net_delta": xg_net,
             "goal_diff_delta": goal_delta,
             "uncertainty": uncertainty,
+            "epistemic_uncertainty": epistemic_uncertainty,
+            "aleatoric_uncertainty": aleatoric_uncertainty,
+            "uncertainty_source": output.uncertainty_source,
+            "uncertainty_components": output.uncertainty_components or {},
         }
 
     def score_action(self, obs: np.ndarray, action: np.ndarray) -> float:
