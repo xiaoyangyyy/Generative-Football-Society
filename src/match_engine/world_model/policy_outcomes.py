@@ -126,6 +126,22 @@ def observe_policy_intervention_outcomes(
                 "goal_diff_delta": goal_delta,
                 "policy_utility": utility,
             }
+            prediction = (
+                record.get("world_model_outcome_predictions") or {}
+            ).get(key)
+            if isinstance(prediction, dict):
+                predicted_utility = prediction.get("policy_utility")
+                if predicted_utility is not None:
+                    predicted_utility = float(predicted_utility)
+                    uncertainty = max(
+                        0.05, float(prediction.get("uncertainty", 1.0)),
+                    )
+                    residual = utility - predicted_utility
+                    outcome["world_model_prediction"] = prediction
+                    outcome["prediction_residual"] = residual
+                    outcome["standardized_prediction_residual"] = (
+                        residual / uncertainty
+                    )
             regime[key] = outcome
             if censor_t is None or due_t <= float(censor_t) + 1e-9:
                 isolated[key] = outcome

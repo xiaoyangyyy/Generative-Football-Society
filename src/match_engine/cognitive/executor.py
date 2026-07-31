@@ -259,6 +259,12 @@ class CognitiveExecutor:
                     state,
                     trig.team_id,
                     horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+                    outcome_horizons_s=(
+                        self.cfg.world_model_outcome_horizons_s
+                    ),
+                    residual_min_samples=(
+                        self.cfg.world_model_residual_min_samples
+                    ),
                 )
             )
 
@@ -307,14 +313,38 @@ class CognitiveExecutor:
                 from src.match_engine.world_model.policy_experiment import (
                     policy_bridge_reliability_factor,
                 )
+                from src.match_engine.world_model.outcome_calibration import (
+                    outcome_prediction_trust_factor,
+                )
 
                 reliability_factor = policy_bridge_reliability_factor(
                     state,
                     min_per_arm=self.cfg.world_model_action_min_arm_samples,
                 )
+                selected_action = str(
+                    rec.plan.get("world_model_action", "none")
+                )
+                selected_candidate = next((
+                    candidate for candidate in packet.get("candidates", [])
+                    if str(candidate.get("action")) == selected_action
+                ), {})
+                prediction_factor, prediction_audit = (
+                    outcome_prediction_trust_factor(
+                        state,
+                        action=selected_action,
+                        horizon_keys=(
+                            selected_candidate.get(
+                                "multi_horizon_predictions", {}
+                            ).keys()
+                        ),
+                        min_samples=(
+                            self.cfg.world_model_residual_min_samples
+                        ),
+                    )
+                )
                 intervention_strength = _policy_intervention_strength(
                     rec.plan, packet, self.cfg,
-                ) * reliability_factor
+                ) * reliability_factor * prediction_factor
                 adoption = register_coach_action_decision(
                     state,
                     team_id=trig.team_id,
@@ -337,6 +367,14 @@ class CognitiveExecutor:
                     outcome_horizons_s=(
                         self.cfg.world_model_outcome_horizons_s
                     ),
+                    action_predictions={
+                        str(candidate.get("action", "")): dict(
+                            candidate.get("multi_horizon_predictions") or {}
+                        )
+                        for candidate in packet.get("candidates", [])
+                        if candidate.get("action")
+                    },
+                    outcome_prediction_trust_factor=prediction_factor,
                 )
                 if adoption is not None:
                     rec.plan["world_model_adoption_id"] = adoption[
@@ -353,6 +391,12 @@ class CognitiveExecutor:
                     ]
                     rec.plan["world_model_policy_reliability_factor"] = (
                         reliability_factor
+                    )
+                    rec.plan["world_model_prediction_trust_factor"] = (
+                        prediction_factor
+                    )
+                    rec.plan["world_model_prediction_trust_audit"] = (
+                        prediction_audit
                     )
         except Exception as exc:
             rec.error = str(exc)

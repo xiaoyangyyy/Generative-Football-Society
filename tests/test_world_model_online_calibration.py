@@ -209,8 +209,18 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                         "multi_horizon_outcomes": {
                             "transition": {
                                 "policy_utility": float(adopted),
+                                "world_model_prediction": {
+                                    "policy_utility": float(adopted),
+                                    "uncertainty": 0.1,
+                                },
                             },
-                            "60s": {"policy_utility": float(adopted)},
+                            "60s": {
+                                "policy_utility": float(adopted),
+                                "world_model_prediction": {
+                                    "policy_utility": float(adopted),
+                                    "uncertainty": 0.1,
+                                },
+                            },
                         },
                     },
                     {
@@ -218,8 +228,20 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                         "experiment_treatment_propensity": 0.8,
                         "short_horizon_outcome": {"policy_utility": 0.0},
                         "multi_horizon_outcomes": {
-                            "transition": {"policy_utility": 0.0},
-                            "60s": {"policy_utility": 0.0},
+                            "transition": {
+                                "policy_utility": 0.0,
+                                "world_model_prediction": {
+                                    "policy_utility": 0.0,
+                                    "uncertainty": 0.1,
+                                },
+                            },
+                            "60s": {
+                                "policy_utility": 0.0,
+                                "world_model_prediction": {
+                                    "policy_utility": 0.0,
+                                    "uncertainty": 0.1,
+                                },
+                            },
                         },
                     },
                 ],
@@ -251,6 +273,8 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
         min_policy_arm=2,
         require_policy_effect=True,
         required_policy_horizon_s=60.0,
+        min_residual_samples=2,
+        require_outcome_calibration=True,
     )
     assert policy_ready["ready"]
     assert policy_ready["policy_effect_ready"]
@@ -267,3 +291,8 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
     assert policy_ready["decision_adoption"][
         "required_policy_outcome"
     ]["estimand"] == "policy_regime_total_effect_with_natural_followup"
+    calibration = policy_ready["decision_adoption"][
+        "world_model_outcome_calibration"
+    ]
+    assert calibration["overall"]["active"]
+    assert calibration["overall"]["trust_factor"] == 1.0

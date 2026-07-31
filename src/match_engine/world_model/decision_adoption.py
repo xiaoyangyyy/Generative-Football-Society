@@ -15,6 +15,9 @@ from src.match_engine.world_model.policy_outcomes import (
     censor_overlapping_policy_outcomes,
     normalize_outcome_horizons,
 )
+from src.match_engine.world_model.outcome_calibration import (
+    policy_outcome_calibration,
+)
 
 
 TRACKED_ACTIONS = {"hold", "pass", "cross", "shot"}
@@ -33,6 +36,8 @@ def register_coach_action_decision(
     intervention_enabled: bool = False,
     experiment_control_rate: float = 0.0,
     outcome_horizons_s: tuple[float, ...] = (0.0, 60.0, 180.0),
+    action_predictions: dict[str, dict[str, Any]] | None = None,
+    outcome_prediction_trust_factor: float = 1.0,
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -93,6 +98,10 @@ def register_coach_action_decision(
         "outcome_horizons_s": list(normalized_outcome_horizons),
         "outcome_censored_t_sec": None,
         "outcome_censor_reason": None,
+        "action_outcome_predictions": action_predictions or {},
+        "outcome_prediction_trust_factor": min(
+            1.0, max(0.25, float(outcome_prediction_trust_factor)),
+        ),
         "policy_opportunity_observed": False,
         "intervention_applied": False,
         "intervention_t_sec": None,
@@ -165,6 +174,9 @@ def record_policy_intervention_result(
         record["intervention_applied"] = arm == "treatment"
         record["intervention_t_sec"] = float(t_sec)
         record["intervention_actual_action"] = actual
+        record["world_model_outcome_predictions"] = (
+            record.get("action_outcome_predictions", {}).get(actual, {})
+        )
         record["outcome_baseline"] = outcome_baseline
         record["short_horizon_outcome"] = None
         record["multi_horizon_outcomes"] = {}
@@ -250,6 +262,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     regime_horizon_outcomes = randomized_multi_horizon_effects(
         [records], outcome_family="regime",
     )
+    outcome_calibration = policy_outcome_calibration(
+        records, outcome_family="regime",
+    )
     return {
         "version": 2,
         "registered": len(records),
@@ -267,6 +282,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         "randomized_outcome_effect": randomized_outcome,
         "randomized_multi_horizon_outcomes": multi_horizon_outcomes,
         "randomized_regime_horizon_outcomes": regime_horizon_outcomes,
+        "world_model_outcome_calibration": outcome_calibration,
         "records": records,
         "interpretation": (
             "A bounded intervention changes one action logit but does not force "

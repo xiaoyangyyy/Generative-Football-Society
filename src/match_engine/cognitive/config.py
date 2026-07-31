@@ -48,6 +48,7 @@ class CognitiveMatchConfig:
     world_model_action_bias_max: float = 0.35
     world_model_action_control_rate: float = 0.20
     world_model_action_min_arm_samples: int = 2
+    world_model_residual_min_samples: int = 6
     world_model_outcome_horizons_s: Tuple[float, ...] = (0.0, 60.0, 180.0)
     # coach, referee, player_per_team, assistant_total, crowd
     tier_caps: Tuple[int, int, int, int, int] = (6, 4, 4, 2, 3)
@@ -80,6 +81,12 @@ class CognitiveMatchConfig:
                 2,
                 int(env_float(
                     values, "MATCH_WM_LLM_ACTION_MIN_ARM_SAMPLES", 2.0,
+                )),
+            ),
+            world_model_residual_min_samples=max(
+                2,
+                int(env_float(
+                    values, "MATCH_WM_LLM_RESIDUAL_MIN_SAMPLES", 6.0,
                 )),
             ),
             world_model_outcome_horizons_s=_parse_outcome_horizons(

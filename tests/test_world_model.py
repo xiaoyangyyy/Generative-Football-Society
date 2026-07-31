@@ -174,6 +174,43 @@ def test_v6_zero_pass_residual_preserves_physics_prior():
     assert torch.allclose(probability, action[:, 13], atol=1e-6)
 
 
+def test_runtime_predicts_declared_policy_utility_at_requested_horizon():
+    pytest.importorskip("torch")
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.inference import WorldModelRuntime
+    from src.match_engine.world_model.model import build_model
+
+    cfg = WorldModelConfig(latent_dim=16, hidden_dim=32, ensemble_size=2)
+    runtime = WorldModelRuntime(build_model(cfg), cfg, {
+        "validation": {"planner_quality": 0.8, "weighted_obs_mse": 0.02},
+    })
+    observation = np.full(OBS_DIM, 0.5, dtype=np.float32)
+    prediction = runtime.predict_policy_utility(
+        observation,
+        zero_action(),
+        action_kind="hold",
+        attacking_home=True,
+        horizon_s=60.0,
+    )
+    assert prediction["prediction_source"] == (
+        "autoregressive_action_persistence_rollout"
+    )
+    assert prediction["horizon_s"] == 60.0
+    assert np.isfinite(prediction["policy_utility"])
+    assert 0.0 <= prediction["retention_probability"] <= 1.0
+    assert 0.0 <= prediction["uncertainty"] <= 1.0
+    longer = runtime.predict_policy_utility(
+        observation,
+        zero_action(),
+        action_kind="hold",
+        attacking_home=True,
+        horizon_s=180.0,
+    )
+    assert longer["rollout_steps"] == 3
+    assert longer["segment_horizon_s"] == 60.0
+    assert longer["uncertainty"] >= prediction["uncertainty"]
+
+
 @pytest.mark.skipif(
     not os.path.isfile(
         os.path.join(os.path.dirname(__file__), "..", "data", "world_model", "latent_wm.pt")

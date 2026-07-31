@@ -176,6 +176,7 @@ intervention, sampled action, and whether they matched.
 | `MATCH_WM_LLM_ACTION_CONTROL_RATE` | `0.20` | Deterministic randomized share assigned to a zero-bias control arm, clipped to `[0, 0.5]` |
 | `MATCH_WM_LLM_ACTION_MIN_ARM_SAMPLES` | `2` | Minimum samples per arm before within-match reliability feedback can activate |
 | `MATCH_WM_LLM_OUTCOME_HORIZONS` | `0,60,180` | Comma-separated causal credit horizons in seconds; transition (`0`) is always included |
+| `MATCH_WM_LLM_RESIDUAL_MIN_SAMPLES` | `6` | Realized forecast residuals required before prediction trust can reduce bridge strength |
 
 Eligible decisions are deterministically randomized from the match seed and
 decision identity. Treatment opportunities receive the bounded bias; control
@@ -213,6 +214,20 @@ deployed decision system.” Reliability feedback uses the longest ready regime
 horizon, so a superficially good next action cannot hide a worse medium-term
 trajectory.
 
+For every evaluated action, the world model now predicts the same declared
+policy utility at each credit horizon. Horizons beyond the 60-second action
+encoding limit use an autoregressive action-persistence rollout (for example,
+three 60-second segments for `180s`) and compound ensemble uncertainty with
+rollout depth. Once the action is executed, the corresponding forecast is joined
+to the realized outcome and produces raw and uncertainty-standardized residuals.
+
+Residual calibration is reported globally, by horizon, and by action+horizon:
+mean bias, MAE, RMSE, 90% uncertainty coverage, skill against a zero forecast,
+and a bounded trust factor. The calibration summary is included in subsequent
+LLM evidence packets. After the minimum sample count, the longest available
+action-specific calibration can reduce the policy bridge; sparse history remains
+neutral and calibration can never increase confidence or reopen a quality gate.
+
 These estimates still do not establish long-horizon match improvement or real
 football validity. Aggregate experiments should keep the checkpoint, control
 rate, tactics, and simulator configuration fixed.
@@ -221,6 +236,7 @@ Both diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
 python scripts/evaluate_online_world_model.py \
-  --min-transitions 50 --min-policy-arm 8 \
-  --required-policy-horizon 60 --require-policy-effect
+  --min-transitions 50 --min-policy-arm 8 --min-residual-samples 20 \
+  --required-policy-horizon 60 --require-policy-effect \
+  --require-outcome-calibration
 ```

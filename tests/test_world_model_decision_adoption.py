@@ -281,6 +281,14 @@ def test_policy_outcome_tracks_progress_retention_xg_and_score_delta():
         horizon_s=10.0,
         intervention_enabled=True,
         intervention_strength=0.3,
+        action_predictions={
+            "pass": {
+                "transition": {
+                    "policy_utility": 0.10,
+                    "uncertainty": 0.20,
+                },
+            },
+        },
     )
     baseline = capture_policy_outcome_baseline(state, team_id="A")
     record_policy_intervention_result(
@@ -299,6 +307,8 @@ def test_policy_outcome_tracks_progress_retention_xg_and_score_delta():
     assert outcome["retained_possession"]
     assert outcome["xg_net_delta"] == pytest.approx(0.1)
     assert outcome["policy_utility"] == pytest.approx(0.115)
+    assert outcome["prediction_residual"] == pytest.approx(0.015)
+    assert outcome["standardized_prediction_residual"] == pytest.approx(0.075)
 
 
 def test_policy_outcome_effect_uses_propensity_weights_and_match_clusters():

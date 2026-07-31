@@ -9,6 +9,9 @@ import numpy as np
 from src.match_engine.math_utils import finite_float
 from src.match_engine.world_model.action_codec import encode_high_level_action
 from src.match_engine.world_model.schema import observation_coverage
+from src.match_engine.world_model.policy_prediction import (
+    build_multi_horizon_policy_predictions,
+)
 from src.match_engine.tactical_catalog import TACTICAL_PRESETS, resolve_tactical_preset
 
 
@@ -66,6 +69,7 @@ def _evaluate_action_candidates(
     *,
     horizon_s: float,
     uncertainty_penalty: float,
+    prediction_horizons_s: tuple[float, ...],
 ) -> tuple[np.ndarray, list[dict[str, Any]]]:
     """Run the shared short-horizon action counterfactuals once."""
     attacking_home = team_id == state.home.team_id
@@ -100,6 +104,17 @@ def _evaluate_action_candidates(
             - uncertainty_penalty * uncertainty
             - 0.15 * turnover
         )
+        multi_horizon_predictions = build_multi_horizon_policy_predictions(
+            runtime,
+            observation,
+            action_name=action_name,
+            target=target,
+            physics_prior=prior,
+            confidence=confidence,
+            attacking_home=attacking_home,
+            base_horizon_s=horizon_s,
+            outcome_horizons_s=prediction_horizons_s,
+        )
         candidates.append({
             "action": action_name,
             "target": [float(target[0]), float(target[1])],
@@ -117,6 +132,7 @@ def _evaluate_action_candidates(
                 float(value) for value in future.progress_quantiles
             ],
             "event_time_s": [float(value) for value in future.event_time_s],
+            "multi_horizon_predictions": multi_horizon_predictions,
         })
     return observation, candidates
 
@@ -175,6 +191,7 @@ def build_prematch_tactical_packet(
         observation, action_evidence = _evaluate_action_candidates(
             runtime, state, team_id, horizon_s=horizon_s,
             uncertainty_penalty=uncertainty_penalty,
+            prediction_horizons_s=(0.0,),
         )
         by_action = {item["action"]: item for item in action_evidence}
         tactical_candidates = []
@@ -278,8 +295,19 @@ def build_coach_decision_packet(
     *,
     horizon_s: float = 10.0,
     uncertainty_penalty: float = 0.25,
+    outcome_horizons_s: tuple[float, ...] = (0.0, 60.0, 180.0),
+    residual_min_samples: int = 6,
 ) -> dict[str, Any]:
     """Compare strategic candidates without granting the LLM direct state writes."""
+    from src.match_engine.world_model.outcome_calibration import (
+        policy_outcome_calibration,
+    )
+
+    outcome_calibration = policy_outcome_calibration(
+        getattr(state, "_wm_coach_decision_adoption", None) or [],
+        min_samples=residual_min_samples,
+        outcome_family="regime",
+    )
     if runtime is None:
         return {
             "version": DECISION_PACKET_VERSION,
@@ -287,11 +315,13 @@ def build_coach_decision_packet(
             "reason": "world_model_unavailable",
             "recommended_action": "none",
             "candidates": [],
+            "policy_outcome_calibration": outcome_calibration,
         }
     try:
         observation, candidates = _evaluate_action_candidates(
             runtime, state, team_id, horizon_s=horizon_s,
             uncertainty_penalty=uncertainty_penalty,
+            prediction_horizons_s=outcome_horizons_s,
         )
         eligible = [
             candidate for candidate in candidates
@@ -314,6 +344,7 @@ def build_coach_decision_packet(
             ),
             "candidates": candidates,
             "online_calibration": _online_calibration_diagnostics(runtime),
+            "policy_outcome_calibration": outcome_calibration,
             "policy": (
                 "Use as uncertain evidence; retain bounded controls and never "
                 "invent score, xG, or outcome facts."

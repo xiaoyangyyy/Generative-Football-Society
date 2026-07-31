@@ -33,6 +33,7 @@ def main() -> int:
     )
     parser.add_argument("--min-transitions", type=int, default=50)
     parser.add_argument("--min-policy-arm", type=int, default=8)
+    parser.add_argument("--min-residual-samples", type=int, default=20)
     parser.add_argument(
         "--required-policy-horizon",
         type=float,
@@ -43,6 +44,11 @@ def main() -> int:
         "--require-policy-effect",
         action="store_true",
         help="Fail readiness until randomized treatment and control arms pass.",
+    )
+    parser.add_argument(
+        "--require-outcome-calibration",
+        action="store_true",
+        help="Fail readiness until realized utility forecasts are calibrated.",
     )
     args = parser.parse_args()
 
@@ -66,6 +72,8 @@ def main() -> int:
         min_policy_arm=args.min_policy_arm,
         require_policy_effect=args.require_policy_effect,
         required_policy_horizon_s=args.required_policy_horizon,
+        min_residual_samples=args.min_residual_samples,
+        require_outcome_calibration=args.require_outcome_calibration,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

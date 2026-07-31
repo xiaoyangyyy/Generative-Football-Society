@@ -12,7 +12,12 @@ from src.match_engine.world_model.config import WorldModelConfig, default_checkp
 from src.match_engine.world_model.action_codec import decode_action_kind
 from src.match_engine.world_model.model import LatentWorldModel, WorldModelOutput, load_checkpoint
 from src.match_engine.world_model.observation import OBS_DIM, encode_observation
-from src.match_engine.world_model.schema import observation_coverage, strip_outcome_leakage
+from src.match_engine.world_model.schema import (
+    HORIZON_INDEX,
+    HORIZON_SCALE_SECONDS,
+    observation_coverage,
+    strip_outcome_leakage,
+)
 from src.match_engine.world_model.probabilistic import ProbabilisticFuture, future_from_ensemble
 from src.match_engine.world_model.online_calibration import OnlineTransitionCalibrator
 
@@ -189,6 +194,75 @@ class WorldModelRuntime:
             pass_probabilities=pass_probability, shot_probabilities=shot_probability,
             progress_samples=progress, action_kind=action_kind, horizon_s=horizon_s,
         )
+
+    def predict_policy_utility(
+        self,
+        obs: np.ndarray,
+        action: np.ndarray,
+        *,
+        action_kind: str,
+        attacking_home: bool,
+        horizon_s: float,
+    ) -> dict[str, float | int | str]:
+        """Predict the same declared utility later measured by policy outcomes."""
+        rollout_steps = max(1, int(np.ceil(
+            max(0.1, float(horizon_s)) / HORIZON_SCALE_SECONDS
+        )))
+        segment_horizon_s = max(0.1, float(horizon_s)) / rollout_steps
+        conditioned_action = np.asarray(action, dtype=np.float32).copy()
+        conditioned_action[HORIZON_INDEX] = float(np.clip(
+            segment_horizon_s / HORIZON_SCALE_SECONDS, 0.0, 1.0,
+        ))
+        quality_kind = "shot" if action_kind == "shot" else "pass"
+        output = self.imagine(
+            obs,
+            conditioned_action,
+            steps=rollout_steps,
+            carry_hidden=False,
+            quality_kind=quality_kind,
+        )
+        current = np.asarray(obs, dtype=float)
+        future = np.asarray(output.next_obs, dtype=float)
+        direction = 1.0 if attacking_home else -1.0
+        progress = float(np.clip(
+            direction * (future[200] - current[200]), -1.0, 1.0,
+        ))
+        current_goal_diff = direction * 5.0 * (current[204] - current[205])
+        future_goal_diff = direction * 5.0 * (future[204] - future[205])
+        goal_delta = float(np.clip(
+            future_goal_diff - current_goal_diff, -2.0, 2.0,
+        ))
+        possession_home = float(np.clip(future[209], 0.0, 1.0))
+        retention_probability = (
+            possession_home if attacking_home else 1.0 - possession_home
+        )
+        retention_edge = 2.0 * retention_probability - 1.0
+        xg_net = float(np.clip(
+            output.progress_delta * rollout_steps, -1.0, 1.0,
+        ))
+        uncertainty = float(np.clip(
+            1.0 - (1.0 - float(output.uncertainty)) ** rollout_steps,
+            0.0,
+            1.0,
+        ))
+        utility = (
+            goal_delta
+            + 0.35 * xg_net
+            + 0.15 * progress
+            + 0.05 * retention_edge
+        )
+        return {
+            "prediction_source": "autoregressive_action_persistence_rollout",
+            "horizon_s": float(horizon_s),
+            "rollout_steps": rollout_steps,
+            "segment_horizon_s": segment_horizon_s,
+            "policy_utility": float(utility),
+            "progress": progress,
+            "retention_probability": retention_probability,
+            "xg_net_delta": xg_net,
+            "goal_diff_delta": goal_delta,
+            "uncertainty": uncertainty,
+        }
 
     def score_action(self, obs: np.ndarray, action: np.ndarray) -> float:
         obs = np.nan_to_num(np.asarray(obs, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)

@@ -11,6 +11,9 @@ from src.match_engine.world_model.policy_experiment import (
     randomized_multi_horizon_effects,
     randomized_outcome_effect,
 )
+from src.match_engine.world_model.outcome_calibration import (
+    policy_outcome_calibration,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -28,6 +31,8 @@ def aggregate_online_calibration(
     min_policy_arm: int = 8,
     require_policy_effect: bool = False,
     required_policy_horizon_s: float = 0.0,
+    min_residual_samples: int = 20,
+    require_outcome_calibration: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -136,6 +141,15 @@ def aggregate_online_calibration(
             horizon_key=required_horizon_key,
             outcome_family="regime",
         )
+    outcome_calibration = policy_outcome_calibration(
+        [
+            record
+            for records in policy_record_clusters
+            for record in records
+        ],
+        min_samples=min_residual_samples,
+        outcome_family="regime",
+    )
     gates["randomized_policy_adoption"] = (
         randomized_effect["ready"] if require_policy_effect else True
     )
@@ -145,6 +159,13 @@ def aggregate_online_calibration(
             and required_outcome["cluster_robust"]
         )
         if require_policy_effect else True
+    )
+    gates["world_model_outcome_calibration"] = (
+        (
+            outcome_calibration["overall"]["active"]
+            and outcome_calibration["overall"]["trust_factor"] >= 0.5
+        )
+        if require_outcome_calibration else True
     )
     return {
         "version": 2,
@@ -170,6 +191,7 @@ def aggregate_online_calibration(
             "randomized_regime_horizon_outcomes": regime_horizon_outcomes,
             "required_policy_horizon_key": required_horizon_key,
             "required_policy_outcome": required_outcome,
+            "world_model_outcome_calibration": outcome_calibration,
         },
         "gates": gates,
         "ready": all(gates.values()),
@@ -183,5 +205,6 @@ def aggregate_online_calibration(
             "Action adoption is temporal association, not causal attribution.",
             "Randomized bridge effects are causal only for action selection inside this simulator.",
             "Short-horizon outcome uncertainty is clustered by match when multiple logs exist.",
+            "Outcome forecast trust is checkpoint- and policy-regime-specific.",
         ],
     }

@@ -91,6 +91,15 @@ def test_decision_packet_compares_all_actions_and_recommends_risk_adjusted_best(
     assert packet["online_calibration"]["branches"]["general"][
         "trust_factor"
     ] == 0.8
+    assert packet["policy_outcome_calibration"]["samples"] == 0
+    for candidate in packet["candidates"]:
+        assert set(candidate["multi_horizon_predictions"]) == {
+            "transition", "60s", "180s",
+        }
+        assert all(
+            np.isfinite(prediction["policy_utility"])
+            for prediction in candidate["multi_horizon_predictions"].values()
+        )
 
 
 def test_decision_packet_closes_recommendation_when_quality_gate_is_closed():
@@ -234,6 +243,8 @@ def test_executor_injects_world_model_evidence_before_llm_and_applies_plan():
         "treatment", "control",
     }
     assert record.plan["world_model_policy_reliability_factor"] == 1.0
+    assert record.plan["world_model_prediction_trust_factor"] == 1.0
+    assert adoption["action_outcome_predictions"]["shot"]["60s"]
     assert record.applied
     assert state.home.coach.tactical_current["pressing_intensity"] > 0.5
 
@@ -253,3 +264,54 @@ def test_executor_closes_llm_action_when_world_model_quality_gate_is_closed():
     assert record.plan["world_model_action"] == "none"
     assert record.plan["world_model_selection_constrained"]
     assert not hasattr(state, "_wm_coach_decision_adoption")
+
+
+def test_executor_uses_realized_prediction_residuals_to_reduce_bridge_strength():
+    llm = _LLM()
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(
+            enabled=True,
+            world_model_action_control_rate=0.0,
+            world_model_residual_min_samples=4,
+        ),
+        llm,
+        world_model_runtime=_Runtime(),
+    )
+    trigger = CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    )
+    state = _state()
+    state._wm_coach_decision_adoption = [
+        {
+            "team_id": "Home",
+            "resolved": True,
+            "policy_opportunity_observed": False,
+            "intervention_actual_action": "shot",
+            "multi_horizon_regime_outcomes": {
+                horizon: {
+                    "policy_utility": 0.0,
+                    "world_model_prediction": {
+                        "policy_utility": 1.0,
+                        "uncertainty": 0.1,
+                    },
+                }
+                for horizon in ("transition", "60s", "180s")
+            },
+        }
+        for _ in range(4)
+    ]
+    record = executor.process_trigger(trigger, state)
+    new_adoption = state._wm_coach_decision_adoption[-1]
+    assert record.plan["world_model_prediction_trust_factor"] == 0.25
+    assert record.plan["world_model_prediction_trust_audit"][
+        "horizon_key"
+    ] == "180s"
+    assert new_adoption["outcome_prediction_trust_factor"] == 0.25
+    assert new_adoption["intervention_strength"] < 0.09
+    calibration = llm.facts["world_model_decision_support"][
+        "policy_outcome_calibration"
+    ]
+    assert calibration["by_action_horizon"]["shot"]["180s"][
+        "trust_factor"
+    ] == 0.25
