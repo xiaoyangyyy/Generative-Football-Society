@@ -58,6 +58,10 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
         action if action in {"hold", "pass", "cross", "shot", "none"}
         else "none"
     )
+    mode = str(plan.get("world_model_decision_mode", "exploit")).lower()
+    out["world_model_decision_mode"] = (
+        mode if mode in {"exploit", "explore", "decline"} else "exploit"
+    )
     if plan.get("world_model_rationale"):
         out["world_model_rationale"] = str(
             plan["world_model_rationale"]

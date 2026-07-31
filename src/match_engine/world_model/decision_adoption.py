@@ -40,6 +40,7 @@ def register_coach_action_decision(
     outcome_prediction_trust_factor: float = 1.0,
     checkpoint_signature: str = "runtime_unspecified",
     environment_signature: str = "environment_unspecified",
+    active_learning: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -88,6 +89,7 @@ def register_coach_action_decision(
         "checkpoint_signature": str(checkpoint_signature),
         "environment_signature": str(environment_signature),
         "policy_utility_version": 1,
+        "active_learning": dict(active_learning or {}),
         "created_t_sec": created,
         "expires_t_sec": created + horizon,
         "llm_selected_action": selected,
@@ -252,6 +254,10 @@ def finalize_decision_adoption(state, *, t_sec: float) -> None:
 
 
 def decision_adoption_diagnostics(state) -> dict[str, Any]:
+    from src.match_engine.world_model.active_learning import (
+        active_learning_diagnostics,
+    )
+
     records = list(getattr(state, "_wm_coach_decision_adoption", None) or [])
     resolved = [record for record in records if record["resolved"]]
     adopted = [record for record in resolved if record["adopted"]]
@@ -271,7 +277,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 2,
+        "version": 3,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -288,6 +294,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         "randomized_multi_horizon_outcomes": multi_horizon_outcomes,
         "randomized_regime_horizon_outcomes": regime_horizon_outcomes,
         "world_model_outcome_calibration": outcome_calibration,
+        "active_learning": active_learning_diagnostics([records]),
         "records": records,
         "interpretation": (
             "A bounded intervention changes one action logit but does not force "

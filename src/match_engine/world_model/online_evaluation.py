@@ -17,6 +17,9 @@ from src.match_engine.world_model.outcome_calibration import (
 from src.match_engine.world_model.residual_memory import (
     compile_contextual_residual_memory,
 )
+from src.match_engine.world_model.active_learning import (
+    active_learning_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -153,6 +156,7 @@ def aggregate_online_calibration(
         min_samples=min_residual_samples,
         outcome_family="regime",
     )
+    active_learning = active_learning_diagnostics(policy_record_clusters)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -193,7 +197,7 @@ def aggregate_online_calibration(
         if require_outcome_calibration else True
     )
     return {
-        "version": 2,
+        "version": 3,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -217,6 +221,7 @@ def aggregate_online_calibration(
             "required_policy_horizon_key": required_horizon_key,
             "required_policy_outcome": required_outcome,
             "world_model_outcome_calibration": outcome_calibration,
+            "active_learning": active_learning,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -235,5 +240,6 @@ def aggregate_online_calibration(
             "Short-horizon outcome uncertainty is clustered by match when multiple logs exist.",
             "Outcome forecast trust is checkpoint- and policy-regime-specific.",
             "Residual memory is isolated by checkpoint and policy-environment fingerprint.",
+            "Active-learning acquisition is policy-selected, not randomized; its uncertainty reduction is descriptive.",
         ],
     }

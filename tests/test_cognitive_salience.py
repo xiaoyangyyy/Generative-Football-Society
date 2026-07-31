@@ -66,6 +66,11 @@ def test_policy_bridge_experiment_config_is_safely_bounded():
         "MATCH_WM_LLM_ACTION_MIN_ARM_SAMPLES": "1",
         "MATCH_WM_LLM_OUTCOME_HORIZONS": "180,60,60,-1,bad",
         "MATCH_WM_LLM_RESIDUAL_MIN_SAMPLES": "1",
+        "MATCH_WM_ACTIVE_LEARNING": "1",
+        "MATCH_WM_EXPLORATION_BUDGET": "0.9",
+        "MATCH_WM_EXPLORATION_MAX_REGRET": "0.9",
+        "MATCH_WM_EXPLORATION_MIN_INFORMATION": "-1",
+        "MATCH_WM_EXPLORATION_STRENGTH_SCALE": "2",
     })
     assert cfg.world_model_action_bridge
     assert cfg.world_model_action_bias_max == 0.5
@@ -73,3 +78,8 @@ def test_policy_bridge_experiment_config_is_safely_bounded():
     assert cfg.world_model_action_min_arm_samples == 2
     assert cfg.world_model_outcome_horizons_s == (0.0, 60.0, 180.0)
     assert cfg.world_model_residual_min_samples == 2
+    assert cfg.world_model_active_learning
+    assert cfg.world_model_exploration_budget == 0.5
+    assert cfg.world_model_exploration_max_regret == 0.30
+    assert cfg.world_model_exploration_min_information == 0.0
+    assert cfg.world_model_exploration_strength_scale == 1.0

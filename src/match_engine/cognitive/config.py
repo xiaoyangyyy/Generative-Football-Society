@@ -50,6 +50,11 @@ class CognitiveMatchConfig:
     world_model_action_min_arm_samples: int = 2
     world_model_residual_min_samples: int = 6
     world_model_outcome_horizons_s: Tuple[float, ...] = (0.0, 60.0, 180.0)
+    world_model_active_learning: bool = True
+    world_model_exploration_budget: float = 0.25
+    world_model_exploration_max_regret: float = 0.08
+    world_model_exploration_min_information: float = 0.45
+    world_model_exploration_strength_scale: float = 0.50
     # coach, referee, player_per_team, assistant_total, crowd
     tier_caps: Tuple[int, int, int, int, int] = (6, 4, 4, 2, 3)
     half_time_sec: float = 45.0 * 60.0
@@ -92,6 +97,25 @@ class CognitiveMatchConfig:
             world_model_outcome_horizons_s=_parse_outcome_horizons(
                 values.get("MATCH_WM_LLM_OUTCOME_HORIZONS", ""),
                 (0.0, 60.0, 180.0),
+            ),
+            world_model_active_learning=env_bool(
+                values, "MATCH_WM_ACTIVE_LEARNING", True,
+            ),
+            world_model_exploration_budget=max(0.0, min(0.5, env_float(
+                values, "MATCH_WM_EXPLORATION_BUDGET", 0.25,
+            ))),
+            world_model_exploration_max_regret=max(0.0, min(0.30, env_float(
+                values, "MATCH_WM_EXPLORATION_MAX_REGRET", 0.08,
+            ))),
+            world_model_exploration_min_information=max(
+                0.0, min(1.0, env_float(
+                    values, "MATCH_WM_EXPLORATION_MIN_INFORMATION", 0.45,
+                )),
+            ),
+            world_model_exploration_strength_scale=max(
+                0.0, min(1.0, env_float(
+                    values, "MATCH_WM_EXPLORATION_STRENGTH_SCALE", 0.50,
+                )),
             ),
             tier_caps=_parse_tier_caps(
                 values.get("MATCH_COGNITIVE_MAX_PER_TIER", ""),

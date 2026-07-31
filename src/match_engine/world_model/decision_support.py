@@ -16,7 +16,7 @@ from src.match_engine.world_model.policy_prediction import (
 from src.match_engine.tactical_catalog import TACTICAL_PRESETS, resolve_tactical_preset
 
 
-DECISION_PACKET_VERSION = 1
+DECISION_PACKET_VERSION = 2
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -330,6 +330,7 @@ def build_coach_decision_packet(
     residual_min_samples: int = 6,
     residual_memory=None,
     environment_signature: str = "environment_unspecified",
+    active_learning_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compare strategic candidates without granting the LLM direct state writes."""
     from src.match_engine.world_model.outcome_calibration import (
@@ -349,6 +350,11 @@ def build_coach_decision_packet(
             "recommended_action": "none",
             "candidates": [],
             "policy_outcome_calibration": outcome_calibration,
+            "active_learning": {
+                "version": 1,
+                "eligible": False,
+                "reason": "world_model_unavailable",
+            },
         }
     memory_rejection = None
     if residual_memory is not None:
@@ -380,6 +386,23 @@ def build_coach_decision_packet(
             prediction_horizons_s=outcome_horizons_s,
             residual_memory=residual_memory,
         )
+        from src.match_engine.world_model.active_learning import (
+            build_active_learning_advice,
+        )
+        from src.match_engine.world_model.policy_outcomes import (
+            capture_policy_outcome_baseline,
+        )
+
+        learning_context = capture_policy_outcome_baseline(
+            state, team_id=team_id,
+        )
+        learning_context["team_id"] = str(team_id)
+        active_learning = build_active_learning_advice(
+            candidates,
+            getattr(state, "_wm_coach_decision_adoption", None) or [],
+            context=learning_context,
+            config=active_learning_config,
+        )
         eligible = [
             candidate for candidate in candidates
             if candidate["effective_confidence"] > 0.0
@@ -404,6 +427,7 @@ def build_coach_decision_packet(
                 best["effective_confidence"] if best else 0.0
             ),
             "candidates": candidates,
+            "active_learning": active_learning,
             "online_calibration": _online_calibration_diagnostics(runtime),
             "policy_outcome_calibration": outcome_calibration,
             "contextual_residual_memory": (
@@ -429,4 +453,9 @@ def build_coach_decision_packet(
             "reason": f"world_model_error:{type(exc).__name__}",
             "recommended_action": "none",
             "candidates": [],
+            "active_learning": {
+                "version": 1,
+                "eligible": False,
+                "reason": "world_model_error",
+            },
         }

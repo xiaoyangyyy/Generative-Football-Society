@@ -266,6 +266,9 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
     assert randomized["average_treatment_effect"] == 0.5
     assert not randomized["ready"]
     assert report["decision_adoption"]["causal_interpretation"] is False
+    assert report["decision_adoption"]["active_learning"][
+        "exploration_decisions"
+    ] == 0
 
     policy_ready = aggregate_online_calibration(
         [payload(20, 0.02, 0.8, 1), payload(40, 0.01, 1.0, 0)],

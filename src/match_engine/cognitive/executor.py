@@ -140,6 +140,20 @@ def _reconcile_coach_world_model_plan(
     ).lower()
     out["world_model_selection_constrained"] = constrained
     out["world_model_evidence_available"] = available
+    learning = evidence.get("active_learning") or {}
+    mode = str(out.get("world_model_decision_mode", "exploit")).lower()
+    learning_constrained = False
+    if out.get("world_model_action") == "none":
+        mode = "decline"
+    elif mode == "explore" and not (
+        bool(learning.get("eligible"))
+        and str(out.get("world_model_action"))
+        == str(learning.get("exploration_action"))
+    ):
+        mode = "exploit"
+        learning_constrained = True
+    out["world_model_decision_mode"] = mode
+    out["world_model_exploration_constrained"] = learning_constrained
     return out
 
 
@@ -271,6 +285,21 @@ class CognitiveExecutor:
                     ),
                     residual_memory=self.outcome_residual_memory,
                     environment_signature=self.policy_environment_signature,
+                    active_learning_config={
+                        "enabled": self.cfg.world_model_active_learning,
+                        "budget_fraction": (
+                            self.cfg.world_model_exploration_budget
+                        ),
+                        "max_regret": (
+                            self.cfg.world_model_exploration_max_regret
+                        ),
+                        "min_information_value": (
+                            self.cfg.world_model_exploration_min_information
+                        ),
+                        "intervention_scale": (
+                            self.cfg.world_model_exploration_strength_scale
+                        ),
+                    },
                 )
             )
 
@@ -367,6 +396,15 @@ class CognitiveExecutor:
                     * prediction_factor
                     * residual_memory_factor
                 )
+                decision_mode = str(rec.plan.get(
+                    "world_model_decision_mode", "exploit",
+                ))
+                exploration_scale = (
+                    self.cfg.world_model_exploration_strength_scale
+                    if decision_mode == "explore" else 1.0
+                )
+                intervention_strength *= exploration_scale
+                learning_advice = packet.get("active_learning") or {}
                 adoption = register_coach_action_decision(
                     state,
                     team_id=trig.team_id,
@@ -403,6 +441,28 @@ class CognitiveExecutor:
                     environment_signature=str(packet.get(
                         "environment_signature", "environment_unspecified"
                     )),
+                    active_learning={
+                        "decision_mode": decision_mode,
+                        "eligible": bool(learning_advice.get("eligible")),
+                        "reason": str(learning_advice.get(
+                            "reason", "unavailable",
+                        )),
+                        "exploit_action": str(learning_advice.get(
+                            "exploit_action", "none",
+                        )),
+                        "exploration_action": str(learning_advice.get(
+                            "exploration_action", "none",
+                        )),
+                        "expected_information_value": float(
+                            learning_advice.get(
+                                "expected_information_value", 0.0,
+                            )
+                        ),
+                        "estimated_regret": learning_advice.get(
+                            "estimated_regret",
+                        ),
+                        "intervention_scale": exploration_scale,
+                    },
                 )
                 if adoption is not None:
                     rec.plan["world_model_adoption_id"] = adoption[
@@ -434,6 +494,9 @@ class CognitiveExecutor:
                             "drift", {"status": "unavailable"},
                         )
                     )
+                    rec.plan["world_model_active_learning"] = adoption[
+                        "active_learning"
+                    ]
         except Exception as exc:
             rec.error = str(exc)
             rec.applied = False

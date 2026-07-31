@@ -233,6 +233,9 @@ If world_model_decision_support is present, treat it as uncertain model evidence
 - respect quality_gate_closed or available=false;
 - use online_calibration trust factors only after their minimum sample count;
 - online calibration can reduce trust but never reopen a closed quality gate;
+- active_learning is optional: choose decision_mode=explore only when eligible,
+  only select its exploration_action, and weigh information value against regret;
+- never describe exploration as guaranteed learning or override its safety budget;
 - you may disagree, but explain why without inventing outcomes.
 Output JSON only. Adjust tactics with small bounded deltas."""
         user = f"""Trigger: {kind}
@@ -252,6 +255,7 @@ Return JSON:
   "tactical_preset": "optional: balanced|gegenpress|possession|counter|low_block|wing_play|direct",
   "sub_intent": "optional short note",
   "world_model_action": "hold|pass|cross|shot|none",
+  "world_model_decision_mode": "exploit|explore|decline",
   "world_model_rationale": "brief explanation tied to uncertainty and candidate evidence"
 }}"""
         return self._call_llm(system, user, json_mode=True, temperature=0.5)

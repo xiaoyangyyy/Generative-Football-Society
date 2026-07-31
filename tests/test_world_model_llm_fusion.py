@@ -92,6 +92,8 @@ def test_decision_packet_compares_all_actions_and_recommends_risk_adjusted_best(
         "trust_factor"
     ] == 0.8
     assert packet["policy_outcome_calibration"]["samples"] == 0
+    assert "active_learning" in packet
+    assert all("active_learning" in candidate for candidate in packet["candidates"])
     for candidate in packet["candidates"]:
         assert set(candidate["multi_horizon_predictions"]) == {
             "transition", "60s", "180s",
@@ -238,6 +240,40 @@ class _LLM:
         })
 
 
+class _ExplorationRuntime(_Runtime):
+    def score_action(self, observation, action):
+        return 0.68
+
+
+class _ExplorationLLM:
+    def __init__(self):
+        self.facts = None
+
+    def coach_in_match_plan(self, team_name, facts, kind):
+        self.facts = facts
+        advice = facts["world_model_decision_support"]["active_learning"]
+        return json.dumps({
+            "reasoning": "Use the bounded learning opportunity.",
+            "confidence": 0.8,
+            "controls_delta": {},
+            "world_model_action": advice["exploration_action"],
+            "world_model_decision_mode": "explore",
+            "world_model_rationale": "Low-regret information gain.",
+        })
+
+
+class _InvalidExplorationLLM(_ExplorationLLM):
+    def coach_in_match_plan(self, team_name, facts, kind):
+        self.facts = facts
+        return json.dumps({
+            "reasoning": "Request an unsupported experiment.",
+            "confidence": 0.8,
+            "controls_delta": {},
+            "world_model_action": "shot",
+            "world_model_decision_mode": "explore",
+        })
+
+
 def test_executor_injects_world_model_evidence_before_llm_and_applies_plan():
     llm = _LLM()
     executor = CognitiveExecutor(
@@ -287,6 +323,64 @@ def test_executor_closes_llm_action_when_world_model_quality_gate_is_closed():
     assert record.plan["world_model_action"] == "none"
     assert record.plan["world_model_selection_constrained"]
     assert not hasattr(state, "_wm_coach_decision_adoption")
+
+
+def test_executor_scales_and_audits_an_eligible_exploration():
+    llm = _ExplorationLLM()
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(
+            enabled=True,
+            world_model_action_control_rate=0.0,
+            world_model_exploration_max_regret=0.30,
+            world_model_exploration_min_information=0.0,
+            world_model_exploration_strength_scale=0.20,
+        ),
+        llm,
+        world_model_runtime=_ExplorationRuntime(),
+    )
+    state = _state()
+    record = executor.process_trigger(CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    ), state)
+    advice = llm.facts["world_model_decision_support"]["active_learning"]
+    adoption = state._wm_coach_decision_adoption[-1]
+
+    assert advice["eligible"]
+    assert record.plan["world_model_decision_mode"] == "explore"
+    assert not record.plan["world_model_exploration_constrained"]
+    assert adoption["active_learning"]["decision_mode"] == "explore"
+    assert adoption["active_learning"]["intervention_scale"] == 0.20
+    assert adoption["llm_selected_action"] == advice["exploration_action"]
+    assert 0.0 < adoption["intervention_strength"] < 0.07
+
+
+def test_executor_downgrades_exploration_for_the_wrong_action():
+    llm = _InvalidExplorationLLM()
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(
+            enabled=True,
+            world_model_action_control_rate=0.0,
+            world_model_exploration_max_regret=0.30,
+            world_model_exploration_min_information=0.0,
+        ),
+        llm,
+        world_model_runtime=_ExplorationRuntime(),
+    )
+    state = _state()
+    record = executor.process_trigger(CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    ), state)
+    advice = llm.facts["world_model_decision_support"]["active_learning"]
+
+    assert advice["eligible"]
+    assert advice["exploration_action"] != "shot"
+    assert record.plan["world_model_decision_mode"] == "exploit"
+    assert record.plan["world_model_exploration_constrained"]
+    assert state._wm_coach_decision_adoption[-1]["active_learning"][
+        "decision_mode"
+    ] == "exploit"
 
 
 def test_executor_uses_realized_prediction_residuals_to_reduce_bridge_strength():

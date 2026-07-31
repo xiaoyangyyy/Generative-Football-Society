@@ -177,6 +177,11 @@ intervention, sampled action, and whether they matched.
 | `MATCH_WM_LLM_ACTION_MIN_ARM_SAMPLES` | `2` | Minimum samples per arm before within-match reliability feedback can activate |
 | `MATCH_WM_LLM_OUTCOME_HORIZONS` | `0,60,180` | Comma-separated causal credit horizons in seconds; transition (`0`) is always included |
 | `MATCH_WM_LLM_RESIDUAL_MIN_SAMPLES` | `6` | Realized forecast residuals required before prediction trust can reduce bridge strength |
+| `MATCH_WM_ACTIVE_LEARNING` | `1` | Expose bounded information-gain opportunities to the coach LLM |
+| `MATCH_WM_EXPLORATION_BUDGET` | `0.25` | Maximum rolling share of decisions marked for exploration, clipped to `[0, 0.5]` |
+| `MATCH_WM_EXPLORATION_MAX_REGRET` | `0.08` | Largest predicted utility gap allowed inside the exploration safe set |
+| `MATCH_WM_EXPLORATION_MIN_INFORMATION` | `0.45` | Minimum composite information value before exploration becomes eligible |
+| `MATCH_WM_EXPLORATION_STRENGTH_SCALE` | `0.50` | Additional multiplier on the bounded action bias for exploration decisions |
 
 Eligible decisions are deterministically randomized from the match seed and
 decision identity. Treatment opportunities receive the bounded bias; control
@@ -274,6 +279,35 @@ arrive, the two rolling windows move forward; once both describe the new stable
 regime, memory returns to `stable`. These thresholds are simulator safety
 defaults rather than claims of real-football statistical validity and must be
 recalibrated for materially different data rates or utility scales.
+
+### Risk-constrained active learning
+
+The coach packet now distinguishes exploitation from data acquisition. For each
+action, the active-learning layer combines the model uncertainty proxy,
+multi-horizon forecast disagreement, global action novelty, and novelty in the
+current team/opponent/zone/score/phase context. This produces an auditable
+`information_value`; it is not treated as match value.
+
+An action can become an exploration candidate only when its predicted regret
+from the greedy action is below the configured bound, its turnover probability
+is close to the greedy action, its normal quality gate is open, and the rolling
+exploration budget has capacity. The LLM then receives both actions and may
+choose `exploit`, `explore`, or `decline`. An `explore` response is accepted only
+for the packet's declared exploration action; otherwise the executor converts it
+to exploitation. Valid exploration receives an additional intervention-strength
+reduction and still passes through the existing randomized zero-bias control arm
+and stochastic simulator action sampler.
+
+Every registered decision stores the acquisition intent, expected information
+value, predicted regret, and strength scale. Match and aggregate reports measure
+exploration execution, action/context coverage, and the change in uncertainty at
+the next prediction for the same action and context. A non-positive uncertainty
+change is preserved rather than relabelled as learning. Because the coach's
+choice to explore is not randomized and the runtime does not update neural
+weights in place, this metric is descriptive acquisition evidence, not a causal
+claim or proof of online model improvement. The collected outcomes feed the
+checkpoint/environment-scoped residual memory and provide prioritized evidence
+for later retraining.
 
 These estimates still do not establish long-horizon match improvement or real
 football validity. Aggregate experiments should keep the checkpoint, control
