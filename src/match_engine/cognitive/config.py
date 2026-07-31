@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass, field
 from typing import Mapping, Tuple
@@ -16,6 +17,25 @@ def _parse_tier_caps(raw: str, default: Tuple[int, ...]) -> Tuple[int, ...]:
     return tuple(parts) if parts else default
 
 
+def _parse_outcome_horizons(
+    raw: str,
+    default: Tuple[float, ...],
+) -> Tuple[float, ...]:
+    if not raw.strip():
+        return default
+    values = []
+    for item in raw.split(","):
+        try:
+            value = float(item.strip())
+        except ValueError:
+            continue
+        if math.isfinite(value) and value >= 0.0:
+            values.append(value)
+    if not values:
+        return default
+    return tuple(sorted(set([0.0, *values])))[:6]
+
+
 @dataclass
 class CognitiveMatchConfig:
     enabled: bool = False
@@ -28,6 +48,7 @@ class CognitiveMatchConfig:
     world_model_action_bias_max: float = 0.35
     world_model_action_control_rate: float = 0.20
     world_model_action_min_arm_samples: int = 2
+    world_model_outcome_horizons_s: Tuple[float, ...] = (0.0, 60.0, 180.0)
     # coach, referee, player_per_team, assistant_total, crowd
     tier_caps: Tuple[int, int, int, int, int] = (6, 4, 4, 2, 3)
     half_time_sec: float = 45.0 * 60.0
@@ -60,6 +81,10 @@ class CognitiveMatchConfig:
                 int(env_float(
                     values, "MATCH_WM_LLM_ACTION_MIN_ARM_SAMPLES", 2.0,
                 )),
+            ),
+            world_model_outcome_horizons_s=_parse_outcome_horizons(
+                values.get("MATCH_WM_LLM_OUTCOME_HORIZONS", ""),
+                (0.0, 60.0, 180.0),
             ),
             tier_caps=_parse_tier_caps(
                 values.get("MATCH_COGNITIVE_MAX_PER_TIER", ""),

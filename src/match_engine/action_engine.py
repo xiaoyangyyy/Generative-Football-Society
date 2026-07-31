@@ -148,9 +148,11 @@ class ActionEngine:
         if carrier.role in ("LW", "RW", "LB", "RB"):
             feasible_actions.add("cross")
         from src.match_engine.world_model.decision_adoption import (
-            capture_policy_outcome_baseline,
             pending_policy_action_bias,
             record_policy_intervention_result,
+        )
+        from src.match_engine.world_model.policy_outcomes import (
+            capture_policy_outcome_baseline,
         )
 
         policy_intent = pending_policy_action_bias(

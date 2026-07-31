@@ -34,6 +34,12 @@ def main() -> int:
     parser.add_argument("--min-transitions", type=int, default=50)
     parser.add_argument("--min-policy-arm", type=int, default=8)
     parser.add_argument(
+        "--required-policy-horizon",
+        type=float,
+        default=0.0,
+        help="Outcome horizon in seconds; 0 means the immediate transition.",
+    )
+    parser.add_argument(
         "--require-policy-effect",
         action="store_true",
         help="Fail readiness until randomized treatment and control arms pass.",
@@ -59,6 +65,7 @@ def main() -> int:
         min_transitions=args.min_transitions,
         min_policy_arm=args.min_policy_arm,
         require_policy_effect=args.require_policy_effect,
+        required_policy_horizon_s=args.required_policy_horizon,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

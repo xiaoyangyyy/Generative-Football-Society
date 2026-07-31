@@ -206,11 +206,21 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                         "short_horizon_outcome": {
                             "policy_utility": float(adopted),
                         },
+                        "multi_horizon_outcomes": {
+                            "transition": {
+                                "policy_utility": float(adopted),
+                            },
+                            "60s": {"policy_utility": float(adopted)},
+                        },
                     },
                     {
                         "experiment_arm": "control",
                         "experiment_treatment_propensity": 0.8,
                         "short_horizon_outcome": {"policy_utility": 0.0},
+                        "multi_horizon_outcomes": {
+                            "transition": {"policy_utility": 0.0},
+                            "60s": {"policy_utility": 0.0},
+                        },
                     },
                 ],
             },
@@ -240,6 +250,7 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
         min_transitions=50,
         min_policy_arm=2,
         require_policy_effect=True,
+        required_policy_horizon_s=60.0,
     )
     assert policy_ready["ready"]
     assert policy_ready["policy_effect_ready"]
@@ -247,3 +258,12 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
     assert outcome["ready"]
     assert outcome["cluster_robust"]
     assert outcome["average_treatment_effect"] == pytest.approx(0.5)
+    assert policy_ready["decision_adoption"][
+        "required_policy_horizon_key"
+    ] == "60s"
+    assert policy_ready["decision_adoption"][
+        "required_policy_outcome"
+    ]["average_treatment_effect"] == pytest.approx(0.5)
+    assert policy_ready["decision_adoption"][
+        "required_policy_outcome"
+    ]["estimand"] == "policy_regime_total_effect_with_natural_followup"

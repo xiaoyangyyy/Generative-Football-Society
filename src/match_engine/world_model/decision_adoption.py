@@ -8,7 +8,12 @@ from typing import Any
 from src.match_engine.world_model.policy_experiment import (
     randomized_adoption_effect,
     randomized_experiment_arm,
+    randomized_multi_horizon_effects,
     randomized_outcome_effect,
+)
+from src.match_engine.world_model.policy_outcomes import (
+    censor_overlapping_policy_outcomes,
+    normalize_outcome_horizons,
 )
 
 
@@ -27,6 +32,7 @@ def register_coach_action_decision(
     intervention_strength: float = 0.0,
     intervention_enabled: bool = False,
     experiment_control_rate: float = 0.0,
+    outcome_horizons_s: tuple[float, ...] = (0.0, 60.0, 180.0),
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -38,6 +44,12 @@ def register_coach_action_decision(
         state._wm_coach_decision_adoption = records
     created = float(getattr(state, "clock_seconds", 0.0))
     horizon = max(0.1, float(horizon_s))
+    normalized_outcome_horizons = normalize_outcome_horizons(
+        outcome_horizons_s,
+    )
+    censor_overlapping_policy_outcomes(
+        records, team_id=team_id, t_sec=created,
+    )
     for previous in records:
         if (
             not previous["resolved"]
@@ -78,6 +90,9 @@ def register_coach_action_decision(
         "experiment_arm": experiment_arm,
         "experiment_control_rate": control_rate,
         "experiment_treatment_propensity": 1.0 - control_rate,
+        "outcome_horizons_s": list(normalized_outcome_horizons),
+        "outcome_censored_t_sec": None,
+        "outcome_censor_reason": None,
         "policy_opportunity_observed": False,
         "intervention_applied": False,
         "intervention_t_sec": None,
@@ -152,6 +167,9 @@ def record_policy_intervention_result(
         record["intervention_actual_action"] = actual
         record["outcome_baseline"] = outcome_baseline
         record["short_horizon_outcome"] = None
+        record["multi_horizon_outcomes"] = {}
+        record["multi_horizon_regime_outcomes"] = {}
+        record["outcome_anchor_t_sec"] = float(t_sec)
         record["observed_actions"].append({
             "t_sec": float(t_sec), "action": actual,
         })
@@ -169,84 +187,6 @@ def record_policy_intervention_result(
                 "matching_action_after_bounded_bias"
                 if record["adopted"] else "different_action_after_bounded_bias"
             )
-        return
-
-
-def capture_policy_outcome_baseline(
-    state,
-    *,
-    team_id: str,
-) -> dict[str, float]:
-    """Capture only simulator-native quantities available before sampling."""
-    attacking_home = str(team_id) == str(state.home.team_id)
-    team = state.home if attacking_home else state.away
-    opponent = state.away if attacking_home else state.home
-    return {
-        "ball_x": float(state.ball.position[0]),
-        "xg_for": float(
-            state.micro_xg_home if attacking_home else state.micro_xg_away
-        ),
-        "xg_against": float(
-            state.micro_xg_away if attacking_home else state.micro_xg_home
-        ),
-        "goal_diff": float(team.score - opponent.score),
-    }
-
-
-def observe_policy_intervention_outcome(
-    state,
-    *,
-    team_id: str,
-    t_sec: float,
-) -> None:
-    """Attach the immediate transition outcome to a randomized opportunity."""
-    records = getattr(state, "_wm_coach_decision_adoption", None) or []
-    attacking_home = str(team_id) == str(state.home.team_id)
-    team = state.home if attacking_home else state.away
-    opponent = state.away if attacking_home else state.home
-    direction = 1.0 if attacking_home else -1.0
-    for record in reversed(records):
-        baseline = record.get("outcome_baseline")
-        if (
-            str(record.get("team_id")) != str(team_id)
-            or not record.get("policy_opportunity_observed")
-            or baseline is None
-            or record.get("short_horizon_outcome") is not None
-            or float(record.get("intervention_t_sec") or 0.0) > float(t_sec)
-        ):
-            continue
-        xg_for = float(
-            state.micro_xg_home if attacking_home else state.micro_xg_away
-        )
-        xg_against = float(
-            state.micro_xg_away if attacking_home else state.micro_xg_home
-        )
-        progress = direction * (
-            float(state.ball.position[0]) - float(baseline["ball_x"])
-        )
-        xg_net = (
-            xg_for - float(baseline["xg_for"])
-            - xg_against + float(baseline["xg_against"])
-        )
-        goal_delta = (
-            float(team.score - opponent.score) - float(baseline["goal_diff"])
-        )
-        retained = str(state.ball.possession_team_id) == str(team_id)
-        retention_edge = 1.0 if retained else -1.0
-        utility = (
-            goal_delta
-            + 0.35 * xg_net
-            + 0.15 * progress
-            + 0.05 * retention_edge
-        )
-        record["short_horizon_outcome"] = {
-            "observed_t_sec": float(t_sec),
-            "progress": progress,
-            "retained_possession": retained,
-            "xg_net_delta": xg_net,
-            "goal_diff_delta": goal_delta,
-            "policy_utility": utility,
-        }
         return
 
 
@@ -306,6 +246,10 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     ]
     randomized_effect = randomized_adoption_effect(records)
     randomized_outcome = randomized_outcome_effect([records])
+    multi_horizon_outcomes = randomized_multi_horizon_effects([records])
+    regime_horizon_outcomes = randomized_multi_horizon_effects(
+        [records], outcome_family="regime",
+    )
     return {
         "version": 2,
         "registered": len(records),
@@ -321,6 +265,8 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         "causal_ordering": "decision_then_future_team_action",
         "randomized_policy_effect": randomized_effect,
         "randomized_outcome_effect": randomized_outcome,
+        "randomized_multi_horizon_outcomes": multi_horizon_outcomes,
+        "randomized_regime_horizon_outcomes": regime_horizon_outcomes,
         "records": records,
         "interpretation": (
             "A bounded intervention changes one action logit but does not force "

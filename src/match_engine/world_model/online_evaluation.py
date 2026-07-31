@@ -6,7 +6,9 @@ import math
 from typing import Any, Iterable
 
 from src.match_engine.world_model.policy_experiment import (
+    policy_horizon_key,
     randomized_adoption_effect_from_counts,
+    randomized_multi_horizon_effects,
     randomized_outcome_effect,
 )
 
@@ -25,6 +27,7 @@ def aggregate_online_calibration(
     min_transitions: int = 50,
     min_policy_arm: int = 8,
     require_policy_effect: bool = False,
+    required_policy_horizon_s: float = 0.0,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -115,13 +118,31 @@ def aggregate_online_calibration(
         policy_record_clusters,
         min_per_arm=min_policy_arm,
     )
+    multi_horizon_outcomes = randomized_multi_horizon_effects(
+        policy_record_clusters,
+        min_per_arm=min_policy_arm,
+    )
+    regime_horizon_outcomes = randomized_multi_horizon_effects(
+        policy_record_clusters,
+        min_per_arm=min_policy_arm,
+        outcome_family="regime",
+    )
+    required_horizon_key = policy_horizon_key(required_policy_horizon_s)
+    required_outcome = regime_horizon_outcomes.get(required_horizon_key)
+    if required_outcome is None:
+        required_outcome = randomized_outcome_effect(
+            policy_record_clusters,
+            min_per_arm=min_policy_arm,
+            horizon_key=required_horizon_key,
+            outcome_family="regime",
+        )
     gates["randomized_policy_adoption"] = (
         randomized_effect["ready"] if require_policy_effect else True
     )
     gates["randomized_policy_outcome"] = (
         (
-            randomized_outcome["ready"]
-            and randomized_outcome["cluster_robust"]
+            required_outcome["ready"]
+            and required_outcome["cluster_robust"]
         )
         if require_policy_effect else True
     )
@@ -145,13 +166,17 @@ def aggregate_online_calibration(
             "causal_interpretation": False,
             "randomized_policy_effect": randomized_effect,
             "randomized_outcome_effect": randomized_outcome,
+            "randomized_multi_horizon_outcomes": multi_horizon_outcomes,
+            "randomized_regime_horizon_outcomes": regime_horizon_outcomes,
+            "required_policy_horizon_key": required_horizon_key,
+            "required_policy_outcome": required_outcome,
         },
         "gates": gates,
         "ready": all(gates.values()),
         "policy_effect_ready": (
             randomized_effect["ready"]
-            and randomized_outcome["ready"]
-            and randomized_outcome["cluster_robust"]
+            and required_outcome["ready"]
+            and required_outcome["cluster_robust"]
         ),
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",

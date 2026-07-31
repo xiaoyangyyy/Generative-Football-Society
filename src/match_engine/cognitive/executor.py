@@ -334,6 +334,9 @@ class CognitiveExecutor:
                     experiment_control_rate=(
                         self.cfg.world_model_action_control_rate
                     ),
+                    outcome_horizons_s=(
+                        self.cfg.world_model_outcome_horizons_s
+                    ),
                 )
                 if adoption is not None:
                     rec.plan["world_model_adoption_id"] = adoption[

@@ -9,6 +9,15 @@ from typing import Any, Iterable
 import numpy as np
 
 
+def policy_horizon_key(seconds: float) -> str:
+    value = max(0.0, float(seconds))
+    return "transition" if value <= 1e-9 else f"{value:g}s"
+
+
+def policy_horizon_seconds(key: str) -> float:
+    return 0.0 if key == "transition" else float(str(key).removesuffix("s"))
+
+
 def randomized_experiment_arm(
     decision_id: str,
     *,
@@ -98,11 +107,20 @@ def randomized_adoption_effect(
 
 def _outcome_rows(
     record_clusters: Iterable[Iterable[dict[str, Any]]],
+    *,
+    horizon_key: str,
+    outcome_family: str,
 ) -> list[tuple[int, dict[str, Any], float]]:
     rows = []
     for cluster_index, records in enumerate(record_clusters):
         for record in records:
-            outcome = record.get("short_horizon_outcome") or {}
+            isolated = record.get("multi_horizon_outcomes") or {}
+            regime = record.get("multi_horizon_regime_outcomes") or isolated
+            outcomes = regime if outcome_family == "regime" else isolated
+            outcome = outcomes.get(horizon_key)
+            if outcome is None and horizon_key == "transition":
+                outcome = record.get("short_horizon_outcome")
+            outcome = outcome or {}
             arm = record.get("experiment_arm")
             value = outcome.get("policy_utility")
             if arm not in {"treatment", "control"} or value is None:
@@ -120,10 +138,18 @@ def randomized_outcome_effect(
     record_clusters: Iterable[Iterable[dict[str, Any]]],
     *,
     min_per_arm: int = 2,
+    horizon_key: str = "transition",
+    outcome_family: str = "isolated",
 ) -> dict[str, Any]:
     """Estimate short-horizon utility with stabilized IPW and cluster SEs."""
     clusters = list(record_clusters)
-    rows = _outcome_rows(clusters)
+    if outcome_family not in {"isolated", "regime"}:
+        raise ValueError("outcome_family must be 'isolated' or 'regime'")
+    rows = _outcome_rows(
+        clusters,
+        horizon_key=horizon_key,
+        outcome_family=outcome_family,
+    )
     treatment = [row for row in rows if row[1]["experiment_arm"] == "treatment"]
     control = [row for row in rows if row[1]["experiment_arm"] == "control"]
     minimum = max(2, int(min_per_arm))
@@ -183,7 +209,14 @@ def randomized_outcome_effect(
         standard_error = math.sqrt(sum(value * value for value in individual))
         cluster_robust = False
     return {
-        "evaluation_kind": "randomized_policy_bridge_short_horizon_outcome",
+        "evaluation_kind": "randomized_policy_bridge_multi_horizon_outcome",
+        "horizon_key": horizon_key,
+        "horizon_s": policy_horizon_seconds(horizon_key),
+        "estimand": (
+            "isolated_action_effect_without_later_same_team_decisions"
+            if outcome_family == "isolated"
+            else "policy_regime_total_effect_with_natural_followup"
+        ),
         "outcome": "goal_diff + 0.35*xg_net + 0.15*progress + 0.05*retention_edge",
         "estimator": "stabilized_inverse_propensity_weighted",
         "opportunities": len(rows),
@@ -212,6 +245,32 @@ def randomized_outcome_effect(
     }
 
 
+def randomized_multi_horizon_effects(
+    record_clusters: Iterable[Iterable[dict[str, Any]]],
+    *,
+    min_per_arm: int = 2,
+    outcome_family: str = "isolated",
+) -> dict[str, dict[str, Any]]:
+    clusters = [list(records) for records in record_clusters]
+    keys = {"transition"}
+    for records in clusters:
+        for record in records:
+            keys.update((record.get("multi_horizon_outcomes") or {}).keys())
+            if outcome_family == "regime":
+                keys.update(
+                    (record.get("multi_horizon_regime_outcomes") or {}).keys()
+                )
+    return {
+        key: randomized_outcome_effect(
+            clusters,
+            min_per_arm=min_per_arm,
+            horizon_key=key,
+            outcome_family=outcome_family,
+        )
+        for key in sorted(keys, key=policy_horizon_seconds)
+    }
+
+
 def policy_bridge_reliability_factor(
     state,
     *,
@@ -219,9 +278,14 @@ def policy_bridge_reliability_factor(
 ) -> float:
     """Use outcome evidence first; never raise the confidence-derived bound."""
     records = list(getattr(state, "_wm_coach_decision_adoption", None) or [])
-    outcome = randomized_outcome_effect([records], min_per_arm=min_per_arm)
-    effect = outcome if outcome["ready"] else randomized_adoption_effect(
-        records, min_per_arm=min_per_arm,
+    outcomes = randomized_multi_horizon_effects(
+        [records], min_per_arm=min_per_arm, outcome_family="regime",
+    )
+    ready_outcomes = [item for item in outcomes.values() if item["ready"]]
+    effect = (
+        max(ready_outcomes, key=lambda item: item["horizon_s"])
+        if ready_outcomes
+        else randomized_adoption_effect(records, min_per_arm=min_per_arm)
     )
     if not effect["ready"]:
         return 1.0

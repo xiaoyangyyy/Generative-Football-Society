@@ -175,6 +175,7 @@ intervention, sampled action, and whether they matched.
 | `MATCH_WM_LLM_ACTION_BIAS_MAX` | `0.35` | Maximum action-logit bias, hard-clipped to `[0, 0.5]` |
 | `MATCH_WM_LLM_ACTION_CONTROL_RATE` | `0.20` | Deterministic randomized share assigned to a zero-bias control arm, clipped to `[0, 0.5]` |
 | `MATCH_WM_LLM_ACTION_MIN_ARM_SAMPLES` | `2` | Minimum samples per arm before within-match reliability feedback can activate |
+| `MATCH_WM_LLM_OUTCOME_HORIZONS` | `0,60,180` | Comma-separated causal credit horizons in seconds; transition (`0`) is always included |
 
 Eligible decisions are deterministically randomized from the match seed and
 decision identity. Treatment opportunities receive the bounded bias; control
@@ -202,6 +203,16 @@ estimates remain explicitly exploratory. Outcome evidence takes priority over
 adoption evidence when reducing future bias: making the LLM-selected action more
 frequent is not treated as proof that the action is better.
 
+Credit is tracked at `transition`, `60s`, and `180s` by default. A later same-team
+coach decision censors the older decision's remaining isolated-action windows,
+preventing two interventions from being presented as one direct effect. In
+parallel, the audit retains an intention-to-treat policy-regime view that includes
+natural downstream coach decisions. The isolated view answers “what survived
+without another intervention”; the regime view answers “what happened under the
+deployed decision system.” Reliability feedback uses the longest ready regime
+horizon, so a superficially good next action cannot hide a worse medium-term
+trajectory.
+
 These estimates still do not establish long-horizon match improvement or real
 football validity. Aggregate experiments should keep the checkpoint, control
 rate, tactics, and simulator configuration fixed.
@@ -210,5 +221,6 @@ Both diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
 python scripts/evaluate_online_world_model.py \
-  --min-transitions 50 --min-policy-arm 8 --require-policy-effect
+  --min-transitions 50 --min-policy-arm 8 \
+  --required-policy-horizon 60 --require-policy-effect
 ```
