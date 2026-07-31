@@ -9,10 +9,12 @@ import numpy as np
 
 from src.match_engine.math_utils import finite_float
 from src.match_engine.world_model.config import WorldModelConfig, default_checkpoint_path
+from src.match_engine.world_model.action_codec import decode_action_kind
 from src.match_engine.world_model.model import LatentWorldModel, WorldModelOutput, load_checkpoint
 from src.match_engine.world_model.observation import OBS_DIM, encode_observation
 from src.match_engine.world_model.schema import observation_coverage, strip_outcome_leakage
 from src.match_engine.world_model.probabilistic import ProbabilisticFuture, future_from_ensemble
+from src.match_engine.world_model.online_calibration import OnlineTransitionCalibrator
 
 try:
     import torch
@@ -47,6 +49,11 @@ class WorldModelRuntime:
         self.pass_calibration_scale = float(calibration.get("scale", 1.0))
         self.pass_calibration_bias = float(calibration.get("bias", 0.0))
         self.pass_threshold = float(validation.get("pass_threshold", 0.5))
+        self.online_calibrator = OnlineTransitionCalibrator(
+            expected_weighted_mse=float(
+                validation.get("weighted_obs_mse", 0.02)
+            ),
+        )
 
     @classmethod
     def load(cls, path: str) -> "WorldModelRuntime":
@@ -88,6 +95,7 @@ class WorldModelRuntime:
         *,
         steps: int | None = None,
         carry_hidden: bool = False,
+        quality_kind: str = "general",
     ) -> WorldModelOutput:
         steps = steps if steps is not None else self.cfg.imagination_steps
         h = self._hidden if carry_hidden else None
@@ -107,7 +115,9 @@ class WorldModelRuntime:
         out.pass_success = float(
             1.0 / (1.0 + np.exp(-(self.pass_calibration_scale * raw_logit + self.pass_calibration_bias)))
         )
-        quality_uncertainty = 1.0 - self.planner_confidence(clean_obs)
+        quality_uncertainty = 1.0 - self.planner_confidence(
+            clean_obs, kind=quality_kind,
+        )
         out.uncertainty = float(
             np.clip(max(quality_uncertainty, 2.0 * float(out.uncertainty)), 0.0, 1.0)
         )
@@ -126,11 +136,39 @@ class WorldModelRuntime:
         confidence = quality * (0.25 + 0.75 * coverage)
         if confidence < float(self.cfg.min_planner_quality):
             return 0.0
+        confidence *= self.online_calibrator.trust_factor(kind)
         return float(np.clip(confidence, 0.0, 1.0))
+
+    def observe_transition(
+        self,
+        observation: np.ndarray,
+        action: np.ndarray,
+        next_observation: np.ndarray,
+    ) -> dict[str, float]:
+        """Calibrate against the exact transition target used at inference."""
+        action_kind = decode_action_kind(action)
+        quality_kind = "shot" if action_kind == "shot" else "pass"
+        output = self.imagine(
+            observation, action, carry_hidden=False,
+            quality_kind=quality_kind,
+        )
+        return self.online_calibrator.observe(
+            action_kind=action_kind,
+            current_observation=observation,
+            predicted_observation=output.next_obs,
+            actual_observation=next_observation,
+            predicted_uncertainty=output.uncertainty,
+        )
+
+    def online_calibration_diagnostics(self) -> dict:
+        return self.online_calibrator.diagnostics()
 
     def imagine_pass(self, obs: np.ndarray, action: np.ndarray, *, steps: int | None = None) -> WorldModelOutput:
         """Backward-compatible pass imagination alias."""
-        return self.imagine(obs, action, steps=steps, carry_hidden=False)
+        return self.imagine(
+            obs, action, steps=steps, carry_hidden=False,
+            quality_kind="pass",
+        )
 
     def predict_future(self, obs: np.ndarray, action: np.ndarray, *, action_kind: str, horizon_s: float = 10.0) -> ProbabilisticFuture:
         """Expose multimodal event and progress uncertainty from ensemble heads."""
@@ -155,7 +193,9 @@ class WorldModelRuntime:
     def score_action(self, obs: np.ndarray, action: np.ndarray) -> float:
         obs = np.nan_to_num(np.asarray(obs, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)
         action = np.nan_to_num(np.asarray(action, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)
-        out = self.imagine(obs, action, carry_hidden=False)
+        out = self.imagine(
+            obs, action, carry_hidden=False, quality_kind="pass",
+        )
         attacking = obs[-1] > 0.5
         bx = finite_float(float(out.next_obs[200]), 0.5)
         predicted_progress = bx if attacking else (1.0 - bx)
@@ -180,7 +220,7 @@ class WorldModelRuntime:
     ) -> float:
         obs = np.nan_to_num(np.asarray(obs, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)
         action = np.nan_to_num(np.asarray(action, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)
-        out = self.imagine(obs, action)
+        out = self.imagine(obs, action, quality_kind="shot")
         progress = float(np.clip(finite_float(out.progress_delta, 0.0), -0.5, 0.5))
         xg_prior = float(np.clip(action[13], 0.0, 1.0))
         goal_term = finite_float(float(out.shot_goal_prob), 0.1)

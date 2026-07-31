@@ -291,6 +291,8 @@ class MicroMatchSummary:
     ball_log_path: str = ""
     continuous_clock: Dict[str, Any] = field(default_factory=dict)
     subtick_reception_queue: Dict[str, Any] = field(default_factory=dict)
+    world_model_online_calibration: Dict[str, Any] = field(default_factory=dict)
+    world_model_decision_adoption: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

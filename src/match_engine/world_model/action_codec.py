@@ -26,10 +26,21 @@ _TYPE_HOLD = np.array([0, 0, 1, 0, 0, 0], dtype=np.float32)
 _TYPE_CROSS = np.array([0, 0, 0, 1, 0, 0], dtype=np.float32)
 _TYPE_INTERCEPT = np.array([0, 0, 0, 0, 1, 0], dtype=np.float32)
 _TYPE_TACKLE = np.array([0, 0, 0, 0, 0, 1], dtype=np.float32)
+ACTION_TYPE_NAMES = ("pass", "shot", "hold", "cross", "intercept", "tackle")
 
 
 def zero_action() -> np.ndarray:
     return np.zeros(ACTION_DIM, dtype=np.float32)
+
+
+def decode_action_kind(action: np.ndarray) -> str:
+    """Decode the executed high-level action without reading outcome labels."""
+    vector = np.asarray(action, dtype=float).reshape(-1)
+    if vector.shape[0] < 6 or not np.isfinite(vector[:6]).all():
+        return "other"
+    if float(np.max(vector[:6])) <= 0.0:
+        return "other"
+    return ACTION_TYPE_NAMES[int(np.argmax(vector[:6]))]
 
 
 def _kind_onehot(kind: str) -> np.ndarray:

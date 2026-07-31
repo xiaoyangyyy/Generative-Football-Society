@@ -74,6 +74,12 @@ class _Runtime:
     def score_shot_action(self, observation, action, *, attacking_home):
         return 0.72
 
+    def online_calibration_diagnostics(self):
+        return {
+            "calibration_target": "same_tick_next_observation",
+            "branches": {"general": {"samples": 12, "trust_factor": 0.8}},
+        }
+
 
 def test_decision_packet_compares_all_actions_and_recommends_risk_adjusted_best():
     packet = build_coach_decision_packet(_Runtime(), _state(), "Home")
@@ -82,6 +88,9 @@ def test_decision_packet_compares_all_actions_and_recommends_risk_adjusted_best(
     assert {candidate["action"] for candidate in packet["candidates"]} == set(COACH_ACTIONS)
     assert all(0.0 <= candidate["uncertainty"] <= 1.0 for candidate in packet["candidates"])
     assert packet["observation_coverage"] > 0.9
+    assert packet["online_calibration"]["branches"]["general"][
+        "trust_factor"
+    ] == 0.8
 
 
 def test_decision_packet_closes_recommendation_when_quality_gate_is_closed():
@@ -212,5 +221,24 @@ def test_executor_injects_world_model_evidence_before_llm_and_applies_plan():
     packet = llm.facts["world_model_decision_support"]
     assert packet["recommended_action"] == "shot"
     assert record.plan["world_model_action"] == "shot"
+    assert record.plan["world_model_adoption_id"]
+    assert len(state._wm_coach_decision_adoption) == 1
     assert record.applied
     assert state.home.coach.tactical_current["pressing_intensity"] > 0.5
+
+
+def test_executor_closes_llm_action_when_world_model_quality_gate_is_closed():
+    llm = _LLM()
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(enabled=True), llm,
+        world_model_runtime=_Runtime(confidence=0.0),
+    )
+    trigger = CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    )
+    state = _state()
+    record = executor.process_trigger(trigger, state)
+    assert record.plan["world_model_action"] == "none"
+    assert record.plan["world_model_selection_constrained"]
+    assert not hasattr(state, "_wm_coach_decision_adoption")

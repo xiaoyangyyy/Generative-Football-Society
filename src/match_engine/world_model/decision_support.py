@@ -25,6 +25,16 @@ PREMATCH_TACTICAL_CANDIDATES = (
 )
 
 
+def _online_calibration_diagnostics(runtime) -> dict[str, Any]:
+    diagnostics = getattr(runtime, "online_calibration_diagnostics", None)
+    if not callable(diagnostics):
+        return {"available": False}
+    try:
+        return diagnostics()
+    except (RuntimeError, TypeError, ValueError):
+        return {"available": False, "reason": "diagnostics_error"}
+
+
 def _candidate_target(state, action: str, attacking_home: bool) -> np.ndarray:
     ball = np.asarray(state.ball.position, dtype=np.float32).copy()
     direction = 1.0 if attacking_home else -1.0
@@ -303,6 +313,7 @@ def build_coach_decision_packet(
                 best["effective_confidence"] if best else 0.0
             ),
             "candidates": candidates,
+            "online_calibration": _online_calibration_diagnostics(runtime),
             "policy": (
                 "Use as uncertain evidence; retain bounded controls and never "
                 "invent score, xG, or outcome facts."

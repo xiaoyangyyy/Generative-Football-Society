@@ -87,6 +87,34 @@ def _rule_fallback_plan(trig: CognitiveTriggerEvent) -> Dict[str, Any]:
     )
 
 
+def _reconcile_coach_world_model_plan(
+    plan: Dict[str, Any], packet: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    """A closed quality gate cannot yield an actionable model selection."""
+    out = dict(plan)
+    evidence = packet or {}
+    requested = str(out.get("world_model_action", "none")).lower()
+    available = bool(evidence.get("available"))
+    allowed = {
+        str(candidate.get("action", "")).lower()
+        for candidate in evidence.get("candidates", [])
+        if isinstance(candidate, dict)
+    }
+    constrained = False
+    if not available and requested != "none":
+        out["world_model_action"] = "none"
+        constrained = True
+    elif available and requested not in allowed | {"none"}:
+        out["world_model_action"] = "none"
+        constrained = True
+    out["world_model_recommended_action"] = str(
+        evidence.get("recommended_action", "none")
+    ).lower()
+    out["world_model_selection_constrained"] = constrained
+    out["world_model_evidence_available"] = available
+    return out
+
+
 class CognitiveExecutor:
     def __init__(
         self,
@@ -221,6 +249,11 @@ class CognitiveExecutor:
             plan = self._call_llm_for_trigger(trig)
             self._save_cache(key, plan)
 
+        if trig.entity_tier == ENTITY_TIER_COACH:
+            plan = _reconcile_coach_world_model_plan(
+                plan, trig.facts.get("world_model_decision_support"),
+            )
+
         rec = CognitivePlanRecord(trigger=trig, plan=plan, cached=from_cache)
         try:
             applied = apply_cognitive_plan(
@@ -233,6 +266,36 @@ class CognitiveExecutor:
             )
             rec.applied = bool(applied)
             rec.plan["applied_fields"] = applied
+            packet = trig.facts.get("world_model_decision_support") or {}
+            if (
+                rec.applied
+                and trig.entity_tier == ENTITY_TIER_COACH
+                and trig.team_id
+                and bool(packet.get("available"))
+            ):
+                from src.match_engine.world_model.decision_adoption import (
+                    register_coach_action_decision,
+                )
+
+                adoption = register_coach_action_decision(
+                    state,
+                    team_id=trig.team_id,
+                    trigger_kind=trig.kind,
+                    llm_selected_action=rec.plan.get(
+                        "world_model_action", "none"
+                    ),
+                    world_model_recommended_action=packet.get(
+                        "recommended_action", "none"
+                    ),
+                    recommendation_confidence=float(
+                        packet.get("recommendation_confidence", 0.0)
+                    ),
+                    horizon_s=float(packet.get("horizon_s", 10.0)),
+                )
+                if adoption is not None:
+                    rec.plan["world_model_adoption_id"] = adoption[
+                        "decision_id"
+                    ]
         except Exception as exc:
             rec.error = str(exc)
             rec.applied = False

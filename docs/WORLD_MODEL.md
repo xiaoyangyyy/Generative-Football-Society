@@ -138,3 +138,29 @@ Only matched-seed runs of at least ten simulated minutes, with fast mode off,
 can provide simulator-level directional support. Historical evidence never
 reopens a closed checkpoint/coverage quality gate. Use `--no-register` for
 diagnostic counterfactual runs that must not influence later decisions.
+
+## Online same-target calibration
+
+During a micro match, every executed action can form an exact calibration tuple:
+
+```text
+observation before action + executed action -> predicted next observation
+                                      compare with actual next observation
+```
+
+The online calibrator tracks weighted transition MSE, skill against persistence,
+uncertainty/error correlation, and separate pass/shot trust factors. A branch
+needs at least eight live transitions before it can affect planning. Online
+evidence can only reduce checkpoint-derived confidence; it cannot create quality
+for a branch whose offline gate is closed.
+
+Coach action selections are also tracked prospectively. A selection is counted
+as adopted only when the same team performs the matching high-level action after
+the decision and within its horizon. This is temporal adoption evidence, not
+proof that the LLM caused the action.
+
+Both diagnostics are stored in the per-match cognitive log. Aggregate them with:
+
+```bash
+python scripts/evaluate_online_world_model.py --min-transitions 50
+```

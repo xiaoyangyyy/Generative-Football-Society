@@ -261,6 +261,7 @@ def _build_micro_match_summary(
     *,
     state, cfg, passing, shots, aerial, player_tracker,
     cognitive_bus, cognitive_executor, continuous_clock, subtick_queue,
+    wm_runtime,
     packets, timeline, n_ticks, strictness_sum, poss_home_ticks,
     phi_sum_h, phi_sum_a, emo_home, emo_away, eff_h, eff_a,
     final_gh, final_ga, physics_gh, physics_ga, xg_supplement_meta,
@@ -275,6 +276,10 @@ def _build_micro_match_summary(
     discipline = player_tracker.team_discipline_totals(state)
     home_disc = discipline.get(state.home.team_id, {})
     away_disc = discipline.get(state.away.team_id, {})
+    from src.match_engine.world_model.decision_adoption import (
+        decision_adoption_diagnostics,
+    )
+
     return MicroMatchSummary(
         home_team=state.home.team_id,
         away_team=state.away.team_id,
@@ -374,6 +379,11 @@ def _build_micro_match_summary(
             subtick_queue.diagnostics()
             if subtick_queue is not None else {"enabled": False}
         ),
+        world_model_online_calibration=(
+            wm_runtime.online_calibration_diagnostics()
+            if wm_runtime is not None else {"available": False}
+        ),
+        world_model_decision_adoption=decision_adoption_diagnostics(state),
     )
 
 
@@ -518,6 +528,7 @@ def _begin_world_model_tick(state, *, dt, wm_recorder, wm_runtime, wm_cfg):
     from src.match_engine.world_model.observation import encode_observation
 
     attacking_home = state.ball.possession_team_id == state.home.team_id
+    state._wm_actor_team_id_pre = state.ball.possession_team_id
     state._wm_obs_pre = encode_observation(
         state, attacking_home=attacking_home, cfg=wm_cfg,
     )
@@ -615,8 +626,12 @@ def _execute_tick_actions(
             apply_micro_event(state, event, cfg)
 
 
-def _finish_world_model_tick(state, *, wm_recorder, wm_cfg, t1, tick):
-    if wm_recorder is None or getattr(state, "_wm_obs_pre", None) is None:
+def _finish_world_model_tick(
+    state, *, wm_recorder, wm_runtime, wm_cfg, t1, tick,
+):
+    if (
+        wm_recorder is None and wm_runtime is None
+    ) or getattr(state, "_wm_obs_pre", None) is None:
         return
     action = getattr(state, "_wm_last_action", None)
     if action is None:
@@ -627,13 +642,37 @@ def _finish_world_model_tick(state, *, wm_recorder, wm_cfg, t1, tick):
     observation_next = encode_observation(
         state, attacking_home=attacking_home, cfg=wm_cfg,
     )
-    wm_recorder.write(
-        state._wm_obs_pre, action, observation_next,
-        meta={
-            "t_sec": t1, "tick": tick,
-            "outcome_supervised": bool(action[0] > 0.5 or action[1] > 0.5),
-        },
+    from src.match_engine.world_model.action_codec import decode_action_kind
+    from src.match_engine.world_model.decision_adoption import (
+        observe_executed_action,
     )
+
+    observe_executed_action(
+        state,
+        team_id=str(getattr(state, "_wm_actor_team_id_pre", "")),
+        action_kind=decode_action_kind(action),
+        t_sec=t1,
+    )
+    calibration = None
+    if wm_runtime is not None:
+        try:
+            calibration = wm_runtime.observe_transition(
+                state._wm_obs_pre, action, observation_next,
+            )
+            state._wm_online_last = calibration
+        except (RuntimeError, TypeError, ValueError) as exc:
+            state._wm_online_error = type(exc).__name__
+    if wm_recorder is not None:
+        wm_recorder.write(
+            state._wm_obs_pre, action, observation_next,
+            meta={
+                "t_sec": t1, "tick": tick,
+                "outcome_supervised": bool(
+                    action[0] > 0.5 or action[1] > 0.5
+                ),
+                "online_calibration": calibration,
+            },
+        )
 
 
 def _record_tick_meso(state, affective, meso, *, xg_home, xg_away):
@@ -780,7 +819,8 @@ def run_match_micro_simulation(
             player_tracker,
         )
         _finish_world_model_tick(
-            state, wm_recorder=wm_recorder, wm_cfg=wm_cfg, t1=t1, tick=tick,
+            state, wm_recorder=wm_recorder, wm_runtime=wm_runtime,
+            wm_cfg=wm_cfg, t1=t1, tick=tick,
         )
         _sync_ball_to_possessor(state)
         _record_tick_meso(
@@ -793,6 +833,11 @@ def run_match_micro_simulation(
             in ("goal_scored", "red_card", "var_controversy")
         )
 
+    from src.match_engine.world_model.decision_adoption import (
+        finalize_decision_adoption,
+    )
+
+    finalize_decision_adoption(state, t_sec=duration)
     packets = meso.flush_packets(state.home.team_id, state.away.team_id)
     emo_home = affective.team_emotion_mean(state.home)
     emo_away = affective.team_emotion_mean(state.away)
@@ -807,6 +852,7 @@ def run_match_micro_simulation(
         player_tracker=player_tracker, cognitive_bus=cognitive_bus,
         cognitive_executor=cognitive_executor,
         continuous_clock=continuous_clock, subtick_queue=subtick_queue,
+        wm_runtime=wm_runtime,
         packets=packets, timeline=timeline, n_ticks=n_ticks,
         strictness_sum=strictness_sum, poss_home_ticks=poss_home_ticks,
         phi_sum_h=phi_sum_h, phi_sum_a=phi_sum_a,

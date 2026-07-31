@@ -798,7 +798,10 @@ class PassingEngine:
         )
         recv, kind, tgt, lane, press, omega_d, success_prior = selected
 
-        if getattr(state, "_wm_recorder", None) is not None and getattr(state, "_wm_obs_pre", None) is not None:
+        if (
+            hasattr(state, "_wm_last_action")
+            and getattr(state, "_wm_obs_pre", None) is not None
+        ):
             from src.match_engine.world_model.action_codec import encode_pass_candidate
 
             state._wm_last_action = encode_pass_candidate(  # noqa: SLF001
@@ -808,7 +811,9 @@ class PassingEngine:
                 kind,
                 tgt,
                 success_p=success_prior,
-                horizon_s=float(self.cfg.dt_default),
+                horizon_s=float(
+                    getattr(state, "_wm_horizon_s", self.cfg.dt_default)
+                ),
             )
 
         delivery = self._resolve_pass_delivery(

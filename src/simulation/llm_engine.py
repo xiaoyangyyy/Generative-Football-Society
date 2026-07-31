@@ -231,6 +231,8 @@ FACTS_LEDGER is authoritative. Do NOT invent scores or xG.
 If world_model_decision_support is present, treat it as uncertain model evidence:
 - compare candidates by risk_adjusted_value and effective_confidence;
 - respect quality_gate_closed or available=false;
+- use online_calibration trust factors only after their minimum sample count;
+- online calibration can reduce trust but never reopen a closed quality gate;
 - you may disagree, but explain why without inventing outcomes.
 Output JSON only. Adjust tactics with small bounded deltas."""
         user = f"""Trigger: {kind}

@@ -60,6 +60,12 @@ class TestPhase2(unittest.TestCase):
         sf = SpatialFieldEngine(cfg)
         sie = SpatialIntelligenceEngine(cfg)
         pe = PassingEngine(cfg, sie)
+        # Runtime-only online calibration must capture passes even without a
+        # transition trace recorder.
+        from src.match_engine.world_model.observation import OBS_DIM
+
+        st._wm_obs_pre = np.zeros(OBS_DIM, dtype=np.float32)
+        st._wm_last_action = None
         from src.match_engine.affective_coupling import AffectiveSpatialCoupling
 
         aff = AffectiveSpatialCoupling(cfg)
@@ -70,6 +76,17 @@ class TestPhase2(unittest.TestCase):
             mods, _ = aff.step(st, cfg.dt_default)
             pe.step(st, mods["home"], mods["away"], rng)
         self.assertGreater(pe.stats["home_attempts"] + pe.stats["away_attempts"], 0)
+        self.assertIsNotNone(st._wm_last_action)
+        self.assertGreater(float(st._wm_last_action[0]), 0.5)
+        from src.match_engine.world_model.schema import (
+            HORIZON_INDEX,
+            HORIZON_SCALE_SECONDS,
+        )
+
+        self.assertAlmostEqual(
+            float(st._wm_last_action[HORIZON_INDEX]),
+            cfg.dt_default / HORIZON_SCALE_SECONDS,
+        )
 
 
 if __name__ == "__main__":

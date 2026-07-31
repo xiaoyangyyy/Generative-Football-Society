@@ -320,6 +320,12 @@ def _save_cognitive_match_log(
         "cognitive_triggers": getattr(micro_summary, "cognitive_triggers", []),
         "cognitive_plans": getattr(micro_summary, "cognitive_plans", []),
         "cognitive_tier_usage": getattr(micro_summary, "cognitive_tier_usage", {}),
+        "world_model_online_calibration": getattr(
+            micro_summary, "world_model_online_calibration", {},
+        ),
+        "world_model_decision_adoption": getattr(
+            micro_summary, "world_model_decision_adoption", {},
+        ),
     }
     path = log_dir / f"{key}.json"
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

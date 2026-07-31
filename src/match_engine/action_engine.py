@@ -152,7 +152,10 @@ class ActionEngine:
             if hasattr(state, "_wm_last_action"):
                 from src.match_engine.world_model.action_codec import encode_high_level_action
 
-                state._wm_last_action = encode_high_level_action("shot", carrier.position)
+                state._wm_last_action = encode_high_level_action(
+                    "shot", carrier.position,
+                    horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+                )
             now = float(state.clock_seconds)
             if not shot_cooldown_ok(state, attacking_home, self.cfg, now):
                 pass_action, pass_ev = self.passing.step(state, mod_home, mod_away, rng)
@@ -185,7 +188,10 @@ class ActionEngine:
             if hasattr(state, "_wm_last_action"):
                 from src.match_engine.world_model.action_codec import encode_high_level_action
 
-                state._wm_last_action = encode_high_level_action("cross", carrier.position)
+                state._wm_last_action = encode_high_level_action(
+                    "cross", carrier.position,
+                    horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+                )
             traj, aerial_out = self.aerial.resolve_cross(state, carrier, rng)
             state.ball.position = aerial_out.landed_xy
             from src.match_engine.aerial_duel import apply_aerial_xg_to_state
@@ -203,7 +209,11 @@ class ActionEngine:
             if hasattr(state, "_wm_last_action"):
                 from src.match_engine.world_model.action_codec import encode_high_level_action
 
-                state._wm_last_action = encode_high_level_action("hold")
+                state._wm_last_action = encode_high_level_action(
+                    "hold",
+                    target=state.ball.position,
+                    horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+                )
             return "hold", events
 
         pass_action, pass_ev = self.passing.step(state, mod_home, mod_away, rng)
