@@ -22,6 +22,14 @@ if TYPE_CHECKING:
     from src.simulation.agent import SocietyAgent
 
 
+def _finite_metric(value: Any, default: float = 0.0) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return float(default)
+    return number if np.isfinite(number) else float(default)
+
+
 def parse_coach_tactics_payload(raw: Any) -> Dict[str, Any]:
     if isinstance(raw, dict):
         return raw
@@ -57,6 +65,37 @@ def reconcile_world_model_tactical_choice(
         constrained = True
     if available and candidates:
         data["tactical_preset"] = selected
+    candidate_evidence = {
+        resolve_tactical_preset(item.get("tactical_preset")): item
+        for item in packet.get("candidates", [])
+        if isinstance(item, dict) and item.get("tactical_preset")
+    }
+
+    def evidence_for(name: str) -> Dict[str, float]:
+        item = candidate_evidence.get(name, {})
+        return {
+            key: _finite_metric(item[key])
+            for key in (
+                "risk_adjusted_value",
+                "effective_confidence",
+                "uncertainty",
+                "fatigue_cost_proxy",
+                "structural_risk_proxy",
+            )
+            if key in item
+        }
+
+    ranked = sorted(
+        candidate_evidence.values(),
+        key=lambda item: _finite_metric(item.get("risk_adjusted_value"), -1.0),
+        reverse=True,
+    )
+    recommendation_margin = 0.0
+    if len(ranked) >= 2:
+        recommendation_margin = float(
+            _finite_metric(ranked[0].get("risk_adjusted_value"))
+            - _finite_metric(ranked[1].get("risk_adjusted_value"))
+        )
     rationale = str(data.get("world_model_rationale", "") or "")[:300]
     if rationale:
         data["world_model_rationale"] = rationale
@@ -70,6 +109,20 @@ def reconcile_world_model_tactical_choice(
             available and selected != recommended
         ),
         "selection_constrained": constrained,
+        "packet_version": int(_finite_metric(packet.get("version"))),
+        "evaluation_scope": str(packet.get("evaluation_scope", "")),
+        "horizon_s": _finite_metric(packet.get("horizon_s")),
+        "observation_coverage": _finite_metric(
+            packet.get("observation_coverage")
+        ),
+        "recommendation_confidence": _finite_metric(
+            packet.get("recommendation_confidence")
+        ),
+        "recommendation_margin": recommendation_margin,
+        "recommended_evidence": evidence_for(recommended),
+        "selected_evidence": evidence_for(selected),
+        "balanced_evidence": evidence_for("balanced"),
+        "rationale": rationale,
     }
     return data
 
@@ -125,5 +178,6 @@ def apply_coach_tactics_from_llm(
                 tac[k] = float(np.clip(0.55 * tac[k] + 0.45 * float(v), 0.0, 1.0))
     sync_agent_controls_from_vector(agent, tac)
     agent.tactical_vector = tac
+    agent._prematch_world_model_audit = dict(data["world_model_audit"])
     agent.semantic_memory["tactical_vector_keys"] = list(tac.keys())[:6]
     return data

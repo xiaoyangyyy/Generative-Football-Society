@@ -58,12 +58,13 @@ class TournamentFinalizeMixin:
                 print(f"  [MEDICAL] {label} reported injury concerns.")
         return pre_fatigue_a, pre_fatigue_b
 
-    @staticmethod
     def _record_match_decisions(
-        *, a1, a2, t1_name, t2_name, stage_name, s1, s2, xg1, xg2,
+        self, *, a1, a2, t1_name, t2_name, stage_name, s1, s2, xg1, xg2,
         social_chaos, res_1, res_2, pressure, pre_fatigue_a, pre_fatigue_b,
     ):
-        a1.record_decision_event(
+        audit_1 = dict(getattr(a1, "_prematch_world_model_audit", {}) or {})
+        audit_2 = dict(getattr(a2, "_prematch_world_model_audit", {}) or {})
+        rec_1 = a1.record_decision_event(
             opponent=t2_name, stage_name=stage_name,
             controls=a1.tactical_controls,
             outcomes={
@@ -72,8 +73,9 @@ class TournamentFinalizeMixin:
                 "chaos": social_chaos, "result": res_1,
             },
             opponent_style=a2.style_archetype, stage_pressure=pressure,
+            decision_audit=audit_1,
         )
-        a2.record_decision_event(
+        rec_2 = a2.record_decision_event(
             opponent=t1_name, stage_name=stage_name,
             controls=a2.tactical_controls,
             outcomes={
@@ -82,7 +84,29 @@ class TournamentFinalizeMixin:
                 "chaos": social_chaos, "result": res_2,
             },
             opponent_style=a1.style_archetype, stage_pressure=pressure,
+            decision_audit=audit_2,
         )
+        try:
+            from src.simulation.fusion_audit import (
+                append_fusion_audits,
+                build_outcome_linked_fusion_record,
+            )
+
+            match_id = f"{self.match_index}:{stage_name}:{t1_name}:{t2_name}"
+            append_fusion_audits(self.base_dir, [
+                build_outcome_linked_fusion_record(
+                    decision_id=f"{match_id}:{t1_name}",
+                    team=t1_name, opponent=t2_name, stage=stage_name,
+                    decision_audit=audit_1, outcomes=rec_1["outcomes"],
+                ),
+                build_outcome_linked_fusion_record(
+                    decision_id=f"{match_id}:{t2_name}",
+                    team=t2_name, opponent=t1_name, stage=stage_name,
+                    decision_audit=audit_2, outcomes=rec_2["outcomes"],
+                ),
+            ])
+        except (OSError, TypeError, ValueError) as exc:
+            print(f"  [WORLD_MODEL] Fusion audit write skipped: {exc}")
 
     @staticmethod
     def _report_locker_room_state(*, a1, a2, t1_name, t2_name):

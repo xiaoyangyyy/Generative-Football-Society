@@ -174,7 +174,16 @@ class AgentMemoryWriteMixin:
             dtype=float,
         )
 
-    def record_decision_event(self, opponent, stage_name, controls, outcomes, opponent_style=None, stage_pressure=None):
+    def record_decision_event(
+        self,
+        opponent,
+        stage_name,
+        controls,
+        outcomes,
+        opponent_style=None,
+        stage_pressure=None,
+        decision_audit=None,
+    ):
         controls = controls or {}
         outcomes = outcomes or {}
         rec = {
@@ -197,6 +206,7 @@ class AgentMemoryWriteMixin:
                 "chaos": float(outcomes.get("chaos", 0.0)),
                 "result": str(outcomes.get("result", "draw")),
             },
+            "world_model_fusion": dict(decision_audit or {}),
         }
         self.decision_memory.append(rec)
         if len(self.decision_memory) > 300:
@@ -230,6 +240,7 @@ class AgentMemoryWriteMixin:
                 "stage": stage_name,
                 "opponent_style": rec["opponent_style"],
                 "stage_pressure": rec["stage_pressure"],
+                "world_model_fusion": rec["world_model_fusion"],
             },
             force_write=True,
         )
@@ -237,6 +248,7 @@ class AgentMemoryWriteMixin:
             rec["step"] = mem_rec["created_step"]
             rec["evidence_id"] = mem_rec.get("id")
             self.update_beliefs_from_match_event({"memory_rec": mem_rec})
+        return rec
 
     def _decay_and_prune_memory(self):
         for rec in self.episodic_memory:

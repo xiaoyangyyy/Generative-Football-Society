@@ -128,6 +128,9 @@ def test_tactical_choice_is_constrained_to_evaluated_candidates():
     )
     assert reconciled["tactical_preset"] == packet["recommended_tactical_preset"]
     assert reconciled["world_model_audit"]["selection_constrained"]
+    assert reconciled["world_model_audit"]["selected_evidence"]
+    assert reconciled["world_model_audit"]["balanced_evidence"]
+    assert reconciled["world_model_audit"]["recommendation_margin"] >= 0.0
     assert len(reconciled["world_model_rationale"]) == 300
 
 

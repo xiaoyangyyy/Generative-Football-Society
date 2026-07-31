@@ -84,3 +84,42 @@ python scripts/validate_world_model.py
 
 Only validated v6 checkpoints are allowed to influence planning. A missing,
 legacy, low-quality, or sparse-input model contributes a zero bonus.
+
+## LLM decision fusion
+
+When both world-model planning and the cognitive layer are enabled, the model
+is used as evidence rather than as an unbounded controller:
+
+- In-match coach triggers compare `hold`, `pass`, `cross`, and `shot` and send
+  risk-adjusted values, event probabilities, confidence, and uncertainty to the
+  coach LLM.
+- Before a match, seven tactical presets are translated into explicit action
+  mixtures and ranked with the same short-horizon evidence. This is a tactical
+  proxy, not a full-match win probability.
+- The LLM may disagree with the recommendation, but must select an evaluated
+  candidate and provide a rationale. Out-of-set choices are constrained and
+  recorded.
+- Missing checkpoints, closed quality gates, or disabled planning preserve the
+  original deterministic fallback path.
+
+Outcome-linked records are appended to
+`data/persistence/world_model_fusion.jsonl`. Generate the observational report
+after enough matches have accumulated:
+
+```bash
+python scripts/evaluate_fusion_policy.py --min-records 20
+```
+
+The report compares agreement and disagreement groups but deliberately marks
+them as non-causal. To estimate a tactical effect inside the simulator, use
+paired seeds while holding the opponent policy fixed:
+
+```bash
+python scripts/evaluate_tactical_counterfactual.py \
+  --team Brazil --opponent Scotland \
+  --baseline balanced --treatment gegenpress \
+  --samples 16 --match-seconds 900
+```
+
+Matched-seed estimates are causal only for the configured simulator; they do
+not establish real-world football validity.
