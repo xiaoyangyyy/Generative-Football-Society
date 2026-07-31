@@ -452,6 +452,316 @@ class PassingEngine:
         )
         return traj, omega_d, params
 
+    def _select_pass_candidate(
+        self, state, carrier, candidates, mod_carrier, attacking_home, rng,
+    ):
+        cfg = self.cfg
+        opponent = state.away if attacking_home else state.home
+        utilities, metadata = [], []
+        for receiver, kind, target in candidates:
+            lane = self.sie.lane_quality(
+                state, carrier.position, target, opponent,
+            )
+            press = self._press_at(state, carrier.position)
+            omega_desired = (
+                desired_pass_omega(
+                    carrier.position, target, float(carrier.abilities.curve),
+                    lane, press, cfg,
+                )
+                if cfg.enable_pass_physics and cfg.enable_phase3 else 0.0
+            )
+            elevation = self._elev_hint(
+                kind, float(np.linalg.norm(target - carrier.position)),
+            )
+            ground_hint = (
+                ground_pass_weight(elevation, cfg)
+                if cfg.enable_pass_physics else 0.0
+            )
+            outside_hint = (
+                outside_foot_factor(
+                    carrier.position, target, float(carrier.abilities.curve),
+                    omega_desired, cfg,
+                )
+                if cfg.enable_pass_physics else 0.0
+            )
+            utilities.append(self._utility(
+                state, carrier, target, receiver, kind, mod_carrier,
+                attacking_home, omega_desired=omega_desired, lane=lane,
+                press=press, outside_hint=outside_hint,
+                ground_hint=ground_hint,
+            ))
+            success_prior = self._success_prob(
+                state, carrier, target, kind, lane, mod_carrier,
+                omega_desired=omega_desired, press=press,
+            )
+            metadata.append((
+                receiver, kind, target, lane, press,
+                omega_desired, success_prior,
+            ))
+        if self.wm_runtime is not None:
+            from src.match_engine.world_model.planner import pass_imagination_bonuses
+
+            bonuses = pass_imagination_bonuses(
+                self.wm_runtime, state, carrier, metadata, attacking_home,
+            )
+            utilities = [utility + bonus for utility, bonus in zip(utilities, bonuses)]
+        temperature = cfg.pass_tau_base * max(0.15, float(mod_carrier.tau_dec))
+        utility_array = np.nan_to_num(np.array(utilities, dtype=float), nan=0.0)
+        probabilities = softmax(utility_array, tau=max(0.15, temperature))
+        index = int(rng.choice(len(probabilities), p=probabilities))
+        return metadata[index], float(utilities[index])
+
+    def _resolve_pass_delivery(
+        self, state, carrier, receiver, opponent, kind, target,
+        lane, press, omega_desired, mod_carrier, rng,
+    ):
+        cfg = self.cfg
+        use_physics = cfg.enable_pass_physics and cfg.enable_phase3
+        result = {
+            "use_physics": use_physics, "land_xy": target.copy(),
+            "land_miss": 0.0, "lateral_dev": 0.0, "pred_miss": 0.0,
+            "omega_used": 0.0, "outside_f": 0.0, "ground_w": 0.0,
+            "tof": 0.0, "spin_axis": np.array([0.0, 0.0, 1.0]),
+            "outside_desired": 0.0, "intercept_risk": 0.0,
+            "intercepted": False, "interceptor_id": None,
+        }
+        if use_physics:
+            trajectory, omega_desired, params = self._deliver_pass(
+                state, carrier, target, kind, lane, rng,
+            )
+            result.update({
+                "land_xy": trajectory.landed,
+                "land_miss": trajectory.target_miss,
+                "lateral_dev": trajectory.lateral_dev,
+                "omega_used": trajectory.omega_used,
+                "outside_f": trajectory.outside_foot,
+                "ground_w": trajectory.ground_weight,
+                "tof": trajectory.time_of_flight,
+                "spin_axis": params.spin_axis.copy(),
+                "outside_desired": outside_foot_factor(
+                    carrier.position, target, float(carrier.abilities.curve),
+                    omega_desired, cfg,
+                ),
+            })
+            opponent_pool = [
+                player for player in opponent.players
+                if player.on_pitch and player.role != "GK"
+            ]
+            interception = evaluate_pass_intercept(
+                result["land_xy"], result["tof"], receiver, opponent_pool,
+                press, lane, cfg, rng, base_dir=getattr(self, "_base_dir", "."),
+            )
+            result.update({
+                "pred_miss": interception.pred_miss,
+                "intercept_risk": interception.intercept_risk,
+                "intercepted": interception.intercepted,
+                "interceptor_id": interception.interceptor_id,
+            })
+        result["omega_desired"] = omega_desired
+        result["success_p"] = self._success_prob(
+            state, carrier, target, kind, lane, mod_carrier,
+            land_miss=result["land_miss"],
+            lateral_dev=result["lateral_dev"],
+            pred_miss=result["pred_miss"], omega_desired=omega_desired,
+            omega_used=result["omega_used"], outside_foot=result["outside_f"],
+            outside_desired=result["outside_desired"], press=press,
+            intercept_risk=result["intercept_risk"],
+            ground_weight=result["ground_w"] if use_physics else 0.0,
+        )
+        result["completed"] = (
+            bool(rng.random() < result["success_p"])
+            and not result["intercepted"]
+        )
+        return result
+
+    def _record_pass_statistics(
+        self, *, carrier, receiver, kind, completed, attacking_home,
+        use_physics, omega_used, outside_foot, ground_weight, intercepted,
+    ):
+        if self.player_tracker is not None:
+            self.player_tracker.record_pass(
+                carrier.player_id,
+                receiver.player_id if completed else None,
+                kind,
+                completed,
+            )
+        side = "home" if attacking_home else "away"
+        self.stats[f"{side}_attempts"] += 1
+        if completed:
+            self.stats[f"{side}_completed"] += 1
+        if kind == "through":
+            self.stats[f"{side}_through"] += 1
+        if kind == "long":
+            self.stats[f"{side}_long"] += 1
+        if use_physics and omega_used >= self.cfg.pass_omega_curve_threshold:
+            self.stats[f"{side}_curved"] += 1
+            self.stats["curve_omega_sum"] += omega_used
+            self.stats["curve_pass_count"] += 1
+        if use_physics and outside_foot > 0.42:
+            self.stats[f"{side}_outside"] += 1
+        if use_physics and ground_weight > 0.55:
+            self.stats[f"{side}_ground"] += 1
+        if intercepted:
+            self.stats[f"{side}_intercepts"] += 1
+        if kind == "wall":
+            self.stats[f"{side}_wall"] += 1
+        return side
+
+    def _apply_pass_outcome(
+        self, *, state, carrier, receiver, opponent, kind, attacking_home,
+        mod_carrier, press, delivery, side, events, rng,
+    ):
+        cfg = self.cfg
+        completed = delivery["completed"]
+        landed = delivery["land_xy"]
+        wall_combo = False
+        if completed and kind == "wall" and cfg.enable_wall_pass:
+            state.ball.position = landed.copy()
+            state.ball.possessor_id = receiver.player_id
+            state.ball.possession_team_id = carrier.team_id
+            receiver.position = 0.75 * receiver.position + 0.25 * landed
+            wall_combo, _, wall_events = self._execute_wall_return(
+                state, carrier, receiver, attacking_home, opponent,
+                mod_carrier, press, rng,
+            )
+            events.extend(wall_events)
+            if wall_combo:
+                self.stats[f"{side}_wall_ok"] += 1
+            completed = wall_combo
+            state.ball.height = 0.0
+        elif completed:
+            state.ball.position = landed.copy()
+            state.ball.possessor_id = receiver.player_id
+            state.ball.possession_team_id = carrier.team_id
+            state.ball.height = 0.0
+            if delivery["use_physics"]:
+                state.ball.omega = delivery["omega_used"]
+                state.ball.spin_axis = delivery["spin_axis"]
+            receiver.position = 0.7 * receiver.position + 0.3 * landed
+            if (
+                kind in ("through", "long")
+                or delivery["omega_used"] >= cfg.pass_omega_curve_threshold
+            ):
+                events.append(MicroEvent(
+                    t_sec=state.clock_seconds,
+                    event_type=MicroEventType.KEY_PASS,
+                    team_id=carrier.team_id,
+                    player_id=carrier.player_id,
+                    intensity=0.75 if delivery["outside_f"] > 0.45 else 0.65,
+                ))
+        else:
+            opponents = [
+                player for player in opponent.players
+                if player.on_pitch and player.role != "GK"
+            ]
+            interceptor = next((
+                player for player in opponents
+                if player.player_id == delivery["interceptor_id"]
+            ), None)
+            if delivery["intercepted"] and delivery["interceptor_id"]:
+                if interceptor is not None:
+                    state.ball.possessor_id = interceptor.player_id
+                    state.ball.possession_team_id = opponent.team_id
+                    state.ball.position = landed.copy()
+                    state.ball.omega = 0.0
+                    events.extend([
+                        MicroEvent(
+                            t_sec=state.clock_seconds,
+                            event_type=MicroEventType.TACKLE_WON,
+                            team_id=opponent.team_id,
+                            player_id=interceptor.player_id,
+                            intensity=0.72,
+                        ),
+                        MicroEvent(
+                            t_sec=state.clock_seconds,
+                            event_type=MicroEventType.DISPOSSESSED,
+                            team_id=carrier.team_id,
+                            player_id=carrier.player_id,
+                            intensity=0.65,
+                        ),
+                    ])
+            elif opponents:
+                taker = opponents[int(rng.integers(0, len(opponents)))]
+                state.ball.possessor_id = taker.player_id
+                state.ball.possession_team_id = opponent.team_id
+                state.ball.position = (
+                    landed.copy() if delivery["use_physics"]
+                    else taker.position.copy()
+                )
+                state.ball.omega = 0.0
+                events.append(MicroEvent(
+                    t_sec=state.clock_seconds,
+                    event_type=MicroEventType.DISPOSSESSED,
+                    team_id=carrier.team_id,
+                    player_id=carrier.player_id,
+                    intensity=0.6,
+                ))
+        return completed, wall_combo
+
+    def _record_pass_result(
+        self, *, state, carrier, receiver, opponent, kind, target,
+        lane, press, selected_utility, delivery, completed, wall_combo,
+        attacking_home, observation_pre,
+    ):
+        if getattr(state, "_wm_last_action", None) is not None:
+            from src.match_engine.world_model.schema import PASS_OUTCOME_INDEX
+
+            state._wm_last_action[PASS_OUTCOME_INDEX] = (  # noqa: SLF001
+                1.0 if completed else 0.0
+            )
+        interceptor = next((
+            player for player in opponent.players
+            if player.player_id == delivery["interceptor_id"]
+        ), None) if delivery["intercepted"] and delivery["interceptor_id"] else None
+
+        from src.match_engine.ball_path_logger import (
+            ball_log_wm_snapshot_enabled,
+            record_pass,
+        )
+
+        observation_post = None
+        if ball_log_wm_snapshot_enabled():
+            from src.match_engine.world_model.observation import encode_observation
+
+            observation_post = encode_observation(
+                state, attacking_home=attacking_home,
+            )
+        record_pass(
+            state, carrier=carrier, receiver=receiver, kind=kind,
+            target=target, landed=delivery["land_xy"], completed=completed,
+            success_p=delivery["success_p"], press=press, lane=lane,
+            intercepted=delivery["intercepted"], interceptor=interceptor,
+            omega=delivery["omega_used"], outside_foot=delivery["outside_f"],
+            ground_weight=delivery["ground_w"],
+            time_of_flight=delivery["tof"], target_miss=delivery["land_miss"],
+            lateral_dev=delivery["lateral_dev"], wall_combo=wall_combo,
+            obs_pre=observation_pre, obs_post=observation_post,
+        )
+        action = PassAction(
+            pass_kind=kind, from_id=carrier.player_id,
+            to_id=receiver.player_id, target=target,
+            utility=selected_utility, success_p=delivery["success_p"],
+            completed=completed, omega=delivery["omega_used"],
+            landed=delivery["land_xy"].copy(),
+            target_miss=delivery["land_miss"],
+            lateral_dev=delivery["lateral_dev"],
+            outside_foot=delivery["outside_f"],
+            ground_weight=delivery["ground_w"],
+            pred_miss=delivery["pred_miss"],
+            intercepted=delivery["intercepted"], wall_combo=wall_combo,
+        )
+        state.pass_log.append({
+            "t": state.clock_seconds, "kind": kind,
+            "from": carrier.player_id, "to": receiver.player_id,
+            "ok": completed, "p": delivery["success_p"],
+            "omega": delivery["omega_used"],
+            "outside": delivery["outside_f"],
+            "ground": delivery["ground_w"],
+            "pred_miss": delivery["pred_miss"],
+            "intercept": delivery["intercepted"],
+        })
+        return action
+
     def step(
         self,
         state: MatchAffectiveState,
@@ -459,7 +769,6 @@ class PassingEngine:
         mod_away: List[PlayerModulators],
         rng: np.random.Generator,
     ) -> Tuple[Optional[PassAction], List[MicroEvent]]:
-        cfg = self.cfg
         carrier = self._get_carrier(state)
         events: List[MicroEvent] = []
         if carrier is None:
@@ -484,63 +793,10 @@ class PassingEngine:
             obs_pre = encode_observation(state, attacking_home=attacking_home)
 
         opp_team = state.away if attacking_home else state.home
-        utilities, meta = [], []
-        for recv, kind, tgt in cands:
-            lane = self.sie.lane_quality(state, carrier.position, tgt, opp_team)
-            press = self._press_at(state, carrier.position)
-            omega_d = (
-                desired_pass_omega(carrier.position, tgt, float(carrier.abilities.curve), lane, press, cfg)
-                if cfg.enable_pass_physics and cfg.enable_phase3
-                else 0.0
-            )
-            elev_h = self._elev_hint(kind, float(np.linalg.norm(tgt - carrier.position)))
-            g_h = ground_pass_weight(elev_h, cfg) if cfg.enable_pass_physics else 0.0
-            out_h = (
-                outside_foot_factor(carrier.position, tgt, float(carrier.abilities.curve), omega_d, cfg)
-                if cfg.enable_pass_physics
-                else 0.0
-            )
-            utilities.append(
-                self._utility(
-                    state,
-                    carrier,
-                    tgt,
-                    recv,
-                    kind,
-                    mod_carrier,
-                    attacking_home,
-                    omega_desired=omega_d,
-                    lane=lane,
-                    press=press,
-                    outside_hint=out_h,
-                    ground_hint=g_h,
-                )
-            )
-            success_prior = self._success_prob(
-                state,
-                carrier,
-                tgt,
-                kind,
-                lane,
-                mod_carrier,
-                omega_desired=omega_d,
-                press=press,
-            )
-            meta.append((recv, kind, tgt, lane, press, omega_d, success_prior))
-
-        if self.wm_runtime is not None:
-            from src.match_engine.world_model.planner import pass_imagination_bonuses
-
-            bonuses = pass_imagination_bonuses(
-                self.wm_runtime, state, carrier, meta, attacking_home
-            )
-            utilities = [u + b for u, b in zip(utilities, bonuses)]
-
-        tau = cfg.pass_tau_base * max(0.15, float(mod_carrier.tau_dec))
-        util_arr = np.nan_to_num(np.array(utilities, dtype=float), nan=0.0)
-        probs = softmax(util_arr, tau=max(0.15, tau))
-        idx = int(rng.choice(len(probs), p=probs))
-        recv, kind, tgt, lane, press, omega_d, success_prior = meta[idx]
+        selected, selected_utility = self._select_pass_candidate(
+            state, carrier, cands, mod_carrier, attacking_home, rng,
+        )
+        recv, kind, tgt, lane, press, omega_d, success_prior = selected
 
         if getattr(state, "_wm_recorder", None) is not None and getattr(state, "_wm_obs_pre", None) is not None:
             from src.match_engine.world_model.action_codec import encode_pass_candidate
@@ -555,255 +811,36 @@ class PassingEngine:
                 horizon_s=float(self.cfg.dt_default),
             )
 
-        use_physics = cfg.enable_pass_physics and cfg.enable_phase3
-        land_miss = lateral_dev = pred_miss = 0.0
-        omega_used = outside_f = ground_w = 0.0
-        land_xy = tgt.copy()
-        tof = 0.0
-        spin_axis = np.array([0.0, 0.0, 1.0])
-        outside_desired = 0.0
-
-        if use_physics:
-            traj, omega_d, params = self._deliver_pass(state, carrier, tgt, kind, lane, rng)
-            land_xy = traj.landed
-            land_miss = traj.target_miss
-            lateral_dev = traj.lateral_dev
-            omega_used = traj.omega_used
-            outside_f = traj.outside_foot
-            ground_w = traj.ground_weight
-            tof = traj.time_of_flight
-            spin_axis = params.spin_axis.copy()
-            outside_desired = outside_foot_factor(
-                carrier.position, tgt, float(carrier.abilities.curve), omega_d, cfg
-            )
-
-        intercept_risk = 0.0
-        intercepted = False
-        interceptor_id = None
-        if use_physics:
-            opp_pool = [p for p in opp_team.players if p.on_pitch and p.role != "GK"]
-            ic = evaluate_pass_intercept(
-                land_xy, tof, recv, opp_pool, press, lane, cfg, rng, base_dir=getattr(self, "_base_dir", ".")
-            )
-            pred_miss = ic.pred_miss
-            intercept_risk = ic.intercept_risk
-            intercepted = ic.intercepted
-            interceptor_id = ic.interceptor_id
-
-        p_ok = self._success_prob(
-            state,
-            carrier,
-            tgt,
-            kind,
-            lane,
-            mod_carrier,
-            land_miss=land_miss,
-            lateral_dev=lateral_dev,
-            pred_miss=pred_miss,
-            omega_desired=omega_d,
-            omega_used=omega_used,
-            outside_foot=outside_f,
-            outside_desired=outside_desired,
-            press=press,
-            intercept_risk=intercept_risk,
-            ground_weight=ground_w if use_physics else 0.0,
+        delivery = self._resolve_pass_delivery(
+            state, carrier, recv, opp_team, kind, tgt, lane, press,
+            omega_d, mod_carrier, rng,
         )
-        completed = bool(rng.random() < p_ok) and not intercepted
+        use_physics = delivery["use_physics"]
+        omega_used = delivery["omega_used"]
+        outside_f = delivery["outside_f"]
+        ground_w = delivery["ground_w"]
+        intercepted = delivery["intercepted"]
+        completed = delivery["completed"]
 
-        trk = self.player_tracker
-        if trk is not None:
-            trk.record_pass(
-                carrier.player_id,
-                recv.player_id if completed else None,
-                kind,
-                completed,
-            )
-
-        side = "home" if attacking_home else "away"
-        if attacking_home:
-            self.stats["home_attempts"] += 1
-            if completed:
-                self.stats["home_completed"] += 1
-            if kind == "through":
-                self.stats["home_through"] += 1
-            if kind == "long":
-                self.stats["home_long"] += 1
-        else:
-            self.stats["away_attempts"] += 1
-            if completed:
-                self.stats["away_completed"] += 1
-            if kind == "through":
-                self.stats["away_through"] += 1
-            if kind == "long":
-                self.stats["away_long"] += 1
-
-        if use_physics and omega_used >= cfg.pass_omega_curve_threshold:
-            self.stats[f"{side}_curved"] += 1
-            self.stats["curve_omega_sum"] += omega_used
-            self.stats["curve_pass_count"] += 1
-        if use_physics and outside_f > 0.42:
-            self.stats[f"{side}_outside"] += 1
-        if use_physics and ground_w > 0.55:
-            self.stats[f"{side}_ground"] += 1
-        if intercepted:
-            self.stats[f"{side}_intercepts"] += 1
-        if kind == "wall":
-            self.stats[f"{side}_wall"] += 1
-
-        wall_combo_ok = False
-        if completed and kind == "wall" and cfg.enable_wall_pass:
-            state.ball.position = land_xy.copy()
-            state.ball.possessor_id = recv.player_id
-            state.ball.possession_team_id = carrier.team_id
-            recv.position = 0.75 * recv.position + 0.25 * land_xy
-            wall_ok, _, wall_ev = self._execute_wall_return(
-                state, carrier, recv, attacking_home, opp_team, mod_carrier, press, rng
-            )
-            events.extend(wall_ev)
-            wall_combo_ok = wall_ok
-            if wall_ok:
-                self.stats[f"{side}_wall_ok"] += 1
-            completed = wall_ok
-            state.ball.height = 0.0
-        elif completed:
-            state.ball.position = land_xy.copy()
-            state.ball.possessor_id = recv.player_id
-            state.ball.possession_team_id = carrier.team_id
-            state.ball.height = 0.0
-            if use_physics:
-                state.ball.omega = omega_used
-                state.ball.spin_axis = spin_axis
-            recv.position = 0.7 * recv.position + 0.3 * land_xy
-            if kind in ("through", "long") or omega_used >= cfg.pass_omega_curve_threshold:
-                events.append(
-                    MicroEvent(
-                        t_sec=state.clock_seconds,
-                        event_type=MicroEventType.KEY_PASS,
-                        team_id=carrier.team_id,
-                        player_id=carrier.player_id,
-                        intensity=0.75 if outside_f > 0.45 else 0.65,
-                    )
-                )
-
-        else:
-            opp_players = [p for p in opp_team.players if p.on_pitch and p.role != "GK"]
-            if intercepted and interceptor_id:
-                for p in opp_players:
-                    if p.player_id == interceptor_id:
-                        state.ball.possessor_id = p.player_id
-                        state.ball.possession_team_id = opp_team.team_id
-                        state.ball.position = land_xy.copy()
-                        state.ball.omega = 0.0
-                        events.append(
-                            MicroEvent(
-                                t_sec=state.clock_seconds,
-                                event_type=MicroEventType.TACKLE_WON,
-                                team_id=opp_team.team_id,
-                                player_id=p.player_id,
-                                intensity=0.72,
-                            )
-                        )
-                        events.append(
-                            MicroEvent(
-                                t_sec=state.clock_seconds,
-                                event_type=MicroEventType.DISPOSSESSED,
-                                team_id=carrier.team_id,
-                                player_id=carrier.player_id,
-                                intensity=0.65,
-                            )
-                        )
-                        break
-            elif opp_players:
-                taker = opp_players[int(rng.integers(0, len(opp_players)))]
-                state.ball.possessor_id = taker.player_id
-                state.ball.possession_team_id = opp_team.team_id
-                state.ball.position = land_xy.copy() if use_physics else taker.position.copy()
-                state.ball.omega = 0.0
-                events.append(
-                    MicroEvent(
-                        t_sec=state.clock_seconds,
-                        event_type=MicroEventType.DISPOSSESSED,
-                        team_id=carrier.team_id,
-                        player_id=carrier.player_id,
-                        intensity=0.6,
-                    )
-                )
-
-        if getattr(state, "_wm_last_action", None) is not None:
-            from src.match_engine.world_model.schema import PASS_OUTCOME_INDEX
-
-            state._wm_last_action[PASS_OUTCOME_INDEX] = 1.0 if completed else 0.0
-
-        interceptor_player = None
-        if intercepted and interceptor_id:
-            for p in opp_team.players:
-                if p.player_id == interceptor_id:
-                    interceptor_player = p
-                    break
-
-        if ball_log_wm_snapshot_enabled():
-            from src.match_engine.world_model.observation import encode_observation
-
-            obs_post = encode_observation(state, attacking_home=attacking_home)
-
-        from src.match_engine.ball_path_logger import record_pass
-
-        record_pass(
-            state,
-            carrier=carrier,
-            receiver=recv,
-            kind=kind,
-            target=tgt,
-            landed=land_xy,
-            completed=completed,
-            success_p=p_ok,
-            press=press,
-            lane=lane,
-            intercepted=intercepted,
-            interceptor=interceptor_player,
-            omega=omega_used,
-            outside_foot=outside_f,
-            ground_weight=ground_w,
-            time_of_flight=tof,
-            target_miss=land_miss,
-            lateral_dev=lateral_dev,
-            wall_combo=wall_combo_ok,
-            obs_pre=obs_pre,
-            obs_post=obs_post,
+        side = self._record_pass_statistics(
+            carrier=carrier, receiver=recv, kind=kind, completed=completed,
+            attacking_home=attacking_home, use_physics=use_physics,
+            omega_used=omega_used, outside_foot=outside_f,
+            ground_weight=ground_w, intercepted=intercepted,
+        )
+        completed, wall_combo_ok = self._apply_pass_outcome(
+            state=state, carrier=carrier, receiver=recv, opponent=opp_team,
+            kind=kind, attacking_home=attacking_home,
+            mod_carrier=mod_carrier, press=press, delivery=delivery,
+            side=side, events=events, rng=rng,
         )
 
-        action = PassAction(
-            pass_kind=kind,
-            from_id=carrier.player_id,
-            to_id=recv.player_id,
-            target=tgt,
-            utility=float(utilities[idx]),
-            success_p=p_ok,
-            completed=completed,
-            omega=omega_used,
-            landed=land_xy.copy(),
-            target_miss=land_miss,
-            lateral_dev=lateral_dev,
-            outside_foot=outside_f,
-            ground_weight=ground_w,
-            pred_miss=pred_miss,
-            intercepted=intercepted,
-            wall_combo=wall_combo_ok,
-        )
-        state.pass_log.append(
-            {
-                "t": state.clock_seconds,
-                "kind": kind,
-                "from": carrier.player_id,
-                "to": recv.player_id,
-                "ok": completed,
-                "p": p_ok,
-                "omega": omega_used,
-                "outside": outside_f,
-                "ground": ground_w,
-                "pred_miss": pred_miss,
-                "intercept": intercepted,
-            }
+        action = self._record_pass_result(
+            state=state, carrier=carrier, receiver=recv, opponent=opp_team,
+            kind=kind, target=tgt, lane=lane, press=press,
+            selected_utility=selected_utility, delivery=delivery,
+            completed=completed, wall_combo=wall_combo_ok,
+            attacking_home=attacking_home, observation_pre=obs_pre,
         )
         return action, events
 

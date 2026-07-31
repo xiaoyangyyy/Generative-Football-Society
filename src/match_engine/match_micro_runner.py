@@ -215,351 +215,63 @@ def _resolve_scheduled_shots(state, tick_events, shots: ShotEngine, cfg: MicroMa
         _apply_phase3_events(state, out.events, cfg)
 
 
-def run_match_micro_simulation(
-    home_agent: "SocietyAgent",
-    away_agent: "SocietyAgent",
-    *,
-    goals_home: int,
-    goals_away: int,
-    xg_home: float,
-    xg_away: float,
-    referee: Optional[Dict[str, Any]] = None,
-    stage_pressure: float = 0.3,
-    drama_score: float = 0.5,
-    internal_home: Optional[Dict[str, float]] = None,
-    internal_away: Optional[Dict[str, float]] = None,
-    neutral_venue: bool = False,
-    config: Optional[MicroMatchConfig] = None,
-    seed: int = 42,
-    writeback_agents: bool = True,
-    blend: float = 0.35,
-    eff_status_home: Optional[float] = None,
-    eff_status_away: Optional[float] = None,
-    stage_name: str = "match",
-    match_seconds: Optional[float] = None,
-    tactical_override_home: Optional[Dict[str, float]] = None,
-    tactical_override_away: Optional[Dict[str, float]] = None,
-) -> MicroMatchSummary:
-    cfg = config or MicroMatchConfig()
-    rng = np.random.default_rng(seed)
-    eff_h = float(eff_status_home if eff_status_home is not None else home_agent.status_score)
-    eff_a = float(eff_status_away if eff_status_away is not None else away_agent.status_score)
-    poss_home = _possession_prior_from_strength(eff_h, eff_a, cfg, neutral_venue=neutral_venue)
-
-    affective = AffectiveSpatialCoupling(cfg)
-    spatial = SpatialFieldEngine(cfg)
-    sie = SpatialIntelligenceEngine(cfg)
-    kinematic = KinematicPositionLayer(cfg, sie=sie)
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    wm_runtime = None
-    from src.match_engine.world_model.config import world_model_enabled
-    if world_model_enabled():
-        from src.match_engine.world_model.inference import WorldModelRuntime
-
-        wm_runtime = WorldModelRuntime.load_default(base_dir)
-
-    passing = PassingEngine(cfg, sie, wm_runtime=wm_runtime, base_dir=base_dir)
-    shots = ShotEngine(cfg, sie)
-    player_tracker = PlayerMatchStatsTracker()
-    passing.player_tracker = player_tracker
-    shots.player_tracker = player_tracker
-    aerial = AerialDuelEngine(cfg)
-    continuous_clock = None
-    if cfg.enable_continuous_event_clock:
-        from src.match_engine.continuous_micro_clock import ContinuousMicroEventClock
-
-        artifact = Path(cfg.continuous_clock_artifact)
-        if not artifact.is_absolute():
-            artifact = Path(base_dir) / artifact
-        continuous_clock = ContinuousMicroEventClock(
-            artifact, cfg.continuous_clock_provider, cfg.continuous_clock_max_delay_s
-        )
-    subtick_queue = None
-    if cfg.enable_subtick_reception_queue:
-        if cfg.enable_continuous_event_clock:
-            raise ValueError("legacy continuous gate and sub-tick reception queue are mutually exclusive")
-        from src.match_engine.subtick_reception_queue import SubtickReceptionQueue
-
-        temporal_artifact = Path(cfg.continuous_clock_artifact)
-        pass_artifact = Path(cfg.subtick_pass_artifact)
-        if not temporal_artifact.is_absolute():
-            temporal_artifact = Path(base_dir) / temporal_artifact
-        if not pass_artifact.is_absolute():
-            pass_artifact = Path(base_dir) / pass_artifact
-        subtick_queue = SubtickReceptionQueue(temporal_artifact, pass_artifact, cfg.subtick_reception_provider, cfg.subtick_response_blend)
-    actions = ActionEngine(
-        cfg, passing, shots, aerial, wm_runtime=wm_runtime, continuous_clock=continuous_clock,
-        subtick_queue=subtick_queue,
+def _resolve_final_micro_score(
+    state, shots, aerial, cfg, *, goals_home, goals_away, seed,
+):
+    physics_home = (
+        int(shots.stats["home_goals"])
+        + int(aerial.stats.get("home_aerial_goals", 0))
     )
-    tactical_eng = TacticalMicroEngine(cfg)
-
-    state = build_match_affective_state(
-        home_agent,
-        away_agent,
-        referee=referee,
-        stage_pressure=stage_pressure,
-        neutral_venue=neutral_venue,
-        eff_status_home=eff_h,
-        eff_status_away=eff_a,
-        rng=rng,
+    physics_away = (
+        int(shots.stats["away_goals"])
+        + int(aerial.stats.get("away_aerial_goals", 0))
     )
-    _init_micro_state(state, cfg, rng, possession_home=poss_home)
-    tactical_eng.bootstrap(state, home_agent, away_agent)
-    if tactical_override_home:
-        from src.match_engine.tactical_profile import apply_vector_to_team_coach
-
-        apply_vector_to_team_coach(state.home, tactical_override_home)
-    if tactical_override_away:
-        from src.match_engine.tactical_profile import apply_vector_to_team_coach
-
-        apply_vector_to_team_coach(state.away, tactical_override_away)
-
-    ih = internal_home or {}
-    ia = internal_away or {}
-    coord_h = float(ih.get("coordination", 0.6))
-    coord_a = float(ia.get("coordination", 0.6))
-    conflict_h = float(ih.get("conflict_heat", 0.12))
-    conflict_a = float(ih.get("conflict_heat", 0.12))
-    ref_strict = float((referee or {}).get("strictness", 0.55))
-
-    dt = cfg.dt_default
-    duration = float(match_seconds if match_seconds is not None else cfg.match_seconds)
-    n_ticks = max(1, int(duration / dt))
-
-    schedule = build_event_schedule(
-        state,
-        goals_home=goals_home,
-        goals_away=goals_away,
-        xg_home=xg_home,
-        xg_away=xg_away,
-        referee_strictness=ref_strict,
-        drama_score=drama_score,
-        internal_conflict_home=conflict_h,
-        internal_conflict_away=conflict_a,
-        rng=rng,
-        match_seconds=duration,
-        use_tick_fouls=bool(getattr(cfg, "discipline_tick_fouls", True)),
-    )
-    ev_idx = 0
-    meso = MesoAggregator(cfg.meso_window_seconds)
-    timeline: List[str] = []
-    strictness_sum = 0.0
-    poss_home_ticks = 0
-    phi_sum_h = 0.0
-    phi_sum_a = 0.0
-    subs_done: dict = {}
-    cognitive_bus, cognitive_executor = _resolve_cognitive_layer(cfg, seed, home_agent, away_agent)
-    processed_subs: set = set()
-
-    wm_recorder = getattr(home_agent, "_wm_recorder", None) or getattr(away_agent, "_wm_recorder", None)
-    state._wm_recorder = wm_recorder
-    wm_cfg = wm_runtime.cfg if wm_runtime is not None else None
-
-    for tick in range(n_ticks):
-        t0 = tick * dt
-        t1 = t0 + dt
-        state.clock_seconds = t1
-        state._wm_horizon_s = dt
-        if wm_recorder is not None or wm_runtime is not None:
-            from src.match_engine.world_model.observation import encode_observation
-
-            att = state.ball.possession_team_id == state.home.team_id
-            state._wm_obs_pre = encode_observation(state, attacking_home=att, cfg=wm_cfg)
-            state._wm_last_action = None
-        tick_events = []
-        while ev_idx < len(schedule) and schedule[ev_idx].t_sec < t1:
-            if schedule[ev_idx].t_sec >= t0:
-                tick_events.append(schedule[ev_idx])
-            ev_idx += 1
-
-        score_diff_home = state.home.score - state.away.score
-        xg_swing_home = xg_home - xg_away
-        press_h = float(state.home.coach.tactical_current.get("pressing_intensity", 0.5))
-        press_a = float(state.away.coach.tactical_current.get("pressing_intensity", 0.5))
-
-        tactical_eng.step_in_match_pressure(state, dt)
-
-        if cfg.enable_spatial:
-            spatial.step(state, dt)
-            sie.step(state)
-
-        aff_events = _events_for_affective(tick_events, cfg)
-        mod_dict, scalars = affective.step(
-            state,
-            dt,
-            events=aff_events,
-            score_diff_home=score_diff_home,
-            xg_swing_home=xg_swing_home,
-            coordination_home=coord_h,
-            coordination_away=coord_a,
-            conflict_home=conflict_h,
-            conflict_away=conflict_a,
-            press_home=press_h,
-            press_away=press_a,
-        )
-        strictness_sum += scalars["strictness_effective"]
-        mod_home = mod_dict["home"]
-        mod_away = mod_dict["away"]
-
-        if getattr(cfg, "discipline_tick_fouls", True):
-            from src.match_engine.discipline_schedule import emit_tick_discipline
-
-            from src.match_engine.discipline_schedule import emit_tick_cross, emit_tick_tackle
-
-            lam_f = float(scalars.get("lambda_foul", cfg.lambda_foul_base))
-            for dev in emit_tick_discipline(
-                state,
-                mod_home,
-                mod_away,
-                cfg=cfg,
-                lambda_foul=lam_f,
-                referee_strictness=ref_strict,
-                drama_score=drama_score,
-                rng=rng,
-                player_tracker=None,
-            ):
-                apply_micro_event(state, dev, cfg)
-                tick_events.append(dev)
-            for tev in emit_tick_tackle(state, mod_home, mod_away, cfg=cfg, lambda_foul=lam_f, rng=rng):
-                apply_micro_event(state, tev, cfg)
-                tick_events.append(tev)
-            emit_tick_cross(state, aerial, cfg=cfg, rng=rng)
-
-        if state.ball.possession_team_id == state.home.team_id:
-            poss_home_ticks += 1
-            state.home.possession_share = 0.92 * state.home.possession_share + 0.08
-        else:
-            state.home.possession_share = 0.92 * state.home.possession_share
-        state.away.possession_share = 1.0 - state.home.possession_share
-
-        if cfg.enable_spatial:
-            kinematic.step(state, mod_home, mod_away)
-            phi_sum_h += float(np.mean(state.spatial.phi_home))
-            phi_sum_a += float(np.mean(state.spatial.phi_away))
-
-        for ev in tick_events:
-            player_tracker.apply_event(ev)
-
-        if cfg.enable_phase3:
-            if tick_events:
-                _resolve_scheduled_shots(state, tick_events, shots, cfg, mod_home, mod_away, rng)
-            _, act_events = actions.step(state, mod_home, mod_away, rng)
-            for ev in act_events:
-                player_tracker.apply_event(ev)
-            _apply_phase3_events(state, act_events, cfg)
-        elif cfg.enable_passing:
-            _, pass_events = passing.step(state, mod_home, mod_away, rng)
-            for pe in pass_events:
-                apply_micro_event(state, pe, cfg)
-
-        player_tracker.tick_minutes(state, dt)
-        sub_notes = maybe_apply_substitutions(state, t1, rng, player_tracker, subs_done=subs_done)
-        for sn in sub_notes:
-            timeline.append(sn)
-
-        _process_cognitive_tick(
-            cognitive_bus,
-            cognitive_executor,
-            state,
-            tick_events,
-            t1,
-            dt,
-            xg_swing_home,
-            home_agent,
-            away_agent,
-            processed_subs,
-            player_tracker,
-        )
-
-        if wm_recorder is not None and getattr(state, "_wm_obs_pre", None) is not None:
-            act = getattr(state, "_wm_last_action", None)
-            if act is not None:
-                from src.match_engine.world_model.observation import encode_observation
-
-                att = state.ball.possession_team_id == state.home.team_id
-                obs_next = encode_observation(state, attacking_home=att, cfg=wm_cfg)
-                wm_recorder.write(
-                    state._wm_obs_pre,
-                    act,
-                    obs_next,
-                    meta={
-                        "t_sec": t1,
-                        "tick": tick,
-                        "outcome_supervised": bool(act[0] > 0.5 or act[1] > 0.5),
-                    },
-                )
-
-        if state.ball.possessor_id:
-            for p in state.home.players + state.away.players:
-                if p.player_id == state.ball.possessor_id:
-                    state.ball.position = 0.85 * state.ball.position + 0.15 * p.position
-                    break
-
-        emo_h = affective.team_emotion_mean(state.home)
-        emo_a = affective.team_emotion_mean(state.away)
-        for team, tid, xgf, xga, emo in (
-            (state.home, state.home.team_id, xg_home, xg_away, emo_h),
-            (state.away, state.away.team_id, xg_away, xg_home, emo_a),
-        ):
-            meso.record_tick(
-                state,
-                team_id=tid,
-                xg_for=xgf,
-                xg_against=xga,
-                controversy=state.referee.controversy_integral,
-                psi=state.crowd.psi,
-                emotion=emo,
-                tactical=team.coach.tactical_current,
-                tactical_base=team.coach.tactical_base,
-                icon_shock=icon_emotion_shock(team),
-            )
-
-        for ev in tick_events:
-            if ev.event_type.value in ("goal_scored", "red_card", "var_controversy"):
-                timeline.append(f"{int(t0//60)}' {ev.event_type.value} ({ev.team_id})")
-
-    packets = meso.flush_packets(state.home.team_id, state.away.team_id)
-    emo_home = affective.team_emotion_mean(state.home)
-    emo_away = affective.team_emotion_mean(state.away)
-
-    def tactical_drift(team) -> float:
-        base = team.coach.tactical_base
-        cur = team.coach.tactical_current
-        return float(sum(abs(cur.get(k, 0.5) - base.get(k, 0.5)) for k in base))
-
-    lam_h, lam_a = lambdas_from_micro(state.micro_xg_home, state.micro_xg_away, eff_h, eff_a, cfg)
-
-    physics_gh = int(shots.stats["home_goals"]) + int(aerial.stats.get("home_aerial_goals", 0))
-    physics_ga = int(shots.stats["away_goals"]) + int(aerial.stats.get("away_aerial_goals", 0))
-    xg_supplement_meta: dict = {}
-    if cfg.use_micro_goals:
-        final_gh, final_ga = physics_gh, physics_ga
+    supplement_meta: dict = {}
+    if not cfg.use_micro_goals:
+        final_home, final_away = int(goals_home), int(goals_away)
+    else:
+        final_home, final_away = physics_home, physics_away
         from src.simulation.score_path import xg_supplement_allowed
 
         if xg_supplement_allowed():
             from src.match_engine.goal_generator import supplement_goals_from_micro_xg
 
-            final_gh, final_ga, xg_supplement_meta = supplement_goals_from_micro_xg(
-                physics_gh,
-                physics_ga,
-                state.micro_xg_home,
-                state.micro_xg_away,
-                cfg,
+            final_home, final_away, supplement_meta = supplement_goals_from_micro_xg(
+                physics_home, physics_away,
+                state.micro_xg_home, state.micro_xg_away, cfg,
                 rng=np.random.default_rng(seed + 909),
             )
-    else:
-        final_gh, final_ga = int(goals_home), int(goals_away)
+    state.home.score, state.away.score = final_home, final_away
+    return final_home, final_away, physics_home, physics_away, supplement_meta
 
-    state.home.score = final_gh
-    state.away.score = final_ga
 
-    ha, aa = passing.stats["home_attempts"], passing.stats["away_attempts"]
-    hc, ac = passing.stats["home_completed"], passing.stats["away_completed"]
+def _tactical_drift(team) -> float:
+    base = team.coach.tactical_base
+    current = team.coach.tactical_current
+    return float(
+        sum(abs(current.get(key, 0.5) - base.get(key, 0.5)) for key in base)
+    )
+
+
+def _build_micro_match_summary(
+    *,
+    state, cfg, passing, shots, aerial, player_tracker,
+    cognitive_bus, cognitive_executor, continuous_clock, subtick_queue,
+    packets, timeline, n_ticks, strictness_sum, poss_home_ticks,
+    phi_sum_h, phi_sum_a, emo_home, emo_away, eff_h, eff_a,
+    final_gh, final_ga, physics_gh, physics_ga, xg_supplement_meta,
+):
+    lambda_home, lambda_away = lambdas_from_micro(
+        state.micro_xg_home, state.micro_xg_away, eff_h, eff_a, cfg,
+    )
+    home_attempts = passing.stats["home_attempts"]
+    away_attempts = passing.stats["away_attempts"]
+    home_completed = passing.stats["home_completed"]
+    away_completed = passing.stats["away_completed"]
     discipline = player_tracker.team_discipline_totals(state)
     home_disc = discipline.get(state.home.team_id, {})
     away_disc = discipline.get(state.away.team_id, {})
-
-    summary = MicroMatchSummary(
+    return MicroMatchSummary(
         home_team=state.home.team_id,
         away_team=state.away.team_id,
         ticks=n_ticks,
@@ -571,14 +283,14 @@ def run_match_micro_simulation(
         away_emotion_mean=emo_away,
         icon_shock_home=icon_emotion_shock(state.home),
         icon_shock_away=icon_emotion_shock(state.away),
-        tactical_drift_home=tactical_drift(state.home),
-        tactical_drift_away=tactical_drift(state.away),
+        tactical_drift_home=_tactical_drift(state.home),
+        tactical_drift_away=_tactical_drift(state.away),
         controversy_integral=state.referee.controversy_integral,
         possession_home=poss_home_ticks / max(1, n_ticks),
-        passes_home=ha,
-        passes_away=aa,
-        pass_completion_home=hc / max(1, ha),
-        pass_completion_away=ac / max(1, aa),
+        passes_home=home_attempts,
+        passes_away=away_attempts,
+        pass_completion_home=home_completed / max(1, home_attempts),
+        pass_completion_away=away_completed / max(1, away_attempts),
         through_balls_home=passing.stats["home_through"],
         through_balls_away=passing.stats["away_through"],
         long_passes_home=passing.stats["home_long"],
@@ -586,7 +298,8 @@ def run_match_micro_simulation(
         curved_passes_home=passing.stats["home_curved"],
         curved_passes_away=passing.stats["away_curved"],
         pass_curve_omega_mean=(
-            passing.stats["curve_omega_sum"] / max(1, passing.stats["curve_pass_count"])
+            passing.stats["curve_omega_sum"]
+            / max(1, passing.stats["curve_pass_count"])
         ),
         outside_foot_passes_home=passing.stats["home_outside"],
         outside_foot_passes_away=passing.stats["away_outside"],
@@ -630,12 +343,13 @@ def run_match_micro_simulation(
             + shots.stats.get("away_headers", 0)
         ),
         crosses_attempted=aerial.stats["crosses"],
-        lambda_home=lam_h,
-        lambda_away=lam_a,
+        lambda_home=lambda_home,
+        lambda_away=lambda_away,
         player_stats=player_tracker.export_by_team(state),
         substitutions=player_tracker.substitutions,
         cognitive_triggers=(
-            [t.to_dict() for t in cognitive_bus.fired_log] if cognitive_bus is not None else []
+            [trigger.to_dict() for trigger in cognitive_bus.fired_log]
+            if cognitive_bus is not None else []
         ),
         cognitive_plans=(
             cognitive_executor.export_log() if cognitive_executor is not None else []
@@ -643,10 +357,456 @@ def run_match_micro_simulation(
         cognitive_tier_usage=(
             cognitive_bus.tier_usage() if cognitive_bus is not None else {}
         ),
-        meso_packets=[p.__dict__ if hasattr(p, "__dict__") else p for p in packets],
+        meso_packets=[
+            packet.__dict__ if hasattr(packet, "__dict__") else packet
+            for packet in packets
+        ],
         timeline_snippet=timeline[:12],
-        continuous_clock=continuous_clock.diagnostics() if continuous_clock is not None else {"enabled": False},
-        subtick_reception_queue=subtick_queue.diagnostics() if subtick_queue is not None else {"enabled": False},
+        continuous_clock=(
+            continuous_clock.diagnostics()
+            if continuous_clock is not None else {"enabled": False}
+        ),
+        subtick_reception_queue=(
+            subtick_queue.diagnostics()
+            if subtick_queue is not None else {"enabled": False}
+        ),
+    )
+
+
+def _load_world_model_runtime(base_dir):
+    from src.match_engine.world_model.config import world_model_enabled
+
+    if not world_model_enabled():
+        return None
+    from src.match_engine.world_model.inference import WorldModelRuntime
+
+    return WorldModelRuntime.load_default(base_dir)
+
+
+def _build_temporal_adapters(cfg, base_dir):
+    continuous_clock = None
+    if cfg.enable_continuous_event_clock:
+        from src.match_engine.continuous_micro_clock import ContinuousMicroEventClock
+
+        artifact = Path(cfg.continuous_clock_artifact)
+        if not artifact.is_absolute():
+            artifact = Path(base_dir) / artifact
+        continuous_clock = ContinuousMicroEventClock(
+            artifact,
+            cfg.continuous_clock_provider,
+            cfg.continuous_clock_max_delay_s,
+        )
+
+    subtick_queue = None
+    if cfg.enable_subtick_reception_queue:
+        if cfg.enable_continuous_event_clock:
+            raise ValueError(
+                "legacy continuous gate and sub-tick reception queue are mutually exclusive"
+            )
+        from src.match_engine.subtick_reception_queue import SubtickReceptionQueue
+
+        temporal_artifact = Path(cfg.continuous_clock_artifact)
+        pass_artifact = Path(cfg.subtick_pass_artifact)
+        if not temporal_artifact.is_absolute():
+            temporal_artifact = Path(base_dir) / temporal_artifact
+        if not pass_artifact.is_absolute():
+            pass_artifact = Path(base_dir) / pass_artifact
+        subtick_queue = SubtickReceptionQueue(
+            temporal_artifact,
+            pass_artifact,
+            cfg.subtick_reception_provider,
+            cfg.subtick_response_blend,
+        )
+    return continuous_clock, subtick_queue
+
+
+def _build_micro_engines(cfg, base_dir):
+    affective = AffectiveSpatialCoupling(cfg)
+    spatial = SpatialFieldEngine(cfg)
+    spatial_intelligence = SpatialIntelligenceEngine(cfg)
+    kinematic = KinematicPositionLayer(cfg, sie=spatial_intelligence)
+    world_model = _load_world_model_runtime(base_dir)
+    passing = PassingEngine(
+        cfg, spatial_intelligence, wm_runtime=world_model, base_dir=base_dir,
+    )
+    shots = ShotEngine(cfg, spatial_intelligence)
+    player_tracker = PlayerMatchStatsTracker()
+    passing.player_tracker = player_tracker
+    shots.player_tracker = player_tracker
+    aerial = AerialDuelEngine(cfg)
+    continuous_clock, subtick_queue = _build_temporal_adapters(cfg, base_dir)
+    actions = ActionEngine(
+        cfg, passing, shots, aerial, wm_runtime=world_model,
+        continuous_clock=continuous_clock, subtick_queue=subtick_queue,
+    )
+    return (
+        affective, spatial, spatial_intelligence, kinematic, world_model,
+        passing, shots, player_tracker, aerial, continuous_clock,
+        subtick_queue, actions, TacticalMicroEngine(cfg),
+    )
+
+
+def _initialize_micro_match_state(
+    *, home_agent, away_agent, referee, stage_pressure, neutral_venue,
+    eff_h, eff_a, poss_home, cfg, rng, tactical_engine,
+    tactical_override_home, tactical_override_away,
+    internal_home, internal_away, match_seconds,
+    goals_home, goals_away, xg_home, xg_away, drama_score,
+):
+    state = build_match_affective_state(
+        home_agent, away_agent, referee=referee,
+        stage_pressure=stage_pressure, neutral_venue=neutral_venue,
+        eff_status_home=eff_h, eff_status_away=eff_a, rng=rng,
+    )
+    _init_micro_state(state, cfg, rng, possession_home=poss_home)
+    tactical_engine.bootstrap(state, home_agent, away_agent)
+    if tactical_override_home or tactical_override_away:
+        from src.match_engine.tactical_profile import apply_vector_to_team_coach
+
+        if tactical_override_home:
+            apply_vector_to_team_coach(state.home, tactical_override_home)
+        if tactical_override_away:
+            apply_vector_to_team_coach(state.away, tactical_override_away)
+
+    home_internal = internal_home or {}
+    away_internal = internal_away or {}
+    coordination_home = float(home_internal.get("coordination", 0.6))
+    coordination_away = float(away_internal.get("coordination", 0.6))
+    conflict_home = float(home_internal.get("conflict_heat", 0.12))
+    # Compatibility: the existing model currently derives both conflict inputs
+    # from the home internal state. Correct this only with a calibrated baseline.
+    conflict_away = float(home_internal.get("conflict_heat", 0.12))
+    referee_strictness = float((referee or {}).get("strictness", 0.55))
+    dt = cfg.dt_default
+    duration = float(match_seconds if match_seconds is not None else cfg.match_seconds)
+    n_ticks = max(1, int(duration / dt))
+    schedule = build_event_schedule(
+        state, goals_home=goals_home, goals_away=goals_away,
+        xg_home=xg_home, xg_away=xg_away,
+        referee_strictness=referee_strictness, drama_score=drama_score,
+        internal_conflict_home=conflict_home,
+        internal_conflict_away=conflict_away, rng=rng,
+        match_seconds=duration,
+        use_tick_fouls=bool(getattr(cfg, "discipline_tick_fouls", True)),
+    )
+    return {
+        "state": state, "coord_h": coordination_home,
+        "coord_a": coordination_away, "conflict_h": conflict_home,
+        "conflict_a": conflict_away, "ref_strict": referee_strictness,
+        "dt": dt, "duration": duration, "n_ticks": n_ticks,
+        "schedule": schedule,
+    }
+
+
+def _events_in_tick(schedule, event_index, t0, t1):
+    events = []
+    while event_index < len(schedule) and schedule[event_index].t_sec < t1:
+        if schedule[event_index].t_sec >= t0:
+            events.append(schedule[event_index])
+        event_index += 1
+    return events, event_index
+
+
+def _begin_world_model_tick(state, *, dt, wm_recorder, wm_runtime, wm_cfg):
+    state._wm_horizon_s = dt
+    if wm_recorder is None and wm_runtime is None:
+        return
+    from src.match_engine.world_model.observation import encode_observation
+
+    attacking_home = state.ball.possession_team_id == state.home.team_id
+    state._wm_obs_pre = encode_observation(
+        state, attacking_home=attacking_home, cfg=wm_cfg,
+    )
+    state._wm_last_action = None
+
+
+def _step_affective_discipline(
+    *, state, cfg, dt, tick_events, affective, tactical_engine,
+    spatial, spatial_intelligence, coordination_home, coordination_away,
+    conflict_home, conflict_away, xg_swing_home, referee_strictness,
+    drama_score, aerial, rng,
+):
+    press_home = float(
+        state.home.coach.tactical_current.get("pressing_intensity", 0.5)
+    )
+    press_away = float(
+        state.away.coach.tactical_current.get("pressing_intensity", 0.5)
+    )
+    tactical_engine.step_in_match_pressure(state, dt)
+    if cfg.enable_spatial:
+        spatial.step(state, dt)
+        spatial_intelligence.step(state)
+    modifiers, scalars = affective.step(
+        state, dt, events=_events_for_affective(tick_events, cfg),
+        score_diff_home=state.home.score - state.away.score,
+        xg_swing_home=xg_swing_home,
+        coordination_home=coordination_home,
+        coordination_away=coordination_away,
+        conflict_home=conflict_home, conflict_away=conflict_away,
+        press_home=press_home, press_away=press_away,
+    )
+    mod_home, mod_away = modifiers["home"], modifiers["away"]
+    if getattr(cfg, "discipline_tick_fouls", True):
+        from src.match_engine.discipline_schedule import (
+            emit_tick_cross,
+            emit_tick_discipline,
+            emit_tick_tackle,
+        )
+
+        foul_rate = float(scalars.get("lambda_foul", cfg.lambda_foul_base))
+        discipline_events = emit_tick_discipline(
+            state, mod_home, mod_away, cfg=cfg, lambda_foul=foul_rate,
+            referee_strictness=referee_strictness,
+            drama_score=drama_score, rng=rng, player_tracker=None,
+        )
+        for event in discipline_events:
+            apply_micro_event(state, event, cfg)
+            tick_events.append(event)
+        tackle_events = emit_tick_tackle(
+            state, mod_home, mod_away, cfg=cfg,
+            lambda_foul=foul_rate, rng=rng,
+        )
+        for event in tackle_events:
+            apply_micro_event(state, event, cfg)
+            tick_events.append(event)
+        emit_tick_cross(state, aerial, cfg=cfg, rng=rng)
+    return mod_home, mod_away, scalars
+
+
+def _step_possession_spatial(
+    state, cfg, kinematic, mod_home, mod_away,
+):
+    home_possession = state.ball.possession_team_id == state.home.team_id
+    if home_possession:
+        state.home.possession_share = 0.92 * state.home.possession_share + 0.08
+    else:
+        state.home.possession_share = 0.92 * state.home.possession_share
+    state.away.possession_share = 1.0 - state.home.possession_share
+    phi_home = phi_away = 0.0
+    if cfg.enable_spatial:
+        kinematic.step(state, mod_home, mod_away)
+        phi_home = float(np.mean(state.spatial.phi_home))
+        phi_away = float(np.mean(state.spatial.phi_away))
+    return int(home_possession), phi_home, phi_away
+
+
+def _execute_tick_actions(
+    *, state, cfg, tick_events, player_tracker, shots, actions,
+    passing, mod_home, mod_away, rng,
+):
+    for event in tick_events:
+        player_tracker.apply_event(event)
+    if cfg.enable_phase3:
+        if tick_events:
+            _resolve_scheduled_shots(
+                state, tick_events, shots, cfg, mod_home, mod_away, rng,
+            )
+        _, action_events = actions.step(state, mod_home, mod_away, rng)
+        for event in action_events:
+            player_tracker.apply_event(event)
+        _apply_phase3_events(state, action_events, cfg)
+    elif cfg.enable_passing:
+        _, pass_events = passing.step(state, mod_home, mod_away, rng)
+        for event in pass_events:
+            apply_micro_event(state, event, cfg)
+
+
+def _finish_world_model_tick(state, *, wm_recorder, wm_cfg, t1, tick):
+    if wm_recorder is None or getattr(state, "_wm_obs_pre", None) is None:
+        return
+    action = getattr(state, "_wm_last_action", None)
+    if action is None:
+        return
+    from src.match_engine.world_model.observation import encode_observation
+
+    attacking_home = state.ball.possession_team_id == state.home.team_id
+    observation_next = encode_observation(
+        state, attacking_home=attacking_home, cfg=wm_cfg,
+    )
+    wm_recorder.write(
+        state._wm_obs_pre, action, observation_next,
+        meta={
+            "t_sec": t1, "tick": tick,
+            "outcome_supervised": bool(action[0] > 0.5 or action[1] > 0.5),
+        },
+    )
+
+
+def _record_tick_meso(state, affective, meso, *, xg_home, xg_away):
+    emotion_home = affective.team_emotion_mean(state.home)
+    emotion_away = affective.team_emotion_mean(state.away)
+    for team, team_id, xg_for, xg_against, emotion in (
+        (state.home, state.home.team_id, xg_home, xg_away, emotion_home),
+        (state.away, state.away.team_id, xg_away, xg_home, emotion_away),
+    ):
+        meso.record_tick(
+            state, team_id=team_id, xg_for=xg_for, xg_against=xg_against,
+            controversy=state.referee.controversy_integral,
+            psi=state.crowd.psi, emotion=emotion,
+            tactical=team.coach.tactical_current,
+            tactical_base=team.coach.tactical_base,
+            icon_shock=icon_emotion_shock(team),
+        )
+
+
+def _sync_ball_to_possessor(state):
+    if not state.ball.possessor_id:
+        return
+    for player in state.home.players + state.away.players:
+        if player.player_id == state.ball.possessor_id:
+            state.ball.position = (
+                0.85 * state.ball.position + 0.15 * player.position
+            )
+            return
+
+
+def run_match_micro_simulation(
+    home_agent: "SocietyAgent",
+    away_agent: "SocietyAgent",
+    *,
+    goals_home: int,
+    goals_away: int,
+    xg_home: float,
+    xg_away: float,
+    referee: Optional[Dict[str, Any]] = None,
+    stage_pressure: float = 0.3,
+    drama_score: float = 0.5,
+    internal_home: Optional[Dict[str, float]] = None,
+    internal_away: Optional[Dict[str, float]] = None,
+    neutral_venue: bool = False,
+    config: Optional[MicroMatchConfig] = None,
+    seed: int = 42,
+    writeback_agents: bool = True,
+    blend: float = 0.35,
+    eff_status_home: Optional[float] = None,
+    eff_status_away: Optional[float] = None,
+    stage_name: str = "match",
+    match_seconds: Optional[float] = None,
+    tactical_override_home: Optional[Dict[str, float]] = None,
+    tactical_override_away: Optional[Dict[str, float]] = None,
+) -> MicroMatchSummary:
+    cfg = config or MicroMatchConfig()
+    rng = np.random.default_rng(seed)
+    eff_h = float(eff_status_home if eff_status_home is not None else home_agent.status_score)
+    eff_a = float(eff_status_away if eff_status_away is not None else away_agent.status_score)
+    poss_home = _possession_prior_from_strength(eff_h, eff_a, cfg, neutral_venue=neutral_venue)
+
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    (
+        affective, spatial, sie, kinematic, wm_runtime, passing, shots,
+        player_tracker, aerial, continuous_clock, subtick_queue, actions,
+        tactical_eng,
+    ) = _build_micro_engines(cfg, base_dir)
+
+    initialized = _initialize_micro_match_state(
+        home_agent=home_agent, away_agent=away_agent, referee=referee,
+        stage_pressure=stage_pressure, neutral_venue=neutral_venue,
+        eff_h=eff_h, eff_a=eff_a, poss_home=poss_home, cfg=cfg, rng=rng,
+        tactical_engine=tactical_eng,
+        tactical_override_home=tactical_override_home,
+        tactical_override_away=tactical_override_away,
+        internal_home=internal_home, internal_away=internal_away,
+        match_seconds=match_seconds, goals_home=goals_home,
+        goals_away=goals_away, xg_home=xg_home, xg_away=xg_away,
+        drama_score=drama_score,
+    )
+    state = initialized["state"]
+    coord_h, coord_a = initialized["coord_h"], initialized["coord_a"]
+    conflict_h, conflict_a = initialized["conflict_h"], initialized["conflict_a"]
+    ref_strict = initialized["ref_strict"]
+    dt, duration, n_ticks = (
+        initialized["dt"], initialized["duration"], initialized["n_ticks"],
+    )
+    schedule = initialized["schedule"]
+    ev_idx = 0
+    meso = MesoAggregator(cfg.meso_window_seconds)
+    timeline: List[str] = []
+    strictness_sum = 0.0
+    poss_home_ticks = 0
+    phi_sum_h = 0.0
+    phi_sum_a = 0.0
+    subs_done: dict = {}
+    cognitive_bus, cognitive_executor = _resolve_cognitive_layer(cfg, seed, home_agent, away_agent)
+    processed_subs: set = set()
+
+    wm_recorder = getattr(home_agent, "_wm_recorder", None) or getattr(away_agent, "_wm_recorder", None)
+    state._wm_recorder = wm_recorder
+    wm_cfg = wm_runtime.cfg if wm_runtime is not None else None
+
+    for tick in range(n_ticks):
+        t0 = tick * dt
+        t1 = t0 + dt
+        state.clock_seconds = t1
+        _begin_world_model_tick(
+            state, dt=dt, wm_recorder=wm_recorder,
+            wm_runtime=wm_runtime, wm_cfg=wm_cfg,
+        )
+        tick_events, ev_idx = _events_in_tick(schedule, ev_idx, t0, t1)
+        xg_swing_home = xg_home - xg_away
+        mod_home, mod_away, scalars = _step_affective_discipline(
+            state=state, cfg=cfg, dt=dt, tick_events=tick_events,
+            affective=affective, tactical_engine=tactical_eng,
+            spatial=spatial, spatial_intelligence=sie,
+            coordination_home=coord_h, coordination_away=coord_a,
+            conflict_home=conflict_h, conflict_away=conflict_a,
+            xg_swing_home=xg_swing_home, referee_strictness=ref_strict,
+            drama_score=drama_score, aerial=aerial, rng=rng,
+        )
+        strictness_sum += scalars["strictness_effective"]
+        possession_tick, phi_home, phi_away = _step_possession_spatial(
+            state, cfg, kinematic, mod_home, mod_away,
+        )
+        poss_home_ticks += possession_tick
+        phi_sum_h += phi_home
+        phi_sum_a += phi_away
+        _execute_tick_actions(
+            state=state, cfg=cfg, tick_events=tick_events,
+            player_tracker=player_tracker, shots=shots, actions=actions,
+            passing=passing, mod_home=mod_home, mod_away=mod_away, rng=rng,
+        )
+        player_tracker.tick_minutes(state, dt)
+        sub_notes = maybe_apply_substitutions(state, t1, rng, player_tracker, subs_done=subs_done)
+        timeline.extend(sub_notes)
+        _process_cognitive_tick(
+            cognitive_bus, cognitive_executor, state, tick_events, t1, dt,
+            xg_swing_home, home_agent, away_agent, processed_subs,
+            player_tracker,
+        )
+        _finish_world_model_tick(
+            state, wm_recorder=wm_recorder, wm_cfg=wm_cfg, t1=t1, tick=tick,
+        )
+        _sync_ball_to_possessor(state)
+        _record_tick_meso(
+            state, affective, meso, xg_home=xg_home, xg_away=xg_away,
+        )
+        timeline.extend(
+            f"{int(t0 // 60)}' {event.event_type.value} ({event.team_id})"
+            for event in tick_events
+            if event.event_type.value
+            in ("goal_scored", "red_card", "var_controversy")
+        )
+
+    packets = meso.flush_packets(state.home.team_id, state.away.team_id)
+    emo_home = affective.team_emotion_mean(state.home)
+    emo_away = affective.team_emotion_mean(state.away)
+    final_gh, final_ga, physics_gh, physics_ga, xg_supplement_meta = (
+        _resolve_final_micro_score(
+            state, shots, aerial, cfg,
+            goals_home=goals_home, goals_away=goals_away, seed=seed,
+        )
+    )
+    summary = _build_micro_match_summary(
+        state=state, cfg=cfg, passing=passing, shots=shots, aerial=aerial,
+        player_tracker=player_tracker, cognitive_bus=cognitive_bus,
+        cognitive_executor=cognitive_executor,
+        continuous_clock=continuous_clock, subtick_queue=subtick_queue,
+        packets=packets, timeline=timeline, n_ticks=n_ticks,
+        strictness_sum=strictness_sum, poss_home_ticks=poss_home_ticks,
+        phi_sum_h=phi_sum_h, phi_sum_a=phi_sum_a,
+        emo_home=emo_home, emo_away=emo_away, eff_h=eff_h, eff_a=eff_a,
+        final_gh=final_gh, final_ga=final_ga,
+        physics_gh=physics_gh, physics_ga=physics_ga,
+        xg_supplement_meta=xg_supplement_meta,
     )
 
     if writeback_agents:

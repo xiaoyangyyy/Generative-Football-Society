@@ -122,124 +122,135 @@ class ShotEngine:
         u -= cfg.shot_u_dist * dist
         return float(u)
 
-    def resolve_shot(
-        self,
-        state: MatchAffectiveState,
-        carrier: PlayerAffectiveState,
-        mod: PlayerModulators,
-        rng: np.random.Generator,
-        *,
-        forced_kind: Optional[str] = None,
-        scheduled_on_target: bool = False,
-        from_schedule: bool = False,
-    ) -> ShotOutcome:
-        cfg = self.cfg
-        attacking_home = carrier.team_id == state.home.team_id
-        from src.match_engine.ball_path_logger import ball_log_wm_snapshot_enabled
-
-        obs_pre = None
-        if ball_log_wm_snapshot_enabled():
-            from src.match_engine.world_model.observation import encode_observation
-
-            obs_pre = encode_observation(state, attacking_home=attacking_home)
-        dist = self._dist_to_goal(carrier.position, attacking_home)
-        kinds = [forced_kind] if forced_kind else self._shot_candidates(carrier, dist, rng)
-        utils = [self._utility_shot(state, carrier, k, mod, attacking_home) for k in kinds]
-        idx = int(rng.choice(len(kinds), p=softmax(np.array(utils), tau=cfg.shot_tau * mod.tau_dec)))
-        kind = kinds[idx]
-
-        params = sample_shot_params(kind, dist, carrier.abilities, mod.shot_utility_bias, rng, cfg)
-        params.azim = azimuth_to_goal(carrier.position, attacking_home)
-
-        drag_scale = float(getattr(cfg, "shot_phys_drag_scale", 1.0))
-        traj = integrate_trajectory(
-            carrier.position,
-            params,
-            cfg,
-            attacking_high_x=attacking_home,
-            drag_scale=drag_scale,
-            rng=rng,
+    def _select_shot_kind(
+        self, state, carrier, mod, attacking_home, dist, forced_kind, rng,
+    ):
+        kinds = (
+            [forced_kind]
+            if forced_kind else self._shot_candidates(carrier, dist, rng)
         )
-        if not traj.crossed_goal_line and dist < cfg.shot_max_dist:
-            boosted = params
-            for _ in range(8):
-                boosted = BallActionParams(
-                    v0=float(min(getattr(cfg, "shot_v0_max", 1.32), boosted.v0 * 1.10)),
-                    elev=boosted.elev,
-                    azim=boosted.azim,
-                    omega=boosted.omega,
-                    spin_axis=boosted.spin_axis.copy(),
-                    knuckle_intensity=boosted.knuckle_intensity,
-                    outside_foot=boosted.outside_foot,
-                    ground_weight=boosted.ground_weight,
-                )
-                traj = integrate_trajectory(
-                    carrier.position,
-                    boosted,
-                    cfg,
-                    attacking_high_x=attacking_home,
-                    drag_scale=drag_scale,
-                    rng=rng,
-                )
-                params = boosted
-                if traj.crossed_goal_line:
-                    break
+        utilities = [
+            self._utility_shot(state, carrier, kind, mod, attacking_home)
+            for kind in kinds
+        ]
+        probabilities = softmax(
+            np.array(utilities), tau=self.cfg.shot_tau * mod.tau_dec,
+        )
+        return kinds[int(rng.choice(len(kinds), p=probabilities))]
 
-        def_team_id = state.away.team_id if attacking_home else state.home.team_id
-        gk = self._gk_player(state, def_team_id)
-        save_p = self._gk_save_prob(traj, gk, params, dist)
+    def _simulate_shot_trajectory(
+        self, carrier, mod, kind, dist, attacking_home, rng,
+    ):
+        cfg = self.cfg
+        params = sample_shot_params(
+            kind, dist, carrier.abilities, mod.shot_utility_bias, rng, cfg,
+        )
+        params.azim = azimuth_to_goal(carrier.position, attacking_home)
+        drag_scale = float(getattr(cfg, "shot_phys_drag_scale", 1.0))
+        trajectory = integrate_trajectory(
+            carrier.position, params, cfg, attacking_high_x=attacking_home,
+            drag_scale=drag_scale, rng=rng,
+        )
+        if trajectory.crossed_goal_line or dist >= cfg.shot_max_dist:
+            return trajectory, params
+        boosted = params
+        for _ in range(8):
+            boosted = BallActionParams(
+                v0=float(min(
+                    getattr(cfg, "shot_v0_max", 1.32), boosted.v0 * 1.10,
+                )),
+                elev=boosted.elev, azim=boosted.azim, omega=boosted.omega,
+                spin_axis=boosted.spin_axis.copy(),
+                knuckle_intensity=boosted.knuckle_intensity,
+                outside_foot=boosted.outside_foot,
+                ground_weight=boosted.ground_weight,
+            )
+            trajectory = integrate_trajectory(
+                carrier.position, boosted, cfg,
+                attacking_high_x=attacking_home,
+                drag_scale=drag_scale, rng=rng,
+            )
+            params = boosted
+            if trajectory.crossed_goal_line:
+                break
+        return trajectory, params
+
+    def _resolve_shot_probabilities(
+        self, *, trajectory, params, goalkeeper, dist, kind,
+        scheduled_on_target, rng,
+    ):
+        cfg = self.cfg
+        save_probability = self._gk_save_prob(
+            trajectory, goalkeeper, params, dist,
+        )
         if scheduled_on_target:
-            save_p = float(np.clip(save_p * cfg.scheduled_on_target_save_mult, 0.05, 0.92))
-
-        # xG from geometry + model
-        angle_y = abs((traj.goal_y or 0.5) - 0.5)
-        xg_geom = cfg.xg_geom_base * float(np.exp(-dist * cfg.xg_dist_decay)) * float(
-            np.exp(-angle_y * cfg.xg_angle_penalty)
+            save_probability = float(np.clip(
+                save_probability * cfg.scheduled_on_target_save_mult,
+                0.05, 0.92,
+            ))
+        angle = abs((trajectory.goal_y or 0.5) - 0.5)
+        geometric_xg = (
+            cfg.xg_geom_base
+            * float(np.exp(-dist * cfg.xg_dist_decay))
+            * float(np.exp(-angle * cfg.xg_angle_penalty))
         )
         if kind == "header":
-            xg_geom *= 0.85
+            geometric_xg *= 0.85
         if kind == "knuckle":
-            xg_geom *= 1.0 + cfg.xg_knuckle_boost * params.knuckle_intensity
-        # Standard xG: geometric chance before GK (not discounted by save model).
-        xg = float(np.clip(xg_geom, 0.01, 0.78))
-
-        from src.match_engine.math_utils import sigmoid
-
-        angle_y = abs((traj.goal_y or 0.5) - 0.5)
-        z_ang = float(getattr(cfg, "shot_sot_z_angle", 4.4))
-        z_dist = float(getattr(cfg, "shot_sot_z_dist", 2.15))
-        if traj.in_goal_mouth:
-            z = float(getattr(cfg, "shot_sot_z_in_goal", 0.92)) - z_ang * angle_y - z_dist * dist
-        else:
-            z = float(getattr(cfg, "shot_sot_z_wide", -2.4)) - 1.2 * angle_y - 0.9 * dist
-        on_p = float(sigmoid(z))
-        if not traj.in_goal_mouth:
-            on_p *= float(getattr(cfg, "shot_sot_wide_scale", 0.10))
-        if scheduled_on_target and dist < 0.22:
-            on_p = max(on_p, 0.55)
-        on_target = bool(rng.random() < on_p)
-        if traj.in_goal_mouth:
-            xg_scale = float(getattr(cfg, "shot_finish_xg_scale", 1.12))
-            save_scale = float(getattr(cfg, "shot_finish_save_scale", 0.68))
-            p_phys = max(0.08, 1.0 - save_p)
-            p_xg = float(np.clip(xg * (xg_scale - save_scale * save_p), 0.025, 0.72))
-            finish_p = float(np.clip(0.30 * p_phys + 0.70 * p_xg, 0.03, 0.68))
-            goal = bool(rng.random() < finish_p)
-        else:
-            goal = False
-        if scheduled_on_target and on_target and not goal:
-            goal = bool(rng.random() < min(0.50, xg * 0.85 + cfg.scheduled_on_target_goal_bonus))
-        saved = bool(on_target and not goal and rng.random() < save_p)
-
-        trk = self.player_tracker
-        if trk is not None:
-            trk.record_shot(
-                carrier.player_id,
-                xg=xg,
-                goal=goal,
-                on_target=on_target,
+            geometric_xg *= 1.0 + cfg.xg_knuckle_boost * params.knuckle_intensity
+        xg = float(np.clip(geometric_xg, 0.01, 0.78))
+        if trajectory.in_goal_mouth:
+            logit = (
+                float(getattr(cfg, "shot_sot_z_in_goal", 0.92))
+                - float(getattr(cfg, "shot_sot_z_angle", 4.4)) * angle
+                - float(getattr(cfg, "shot_sot_z_dist", 2.15)) * dist
             )
+        else:
+            logit = (
+                float(getattr(cfg, "shot_sot_z_wide", -2.4))
+                - 1.2 * angle - 0.9 * dist
+            )
+        on_target_probability = float(sigmoid(logit))
+        if not trajectory.in_goal_mouth:
+            on_target_probability *= float(
+                getattr(cfg, "shot_sot_wide_scale", 0.10)
+            )
+        if scheduled_on_target and dist < 0.22:
+            on_target_probability = max(on_target_probability, 0.55)
+        on_target = bool(rng.random() < on_target_probability)
+        goal = False
+        if trajectory.in_goal_mouth:
+            physical_probability = max(0.08, 1.0 - save_probability)
+            xg_probability = float(np.clip(
+                xg * (
+                    float(getattr(cfg, "shot_finish_xg_scale", 1.12))
+                    - float(getattr(cfg, "shot_finish_save_scale", 0.68))
+                    * save_probability
+                ),
+                0.025, 0.72,
+            ))
+            finish_probability = float(np.clip(
+                0.30 * physical_probability + 0.70 * xg_probability,
+                0.03, 0.68,
+            ))
+            goal = bool(rng.random() < finish_probability)
+        if scheduled_on_target and on_target and not goal:
+            goal = bool(rng.random() < min(
+                0.50, xg * 0.85 + cfg.scheduled_on_target_goal_bonus,
+            ))
+        saved = bool(
+            on_target and not goal and rng.random() < save_probability
+        )
+        return xg, goal, on_target, saved
 
+    def _record_shot_statistics(
+        self, *, carrier, xg, goal, on_target, kind,
+        attacking_home, from_schedule,
+    ):
+        if self.player_tracker is not None:
+            self.player_tracker.record_shot(
+                carrier.player_id, xg=xg, goal=goal, on_target=on_target,
+            )
         side = "home" if attacking_home else "away"
         self.stats[f"{side}_shots"] += 1
         if from_schedule:
@@ -255,58 +266,44 @@ class ShotEngine:
         if kind == "knuckle":
             self.stats["knuckle"] += 1
 
-        events: List[MicroEvent] = []
+    @staticmethod
+    def _build_shot_events(
+        state, carrier, goalkeeper, *, attacking_home, goal, on_target, saved,
+    ):
+        opponent_id = (
+            state.away.team_id if attacking_home else state.home.team_id
+        )
         if goal:
-            events.append(
+            return [
                 MicroEvent(
                     t_sec=state.clock_seconds,
                     event_type=MicroEventType.GOAL_SCORED,
-                    team_id=carrier.team_id,
-                    player_id=carrier.player_id,
-                    opponent_team_id=state.away.team_id if attacking_home else state.home.team_id,
-                    intensity=1.0,
-                )
-            )
-            opp = state.away.team_id if attacking_home else state.home.team_id
-            events.append(
+                    team_id=carrier.team_id, player_id=carrier.player_id,
+                    opponent_team_id=opponent_id, intensity=1.0,
+                ),
                 MicroEvent(
                     t_sec=state.clock_seconds + 0.5,
                     event_type=MicroEventType.GOAL_CONCEDED,
-                    team_id=opp,
-                    intensity=0.9,
-                )
-            )
-        elif on_target and saved:
-            events.append(
-                MicroEvent(
-                    t_sec=state.clock_seconds,
-                    event_type=MicroEventType.SAVE,
-                    team_id=gk.team_id,
-                    player_id=gk.player_id,
-                    intensity=0.75,
-                )
-            )
-        elif on_target:
-            events.append(
-                MicroEvent(
-                    t_sec=state.clock_seconds,
-                    event_type=MicroEventType.SHOT_ON_TARGET,
-                    team_id=carrier.team_id,
-                    player_id=carrier.player_id,
-                    intensity=0.7,
-                )
-            )
-        else:
-            events.append(
-                MicroEvent(
-                    t_sec=state.clock_seconds,
-                    event_type=MicroEventType.SHOT_OFF_TARGET,
-                    team_id=carrier.team_id,
-                    player_id=carrier.player_id,
-                    intensity=0.55,
-                )
-            )
+                    team_id=opponent_id, intensity=0.9,
+                ),
+            ]
+        if on_target and saved:
+            return [MicroEvent(
+                t_sec=state.clock_seconds, event_type=MicroEventType.SAVE,
+                team_id=goalkeeper.team_id, player_id=goalkeeper.player_id,
+                intensity=0.75,
+            )]
+        return [MicroEvent(
+            t_sec=state.clock_seconds,
+            event_type=(
+                MicroEventType.SHOT_ON_TARGET
+                if on_target else MicroEventType.SHOT_OFF_TARGET
+            ),
+            team_id=carrier.team_id, player_id=carrier.player_id,
+            intensity=0.7 if on_target else 0.55,
+        )]
 
+    def _accumulate_micro_xg(self, state, *, attacking_home, xg):
         cap = float(getattr(self.cfg, "micro_xg_match_cap", 2.4))
         if attacking_home:
             room = max(0.0, cap - state.micro_xg_home)
@@ -315,32 +312,88 @@ class ShotEngine:
             room = max(0.0, cap - state.micro_xg_away)
             state.micro_xg_away += min(float(xg), room)
 
-        from src.match_engine.ball_path_logger import ball_log_wm_snapshot_enabled, record_shot
+    @staticmethod
+    def _log_shot_path(
+        state, *, carrier, goalkeeper, kind, xg, goal, on_target,
+        saved, dist, trajectory, attacking_home, observation_pre,
+    ):
+        from src.match_engine.ball_path_logger import (
+            ball_log_wm_snapshot_enabled,
+            record_shot,
+        )
 
-        obs_post = None
+        observation_post = None
         if ball_log_wm_snapshot_enabled():
             from src.match_engine.world_model.observation import encode_observation
 
-            obs_post = encode_observation(state, attacking_home=attacking_home)
-
+            observation_post = encode_observation(
+                state, attacking_home=attacking_home,
+            )
         record_shot(
-            state,
-            carrier=carrier,
-            gk=gk,
-            kind=kind,
-            xg=xg,
-            goal=goal,
-            on_target=on_target,
-            saved=saved,
-            dist=dist,
-            traj_peak=float(getattr(traj, "peak_height", 0.0)),
-            traj_tof=float(getattr(traj, "time_of_flight", 0.0)),
-            in_goal=bool(traj.in_goal_mouth),
-            obs_pre=obs_pre,
-            obs_post=obs_post,
+            state, carrier=carrier, gk=goalkeeper, kind=kind, xg=xg,
+            goal=goal, on_target=on_target, saved=saved, dist=dist,
+            traj_peak=float(getattr(trajectory, "peak_height", 0.0)),
+            traj_tof=float(getattr(trajectory, "time_of_flight", 0.0)),
+            in_goal=bool(trajectory.in_goal_mouth),
+            obs_pre=observation_pre, obs_post=observation_post,
         )
 
-        return ShotOutcome(kind, xg, goal, on_target, saved, traj, events)
+    def resolve_shot(
+        self,
+        state: MatchAffectiveState,
+        carrier: PlayerAffectiveState,
+        mod: PlayerModulators,
+        rng: np.random.Generator,
+        *,
+        forced_kind: Optional[str] = None,
+        scheduled_on_target: bool = False,
+        from_schedule: bool = False,
+    ) -> ShotOutcome:
+        attacking_home = carrier.team_id == state.home.team_id
+        from src.match_engine.ball_path_logger import ball_log_wm_snapshot_enabled
+
+        obs_pre = None
+        if ball_log_wm_snapshot_enabled():
+            from src.match_engine.world_model.observation import encode_observation
+
+            obs_pre = encode_observation(state, attacking_home=attacking_home)
+        dist = self._dist_to_goal(carrier.position, attacking_home)
+        kind = self._select_shot_kind(
+            state, carrier, mod, attacking_home, dist, forced_kind, rng,
+        )
+        trajectory, params = self._simulate_shot_trajectory(
+            carrier, mod, kind, dist, attacking_home, rng,
+        )
+        defending_team_id = (
+            state.away.team_id if attacking_home else state.home.team_id
+        )
+        goalkeeper = self._gk_player(state, defending_team_id)
+        xg, goal, on_target, saved = self._resolve_shot_probabilities(
+            trajectory=trajectory, params=params, goalkeeper=goalkeeper,
+            dist=dist, kind=kind, scheduled_on_target=scheduled_on_target,
+            rng=rng,
+        )
+        self._record_shot_statistics(
+            carrier=carrier, xg=xg, goal=goal, on_target=on_target,
+            kind=kind, attacking_home=attacking_home,
+            from_schedule=from_schedule,
+        )
+        events = self._build_shot_events(
+            state, carrier, goalkeeper, attacking_home=attacking_home,
+            goal=goal, on_target=on_target, saved=saved,
+        )
+        self._accumulate_micro_xg(
+            state, attacking_home=attacking_home, xg=xg,
+        )
+        self._log_shot_path(
+            state, carrier=carrier, goalkeeper=goalkeeper, kind=kind,
+            xg=xg, goal=goal, on_target=on_target, saved=saved,
+            dist=dist, trajectory=trajectory, attacking_home=attacking_home,
+            observation_pre=obs_pre,
+        )
+        return ShotOutcome(
+            kind, xg, goal, on_target, saved, trajectory, events,
+        )
 
     def shot_utility_max(
         self,
