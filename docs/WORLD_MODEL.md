@@ -173,13 +173,26 @@ intervention, sampled action, and whether they matched.
 | --- | --- | --- |
 | `MATCH_WM_LLM_ACTION_BRIDGE` | `1` | Enable the bounded one-shot policy bridge |
 | `MATCH_WM_LLM_ACTION_BIAS_MAX` | `0.35` | Maximum action-logit bias, hard-clipped to `[0, 0.5]` |
+| `MATCH_WM_LLM_ACTION_CONTROL_RATE` | `0.20` | Deterministic randomized share assigned to a zero-bias control arm, clipped to `[0, 0.5]` |
+| `MATCH_WM_LLM_ACTION_MIN_ARM_SAMPLES` | `2` | Minimum samples per arm before within-match reliability feedback can activate |
 
-The intervention adoption rate is still not a causal effect estimate. Measuring
-that requires matched seeds or randomized no-bias controls under the same model,
-checkpoint, tactics, and simulator configuration.
+Eligible decisions are deterministically randomized from the match seed and
+decision identity. Treatment opportunities receive the bounded bias; control
+opportunities go through exactly the same action path with a zero bias and do
+not consume an extra LLM call. The report estimates the treatment effect on the
+probability of executing the LLM-selected action, with standard error and a 95%
+confidence interval. Once both arms meet the configured sample floor, adverse
+evidence can only reduce later bias strength (`1.0`, `0.85`, `0.60`, or `0.25`);
+the experiment can never increase it beyond the confidence-derived bound.
+
+This randomized estimate supports a causal claim only about action selection in
+the configured simulator. It does not by itself prove an improvement in goals,
+xG, match utility, or real football outcomes. Aggregate experiments should keep
+the checkpoint, control rate, tactics, and simulator configuration fixed.
 
 Both diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
-python scripts/evaluate_online_world_model.py --min-transitions 50
+python scripts/evaluate_online_world_model.py \
+  --min-transitions 50 --min-policy-arm 8 --require-policy-effect
 ```

@@ -1,4 +1,4 @@
-"""Aggregate online transition calibration from persisted cognitive logs."""
+"""Aggregate transition calibration and randomized policy-bridge evidence."""
 
 from __future__ import annotations
 
@@ -19,7 +19,9 @@ from src.match_engine.world_model.online_evaluation import (  # noqa: E402
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Evaluate same-target online world-model calibration.",
+        description=(
+            "Evaluate online world-model calibration and policy-bridge effects."
+        ),
     )
     parser.add_argument(
         "--log-dir",
@@ -30,6 +32,12 @@ def main() -> int:
         default=str(ROOT / "reports/evaluation/online_world_model.json"),
     )
     parser.add_argument("--min-transitions", type=int, default=50)
+    parser.add_argument("--min-policy-arm", type=int, default=8)
+    parser.add_argument(
+        "--require-policy-effect",
+        action="store_true",
+        help="Fail readiness until randomized treatment and control arms pass.",
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -47,7 +55,10 @@ def main() -> int:
         )
         return 2
     report = aggregate_online_calibration(
-        logs, min_transitions=args.min_transitions,
+        logs,
+        min_transitions=args.min_transitions,
+        min_policy_arm=args.min_policy_arm,
+        require_policy_effect=args.require_policy_effect,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

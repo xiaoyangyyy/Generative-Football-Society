@@ -754,6 +754,7 @@ def run_match_micro_simulation(
         drama_score=drama_score,
     )
     state = initialized["state"]
+    state._wm_policy_experiment_seed = int(seed)
     coord_h, coord_a = initialized["coord_h"], initialized["coord_a"]
     conflict_h, conflict_a = initialized["conflict_h"], initialized["conflict_a"]
     ref_strict = initialized["ref_strict"]

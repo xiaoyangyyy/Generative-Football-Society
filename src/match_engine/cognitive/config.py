@@ -26,6 +26,8 @@ class CognitiveMatchConfig:
     crowd_numeric: bool = True
     world_model_action_bridge: bool = True
     world_model_action_bias_max: float = 0.35
+    world_model_action_control_rate: float = 0.20
+    world_model_action_min_arm_samples: int = 2
     # coach, referee, player_per_team, assistant_total, crowd
     tier_caps: Tuple[int, int, int, int, int] = (6, 4, 4, 2, 3)
     half_time_sec: float = 45.0 * 60.0
@@ -50,6 +52,15 @@ class CognitiveMatchConfig:
             world_model_action_bias_max=max(0.0, min(0.5, env_float(
                 values, "MATCH_WM_LLM_ACTION_BIAS_MAX", 0.35,
             ))),
+            world_model_action_control_rate=max(0.0, min(0.5, env_float(
+                values, "MATCH_WM_LLM_ACTION_CONTROL_RATE", 0.20,
+            ))),
+            world_model_action_min_arm_samples=max(
+                2,
+                int(env_float(
+                    values, "MATCH_WM_LLM_ACTION_MIN_ARM_SAMPLES", 2.0,
+                )),
+            ),
             tier_caps=_parse_tier_caps(
                 values.get("MATCH_COGNITIVE_MAX_PER_TIER", ""),
                 (6, 4, 4, 2, 3),

@@ -302,12 +302,17 @@ class CognitiveExecutor:
                 and bool(packet.get("available"))
             ):
                 from src.match_engine.world_model.decision_adoption import (
+                    policy_bridge_reliability_factor,
                     register_coach_action_decision,
                 )
 
+                reliability_factor = policy_bridge_reliability_factor(
+                    state,
+                    min_per_arm=self.cfg.world_model_action_min_arm_samples,
+                )
                 intervention_strength = _policy_intervention_strength(
                     rec.plan, packet, self.cfg,
-                )
+                ) * reliability_factor
                 adoption = register_coach_action_decision(
                     state,
                     team_id=trig.team_id,
@@ -324,6 +329,9 @@ class CognitiveExecutor:
                     horizon_s=float(packet.get("horizon_s", 10.0)),
                     intervention_strength=intervention_strength,
                     intervention_enabled=self.cfg.world_model_action_bridge,
+                    experiment_control_rate=(
+                        self.cfg.world_model_action_control_rate
+                    ),
                 )
                 if adoption is not None:
                     rec.plan["world_model_adoption_id"] = adoption[
@@ -334,6 +342,12 @@ class CognitiveExecutor:
                     )
                     rec.plan["world_model_policy_intervention_strength"] = (
                         adoption["intervention_strength"]
+                    )
+                    rec.plan["world_model_policy_experiment_arm"] = adoption[
+                        "experiment_arm"
+                    ]
+                    rec.plan["world_model_policy_reliability_factor"] = (
+                        reliability_factor
                     )
         except Exception as exc:
             rec.error = str(exc)

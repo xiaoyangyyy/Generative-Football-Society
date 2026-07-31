@@ -58,3 +58,14 @@ def test_bus_queues_goal_trigger():
     pending = bus.drain_pending()
     assert len(pending) >= 1
     assert any(t.entity_tier == "coach" for t in pending)
+def test_policy_bridge_experiment_config_is_safely_bounded():
+    cfg = CognitiveMatchConfig.from_mapping({
+        "MATCH_WM_LLM_ACTION_BRIDGE": "1",
+        "MATCH_WM_LLM_ACTION_BIAS_MAX": "9",
+        "MATCH_WM_LLM_ACTION_CONTROL_RATE": "0.8",
+        "MATCH_WM_LLM_ACTION_MIN_ARM_SAMPLES": "1",
+    })
+    assert cfg.world_model_action_bridge
+    assert cfg.world_model_action_bias_max == 0.5
+    assert cfg.world_model_action_control_rate == 0.5
+    assert cfg.world_model_action_min_arm_samples == 2

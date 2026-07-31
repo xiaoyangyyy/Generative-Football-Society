@@ -193,6 +193,12 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                 "adopted": adopted,
                 "interventions_applied": 1,
                 "intervention_adopted": adopted,
+                "randomized_policy_effect": {
+                    "treatment": 1,
+                    "treatment_adopted": adopted,
+                    "control": 1,
+                    "control_adopted": 0,
+                },
             },
         }
 
@@ -208,4 +214,18 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
     assert report["decision_adoption"]["adoption_rate"] == 0.5
     assert report["decision_adoption"]["interventions_applied"] == 2
     assert report["decision_adoption"]["intervention_adoption_rate"] == 0.5
+    randomized = report["decision_adoption"]["randomized_policy_effect"]
+    assert randomized["treatment"] == 2
+    assert randomized["control"] == 2
+    assert randomized["average_treatment_effect"] == 0.5
+    assert not randomized["ready"]
     assert report["decision_adoption"]["causal_interpretation"] is False
+
+    policy_ready = aggregate_online_calibration(
+        [payload(20, 0.02, 0.8, 1), payload(40, 0.01, 1.0, 0)],
+        min_transitions=50,
+        min_policy_arm=2,
+        require_policy_effect=True,
+    )
+    assert policy_ready["ready"]
+    assert policy_ready["policy_effect_ready"]
