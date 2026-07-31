@@ -25,6 +25,7 @@ def aggregate_online_calibration(
     }
     target_mismatches = 0
     adoption_registered = adoption_resolved = adoption_count = 0
+    interventions_applied = intervention_adopted = 0
     for payload in logs:
         calibration = payload.get("world_model_online_calibration") or {}
         if calibration.get("calibration_target") not in (
@@ -40,6 +41,8 @@ def aggregate_online_calibration(
         adoption_registered += int(adoption.get("registered", 0))
         adoption_resolved += int(adoption.get("resolved", 0))
         adoption_count += int(adoption.get("adopted", 0))
+        interventions_applied += int(adoption.get("interventions_applied", 0))
+        intervention_adopted += int(adoption.get("intervention_adopted", 0))
 
     summaries = {}
     all_finite = True
@@ -89,6 +92,11 @@ def aggregate_online_calibration(
             "resolved": adoption_resolved,
             "adopted": adoption_count,
             "adoption_rate": adoption_count / max(1, adoption_resolved),
+            "interventions_applied": interventions_applied,
+            "intervention_adopted": intervention_adopted,
+            "intervention_adoption_rate": (
+                intervention_adopted / max(1, interventions_applied)
+            ),
             "causal_interpretation": False,
         },
         "gates": gates,
@@ -96,5 +104,6 @@ def aggregate_online_calibration(
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
+            "Intervention adoption rate needs a randomized no-bias control for causal attribution.",
         ],
     }

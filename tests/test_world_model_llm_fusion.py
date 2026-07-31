@@ -223,6 +223,13 @@ def test_executor_injects_world_model_evidence_before_llm_and_applies_plan():
     assert record.plan["world_model_action"] == "shot"
     assert record.plan["world_model_adoption_id"]
     assert len(state._wm_coach_decision_adoption) == 1
+    adoption = state._wm_coach_decision_adoption[0]
+    assert adoption["intervention_enabled"]
+    assert 0.0 < adoption["intervention_strength"] <= 0.35
+    assert record.plan["world_model_policy_intervention_enabled"]
+    assert record.plan["world_model_policy_intervention_strength"] == adoption[
+        "intervention_strength"
+    ]
     assert record.applied
     assert state.home.coach.tactical_current["pressing_intensity"] > 0.5
 

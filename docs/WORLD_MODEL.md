@@ -159,6 +159,25 @@ as adopted only when the same team performs the matching high-level action after
 the decision and within its horizon. This is temporal adoption evidence, not
 proof that the LLM caused the action.
 
+When the evidence gate is open, the selected evaluated action can also create a
+one-shot policy intervention for that team's next feasible action. Its strength
+is the configured maximum multiplied by the geometric mean of LLM confidence
+and the selected candidate's uncertainty-adjusted world-model confidence. The
+intervention adds at most `0.35` to one action logit, expires with the decision
+horizon, and is consumed by the next action sample. It never forces an action or
+bypasses role eligibility, shot distance, cooldown, normal sampling, or action
+physics. The audit distinguishes the recommendation, LLM selection, applied
+intervention, sampled action, and whether they matched.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `MATCH_WM_LLM_ACTION_BRIDGE` | `1` | Enable the bounded one-shot policy bridge |
+| `MATCH_WM_LLM_ACTION_BIAS_MAX` | `0.35` | Maximum action-logit bias, hard-clipped to `[0, 0.5]` |
+
+The intervention adoption rate is still not a causal effect estimate. Measuring
+that requires matched seeds or randomized no-bias controls under the same model,
+checkpoint, tactics, and simulator configuration.
+
 Both diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash

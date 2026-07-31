@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import tempfile
 import time
@@ -33,6 +34,33 @@ if TYPE_CHECKING:
     from src.match_engine.state import MatchAffectiveState
     from src.simulation.agent import SocietyAgent
     from src.simulation.llm_engine import SimulationLLM
+
+
+def _policy_intervention_strength(
+    plan: Dict[str, Any],
+    packet: Dict[str, Any],
+    cfg: CognitiveMatchConfig,
+) -> float:
+    """Convert two independent confidence signals into a bounded logit bias."""
+    if not cfg.world_model_action_bridge or not packet.get("available"):
+        return 0.0
+    selected = str(plan.get("world_model_action", "none")).lower()
+    candidate = next(
+        (
+            item for item in packet.get("candidates", [])
+            if str(item.get("action", "")).lower() == selected
+        ),
+        None,
+    )
+    if candidate is None:
+        return 0.0
+    plan_confidence = min(1.0, max(0.0, float(plan.get("confidence", 0.0))))
+    model_confidence = min(
+        1.0, max(0.0, float(candidate.get("effective_confidence", 0.0)))
+    )
+    return float(cfg.world_model_action_bias_max) * math.sqrt(
+        plan_confidence * model_confidence
+    )
 
 
 def _cache_key(trig: CognitiveTriggerEvent) -> str:
@@ -277,6 +305,9 @@ class CognitiveExecutor:
                     register_coach_action_decision,
                 )
 
+                intervention_strength = _policy_intervention_strength(
+                    rec.plan, packet, self.cfg,
+                )
                 adoption = register_coach_action_decision(
                     state,
                     team_id=trig.team_id,
@@ -291,11 +322,19 @@ class CognitiveExecutor:
                         packet.get("recommendation_confidence", 0.0)
                     ),
                     horizon_s=float(packet.get("horizon_s", 10.0)),
+                    intervention_strength=intervention_strength,
+                    intervention_enabled=self.cfg.world_model_action_bridge,
                 )
                 if adoption is not None:
                     rec.plan["world_model_adoption_id"] = adoption[
                         "decision_id"
                     ]
+                    rec.plan["world_model_policy_intervention_enabled"] = (
+                        adoption["intervention_enabled"]
+                    )
+                    rec.plan["world_model_policy_intervention_strength"] = (
+                        adoption["intervention_strength"]
+                    )
         except Exception as exc:
             rec.error = str(exc)
             rec.applied = False

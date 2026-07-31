@@ -140,6 +140,39 @@ class ActionEngine:
                 tac=tac,
                 team_shots=team_shots,
             )
+        feasible_actions = {"pass", "hold"}
+        if dist_goal < self.cfg.shot_max_dist and shot_cooldown_ok(
+            state, attacking_home, self.cfg, float(state.clock_seconds),
+        ):
+            feasible_actions.add("shot")
+        if carrier.role in ("LW", "RW", "LB", "RB"):
+            feasible_actions.add("cross")
+        from src.match_engine.world_model.decision_adoption import (
+            pending_policy_action_bias,
+            record_policy_intervention_result,
+        )
+
+        policy_intent = pending_policy_action_bias(
+            state,
+            team_id=carrier.team_id,
+            feasible_actions=feasible_actions,
+            t_sec=float(state.clock_seconds),
+        )
+        if policy_intent is not None:
+            selected_index = labels.index(policy_intent["action"])
+            utils[selected_index] += min(
+                0.5, max(0.0, float(policy_intent["logit_bias"]))
+            )
+
+        def record_policy_result(actual_action: str) -> None:
+            if policy_intent is not None:
+                record_policy_intervention_result(
+                    state,
+                    decision_id=policy_intent["decision_id"],
+                    actual_action=actual_action,
+                    t_sec=float(state.clock_seconds),
+                )
+
         tau = self.cfg.action_tau * mod_c.tau_dec
         probs = softmax(utils, tau=max(0.2, tau))
         choice = labels[int(rng.choice(len(labels), p=probs))]
@@ -165,6 +198,7 @@ class ActionEngine:
                     self.subtick_queue.schedule_after_pass(state, pass_action)
                     self.subtick_queue.reconcile(state.clock_seconds + self.cfg.dt_default, state)
                 events.extend(pass_ev)
+                record_policy_result("pass")
                 return "pass", events
             out = self.shots.resolve_shot(state, carrier, mod_c, rng, from_schedule=False)
             if getattr(state, "_wm_last_action", None) is not None:
@@ -182,6 +216,7 @@ class ActionEngine:
                 def_id = state.away.team_id if attacking_home else state.home.team_id
                 gk = self.shots._gk_player(state, def_id)
                 turnover_to_defence_after_shot(state, attacking_home, gk, rng)
+            record_policy_result("shot")
             return "shot", events
 
         if choice == "cross" and carrier.role in ("LW", "RW", "LB", "RB"):
@@ -203,6 +238,7 @@ class ActionEngine:
                         state.ball.possessor_id = p.player_id
                         state.ball.possession_team_id = p.team_id
                         break
+            record_policy_result("cross")
             return "cross", events
 
         if choice == "hold":
@@ -214,6 +250,7 @@ class ActionEngine:
                     target=state.ball.position,
                     horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
                 )
+            record_policy_result("hold")
             return "hold", events
 
         pass_action, pass_ev = self.passing.step(state, mod_home, mod_away, rng)
@@ -223,4 +260,5 @@ class ActionEngine:
             self.subtick_queue.schedule_after_pass(state, pass_action)
             self.subtick_queue.reconcile(state.clock_seconds + self.cfg.dt_default, state)
         events.extend(pass_ev)
+        record_policy_result("pass")
         return "pass", events

@@ -8,6 +8,8 @@ from src.match_engine.world_model.decision_adoption import (
     decision_adoption_diagnostics,
     finalize_decision_adoption,
     observe_executed_action,
+    pending_policy_action_bias,
+    record_policy_intervention_result,
     register_coach_action_decision,
 )
 
@@ -75,3 +77,83 @@ def test_horizon_expiry_and_match_end_resolve_unmatched_decisions():
     assert "does not prove" in decision_adoption_diagnostics(state)[
         "interpretation"
     ]
+
+
+def test_bounded_policy_intent_is_future_same_team_feasible_and_one_shot():
+    state = SimpleNamespace(clock_seconds=40.0)
+    record = register_coach_action_decision(
+        state,
+        team_id="A",
+        trigger_kind="xg_swing",
+        llm_selected_action="shot",
+        world_model_recommended_action="pass",
+        recommendation_confidence=0.7,
+        horizon_s=10.0,
+        intervention_enabled=True,
+        intervention_strength=9.0,
+    )
+    assert record["intervention_strength"] == 0.5
+    assert pending_policy_action_bias(
+        state, team_id="A", feasible_actions={"shot"}, t_sec=40.0,
+    ) is None
+    assert pending_policy_action_bias(
+        state, team_id="B", feasible_actions={"shot"}, t_sec=41.0,
+    ) is None
+    assert pending_policy_action_bias(
+        state, team_id="A", feasible_actions={"pass"}, t_sec=41.0,
+    ) is None
+    intent = pending_policy_action_bias(
+        state, team_id="A", feasible_actions={"pass", "shot"}, t_sec=41.0,
+    )
+    assert intent == {
+        "decision_id": record["decision_id"],
+        "action": "shot",
+        "logit_bias": 0.5,
+    }
+    record_policy_intervention_result(
+        state,
+        decision_id=intent["decision_id"],
+        actual_action="pass",
+        t_sec=41.0,
+    )
+    assert record["intervention_applied"] is True
+    assert record["adopted"] is False
+    assert record["resolution"] == "different_action_after_bounded_bias"
+    assert pending_policy_action_bias(
+        state, team_id="A", feasible_actions={"shot"}, t_sec=42.0,
+    ) is None
+    diagnostics = decision_adoption_diagnostics(state)
+    assert diagnostics["interventions_applied"] == 1
+    assert diagnostics["intervention_adoption_rate"] == 0.0
+
+
+def test_newer_coach_intent_supersedes_unresolved_same_team_intent():
+    state = SimpleNamespace(clock_seconds=10.0)
+    older = register_coach_action_decision(
+        state,
+        team_id="A",
+        trigger_kind="clock",
+        llm_selected_action="hold",
+        world_model_recommended_action="hold",
+        recommendation_confidence=0.4,
+        horizon_s=20.0,
+        intervention_enabled=True,
+        intervention_strength=0.2,
+    )
+    state.clock_seconds = 11.0
+    newer = register_coach_action_decision(
+        state,
+        team_id="A",
+        trigger_kind="goal",
+        llm_selected_action="pass",
+        world_model_recommended_action="pass",
+        recommendation_confidence=0.8,
+        horizon_s=20.0,
+        intervention_enabled=True,
+        intervention_strength=0.3,
+    )
+    assert older["resolution"] == "superseded_by_newer_coach_decision"
+    intent = pending_policy_action_bias(
+        state, team_id="A", feasible_actions={"hold", "pass"}, t_sec=12.0,
+    )
+    assert intent["decision_id"] == newer["decision_id"]

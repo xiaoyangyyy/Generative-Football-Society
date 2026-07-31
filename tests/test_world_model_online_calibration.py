@@ -191,6 +191,8 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                 "registered": 1,
                 "resolved": 1,
                 "adopted": adopted,
+                "interventions_applied": 1,
+                "intervention_adopted": adopted,
             },
         }
 
@@ -204,4 +206,6 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
         pytest.approx((20 * 0.02 + 40 * 0.01) / 60)
     )
     assert report["decision_adoption"]["adoption_rate"] == 0.5
+    assert report["decision_adoption"]["interventions_applied"] == 2
+    assert report["decision_adoption"]["intervention_adoption_rate"] == 0.5
     assert report["decision_adoption"]["causal_interpretation"] is False
