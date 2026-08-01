@@ -671,6 +671,7 @@ def aggregate_online_calibration(
         ] >= 0.80
         and llm_deliberation_focus["all_shadow_only_non_controlling"]
         and llm_deliberation_focus["all_unfocused_compute_isolated"]
+        and llm_deliberation_focus["all_compute_budgets_respected"]
         and llm_deliberation_focus["provenance_compatible"]
     )
     gates["llm_deliberation_focus"] = (
@@ -678,7 +679,7 @@ def aggregate_online_calibration(
         if require_llm_deliberation_focus else True
     )
     return {
-        "version": 31,
+        "version": 32,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),

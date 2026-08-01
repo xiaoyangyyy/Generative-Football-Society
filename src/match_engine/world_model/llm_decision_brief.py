@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 1
+LLM_DECISION_BRIEF_VERSION = 2
 
 
 def _json_hash(value: Any, prefix: str) -> str:
@@ -270,6 +270,14 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
             "eligible": bool(eligible),
             "priority": float(np.clip(priority, 0.0, 1.0)),
             "reason": reason,
+            "compute_cost_class": (
+                "trajectory_rollout"
+                if task in {
+                    "world_model_event_option",
+                    "world_model_contrastive_claim",
+                }
+                else "existing_evidence_audit"
+            ),
         }
         for task, eligible, priority, reason in task_specs
     ]
@@ -280,6 +288,8 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
     return {
         "version": 1,
         "maximum_recommended_focus_tasks": 3,
+        "total_post_llm_compute_credits": 6,
+        "maximum_compute_credits_per_task": 3,
         "recommended_focus": [task["task"] for task in ranked[:3]],
         "tasks": tasks,
         "signals": {
@@ -296,7 +306,8 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
         },
         "policy": (
             "Focus on at most three recommended tasks; omit unsupported optional "
-            "contracts. The full packet remains authoritative for engine audits."
+            "contracts. The world model allocates fixed compute credits after "
+            "selection; the full packet remains authoritative for engine audits."
         ),
     }
 
@@ -377,6 +388,10 @@ def llm_decision_brief_self_is_valid(brief: Any) -> bool:
     try:
         expected = _json_hash(payload, "world-model-llm-brief:")
         maximum = int(agenda.get("maximum_recommended_focus_tasks"))
+        compute_budget = int(agenda.get("total_post_llm_compute_credits"))
+        per_task_budget = int(agenda.get(
+            "maximum_compute_credits_per_task"
+        ))
     except (TypeError, ValueError, OverflowError):
         return False
     return bool(
@@ -387,6 +402,8 @@ def llm_decision_brief_self_is_valid(brief: Any) -> bool:
         )
         and payload.get("can_replace_full_packet_for_audit") is False
         and 1 <= maximum <= 3
+        and compute_budget == 6
+        and per_task_budget == 3
         and isinstance(focus, list)
         and len(focus) <= maximum
     )
@@ -422,6 +439,12 @@ def llm_decision_brief_metadata(brief: dict[str, Any]) -> dict[str, Any]:
         "maximum_recommended_focus_tasks": int(
             agenda.get("maximum_recommended_focus_tasks", 0)
         ),
+        "total_post_llm_compute_credits": int(
+            agenda.get("total_post_llm_compute_credits", 0)
+        ),
+        "maximum_compute_credits_per_task": int(
+            agenda.get("maximum_compute_credits_per_task", 0)
+        ),
         "full_packet_retained_for_engine_audit": True,
         "brief_used_for_llm_serialization": True,
     }
@@ -433,6 +456,10 @@ def llm_decision_brief_metadata_is_valid(metadata: Any) -> bool:
     focus = metadata.get("recommended_focus")
     try:
         maximum = int(metadata.get("maximum_recommended_focus_tasks"))
+        compute_budget = int(metadata.get("total_post_llm_compute_credits"))
+        per_task_budget = int(metadata.get(
+            "maximum_compute_credits_per_task"
+        ))
     except (TypeError, ValueError, OverflowError):
         return False
     return bool(
@@ -445,6 +472,8 @@ def llm_decision_brief_metadata_is_valid(metadata: Any) -> bool:
         )
         and isinstance(focus, list)
         and 1 <= maximum <= 3
+        and compute_budget == 6
+        and per_task_budget == 3
         and len(focus) <= maximum
         and len(focus) == len(set(map(str, focus)))
         and metadata.get("full_packet_retained_for_engine_audit") is True

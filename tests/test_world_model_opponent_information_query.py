@@ -295,7 +295,7 @@ def test_cross_match_query_diagnostics_and_strict_readiness_gate():
         logs, min_transitions=0,
         require_opponent_information_queries=True,
     )
-    assert report["version"] == 31
+    assert report["version"] == 32
     assert report["opponent_information_queries_ready"]
     assert report["gates"]["opponent_information_queries"]
     assert report["decision_adoption"][

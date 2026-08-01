@@ -15,7 +15,7 @@ from src.match_engine.world_model.llm_decision_brief import (
 )
 
 
-LLM_DELIBERATION_FOCUS_VERSION = 2
+LLM_DELIBERATION_FOCUS_VERSION = 3
 TASK_CONTRACTS = {
     "opponent_hypothesis": (
         "opponent_hypothesis", "opponent_belief_audit",
@@ -93,25 +93,43 @@ def validate_llm_deliberation_focus(raw: Any) -> dict[str, Any] | None:
     }
 
 
-def deliberation_task_enabled(plan: dict[str, Any], task: str) -> bool:
+def deliberation_task_enabled(
+    plan: dict[str, Any], task: str,
+    compute_allocation: dict[str, Any] | None = None,
+) -> bool:
     """Legacy plans run normally; valid focus plans execute selected tasks only."""
     focus = validate_llm_deliberation_focus(
         plan.get("world_model_deliberation_focus")
     )
-    return bool(focus is None or task in focus["tasks"])
+    if focus is None:
+        return True
+    if task not in focus["tasks"]:
+        return False
+    if compute_allocation is None:
+        return True
+    return bool(
+        compute_allocation.get("accepted")
+        and task in (compute_allocation.get("allocations") or {})
+    )
 
 
 def deliberation_task_skipped_audit(
     plan: dict[str, Any], task: str,
+    compute_allocation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     focus = validate_llm_deliberation_focus(
         plan.get("world_model_deliberation_focus")
     )
     contract_key = TASK_CONTRACTS[task][0]
+    selected = bool(focus and task in focus["tasks"])
     return {
         "version": LLM_DELIBERATION_FOCUS_VERSION,
         "accepted": False,
-        "reason": "task_not_selected_by_deliberation_focus",
+        "reason": (
+            "task_not_authorized_by_compute_allocation"
+            if selected and compute_allocation is not None
+            else "task_not_selected_by_deliberation_focus"
+        ),
         "task": task,
         "declared_focus_tasks": list((focus or {}).get("tasks") or []),
         "unfocused_contract_was_emitted": plan.get(contract_key) is not None,
@@ -168,6 +186,94 @@ def _audit_from_evidence(
     unfocused = sorted(emitted - selected)
     missing = sorted(selected - emitted)
     rejected = sorted(selected - accepted)
+    from src.match_engine.world_model.llm_deliberation_compute import (
+        build_deliberation_compute_allocation,
+        deliberation_compute_allocation_is_valid,
+        deliberation_compute_limits,
+    )
+
+    expected_compute_allocation = build_deliberation_compute_allocation(
+        brief, plan,
+    )
+    compute_allocation = plan.get(
+        "world_model_deliberation_compute_allocation"
+    ) or expected_compute_allocation
+    compute_allocation_valid = deliberation_compute_allocation_is_valid(
+        compute_allocation
+    )
+    compute_allocation_matches_model = bool(
+        compute_allocation == expected_compute_allocation
+    )
+    compute_budget_mismatches = []
+
+    def exceeds(audit: dict[str, Any], actual: str, limit: int) -> bool:
+        if actual not in audit:
+            return False
+        try:
+            return int(audit[actual]) > int(limit)
+        except (TypeError, ValueError, OverflowError):
+            return True
+
+    if compute_allocation_valid:
+        event_limits = deliberation_compute_limits(
+            compute_allocation, "world_model_event_option",
+        )
+        event_audit = plan.get("world_model_event_option_audit") or {}
+        for actual_key, limit_key in (
+            ("member_evaluation_budget", "member_evaluation_cap"),
+            ("trajectory_member_path_budget", "trajectory_member_path_cap"),
+        ):
+            if (
+                "world_model_event_option" in accepted
+                and actual_key not in event_audit
+            ):
+                compute_budget_mismatches.append(
+                    f"world_model_event_option:missing_{actual_key}"
+                )
+            elif exceeds(
+                event_audit, actual_key, event_limits.get(limit_key, 0),
+            ):
+                compute_budget_mismatches.append(
+                    f"world_model_event_option:{actual_key}"
+                )
+        contrastive_limits = deliberation_compute_limits(
+            compute_allocation, "world_model_contrastive_claim",
+        )
+        contrastive_audit = plan.get(
+            "world_model_contrastive_explanation_audit"
+        ) or {}
+        if (
+            "world_model_contrastive_claim" in accepted
+            and "trajectory_member_path_budget" not in contrastive_audit
+        ):
+            compute_budget_mismatches.append(
+                "world_model_contrastive_claim:"
+                "missing_trajectory_member_path_budget"
+            )
+        elif exceeds(
+            contrastive_audit, "trajectory_member_path_budget",
+            contrastive_limits.get("trajectory_member_path_cap", 0),
+        ):
+            compute_budget_mismatches.append(
+                "world_model_contrastive_claim:trajectory_member_path_budget"
+            )
+        repair_audit = plan.get("world_model_contrastive_repair_audit") or {}
+        if (
+            "world_model_contrastive_claim" in accepted
+            and "total_member_trajectory_path_budget" not in repair_audit
+        ):
+            compute_budget_mismatches.append(
+                "world_model_contrastive_claim:missing_repair_total_path_budget"
+            )
+        elif exceeds(
+            repair_audit, "total_member_trajectory_path_budget",
+            contrastive_limits.get(
+                "repair_total_member_trajectory_path_cap", 0,
+            ),
+        ):
+            compute_budget_mismatches.append(
+                "world_model_contrastive_claim:repair_total_path_budget"
+            )
     short_circuited = sorted(
         task for task, (_, audit_key) in TASK_CONTRACTS.items()
         if (plan.get(audit_key) or {}).get("reason")
@@ -207,6 +313,16 @@ def _audit_from_evidence(
             set(unfocused) & set(short_circuited)
         ),
         "unfocused_compute_isolated": unfocused_compute_isolated,
+        "compute_allocation": compute_allocation,
+        "compute_allocation_valid": compute_allocation_valid,
+        "compute_allocation_matches_model": (
+            compute_allocation_matches_model
+        ),
+        "compute_budget_mismatches": sorted(compute_budget_mismatches),
+        "compute_budget_respected": bool(
+            compute_allocation_valid and compute_allocation_matches_model
+            and not compute_budget_mismatches
+        ),
         "missing_selected_contracts": missing,
         "rejected_selected_contracts": rejected,
         "selected_priority_sum": selected_priority,
@@ -214,6 +330,8 @@ def _audit_from_evidence(
         "focus_priority_efficiency": efficiency,
         "model_checked_consistent": bool(
             not unsupported and not unfocused and not missing and not rejected
+            and compute_allocation_valid and compute_allocation_matches_model
+            and not compute_budget_mismatches
             and efficiency >= 0.80 - 1e-12
         ),
         "focus_signature": str(focus_signature),
@@ -265,9 +383,22 @@ def llm_deliberation_focus_audit_is_valid(audit: Any) -> bool:
         expected = _digest(payload)
     except (TypeError, ValueError, OverflowError):
         return False
+    from src.match_engine.world_model.llm_deliberation_compute import (
+        deliberation_compute_allocation_is_valid,
+    )
+
+    compute_valid = deliberation_compute_allocation_is_valid(
+        payload.get("compute_allocation")
+    )
+    mismatches = payload.get("compute_budget_mismatches")
     return bool(
         digest == expected
         and payload.get("version") == LLM_DELIBERATION_FOCUS_VERSION
+        and compute_valid == bool(payload.get("compute_allocation_valid"))
+        and payload.get("compute_allocation_matches_model") is True
+        and isinstance(mismatches, list)
+        and payload.get("compute_budget_respected")
+        is bool(compute_valid and not mismatches)
         and payload.get("can_change_current_action") is False
         and payload.get("can_relax_downstream_validators") is False
         and payload.get("authority_active") is False
@@ -280,11 +411,14 @@ def llm_deliberation_focus_diagnostics(
     record_clusters: Iterable[Iterable[dict[str, Any]]],
 ) -> dict[str, Any]:
     accepted = consistent = malformed = 0
-    short_circuited_unfocused = 0
+    short_circuited_unfocused = compute_budget_respected = 0
     all_unfocused_compute_isolated = True
     clustered_consistency = []
     clustered_efficiency = []
+    clustered_compute_value = []
     focus_counts: dict[str, int] = {}
+    compute_credit_counts: dict[str, int] = {}
+    allocated_compute_credits = 0
     signatures = set()
     opportunities = declarations = 0
     clustered_coverage = []
@@ -306,6 +440,9 @@ def llm_deliberation_focus_diagnostics(
                 continue
             accepted += 1
             consistent += bool(audit["model_checked_consistent"])
+            compute_budget_respected += bool(
+                audit.get("compute_budget_respected")
+            )
             short_circuited_unfocused += len(
                 audit.get("short_circuited_unfocused_contracts") or []
             )
@@ -315,6 +452,18 @@ def llm_deliberation_focus_diagnostics(
             )
             signatures.add(str(audit.get("focus_signature", "")))
             match_audits.append(audit)
+            allocation = audit.get("compute_allocation") or {}
+            if allocation.get("accepted"):
+                allocated_compute_credits += int(
+                    allocation.get("allocated_compute_credits", 0)
+                )
+                for task, row in (
+                    allocation.get("allocations") or {}
+                ).items():
+                    compute_credit_counts[task] = (
+                        compute_credit_counts.get(task, 0)
+                        + int(row.get("compute_credits", 0))
+                    )
             for task in audit["focus"]["tasks"]:
                 focus_counts[task] = focus_counts.get(task, 0) + 1
         if match_audits:
@@ -324,6 +473,12 @@ def llm_deliberation_focus_diagnostics(
             ])))
             clustered_efficiency.append(float(np.mean([
                 float(audit["focus_priority_efficiency"])
+                for audit in match_audits
+            ])))
+            clustered_compute_value.append(float(np.mean([
+                float((audit.get("compute_allocation") or {}).get(
+                    "mean_priority_per_allocated_credit", 0.0,
+                ))
                 for audit in match_audits
             ])))
         if match_opportunities:
@@ -337,12 +492,16 @@ def llm_deliberation_focus_diagnostics(
         "deliberation_focus_opportunities": opportunities,
         "deliberation_focus_declarations": declarations,
         "model_checked_consistent_focus_audits": consistent,
+        "compute_budget_respected_focus_audits": compute_budget_respected,
         "malformed_focus_audits": malformed,
         "short_circuited_unfocused_contracts": (
             short_circuited_unfocused
         ),
         "all_unfocused_compute_isolated": bool(
             accepted > 0 and all_unfocused_compute_isolated
+        ),
+        "all_compute_budgets_respected": bool(
+            accepted > 0 and compute_budget_respected == accepted
         ),
         "matches": len(clustered_consistency),
         "match_clustered_consistency_rate": float(np.mean(
@@ -355,6 +514,13 @@ def llm_deliberation_focus_diagnostics(
             clustered_coverage
         )) if clustered_coverage else 0.0,
         "selected_task_counts": dict(sorted(focus_counts.items())),
+        "allocated_compute_credits": allocated_compute_credits,
+        "compute_credit_counts_by_task": dict(sorted(
+            compute_credit_counts.items()
+        )),
+        "match_clustered_mean_priority_per_compute_credit": float(np.mean(
+            clustered_compute_value
+        )) if clustered_compute_value else 0.0,
         "focus_signatures": sorted(signatures),
         "all_shadow_only_non_controlling": malformed == 0,
         "provenance_compatible": bool(

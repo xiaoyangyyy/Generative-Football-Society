@@ -1004,13 +1004,35 @@ focus audit verifies that every emitted out-of-focus contract was isolated.
 Plans with no valid focus retain the legacy execution path for compatibility,
 but cannot satisfy focus readiness.
 
+Task selection and compute authority are intentionally separated. The LLM sees
+whether each agenda task reuses existing evidence or requires new trajectory
+rollouts, then chooses the semantic questions worth answering. After that choice,
+the world model deterministically distributes a six-credit post-LLM budget with
+priority-weighted diminishing returns, never more than three credits per task.
+Every selected task receives one base audit credit, but extra credits are
+available only to tasks that actually launch new trajectory computation. One
+selected task therefore cannot consume credits merely to deny all other
+questions compute, and cheap evidence checks cannot claim fictitious depth.
+Unused credits remain unused rather than expanding a cap.
+
+For trajectory tasks, credits become concrete engine limits: event options are
+bounded at `8/16/32` member evaluations and `48/96/144` member-trajectory paths;
+contrastive explanations are bounded at `16/32/64` paths and their optional
+repair at `32/64/128` total paths. Existing-evidence audits receive signed
+relative credits without pretending that a dictionary check costs a rollout.
+The allocation is digest-linked to the exact decision brief and focus ordering.
+The focus audit independently rebuilds it, rejects a valid allocation borrowed
+from another selection, checks reported task budgets against the issued caps,
+and aggregates credits by task plus mean agenda priority per compute credit.
+
 Focus remains non-authoritative and cannot change the chosen action, activate a
 failed contract, or relax a quality gate. The optional strict readiness flag
 `--require-llm-deliberation-focus` requires four matches, at least `0.80` focus
 declaration coverage, model consistency, and priority efficiency, one compatible
-LLM signature, complete out-of-focus compute isolation, and zero malformed focus
-audits. This prevents a few curated focus examples from hiding generally
-unfocused model behavior.
+LLM signature, complete out-of-focus compute isolation, exact model-owned budget
+allocation, respected task caps, and zero malformed focus audits. This prevents
+a few curated focus examples from hiding generally unfocused or over-budget
+model behavior.
 
 ### Model-checked multi-horizon risk preferences
 

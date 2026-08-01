@@ -434,16 +434,36 @@ class CognitiveExecutor:
             self._save_cache(key, plan)
 
         if trig.entity_tier == ENTITY_TIER_COACH:
+            from src.match_engine.world_model.llm_deliberation_compute import (
+                build_deliberation_compute_allocation,
+                deliberation_compute_limits,
+            )
             from src.match_engine.world_model.llm_deliberation_focus import (
                 deliberation_task_enabled,
                 deliberation_task_skipped_audit,
             )
 
+            deliberation_compute = build_deliberation_compute_allocation(
+                trig.facts.get("world_model_llm_decision_brief") or {}, plan,
+            )
+            plan["world_model_deliberation_compute_allocation"] = (
+                deliberation_compute
+            )
+
             def task_enabled(task: str) -> bool:
-                return deliberation_task_enabled(plan, task)
+                return deliberation_task_enabled(
+                    plan, task, deliberation_compute,
+                )
 
             def task_skipped(task: str) -> dict[str, Any]:
-                return deliberation_task_skipped_audit(plan, task)
+                return deliberation_task_skipped_audit(
+                    plan, task, deliberation_compute,
+                )
+
+            def task_limits(task: str) -> dict[str, int]:
+                return deliberation_compute_limits(
+                    deliberation_compute, task,
+                )
 
             from src.match_engine.world_model.opponent_belief import (
                 assimilate_llm_opponent_change_claim,
@@ -561,6 +581,12 @@ class CognitiveExecutor:
                             "world_model_action", "none",
                         )),
                         option_signature=self.llm_event_option_signature,
+                        max_member_evaluations=task_limits(
+                            "world_model_event_option"
+                        ).get("member_evaluation_cap", 16),
+                        max_member_trajectory_paths=task_limits(
+                            "world_model_event_option"
+                        ).get("trajectory_member_path_cap", 144),
                     )
                     if task_enabled("world_model_event_option")
                     else task_skipped("world_model_event_option")
@@ -581,6 +607,9 @@ class CognitiveExecutor:
                             "world_model_action", "none",
                         )),
                         contrastive_signature=self.llm_contrastive_signature,
+                        max_member_trajectory_paths=task_limits(
+                            "world_model_contrastive_claim"
+                        ).get("trajectory_member_path_cap", 64),
                     )
                     if task_enabled("world_model_contrastive_claim")
                     else task_skipped("world_model_contrastive_claim")
@@ -608,7 +637,15 @@ class CognitiveExecutor:
                             self.llm_contrastive_repair_signature
                         ),
                         total_member_trajectory_path_budget=(
-                            self.cfg.world_model_contrastive_repair_path_budget
+                            min(
+                                self.cfg.world_model_contrastive_repair_path_budget,
+                                task_limits(
+                                    "world_model_contrastive_claim"
+                                ).get(
+                                    "repair_total_member_trajectory_path_cap",
+                                    128,
+                                ),
+                            )
                         ),
                     )
                     if task_enabled("world_model_contrastive_claim")

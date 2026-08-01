@@ -86,6 +86,9 @@ def test_model_checks_focus_budget_alignment_and_priority_efficiency():
     assert not audit["missing_selected_contracts"]
     assert not audit["rejected_selected_contracts"]
     assert audit["unfocused_compute_isolated"]
+    assert audit["compute_allocation_valid"]
+    assert audit["compute_allocation_matches_model"]
+    assert audit["compute_budget_respected"]
     assert llm_deliberation_focus_audit_is_valid(audit)
     assert not audit["can_change_current_action"]
     assert not audit["can_relax_downstream_validators"]
@@ -156,11 +159,16 @@ def test_focus_diagnostics_and_strict_online_gate_are_match_clustered():
     assert diagnostics["match_clustered_focus_priority_efficiency"] == 1.0
     assert diagnostics["provenance_compatible"]
     assert diagnostics["all_unfocused_compute_isolated"]
+    assert diagnostics["all_compute_budgets_respected"]
+    assert diagnostics["allocated_compute_credits"] == 4
+    assert diagnostics[
+        "match_clustered_mean_priority_per_compute_credit"
+    ] > 0.0
 
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_llm_deliberation_focus=True,
     )
-    assert report["version"] == 31
+    assert report["version"] == 32
     assert report["llm_deliberation_focus_ready"]
     assert report["gates"]["llm_deliberation_focus"]
 
