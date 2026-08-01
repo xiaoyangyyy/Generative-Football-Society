@@ -26,7 +26,7 @@ from src.match_engine.world_model.trajectory_game import (
 )
 
 
-DECISION_PACKET_VERSION = 13
+DECISION_PACKET_VERSION = 14
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",

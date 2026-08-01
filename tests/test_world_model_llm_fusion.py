@@ -248,8 +248,10 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "world_model_critique" in gateway.user_prompt
     assert "world_model_event_hypothesis" in gateway.user_prompt
     assert "world_model_event_option" in gateway.user_prompt
+    assert "world_model_contrastive_claim" in gateway.user_prompt
     assert "member-predicted states" in gateway.system_prompt
     assert "mismatched actions" in gateway.system_prompt
+    assert "checks faithfulness" in gateway.system_prompt
     assert "falsifiable forecast-residual claim" in gateway.system_prompt
     assert "shadow-only" in gateway.system_prompt
     assert "two-ply belief-space policy proxy" in gateway.system_prompt
@@ -533,6 +535,84 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
     assert context["hypothesis"]["event"] == "enter_final_third"
     assert context["llm_event_probability"] == pytest.approx(0.75)
     assert context["event_signature"].startswith("llm-event:")
+
+
+def test_executor_persists_model_checked_contrastive_explanation():
+    class ContrastiveRuntime(_Runtime):
+        def predict_policy_utility(
+            self, observation, action, *, action_kind, attacking_home,
+            horizon_s,
+        ):
+            score_edge = float(observation[206]) - 0.5
+            utility = (
+                0.30 + 0.40 * score_edge
+                if action_kind != "hold" else 0.20
+            )
+            rollout_steps = max(1, int(np.ceil(horizon_s / 30.0)))
+            return {
+                "prediction_source": "test_contrastive_runtime",
+                "horizon_s": horizon_s,
+                "rollout_steps": rollout_steps,
+                "policy_utility": utility,
+                "progress": 0.05,
+                "retention_probability": 0.7,
+                "xg_net_delta": 0.0,
+                "goal_diff_delta": 0.0,
+                "uncertainty": 0.1,
+                "epistemic_uncertainty": 0.1,
+                "aleatoric_uncertainty": 0.0,
+            }
+
+    class ContrastiveLLM:
+        def coach_in_match_plan(self, team_name, facts, kind):
+            packet = facts["world_model_decision_support"]
+            selected = packet["recommended_action"]
+            alternative = "hold" if selected != "hold" else "pass"
+            effect = (
+                "opposes_selected"
+                if selected != "hold" else "supports_selected"
+            )
+            return json.dumps({
+                "reasoning": "Make the decision reason falsifiable.",
+                "confidence": 0.8,
+                "controls_delta": {},
+                "world_model_action": selected,
+                "world_model_contrastive_claim": {
+                    "selected_action": selected,
+                    "alternative_action": alternative,
+                    "horizon": "transition",
+                    "factor": "score_context",
+                    "effect": effect,
+                    "confidence": 0.75,
+                    "rationale": "The current score context reduces the margin.",
+                },
+            })
+
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(
+            enabled=True, world_model_action_control_rate=0.0,
+        ),
+        ContrastiveLLM(),
+        world_model_runtime=ContrastiveRuntime(),
+    )
+    state = _state()
+    record = executor.process_trigger(CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    ), state)
+    audit = record.plan["world_model_contrastive_explanation_audit"]
+    context = state._wm_coach_decision_adoption[-1][
+        "llm_contrastive_explanation_context"
+    ]
+
+    assert audit["accepted"]
+    assert audit["directionally_faithful"]
+    assert audit["reason"] == "shadow_model_checked_contrastive_explanation"
+    assert not audit["can_change_selected_action"]
+    assert context["claim"]["selected_action"] == record.plan[
+        "world_model_action"
+    ]
+    assert context["contrastive_signature"].startswith("llm-contrastive:")
 
 
 def test_validated_critic_can_only_reduce_policy_bridge_authority():

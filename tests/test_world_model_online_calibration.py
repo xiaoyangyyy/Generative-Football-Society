@@ -810,3 +810,79 @@ def test_strict_event_option_gate_requires_safe_cross_match_followups():
         "malformed_evaluations"
     ] == 1
     assert not malformed["llm_event_options_ready"]
+
+
+def test_strict_contrastive_faithfulness_gate_is_scoped_and_non_controlling():
+    logs = []
+    for index in range(4):
+        audit = {
+            "version": 1,
+            "accepted": True,
+            "claim": {
+                "selected_action": "pass",
+                "alternative_action": "hold",
+                "horizon": "transition",
+                "factor": "score_context",
+                "effect": (
+                    "supports_selected" if index < 3 else "opposes_selected"
+                ),
+                "confidence": 0.8,
+                "rationale": "A schema-grounded score sensitivity claim.",
+            },
+            "declared_factor_effect_on_margin": 0.04,
+            "claimed_directional_effect": 0.04 if index < 3 else -0.04,
+            "minimum_directional_effect": 0.005,
+            "directionally_faithful": index < 3,
+            "probe_value_source": (
+                "runtime_policy_utility_without_cross_match_residual_memory"
+            ),
+            "trajectory_member_paths": 12,
+            "trajectory_member_path_budget": 64,
+            "shadow_only": True,
+            "authority_active": False,
+            "policy_mutated": False,
+            "world_model_prediction_mutated": False,
+            "can_change_selected_action": False,
+            "causal_interpretation": False,
+            "contrastive_signature": "llm-contrastive:test",
+            "checkpoint_signature": "checkpoint-a",
+            "environment_signature": "environment-a",
+        }
+        logs.append({
+            "world_model_decision_adoption": {
+                "records": [{
+                    "llm_contrastive_explanation_context": audit,
+                }],
+            },
+        })
+
+    report = aggregate_online_calibration(
+        logs,
+        min_residual_samples=2,
+        require_llm_contrastive_faithfulness=True,
+    )
+    diagnostics = report["decision_adoption"][
+        "llm_contrastive_explanations"
+    ]
+    assert diagnostics["claims"] == 4
+    assert diagnostics["matches"] == 4
+    assert diagnostics[
+        "match_clustered_directional_faithfulness"
+    ] == pytest.approx(0.75)
+    assert diagnostics["all_non_controlling"]
+    assert diagnostics["provenance_compatible"]
+    assert report["llm_contrastive_faithfulness_ready"]
+    assert report["gates"][
+        "model_checked_llm_contrastive_faithfulness"
+    ]
+
+    audit["contrastive_signature"] = "llm-contrastive:mixed"
+    mixed = aggregate_online_calibration(
+        logs,
+        min_residual_samples=2,
+        require_llm_contrastive_faithfulness=True,
+    )
+    assert not mixed["decision_adoption"][
+        "llm_contrastive_explanations"
+    ]["provenance_compatible"]
+    assert not mixed["llm_contrastive_faithfulness_ready"]

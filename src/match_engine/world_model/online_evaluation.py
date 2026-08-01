@@ -39,6 +39,9 @@ from src.match_engine.world_model.llm_event_hypothesis import (
     semantic_event_diagnostics,
 )
 from src.match_engine.world_model.event_option import event_option_diagnostics
+from src.match_engine.world_model.contrastive_explanation import (
+    contrastive_explanation_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -70,6 +73,7 @@ def aggregate_online_calibration(
     require_learned_semantic_events: bool = False,
     require_llm_event_options: bool = False,
     require_llm_event_option_values: bool = False,
+    require_llm_contrastive_faithfulness: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -197,6 +201,7 @@ def aggregate_online_calibration(
     llm_semantic_critic = llm_critic_diagnostics(logs)
     llm_semantic_events = semantic_event_diagnostics(logs)
     llm_event_options = event_option_diagnostics(logs)
+    llm_contrastive = contrastive_explanation_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -367,8 +372,28 @@ def aggregate_online_calibration(
         llm_event_option_values_ready
         if require_llm_event_option_values else True
     )
+    llm_contrastive_ready = bool(
+        llm_contrastive["claims"] >= max(4, min_residual_samples)
+        and llm_contrastive["matches"] >= 4
+        and llm_contrastive["malformed_claim_audits"] == 0
+        and llm_contrastive[
+            "match_clustered_directional_faithfulness"
+        ] >= 0.60
+        and llm_contrastive[
+            "match_clustered_mean_absolute_factor_effect"
+        ] >= 0.005
+        and llm_contrastive["budgets_respected"]
+        and llm_contrastive["all_shadow_only"]
+        and llm_contrastive["all_non_controlling"]
+        and llm_contrastive["all_non_causal"]
+        and llm_contrastive["provenance_compatible"]
+    )
+    gates["model_checked_llm_contrastive_faithfulness"] = (
+        llm_contrastive_ready
+        if require_llm_contrastive_faithfulness else True
+    )
     return {
-        "version": 13,
+        "version": 14,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -400,6 +425,7 @@ def aggregate_online_calibration(
             "llm_semantic_critic": llm_semantic_critic,
             "llm_semantic_events": llm_semantic_events,
             "llm_event_options": llm_event_options,
+            "llm_contrastive_explanations": llm_contrastive,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -423,6 +449,7 @@ def aggregate_online_calibration(
         "learned_semantic_events_ready": learned_semantic_events_ready,
         "llm_event_options_ready": llm_event_options_ready,
         "llm_event_option_values_ready": llm_event_option_values_ready,
+        "llm_contrastive_faithfulness_ready": llm_contrastive_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -439,5 +466,6 @@ def aggregate_online_calibration(
             "Learned semantic event fusion is evaluated against its transparent projection baseline under bounded per-event authority.",
             "LLM event-conditioned options remain shadow-only; continuation agreement is descriptive and does not establish option value.",
             "Conditional option values are scored only after the naturally observed continuation matches the declared branch; this calibration is observational, not a counterfactual effect estimate.",
+            "Contrastive explanation probes measure faithfulness to the configured world model under schema-level context neutralization; they do not establish real-football causal explanations.",
         ],
     }

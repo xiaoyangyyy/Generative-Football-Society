@@ -146,6 +146,14 @@ def main() -> int:
             "have calibrated policy-utility predictions across four matches."
         ),
     )
+    parser.add_argument(
+        "--require-llm-contrastive-faithfulness",
+        action="store_true",
+        help=(
+            "Fail readiness until model-checked LLM explanations are "
+            "directionally faithful across at least four matches."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -191,6 +199,9 @@ def main() -> int:
         require_llm_event_options=args.require_llm_event_options,
         require_llm_event_option_values=(
             args.require_llm_event_option_values
+        ),
+        require_llm_contrastive_faithfulness=(
+            args.require_llm_contrastive_faithfulness
         ),
     )
     output = Path(args.out)

@@ -117,6 +117,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if event_option is not None:
         out["world_model_event_option"] = event_option
+    from src.match_engine.world_model.contrastive_explanation import (
+        validate_llm_contrastive_claim,
+    )
+
+    contrastive_claim = validate_llm_contrastive_claim(
+        plan.get("world_model_contrastive_claim")
+    )
+    if contrastive_claim is not None:
+        out["world_model_contrastive_claim"] = contrastive_claim
     return out
 
 

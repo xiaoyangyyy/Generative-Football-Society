@@ -106,5 +106,11 @@ utility is now frozen before execution and scored after a second outcome window.
 Action mismatches are never relabelled as counterfactual outcomes. Cross-match
 value readiness therefore measures compositional forecast calibration, not the
 causal benefit of adopting the LLM branch.
+LLM action rationales can additionally name one schema-grounded context factor
+and one evaluated alternative. A bounded world-model probe neutralizes only that
+factor and recomputes both action margins, producing a provenance-scoped
+directional-faithfulness audit. The probe makes explanations falsifiable with
+respect to the model while remaining non-controlling and explicitly non-causal
+with respect to real football.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

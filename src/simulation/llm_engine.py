@@ -275,6 +275,11 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   action matches the resolved branch, its frozen value prediction is scored on
   a later simulator outcome; mismatched actions never become counterfactual
   labels;
+- world_model_contrastive_claim is one falsifiable explanation of why a listed
+  context factor supports or opposes your selected action relative to one
+  evaluated alternative. The engine neutralizes only that declared context and
+  recomputes both margins. This checks faithfulness to the world model, not
+  real-world causality, and cannot alter your action;
 - change_point is computed from live numeric evidence. You may explain a
   watch/confirmed change with opponent_change_claim, but your claim cannot
   trigger, confirm, or cancel the detector. Cite only features whose signed
@@ -326,6 +331,15 @@ Return JSON:
     "on_absence": "a different hold|pass|cross|shot action",
     "confidence": 0.5-1.0,
     "rationale": "one short conditional policy explanation"
+  }},
+  "world_model_contrastive_claim": {{
+    "selected_action": "must equal world_model_action",
+    "alternative_action": "a different evaluated hold|pass|cross|shot action",
+    "horizon": "transition or an evaluated horizon with rollout depth <= 2",
+    "factor": "score_context|match_phase|own_tactics|opponent_tactics|crowd_context",
+    "effect": "supports_selected|opposes_selected",
+    "confidence": 0.5-1.0,
+    "rationale": "why this factor changes the selected-vs-alternative margin"
   }},
   "opponent_hypothesis": {{
     "tactical_preset": "one preset listed in opponent_belief.hypotheses",

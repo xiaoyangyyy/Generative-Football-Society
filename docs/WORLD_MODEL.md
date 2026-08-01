@@ -632,6 +632,42 @@ world-model value estimate under naturally selected matching branches. It does
 not estimate what would have happened under an unobserved continuation and does
 not authorize the LLM option to control play.
 
+### Model-checked contrastive explanations
+
+The coach may submit one `world_model_contrastive_claim` that explains its
+selected action relative to a different evaluated action. The claim must name
+one evaluated one- or two-step horizon and exactly one schema-locatable context:
+score, match phase, own tactics, opponent tactics, or crowd state. It must also
+state whether that factor supports or opposes the selected action's margin.
+Free-text latent causes such as momentum are rejected because the world model
+cannot intervene on them reproducibly.
+
+The checker keeps the observed state fixed except for the declared context,
+which is replaced by its simulator-schema neutral reference: level 0-0 score,
+mid-match clock, balanced tactical controls, or neutral crowd. It evaluates the
+selected and alternative actions on both observed and neutralized states using
+the same runtime policy-utility head and uncertainty penalty. Cross-match
+residual corrections are deliberately excluded from both sides so historical
+memory cannot manufacture local factor sensitivity. The difference between
+the two selected-versus-alternative margins is compared with the LLM's claimed
+direction. A factor already at its neutral reference is rejected rather than
+inventing sensitivity. Two-step probes require the validated trajectory gate;
+all four predictions are limited by a hard 64 member-trajectory budget.
+
+The audit records changed feature indices, intervention magnitude, both margins,
+uncertainties, quality factors, directional effect, checkpoint/environment and
+LLM-contract provenance. It is always shadow-only: faithfulness cannot change
+the selected action, rewrite either forecast, or create policy authority.
+Cross-match diagnostics give every match equal weight and require at least four
+compatible matches, zero malformed audits, bounded computation, a directional
+faithfulness rate of at least `0.60`, and non-trivial mean factor effect. Enable
+that readiness check with `--require-llm-contrastive-faithfulness`.
+
+This is a model-faithfulness test, not a real-football causal explanation. It
+answers whether the stated reason agrees with the configured model's local
+context sensitivity; it cannot prove that neutralizing the factor in reality
+would cause the same action-margin change.
+
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
@@ -644,5 +680,6 @@ python scripts/evaluate_online_world_model.py \
   --require-opponent-response-model --require-two-step-trajectory-planning \
   --require-llm-semantic-critic --require-llm-semantic-events \
   --require-learned-semantic-events --require-llm-event-options \
-  --require-llm-event-option-values
+  --require-llm-event-option-values \
+  --require-llm-contrastive-faithfulness
 ```
