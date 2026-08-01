@@ -225,6 +225,21 @@ def record_policy_intervention_result(
         record["world_model_outcome_predictions"] = (
             record.get("action_outcome_predictions", {}).get(actual, {})
         )
+        from src.match_engine.world_model.temporal_calibration import (
+            freeze_temporal_path_forecast,
+        )
+
+        record["world_model_temporal_path_forecast"] = (
+            freeze_temporal_path_forecast(
+                record["world_model_outcome_predictions"],
+                checkpoint_signature=str(record.get(
+                    "checkpoint_signature", "runtime_unspecified",
+                )),
+                environment_signature=str(record.get(
+                    "environment_signature", "environment_unspecified",
+                )),
+            )
+        )
         record["outcome_baseline"] = outcome_baseline
         record["short_horizon_outcome"] = None
         record["multi_horizon_outcomes"] = {}
@@ -371,6 +386,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.uncertainty import (
         uncertainty_decomposition_diagnostics,
     )
+    from src.match_engine.world_model.temporal_calibration_evaluation import (
+        temporal_path_calibration_diagnostics,
+    )
 
     records = list(getattr(state, "_wm_coach_decision_adoption", None) or [])
     resolved = [record for record in records if record["resolved"]]
@@ -391,7 +409,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 23,
+        "version": 24,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -412,6 +430,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         "uncertainty_decomposition": (
             uncertainty_decomposition_diagnostics([records])
         ),
+        "temporal_path_calibration": temporal_path_calibration_diagnostics([{
+            "world_model_decision_adoption": {"records": records},
+        }]),
         "records": records,
         "interpretation": (
             "A bounded intervention changes one action logit but does not force "

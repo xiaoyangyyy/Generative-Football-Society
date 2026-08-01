@@ -824,6 +824,28 @@ recovery, and positive-to-negative reversal scenario rates. Every horizon is a
 cumulative forecast from the same origin, so horizon values are not treated as
 independent incremental rewards.
 
+The executed action's complete path forecast is frozen prospectively as
+`world_model_temporal_path_forecast`. When every declared horizon has resolved,
+one record-level `world_model_temporal_path_evaluation` scores the realized path
+exactly once. Binary path events (ever-downside, terminal-upside, recovery, and
+positive-to-negative reversal) use Brier scores; path-minimum utility and maximum
+drawdown use empirical CRPS. Whenever empirical rank templates are active, the
+certificate also freezes a counterfactual *coupling* benchmark: the same marginal
+member and residual distributions joined with transparent comonotonic ranks.
+Thus the evaluation asks whether learning temporal dependence improves path
+forecasts without confusing that comparison with an action counterfactual.
+
+Cross-match diagnostics give each match equal weight and require at least eight
+empirically coupled realized paths spanning at least four matches. Empirical
+coupling is `validated` only when its event Brier, path-minimum CRPS, and
+maximum-drawdown CRPS do not trail the same-marginal benchmark by more than
+`0.02`, while mean event calibration gap is at most `0.25`. A
+`degraded` result closes temporal-rank memory lookup; insufficient evidence keeps
+the feature explicitly exploratory. Use
+`--require-temporal-path-calibration` to make this a strict online readiness
+gate. Forecasts, scores, and their benchmark remain shadow-only, non-causal, and
+make no calibrated joint-probability claim.
+
 ### Model-checked multi-horizon risk preferences
 
 The coach may additionally declare one `world_model_risk_preference`. This is

@@ -99,7 +99,7 @@ def _rationalization_packet():
 def _empirical_temporal_packet():
     packet = _packet()
     coupling = {
-        "version": 1,
+        "version": 2,
         "available": True,
         "horizon_keys": ["60s", "180s"],
         "rank_levels": [0.1, 0.5, 0.9],
@@ -235,6 +235,9 @@ def test_preference_paths_share_empirical_temporal_templates_across_actions():
     assert risk_preference_audit_is_valid(audit)
     temporal = audit["temporal_preference"]
     assert temporal["temporal_dependence_learned"]
+    assert temporal["temporal_dependence_validation"][
+        "empirical_validation_status"
+    ] == "insufficient_evidence"
     assert temporal["temporal_coupling_source"] == (
         "member_identity_x_empirical_residual_rank_templates"
     )
@@ -314,7 +317,7 @@ def test_realized_preference_scores_are_recomputed_and_strictly_gated():
         logs, min_transitions=0, min_residual_samples=2,
         require_llm_risk_preferences=True,
     )
-    assert report["version"] == 23
+    assert report["version"] == 24
     assert report["llm_risk_preferences_ready"]
     assert report["gates"]["calibrated_llm_risk_preferences"]
 

@@ -13,7 +13,7 @@ from src.match_engine.world_model.policy_experiment import (
 )
 
 
-TEMPORAL_RESIDUAL_MEMORY_VERSION = 1
+TEMPORAL_RESIDUAL_MEMORY_VERSION = 2
 RANK_LEVELS = (0.10, 0.25, 0.50, 0.75, 0.90)
 
 
@@ -36,6 +36,7 @@ class TemporalResidualRankMemory:
     path_rows: int
     min_samples: int
     drift: dict[str, Any]
+    validation: dict[str, Any]
 
     def _keys(
         self,
@@ -82,6 +83,7 @@ class TemporalResidualRankMemory:
             "shared_across_candidate_actions": True,
             "temporal_joint_calibrated": False,
             "causal_interpretation": False,
+            "validation": self.validation,
         }
         if len(horizons) < 2:
             return {**base, "reason": "at_least_two_horizons_required"}
@@ -89,6 +91,12 @@ class TemporalResidualRankMemory:
             return {
                 **base,
                 "reason": "temporal_rank_memory_drift_gate_closed",
+                "drift": self.drift,
+            }
+        if self.validation.get("empirical_validation_status") == "degraded":
+            return {
+                **base,
+                "reason": "temporal_rank_memory_validation_gate_closed",
                 "drift": self.drift,
             }
         for key in self._keys(context, horizons):
@@ -119,6 +127,7 @@ class TemporalResidualRankMemory:
             "reason": "insufficient_contextual_temporal_residual_history",
             "samples": self.path_rows,
             "drift": self.drift,
+            "validation": self.validation,
         }
 
     def summary(self) -> dict[str, Any]:
@@ -134,6 +143,7 @@ class TemporalResidualRankMemory:
             "rank_levels": list(RANK_LEVELS),
             "shared_across_candidate_actions": True,
             "drift": self.drift,
+            "validation": self.validation,
         }
 
     def diagnostics(self) -> dict[str, Any]:
@@ -313,6 +323,7 @@ def compile_temporal_residual_rank_memory(
     environment_signature: str,
     min_samples: int,
     drift: dict[str, Any],
+    validation: dict[str, Any] | None = None,
 ) -> TemporalResidualRankMemory:
     rows = _path_rows(
         logs,
@@ -336,4 +347,7 @@ def compile_temporal_residual_rank_memory(
         path_rows=len(rows),
         min_samples=minimum,
         drift=dict(drift),
+        validation=dict(validation or {
+            "empirical_validation_status": "insufficient_evidence",
+        }),
     )

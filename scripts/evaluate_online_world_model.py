@@ -185,6 +185,14 @@ def main() -> int:
             "preferences over calibrated predictive scenarios."
         ),
     )
+    parser.add_argument(
+        "--require-temporal-path-calibration",
+        action="store_true",
+        help=(
+            "Require empirically coupled temporal paths to match or beat "
+            "their same-marginal comonotonic benchmark on realized paths."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -242,6 +250,9 @@ def main() -> int:
             args.require_llm_distributional_decisions
         ),
         require_llm_risk_preferences=args.require_llm_risk_preferences,
+        require_temporal_path_calibration=(
+            args.require_temporal_path_calibration
+        ),
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

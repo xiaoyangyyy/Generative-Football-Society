@@ -611,3 +611,8 @@ def observe_policy_intervention_outcomes(
                 isolated[key] = outcome
             if key == "transition":
                 record["short_horizon_outcome"] = outcome
+        from src.match_engine.world_model.temporal_calibration import (
+            attach_temporal_path_evaluation,
+        )
+
+        attach_temporal_path_evaluation(record)

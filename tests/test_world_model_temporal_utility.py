@@ -55,7 +55,7 @@ def _predictions():
 
 def _empirical_coupling():
     return {
-        "version": 1,
+        "version": 2,
         "available": True,
         "horizon_keys": ["transition", "60s", "180s"],
         "rank_levels": [0.1, 0.5, 0.9],
@@ -151,6 +151,9 @@ def test_predictive_paths_use_held_out_empirical_residual_rank_templates():
         "member_identity_x_empirical_residual_rank_templates"
     )
     assert report["temporal_dependence_learned"]
+    assert report["temporal_dependence_validation"][
+        "empirical_validation_status"
+    ] == "insufficient_evidence"
     assert report[
         "empirical_residual_rank_template_preserved_across_horizons"
     ]

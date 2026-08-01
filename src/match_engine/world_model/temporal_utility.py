@@ -160,7 +160,7 @@ def couple_temporal_utility_scenarios(
                         "reason": "temporal_empirical_rank_contract_invalid",
                     }
                 if (
-                    int(candidate.get("version", 0)) != 1
+                    int(candidate.get("version", 0)) != 2
                     or list(candidate.get("horizon_keys") or []) != horizons
                     or candidate.get("shared_across_candidate_actions") is not True
                     or candidate.get("temporal_joint_calibrated") is not False
@@ -217,6 +217,16 @@ def couple_temporal_utility_scenarios(
     paths = np.stack(columns, axis=1)
     if not np.all(np.isfinite(paths)):
         return {"available": False, "reason": "temporal_paths_non_finite"}
+    coupling_audit = empirical_coupling or residual_rank_coupling_audit or {
+        "available": False,
+        "reason": "transparent_comonotonic_rank_fallback",
+    }
+    dependence_validation = coupling_audit.get("validation") or {
+        "empirical_validation_status": (
+            "insufficient_evidence"
+            if empirical_coupling is not None else "not_applicable"
+        ),
+    }
     return {
         "available": True,
         "distribution_scope": scope,
@@ -238,11 +248,8 @@ def couple_temporal_utility_scenarios(
         ),
         "temporal_coupling_source": coupling,
         "temporal_dependence_learned": bool(empirical_coupling is not None),
-        "temporal_residual_rank_coupling": empirical_coupling
-        or residual_rank_coupling_audit or {
-            "available": False,
-            "reason": "transparent_comonotonic_rank_fallback",
-        },
+        "temporal_residual_rank_coupling": coupling_audit,
+        "temporal_dependence_validation": dict(dependence_validation),
         "temporal_joint_calibrated": False,
         "marginals_split_calibrated": bool(
             scope == "calibrated_predictive"

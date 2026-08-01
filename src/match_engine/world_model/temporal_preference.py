@@ -151,6 +151,9 @@ def build_temporal_preference_report(
         "temporal_dependence_learned": bool(
             reference["temporal_dependence_learned"]
         ),
+        "temporal_dependence_validation": dict(
+            reference["temporal_dependence_validation"]
+        ),
         "temporal_joint_calibrated": False,
         "member_axis_jointly_aligned_across_actions": True,
         "residual_quantile_axis_jointly_aligned_across_actions": bool(

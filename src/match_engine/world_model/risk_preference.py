@@ -20,7 +20,7 @@ from src.match_engine.world_model.temporal_preference import (
 )
 
 
-RISK_PREFERENCE_VERSION = 4
+RISK_PREFERENCE_VERSION = 5
 _DISTRIBUTION_SCOPES = {"epistemic_member_only", "calibrated_predictive"}
 
 

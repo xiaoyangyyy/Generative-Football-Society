@@ -54,6 +54,9 @@ from src.match_engine.world_model.distributional_claim import (
 from src.match_engine.world_model.risk_preference_evaluation import (
     risk_preference_diagnostics,
 )
+from src.match_engine.world_model.temporal_calibration_evaluation import (
+    temporal_path_calibration_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -90,6 +93,7 @@ def aggregate_online_calibration(
     require_llm_risk_certificates: bool = False,
     require_llm_distributional_decisions: bool = False,
     require_llm_risk_preferences: bool = False,
+    require_temporal_path_calibration: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -222,6 +226,7 @@ def aggregate_online_calibration(
     llm_risk_certificates = risk_certificate_diagnostics(logs)
     llm_distributional = distributional_claim_diagnostics(logs)
     llm_risk_preferences = risk_preference_diagnostics(logs)
+    temporal_path_calibration = temporal_path_calibration_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -522,8 +527,29 @@ def aggregate_online_calibration(
     gates["calibrated_llm_risk_preferences"] = (
         llm_risk_preferences_ready if require_llm_risk_preferences else True
     )
+    temporal_path_calibration_ready = bool(
+        temporal_path_calibration["empirical_temporal_paths"]
+        >= temporal_path_calibration["minimum_empirical_validation_paths"]
+        and temporal_path_calibration["empirical_temporal_matches"]
+        >= temporal_path_calibration["minimum_empirical_validation_matches"]
+        and temporal_path_calibration["missing_scores"] == 0
+        and temporal_path_calibration["malformed_scores"] == 0
+        and temporal_path_calibration["empirical_validation_status"]
+        == "validated"
+        and temporal_path_calibration["all_shadow_only"]
+        and temporal_path_calibration["all_non_controlling"]
+        and temporal_path_calibration["all_non_causal"]
+        and temporal_path_calibration[
+            "all_joint_probability_claims_disabled"
+        ]
+        and temporal_path_calibration["provenance_compatible"]
+    )
+    gates["temporal_path_calibration"] = (
+        temporal_path_calibration_ready
+        if require_temporal_path_calibration else True
+    )
     return {
-        "version": 23,
+        "version": 24,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -560,6 +586,7 @@ def aggregate_online_calibration(
             "llm_risk_certificates": llm_risk_certificates,
             "llm_distributional_decisions": llm_distributional,
             "llm_risk_preferences": llm_risk_preferences,
+            "temporal_path_calibration": temporal_path_calibration,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -588,6 +615,7 @@ def aggregate_online_calibration(
         "llm_risk_certificates_ready": llm_risk_certificates_ready,
         "llm_distributional_decisions_ready": llm_distributional_ready,
         "llm_risk_preferences_ready": llm_risk_preferences_ready,
+        "temporal_path_calibration_ready": temporal_path_calibration_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -611,5 +639,6 @@ def aggregate_online_calibration(
             "LLM risk preferences are model-checked on frozen scenarios; only the selected action is realized, so reported preference regret is prospective rather than counterfactual ground truth.",
             "Preference robustness uses fixed local parameter and leave-one-axis-out stress tests; it is a sensitivity certificate, not proof against every possible utility function or model error.",
             "Temporal utility paths use member identity plus held-out empirical residual-rank templates when compatible history exists, otherwise an explicit comonotonic fallback; path scenario rates are not calibrated temporal probabilities.",
+            "Empirical temporal dependence is scored once per fully realized path against a frozen same-marginal comonotonic benchmark; degraded validation disables its reuse but does not establish real-football causality.",
         ],
     }

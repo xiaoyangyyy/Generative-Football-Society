@@ -139,7 +139,7 @@ class ContextualResidualMemory:
         for correction in self.groups.values():
             scopes[correction.scope] = scopes.get(correction.scope, 0) + 1
         return {
-            "version": 4,
+            "version": 5,
             "checkpoint_signature": self.checkpoint_signature,
             "environment_signature": self.environment_signature,
             "source_logs": self.source_logs,
@@ -497,12 +497,22 @@ def compile_contextual_residual_memory(
         )
         if correction is not None:
             groups[key] = correction
+    from src.match_engine.world_model.temporal_calibration_evaluation import (
+        temporal_path_calibration_diagnostics,
+    )
+
+    temporal_validation = temporal_path_calibration_diagnostics(
+        payloads,
+        checkpoint_signature=checkpoint_signature,
+        environment_signature=environment_signature,
+    )
     temporal_rank_memory = compile_temporal_residual_rank_memory(
         payloads,
         checkpoint_signature=checkpoint_signature,
         environment_signature=environment_signature,
         min_samples=minimum,
         drift=drift,
+        validation=temporal_validation,
     )
     return ContextualResidualMemory(
         checkpoint_signature=checkpoint_signature,
