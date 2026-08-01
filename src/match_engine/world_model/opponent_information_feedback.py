@@ -18,7 +18,7 @@ from src.match_engine.world_model.opponent_information_query_outcomes import (
 )
 
 
-OPPONENT_INFORMATION_FEEDBACK_VERSION = 1
+OPPONENT_INFORMATION_FEEDBACK_VERSION = 2
 
 
 def _digest(payload: dict[str, Any]) -> str:
@@ -90,6 +90,13 @@ def _resolution(
         "feature": feature,
         "horizon": query["horizon"],
         "purpose": query["purpose"],
+        "world_model_question_proposal_selected": bool(
+            score["world_model_question_proposal_selected"]
+        ),
+        "llm_question_selected_after_action_freeze": bool(
+            score["llm_question_selected_after_action_freeze"]
+        ),
+        "question_proposal_id": str(score["question_proposal_id"]),
         "forecast_high_rate": forecast,
         "raw_forecast_high_rate": raw_forecast,
         "calibration_applied": bool(selected["calibration_applied"]),
@@ -99,6 +106,7 @@ def _resolution(
         "brier_score": brier,
         "raw_brier_score": float(score["raw_selected_feature_brier_score"]),
         "resolved_branch": score["resolved_observation_branch"],
+        "resolved_answer": dict(score["resolved_answer"]),
         "proposed_continuation_action": score[
             "proposed_continuation_action"
         ],
@@ -229,10 +237,11 @@ def build_opponent_information_feedback(
         "recent_resolutions": recent,
         "feature_profiles": feature_profiles,
         "interpretation": (
-            "Use observed tactical controls to revise future questions and "
-            "conditional reasoning. Branch actions were shadow proposals, not "
-            "executed counterfactuals; no hidden intent or causal effect was "
-            "observed."
+            "Use the model-owned Bayesian answer contract to revise future "
+            "questions and conditional reasoning. The live belief already saw "
+            "the same tactical control, so the answer must not be assimilated "
+            "again. Branch actions were shadow proposals, not executed "
+            "counterfactuals; no hidden intent or causal effect was observed."
         ),
         "can_change_current_action": False,
         "can_update_world_model_weights": False,
@@ -270,6 +279,21 @@ def opponent_information_feedback_is_valid(feedback: Any) -> bool:
             and row.get("causal_interpretation") is False
             for row in payload.get("recent_resolutions") or []
         )
+        and all(
+            (row.get("resolved_answer") or {}).get(
+                "model_owned_bayesian_update"
+            ) is True
+            and (row.get("resolved_answer") or {}).get(
+                "feeds_next_question"
+            ) is True
+            and (row.get("resolved_answer") or {}).get(
+                "can_directly_mutate_live_belief"
+            ) is False
+            and (row.get("resolved_answer") or {}).get(
+                "live_observation_already_assimilated"
+            ) is True
+            for row in payload.get("recent_resolutions") or []
+        )
     )
 
 
@@ -277,6 +301,7 @@ def opponent_information_feedback_diagnostics(
     record_clusters: Iterable[Iterable[dict[str, Any]]],
 ) -> dict[str, Any]:
     contexts = available = malformed = exposures = temporal_leaks = 0
+    proposal_exposures = answer_exposures = 0
     scope_mismatches = unsafe_claims = 0
     clustered_coverage = []
     for records in record_clusters:
@@ -302,6 +327,15 @@ def opponent_information_feedback_diagnostics(
             eligible += 1
             resolutions = feedback.get("recent_resolutions") or []
             exposures += len(resolutions)
+            proposal_exposures += sum(
+                bool(row.get("world_model_question_proposal_selected"))
+                for row in resolutions
+            )
+            answer_exposures += sum(
+                bool((row.get("resolved_answer") or {}).get(
+                    "model_owned_bayesian_update"
+                )) for row in resolutions
+            )
             if feedback.get("available"):
                 available += 1
                 valid_available += 1
@@ -324,6 +358,8 @@ def opponent_information_feedback_diagnostics(
         "feedback_contexts": contexts,
         "available_feedback_contexts": available,
         "resolution_exposures": exposures,
+        "world_model_question_proposal_exposures": proposal_exposures,
+        "bayesian_answer_exposures": answer_exposures,
         "malformed_feedback_contexts": malformed,
         "scope_mismatches": scope_mismatches,
         "future_information_leaks": temporal_leaks,

@@ -30,6 +30,9 @@ from src.match_engine.world_model.probabilistic import ProbabilisticFuture
 from src.match_engine.world_model.opponent_information_feedback import (
     opponent_information_feedback_is_valid,
 )
+from src.match_engine.world_model.opponent_information_query import (
+    opponent_information_question_menu_is_valid,
+)
 from src.match_engine.world_model.llm_deliberation_encouragement import (
     task_selection_value_memory_is_valid,
 )
@@ -113,6 +116,10 @@ def test_decision_packet_compares_all_actions_and_recommends_risk_adjusted_best(
     assert "active_learning" in packet
     assert "opponent_information_feedback" in packet
     assert not packet["opponent_information_feedback"]["available"]
+    assert opponent_information_question_menu_is_valid(
+        packet["opponent_information_question_menu"], packet,
+    )
+    assert packet["opponent_information_question_menu"]["available"]
     assert all("active_learning" in candidate for candidate in packet["candidates"])
     assert all(
         "transition_epistemic_uncertainty" in candidate["active_learning"]
@@ -182,6 +189,9 @@ def test_trained_runtime_builds_member_utility_frontiers_end_to_end():
     )
     assert brief["task_selection_value_memory"] == packet[
         "task_selection_value_memory"
+    ]
+    assert brief["opponent_information_question_menu"] == packet[
+        "opponent_information_question_menu"
     ]
     assert len(agenda["recommended_focus"]) <= 3
     eligible_tasks = {

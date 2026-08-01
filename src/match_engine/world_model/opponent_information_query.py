@@ -25,7 +25,8 @@ from src.match_engine.world_model.opponent_information_calibration import (
 )
 
 
-OPPONENT_INFORMATION_QUERY_VERSION = 3
+OPPONENT_INFORMATION_QUERY_VERSION = 4
+OPPONENT_INFORMATION_QUESTION_MENU_VERSION = 1
 _PURPOSES = {"reduce_opponent_uncertainty", "resolve_action_choice"}
 _OBSERVATION_SIGMA = 0.18
 
@@ -76,6 +77,7 @@ def validate_llm_opponent_information_query(
         "action_if_low": action_if_low,
         "confidence": confidence,
         "rationale": str(raw.get("rationale", ""))[:240],
+        "proposal_id": str(raw.get("proposal_id", ""))[:96],
     }
 
 
@@ -279,11 +281,232 @@ def _digest(payload: dict[str, Any]) -> str:
     ).hexdigest()[:24]
 
 
+def _question_digest(payload: dict[str, Any], prefix: str) -> str:
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), allow_nan=False,
+    ).encode("utf-8")
+    return prefix + hashlib.sha256(encoded).hexdigest()[:24]
+
+
+def _query_basis(
+    packet: dict[str, Any], *, selected_action: str, horizon: str,
+) -> dict[str, Any] | None:
+    candidates = {
+        str(candidate.get("action", "")).lower(): candidate
+        for candidate in packet.get("candidates") or []
+    }
+    selected = candidates.get(str(selected_action).lower())
+    if not packet.get("available") or selected is None:
+        return None
+    if horizon not in (selected.get("multi_horizon_predictions") or {}):
+        return None
+    belief = packet.get("opponent_belief") or {}
+    current = _posterior(belief.get("posterior"))
+    if current is None:
+        return None
+    response = _posterior(
+        (selected.get("opponent_response_prediction") or {}).get(
+            "response_posterior"
+        )
+    )
+    posterior = response if response is not None else current
+    values = {
+        action: dict(candidates.get(action, {}).get(
+            "opponent_hypothesis_values"
+        ) or {})
+        for action in RESPONSE_ACTIONS
+    }
+    return {
+        "posterior": {
+            name: float(posterior[index])
+            for index, name in enumerate(OPPONENT_HYPOTHESES)
+        },
+        "posterior_source": (
+            "selected_action_response_posterior"
+            if response is not None else "current_opponent_belief"
+        ),
+        "action_hypothesis_values": values,
+        "observation_threshold": 0.5,
+        "observation_sigma": _OBSERVATION_SIGMA,
+        "checkpoint_signature": str(packet.get(
+            "checkpoint_signature", "runtime_unspecified",
+        )),
+        "environment_signature": str(packet.get(
+            "environment_signature", "environment_unspecified",
+        )),
+        "query_calibration": (
+            ((packet.get("opponent_information_query_calibration") or {}).get(
+                "horizons"
+            ) or {}).get(horizon) or {}
+        ),
+    }
+
+
+def _ranked_feature_reports(
+    basis: dict[str, Any], *, horizon: str, purpose: str,
+) -> list[dict[str, Any]] | None:
+    posterior = _posterior(basis.get("posterior"))
+    values = _action_values(basis.get("action_hypothesis_values"))
+    if posterior is None or values is None:
+        return None
+    try:
+        reports = [
+            _feature_report(
+                feature, posterior, values,
+                calibration=_feature_calibration(
+                    basis, horizon=horizon, feature=feature,
+                ),
+            )
+            for feature in TACTICAL_FEATURES
+        ]
+    except ValueError:
+        return None
+    if purpose == "resolve_action_choice":
+        reports.sort(key=lambda row: (
+            -row["expected_decision_value_of_information"],
+            -row["expected_normalized_information_gain"],
+            row["feature"],
+        ))
+    else:
+        reports.sort(key=lambda row: (
+            -row["expected_normalized_information_gain"],
+            -row["expected_decision_value_of_information"],
+            row["feature"],
+        ))
+    for rank, row in enumerate(reports, start=1):
+        row["model_rank"] = rank
+    return reports
+
+
+def _question_proposal(
+    *, action: str, horizon: str, purpose: str,
+    report: dict[str, Any], basis: dict[str, Any],
+) -> dict[str, Any]:
+    payload = {
+        "version": OPPONENT_INFORMATION_QUESTION_MENU_VERSION,
+        "selected_action": str(action),
+        "horizon": str(horizon),
+        "purpose": str(purpose),
+        "feature": str(report["feature"]),
+        "question": (
+            f"Will opponent {report['feature']} be at or above 0.5 "
+            f"after {horizon}?"
+        ),
+        "forecast_high_rate": float(report["forecast_high_rate"]),
+        "expected_normalized_information_gain": float(
+            report["expected_normalized_information_gain"]
+        ),
+        "expected_decision_value_of_information": float(
+            report["expected_decision_value_of_information"]
+        ),
+        "branch_action_switch": bool(report["branch_action_switch"]),
+        "action_if_high": str(report["best_action_if_high"]),
+        "action_if_low": str(report["best_action_if_low"]),
+        "calibration_applied": bool(report["calibration_applied"]),
+        "checkpoint_signature": str(basis["checkpoint_signature"]),
+        "environment_signature": str(basis["environment_signature"]),
+        "answer_type": "observed_binary_tactical_feature",
+        "shadow_only": True,
+        "can_change_current_action": False,
+        "can_schedule_future_action": False,
+    }
+    return {
+        **payload,
+        "proposal_id": _question_digest(
+            payload, "world-model-question-proposal:"
+        ),
+    }
+
+
+def build_opponent_information_question_menu(
+    packet: dict[str, Any],
+) -> dict[str, Any]:
+    """Let the world model propose exact, observable questions for the LLM."""
+    proposals = []
+    if packet.get("available"):
+        for candidate in packet.get("candidates") or []:
+            action = str(candidate.get("action", "")).lower()
+            horizons = sorted(
+                (candidate.get("multi_horizon_predictions") or {}),
+                key=str,
+            )
+            for horizon in horizons:
+                try:
+                    horizon_s = float(policy_horizon_seconds(str(horizon)))
+                except (TypeError, ValueError, OverflowError):
+                    continue
+                if not 10.0 <= horizon_s <= 300.0:
+                    continue
+                basis = _query_basis(
+                    packet, selected_action=action, horizon=str(horizon),
+                )
+                if basis is None:
+                    continue
+                for purpose in sorted(_PURPOSES):
+                    reports = _ranked_feature_reports(
+                        basis, horizon=str(horizon), purpose=purpose,
+                    )
+                    if reports:
+                        proposals.append(_question_proposal(
+                            action=action,
+                            horizon=str(horizon),
+                            purpose=purpose,
+                            report=reports[0],
+                            basis=basis,
+                        ))
+    payload = {
+        "version": OPPONENT_INFORMATION_QUESTION_MENU_VERSION,
+        "available": bool(proposals),
+        "reason": (
+            "model_generated_observable_question_menu"
+            if proposals else "no_evaluable_observable_questions"
+        ),
+        "proposals": proposals,
+        "proposal_count": len(proposals),
+        "selection_policy": (
+            "After the live action is frozen, select one exact proposal_id "
+            "matching that action. The engine rejects altered proposal fields."
+        ),
+        "answer_policy": (
+            "Answers are observed tactical controls with a model-owned Bayesian "
+            "posterior. They calibrate later questions but never reveal intent."
+        ),
+        "shadow_only": True,
+        "can_change_current_action": False,
+        "can_schedule_future_action": False,
+        "hidden_opponent_intent_observed": False,
+    }
+    return {
+        **payload,
+        "menu_digest": _question_digest(
+            payload, "world-model-question-menu:"
+        ),
+    }
+
+
+def opponent_information_question_menu_is_valid(
+    menu: Any, packet: dict[str, Any],
+) -> bool:
+    if not isinstance(menu, dict):
+        return False
+    packet_without_menu = dict(packet)
+    packet_without_menu.pop("opponent_information_question_menu", None)
+    try:
+        return menu == build_opponent_information_question_menu(
+            packet_without_menu
+        )
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+
+
 def _audit_from_basis(
     query: dict[str, Any],
     basis: dict[str, Any],
     *,
     query_signature: str,
+    question_proposal: dict[str, Any] | None = None,
+    question_menu_digest: str = "",
+    selected_after_action_freeze: bool = False,
 ) -> dict[str, Any] | None:
     posterior = _posterior(basis.get("posterior"))
     values = _action_values(basis.get("action_hypothesis_values"))
@@ -302,34 +525,15 @@ def _audit_from_basis(
         }
     ):
         return None
-    try:
-        leaderboard = [
-            _feature_report(
-                feature, posterior, values,
-                calibration=_feature_calibration(
-                    basis, horizon=query["horizon"], feature=feature,
-                ),
-            )
-            for feature in TACTICAL_FEATURES
-        ]
-    except ValueError:
+    leaderboard = _ranked_feature_reports(
+        basis, horizon=query["horizon"], purpose=query["purpose"],
+    )
+    if leaderboard is None:
         return None
     if query["purpose"] == "resolve_action_choice":
-        leaderboard.sort(key=lambda row: (
-            -row["expected_decision_value_of_information"],
-            -row["expected_normalized_information_gain"],
-            row["feature"],
-        ))
         ranking_objective = "decision_value_then_information_gain"
     else:
-        leaderboard.sort(key=lambda row: (
-            -row["expected_normalized_information_gain"],
-            -row["expected_decision_value_of_information"],
-            row["feature"],
-        ))
         ranking_objective = "information_gain_then_decision_value"
-    for rank, row in enumerate(leaderboard, start=1):
-        row["model_rank"] = rank
     selected = next(
         row for row in leaderboard if row["feature"] == query["feature"]
     )
@@ -427,6 +631,22 @@ def _audit_from_basis(
         "purpose_supported": purpose_supported,
         "contingent_policy": contingent_policy,
         "query_signature": str(query_signature),
+        "question_selection": {
+            "selection_source": (
+                "world_model_question_menu"
+                if question_proposal is not None else "legacy_llm_freeform"
+            ),
+            "proposal_id": str(query.get("proposal_id", "")),
+            "menu_digest": str(question_menu_digest),
+            "selected_proposal": dict(question_proposal or {}),
+            "proposal_fields_exact": bool(question_proposal is not None),
+            "world_model_proposed_question": bool(
+                question_proposal is not None
+            ),
+            "llm_selected_after_action_freeze": bool(
+                question_proposal is not None and selected_after_action_freeze
+            ),
+        },
         "shadow_only": True,
         "authority_active": False,
         "policy_mutated": False,
@@ -444,6 +664,7 @@ def evaluate_llm_opponent_information_query(
     *,
     selected_action: str,
     query_signature: str = "opponent-information-query-unspecified",
+    selected_after_action_freeze: bool = False,
 ) -> dict[str, Any]:
     query = validate_llm_opponent_information_query(raw_query)
     base = {
@@ -475,48 +696,46 @@ def evaluate_llm_opponent_information_query(
         selected.get("multi_horizon_predictions") or {}
     ):
         return {**base, "reason": "query_horizon_not_evaluated"}
-    belief = packet.get("opponent_belief") or {}
-    current = _posterior(belief.get("posterior"))
-    if current is None:
-        return {**base, "reason": "opponent_posterior_unavailable"}
-    response = _posterior(
-        (selected.get("opponent_response_prediction") or {}).get(
-            "response_posterior"
-        )
+    basis = _query_basis(
+        packet,
+        selected_action=query["selected_action"],
+        horizon=query["horizon"],
     )
-    posterior = response if response is not None else current
-    values = {
-        action: dict(candidates.get(action, {}).get(
-            "opponent_hypothesis_values"
-        ) or {})
-        for action in RESPONSE_ACTIONS
-    }
-    basis = {
-        "posterior": {
-            name: float(posterior[index])
-            for index, name in enumerate(OPPONENT_HYPOTHESES)
-        },
-        "posterior_source": (
-            "selected_action_response_posterior"
-            if response is not None else "current_opponent_belief"
-        ),
-        "action_hypothesis_values": values,
-        "observation_threshold": 0.5,
-        "observation_sigma": _OBSERVATION_SIGMA,
-        "checkpoint_signature": str(packet.get(
-            "checkpoint_signature", "runtime_unspecified",
-        )),
-        "environment_signature": str(packet.get(
-            "environment_signature", "environment_unspecified",
-        )),
-        "query_calibration": (
-            ((packet.get("opponent_information_query_calibration") or {}).get(
-                "horizons"
-            ) or {}).get(query["horizon"]) or {}
-        ),
-    }
+    if basis is None:
+        return {**base, "reason": "complete_hypothesis_values_required"}
+    question_proposal = None
+    question_menu_digest = ""
+    if query.get("proposal_id"):
+        menu = packet.get("opponent_information_question_menu") or {}
+        if not opponent_information_question_menu_is_valid(menu, packet):
+            return {**base, "reason": "valid_question_menu_required"}
+        question_proposal = next((
+            row for row in menu.get("proposals") or []
+            if row.get("proposal_id") == query["proposal_id"]
+        ), None)
+        if question_proposal is None:
+            return {**base, "reason": "unknown_question_proposal"}
+        exact_fields = (
+            "selected_action", "feature", "horizon", "purpose",
+            "action_if_high", "action_if_low",
+        )
+        if any(
+            str(query[field]) != str(question_proposal[field])
+            for field in exact_fields
+        ):
+            return {
+                **base,
+                "reason": "question_proposal_fields_must_be_exact",
+                "query": query,
+            }
+        question_menu_digest = str(menu.get("menu_digest", ""))
     audit = _audit_from_basis(
-        query, basis, query_signature=query_signature,
+        query,
+        basis,
+        query_signature=query_signature,
+        question_proposal=question_proposal,
+        question_menu_digest=question_menu_digest,
+        selected_after_action_freeze=selected_after_action_freeze,
     )
     return audit or {**base, "reason": "complete_hypothesis_values_required"}
 
@@ -531,5 +750,31 @@ def opponent_information_query_audit_is_valid(audit: Any) -> bool:
         query,
         audit.get("model_evidence") or {},
         query_signature=str(audit.get("query_signature", "")),
+        question_proposal=(
+            (audit.get("question_selection") or {}).get(
+                "selected_proposal"
+            ) or None
+        ),
+        question_menu_digest=str((
+            audit.get("question_selection") or {}
+        ).get("menu_digest", "")),
+        selected_after_action_freeze=bool((
+            audit.get("question_selection") or {}
+        ).get("llm_selected_after_action_freeze")),
     )
+    selection = audit.get("question_selection") or {}
+    proposal = selection.get("selected_proposal") or {}
+    if proposal:
+        selected = (expected or {}).get("selected_query_report") or {}
+        if int(selected.get("model_rank", 0)) != 1:
+            return False
+        expected_proposal = _question_proposal(
+            action=query["selected_action"],
+            horizon=query["horizon"],
+            purpose=query["purpose"],
+            report=selected,
+            basis=audit.get("model_evidence") or {},
+        ) if selected else {}
+        if proposal != expected_proposal:
+            return False
     return bool(expected is not None and audit == expected)

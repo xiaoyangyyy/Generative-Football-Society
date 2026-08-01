@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 24
+DECISION_PACKET_VERSION = 25
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -655,7 +655,7 @@ def build_coach_decision_packet(
         distributional_frontiers = build_distributional_action_frontiers(
             candidates
         )
-        return {
+        packet = {
             "version": DECISION_PACKET_VERSION,
             "available": best is not None,
             "reason": "ok" if best is not None else "quality_gate_closed",
@@ -731,6 +731,14 @@ def build_coach_decision_packet(
                 "invent score, xG, or outcome facts."
             ),
         }
+        from src.match_engine.world_model.opponent_information_query import (
+            build_opponent_information_question_menu,
+        )
+
+        packet["opponent_information_question_menu"] = (
+            build_opponent_information_question_menu(packet)
+        )
+        return packet
     except Exception as exc:
         return {
             "version": DECISION_PACKET_VERSION,

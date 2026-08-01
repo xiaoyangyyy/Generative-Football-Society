@@ -99,6 +99,14 @@ def test_executor_freezes_action_and_preserves_two_stage_audit_in_cache(
             self.shadow_calls += 1
             assert frozen_plan["world_model_action"] == "pass"
             assert facts["world_model_shadow_deliberation_phase"]
+            menu = facts["world_model_shadow_deliberation_brief"][
+                "opponent_information_question_menu"
+            ]
+            proposal = next(
+                row for row in menu["proposals"]
+                if row["selected_action"] == "pass"
+                and row["purpose"] == "reduce_opponent_uncertainty"
+            )
             return json.dumps({
                 "reasoning": "Attempted mutations must be ignored.",
                 "confidence": 0.9,
@@ -110,14 +118,15 @@ def test_executor_freezes_action_and_preserves_two_stage_audit_in_cache(
                     "rationale": "Resolve opponent uncertainty.",
                 },
                 "opponent_information_query": {
-                    "selected_action": "pass",
-                    "feature": "line_height",
-                    "horizon": "60s",
-                    "purpose": "reduce_opponent_uncertainty",
-                    "action_if_high": "pass",
-                    "action_if_low": "hold",
+                    **{
+                        key: proposal[key] for key in (
+                            "proposal_id", "selected_action", "feature",
+                            "horizon", "purpose", "action_if_high",
+                            "action_if_low",
+                        )
+                    },
                     "confidence": 0.8,
-                    "rationale": "Observe the line before later adaptation.",
+                    "rationale": "Select the model-proposed information query.",
                 },
             })
 
@@ -146,6 +155,14 @@ def test_executor_freezes_action_and_preserves_two_stage_audit_in_cache(
     assert first.plan["world_model_deliberation_focus_audit"][
         "task_encouragement_context"
     ]["audit_valid"]
+    query_audit = first.plan["opponent_information_query_audit"]
+    assert query_audit["accepted"]
+    assert query_audit["question_selection"][
+        "world_model_proposed_question"
+    ]
+    assert query_audit["question_selection"][
+        "llm_selected_after_action_freeze"
+    ]
     assert llm.main_calls == 1
     assert llm.shadow_calls == 1
 
@@ -273,7 +290,7 @@ def test_randomized_task_encouragement_learns_itt_value_and_strict_gate():
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_llm_task_encouragement=True,
     )
-    assert report["version"] == 35
+    assert report["version"] == 36
     assert report["llm_task_encouragement_ready"]
     assert report["gates"]["llm_task_encouragement"]
 

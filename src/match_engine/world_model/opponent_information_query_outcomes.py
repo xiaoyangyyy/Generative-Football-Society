@@ -7,7 +7,10 @@ from typing import Any
 
 import numpy as np
 
-from src.match_engine.world_model.opponent_contract import TACTICAL_FEATURES
+from src.match_engine.world_model.opponent_contract import (
+    TACTICAL_FEATURES,
+    normalized_entropy,
+)
 from src.match_engine.world_model.opponent_information_query import (
     OPPONENT_INFORMATION_QUERY_VERSION,
     opponent_information_query_audit_is_valid,
@@ -80,6 +83,13 @@ def score_opponent_information_query(
     resolved_high = bool(events[selected_feature])
     branch = "high" if resolved_high else "low"
     contingent = audit["contingent_policy"]
+    answer_posterior = dict(
+        reports[selected_feature][f"posterior_if_{branch}"]
+    )
+    answer_entropy = normalized_entropy(np.asarray(
+        list(answer_posterior.values()), dtype=np.float64,
+    ))
+    question_selection = audit.get("question_selection") or {}
     return {
         "version": OPPONENT_INFORMATION_QUERY_VERSION,
         "audit_digest": audit["audit_digest"],
@@ -105,7 +115,42 @@ def score_opponent_information_query(
             audit["selected_query_objective_efficiency"]
         ),
         "purpose_supported": bool(audit["purpose_supported"]),
+        "world_model_question_proposal_selected": bool(
+            question_selection.get("world_model_proposed_question")
+        ),
+        "llm_question_selected_after_action_freeze": bool(
+            question_selection.get("llm_selected_after_action_freeze")
+        ),
+        "question_proposal_id": str(question_selection.get(
+            "proposal_id", "",
+        )),
         "resolved_observation_branch": branch,
+        "resolved_answer": {
+            "answer_type": "observed_binary_tactical_feature",
+            "feature": selected_feature,
+            "threshold": 0.5,
+            "observed_value": float(observed[selected_feature]),
+            "resolved_branch": branch,
+            "forecast_branch_probability": float(
+                reports[selected_feature]["forecast_high_rate"]
+                if resolved_high else
+                1.0 - reports[selected_feature]["forecast_high_rate"]
+            ),
+            "posterior_after_answer": answer_posterior,
+            "prior_normalized_entropy": float(
+                reports[selected_feature]["prior_normalized_entropy"]
+            ),
+            "posterior_normalized_entropy": float(answer_entropy),
+            "realized_normalized_information_gain": float(
+                reports[selected_feature]["prior_normalized_entropy"]
+                - answer_entropy
+            ),
+            "model_owned_bayesian_update": True,
+            "feeds_next_question": True,
+            "can_directly_mutate_live_belief": False,
+            "live_observation_already_assimilated": True,
+            "hidden_opponent_intent_observed": False,
+        },
         "proposed_continuation_action": contingent[f"action_if_{branch}"],
         "model_best_continuation_action": contingent[
             f"model_best_action_if_{branch}"

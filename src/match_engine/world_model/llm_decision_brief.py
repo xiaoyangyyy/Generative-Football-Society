@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 5
+LLM_DECISION_BRIEF_VERSION = 6
 
 
 TASK_REASONING_DOMAINS = {
@@ -493,6 +493,9 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
         "active_learning": source_packet.get("active_learning", {}),
         "opponent_information_feedback": source_packet.get(
             "opponent_information_feedback", {}
+        ),
+        "opponent_information_question_menu": source_packet.get(
+            "opponent_information_question_menu", {}
         ),
         "deliberation_compute_value_memory": source_packet.get(
             "deliberation_compute_value_memory", {}

@@ -848,6 +848,16 @@ make no calibrated joint-probability claim.
 
 ### Model-checked opponent information queries
 
+The world model first builds an `opponent_information_question_menu`. For each
+candidate action, evaluated future horizon, and epistemic purpose, it proposes
+the highest-value observable tactical question, its forecast answer probability,
+information gain, decision VOI, and model-best high/low shadow actions. After the
+live action is frozen, the coach LLM preferably selects one exact `proposal_id`
+matching that action and adds only confidence and rationale. Altering the
+proposal's action, feature, horizon, purpose, or branch actions makes the audit
+fail. Legacy free-form queries remain compatible, but do not count toward the
+strict world-model-question-loop gate.
+
 The coach may submit one `opponent_information_query` for its selected action.
 It chooses only an observable tactical feature, an already evaluated future
 horizon, whether the question is intended to reduce opponent uncertainty or
@@ -887,9 +897,9 @@ information gain, adaptive value, and contingent-action regret are consequently
 recomputed from one coherent Bayesian branch model. Each audit freezes both raw
 and calibrated likelihoods and probabilities, and each realized score preserves
 both Brier benchmarks. The online gate rejects an active calibration whose
-match-clustered Brier score becomes worse than raw. Version-2 query history is
-not recycled as training data because it cannot prove that its stored forecast
-was an uncalibrated baseline.
+match-clustered Brier score becomes worse than raw. Pre-version-4 query history
+is not recycled as training data because it cannot prove the current question
+proposal, action-freeze, and Bayesian-answer contracts.
 
 The same audit evaluates the proposed high/low actions against the best action in
 each posterior branch. It reports branch regrets, expected policy regret, worst
@@ -900,19 +910,30 @@ reasoning only: neither action is queued or automatically executed.
 
 At the declared horizon, the simulator records all four observable opponent
 tactical controls and computes Brier scores for the frozen feature forecasts.
+It also resolves a digest-checked Bayesian answer contract containing the
+observed branch, branch probability, conditional opponent posterior, and
+realized entropy change. This answer feeds the next question and calibration
+cycle. It is not assimilated into the live opponent belief a second time,
+because that belief already consumed the underlying tactical-control
+observation; this explicit boundary prevents statistically invalid
+double-counting.
 Cross-match diagnostics require at least four scored matches, compatible model
 provenance, no missing or malformed scores, useful query-purpose agreement, and
 frequent agreement with the model-owned query ranking. Enable the strict gate
 with `--require-opponent-information-queries`. This evaluates forecasted
 observations—not latent tactical truth. Queries are shadow-only: they cannot
 change the current action, schedule a future action, or update opponent memory.
+`--require-world-model-question-loop` additionally requires at least 80% exact
+world-model proposal selection after action freeze, complete Bayesian answer
+feedback, and proof that answer contracts cannot mutate the live belief.
 
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same
 team/checkpoint/environment and the naturally realized selected action, and then
 exposes the observed control, signed probability surprise, calibrated and raw
-Brier scores, query-rank efficiency, resolved branch, and branch-policy regret.
+Brier scores, query-rank efficiency, resolved branch, conditional posterior,
+realized information gain, and branch-policy regret.
 It also aggregates compact per-feature profiles so the next LLM call can improve
 which question it asks and how it reasons conditionally. Pending questions,
 different-action queries, incompatible scopes, and malformed records are counted

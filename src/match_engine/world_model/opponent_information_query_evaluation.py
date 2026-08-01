@@ -139,6 +139,29 @@ def opponent_information_query_diagnostics(
         "match_clustered_supported_query_purpose_rate": clustered_rate(
             lambda row: row["purpose_supported"]
         ),
+        "match_clustered_world_model_question_selection_rate": clustered_rate(
+            lambda row: row["world_model_question_proposal_selected"]
+        ),
+        "match_clustered_post_action_question_selection_rate": clustered_rate(
+            lambda row: row["llm_question_selected_after_action_freeze"]
+        ),
+        "match_clustered_bayesian_answer_feedback_rate": clustered_rate(
+            lambda row: bool((row.get("resolved_answer") or {}).get(
+                "model_owned_bayesian_update"
+            ))
+        ),
+        "all_answers_feed_next_question": all(
+            (row.get("resolved_answer") or {}).get("feeds_next_question")
+            is True for row in valid
+        ),
+        "all_answers_prevent_live_belief_double_counting": all(
+            (row.get("resolved_answer") or {}).get(
+                "can_directly_mutate_live_belief"
+            ) is False
+            and (row.get("resolved_answer") or {}).get(
+                "live_observation_already_assimilated"
+            ) is True for row in valid
+        ),
         "match_clustered_contingent_policy_consistency_rate": clustered_rate(
             lambda row: row["contingent_policy_model_checked_consistent"]
         ),

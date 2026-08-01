@@ -877,6 +877,11 @@ class CognitiveExecutor:
                         query_signature=(
                             self.llm_opponent_information_query_signature
                         ),
+                        selected_after_action_freeze=bool((
+                            plan.get(
+                                "world_model_deliberation_encouragement_audit"
+                            ) or {}
+                        ).get("accepted")),
                     )
                     if task_enabled("opponent_information_query")
                     else task_skipped("opponent_information_query")

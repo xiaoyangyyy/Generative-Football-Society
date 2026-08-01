@@ -8,7 +8,9 @@ import pytest
 from src.match_engine.cognitive.schemas import validate_coach_plan
 from src.match_engine.world_model.opponent_contract import OPPONENT_HYPOTHESES
 from src.match_engine.world_model.opponent_information_query import (
+    build_opponent_information_question_menu,
     evaluate_llm_opponent_information_query,
+    opponent_information_question_menu_is_valid,
     opponent_information_query_audit_is_valid,
     validate_llm_opponent_information_query,
 )
@@ -103,6 +105,32 @@ def _packet():
     }
 
 
+def _packet_with_question_menu():
+    packet = _packet()
+    packet["opponent_information_question_menu"] = (
+        build_opponent_information_question_menu(packet)
+    )
+    return packet
+
+
+def _proposed_query(packet, *, purpose="reduce_opponent_uncertainty"):
+    proposal = next(
+        row for row in packet["opponent_information_question_menu"][
+            "proposals"
+        ]
+        if row["selected_action"] == "pass" and row["purpose"] == purpose
+    )
+    return {
+        key: proposal[key] for key in (
+            "proposal_id", "selected_action", "feature", "horizon",
+            "purpose", "action_if_high", "action_if_low",
+        )
+    } | {
+        "confidence": 0.85,
+        "rationale": "Select the model-proposed question with highest VOI.",
+    }
+
+
 def test_query_schema_is_bounded_and_preserved_by_coach_plan():
     validated = validate_llm_opponent_information_query(_query())
     assert validated["feature"] == "line_height"
@@ -187,6 +215,53 @@ def test_world_model_computes_all_queries_and_independent_voi():
     assert not opponent_information_query_audit_is_valid(tampered_policy)
 
 
+def test_world_model_proposes_exact_questions_for_post_action_llm_selection():
+    packet = _packet_with_question_menu()
+    menu = packet["opponent_information_question_menu"]
+    assert opponent_information_question_menu_is_valid(menu, packet)
+    assert menu["proposal_count"] == 8
+    assert all(row["shadow_only"] for row in menu["proposals"])
+    assert all(not row["can_change_current_action"] for row in menu[
+        "proposals"
+    ])
+
+    query = _proposed_query(packet)
+    audit = evaluate_llm_opponent_information_query(
+        packet, query, selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+        selected_after_action_freeze=True,
+    )
+    assert audit["accepted"]
+    assert opponent_information_query_audit_is_valid(audit)
+    selection = audit["question_selection"]
+    assert selection["selection_source"] == "world_model_question_menu"
+    assert selection["proposal_fields_exact"]
+    assert selection["llm_selected_after_action_freeze"]
+
+    legacy_phase = evaluate_llm_opponent_information_query(
+        packet, query, selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+    )
+    assert legacy_phase["accepted"]
+    assert opponent_information_query_audit_is_valid(legacy_phase)
+    assert not legacy_phase["question_selection"][
+        "llm_selected_after_action_freeze"
+    ]
+
+    tampered = dict(query)
+    tampered["feature"] = next(
+        feature for feature in (
+            "pressing_intensity", "risk_budget", "line_height",
+            "rotation_aggressiveness",
+        ) if feature != query["feature"]
+    )
+    rejected = evaluate_llm_opponent_information_query(
+        packet, tampered, selected_action="pass",
+    )
+    assert not rejected["accepted"]
+    assert rejected["reason"] == "question_proposal_fields_must_be_exact"
+
+
 def test_query_fails_closed_for_action_horizon_and_incomplete_values():
     action = evaluate_llm_opponent_information_query(
         _packet(), _query(selected_action="shot"), selected_action="pass",
@@ -240,25 +315,12 @@ def test_realized_tactical_observation_scores_frozen_query_forecasts():
 
 
 def test_cross_match_query_diagnostics_and_strict_readiness_gate():
-    seed = evaluate_llm_opponent_information_query(
-        _packet(), _query(purpose="reduce_opponent_uncertainty"),
-        selected_action="pass",
-        query_signature="llm-opponent-information-query:test",
-    )
+    packet = _packet_with_question_menu()
     audit = evaluate_llm_opponent_information_query(
-        _packet(),
-        _query(
-            feature=seed["model_recommended_feature"],
-            purpose="reduce_opponent_uncertainty",
-            action_if_high=seed["query_leaderboard"][0][
-                "best_action_if_high"
-            ],
-            action_if_low=seed["query_leaderboard"][0][
-                "best_action_if_low"
-            ],
-        ),
+        packet, _proposed_query(packet),
         selected_action="pass",
         query_signature="llm-opponent-information-query:test",
+        selected_after_action_freeze=True,
     )
     observed = {
         row["feature"]: (0.8 if row["forecast_high_rate"] >= 0.5 else 0.2)
@@ -289,15 +351,26 @@ def test_cross_match_query_diagnostics_and_strict_readiness_gate():
         "match_clustered_contingent_policy_consistency_rate"
     ] == 1.0
     assert diagnostics["match_clustered_observed_branch_policy_regret"] == 0.0
+    assert diagnostics[
+        "match_clustered_world_model_question_selection_rate"
+    ] == 1.0
+    assert diagnostics[
+        "match_clustered_post_action_question_selection_rate"
+    ] == 1.0
+    assert diagnostics["match_clustered_bayesian_answer_feedback_rate"] == 1.0
+    assert diagnostics["all_answers_prevent_live_belief_double_counting"]
     assert diagnostics["provenance_compatible"]
 
     report = aggregate_online_calibration(
         logs, min_transitions=0,
         require_opponent_information_queries=True,
+        require_world_model_question_loop=True,
     )
-    assert report["version"] == 35
+    assert report["version"] == 36
     assert report["opponent_information_queries_ready"]
     assert report["gates"]["opponent_information_queries"]
+    assert report["world_model_question_loop_ready"]
+    assert report["gates"]["world_model_question_loop"]
     assert report["decision_adoption"][
         "opponent_information_feedback"
     ]["feedback_contexts"] == 0
@@ -536,6 +609,12 @@ def test_resolved_query_becomes_safe_feedback_for_the_next_llm_turn():
     assert not resolution["branch_action_executed"]
     assert not resolution["counterfactual_outcome_observed"]
     assert not resolution["hidden_opponent_intent_observed"]
+    answer = resolution["resolved_answer"]
+    assert answer["model_owned_bayesian_update"]
+    assert answer["feeds_next_question"]
+    assert not answer["can_directly_mutate_live_belief"]
+    assert answer["live_observation_already_assimilated"]
+    assert sum(answer["posterior_after_answer"].values()) == pytest.approx(1.0)
     assert feedback["feature_profiles"]["line_height"][
         "resolved_queries"
     ] == 1
@@ -557,6 +636,7 @@ def test_resolved_query_becomes_safe_feedback_for_the_next_llm_turn():
     ])
     assert diagnostics["available_feedback_contexts"] == 1
     assert diagnostics["resolution_exposures"] == 1
+    assert diagnostics["bayesian_answer_exposures"] == 1
     assert diagnostics["all_feedback_temporally_prospective"]
     leaked = copy.deepcopy(next_decision)
     leaked["created_t_sec"] = 60.0

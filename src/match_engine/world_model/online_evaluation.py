@@ -116,6 +116,7 @@ def aggregate_online_calibration(
     require_llm_risk_preferences: bool = False,
     require_temporal_path_calibration: bool = False,
     require_opponent_information_queries: bool = False,
+    require_world_model_question_loop: bool = False,
     require_opponent_information_adaptation: bool = False,
     require_llm_deliberation_focus: bool = False,
     require_llm_deliberation_compute_value: bool = False,
@@ -636,6 +637,43 @@ def aggregate_online_calibration(
         opponent_information_queries_ready
         if require_opponent_information_queries else True
     )
+    world_model_question_loop_ready = bool(
+        opponent_information_queries["realized_query_scores"] >= 4
+        and opponent_information_queries["matches"] >= 4
+        and opponent_information_queries["missing_scores"] == 0
+        and opponent_information_queries["malformed_query_contexts"] == 0
+        and opponent_information_queries["malformed_query_scores"] == 0
+        and opponent_information_queries[
+            "match_clustered_world_model_question_selection_rate"
+        ] >= 0.80
+        and opponent_information_queries[
+            "match_clustered_post_action_question_selection_rate"
+        ] >= 0.80
+        and opponent_information_queries[
+            "match_clustered_query_objective_efficiency"
+        ] >= 0.80
+        and opponent_information_queries[
+            "match_clustered_supported_query_purpose_rate"
+        ] >= 0.60
+        and opponent_information_queries[
+            "match_clustered_bayesian_answer_feedback_rate"
+        ] >= 0.99
+        and opponent_information_queries[
+            "all_answers_feed_next_question"
+        ]
+        and opponent_information_queries[
+            "all_answers_prevent_live_belief_double_counting"
+        ]
+        and opponent_information_queries["all_paired_same_action_horizon"]
+        and opponent_information_queries["all_shadow_only"]
+        and opponent_information_queries["all_non_controlling"]
+        and opponent_information_queries["all_non_causal"]
+        and opponent_information_queries["provenance_compatible"]
+    )
+    gates["world_model_question_loop"] = (
+        world_model_question_loop_ready
+        if require_world_model_question_loop else True
+    )
     opponent_information_adaptation_ready = bool(
         opponent_information_adaptation["realized_adaptation_scores"] >= 4
         and opponent_information_adaptation["matches"] >= 4
@@ -738,7 +776,7 @@ def aggregate_online_calibration(
         if require_llm_task_encouragement else True
     )
     return {
-        "version": 35,
+        "version": 36,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -819,6 +857,7 @@ def aggregate_online_calibration(
         "opponent_information_queries_ready": (
             opponent_information_queries_ready
         ),
+        "world_model_question_loop_ready": world_model_question_loop_ready,
         "opponent_information_adaptation_ready": (
             opponent_information_adaptation_ready
         ),
@@ -837,6 +876,7 @@ def aggregate_online_calibration(
             "Active-learning acquisition is policy-selected, not randomized; its uncertainty reduction is descriptive.",
             "Deliberation compute experiments randomize only a shadow resource cap; useful-artifact yield is not match-outcome value.",
             "Task encouragement is post-action intention-to-treat over two shadow tasks; it cannot establish match-outcome value.",
+            "Question answers update future query calibration and reasoning, while live opponent belief uses the underlying observation exactly once.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",

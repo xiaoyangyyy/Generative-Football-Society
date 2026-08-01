@@ -202,6 +202,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-world-model-question-loop",
+        action="store_true",
+        help=(
+            "Require the LLM to select model-proposed questions and return "
+            "resolved Bayesian answer contracts without double-counting."
+        ),
+    )
+    parser.add_argument(
         "--require-opponent-information-adaptation",
         action="store_true",
         help=(
@@ -295,6 +303,9 @@ def main() -> int:
         ),
         require_opponent_information_queries=(
             args.require_opponent_information_queries
+        ),
+        require_world_model_question_loop=(
+            args.require_world_model_question_loop
         ),
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation
