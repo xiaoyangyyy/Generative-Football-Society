@@ -75,10 +75,10 @@ def test_changing_action_rollout_preserves_member_trajectories():
         )
 
 
-def test_two_step_holdout_pairs_require_same_group_and_state_alignment():
+def test_two_step_pairs_require_same_group_split_and_state_alignment():
     import numpy as np
 
-    from scripts.train_world_model import _sequential_holdout_pairs
+    from scripts.train_world_model import _sequential_transition_pairs
 
     observations = np.zeros((5, 3), dtype=np.float32)
     next_observations = np.zeros((5, 3), dtype=np.float32)
@@ -87,7 +87,7 @@ def test_two_step_holdout_pairs_require_same_group_and_state_alignment():
     next_observations[2] = observations[3]
     next_observations[3] = observations[4] + 0.5
 
-    pairs = _sequential_holdout_pairs(
+    pairs = _sequential_transition_pairs(
         observations,
         next_observations,
         groups,
@@ -95,3 +95,81 @@ def test_two_step_holdout_pairs_require_same_group_and_state_alignment():
     )
 
     assert pairs.tolist() == [0, 2]
+
+
+def test_multi_step_curriculum_warms_up_then_reaches_configured_weight():
+    from scripts.train_world_model import _multi_step_curriculum_weight
+
+    weights = [
+        _multi_step_curriculum_weight(0.25, epoch, 10, warmup_fraction=0.20)
+        for epoch in range(10)
+    ]
+
+    assert weights[:2] == [0.0, 0.0]
+    assert weights[2] > 0.0
+    assert weights == sorted(weights)
+    assert weights[-1] == pytest.approx(0.25)
+    assert _multi_step_curriculum_weight(0.4, 0, 1) == pytest.approx(0.4)
+    assert _multi_step_curriculum_weight(-1.0, 5, 10) == 0.0
+
+
+def test_two_step_bootstrap_keeps_member_gradient_routing():
+    torch = pytest.importorskip("torch")
+    from scripts.train_world_model import _bootstrap_transition_loss
+
+    rollout_predictions = torch.tensor([
+        [[1.0], [10.0]],
+        [[10.0], [2.0]],
+    ], requires_grad=True)
+    loss, member_losses = _bootstrap_transition_loss(
+        rollout_predictions,
+        torch.zeros((2, 1)),
+        torch.ones(1),
+        torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
+    )
+    loss.backward()
+
+    assert member_losses.tolist() == pytest.approx([1.0, 4.0])
+    assert rollout_predictions.grad[0, 1, 0] == 0.0
+    assert rollout_predictions.grad[1, 0, 0] == 0.0
+
+
+def test_autoregressive_two_step_loss_reaches_each_dynamics_member():
+    torch = pytest.importorskip("torch")
+    from scripts.train_world_model import _bootstrap_transition_loss
+    from src.match_engine.world_model.action_codec import ACTION_DIM
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.model import build_model
+    from src.match_engine.world_model.observation import OBS_DIM
+
+    model = build_model(WorldModelConfig(
+        latent_dim=16,
+        hidden_dim=32,
+        ensemble_size=2,
+        transition_ensemble_size=2,
+    )).train()
+    observations = torch.rand((2, OBS_DIM))
+    actions = torch.rand((2, 2, ACTION_DIM))
+    targets = torch.rand((2, OBS_DIM))
+    predictions = model.transition_rollout_predictions(observations, actions)
+    loss, _ = _bootstrap_transition_loss(
+        predictions,
+        targets,
+        torch.ones(OBS_DIM),
+        torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
+    )
+
+    loss.backward()
+
+    primary_grad = sum(
+        float(parameter.grad.abs().sum())
+        for parameter in model.gru.parameters()
+        if parameter.grad is not None
+    )
+    secondary_grad = sum(
+        float(parameter.grad.abs().sum())
+        for parameter in model.extra_grus[0].parameters()
+        if parameter.grad is not None
+    )
+    assert primary_grad > 0.0
+    assert secondary_grad > 0.0

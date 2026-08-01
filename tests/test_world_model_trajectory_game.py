@@ -202,6 +202,15 @@ def test_runtime_gate_requires_grouped_holdout_gain_and_caps_authority():
             "persistence_weighted_mse": 0.02,
             "skill_vs_persistence": 0.50,
             "action_sequence": "observed_changing_actions",
+            "autoregressive_predicted_state": True,
+            "trained_with_autoregressive_multi_step_objective": True,
+            "training_pairs": 500,
+            "training_groups": 30,
+            "max_curriculum_weight_applied": 0.25,
+            "optimization_steps": 80,
+            "member_mean_weighted_mse": 0.012,
+            "ensemble_gain_vs_member_mean": 0.002,
+            "disagreement_error_correlation": 0.25,
         }}},
         model=SimpleNamespace(transition_ensemble_trained=True),
     )
@@ -209,10 +218,34 @@ def test_runtime_gate_requires_grouped_holdout_gain_and_caps_authority():
 
     assert gate["active"]
     assert 0.0 < gate["authority"] <= 0.50
-    assert gate["reason"] == "grouped_two_step_holdout_gain"
+    assert gate["reason"] == "trained_calibrated_grouped_two_step_gain"
 
+    runtime.meta["validation"]["two_step_rollout"]["optimization_steps"] = 0
+    missing_training = WorldModelRuntime.two_step_planning_gate(runtime)
+    assert not missing_training["active"]
+    assert missing_training["reason"] == "two_step_training_contract_missing"
+    runtime.meta["validation"]["two_step_rollout"]["optimization_steps"] = 80
     runtime.meta["validation"]["two_step_rollout"]["skill_vs_persistence"] = -0.1
     assert not WorldModelRuntime.two_step_planning_gate(runtime)["active"]
+
+
+def test_runtime_gate_rejects_validation_only_checkpoint_without_training_contract():
+    runtime = SimpleNamespace(
+        meta={"validation": {"two_step_rollout": {
+            "samples": 200,
+            "groups": 20,
+            "weighted_mse": 0.01,
+            "persistence_weighted_mse": 0.02,
+            "skill_vs_persistence": 0.50,
+            "action_sequence": "observed_changing_actions",
+        }}},
+        model=SimpleNamespace(transition_ensemble_trained=True),
+    )
+
+    gate = WorldModelRuntime.two_step_planning_gate(runtime)
+
+    assert not gate["active"]
+    assert gate["reason"] == "two_step_training_contract_missing"
 
 
 def test_llm_branch_stress_preserves_validated_trajectory_matrix():

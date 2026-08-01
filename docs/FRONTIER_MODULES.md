@@ -64,10 +64,12 @@ pretending the latent intent has a direct ground-truth label.
 Second-order planning learns action-conditioned opponent belief responses only
 after chronological, match-clustered held-out improvement over a sticky
 structural baseline. A two-ply belief-space planner selects one continuation
-policy against that response distribution. When grouped changing-action
-two-step holdout error beats persistence, a budgeted dynamics-ensemble search
+policy against that response distribution. The dynamics ensemble is trained on
+changing-action, autoregressive two-step sequences after a one-step curriculum
+warmup, with independent member bootstraps. When grouped two-step holdout error
+beats persistence and ensemble disagreement tracks error, a budgeted search
 re-encodes continuation actions from predicted states and blends them with the
-current-state proxy under capped, uncertainty-reduced authority. Older or
+current-state proxy under capped, calibration-reduced authority. Older or
 unvalidated checkpoints use the proxy without speculative search. Bounded LLM
 response scenarios can stress an
 evaluated branch but cannot persist evidence, alter the learned memory, or claim

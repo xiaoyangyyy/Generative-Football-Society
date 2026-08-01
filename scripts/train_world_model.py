@@ -49,17 +49,17 @@ def _bootstrap_transition_loss(
     return member_losses.mean(), member_losses
 
 
-def _sequential_holdout_pairs(
+def _sequential_transition_pairs(
     obs: np.ndarray,
     nxt: np.ndarray,
     groups: np.ndarray,
-    validation_indices: np.ndarray,
+    eligible_indices: np.ndarray,
     *,
     max_alignment_mae: float = 0.03,
 ) -> np.ndarray:
-    """Find adjacent, state-aligned transitions inside held-out match groups."""
+    """Find adjacent, state-aligned transitions inside an eligible group split."""
     membership = np.zeros(len(obs), dtype=bool)
-    membership[np.asarray(validation_indices, dtype=int)] = True
+    membership[np.asarray(eligible_indices, dtype=int)] = True
     return np.asarray([
         index for index in range(len(obs) - 1)
         if membership[index]
@@ -68,6 +68,30 @@ def _sequential_holdout_pairs(
         and float(np.mean(np.abs(nxt[index] - obs[index + 1])))
         <= float(max_alignment_mae)
     ], dtype=int)
+
+
+# Compatibility for external analysis notebooks written against the v7 trainer.
+_sequential_holdout_pairs = _sequential_transition_pairs
+
+
+def _multi_step_curriculum_weight(
+    base_weight: float,
+    epoch_index: int,
+    total_epochs: int,
+    *,
+    warmup_fraction: float = 0.20,
+) -> float:
+    """Warm up one-step dynamics, then linearly introduce rollout supervision."""
+    base = float(np.clip(base_weight, 0.0, 1.0))
+    total = max(1, int(total_epochs))
+    epoch = int(np.clip(epoch_index, 0, total - 1))
+    warmup = min(total - 1, int(np.floor(
+        total * float(np.clip(warmup_fraction, 0.0, 0.95))
+    )))
+    if epoch < warmup or base <= 0.0:
+        return 0.0
+    progress = (epoch - warmup + 1) / max(1, total - warmup)
+    return float(base * np.clip(progress, 0.0, 1.0))
 
 
 def main() -> None:
@@ -86,8 +110,26 @@ def main() -> None:
         default=0,
         help="Independent dynamics members; 0 uses MATCH_WM_TRANSITION_ENSEMBLE_SIZE.",
     )
+    parser.add_argument(
+        "--multi-step-loss-weight",
+        type=float,
+        default=0.25,
+        help="Final weight of autoregressive two-step state loss (0 disables).",
+    )
+    parser.add_argument(
+        "--multi-step-warmup-fraction",
+        type=float,
+        default=0.20,
+        help="Fraction of epochs reserved for one-step warmup before linear ramp.",
+    )
     parser.add_argument("--dataset-manifest", type=str, default="")
     args = parser.parse_args()
+    if args.epochs < 1:
+        parser.error("--epochs must be at least 1")
+    if not 0.0 <= args.multi_step_loss_weight <= 1.0:
+        parser.error("--multi-step-loss-weight must be in [0, 1]")
+    if not 0.0 <= args.multi_step_warmup_fraction < 1.0:
+        parser.error("--multi-step-warmup-fraction must be in [0, 1)")
 
     try:
         import torch
@@ -228,10 +270,44 @@ def main() -> None:
         drop_last=len(obs) > args.batch_size, generator=loader_generator,
     )
 
+    train_pair_left = _sequential_transition_pairs(
+        obs, nxt, groups, train_idx,
+    )
+    train_pair_groups = int(len(np.unique(groups[train_pair_left])))
+    if len(train_pair_left):
+        train_pair_actions = np.stack([
+            act[train_pair_left], act[train_pair_left + 1],
+        ], axis=1).astype(np.float32)
+        sequence_ds = TensorDataset(
+            torch.from_numpy(obs[train_pair_left]),
+            torch.from_numpy(train_pair_actions),
+            torch.from_numpy(nxt[train_pair_left + 1]),
+        )
+        sequence_loader = DataLoader(
+            sequence_ds,
+            batch_size=args.batch_size,
+            shuffle=True,
+            drop_last=False,
+            generator=torch.Generator().manual_seed(4242),
+        )
+    else:
+        sequence_loader = None
+
     model.train()
+    total_sequence_optimization_steps = 0
+    max_sequence_weight_applied = 0.0
     for epoch in range(args.epochs):
         loss_sum = 0.0
+        sequence_loss_sum = 0.0
+        sequence_batches = 0
         n = 0
+        sequence_weight = _multi_step_curriculum_weight(
+            args.multi_step_loss_weight,
+            epoch,
+            args.epochs,
+            warmup_fraction=args.multi_step_warmup_fraction,
+        )
+        sequence_iterator = iter(sequence_loader) if sequence_loader else None
         for batch in loader:
             o, a, no, ps, sg, xg, pm, sm = batch
             z_members, pred_obs_members = model.transition_predictions(o, a)
@@ -301,6 +377,40 @@ def main() -> None:
                 + 0.30 * shot_loss
                 + 0.20 * progress_loss
             )
+            if sequence_iterator is not None and sequence_weight > 0.0:
+                try:
+                    sequence_obs, sequence_actions, sequence_target = next(
+                        sequence_iterator
+                    )
+                except StopIteration:
+                    sequence_iterator = iter(sequence_loader)
+                    sequence_obs, sequence_actions, sequence_target = next(
+                        sequence_iterator
+                    )
+                sequence_predictions = model.transition_rollout_predictions(
+                    sequence_obs, sequence_actions,
+                )
+                sequence_bootstrap = torch.stack([
+                    torch.empty(
+                        len(sequence_obs), dtype=sequence_obs.dtype,
+                    ).exponential_().clamp_max(4.0)
+                    for _ in range(model.transition_member_count)
+                ], dim=0)
+                sequence_loss, _sequence_member_losses = (
+                    _bootstrap_transition_loss(
+                        sequence_predictions,
+                        sequence_target,
+                        obs_weights,
+                        sequence_bootstrap,
+                    )
+                )
+                loss = loss + sequence_weight * sequence_loss
+                sequence_loss_sum += float(sequence_loss.item())
+                sequence_batches += 1
+                total_sequence_optimization_steps += 1
+                max_sequence_weight_applied = max(
+                    max_sequence_weight_applied, sequence_weight,
+                )
             opt.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -310,7 +420,10 @@ def main() -> None:
         print(
             f"epoch {epoch+1}/{args.epochs} loss={loss_sum/max(1,n):.4f} "
             f"n={len(train_idx)} val={len(val_idx)} transition={args.transition} "
-            f"members={model.transition_member_count}"
+            f"members={model.transition_member_count} "
+            f"two_step_pairs={len(train_pair_left)} "
+            f"two_step_weight={sequence_weight:.4f} "
+            f"two_step_loss={sequence_loss_sum/max(1,sequence_batches):.4f}"
         )
 
     model.eval()
@@ -355,7 +468,7 @@ def main() -> None:
             and np.std(transition_error) > 1e-12
             else 0.0
         )
-        pair_left = _sequential_holdout_pairs(
+        pair_left = _sequential_transition_pairs(
             obs, nxt, groups, val_idx,
         )
         if len(pair_left):
@@ -378,9 +491,32 @@ def main() -> None:
             two_step_skill = float(
                 1.0 - two_step_mse / max(1e-12, two_step_persistence_mse)
             )
+            two_step_member_mean_mse = float(torch.stack([
+                (((member - rollout_target) ** 2) * obs_weights).mean()
+                for member in rollout_members
+            ]).mean().item())
+            two_step_ensemble_gain = float(
+                two_step_member_mean_mse - two_step_mse
+            )
+            two_step_disagreement = torch.sqrt(torch.mean(
+                torch.var(rollout_members, dim=0, unbiased=False), dim=1,
+            )).numpy()
+            two_step_error = torch.sqrt(torch.mean(
+                (rollout_mean - rollout_target) ** 2, dim=1,
+            )).numpy()
+            two_step_disagreement_error_correlation = (
+                float(np.corrcoef(
+                    two_step_disagreement, two_step_error,
+                )[0, 1])
+                if np.std(two_step_disagreement) > 1e-12
+                and np.std(two_step_error) > 1e-12
+                else 0.0
+            )
             two_step_groups = int(len(np.unique(groups[pair_left])))
         else:
             two_step_mse = two_step_persistence_mse = two_step_skill = 0.0
+            two_step_member_mean_mse = two_step_ensemble_gain = 0.0
+            two_step_disagreement_error_correlation = 0.0
             two_step_groups = 0
         progress_target = torch.from_numpy(xg[val_idx]).float().view(-1)
         progress_rmse = float(torch.sqrt(torch.mean(
@@ -462,8 +598,23 @@ def main() -> None:
             "weighted_mse": two_step_mse,
             "persistence_weighted_mse": two_step_persistence_mse,
             "skill_vs_persistence": two_step_skill,
+            "member_mean_weighted_mse": two_step_member_mean_mse,
+            "ensemble_gain_vs_member_mean": two_step_ensemble_gain,
+            "disagreement_error_correlation": (
+                two_step_disagreement_error_correlation
+            ),
             "action_sequence": "observed_changing_actions",
             "grouped_holdout": True,
+            "autoregressive_predicted_state": True,
+            "trained_with_autoregressive_multi_step_objective": bool(
+                total_sequence_optimization_steps > 0
+            ),
+            "training_pairs": int(len(train_pair_left)),
+            "training_groups": train_pair_groups,
+            "optimization_steps": total_sequence_optimization_steps,
+            "configured_loss_weight": float(args.multi_step_loss_weight),
+            "max_curriculum_weight_applied": max_sequence_weight_applied,
+            "warmup_fraction": float(args.multi_step_warmup_fraction),
         },
         "progress_rmse": progress_rmse,
         "pass_balanced_accuracy": pass_balanced_accuracy,
@@ -497,6 +648,16 @@ def main() -> None:
             "validation": validation,
             "dataset_manifest": args.dataset_manifest or None,
             "sealed_test_used": False,
+            "multi_step_training": {
+                "objective": "changing_action_autoregressive_two_step_state",
+                "pairs": int(len(train_pair_left)),
+                "groups": train_pair_groups,
+                "configured_loss_weight": float(args.multi_step_loss_weight),
+                "warmup_fraction": float(args.multi_step_warmup_fraction),
+                "member_independent_bootstrap": True,
+                "optimization_steps": total_sequence_optimization_steps,
+                "max_curriculum_weight_applied": max_sequence_weight_applied,
+            },
         },
     )
     print(f"Saved → {out_path}")

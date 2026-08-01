@@ -438,12 +438,27 @@ from the predicted ball state. The resulting continuation values propagate
 first- and second-step uncertainty and blend with the transparent current-state
 proxy; they do not replace it outright.
 
-Predicted-state search has its own authority gate. Training constructs only
-state-aligned adjacent transition pairs within grouped validation matches, then
-compares the changing-action two-step rollout against a persistence forecast.
-The live planner requires at least 32 pairs, four match groups, positive error
-reduction, a trained transition ensemble, and at least `0.02` skill. Authority
-is capped at `0.50` and reduced again by path uncertainty. A maximum of 48
+Predicted-state search has its own authority gate. Training constructs
+state-aligned adjacent transition pairs separately inside training and grouped
+validation matches. Training pairs supervise a genuinely autoregressive
+changing-action rollout: the first decoded prediction is re-encoded as the
+second-step state, rather than replacing it with the observed intermediate
+state. A one-step warmup followed by a linear curriculum limits early exposure
+bias, while independent Bayesian-bootstrap weights keep dynamics members from
+receiving identical trajectory supervision. Configure the final loss with
+`--multi-step-loss-weight` (default `0.25`) and the warmup with
+`--multi-step-warmup-fraction` (default `0.20`).
+
+Validation compares that changing-action rollout against persistence and stores
+ensemble-versus-member gain plus disagreement/error correlation. The live
+planner requires an explicit autoregressive training contract, at least 32
+training and validation pairs across four match groups in each split, a trained
+transition ensemble, recorded non-zero optimization steps, non-negative
+ensemble/calibration evidence, positive error
+reduction, and at least `0.02` skill. Thus an older checkpoint that merely ran a
+two-step validation cannot acquire planning authority. Authority is capped at
+`0.50`, scaled by uncertainty calibration, and reduced again by path
+uncertainty. A maximum of 48
 continuation/hypothesis evaluations is allowed per decision (hard ceiling 112),
 and unevaluated low-posterior hypotheses retain proxy values. Legacy checkpoints
 without this evidence execute no speculative rollout and remain replayable. The

@@ -415,7 +415,7 @@ class WorldModelRuntime:
         }
 
     def two_step_planning_gate(self) -> dict:
-        """Authorize predicted-state search only with grouped two-step evidence."""
+        """Authorize search only after trained and calibrated two-step evidence."""
         validation = self.meta.get("validation", {}) if isinstance(
             self.meta, dict
         ) else {}
@@ -427,33 +427,74 @@ class WorldModelRuntime:
         baseline_error = finite_float(
             evidence.get("persistence_weighted_mse") or 0.0, 0.0,
         )
+        training_pairs = int(evidence.get("training_pairs", 0))
+        training_groups = int(evidence.get("training_groups", 0))
+        training_weight = finite_float(
+            evidence.get("max_curriculum_weight_applied") or 0.0, 0.0,
+        )
+        optimization_steps = int(evidence.get("optimization_steps", 0))
+        trained_multi_step = bool(evidence.get(
+            "trained_with_autoregressive_multi_step_objective", False,
+        ))
+        ensemble_gain = finite_float(
+            evidence.get("ensemble_gain_vs_member_mean") or 0.0, 0.0,
+        )
+        disagreement_correlation = finite_float(
+            evidence.get("disagreement_error_correlation") or 0.0, 0.0,
+        )
+        calibration_reported = bool(
+            "ensemble_gain_vs_member_mean" in evidence
+            and "disagreement_error_correlation" in evidence
+        )
+        training_contract = bool(
+            trained_multi_step
+            and evidence.get("autoregressive_predicted_state") is True
+            and evidence.get("action_sequence") == "observed_changing_actions"
+            and training_pairs >= 32
+            and training_groups >= 4
+            and training_weight > 0.0
+            and optimization_steps > 0
+        )
         ensemble_trained = bool(getattr(
             self.model, "transition_ensemble_trained", False,
         ))
         active = bool(
             ensemble_trained
+            and training_contract
+            and calibration_reported
             and samples >= 32
             and groups >= 4
             and baseline_error > 1e-10
             and model_error < baseline_error
             and skill >= 0.02
+            and ensemble_gain >= -1e-8
+            and disagreement_correlation >= 0.0
         )
         sample_factor = samples / (samples + 128.0)
         group_factor = groups / (groups + 8.0)
         skill_factor = float(np.clip(skill / 0.25, 0.0, 1.0))
+        calibration_factor = float(np.clip(
+            0.50 + disagreement_correlation, 0.25, 1.0,
+        ))
         authority = float(np.clip(
             0.50 * sample_factor * group_factor * skill_factor
+            * calibration_factor
             if active else 0.0,
             0.0,
             0.50,
         ))
         return {
-            "version": 1,
+            "version": 2,
             "active": active,
             "authority": authority,
             "reason": (
-                "grouped_two_step_holdout_gain"
-                if active else "two_step_holdout_gate_closed"
+                "trained_calibrated_grouped_two_step_gain"
+                if active
+                else (
+                    "two_step_training_contract_missing"
+                    if not training_contract
+                    else "two_step_evidence_gate_closed"
+                )
             ),
             "samples": samples,
             "groups": groups,
@@ -461,6 +502,14 @@ class WorldModelRuntime:
             "persistence_weighted_mse": baseline_error,
             "skill_vs_persistence": skill,
             "transition_ensemble_trained": ensemble_trained,
+            "training_pairs": training_pairs,
+            "training_groups": training_groups,
+            "max_curriculum_weight_applied": training_weight,
+            "optimization_steps": optimization_steps,
+            "trained_multi_step": trained_multi_step,
+            "ensemble_gain_vs_member_mean": ensemble_gain,
+            "disagreement_error_correlation": disagreement_correlation,
+            "calibration_reported": calibration_reported,
             "action_sequence": str(evidence.get(
                 "action_sequence", "unavailable",
             )),
