@@ -291,6 +291,7 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "world_model_risk_constraint" in gateway.user_prompt
     assert "world_model_distributional_claim" in gateway.user_prompt
     assert "world_model_risk_preference" in gateway.user_prompt
+    assert "nominal consistency is not robustness" in gateway.system_prompt
     assert "trajectory_modes" in gateway.system_prompt
     assert "CRPS" in gateway.system_prompt
     assert "member-predicted states" in gateway.system_prompt
@@ -698,6 +699,11 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
     ]
     assert preference["accepted"]
     assert preference["preference_consistent"]
+    assert preference["preference_robust"]
+    assert preference["robustness"]["member_axis_jointly_aligned"]
+    assert not preference["robustness"][
+        "residual_quantile_axis_jointly_aligned"
+    ]
     assert not preference["can_change_selected_action"]
     assert preference_context["preference_signature"].startswith(
         "llm-risk-preference:"

@@ -12,9 +12,12 @@ from src.match_engine.world_model.opponent_response import RESPONSE_ACTIONS
 from src.match_engine.world_model.predictive_distribution import (
     predictive_lattice_is_valid,
 )
+from src.match_engine.world_model.preference_robustness import (
+    build_preference_robustness_report,
+)
 
 
-RISK_PREFERENCE_VERSION = 1
+RISK_PREFERENCE_VERSION = 2
 _DISTRIBUTION_SCOPES = {"epistemic_member_only", "calibrated_predictive"}
 
 
@@ -115,12 +118,14 @@ def _scenario_evidence(distribution: dict[str, Any]) -> dict[str, Any] | None:
     evidence = {
         "distribution_scope": scope,
         "decision_scenario_values": list(map(float, values)),
+        "member_identity_preserved": True,
     }
     if scope == "calibrated_predictive":
         keys = (
             "predictive_distribution_available", "epistemic_member_values",
             "residual_scenario_offsets", "residual_calibration_samples",
-            "residual_quantiles_split", "uncertainty_decomposition",
+            "residual_quantile_levels", "residual_quantiles_split",
+            "uncertainty_decomposition",
         )
         evidence.update({key: distribution.get(key) for key in keys})
         if not predictive_lattice_is_valid(evidence):
@@ -159,9 +164,11 @@ def _compute_results(
         action_values: dict[str, float] = {}
         for action in RESPONSE_ACTIONS:
             item = action_evidence[action]
-            if str(item.get("distribution_scope", "")) != preference[
-                "distribution_scope"
-            ]:
+            if (
+                str(item.get("distribution_scope", ""))
+                != preference["distribution_scope"]
+                or item.get("member_identity_preserved") is not True
+            ):
                 return None
             raw_values = np.asarray(
                 item.get("decision_scenario_values"), dtype=np.float64,
@@ -235,10 +242,11 @@ def _audit_digest(
     preference: dict[str, Any],
     evidence: dict[str, Any],
     results: dict[str, Any],
+    robustness: dict[str, Any],
 ) -> str:
     encoded = json.dumps(
         {"preference": preference, "scenario_evidence": evidence,
-         "results": results},
+         "results": results, "robustness": robustness},
         sort_keys=True, separators=(",", ":"), allow_nan=False,
     ).encode("utf-8")
     return "risk-preference-audit:" + hashlib.sha256(encoded).hexdigest()[:24]
@@ -255,20 +263,29 @@ def risk_preference_audit_is_valid(audit: dict[str, Any]) -> bool:
         expected = _compute_results(preference, evidence)
         if expected is None:
             return False
+        expected_robustness = build_preference_robustness_report(
+            preference, evidence,
+        )
+        if expected_robustness is None:
+            return False
         expected_consistency = bool(
             expected["aggregate_within_declared_regret"]
             and expected["all_horizons_within_declared_regret"]
         )
         return bool(
-            audit.get("accepted")
+            int(audit.get("version", 0)) == RISK_PREFERENCE_VERSION
+            and audit.get("accepted")
             and audit.get("shadow_only")
             and not audit.get("authority_active")
             and not audit.get("policy_mutated")
             and audit.get("results") == expected
             and bool(audit.get("preference_consistent"))
             == expected_consistency
+            and audit.get("robustness") == expected_robustness
+            and bool(audit.get("preference_robust"))
+            == bool(expected_robustness["preference_robust"])
             and audit.get("audit_digest") == _audit_digest(
-                preference, evidence, expected,
+                preference, evidence, expected, expected_robustness,
             )
         )
     except (AttributeError, KeyError, TypeError, ValueError, OverflowError):
@@ -334,6 +351,12 @@ def evaluate_llm_risk_preference(
             **base, "reason": "risk_preference_scope_or_evidence_mismatch",
             "preference": preference,
         }
+    robustness = build_preference_robustness_report(preference, evidence)
+    if robustness is None:
+        return {
+            **base, "reason": "risk_preference_robustness_unavailable",
+            "preference": preference,
+        }
     audit = {
         **base,
         "accepted": True,
@@ -341,10 +364,12 @@ def evaluate_llm_risk_preference(
         "preference": preference,
         "scenario_evidence": evidence,
         "results": results,
+        "robustness": robustness,
         "preference_consistent": bool(
             results["aggregate_within_declared_regret"]
             and results["all_horizons_within_declared_regret"]
         ),
+        "preference_robust": bool(robustness["preference_robust"]),
         "checkpoint_signature": str(packet.get(
             "checkpoint_signature", "runtime_unspecified",
         )),
@@ -352,6 +377,8 @@ def evaluate_llm_risk_preference(
             "environment_signature", "environment_unspecified",
         )),
     }
-    audit["audit_digest"] = _audit_digest(preference, evidence, results)
+    audit["audit_digest"] = _audit_digest(
+        preference, evidence, results, robustness,
+    )
     packet["llm_risk_preference_audit"] = audit
     return audit

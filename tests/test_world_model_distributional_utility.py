@@ -381,7 +381,7 @@ def test_strict_online_gate_requires_calibrated_faithful_distributions():
     diagnostics = report["decision_adoption"][
         "llm_distributional_decisions"
     ]
-    assert report["version"] == 20
+    assert report["version"] == 21
     assert diagnostics["match_clustered_central_80_coverage"] == 0.75
     assert diagnostics["match_clustered_below_median_rate"] == 0.5
     assert diagnostics["match_clustered_crps"] <= diagnostics[

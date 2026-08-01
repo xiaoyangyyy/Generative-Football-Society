@@ -824,6 +824,18 @@ the declaration. The LLM cannot submit its own transformed values, change a
 forecast, or acquire action authority. Mixed distribution scopes and incomplete
 action/horizon evidence fail closed.
 
+To prevent post-hoc parameter tuning from becoming a sophisticated form of
+rationalization, a second model-owned audit perturbs loss aversion by `±0.5` and
+diminishing sensitivity by `±0.1`, clipped only to the contract bounds. It
+crosses this parameter grid with a nominal evidence case, every aligned
+leave-one-transition-member-out case, and—for predictive lattices—every aligned
+leave-one-residual-quantile-out case. The same omitted axis index is used for all
+actions and horizons. Misaligned residual quantile levels fail closed. The audit
+reports the fraction of joint cases within declared regret, worst aggregate and
+per-horizon regret, and rationalization fragility. A nominally coherent choice
+therefore remains distinguishable from one that is genuinely robust to nearby
+preferences and world-model evidence.
+
 When the selected action naturally occurs, each declared horizon is paired only
 with its same-horizon realized utility. The evaluator transforms both the frozen
 scenario vector and realized value under the original preference, then reports
@@ -833,7 +845,8 @@ regret calculation, and realized score. No realized regret is claimed because
 the unchosen actions do not have observed counterfactual outcomes. Strict
 readiness additionally requires calibrated predictive lattices, four matches,
 zero malformed or missing eligible scores, at least `0.60` prospective
-consistency, central-80% coverage in `[0.55, 0.98]`, and CRPS no worse than the
+consistency and fully certified preference robustness, central-80% coverage in
+`[0.55, 0.98]`, and CRPS no worse than the
 mean forecast's absolute error. Enable it with
 `--require-llm-risk-preferences`.
 

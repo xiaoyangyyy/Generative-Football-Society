@@ -43,6 +43,7 @@ def _distribution(values):
         "member_values": members.tolist(),
         "epistemic_member_values": members.tolist(),
         "residual_scenario_offsets": residuals.tolist(),
+        "residual_quantile_levels": [0.1, 0.5, 0.9],
         "decision_scenario_values": scenarios.tolist(),
         "mean_utility": float(scenarios.mean()),
         "residual_calibration_samples": 8,
@@ -85,7 +86,7 @@ def _preference(**updates):
         "horizon_weights": {"60s": 0.6, "180s": 0.4},
         "loss_aversion": 2.0,
         "diminishing_sensitivity": 0.8,
-        "max_acceptable_regret": 0.05,
+        "max_acceptable_regret": 0.10,
         "confidence": 0.8,
         "rationale": "Prefer robust gains under one stable risk attitude.",
     }
@@ -124,13 +125,33 @@ def test_world_model_recomputes_scenario_values_and_multi_horizon_regret():
     assert audit["results"]["selected_aggregate_preference_regret"] == 0.0
     assert set(audit["results"]["horizons"]) == {"60s", "180s"}
     assert not audit["can_change_selected_action"]
+    assert audit["preference_robust"]
+    assert audit["robustness"]["joint_stress_cases"] == 72
+    assert audit["robustness"]["member_axis_jointly_aligned"]
+    assert audit["robustness"]["residual_quantile_axis_jointly_aligned"]
     transformed_loss = prospect_value([-0.25], audit["preference"])[0]
     transformed_gain = prospect_value([0.25], audit["preference"])[0]
     assert abs(transformed_loss) == pytest.approx(2.0 * transformed_gain)
 
+    fragile = evaluate_llm_risk_preference(
+        _packet(), _preference(max_acceptable_regret=0.05),
+        selected_action="pass",
+    )
+    assert fragile["preference_consistent"]
+    assert not fragile["preference_robust"]
+    assert 0.90 < fragile["robustness"]["robustness_rate"] < 1.0
+    assert fragile["robustness"]["rationalization_fragility"] > 0.0
+    assert len(fragile["robustness"]["failed_cases"]) == 3
+
     tampered = copy.deepcopy(audit)
     tampered["results"]["selected_aggregate_preference_regret"] = 0.2
     assert not risk_preference_audit_is_valid(tampered)
+    tampered_robustness = copy.deepcopy(audit)
+    tampered_robustness["robustness"]["robustness_rate"] = 0.5
+    assert not risk_preference_audit_is_valid(tampered_robustness)
+    wrong_version = copy.deepcopy(audit)
+    wrong_version["version"] = 1
+    assert not risk_preference_audit_is_valid(wrong_version)
 
     inconsistent = evaluate_llm_risk_preference(
         _packet(), _preference(selected_action="shot"),
@@ -165,6 +186,15 @@ def test_preference_fails_closed_for_scope_action_and_incomplete_evidence():
     )
     assert closed["reason"] == "risk_preference_scenarios_unavailable"
 
+    misaligned = _packet()
+    misaligned["candidates"][0]["multi_horizon_predictions"]["60s"][
+        "distributional_policy_utility"
+    ]["residual_quantile_levels"] = [0.2, 0.5, 0.9]
+    axis_closed = evaluate_llm_risk_preference(
+        misaligned, _preference(), selected_action="pass",
+    )
+    assert axis_closed["reason"] == "risk_preference_robustness_unavailable"
+
 
 def test_realized_preference_scores_are_recomputed_and_strictly_gated():
     audit = evaluate_llm_risk_preference(
@@ -198,7 +228,7 @@ def test_realized_preference_scores_are_recomputed_and_strictly_gated():
         logs, min_transitions=0, min_residual_samples=2,
         require_llm_risk_preferences=True,
     )
-    assert report["version"] == 20
+    assert report["version"] == 21
     assert report["llm_risk_preferences_ready"]
     assert report["gates"]["calibrated_llm_risk_preferences"]
 

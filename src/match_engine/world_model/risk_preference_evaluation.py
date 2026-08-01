@@ -75,6 +75,9 @@ def score_llm_risk_preference(
         "prospective_preference_consistent": bool(
             context["preference_consistent"]
         ),
+        "prospective_preference_robust": bool(
+            context["preference_robust"]
+        ),
         "distribution_scope": preference["distribution_scope"],
         "predictive_distribution_calibrated": (
             preference["distribution_scope"] == "calibrated_predictive"
@@ -155,6 +158,8 @@ def _valid_score(row: dict[str, Any], context: dict[str, Any]) -> bool:
         and row.get("audit_digest") == context.get("audit_digest")
         and bool(row.get("prospective_preference_consistent"))
         == bool(context.get("preference_consistent"))
+        and bool(row.get("prospective_preference_robust"))
+        == bool(context.get("preference_robust"))
         and str(row.get("distribution_scope", ""))
         == preference["distribution_scope"]
         and row.get("paired_same_action_horizon")
@@ -231,6 +236,7 @@ def risk_preference_diagnostics(
     mae = match_metric("preference_value_absolute_error")
     coverage = match_rate("central_80_covered")
     consistent = match_rate("prospective_preference_consistent")
+    robust = match_rate("prospective_preference_robust")
     signatures = sorted({
         str(row.get("preference_signature", "")) for row in valid
     })
@@ -262,6 +268,9 @@ def risk_preference_diagnostics(
         ),
         "match_clustered_prospective_consistency": (
             float(np.mean(consistent)) if consistent else 0.0
+        ),
+        "match_clustered_prospective_robustness": (
+            float(np.mean(robust)) if robust else 0.0
         ),
         "all_predictive_distributions_calibrated": all(
             row.get("predictive_distribution_calibrated") for row in valid

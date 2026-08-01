@@ -502,6 +502,9 @@ def aggregate_online_calibration(
         and llm_risk_preferences[
             "match_clustered_prospective_consistency"
         ] >= 0.60
+        and llm_risk_preferences[
+            "match_clustered_prospective_robustness"
+        ] >= 0.60
         and 0.55 <= llm_risk_preferences[
             "match_clustered_central_80_coverage"
         ] <= 0.98
@@ -517,7 +520,7 @@ def aggregate_online_calibration(
         llm_risk_preferences_ready if require_llm_risk_preferences else True
     )
     return {
-        "version": 20,
+        "version": 21,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -603,5 +606,6 @@ def aggregate_online_calibration(
             "LLM chance constraints are shadow certificates over transparent ensemble modes; conservative certification is observational and cannot veto or authorize an action.",
             "Distributional LLM claims are scored against realized simulator utility; calibrated member spread is descriptive and does not establish causal action value.",
             "LLM risk preferences are model-checked on frozen scenarios; only the selected action is realized, so reported preference regret is prospective rather than counterfactual ground truth.",
+            "Preference robustness uses fixed local parameter and leave-one-axis-out stress tests; it is a sensitivity certificate, not proof against every possible utility function or model error.",
         ],
     }

@@ -290,7 +290,10 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   The fixed reference utility is zero; loss_aversion and
   diminishing_sensitivity define a bounded prospect-value transform. The engine
   recomputes every scenario value, per-horizon preference regret and aggregate
-  regret. Do not report your own utility score. This audit is shadow-only and
+  regret. It also owns a fixed preference-neighborhood grid and jointly removes
+  one aligned dynamics member or residual-quantile scenario at a time. You
+  cannot choose these stress ranges; nominal consistency is not robustness.
+  Do not report your own utility score. This audit is shadow-only and
   does not provide counterfactual realized outcomes for actions not taken;
 - semantic_event_fusion distinguishes transparent member-frequency projection
   from a learned event head. Treat the learned probability as evidence only when
