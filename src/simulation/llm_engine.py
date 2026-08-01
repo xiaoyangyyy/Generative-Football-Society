@@ -268,6 +268,9 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   You may declare one world_model_risk_constraint for the selected action and an
   evaluated horizon. The engine checks its member frequency with a conservative
   uncertainty bound and later scores it on the same-horizon simulator outcome.
+  risk_scope=terminal checks only the horizon endpoint; within_horizon
+  checks member-consistent intermediate states and requires a validated two-step
+  rollout plus sufficiently dense live interval monitoring;
   This certificate is shadow-only: it cannot veto, authorize, or change an action;
 - semantic_event_fusion distinguishes transparent member-frequency projection
   from a learned event head. Treat the learned probability as evidence only when
@@ -351,6 +354,7 @@ Return JSON:
     "selected_action": "must equal world_model_action",
     "horizon": "transition or an evaluated horizon with rollout depth <= 2",
     "downside_event": "lose_possession|negative_territorial_shift|worsen_scoreline|fail_enter_final_third",
+    "risk_scope": "terminal|within_horizon",
     "max_violation_probability": 0.05-0.95,
     "confidence": 0.5-1.0,
     "rationale": "one falsifiable chance constraint grounded in trajectory_modes"

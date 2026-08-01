@@ -28,7 +28,7 @@ def _constraint(**updates):
     return value
 
 
-def _packet(*, rollout_steps=1, trained=True):
+def _packet(*, rollout_steps=1, trained=True, temporal=False):
     modes = {
         "version": 1,
         "available": trained,
@@ -52,6 +52,19 @@ def _packet(*, rollout_steps=1, trained=True):
             },
         ],
     }
+    if temporal:
+        modes.update({
+            "trajectory_steps": 2,
+            "temporal_path_available": True,
+            "path_counts_trusted": True,
+            "path_downside_event_counts": {"lose_possession": 2},
+            "path_downside_event_probabilities": {
+                "lose_possession": 2.5 / 9.0,
+            },
+        })
+        modes["modes"][1]["path_downside_events"] = {
+            "lose_possession": 1.0,
+        }
     return {
         "available": True,
         "checkpoint_signature": "checkpoint:test",
@@ -85,6 +98,7 @@ def test_risk_constraint_schema_is_strict_and_preserved_by_coach_schema():
         _constraint(max_violation_probability=0.01)
     ) is None
     assert validate_llm_risk_constraint(_constraint(confidence=0.49)) is None
+    assert validate_llm_risk_constraint(_constraint(risk_scope="sometime")) is None
     plan = validate_coach_plan({
         "world_model_action": "pass",
         "world_model_risk_constraint": _constraint(),
@@ -140,6 +154,66 @@ def test_certificate_fails_closed_for_unvalidated_evidence():
         selected_action="pass",
     )
     assert closed["reason"] == "risk_certificate_planning_gate_closed"
+    missing_path = apply_llm_risk_constraint(
+        _Runtime(), _packet(rollout_steps=2),
+        _constraint(risk_scope="within_horizon"),
+        selected_action="pass",
+    )
+    assert missing_path["reason"] == (
+        "member_consistent_temporal_path_unavailable"
+    )
+
+
+def test_ever_risk_uses_member_consistent_path_and_dense_live_monitor():
+    audit = apply_llm_risk_constraint(
+        _Runtime(), _packet(rollout_steps=2, temporal=True),
+        _constraint(
+            risk_scope="within_horizon",
+            max_violation_probability=0.7,
+        ),
+        selected_action="pass",
+        certificate_signature="llm-risk-certificate:test",
+    )
+    assert audit["accepted"]
+    assert audit["risk_scope"] == "within_horizon"
+    assert audit["member_violations"] == 2
+    assert audit["projected_violation_probability"] == pytest.approx(2.5 / 9.0)
+    assert audit["member_trajectory_identity_preserved"]
+
+    score = score_llm_risk_certificate(
+        audit,
+        {
+            "retained_possession": True,
+            "progress": 0.1,
+            "goal_diff_delta": 0.0,
+        },
+        {"ball_x": 0.4},
+        attacking_home=True,
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+        interval_monitor={
+            "complete": True,
+            "downside_observed": True,
+            "observations": 12,
+            "max_gap_s": 5.0,
+        },
+    )
+    assert score["downside_observed"]
+    assert score["risk_scope"] == "within_horizon"
+    assert score["interval_monitor_complete"]
+    assert score_llm_risk_certificate(
+        audit,
+        {
+            "retained_possession": True,
+            "progress": 0.1,
+            "goal_diff_delta": 0.0,
+        },
+        {"ball_x": 0.4},
+        attacking_home=True,
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+        interval_monitor={"complete": False},
+    ) is None
 
 
 def test_realized_certificate_scoring_and_match_clustered_diagnostics():
@@ -220,9 +294,22 @@ def test_online_gate_requires_realized_calibrated_risk_certificates():
         logs, min_transitions=0, min_residual_samples=2,
         require_llm_risk_certificates=True,
     )
-    assert report["version"] == 16
+    assert report["version"] == 17
     assert report["llm_risk_certificates_ready"]
     assert report["gates"]["realized_llm_risk_certificates"]
     assert report["decision_adoption"]["llm_risk_certificates"][
         "certified_matches"
     ] == 4
+
+    logs.append({"world_model_decision_adoption": {"records": [{
+        "intervention_actual_action": "pass",
+        "llm_risk_certificate_context": audit,
+        "multi_horizon_regime_outcomes": {"60s": {}},
+    }]}})
+    incomplete = aggregate_online_calibration(
+        logs, min_transitions=0, min_residual_samples=2,
+        require_llm_risk_certificates=True,
+    )
+    diagnostics = incomplete["decision_adoption"]["llm_risk_certificates"]
+    assert diagnostics["unscored_eligible_certificates"] == 1
+    assert not incomplete["llm_risk_certificates_ready"]

@@ -75,6 +75,36 @@ def test_changing_action_rollout_preserves_member_trajectories():
         )
 
 
+def test_imagination_exposes_member_aligned_intermediate_states():
+    np = pytest.importorskip("numpy")
+    pytest.importorskip("torch")
+    from src.match_engine.world_model.action_codec import ACTION_DIM
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.model import build_model
+    from src.match_engine.world_model.observation import OBS_DIM
+
+    model = build_model(WorldModelConfig(
+        latent_dim=16,
+        hidden_dim=32,
+        ensemble_size=2,
+        transition_ensemble_size=2,
+    )).eval()
+    output = model.imagine(
+        np.full(OBS_DIM, 0.5, dtype=np.float32),
+        np.zeros(ACTION_DIM, dtype=np.float32),
+        steps=2,
+    )
+    trajectory = output.uncertainty_samples[
+        "transition_state_trajectory"
+    ]
+
+    assert trajectory.shape == (2, 2, 1, OBS_DIM)
+    assert np.isfinite(trajectory).all()
+    assert np.allclose(
+        trajectory[-1], output.uncertainty_samples["transition_states"]
+    )
+
+
 def test_two_step_pairs_require_same_group_split_and_state_alignment():
     import numpy as np
 

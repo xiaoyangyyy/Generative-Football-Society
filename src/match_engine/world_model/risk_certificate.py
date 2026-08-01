@@ -17,9 +17,10 @@ from src.match_engine.world_model.state_scales import (
 )
 
 
-RISK_CERTIFICATE_VERSION = 1
+RISK_CERTIFICATE_VERSION = 2
 _HORIZON_PATTERN = re.compile(r"^(transition|\d+(?:\.\d+)?s)$")
 _WILSON_Z_90 = 1.6448536269514722
+_RISK_SCOPES = {"terminal", "within_horizon"}
 
 
 def llm_risk_certificate_signature(model_name: str) -> str:
@@ -39,10 +40,12 @@ def validate_llm_risk_constraint(raw: Any) -> dict[str, Any] | None:
     action = str(raw.get("selected_action", "")).strip().lower()
     horizon = str(raw.get("horizon", "")).strip().lower()
     event = str(raw.get("downside_event", "")).strip().lower()
+    risk_scope = str(raw.get("risk_scope", "terminal")).strip().lower()
     if (
         action not in RESPONSE_ACTIONS
         or not _HORIZON_PATTERN.fullmatch(horizon)
         or event not in FALSIFIABLE_DOWNSIDE_EVENTS
+        or risk_scope not in _RISK_SCOPES
     ):
         return None
     try:
@@ -59,6 +62,7 @@ def validate_llm_risk_constraint(raw: Any) -> dict[str, Any] | None:
         "selected_action": action,
         "horizon": horizon,
         "downside_event": event,
+        "risk_scope": risk_scope,
         "max_violation_probability": maximum,
         "confidence": confidence,
         "rationale": str(raw.get("rationale", ""))[:280],
@@ -194,10 +198,38 @@ def apply_llm_risk_constraint(
             "constraint": constraint,
         }
     event = constraint["downside_event"]
+    risk_scope = constraint["risk_scope"]
+    if risk_scope == "within_horizon" and (
+        rollout_steps != 2
+        or not modes.get("temporal_path_available")
+        or not modes.get("path_counts_trusted")
+        or int(modes.get("trajectory_steps", 0)) != rollout_steps
+    ):
+        return {
+            **base,
+            "reason": "member_consistent_temporal_path_unavailable",
+            "constraint": constraint,
+            "planning_gate": planning_gate,
+        }
+    count_key = (
+        "path_downside_event_counts"
+        if risk_scope == "within_horizon"
+        else "downside_event_counts"
+    )
+    probability_key = (
+        "path_downside_event_probabilities"
+        if risk_scope == "within_horizon"
+        else "downside_event_probabilities"
+    )
+    mode_event_key = (
+        "path_downside_events"
+        if risk_scope == "within_horizon"
+        else "terminal_downside_events"
+    )
     try:
         members = int(modes["ensemble_members"])
-        violations = int(modes["downside_event_counts"][event])
-        probability = float(modes["downside_event_probabilities"][event])
+        violations = int(modes[count_key][event])
+        probability = float(modes[probability_key][event])
     except (KeyError, TypeError, ValueError, OverflowError):
         return {
             **base,
@@ -228,7 +260,8 @@ def apply_llm_risk_constraint(
         for mode in modes.get("modes") or []:
             mode_probability = float(mode.get("probability", 0.0))
             violation_rate = float(
-                (mode.get("downside_events") or {}).get(event, 0.0)
+                (mode.get(mode_event_key) or mode.get("downside_events") or {})
+                .get(event, 0.0)
             )
             if (
                 not np.isfinite(mode_probability)
@@ -261,6 +294,11 @@ def apply_llm_risk_constraint(
             "environment_signature", "environment_unspecified",
         )),
         "rollout_steps": rollout_steps,
+        "risk_scope": risk_scope,
+        "member_trajectory_identity_preserved": bool(
+            risk_scope == "terminal"
+            or modes.get("temporal_path_available")
+        ),
         "planning_gate": planning_gate,
         "trajectory_mode_version": int(modes.get("version", 0)),
         "trajectory_mode_count": int(modes.get("mode_count", 0)),
@@ -312,18 +350,26 @@ def score_llm_risk_certificate(
     attacking_home: bool,
     checkpoint_signature: str,
     environment_signature: str,
+    interval_monitor: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     if not context.get("accepted"):
         return None
     constraint = validate_llm_risk_constraint(context.get("constraint"))
     if constraint is None:
         return None
-    observed = observed_downside_event(
-        constraint["downside_event"],
-        outcome,
-        baseline,
-        attacking_home=attacking_home,
-    )
+    risk_scope = constraint["risk_scope"]
+    monitor = dict(interval_monitor or {})
+    if risk_scope == "within_horizon":
+        if not monitor.get("complete"):
+            return None
+        observed = bool(monitor.get("downside_observed"))
+    else:
+        observed = observed_downside_event(
+            constraint["downside_event"],
+            outcome,
+            baseline,
+            attacking_home=attacking_home,
+        )
     probability = float(np.clip(float(
         context["projected_violation_probability"]
     ), 0.0, 1.0))
@@ -347,11 +393,22 @@ def score_llm_risk_certificate(
         "conservatively_certified": certified,
         "false_safe_certificate": bool(certified and observed),
         "paired_same_horizon_outcome": True,
+        "risk_scope": risk_scope,
+        "interval_monitor_complete": bool(
+            risk_scope == "terminal" or monitor.get("complete")
+        ),
+        "interval_observation_count": int(
+            monitor.get("observations", 0)
+        ),
+        "interval_max_gap_s": float(monitor.get("max_gap_s", 0.0)),
         "shadow_only": True,
         "authority_active": False,
         "policy_mutated": False,
         "certificate_can_veto_action": False,
         "causal_interpretation": False,
+        "member_trajectory_identity_preserved": bool(context.get(
+            "member_trajectory_identity_preserved", False,
+        )),
         "issuance_evaluation_provenance_compatible": bool(
             checkpoint_compatible and environment_compatible
         ),
@@ -367,15 +424,34 @@ def risk_certificate_diagnostics(
     match_logs: Iterable[dict[str, Any]],
 ) -> dict[str, Any]:
     match_rows = []
+    eligible_certificates = 0
+    unscored_eligible_certificates = 0
     for payload in match_logs:
         rows = []
         for record in (
             (payload.get("world_model_decision_adoption") or {}).get("records")
             or []
         ):
-            for outcome in (
-                record.get("multi_horizon_regime_outcomes") or {}
-            ).values():
+            outcomes = record.get("multi_horizon_regime_outcomes") or {}
+            context = record.get("llm_risk_certificate_context") or {}
+            constraint = validate_llm_risk_constraint(
+                context.get("constraint")
+            )
+            if (
+                context.get("accepted")
+                and constraint is not None
+                and constraint["selected_action"]
+                == str(record.get("intervention_actual_action", "")).lower()
+            ):
+                horizon_key = constraint["horizon"]
+                if horizon_key in outcomes:
+                    eligible_certificates += 1
+                    candidate = outcomes[horizon_key]
+                    if not isinstance(candidate, dict) or not isinstance(
+                        candidate.get("llm_risk_certificate_evaluation"), dict,
+                    ):
+                        unscored_eligible_certificates += 1
+            for outcome in outcomes.values():
                 evaluation = (
                     outcome.get("llm_risk_certificate_evaluation")
                     if isinstance(outcome, dict) else None
@@ -409,6 +485,8 @@ def risk_certificate_diagnostics(
                 or abs(brier - (probability - observed) ** 2) > 1e-6
                 or not row.get("paired_same_horizon_outcome")
                 or not row.get("issuance_evaluation_provenance_compatible")
+                or not row.get("interval_monitor_complete")
+                or not row.get("member_trajectory_identity_preserved")
             ):
                 malformed += 1
                 continue
@@ -456,6 +534,8 @@ def risk_certificate_diagnostics(
         "version": RISK_CERTIFICATE_VERSION,
         "evaluation_kind": "realized_shadow_ensemble_mode_risk_certificate",
         "realized_certificates": len(valid),
+        "eligible_certificates": eligible_certificates,
+        "unscored_eligible_certificates": unscored_eligible_certificates,
         "matches": len(valid_match_rows),
         "malformed_certificate_evaluations": malformed,
         "certified_outcomes": sum(len(rows) for rows in certified_groups),
@@ -484,6 +564,20 @@ def risk_certificate_diagnostics(
         "all_non_causal": all(
             not bool(row.get("causal_interpretation")) for row in valid
         ),
+        "all_interval_monitors_complete": all(
+            bool(row.get("interval_monitor_complete")) for row in valid
+        ),
+        "all_member_trajectory_identity_preserved": all(
+            bool(row.get("member_trajectory_identity_preserved"))
+            for row in valid
+        ),
+        "risk_scope_counts": {
+            scope: sum(
+                str(row.get("risk_scope", "terminal")) == scope
+                for row in valid
+            )
+            for scope in sorted(_RISK_SCOPES)
+        },
         "provenance_compatible": bool(
             len(signatures) == 1 and signatures[0] not in unspecified
             and len(scopes) == 1

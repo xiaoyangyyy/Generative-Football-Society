@@ -9,7 +9,7 @@ import numpy as np
 from src.match_engine.world_model.observation import OBS_DIM
 
 
-STATE_SCALE_VERSION = 2
+STATE_SCALE_VERSION = 3
 FALSIFIABLE_SEMANTIC_EVENTS = (
     "retain_possession",
     "enter_final_third",
@@ -127,21 +127,12 @@ def _pressure_at_ball(observations: np.ndarray) -> np.ndarray:
     return observations[np.arange(len(observations)), indices]
 
 
-def trajectory_mode_forecast(
-    current_observation: np.ndarray,
-    transition_samples: Any,
+def _downside_matrix(
+    current: np.ndarray,
+    samples: np.ndarray,
     *,
     attacking_home: bool,
-    ensemble_trained: bool,
-    max_explicit_modes: int = 3,
-) -> dict[str, Any]:
-    """Group members by transparent downside-event signatures."""
-    current = np.asarray(current_observation, dtype=np.float64).reshape(-1)
-    if current.shape != (OBS_DIM,):
-        raise ValueError("current observation must have shape [307]")
-    current = np.clip(np.nan_to_num(current), 0.0, 1.0)
-    current[-1] = 1.0 if attacking_home else 0.0
-    samples = _samples(transition_samples)
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     direction = 1.0 if attacking_home else -1.0
     current_progress = current[200] if attacking_home else 1.0 - current[200]
     future_progress = (
@@ -164,6 +155,66 @@ def trajectory_mode_forecast(
         goal_diff_delta <= -0.5,
         future_progress < 0.67,
     ], axis=1)
+    return downside, progress_delta, retention, goal_diff_delta
+
+
+def trajectory_mode_forecast(
+    current_observation: np.ndarray,
+    transition_samples: Any,
+    *,
+    attacking_home: bool,
+    ensemble_trained: bool,
+    max_explicit_modes: int = 3,
+    transition_trajectory_samples: Any | None = None,
+) -> dict[str, Any]:
+    """Group members by transparent downside-event signatures."""
+    current = np.asarray(current_observation, dtype=np.float64).reshape(-1)
+    if current.shape != (OBS_DIM,):
+        raise ValueError("current observation must have shape [307]")
+    current = np.clip(np.nan_to_num(current), 0.0, 1.0)
+    current[-1] = 1.0 if attacking_home else 0.0
+    samples = _samples(transition_samples)
+    downside, progress_delta, retention, goal_diff_delta = _downside_matrix(
+        current, samples, attacking_home=attacking_home,
+    )
+    trajectory_steps = 1
+    path_downside = downside.copy()
+    if transition_trajectory_samples is not None:
+        trajectory = np.asarray(
+            transition_trajectory_samples, dtype=np.float64,
+        )
+        if trajectory.ndim == 4 and trajectory.shape[2] == 1:
+            trajectory = trajectory[:, :, 0, :]
+        if (
+            trajectory.ndim != 3
+            or trajectory.shape[0] < 1
+            or trajectory.shape[1:] != samples.shape
+            or trajectory.shape[2] != OBS_DIM
+        ):
+            raise ValueError(
+                "trajectory samples must have shape [steps, members, 307]"
+            )
+        trajectory = np.clip(
+            np.nan_to_num(trajectory, nan=0.0, posinf=1.0), 0.0, 1.0,
+        )
+        if not np.allclose(trajectory[-1], samples, atol=1e-6, rtol=0.0):
+            raise ValueError(
+                "trajectory endpoint must equal final member states"
+            )
+        trajectory_steps = int(trajectory.shape[0])
+        step_downside = np.stack([
+            _downside_matrix(
+                current, step, attacking_home=attacking_home,
+            )[0]
+            for step in trajectory
+        ], axis=0)
+        path_downside = np.any(step_downside, axis=0)
+        current_progress = (
+            current[200] if attacking_home else 1.0 - current[200]
+        )
+        path_downside[:, 3] = bool(current_progress < 0.67) & np.all(
+            step_downside[:, :, 3], axis=0,
+        )
     counts = {
         event: int(downside[:, index].sum())
         for index, event in enumerate(FALSIFIABLE_DOWNSIDE_EVENTS)
@@ -175,9 +226,20 @@ def trajectory_mode_forecast(
         )
         for index, event in enumerate(FALSIFIABLE_DOWNSIDE_EVENTS)
     }
+    path_counts = {
+        event: int(path_downside[:, index].sum())
+        for index, event in enumerate(FALSIFIABLE_DOWNSIDE_EVENTS)
+    }
+    path_probabilities = {
+        event: (
+            _smoothed_probability(path_downside[:, index])
+            if ensemble_trained else 0.5
+        )
+        for index, event in enumerate(FALSIFIABLE_DOWNSIDE_EVENTS)
+    }
     if not ensemble_trained or len(samples) < 2:
         return {
-            "version": 1,
+            "version": 2,
             "available": False,
             "reason": "trained_transition_ensemble_required",
             "ensemble_members": int(len(samples)),
@@ -186,22 +248,32 @@ def trajectory_mode_forecast(
             "normalized_mode_entropy": 0.0,
             "downside_event_counts": counts,
             "downside_event_probabilities": probabilities,
+            "path_downside_event_counts": path_counts,
+            "path_downside_event_probabilities": path_probabilities,
+            "trajectory_steps": trajectory_steps,
+            "temporal_path_available": False,
+            "path_counts_trusted": False,
             "counts_trusted": False,
             "causal_interpretation": False,
         }
     groups: dict[tuple[int, ...], list[int]] = {}
-    for member_index, signature in enumerate(downside.astype(int)):
+    signatures = np.concatenate([downside, path_downside], axis=1).astype(int)
+    for member_index, signature in enumerate(signatures):
         groups.setdefault(tuple(map(int, signature)), []).append(member_index)
     ordered = sorted(groups.items(), key=lambda item: (-len(item[1]), item[0]))
     explicit = ordered[:max(1, int(max_explicit_modes))]
     if len(ordered) > len(explicit):
         tail = [index for _, indices in ordered[len(explicit):] for index in indices]
-        explicit.append((tuple([-1] * len(FALSIFIABLE_DOWNSIDE_EVENTS)), tail))
+        explicit.append((tuple([-1] * signatures.shape[1]), tail))
     modes = []
     for mode_index, (signature, member_indices) in enumerate(explicit):
         selected = np.asarray(member_indices, dtype=int)
         event_rates = {
             event: float(np.mean(downside[selected, event_index]))
+            for event_index, event in enumerate(FALSIFIABLE_DOWNSIDE_EVENTS)
+        }
+        path_event_rates = {
+            event: float(np.mean(path_downside[selected, event_index]))
             for event_index, event in enumerate(FALSIFIABLE_DOWNSIDE_EVENTS)
         }
         modes.append({
@@ -213,6 +285,8 @@ def trajectory_mode_forecast(
             "member_indices": list(map(int, member_indices)),
             "probability": float(len(member_indices) / len(samples)),
             "downside_events": event_rates,
+            "terminal_downside_events": event_rates,
+            "path_downside_events": path_event_rates,
             "mean_downside_rate": float(np.mean(list(event_rates.values()))),
             "mean_progress_delta": float(np.mean(progress_delta[selected])),
             "retention_probability": float(np.mean(retention[selected])),
@@ -226,7 +300,7 @@ def trajectory_mode_forecast(
     ))
     entropy /= float(np.log(max(2, len(modes))))
     return {
-        "version": 1,
+        "version": 2,
         "available": True,
         "reason": "transparent_member_downside_signature_partition",
         "ensemble_members": int(len(samples)),
@@ -236,9 +310,16 @@ def trajectory_mode_forecast(
         "multimodal": len(modes) >= 2,
         "downside_event_counts": counts,
         "downside_event_probabilities": probabilities,
+        "path_downside_event_counts": path_counts,
+        "path_downside_event_probabilities": path_probabilities,
+        "trajectory_steps": trajectory_steps,
+        "temporal_path_available": trajectory_steps >= 2,
+        "path_counts_trusted": trajectory_steps >= 2,
         "counts_trusted": True,
         "probability_source": "jeffreys_smoothed_member_frequency",
-        "grouping_source": "exact_schema_downside_event_signatures",
+        "grouping_source": (
+            "exact_terminal_and_pathwise_downside_event_signatures"
+        ),
         "causal_interpretation": False,
     }
 
@@ -250,6 +331,7 @@ def multiscale_state_forecast(
     attacking_home: bool,
     horizon_s: float,
     ensemble_trained: bool = True,
+    transition_trajectory_samples: Any | None = None,
 ) -> dict[str, Any]:
     """Project raw member states into short, tactical and strategic evidence."""
     current = np.asarray(current_observation, dtype=np.float64).reshape(-1)
@@ -302,6 +384,7 @@ def multiscale_state_forecast(
         samples,
         attacking_home=attacking_home,
         ensemble_trained=ensemble_trained,
+        transition_trajectory_samples=transition_trajectory_samples,
     )
     return {
         "version": STATE_SCALE_VERSION,

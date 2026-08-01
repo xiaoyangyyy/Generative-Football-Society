@@ -109,6 +109,52 @@ def test_multiscale_projection_respects_attacking_orientation():
     ].values()) == {0.5}
 
 
+def test_member_consistent_trajectory_reports_ever_risk_separately():
+    current = np.zeros(OBS_DIM, dtype=np.float32)
+    current[200] = 0.50
+    current[209] = 1.0
+    terminal = np.repeat(current[None, :], 4, axis=0)
+    terminal[:, 200] = 0.60
+    trajectory = np.repeat(terminal[None, :, :], 2, axis=0)
+    trajectory[0, 0, 209] = 0.0
+    trajectory[0, 0, 200] = 0.80
+
+    forecast = multiscale_state_forecast(
+        current,
+        terminal,
+        attacking_home=True,
+        horizon_s=60.0,
+        transition_trajectory_samples=trajectory,
+    )
+    modes = forecast["trajectory_modes"]
+
+    assert modes["version"] == 2
+    assert modes["trajectory_steps"] == 2
+    assert modes["temporal_path_available"]
+    assert modes["downside_event_counts"]["lose_possession"] == 0
+    assert modes["path_downside_event_counts"]["lose_possession"] == 1
+    assert modes["downside_event_counts"]["fail_enter_final_third"] == 4
+    assert modes["path_downside_event_counts"][
+        "fail_enter_final_third"
+    ] == 3
+    assert modes["path_downside_event_probabilities"][
+        "lose_possession"
+    ] == pytest.approx(0.3)
+    assert any(
+        mode["path_downside_events"]["lose_possession"] > 0.0
+        for mode in modes["modes"]
+    )
+    trajectory[-1, 0, 200] = 0.9
+    with pytest.raises(ValueError, match="endpoint"):
+        multiscale_state_forecast(
+            current,
+            terminal,
+            attacking_home=True,
+            horizon_s=60.0,
+            transition_trajectory_samples=trajectory,
+        )
+
+
 def test_llm_event_hypothesis_is_grounded_and_shadow_only():
     packet = _packet()
     raw = {

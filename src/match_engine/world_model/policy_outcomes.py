@@ -5,7 +5,10 @@ from __future__ import annotations
 import math
 from typing import Any, Iterable
 
-from src.match_engine.world_model.policy_experiment import policy_horizon_key
+from src.match_engine.world_model.policy_experiment import (
+    policy_horizon_key,
+    policy_horizon_seconds,
+)
 
 
 def normalize_outcome_horizons(values: Iterable[Any]) -> tuple[float, ...]:
@@ -158,6 +161,101 @@ def _realized_policy_utility(
     }
 
 
+def _observe_interval_risk(
+    record: dict[str, Any],
+    outcome: dict[str, Any],
+    baseline: dict[str, Any],
+    *,
+    attacking_home: bool,
+    now: float,
+    anchor: float,
+) -> dict[str, Any] | None:
+    context = record.get("llm_risk_certificate_context") or {}
+    constraint = context.get("constraint") or {}
+    if (
+        not context.get("accepted")
+        or constraint.get("risk_scope") != "within_horizon"
+        or str(constraint.get("selected_action", "")).lower()
+        != str(record.get("intervention_actual_action", "")).lower()
+    ):
+        return None
+    try:
+        horizon_s = policy_horizon_seconds(str(constraint["horizon"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+    due = anchor + horizon_s
+    monitor = record.setdefault("llm_risk_interval_monitor", {
+        "risk_scope": "within_horizon",
+        "downside_event": str(constraint.get("downside_event", "")),
+        "horizon_s": horizon_s,
+        "downside_observed": False,
+        "success_observed": bool(
+            str(constraint.get("downside_event", ""))
+            == "fail_enter_final_third"
+            and (
+                float(baseline["ball_x"])
+                if attacking_home else 1.0 - float(baseline["ball_x"])
+            ) >= 0.67
+        ),
+        "observations": 0,
+        "first_observed_t_sec": None,
+        "last_observed_t_sec": None,
+        "max_gap_s": 0.0,
+        "complete": False,
+        "closed": False,
+    })
+    if monitor.get("closed") or now + 1e-9 < anchor:
+        return monitor
+    from src.match_engine.world_model.risk_certificate import (
+        observed_downside_event,
+    )
+
+    observed = observed_downside_event(
+        str(constraint.get("downside_event", "")),
+        outcome,
+        baseline,
+        attacking_home=attacking_home,
+    )
+    previous = monitor.get("last_observed_t_sec")
+    if previous is None:
+        monitor["first_observed_t_sec"] = now
+        gap = max(0.0, now - anchor)
+    else:
+        gap = max(0.0, now - float(previous))
+    monitor["max_gap_s"] = max(float(monitor["max_gap_s"]), gap)
+    monitor["last_observed_t_sec"] = now
+    monitor["observations"] = int(monitor["observations"]) + 1
+    if str(constraint.get("downside_event", "")) == "fail_enter_final_third":
+        monitor["success_observed"] = bool(
+            monitor["success_observed"] or not observed
+        )
+    else:
+        monitor["downside_observed"] = bool(
+            monitor["downside_observed"] or observed
+        )
+    if now + 1e-9 >= due:
+        if str(constraint.get("downside_event", "")) == (
+            "fail_enter_final_third"
+        ):
+            monitor["downside_observed"] = not bool(
+                monitor["success_observed"]
+            )
+        end_gap = max(0.0, due - now)
+        monitor["max_gap_s"] = max(float(monitor["max_gap_s"]), end_gap)
+        tolerance = max(5.0, 0.10 * horizon_s)
+        start_delay = max(
+            0.0, float(monitor["first_observed_t_sec"]) - anchor,
+        )
+        monitor["complete"] = bool(
+            int(monitor["observations"]) >= 2
+            and start_delay <= tolerance
+            and float(monitor["max_gap_s"]) <= tolerance
+        )
+        monitor["closed"] = True
+        monitor["coverage_tolerance_s"] = tolerance
+    return monitor
+
+
 def _event_option_evaluation(record: dict[str, Any]) -> dict[str, Any] | None:
     for outcome in (
         record.get("multi_horizon_regime_outcomes") or {}
@@ -264,6 +362,14 @@ def observe_policy_intervention_outcomes(
         goal_delta = float(realized["goal_diff_delta"])
         retained = bool(realized["retained_possession"])
         utility = float(realized["policy_utility"])
+        interval_monitor = _observe_interval_risk(
+            record,
+            realized,
+            baseline,
+            attacking_home=attacking_home,
+            now=now,
+            anchor=anchor,
+        )
         for horizon_s in record.get("outcome_horizons_s", [0.0]):
             horizon_s = max(0.0, float(horizon_s))
             key = policy_horizon_key(horizon_s)
@@ -345,6 +451,7 @@ def observe_policy_intervention_outcomes(
                     environment_signature=str(record.get(
                         "environment_signature", "environment_unspecified",
                     )),
+                    interval_monitor=interval_monitor,
                 )
                 if risk_score is not None:
                     outcome["llm_risk_certificate_evaluation"] = risk_score

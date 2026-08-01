@@ -15,6 +15,7 @@ from src.match_engine.world_model.decision_adoption import (
     register_coach_action_decision,
 )
 from src.match_engine.world_model.policy_outcomes import (
+    _observe_interval_risk,
     capture_policy_outcome_baseline,
     censor_overlapping_policy_outcomes,
     observe_policy_intervention_outcomes,
@@ -814,6 +815,94 @@ def test_risk_certificate_is_scored_only_for_matching_action_and_horizon():
     assert "llm_risk_certificate_evaluation" not in record[
         "multi_horizon_regime_outcomes"
     ]["transition"]
+
+
+def test_within_horizon_certificate_tracks_transient_downside():
+    state = SimpleNamespace(
+        clock_seconds=10.0,
+        home=SimpleNamespace(team_id="A", score=0),
+        away=SimpleNamespace(team_id="B", score=0),
+        ball=SimpleNamespace(position=[0.50, 0.50], possession_team_id="A"),
+        micro_xg_home=0.2,
+        micro_xg_away=0.1,
+    )
+    context = {
+        "version": 2,
+        "accepted": True,
+        "constraint": {
+            "selected_action": "pass",
+            "horizon": "60s",
+            "downside_event": "lose_possession",
+            "risk_scope": "within_horizon",
+            "max_violation_probability": 0.7,
+            "confidence": 0.8,
+            "rationale": "Bound any turnover during the interval.",
+        },
+        "projected_violation_probability": 0.25,
+        "wilson_upper_violation_probability_90": 0.55,
+        "conservatively_certified": True,
+        "certificate_signature": "llm-risk-certificate:test",
+        "checkpoint_signature": "checkpoint:test",
+        "environment_signature": "environment:test",
+    }
+    record = register_coach_action_decision(
+        state, team_id="A", trigger_kind="clock",
+        llm_selected_action="pass", world_model_recommended_action="pass",
+        recommendation_confidence=0.8, horizon_s=10.0,
+        outcome_horizons_s=(60.0,), checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+        llm_risk_certificate_context=context,
+    )
+    baseline = capture_policy_outcome_baseline(state, team_id="A")
+    record_policy_intervention_result(
+        state, decision_id=record["decision_id"], actual_action="pass",
+        t_sec=11.0, outcome_baseline=baseline,
+    )
+    for now in range(11, 72, 5):
+        state.ball.possession_team_id = "B" if now == 21 else "A"
+        observe_policy_intervention_outcomes(state, t_sec=float(now))
+
+    evaluation = record["multi_horizon_regime_outcomes"]["60s"][
+        "llm_risk_certificate_evaluation"
+    ]
+    assert evaluation["downside_observed"]
+    assert evaluation["interval_monitor_complete"]
+    assert evaluation["interval_observation_count"] >= 12
+    assert evaluation["interval_max_gap_s"] <= 5.0
+
+
+def test_within_horizon_final_third_failure_uses_never_entered_semantics():
+    record = {
+        "intervention_actual_action": "pass",
+        "llm_risk_certificate_context": {
+            "accepted": True,
+            "constraint": {
+                "selected_action": "pass",
+                "horizon": "60s",
+                "downside_event": "fail_enter_final_third",
+                "risk_scope": "within_horizon",
+            },
+        },
+    }
+    baseline = {"ball_x": 0.50}
+    monitor = None
+    for now in range(0, 61, 5):
+        monitor = _observe_interval_risk(
+            record,
+            {
+                "retained_possession": True,
+                "progress": 0.25 if now == 20 else 0.0,
+                "goal_diff_delta": 0.0,
+            },
+            baseline,
+            attacking_home=True,
+            now=float(now),
+            anchor=0.0,
+        )
+
+    assert monitor["complete"]
+    assert monitor["success_observed"]
+    assert not monitor["downside_observed"]
 
 
 def test_longest_ready_outcome_horizon_drives_reliability_feedback():

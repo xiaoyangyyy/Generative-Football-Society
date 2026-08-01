@@ -591,6 +591,11 @@ class WorldModelRuntime:
             ensemble_trained=bool((output.uncertainty_samples or {}).get(
                 "transition_ensemble_trained", False,
             )),
+            transition_trajectory_samples=(
+                (output.uncertainty_samples or {}).get(
+                    "transition_state_trajectory"
+                )
+            ),
         )
         future_members = np.asarray(transition_samples, dtype=np.float32)
         if future_members.ndim == 2:

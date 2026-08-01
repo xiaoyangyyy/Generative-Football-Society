@@ -702,14 +702,18 @@ repair evidence cannot pool across different cost or deliberation regimes.
 
 Every multiscale prediction now exposes `trajectory_modes`, a transparent
 partition of trained transition-ensemble members. Members are grouped by exact
-downside signatures: loss of possession, negative territorial shift, worsening
-scoreline, and failure to enter the final third. The three largest signatures
-are reported explicitly; smaller signatures are combined into a residual mixed
-tail. Each mode retains its member indices, probability, downside rates,
-progress, possession retention and score-difference movement. Normalized mode
-entropy describes disagreement between these alternative futures. These modes
-are a readable decomposition of the existing ensemble, not an additional model
-or source of truth. Untrained ensembles expose neutral `0.5` probabilities and
+terminal and pathwise downside signatures: loss of possession, negative
+territorial shift, worsening scoreline, and failure to enter the final third.
+For multi-step forecasts the model returns every intermediate member state from
+one autoregressive rollout; it never constructs a path by joining independent
+horizon calls. The endpoint must exactly match the final member forecast or the
+path is rejected. The three largest signatures are reported explicitly;
+smaller signatures are combined into a residual mixed tail. Each mode retains
+its member indices, probability, terminal and interval downside rates, progress,
+possession retention and score-difference movement. Normalized mode entropy
+describes disagreement between these alternative futures. These modes are a
+readable decomposition of the existing ensemble, not an additional model or
+source of truth. Untrained ensembles expose neutral `0.5` probabilities and
 untrusted counts, so they cannot issue certificates.
 
 The coach may declare one `world_model_risk_constraint` for its selected action,
@@ -720,6 +724,19 @@ from the raw member count. A constraint is conservatively certified only when
 the upper bound—not merely the point estimate—is below the declared limit.
 Two-step certificates require the same held-out planning gate as predicted-state
 search; deeper horizons and untrained modes fail closed.
+
+`risk_scope=terminal` evaluates the declared event only at the horizon endpoint.
+`risk_scope=within_horizon` instead evaluates member-aligned intermediate states
+and is available only for an exactly two-step validated rollout. Loss of
+possession, negative territorial shift and scoreline worsening use ANY-step
+semantics; failure to enter the final third uses NEVER-entered semantics, so an
+early midfield state does not become a false violation after a later successful
+entry. The live simulator mirrors those definitions by monitoring the realized
+interval from the executed action to the declared horizon. It records the first
+and last observation, maximum sampling gap, and whether a downside occurred at
+any point. A negative label is accepted only with at least two observations and
+coverage whose start and maximum gap are within the explicit tolerance; an
+eligible due certificate with incomplete monitoring remains visibly unscored.
 
 Certification is always shadow-only. It cannot veto, authorize, strengthen, or
 change the selected action. If the simulator later executes that exact action,

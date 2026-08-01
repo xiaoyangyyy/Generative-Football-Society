@@ -119,11 +119,14 @@ and cross-match diagnostics require genuine directional improvement. This adds
 model-guided self-correction without turning explanation revision into a second
 policy decision.
 The ensemble's alternative futures are also decomposed into transparent
-downside-signature modes rather than hidden behind a single mean. An LLM may
-declare one chance constraint over those members, but a one-sided Wilson bound
-must conservatively certify it and the exact action/horizon must later be scored
-against the simulator. The certificate remains shadow-only and can never veto
-or authorize play, making risk language falsifiable without quietly granting
-the language model policy authority.
+downside-signature modes rather than hidden behind a single mean. Multi-step
+modes use intermediate states from one member-consistent autoregressive rollout,
+never a synthetic join across independent horizons. An LLM may declare either
+terminal risk or risk occurring anywhere inside that path. A one-sided Wilson
+bound must conservatively certify it, and the exact action/horizon is later
+scored against either the endpoint or a coverage-audited live interval monitor.
+The certificate remains shadow-only and can never veto or authorize play,
+making temporal risk language falsifiable without quietly granting the language
+model policy authority.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

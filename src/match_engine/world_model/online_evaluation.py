@@ -429,6 +429,7 @@ def aggregate_online_calibration(
         >= max(4, min_residual_samples)
         and llm_risk_certificates["matches"] >= 4
         and llm_risk_certificates["malformed_certificate_evaluations"] == 0
+        and llm_risk_certificates["unscored_eligible_certificates"] == 0
         and llm_risk_certificates["certified_outcomes"]
         >= max(4, min_residual_samples)
         and llm_risk_certificates["certified_matches"] >= 4
@@ -441,6 +442,10 @@ def aggregate_online_calibration(
         and llm_risk_certificates["all_shadow_only"]
         and llm_risk_certificates["all_non_controlling"]
         and llm_risk_certificates["all_non_causal"]
+        and llm_risk_certificates["all_interval_monitors_complete"]
+        and llm_risk_certificates[
+            "all_member_trajectory_identity_preserved"
+        ]
         and llm_risk_certificates["provenance_compatible"]
     )
     gates["realized_llm_risk_certificates"] = (
@@ -448,7 +453,7 @@ def aggregate_online_calibration(
         if require_llm_risk_certificates else True
     )
     return {
-        "version": 16,
+        "version": 17,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),

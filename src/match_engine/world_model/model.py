@@ -448,6 +448,7 @@ if _TORCH:
                         initial_hidden.clone()
                         for _ in range(self.transition_member_count)
                     ]
+                trajectory_states = []
                 for _ in range(max(1, steps)):
                     next_obs = []
                     next_z = []
@@ -465,6 +466,7 @@ if _TORCH:
                     member_obs = next_obs
                     member_z = next_z
                     member_hidden = next_hidden
+                    trajectory_states.append(torch.stack(member_obs, dim=0))
                 next_obs_members = torch.stack(member_obs, dim=0)
                 next_obs_t = next_obs_members.mean(dim=0)
                 outcome_members = [
@@ -523,6 +525,10 @@ if _TORCH:
                     "progress": progress_vals.detach().cpu().numpy(),
                     "transition_states": (
                         next_obs_members.detach().cpu().numpy()
+                    ),
+                    "transition_state_trajectory": (
+                        torch.stack(trajectory_states, dim=0)
+                        .detach().cpu().numpy()
                     ),
                     "transition_ensemble_trained": (
                         self.transition_ensemble_trained
