@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
 import math
 from typing import Any
@@ -10,7 +11,76 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 3
+LLM_DECISION_BRIEF_VERSION = 4
+
+
+TASK_REASONING_DOMAINS = {
+    "opponent_information_adaptation": "opponent_information",
+    "opponent_information_query": "opponent_information",
+    "opponent_response_hypothesis": "opponent_game",
+    "opponent_hypothesis": "opponent_belief",
+    "opponent_change_claim": "opponent_belief",
+    "world_model_risk_preference": "temporal_risk",
+    "world_model_risk_constraint": "trajectory_risk",
+    "world_model_distributional_claim": "distributional_risk",
+    "world_model_contrastive_claim": "model_explanation",
+    "world_model_event_option": "contingent_planning",
+    "world_model_event_hypothesis": "semantic_forecast",
+    "world_model_critique": "model_calibration",
+}
+
+
+def deliberation_portfolio_objective(
+    task_names: list[str] | tuple[str, ...],
+    task_rows: dict[str, dict[str, Any]],
+) -> float:
+    rows = [task_rows[task] for task in task_names]
+    domains = {str(row["reasoning_domain"]) for row in rows}
+    return float(
+        sum(float(row["portfolio_score"]) for row in rows)
+        + 0.04 * max(0, len(domains) - 1)
+    )
+
+
+def _best_deliberation_portfolio(
+    tasks: list[dict[str, Any]], size: int,
+) -> dict[str, Any] | None:
+    task_rows = {str(row["task"]): row for row in tasks}
+    eligible = sorted(
+        task for task, row in task_rows.items() if row.get("eligible")
+    )
+    candidates = []
+    for names in itertools.combinations(eligible, size):
+        compute = sum(
+            int(task_rows[task]["expected_compute_credits"])
+            for task in names
+        )
+        if compute > 6:
+            continue
+        candidates.append({
+            "tasks": list(names),
+            "objective": deliberation_portfolio_objective(names, task_rows),
+            "raw_priority_sum": sum(
+                float(task_rows[task]["priority"]) for task in names
+            ),
+            "expected_compute_credits": compute,
+            "reasoning_domains": sorted({
+                str(task_rows[task]["reasoning_domain"]) for task in names
+            }),
+        })
+    if not candidates:
+        return None
+    maximum_raw_priority = max(
+        row["raw_priority_sum"] for row in candidates
+    )
+    evidence_safe = [
+        row for row in candidates
+        if row["raw_priority_sum"]
+        >= 0.80 * maximum_raw_priority - 1e-12
+    ]
+    return sorted(evidence_safe, key=lambda row: (
+        -row["objective"], -row["raw_priority_sum"], row["tasks"],
+    ))[0]
 
 
 def _json_hash(value: Any, prefix: str) -> str:
@@ -23,7 +93,7 @@ def _json_hash(value: Any, prefix: str) -> str:
 def _finite(value: Any, default: float = 0.0) -> float:
     try:
         number = float(value)
-    except (TypeError, ValueError, OverflowError):
+    except (KeyError, TypeError, ValueError, OverflowError):
         return float(default)
     return number if math.isfinite(number) else float(default)
 
@@ -264,6 +334,17 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
          0.80 if change_status == "confirmed" else 0.60,
          "numeric_opponent_change_detector"),
     ]
+    compute_value_memory = packet.get(
+        "deliberation_compute_value_memory"
+    ) or {}
+    from src.match_engine.world_model.llm_deliberation_compute_value import (
+        deliberation_compute_value_memory_is_valid,
+    )
+
+    value_memory_valid = deliberation_compute_value_memory_is_valid(
+        compute_value_memory
+    )
+    value_rows = compute_value_memory.get("task_values") or {}
     tasks = [
         {
             "task": task,
@@ -278,19 +359,61 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
                 }
                 else "existing_evidence_audit"
             ),
+            "reasoning_domain": TASK_REASONING_DOMAINS[task],
+            "expected_compute_credits": (
+                2 if task in {
+                    "world_model_event_option",
+                    "world_model_contrastive_claim",
+                } else 1
+            ),
+            "learned_compute_value_adjustment": float(np.clip(
+                (
+                    0.10 * float((value_rows.get(task) or {}).get(
+                        "posterior_marginal_value", 0.0,
+                    ))
+                    if value_memory_valid and str((
+                        value_rows.get(task) or {}
+                    ).get("status", "")).startswith("validated_")
+                    else 0.0
+                ),
+                -0.08, 0.08,
+            )),
         }
         for task, eligible, priority, reason in task_specs
     ]
-    ranked = sorted(
-        (task for task in tasks if task["eligible"]),
-        key=lambda task: (-task["priority"], task["task"]),
-    )
+    for task in tasks:
+        task["portfolio_score"] = float(np.clip(
+            task["priority"]
+            + task["learned_compute_value_adjustment"]
+            - (0.03 if task["compute_cost_class"] == "trajectory_rollout"
+               else 0.0),
+            0.0, 1.0,
+        ))
+    portfolios = {
+        str(size): portfolio
+        for size in range(1, 4)
+        if (portfolio := _best_deliberation_portfolio(tasks, size)) is not None
+    }
+    largest = max(map(int, portfolios), default=0)
+    recommended = list((portfolios.get(str(largest)) or {}).get("tasks") or [])
     return {
-        "version": 1,
+        "version": 2,
         "maximum_recommended_focus_tasks": 3,
         "total_post_llm_compute_credits": 6,
         "maximum_compute_credits_per_task": 3,
-        "recommended_focus": [task["task"] for task in ranked[:3]],
+        "recommended_focus": recommended,
+        "recommended_portfolios_by_size": portfolios,
+        "portfolio_policy": {
+            "objective": (
+                "priority_plus_validated_compute_value_minus_real_compute_cost_"
+                "plus_reasoning_domain_diversity"
+            ),
+            "reasoning_domain_diversity_bonus": 0.04,
+            "trajectory_compute_cost_penalty": 0.03,
+            "maximum_expected_compute_credits": 6,
+            "learned_value_adjustment_bounds": [-0.08, 0.08],
+            "minimum_raw_priority_fraction": 0.80,
+        },
         "tasks": tasks,
         "signals": {
             "top_action_margin": margin,
@@ -395,7 +518,17 @@ def llm_decision_brief_self_is_valid(brief: Any) -> bool:
         per_task_budget = int(agenda.get(
             "maximum_compute_credits_per_task"
         ))
-    except (TypeError, ValueError, OverflowError):
+        task_rows = list(agenda["tasks"])
+        task_names = [str(row["task"]) for row in task_rows]
+        portfolios = dict(agenda["recommended_portfolios_by_size"])
+        expected_portfolios = {
+            str(size): portfolio
+            for size in range(1, 4)
+            if (portfolio := _best_deliberation_portfolio(
+                task_rows, size,
+            )) is not None
+        }
+    except (KeyError, TypeError, ValueError, OverflowError):
         return False
     return bool(
         digest == expected
@@ -407,6 +540,13 @@ def llm_decision_brief_self_is_valid(brief: Any) -> bool:
         and 1 <= maximum <= 3
         and compute_budget == 6
         and per_task_budget == 3
+        and agenda.get("version") == 2
+        and len(task_names) == len(set(task_names))
+        and set(task_names) == set(TASK_REASONING_DOMAINS)
+        and portfolios == expected_portfolios
+        and focus == list((
+            portfolios.get(str(max(map(int, portfolios), default=0))) or {}
+        ).get("tasks") or [])
         and isinstance(focus, list)
         and len(focus) <= maximum
     )

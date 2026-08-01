@@ -330,13 +330,22 @@ def test_randomized_prior_learns_value_without_current_record_leakage():
         logs, min_transitions=0,
         require_llm_deliberation_compute_value=True,
     )
-    assert report["version"] == 33
+    assert report["version"] == 34
     assert report["llm_deliberation_compute_value_ready"]
     assert report["gates"]["llm_deliberation_compute_value"]
 
     next_packet = copy.deepcopy(base_packet)
     next_packet["deliberation_compute_value_memory"] = memory
     next_brief = build_llm_decision_brief(next_packet)
+    learned_task = next(
+        row for row in next_brief["deliberation_agenda"]["tasks"]
+        if row["task"] == "world_model_contrastive_claim"
+    )
+    assert learned_task["learned_compute_value_adjustment"] > 0.0
+    assert learned_task["portfolio_score"] == (
+        learned_task["priority"]
+        + learned_task["learned_compute_value_adjustment"] - 0.03
+    )
     learned = build_deliberation_compute_allocation(
         next_brief, _plan(["world_model_contrastive_claim"]),
     )

@@ -10,12 +10,13 @@ from typing import Any, Iterable
 import numpy as np
 
 from src.match_engine.world_model.llm_decision_brief import (
+    deliberation_portfolio_objective,
     llm_decision_brief_metadata_is_valid,
     llm_decision_brief_self_is_valid,
 )
 
 
-LLM_DELIBERATION_FOCUS_VERSION = 4
+LLM_DELIBERATION_FOCUS_VERSION = 5
 TASK_CONTRACTS = {
     "opponent_hypothesis": (
         "opponent_hypothesis", "opponent_belief_audit",
@@ -381,6 +382,25 @@ def _audit_from_evidence(
         if optimal_priority > 1e-12 else 1.0
     )
     efficiency = float(np.clip(efficiency, 0.0, 1.0))
+    selected_portfolio_tasks = sorted(selected & set(agenda_tasks))
+    selected_portfolio_objective = (
+        deliberation_portfolio_objective(
+            selected_portfolio_tasks, agenda_tasks,
+        ) if selected_portfolio_tasks else 0.0
+    )
+    optimal_portfolio = (
+        agenda.get("recommended_portfolios_by_size") or {}
+    ).get(str(len(selected))) or {}
+    optimal_portfolio_objective = float(
+        optimal_portfolio.get("objective", 0.0)
+    )
+    portfolio_efficiency = (
+        selected_portfolio_objective / optimal_portfolio_objective
+        if optimal_portfolio_objective > 1e-12 else 0.0
+    )
+    portfolio_efficiency = float(np.clip(
+        portfolio_efficiency, 0.0, 1.0,
+    ))
     recommended = list(agenda.get("recommended_focus") or [])
     payload = {
         "version": LLM_DELIBERATION_FOCUS_VERSION,
@@ -421,12 +441,18 @@ def _audit_from_evidence(
         "selected_priority_sum": selected_priority,
         "optimal_same_budget_priority_sum": optimal_priority,
         "focus_priority_efficiency": efficiency,
+        "selected_portfolio_objective": selected_portfolio_objective,
+        "optimal_same_size_portfolio_objective": (
+            optimal_portfolio_objective
+        ),
+        "focus_portfolio_efficiency": portfolio_efficiency,
         "model_checked_consistent": bool(
             not unsupported and not unfocused and not missing
             and not nonexperimental_rejected
             and compute_allocation_valid and compute_allocation_matches_model
             and not compute_budget_mismatches
             and efficiency >= 0.80 - 1e-12
+            and portfolio_efficiency >= 0.80 - 1e-12
         ),
         "focus_signature": str(focus_signature),
         "shadow_only": True,
@@ -542,6 +568,7 @@ def llm_deliberation_focus_diagnostics(
     all_unfocused_compute_isolated = True
     clustered_consistency = []
     clustered_efficiency = []
+    clustered_portfolio_efficiency = []
     clustered_compute_value = []
     focus_counts: dict[str, int] = {}
     compute_credit_counts: dict[str, int] = {}
@@ -602,6 +629,10 @@ def llm_deliberation_focus_diagnostics(
                 float(audit["focus_priority_efficiency"])
                 for audit in match_audits
             ])))
+            clustered_portfolio_efficiency.append(float(np.mean([
+                float(audit["focus_portfolio_efficiency"])
+                for audit in match_audits
+            ])))
             clustered_compute_value.append(float(np.mean([
                 float((audit.get("compute_allocation") or {}).get(
                     "mean_priority_per_allocated_credit", 0.0,
@@ -637,6 +668,9 @@ def llm_deliberation_focus_diagnostics(
         "match_clustered_focus_priority_efficiency": float(np.mean(
             clustered_efficiency
         )) if clustered_efficiency else 0.0,
+        "match_clustered_focus_portfolio_efficiency": float(np.mean(
+            clustered_portfolio_efficiency
+        )) if clustered_portfolio_efficiency else 0.0,
         "match_clustered_focus_declaration_rate": float(np.mean(
             clustered_coverage
         )) if clustered_coverage else 0.0,

@@ -33,6 +33,7 @@ from src.match_engine.world_model.opponent_information_feedback import (
 from src.match_engine.world_model.llm_decision_brief import (
     build_llm_decision_brief,
     compact_world_model_facts_for_llm,
+    deliberation_portfolio_objective,
     llm_decision_brief_diagnostics,
     llm_decision_brief_metadata_is_valid,
     llm_decision_brief_self_is_valid,
@@ -178,11 +179,42 @@ def test_trained_runtime_builds_member_utility_frontiers_end_to_end():
         task["task"] for task in agenda["tasks"] if task["eligible"]
     }
     assert set(agenda["recommended_focus"]) <= eligible_tasks
+    assert agenda["version"] == 2
+    assert agenda["recommended_focus"] == agenda[
+        "recommended_portfolios_by_size"
+    ][str(len(agenda["recommended_focus"]))]["tasks"]
+    for size, portfolio in agenda[
+        "recommended_portfolios_by_size"
+    ].items():
+        assert len(portfolio["tasks"]) == int(size)
+        assert portfolio["expected_compute_credits"] <= 6
+        assert set(portfolio["tasks"]) <= eligible_tasks
+    for task in agenda["tasks"]:
+        assert task["reasoning_domain"]
+        assert 1 <= task["expected_compute_credits"] <= 2
+        assert -0.08 <= task["learned_compute_value_adjustment"] <= 0.08
+        assert 0.0 <= task["portfolio_score"] <= 1.0
+    same_domain = {
+        "a": {"portfolio_score": 0.5, "reasoning_domain": "one"},
+        "b": {"portfolio_score": 0.5, "reasoning_domain": "one"},
+    }
+    diverse = {
+        **same_domain,
+        "b": {"portfolio_score": 0.5, "reasoning_domain": "two"},
+    }
+    assert deliberation_portfolio_objective(["a", "b"], diverse) == (
+        deliberation_portfolio_objective(["a", "b"], same_domain) + 0.04
+    )
     tampered_brief = json.loads(json.dumps(brief))
     tampered_brief["deliberation_agenda"]["recommended_focus"] = [
         "rewrite_world_model"
     ]
     assert not llm_decision_brief_is_valid(tampered_brief, packet)
+    tampered_portfolio = json.loads(json.dumps(brief))
+    tampered_portfolio["deliberation_agenda"][
+        "recommended_portfolios_by_size"
+    ]["1"]["objective"] += 1.0
+    assert not llm_decision_brief_is_valid(tampered_portfolio, packet)
     repaired_projection = compact_world_model_facts_for_llm({
         "world_model_decision_support": packet,
         "world_model_llm_decision_brief": tampered_brief,

@@ -33,7 +33,9 @@ from tests.test_world_model_llm_fusion import _Runtime, _state
 
 
 def _focused_plan(brief):
-    task = brief["deliberation_agenda"]["recommended_focus"][0]
+    task = brief["deliberation_agenda"][
+        "recommended_portfolios_by_size"
+    ]["1"]["tasks"][0]
     contract_key, audit_key = TASK_CONTRACTS[task]
     return task, {
         "world_model_deliberation_focus": {
@@ -80,6 +82,7 @@ def test_model_checks_focus_budget_alignment_and_priority_efficiency():
     assert audit["accepted"]
     assert audit["focus"]["tasks"] == [task]
     assert audit["focus_priority_efficiency"] == 1.0
+    assert audit["focus_portfolio_efficiency"] == 1.0
     assert audit["model_checked_consistent"]
     assert not audit["unsupported_selected_tasks"]
     assert not audit["unfocused_emitted_contracts"]
@@ -114,6 +117,28 @@ def test_model_checks_focus_budget_alignment_and_priority_efficiency():
     )
     assert not rejected["model_checked_consistent"]
     assert rejected["rejected_selected_contracts"] == [task]
+
+    low_row = min((
+        row for row in brief["deliberation_agenda"]["tasks"]
+        if row["eligible"]
+        and row["compute_cost_class"] == "existing_evidence_audit"
+    ), key=lambda row: row["portfolio_score"])
+    low_contract, low_audit = TASK_CONTRACTS[low_row["task"]]
+    inefficient_plan = {
+        "world_model_deliberation_focus": {
+            "tasks": [low_row["task"]],
+            "confidence": 0.8,
+            "rationale": "Deliberately choose a weak portfolio.",
+        },
+        low_contract: {"placeholder": True},
+        low_audit: {"accepted": True},
+    }
+    inefficient = evaluate_llm_deliberation_focus(
+        brief, inefficient_plan,
+        focus_signature="llm-deliberation-focus:test",
+    )
+    assert inefficient["focus_portfolio_efficiency"] < 0.80
+    assert not inefficient["model_checked_consistent"]
 
     tampered = copy.deepcopy(audit)
     tampered["focus_priority_efficiency"] = 0.0
@@ -157,6 +182,7 @@ def test_focus_diagnostics_and_strict_online_gate_are_match_clustered():
     assert diagnostics["match_clustered_focus_declaration_rate"] == 1.0
     assert diagnostics["match_clustered_consistency_rate"] == 1.0
     assert diagnostics["match_clustered_focus_priority_efficiency"] == 1.0
+    assert diagnostics["match_clustered_focus_portfolio_efficiency"] == 1.0
     assert diagnostics["provenance_compatible"]
     assert diagnostics["all_unfocused_compute_isolated"]
     assert diagnostics["all_compute_budgets_respected"]
@@ -168,7 +194,7 @@ def test_focus_diagnostics_and_strict_online_gate_are_match_clustered():
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_llm_deliberation_focus=True,
     )
-    assert report["version"] == 33
+    assert report["version"] == 34
     assert report["llm_deliberation_focus_ready"]
     assert report["gates"]["llm_deliberation_focus"]
 

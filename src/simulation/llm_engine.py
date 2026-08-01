@@ -235,7 +235,10 @@ Rules:
 FACTS_LEDGER is authoritative. Do NOT invent scores or xG.
 If world_model_decision_support is present, treat it as uncertain model evidence:
 - deliberation_agenda is model-owned attention guidance. Concentrate on at most
-  its three recommended_focus tasks and omit unsupported optional contracts;
+  its three recommended_focus tasks and omit unsupported optional contracts.
+  If selecting fewer tasks, use recommended_portfolios_by_size for that exact
+  task count; its bounded objective combines evidence priority, validated
+  compute value, real rollout cost, and reasoning-domain diversity;
   compact evidence is exact, while omitted member/scenario arrays remain in the
   engine-owned full packet used to recompute every audit;
 - task compute_cost_class distinguishes audits over existing evidence from new
@@ -248,7 +251,8 @@ If world_model_decision_support is present, treat it as uncertain model evidence
 - world_model_deliberation_focus must name one to three eligible agenda tasks.
   Emit structured optional contracts only for those named tasks. The engine
   audits unsupported selections, missing selected contracts, extra unfocused
-  contracts, downstream contract rejection, and priority efficiency;
+  contracts, downstream contract rejection, raw priority efficiency, and joint
+  portfolio efficiency;
 - compare candidates by risk_adjusted_value and effective_confidence;
 - respect quality_gate_closed or available=false;
 - use online_calibration trust factors only after their minimum sample count;

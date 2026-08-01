@@ -1015,6 +1015,25 @@ selected task therefore cannot consume credits merely to deny all other
 questions compute, and cheap evidence checks cannot claim fictitious depth.
 Unused credits remain unused rather than expanding a cap.
 
+The agenda itself is now a bounded portfolio optimizer rather than a top-three
+sort. It enumerates eligible portfolios of one, two, and three tasks under six
+expected compute credits. Each objective combines the evidence-driven task
+priority, a learned compute-value adjustment bounded to `[-0.08, 0.08]`, a
+`0.03` penalty only for real trajectory work, and a `0.04` bonus for each
+additional reasoning domain. The small bounds keep learned artifact yield from
+overriding urgent match evidence, while the diversity term avoids spending every
+slot on near-duplicate questions. Before optimizing that joint score, candidates
+below `0.80` of the best same-size raw-priority sum are discarded, so efficiency
+cannot erase evidence urgency. `recommended_portfolios_by_size` exposes the
+best exact-size portfolio, so an LLM choosing one task is not incorrectly judged
+against an arbitrary member of the three-task recommendation.
+
+The focus audit recomputes both raw-priority efficiency and joint portfolio
+efficiency against the best eligible portfolio of the same size. Both must reach
+`0.80`; a superficially high-priority set can therefore fail if it wastes compute
+or duplicates one reasoning domain, while learned value can influence attention
+only after its randomized evidence gate has passed.
+
 For trajectory tasks, credits become concrete engine limits: event options are
 bounded at `8/16/32` member evaluations and `48/96/144` member-trajectory paths;
 contrastive explanations are bounded at `16/32/64` paths and their optional
@@ -1054,7 +1073,8 @@ Focus remains non-authoritative and cannot change the chosen action, activate a
 failed contract, or relax a quality gate. The optional strict readiness flag
 `--require-llm-deliberation-focus` requires four matches, at least `0.80` focus
 declaration coverage, model consistency, and priority efficiency, one compatible
-LLM signature, complete out-of-focus compute isolation, exact model-owned budget
+LLM signature, portfolio efficiency, complete out-of-focus compute isolation,
+exact model-owned budget
 allocation, respected task caps, and zero malformed focus audits. This prevents
 a few curated focus examples from hiding generally unfocused or over-budget
 model behavior.

@@ -676,6 +676,9 @@ def aggregate_online_calibration(
         and llm_deliberation_focus[
             "match_clustered_focus_priority_efficiency"
         ] >= 0.80
+        and llm_deliberation_focus[
+            "match_clustered_focus_portfolio_efficiency"
+        ] >= 0.80
         and llm_deliberation_focus["all_shadow_only_non_controlling"]
         and llm_deliberation_focus["all_unfocused_compute_isolated"]
         and llm_deliberation_focus["all_compute_budgets_respected"]
@@ -712,7 +715,7 @@ def aggregate_online_calibration(
         if require_llm_deliberation_compute_value else True
     )
     return {
-        "version": 33,
+        "version": 34,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
