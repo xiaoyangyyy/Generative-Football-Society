@@ -127,6 +127,16 @@ def build_multi_horizon_policy_predictions(
                     ),
                 )
             )
+            from src.match_engine.world_model.predictive_distribution import (
+                build_predictive_scenario_lattice,
+            )
+
+            prediction["distributional_policy_utility"] = (
+                build_predictive_scenario_lattice(
+                    prediction["distributional_policy_utility"],
+                    prediction.get("residual_memory") or {},
+                )
+            )
         uncertainty = float(np.clip(
             float(prediction.get("uncertainty", 1.0)), 0.0, 1.0,
         ))

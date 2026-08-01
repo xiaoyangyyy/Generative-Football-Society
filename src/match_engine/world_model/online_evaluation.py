@@ -478,6 +478,7 @@ def aggregate_online_calibration(
         and llm_distributional["all_non_controlling"]
         and llm_distributional["all_non_causal"]
         and llm_distributional["all_member_identity_preserved"]
+        and llm_distributional["all_predictive_distributions_calibrated"]
         and llm_distributional["provenance_compatible"]
     )
     gates["calibrated_llm_distributional_decisions"] = (
@@ -485,7 +486,7 @@ def aggregate_online_calibration(
         if require_llm_distributional_decisions else True
     )
     return {
-        "version": 18,
+        "version": 19,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),

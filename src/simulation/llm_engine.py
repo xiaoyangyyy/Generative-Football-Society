@@ -272,12 +272,18 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   checks member-consistent intermediate states and requires a validated two-step
   rollout plus sufficiently dense live interval monitoring;
   This certificate is shadow-only: it cannot veto, authorize, or change an action;
-- distributional_action_frontiers compare member-level declared policy utility
-  by mean, lower-tail CVaR and upside probability. These are distinct objectives,
+- distributional_action_frontiers state their distribution_scope explicitly.
+  epistemic_member_only means transition-member disagreement only; it must not
+  be described as full outcome randomness. calibrated_predictive means the
+  member axis has been crossed with signed residual quantiles learned only from
+  a held-out calibration split. uncertainty_decomposition reports the two axes
+  separately; it does not claim causal or statistical independence. Frontiers
+  compare mean, lower-tail CVaR and upside probability. These are distinct objectives,
   not interchangeable confidence scores. A world_model_distributional_claim may
   explain the selected action against one alternative using exactly one listed
-  criterion. The engine checks that relation and later scores the frozen member
-  distribution with CRPS, pinball losses and interval coverage. It remains
+  criterion and the exact distribution_scope. The engine checks that relation.
+  Only a frozen calibrated_predictive scenario lattice is eligible for strict
+  CRPS, pinball-loss and interval-coverage readiness. It remains
   shadow-only and cannot change the action or ranking;
 - semantic_event_fusion distinguishes transparent member-frequency projection
   from a learned event head. Treat the learned probability as evidence only when
@@ -371,6 +377,7 @@ Return JSON:
     "alternative_action": "a different evaluated hold|pass|cross|shot action",
     "horizon": "one key from both candidates' multi_horizon_predictions",
     "criterion": "mean_utility|lower_tail_cvar_25|upside_probability",
+    "distribution_scope": "epistemic_member_only|calibrated_predictive",
     "relation": "selected_better|alternative_better|approximately_equal",
     "confidence": 0.5-1.0,
     "rationale": "one falsifiable distributional reason for the action"

@@ -9,7 +9,7 @@ import numpy as np
 from src.match_engine.world_model.observation import OBS_DIM
 
 
-DISTRIBUTIONAL_UTILITY_VERSION = 1
+DISTRIBUTIONAL_UTILITY_VERSION = 2
 DISTRIBUTIONAL_CRITERIA = (
     "mean_utility",
     "lower_tail_cvar_25",
@@ -86,6 +86,8 @@ def member_policy_utility_distribution(
             "member_values": [],
             "counts_trusted": False,
             "member_identity_preserved": False,
+            "predictive_distribution_available": False,
+            "distribution_scope": "unavailable",
             "observed": False,
             "causal_interpretation": False,
         }
@@ -124,6 +126,9 @@ def member_policy_utility_distribution(
         "tail_member_count": tail_count,
         "counts_trusted": True,
         "member_identity_preserved": True,
+        "predictive_distribution_available": False,
+        "distribution_scope": "epistemic_member_only",
+        "decision_scenario_values": list(map(float, utilities)),
         "utility_definition": (
             "goal_diff_delta + 0.35*xg_net_delta + 0.15*progress "
             "+ 0.05*retention_edge"
@@ -165,12 +170,27 @@ def build_distributional_action_frontiers(
                     for criterion in DISTRIBUTIONAL_CRITERIA
                 },
                 "utility_std": float(distribution["utility_std"]),
+                "distribution_scope": str(distribution.get(
+                    "distribution_scope", "epistemic_member_only",
+                )),
+                "predictive_distribution_available": bool(
+                    distribution.get("predictive_distribution_available")
+                ),
             })
         if not rows:
             reports[horizon] = {
                 "available": False,
                 "reason": "trained_member_distributions_unavailable",
                 "actions": [],
+            }
+            continue
+        scopes = sorted({row["distribution_scope"] for row in rows})
+        if len(scopes) != 1:
+            reports[horizon] = {
+                "available": False,
+                "reason": "mixed_distribution_scopes_not_comparable",
+                "actions": rows,
+                "distribution_scopes": scopes,
             }
             continue
         nondominated = []
@@ -202,6 +222,10 @@ def build_distributional_action_frontiers(
             "pareto_actions": sorted(nondominated),
             "criterion_leaders": leaders,
             "criteria": list(DISTRIBUTIONAL_CRITERIA),
+            "distribution_scope": scopes[0],
+            "predictive_distribution_available": all(
+                row["predictive_distribution_available"] for row in rows
+            ),
             "causal_interpretation": False,
         }
     return {
@@ -262,6 +286,7 @@ def align_distribution_location(
     upside_count = int(np.sum(shifted > 0.0))
     output.update({
         "member_values": list(map(float, shifted)),
+        "decision_scenario_values": list(map(float, shifted)),
         "mean_utility": target,
         "minimum_utility": float(ordered[0]),
         "maximum_utility": float(ordered[-1]),
@@ -283,4 +308,3 @@ def align_distribution_location(
         "spread_preserved_by_location_alignment": True,
     })
     return output
-

@@ -569,11 +569,14 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
                     "semantic_event_probabilities"
                 ],
                 "distributional_policy_utility": {
-                    "version": 1,
+                    "version": 2,
                     "available": True,
                     "counts_trusted": True,
                     "member_identity_preserved": True,
                     "member_values": [-0.1, 0.0, 0.1, 0.2],
+                    "decision_scenario_values": [-0.1, 0.0, 0.1, 0.2],
+                    "distribution_scope": "epistemic_member_only",
+                    "predictive_distribution_available": False,
                     "mean_utility": 0.05,
                     "utility_std": 0.1118,
                     "lower_tail_cvar_25": -0.1,
@@ -625,6 +628,7 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
                     "alternative_action": alternative,
                     "horizon": horizon,
                     "criterion": "lower_tail_cvar_25",
+                    "distribution_scope": "epistemic_member_only",
                     "relation": "approximately_equal",
                     "confidence": 0.75,
                     "rationale": "The two lower tails are indistinguishable.",

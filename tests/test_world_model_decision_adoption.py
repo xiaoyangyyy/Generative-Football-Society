@@ -550,7 +550,7 @@ def test_event_option_resolves_then_observes_next_same_team_action():
         micro_xg_away=0.1,
     )
     option_context = {
-        "version": 1,
+            "version": 2,
         "accepted": True,
         "option": {
             "first_action": "pass",
@@ -926,17 +926,22 @@ def test_distributional_claim_is_scored_on_exact_action_and_horizon():
             "selected_action": "pass",
             "alternative_action": "hold",
             "horizon": "60s",
-            "criterion": "mean_utility",
+                "criterion": "mean_utility",
+                "distribution_scope": "epistemic_member_only",
             "relation": "selected_better",
             "confidence": 0.8,
             "rationale": "Pass has higher mean member utility.",
         },
-        "selected_distribution": {
-            "member_values": [-0.1, 0.0, 0.1, 0.2],
-            "mean_utility": 0.05,
+            "selected_distribution": {
+                "member_values": [-0.1, 0.0, 0.1, 0.2],
+                "decision_scenario_values": [-0.1, 0.0, 0.1, 0.2],
+                "mean_utility": 0.05,
             "quantiles": {"q10": -0.07, "q50": 0.05, "q90": 0.17},
-            "member_identity_preserved": True,
-        },
+                "member_identity_preserved": True,
+                "distribution_scope": "epistemic_member_only",
+            },
+            "distribution_scope": "epistemic_member_only",
+            "predictive_distribution_calibrated": False,
         "claim_signature": "llm-distributional-claim:test",
         "checkpoint_signature": "checkpoint:test",
         "environment_signature": "environment:test",

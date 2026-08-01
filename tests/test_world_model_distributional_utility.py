@@ -7,6 +7,9 @@ from src.match_engine.world_model.distributional_utility import (
     build_distributional_action_frontiers,
     member_policy_utility_distribution,
 )
+from src.match_engine.world_model.predictive_distribution import (
+    build_predictive_scenario_lattice,
+)
 from src.match_engine.world_model.distributional_claim import (
     distributional_claim_diagnostics,
     evaluate_llm_distributional_claim,
@@ -17,23 +20,44 @@ from src.match_engine.world_model.observation import OBS_DIM
 from src.match_engine.world_model.online_evaluation import (
     aggregate_online_calibration,
 )
+from src.match_engine.world_model.policy_prediction import (
+    build_multi_horizon_policy_predictions,
+)
 
 
 def _distribution(values):
     values = np.asarray(values, dtype=float)
-    ordered = np.sort(values)
-    quantiles = np.quantile(values, [0.1, 0.25, 0.5, 0.75, 0.9])
-    tail = max(1, int(np.ceil(0.25 * len(values))))
+    scenarios = np.repeat(values, 3)
+    ordered = np.sort(scenarios)
+    quantiles = np.quantile(scenarios, [0.1, 0.25, 0.5, 0.75, 0.9])
+    tail = max(1, int(np.ceil(0.25 * len(scenarios))))
     return {
-        "version": 1,
+        "version": 2,
         "available": True,
         "counts_trusted": True,
         "member_identity_preserved": True,
         "member_values": values.tolist(),
-        "mean_utility": float(values.mean()),
-        "utility_std": float(values.std()),
+        "epistemic_member_values": values.tolist(),
+        "decision_scenario_values": scenarios.tolist(),
+        "predictive_scenario_values": scenarios.tolist(),
+        "predictive_distribution_available": True,
+        "distribution_scope": "calibrated_predictive",
+        "residual_scenario_offsets": [0.0, 0.0, 0.0],
+        "residual_calibration_samples": 8,
+        "residual_quantiles_split": "held_out_calibration",
+        "uncertainty_decomposition": {
+            "epistemic_member_variance": float(values.var()),
+            "residual_outcome_variance": 0.0,
+            "predictive_lattice_variance": float(scenarios.var()),
+            "additive_identity_error": 0.0,
+            "axes_statistically_independent_claimed": False,
+        },
+        "mean_utility": float(scenarios.mean()),
+        "utility_std": float(scenarios.std()),
         "lower_tail_cvar_25": float(ordered[:tail].mean()),
-        "upside_probability": float((np.sum(values > 0) + 0.5) / (len(values) + 1)),
+        "upside_probability": float(
+            (np.sum(scenarios > 0) + 0.5) / (len(scenarios) + 1)
+        ),
         "quantiles": dict(zip(
             ("q10", "q25", "q50", "q75", "q90"), map(float, quantiles),
         )),
@@ -68,6 +92,7 @@ def _claim(**updates):
         "alternative_action": "hold",
         "horizon": "60s",
         "criterion": "mean_utility",
+        "distribution_scope": "calibrated_predictive",
         "relation": "selected_better",
         "confidence": 0.8,
         "rationale": "Pass has the stronger member-average utility.",
@@ -105,6 +130,7 @@ def test_member_policy_utility_distribution_is_transparent_and_trained_only():
     )
     assert 0.0 < distribution["upside_probability"] < 1.0
     assert distribution["member_identity_preserved"]
+    assert distribution["distribution_scope"] == "epistemic_member_only"
     assert not distribution["causal_interpretation"]
 
     neutral = member_policy_utility_distribution(
@@ -148,6 +174,94 @@ def test_location_alignment_preserves_spread_and_matches_calibrated_mean():
     assert closed["reason"] == "distribution_location_shift_gate_closed"
 
 
+def test_predictive_lattice_separates_epistemic_and_residual_variance():
+    epistemic = _distribution([-0.1, 0.1])
+    epistemic.update({
+        "predictive_distribution_available": False,
+        "distribution_scope": "epistemic_member_only",
+    })
+    predictive = build_predictive_scenario_lattice(epistemic, {
+        "calibration_samples": 8,
+        "residual_quantile_levels": [0.1, 0.5, 0.9],
+        "residual_quantiles": [-0.2, 0.0, 0.2],
+        "residual_quantiles_split": "held_out_calibration",
+        "residual_quantiles_observed": True,
+        "drift": {"status": "stable"},
+    })
+
+    assert predictive["predictive_distribution_available"]
+    assert predictive["distribution_scope"] == "calibrated_predictive"
+    assert predictive["member_values"] == [-0.1, 0.1]
+    assert predictive["epistemic_distribution_summary"][
+        "mean_utility"
+    ] == pytest.approx(0.0)
+    assert len(predictive["predictive_scenario_values"]) == 6
+    decomposition = predictive["uncertainty_decomposition"]
+    assert decomposition["epistemic_member_variance"] == pytest.approx(0.01)
+    assert decomposition["residual_outcome_variance"] > 0.0
+    assert decomposition["additive_identity_error"] < 1e-12
+    assert not decomposition["axes_statistically_independent_claimed"]
+
+    insufficient = build_predictive_scenario_lattice(epistemic, {
+        "calibration_samples": 2,
+        "residual_quantile_levels": [0.1, 0.5, 0.9],
+        "residual_quantiles": [-0.2, 0.0, 0.2],
+        "residual_quantiles_split": "held_out_calibration",
+        "residual_quantiles_observed": True,
+        "drift": {"status": "stable"},
+    })
+    assert not insufficient["predictive_distribution_available"]
+    assert insufficient["distribution_scope"] == "epistemic_member_only"
+
+
+def test_policy_prediction_composes_residual_scenarios_after_point_alignment():
+    class _Runtime:
+        def predict_policy_utility(self, *args, **kwargs):
+            return {
+                "policy_utility": 0.0,
+                "uncertainty": 0.1,
+                "distributional_policy_utility": {
+                    "version": 2,
+                    "available": True,
+                    "counts_trusted": True,
+                    "member_identity_preserved": True,
+                    "member_values": [-0.1, 0.1],
+                    "mean_utility": 0.0,
+                    "utility_std": 0.1,
+                    "tail_member_count": 1,
+                },
+            }
+
+    class _ResidualMemory:
+        def calibrate(self, prediction, **kwargs):
+            return {
+                **prediction,
+                "policy_utility": 0.05,
+                "residual_memory_trust_factor": 1.0,
+                "residual_memory": {
+                    "calibration_samples": 8,
+                    "residual_quantile_levels": [0.1, 0.5, 0.9],
+                    "residual_quantiles": [-0.2, 0.0, 0.2],
+                    "residual_quantiles_split": "held_out_calibration",
+                    "residual_quantiles_observed": True,
+                    "drift": {"status": "stable"},
+                },
+            }
+
+    predictions = build_multi_horizon_policy_predictions(
+        _Runtime(), np.zeros(OBS_DIM), action_name="pass",
+        target=np.zeros(2), physics_prior=0.1, confidence=0.8,
+        attacking_home=True, base_horizon_s=5.0,
+        outcome_horizons_s=(60.0,), residual_memory=_ResidualMemory(),
+    )
+    distribution = predictions["60s"]["distributional_policy_utility"]
+    assert distribution["distribution_scope"] == "calibrated_predictive"
+    assert distribution["epistemic_member_values"] == pytest.approx(
+        [-0.05, 0.15]
+    )
+    assert len(distribution["decision_scenario_values"]) == 6
+
+
 def test_distributional_claim_is_schema_limited_and_model_checked():
     assert validate_llm_distributional_claim(_claim())["criterion"] == "mean_utility"
     assert validate_llm_distributional_claim(
@@ -155,6 +269,14 @@ def test_distributional_claim_is_schema_limited_and_model_checked():
     ) is None
     assert validate_llm_distributional_claim(_claim(criterion="vibes")) is None
     assert validate_llm_distributional_claim(_claim(confidence=0.4)) is None
+    assert validate_llm_distributional_claim(
+        _claim(distribution_scope="outcome-ish")
+    ) is None
+    scope_mismatch = evaluate_llm_distributional_claim(
+        _packet(), _claim(distribution_scope="epistemic_member_only"),
+        selected_action="pass",
+    )
+    assert scope_mismatch["reason"] == "distribution_scope_mismatch"
     plan = validate_coach_plan({
         "world_model_action": "pass",
         "world_model_distributional_claim": _claim(),
@@ -193,6 +315,7 @@ def test_distribution_score_uses_crps_quantiles_and_provenance():
     )
 
     assert score["paired_same_action_horizon"]
+    assert score["predictive_distribution_calibrated"]
     assert score["empirical_crps"] >= 0.0
     assert score["central_80_covered"]
     assert score["issuance_evaluation_provenance_compatible"]
@@ -209,6 +332,21 @@ def test_distribution_score_uses_crps_quantiles_and_provenance():
     assert diagnostics["malformed_evaluations"] == 0
     assert diagnostics["match_clustered_directional_faithfulness"] == 1.0
     assert diagnostics["provenance_compatible"]
+    assert diagnostics["all_predictive_distributions_calibrated"]
+
+    tampered = dict(score)
+    tampered["decision_scenario_values"] = list(
+        tampered["decision_scenario_values"]
+    )
+    tampered["decision_scenario_values"][0] += 0.01
+    tampered_logs = [{"world_model_decision_adoption": {"records": [{
+        "multi_horizon_regime_outcomes": {
+            "60s": {"llm_distributional_claim_evaluation": tampered}
+        }
+    }]}}]
+    assert distributional_claim_diagnostics(tampered_logs)[
+        "malformed_evaluations"
+    ] == 1
 
     logs[-1]["world_model_decision_adoption"]["records"][0][
         "multi_horizon_regime_outcomes"
@@ -243,7 +381,7 @@ def test_strict_online_gate_requires_calibrated_faithful_distributions():
     diagnostics = report["decision_adoption"][
         "llm_distributional_decisions"
     ]
-    assert report["version"] == 18
+    assert report["version"] == 19
     assert diagnostics["match_clustered_central_80_coverage"] == 0.75
     assert diagnostics["match_clustered_below_median_rate"] == 0.5
     assert diagnostics["match_clustered_crps"] <= diagnostics[

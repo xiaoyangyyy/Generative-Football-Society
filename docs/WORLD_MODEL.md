@@ -759,7 +759,22 @@ preserves the transition-member axis through the outcome heads and reports the
 full member-value vector, mean, standard deviation, `q10/q25/q50/q75/q90`,
 worst-quartile CVaR, best-quartile mean, and Jeffreys-smoothed upside/downside
 probabilities. Untrained or single-member dynamics fail closed rather than
-presenting a fake distribution.
+presenting a fake distribution. This first distribution has
+`distribution_scope=epistemic_member_only`: it measures disagreement among
+learned transition members and is not presented as complete outcome randomness.
+
+Contextual residual memory now retains signed `q10/q25/q50/q75/q90` errors from
+its held-out calibration split in addition to the conformal interval radius.
+When at least four such calibration outcomes are available and drift is not
+quarantined, the runtime crosses centered transition-member values with these
+residual scenarios. The resulting `calibrated_predictive` lattice is used for
+decision-distribution summaries and proper scoring. It keeps the original
+member values and residual offsets separately and reports epistemic-member,
+residual-outcome, and total lattice variance. The additive variance identity is
+recomputed from the two frozen axes; it is a property of the equal-weight lattice,
+not a claim that the uncertainties are causally or statistically independent.
+Insufficient residual history leaves the useful epistemic distribution visible
+but closes predictive calibration readiness.
 
 For every evaluated horizon, `distributional_action_frontiers` identifies the
 actions that are nondominated across three deliberately distinct objectives:
@@ -771,8 +786,9 @@ not modify the existing policy recommendation.
 
 The coach may provide one `world_model_distributional_claim` comparing its
 selected action with one evaluated alternative at the same horizon. It must name
-exactly one criterion and state whether the selected action is better, worse or
-approximately equal. The engine recomputes that relation with an explicit
+exactly one criterion, the exact `distribution_scope`, and state whether the
+selected action is better, worse or approximately equal. Both actions must have
+the same scope. The engine recomputes that relation with an explicit
 tolerance and records directional faithfulness. The claim cannot change either
 distribution, the selected action, or policy authority.
 
@@ -780,12 +796,14 @@ If the exact selected action is naturally executed, the frozen distribution is
 paired with the same-horizon realized simulator utility. Evaluation reports
 empirical CRPS, pinball loss at `q10/q50/q90`, central-80% coverage, median
 calibration, point MAE/MSE and claim faithfulness. Cross-match aggregation
-recomputes every proper score from the stored member vector, gives each match
-equal weight, rejects provenance mixing, and exposes eligible claims that reached
+recomputes every proper score from the stored scenario vector and, for predictive
+claims, reconstructs that vector from the frozen member and residual axes. It
+gives each match equal weight, rejects provenance mixing, and exposes claims that reached
 their horizon without a score. Strict readiness requires sufficient evidence
 over at least four matches, directional faithfulness of at least `0.60`, central
 80% coverage between `0.55` and `0.98`, median frequency between `0.25` and
-`0.75`, and CRPS no worse than mean-point MAE. Enable it with
+`0.75`, CRPS no worse than mean-point MAE, and every scored distribution to be a
+valid held-out-residual `calibrated_predictive` lattice. Enable it with
 `--require-llm-distributional-decisions`. These are simulator-distribution
 calibration claims, not causal estimates of choosing one action over another.
 

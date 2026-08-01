@@ -1,4 +1,4 @@
-"""LLM claims over member-utility distributions and realized calibration."""
+"""LLM claims over explicit utility-distribution scopes and realized scores."""
 
 from __future__ import annotations
 
@@ -14,7 +14,8 @@ from src.match_engine.world_model.distributional_utility import (
 from src.match_engine.world_model.opponent_response import RESPONSE_ACTIONS
 
 
-DISTRIBUTIONAL_CLAIM_VERSION = 1
+DISTRIBUTIONAL_CLAIM_VERSION = 2
+_DISTRIBUTION_SCOPES = {"epistemic_member_only", "calibrated_predictive"}
 
 
 def llm_distributional_claim_signature(model_name: str) -> str:
@@ -36,6 +37,7 @@ def validate_llm_distributional_claim(raw: Any) -> dict[str, Any] | None:
     horizon = str(raw.get("horizon", "")).strip().lower()
     criterion = str(raw.get("criterion", "")).strip().lower()
     relation = str(raw.get("relation", "")).strip().lower()
+    distribution_scope = str(raw.get("distribution_scope", "")).strip().lower()
     try:
         confidence = float(raw.get("confidence", 0.0))
     except (TypeError, ValueError):
@@ -49,6 +51,7 @@ def validate_llm_distributional_claim(raw: Any) -> dict[str, Any] | None:
         or relation not in {
             "selected_better", "alternative_better", "approximately_equal",
         }
+        or distribution_scope not in _DISTRIBUTION_SCOPES
         or not np.isfinite(confidence)
         or not 0.5 <= confidence <= 1.0
     ):
@@ -59,6 +62,7 @@ def validate_llm_distributional_claim(raw: Any) -> dict[str, Any] | None:
         "horizon": horizon,
         "criterion": criterion,
         "relation": relation,
+        "distribution_scope": distribution_scope,
         "confidence": confidence,
         "rationale": str(raw.get("rationale", ""))[:280],
     }
@@ -121,6 +125,25 @@ def evaluate_llm_distributional_claim(
                 "claim": claim,
             }
         distributions.append(distribution)
+    scopes = [str(distribution.get(
+        "distribution_scope", "epistemic_member_only",
+    )) for distribution in distributions]
+    if len(set(scopes)) != 1 or scopes[0] != claim["distribution_scope"]:
+        return {
+            **base,
+            "reason": "distribution_scope_mismatch",
+            "claim": claim,
+            "evaluated_distribution_scopes": scopes,
+        }
+    if scopes[0] == "calibrated_predictive" and not all(
+        _predictive_lattice_valid(distribution)
+        for distribution in distributions
+    ):
+        return {
+            **base,
+            "reason": "predictive_scenario_lattice_invalid",
+            "claim": claim,
+        }
     criterion = claim["criterion"]
     selected_value = float(distributions[0][criterion])
     alternative_value = float(distributions[1][criterion])
@@ -142,6 +165,12 @@ def evaluate_llm_distributional_claim(
         "selected_criterion_value": selected_value,
         "alternative_criterion_value": alternative_value,
         "criterion_delta": delta,
+        "distribution_scope": scopes[0],
+        "predictive_distribution_calibrated": bool(
+            scopes[0] == "calibrated_predictive"
+            and all(distribution.get("predictive_distribution_available")
+                    for distribution in distributions)
+        ),
         "selected_distribution": dict(distributions[0]),
         "checkpoint_signature": str(packet.get(
             "checkpoint_signature", "runtime_unspecified",
@@ -163,7 +192,9 @@ def _distribution_values(
     distribution: dict[str, Any],
 ) -> tuple[np.ndarray, float, float, float, float] | None:
     try:
-        values = np.asarray(distribution["member_values"], dtype=np.float64)
+        values = np.asarray(
+            distribution["decision_scenario_values"], dtype=np.float64,
+        )
         quantiles = distribution["quantiles"]
         q10, q50, q90 = map(
             float, (quantiles["q10"], quantiles["q50"], quantiles["q90"]),
@@ -198,6 +229,62 @@ def _empirical_crps(values: np.ndarray, observed: float) -> float:
     ))
 
 
+def _predictive_lattice_valid(distribution: dict[str, Any]) -> bool:
+    if (
+        str(distribution.get("distribution_scope", ""))
+        != "calibrated_predictive"
+    ):
+        return False
+    try:
+        members = np.asarray(
+            distribution["epistemic_member_values"], dtype=np.float64,
+        )
+        residuals = np.asarray(
+            distribution["residual_scenario_offsets"], dtype=np.float64,
+        )
+        scenarios = np.asarray(
+            distribution["decision_scenario_values"], dtype=np.float64,
+        )
+        samples = int(distribution["residual_calibration_samples"])
+        decomposition = distribution["uncertainty_decomposition"]
+        declared = tuple(float(decomposition[key]) for key in (
+            "epistemic_member_variance",
+            "residual_outcome_variance",
+            "predictive_lattice_variance",
+            "additive_identity_error",
+        ))
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+    if not (
+        distribution.get("predictive_distribution_available") is True
+        and distribution.get("residual_quantiles_split")
+        == "held_out_calibration"
+        and samples >= 4
+        and members.ndim == residuals.ndim == scenarios.ndim == 1
+        and len(members) >= 2 and len(residuals) >= 3
+        and len(scenarios) == len(members) * len(residuals)
+        and np.all(np.isfinite(members))
+        and np.all(np.isfinite(residuals))
+        and np.all(np.isfinite(scenarios))
+        and all(np.isfinite(value) for value in declared)
+        and decomposition.get("axes_statistically_independent_claimed") is False
+    ):
+        return False
+    rebuilt = (members[:, None] + residuals[None, :]).reshape(-1)
+    actual = (
+        float(np.var(members)), float(np.var(residuals)),
+        float(np.var(rebuilt)),
+    )
+    identity = abs(actual[2] - actual[0] - actual[1])
+    return bool(
+        np.allclose(scenarios, rebuilt, atol=1e-9, rtol=0.0)
+        and all(abs(left - right) <= 1e-9 for left, right in zip(
+            declared[:3], actual,
+        ))
+        and abs(declared[3] - identity) <= 1e-9
+    )
+
+
 def score_distributional_claim(
     context: dict[str, Any],
     outcome: dict[str, Any],
@@ -220,11 +307,11 @@ def score_distributional_claim(
         return None
     values, mean, q10, q50, q90 = parsed
     distribution = context["selected_distribution"]
-    return {
+    result = {
         "version": DISTRIBUTIONAL_CLAIM_VERSION,
         "claim": claim,
         "observed_policy_utility": observed,
-        "member_values": list(map(float, values)),
+        "decision_scenario_values": list(map(float, values)),
         "quantiles": {"q10": q10, "q50": q50, "q90": q90},
         "predicted_mean_utility": mean,
         "mean_absolute_error": abs(mean - observed),
@@ -244,6 +331,10 @@ def score_distributional_claim(
         "member_identity_preserved": bool(
             distribution.get("member_identity_preserved")
         ),
+        "distribution_scope": str(context.get("distribution_scope", "")),
+        "predictive_distribution_calibrated": bool(
+            context.get("predictive_distribution_calibrated")
+        ),
         "shadow_only": True,
         "authority_active": False,
         "policy_mutated": False,
@@ -258,6 +349,25 @@ def score_distributional_claim(
             == str(environment_signature)
         ),
     }
+    if result["predictive_distribution_calibrated"]:
+        result.update({
+            "epistemic_member_values": list(
+                distribution.get("epistemic_member_values") or []
+            ),
+            "residual_scenario_offsets": list(
+                distribution.get("residual_scenario_offsets") or []
+            ),
+            "residual_calibration_samples": int(
+                distribution.get("residual_calibration_samples", 0) or 0
+            ),
+            "residual_quantiles_split": str(
+                distribution.get("residual_quantiles_split", "")
+            ),
+            "uncertainty_decomposition": dict(
+                distribution.get("uncertainty_decomposition") or {}
+            ),
+        })
+    return result
 
 
 def _valid_evaluation(row: dict[str, Any]) -> bool:
@@ -268,7 +378,7 @@ def _valid_evaluation(row: dict[str, Any]) -> bool:
         mse = float(row["mean_squared_error"])
         crps = float(row["empirical_crps"])
         parsed = _distribution_values({
-            "member_values": row["member_values"],
+            "decision_scenario_values": row["decision_scenario_values"],
             "mean_utility": mean,
             "quantiles": row["quantiles"],
         })
@@ -287,6 +397,21 @@ def _valid_evaluation(row: dict[str, Any]) -> bool:
         "selected_better" if selected - alternative > tolerance
         else "alternative_better" if selected - alternative < -tolerance
         else "approximately_equal"
+    )
+    predictive_valid = (
+        not bool(row.get("predictive_distribution_calibrated"))
+        or _predictive_lattice_valid({
+            "distribution_scope": row.get("distribution_scope"),
+            "predictive_distribution_available": True,
+            "decision_scenario_values": row.get("decision_scenario_values"),
+            "epistemic_member_values": row.get("epistemic_member_values"),
+            "residual_scenario_offsets": row.get("residual_scenario_offsets"),
+            "residual_calibration_samples": row.get(
+                "residual_calibration_samples"
+            ),
+            "residual_quantiles_split": row.get("residual_quantiles_split"),
+            "uncertainty_decomposition": row.get("uncertainty_decomposition"),
+        })
     )
     return bool(
         int(row.get("version", 0)) == DISTRIBUTIONAL_CLAIM_VERSION
@@ -312,6 +437,9 @@ def _valid_evaluation(row: dict[str, Any]) -> bool:
         )
         and row.get("paired_same_action_horizon")
         and row.get("member_identity_preserved")
+        and str(row.get("distribution_scope", ""))
+        == str((row.get("claim") or {}).get("distribution_scope", ""))
+        and predictive_valid
         and row.get("issuance_evaluation_provenance_compatible")
     )
 
@@ -386,7 +514,7 @@ def distributional_claim_diagnostics(
     }
     return {
         "version": DISTRIBUTIONAL_CLAIM_VERSION,
-        "evaluation_kind": "realized_member_distribution_policy_utility",
+        "evaluation_kind": "realized_declared_policy_utility_distribution",
         "realized_distributions": len(valid),
         "eligible_claims": eligible_claims,
         "unscored_eligible_claims": unscored_eligible_claims,
@@ -416,6 +544,12 @@ def distributional_claim_diagnostics(
         ),
         "all_member_identity_preserved": all(
             bool(row.get("member_identity_preserved")) for row in valid
+        ),
+        "all_predictive_distributions_calibrated": all(
+            bool(row.get("predictive_distribution_calibrated"))
+            and str(row.get("distribution_scope", ""))
+            == "calibrated_predictive"
+            for row in valid
         ),
         "provenance_compatible": bool(
             len(signatures) == 1 and signatures[0] not in unspecified

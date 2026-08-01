@@ -22,6 +22,8 @@ class ResidualCorrection:
     interval_radius_90: float
     validation_skill_vs_raw: float
     trust_factor: float
+    residual_quantile_levels: tuple[float, ...] = ()
+    residual_quantiles: tuple[float, ...] = ()
 
 
 @dataclass
@@ -97,6 +99,17 @@ class ContextualResidualMemory:
                     interval_scale * correction.interval_radius_90
                 ),
                 "validation_skill_vs_raw": correction.validation_skill_vs_raw,
+                "residual_quantile_levels": list(
+                    correction.residual_quantile_levels
+                ),
+                "residual_quantiles": _effective_residual_quantiles(
+                    correction,
+                    bias_scale=bias_scale,
+                    spread_scale=interval_scale,
+                ),
+                "residual_quantiles_split": "held_out_calibration",
+                "residual_quantiles_observed": True,
+                "residual_quantiles_causal": False,
                 "trust_factor": trust,
                 "checkpoint_signature": self.checkpoint_signature,
                 "environment_signature": self.environment_signature,
@@ -120,7 +133,7 @@ class ContextualResidualMemory:
         for correction in self.groups.values():
             scopes[correction.scope] = scopes.get(correction.scope, 0) + 1
         return {
-            "version": 2,
+            "version": 3,
             "checkpoint_signature": self.checkpoint_signature,
             "environment_signature": self.environment_signature,
             "source_logs": self.source_logs,
@@ -373,6 +386,10 @@ def _fit_group(
     actual = np.asarray([row["actual"] for row in calibration], dtype=float)
     raw = np.asarray([row["predicted"] for row in calibration], dtype=float)
     corrected_error = actual - (raw + bias)
+    quantile_levels = (0.10, 0.25, 0.50, 0.75, 0.90)
+    residual_quantiles = tuple(map(float, np.quantile(
+        corrected_error, quantile_levels, method="linear",
+    )))
     conformity = np.sort(np.abs(corrected_error))
     rank = int(math.ceil((len(conformity) + 1) * 0.90))
     radius = float(conformity[min(len(conformity) - 1, rank - 1)])
@@ -401,7 +418,34 @@ def _fit_group(
         interval_radius_90=radius,
         validation_skill_vs_raw=skill_vs_raw,
         trust_factor=trust,
+        residual_quantile_levels=quantile_levels,
+        residual_quantiles=residual_quantiles,
     )
+
+
+def _effective_residual_quantiles(
+    correction: ResidualCorrection,
+    *,
+    bias_scale: float,
+    spread_scale: float,
+) -> list[float]:
+    """Express held-out residual quantiles around the correction used now."""
+    if not correction.residual_quantiles:
+        return []
+    values = np.asarray(correction.residual_quantiles, dtype=float)
+    median_index = min(
+        range(len(correction.residual_quantile_levels)),
+        key=lambda index: abs(
+            correction.residual_quantile_levels[index] - 0.50
+        ),
+    )
+    median = float(values[median_index])
+    # Watch mode applies only half of the learned bias and deliberately widens
+    # the residual spread.  The omitted bias therefore remains in the signed
+    # prediction error instead of silently disappearing.
+    center = median + (1.0 - bias_scale) * correction.bias
+    effective = center + spread_scale * (values - median)
+    return list(map(float, effective))
 
 
 def compile_contextual_residual_memory(

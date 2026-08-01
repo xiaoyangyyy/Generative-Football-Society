@@ -73,6 +73,15 @@ def test_split_conformal_memory_corrects_repeated_contextual_bias():
         [0.2, 0.2]
     )
     assert corrected["residual_memory_trust_factor"] == 1.0
+    assert corrected["residual_memory"]["residual_quantile_levels"] == [
+        0.1, 0.25, 0.5, 0.75, 0.9,
+    ]
+    assert corrected["residual_memory"]["residual_quantiles"] == pytest.approx(
+        [0.0] * 5
+    )
+    assert corrected["residual_memory"]["residual_quantiles_split"] == (
+        "held_out_calibration"
+    )
 
 
 def test_memory_rejects_other_checkpoint_and_rejects_harmful_bias_fit():
