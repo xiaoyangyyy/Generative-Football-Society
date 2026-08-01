@@ -201,6 +201,14 @@ def main() -> int:
             "opponent tactical information."
         ),
     )
+    parser.add_argument(
+        "--require-opponent-information-adaptation",
+        action="store_true",
+        help=(
+            "Require realized, model-consistent LLM adaptations to prior "
+            "opponent-information feedback to improve their declared metric."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -263,6 +271,9 @@ def main() -> int:
         ),
         require_opponent_information_queries=(
             args.require_opponent_information_queries
+        ),
+        require_opponent_information_adaptation=(
+            args.require_opponent_information_adaptation
         ),
     )
     output = Path(args.out)

@@ -925,6 +925,36 @@ outcome or hidden intent was observed. Feedback therefore improves language-mode
 reasoning without acquiring action authority or directly updating world-model
 weights.
 
+The coach can make this use of feedback explicit with one
+`opponent_information_adaptation`. It must cite a `decision_id` present in the
+validated feedback ledger and choose exactly one bounded adaptation:
+`change_query_feature`, `change_query_horizon`, `repair_contingent_policy`, or
+`retain_validated_query`. These are deliberately limited to choices the LLM
+actually owns; it cannot claim to recalibrate world-model probabilities or edit
+model weights.
+
+The world model derives supported adaptations from the prior resolution's
+machine-owned attention flags. Forecast surprise can support a feature or horizon
+change, inefficient query selection can support a feature change, branch-action
+misalignment can support a contingent-policy repair, and a clean prior query can
+support retention. It then verifies that the new query contains the declared
+structural change and that repaired branch actions pass the existing regret
+certificate. An accepted but inconsistent declaration remains visible as a
+failed audit and gains no authority.
+
+When the new query resolves naturally, adaptation is scored against the cited
+prior query. The declared problem selects the outcome metric: Brier reduction
+for surprise-driven query changes, query-objective efficiency for an inefficient
+feature choice, branch-regret reduction for policy repair, and joint
+non-degradation for retention. Cross-match diagnostics give each match equal
+weight and retain the paired observational limitation: improvement does not prove
+the counterfactual effect of adapting. Use
+`--require-opponent-information-adaptation` to require four scored matches,
+clean provenance, at least `0.60` model consistency, and at least `0.50` realized
+improvement before online readiness opens. It also requires an explicit
+adaptation on at least `0.60` of compatible feedback-bearing decisions, so a
+small hand-picked subset cannot stand in for general feedback use.
+
 ### Model-checked multi-horizon risk preferences
 
 The coach may additionally declare one `world_model_risk_preference`. This is

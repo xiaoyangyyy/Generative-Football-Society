@@ -53,6 +53,7 @@ def register_coach_action_decision(
     llm_risk_preference_context: dict[str, Any] | None = None,
     llm_opponent_information_query_context: dict[str, Any] | None = None,
     opponent_information_feedback_context: dict[str, Any] | None = None,
+    llm_opponent_information_adaptation_context: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -90,8 +91,32 @@ def register_coach_action_decision(
             opponent_information_feedback_is_valid,
         )
 
-        if not opponent_information_feedback_is_valid(feedback_context):
+        if (
+            not opponent_information_feedback_is_valid(feedback_context)
+            or float(feedback_context.get("as_of_t_sec", 0.0))
+            > created + 1e-9
+            or str(feedback_context.get("team_id")) != str(team_id)
+            or str(feedback_context.get("checkpoint_signature"))
+            != str(checkpoint_signature)
+            or str(feedback_context.get("environment_signature"))
+            != str(environment_signature)
+        ):
             feedback_context = {}
+    information_query_context = dict(
+        llm_opponent_information_query_context or {}
+    )
+    adaptation_context = dict(
+        llm_opponent_information_adaptation_context or {}
+    )
+    if adaptation_context:
+        from src.match_engine.world_model.opponent_information_adaptation import (
+            opponent_information_adaptation_audit_is_valid,
+        )
+
+        if not opponent_information_adaptation_audit_is_valid(
+            adaptation_context, information_query_context, feedback_context,
+        ):
+            adaptation_context = {}
     control_rate = min(0.5, max(0.0, float(experiment_control_rate)))
     bridge_eligible = bool(intervention_enabled and strength > 0.0)
     experiment_arm = (
@@ -134,10 +159,9 @@ def register_coach_action_decision(
         "llm_risk_preference_context": dict(
             llm_risk_preference_context or {}
         ),
-        "llm_opponent_information_query_context": dict(
-            llm_opponent_information_query_context or {}
-        ),
+        "llm_opponent_information_query_context": information_query_context,
         "opponent_information_feedback_context": feedback_context,
+        "llm_opponent_information_adaptation_context": adaptation_context,
         "event_option_resolved_t_sec": None,
         "event_option_expected_action": None,
         "event_option_next_action": None,
@@ -409,6 +433,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.opponent_information_feedback import (
         opponent_information_feedback_diagnostics,
     )
+    from src.match_engine.world_model.opponent_information_adaptation_evaluation import (
+        opponent_information_adaptation_diagnostics,
+    )
 
     records = list(getattr(state, "_wm_coach_decision_adoption", None) or [])
     resolved = [record for record in records if record["resolved"]]
@@ -429,7 +456,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 28,
+        "version": 29,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -458,6 +485,11 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         }]),
         "opponent_information_feedback": (
             opponent_information_feedback_diagnostics([records])
+        ),
+        "opponent_information_adaptation": (
+            opponent_information_adaptation_diagnostics([{
+                "world_model_decision_adoption": {"records": records},
+            }])
         ),
         "records": records,
         "interpretation": (

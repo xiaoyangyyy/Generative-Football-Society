@@ -259,6 +259,12 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   to improve the next question and its conditional reasoning. A listed branch
   action was never executed merely because it was proposed, so do not describe
   it as an observed counterfactual outcome or as evidence of hidden intent;
+- when compatible feedback is available, opponent_information_adaptation may
+  cite exactly one prior decision and declare a feature change, horizon change,
+  contingent-policy repair, or retention of an already clean query. The engine
+  checks that the cited feedback actually supports that adaptation and later
+  scores whether the next realized query improved the relevant proper score,
+  query efficiency, or branch regret. Do not claim improvement before scoring;
 - second_order_game is a two-ply belief-space policy proxy. When its
   trajectory_rollout gate is active, continuation values blend a budgeted
   predicted-state search with the current-state proxy; otherwise they reuse
@@ -442,6 +448,12 @@ Return JSON:
     "action_if_low": "hold|pass|cross|shot (shadow continuation only)",
     "confidence": 0.5-1.0,
     "rationale": "why observing this control would clarify the decision"
+  }},
+  "opponent_information_adaptation": {{
+    "prior_decision_id": "one decision_id from opponent_information_feedback.recent_resolutions",
+    "adaptation_kind": "change_query_feature|change_query_horizon|repair_contingent_policy|retain_validated_query",
+    "confidence": 0.5-1.0,
+    "rationale": "how the new query or branch policy responds to the cited scored feedback"
   }},
   "opponent_response_hypothesis": {{
     "if_action": "hold|pass|cross|shot",

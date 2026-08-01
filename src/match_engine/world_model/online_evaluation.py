@@ -63,6 +63,9 @@ from src.match_engine.world_model.opponent_information_query_evaluation import (
 from src.match_engine.world_model.opponent_information_feedback import (
     opponent_information_feedback_diagnostics,
 )
+from src.match_engine.world_model.opponent_information_adaptation_evaluation import (
+    opponent_information_adaptation_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -101,6 +104,7 @@ def aggregate_online_calibration(
     require_llm_risk_preferences: bool = False,
     require_temporal_path_calibration: bool = False,
     require_opponent_information_queries: bool = False,
+    require_opponent_information_adaptation: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -237,6 +241,9 @@ def aggregate_online_calibration(
     opponent_information_queries = opponent_information_query_diagnostics(logs)
     opponent_information_feedback = opponent_information_feedback_diagnostics(
         policy_record_clusters
+    )
+    opponent_information_adaptation = (
+        opponent_information_adaptation_diagnostics(logs)
     )
     memory_scopes = sorted({
         (
@@ -602,8 +609,42 @@ def aggregate_online_calibration(
         opponent_information_queries_ready
         if require_opponent_information_queries else True
     )
+    opponent_information_adaptation_ready = bool(
+        opponent_information_adaptation["realized_adaptation_scores"] >= 4
+        and opponent_information_adaptation["matches"] >= 4
+        and opponent_information_adaptation["missing_scores"] == 0
+        and opponent_information_adaptation[
+            "malformed_adaptation_audits"
+        ] == 0
+        and opponent_information_adaptation[
+            "malformed_adaptation_scores"
+        ] == 0
+        and opponent_information_adaptation[
+            "match_clustered_model_consistency_rate"
+        ] >= 0.60
+        and opponent_information_adaptation[
+            "match_clustered_feedback_adaptation_rate"
+        ] >= 0.60
+        and opponent_information_adaptation[
+            "match_clustered_adaptation_improvement_rate"
+        ] >= 0.50
+        and opponent_information_adaptation[
+            "match_clustered_target_improvement"
+        ] >= -1e-12
+        and opponent_information_adaptation[
+            "all_paired_prior_and_current_observational_queries"
+        ]
+        and opponent_information_adaptation["all_shadow_only"]
+        and opponent_information_adaptation["all_non_controlling"]
+        and opponent_information_adaptation["all_non_causal"]
+        and opponent_information_adaptation["provenance_compatible"]
+    )
+    gates["opponent_information_adaptation"] = (
+        opponent_information_adaptation_ready
+        if require_opponent_information_adaptation else True
+    )
     return {
-        "version": 28,
+        "version": 29,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -643,6 +684,9 @@ def aggregate_online_calibration(
             "temporal_path_calibration": temporal_path_calibration,
             "opponent_information_queries": opponent_information_queries,
             "opponent_information_feedback": opponent_information_feedback,
+            "opponent_information_adaptation": (
+                opponent_information_adaptation
+            ),
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -675,6 +719,9 @@ def aggregate_online_calibration(
         "opponent_information_queries_ready": (
             opponent_information_queries_ready
         ),
+        "opponent_information_adaptation_ready": (
+            opponent_information_adaptation_ready
+        ),
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -701,5 +748,6 @@ def aggregate_online_calibration(
             "Empirical temporal dependence is scored once per fully realized path against a frozen same-marginal comonotonic benchmark; degraded validation disables its reuse but does not establish real-football causality.",
             "LLM opponent-information queries are model-ranked questions over observable tactical controls; information gain and adaptive value are forecasts, hidden intent remains unobserved, and no future action is scheduled.",
             "Resolved opponent-information feedback is exposed only after digest, scope, and temporal-order checks; shadow branch actions remain unexecuted counterfactual proposals.",
+            "LLM feedback adaptations are paired consecutive-query comparisons; improvement is observational and cannot establish the counterfactual effect of adapting.",
         ],
     }

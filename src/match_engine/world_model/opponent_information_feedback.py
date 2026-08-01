@@ -248,6 +248,7 @@ def opponent_information_feedback_is_valid(feedback: Any) -> bool:
     digest = payload.pop("feedback_digest", None)
     try:
         expected = _digest(payload)
+        as_of = float(payload.get("as_of_t_sec"))
     except (TypeError, ValueError, OverflowError):
         return False
     return bool(
@@ -256,6 +257,12 @@ def opponent_information_feedback_is_valid(feedback: Any) -> bool:
         and payload.get("can_change_current_action") is False
         and payload.get("can_update_world_model_weights") is False
         and payload.get("causal_interpretation") is False
+        and math.isfinite(as_of)
+        and all(
+            float(row.get("observed_t_sec", 0.0)) <= as_of + 1e-9
+            and float(row.get("issued_t_sec", 0.0)) <= as_of + 1e-9
+            for row in payload.get("recent_resolutions") or []
+        )
         and all(
             row.get("branch_action_executed") is False
             and row.get("counterfactual_outcome_observed") is False

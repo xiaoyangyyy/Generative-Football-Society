@@ -162,6 +162,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if information_query is not None:
         out["opponent_information_query"] = information_query
+    from src.match_engine.world_model.opponent_information_adaptation import (
+        validate_llm_opponent_information_adaptation,
+    )
+
+    information_adaptation = validate_llm_opponent_information_adaptation(
+        plan.get("opponent_information_adaptation")
+    )
+    if information_adaptation is not None:
+        out["opponent_information_adaptation"] = information_adaptation
     return out
 
 

@@ -27,6 +27,18 @@ from src.match_engine.world_model.opponent_information_feedback import (
     opponent_information_feedback_diagnostics,
     opponent_information_feedback_is_valid,
 )
+from src.match_engine.world_model.opponent_information_adaptation import (
+    evaluate_llm_opponent_information_adaptation,
+    opponent_information_adaptation_audit_is_valid,
+    validate_llm_opponent_information_adaptation,
+)
+from src.match_engine.world_model.opponent_information_adaptation_outcomes import (
+    opponent_information_adaptation_score_is_valid,
+    score_opponent_information_adaptation,
+)
+from src.match_engine.world_model.opponent_information_adaptation_evaluation import (
+    opponent_information_adaptation_diagnostics,
+)
 from src.match_engine.world_model.online_evaluation import (
     aggregate_online_calibration,
 )
@@ -107,9 +119,18 @@ def test_query_schema_is_bounded_and_preserved_by_coach_plan():
     plan = validate_coach_plan({
         "world_model_action": "pass",
         "opponent_information_query": _query(),
+        "opponent_information_adaptation": {
+            "prior_decision_id": "A:10:0",
+            "adaptation_kind": "change_query_feature",
+            "confidence": 0.8,
+            "rationale": "Respond to the prior scored query.",
+        },
     })
     assert plan["opponent_information_query"]["purpose"] == (
         "resolve_action_choice"
+    )
+    assert plan["opponent_information_adaptation"]["adaptation_kind"] == (
+        "change_query_feature"
     )
 
 
@@ -274,7 +295,7 @@ def test_cross_match_query_diagnostics_and_strict_readiness_gate():
         logs, min_transitions=0,
         require_opponent_information_queries=True,
     )
-    assert report["version"] == 28
+    assert report["version"] == 29
     assert report["opponent_information_queries_ready"]
     assert report["gates"]["opponent_information_queries"]
     assert report["decision_adoption"][
@@ -584,3 +605,208 @@ def test_query_feedback_separates_pending_ineligible_and_wrong_scope():
     assert feedback["pending_queries"] == 1
     assert feedback["ineligible_action_queries"] == 1
     assert feedback["malformed_queries"] == 0
+
+
+def test_llm_feedback_adaptation_is_model_checked_then_realized():
+    seed = evaluate_llm_opponent_information_query(
+        _packet(), _query(), selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+    )
+    prior_feature = seed["model_recommended_feature"]
+    prior_audit = evaluate_llm_opponent_information_query(
+        _packet(), _query(feature=prior_feature), selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+    )
+    prior_rate = prior_audit["selected_query_report"]["forecast_high_rate"]
+    prior_observed = {
+        "pressing_intensity": 0.5,
+        "risk_budget": 0.5,
+        "line_height": 0.5,
+        "rotation_aggressiveness": 0.5,
+    }
+    prior_observed[prior_feature] = 0.2 if prior_rate >= 0.5 else 0.8
+    prior_score = score_opponent_information_query(
+        prior_audit, prior_observed, horizon="60s",
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+    )
+    prior_record = {
+        "decision_id": "A:10:0",
+        "team_id": "A",
+        "created_t_sec": 10.0,
+        "checkpoint_signature": "checkpoint:test",
+        "environment_signature": "environment:test",
+        "intervention_actual_action": "pass",
+        "llm_opponent_information_query_context": prior_audit,
+        "multi_horizon_regime_outcomes": {"60s": {
+            "observed_t_sec": 70.0,
+            "llm_opponent_information_query_evaluation": prior_score,
+        }},
+    }
+    feedback = build_opponent_information_feedback(
+        [prior_record], team_id="A",
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test", as_of_t_sec=80.0,
+    )
+    assert "forecast_surprise" in feedback["recent_resolutions"][0][
+        "attention_flags"
+    ]
+
+    current_feature = next(
+        feature for feature in prior_observed if feature != prior_feature
+    )
+    current_audit = evaluate_llm_opponent_information_query(
+        _packet(), _query(feature=current_feature),
+        selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+    )
+    raw_adaptation = {
+        "prior_decision_id": "A:10:0",
+        "adaptation_kind": "change_query_feature",
+        "confidence": 0.8,
+        "rationale": "The previous feature forecast was surprising.",
+    }
+    assert validate_llm_opponent_information_adaptation(raw_adaptation)
+    packet = _packet()
+    packet["opponent_information_feedback"] = feedback
+    adaptation = evaluate_llm_opponent_information_adaptation(
+        packet, raw_adaptation, current_audit,
+        adaptation_signature="llm-opponent-information-adaptation:test",
+    )
+    assert adaptation["accepted"]
+    assert adaptation["evidence_supported"]
+    assert adaptation["structural_change_verified"]
+    assert adaptation["model_checked_consistent"]
+    assert opponent_information_adaptation_audit_is_valid(
+        adaptation, current_audit, feedback,
+    )
+    adoption_state = SimpleNamespace(clock_seconds=80.0)
+    registered = register_coach_action_decision(
+        adoption_state, team_id="A", trigger_kind="xg_swing",
+        llm_selected_action="pass", world_model_recommended_action="pass",
+        recommendation_confidence=0.8, horizon_s=10.0,
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+        llm_opponent_information_query_context=current_audit,
+        opponent_information_feedback_context=feedback,
+        llm_opponent_information_adaptation_context=adaptation,
+    )
+    assert registered[
+        "llm_opponent_information_adaptation_context"
+    ] == adaptation
+
+    current_rate = current_audit["selected_query_report"][
+        "forecast_high_rate"
+    ]
+    current_observed = {
+        "pressing_intensity": 0.5,
+        "risk_budget": 0.5,
+        "line_height": 0.5,
+        "rotation_aggressiveness": 0.5,
+    }
+    current_observed[current_feature] = 0.8 if current_rate >= 0.5 else 0.2
+    current_score = score_opponent_information_query(
+        current_audit, current_observed, horizon="60s",
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+    )
+    score = score_opponent_information_adaptation(
+        adaptation, current_audit, feedback, current_score,
+    )
+    assert opponent_information_adaptation_score_is_valid(
+        score, adaptation, current_audit, feedback, current_score,
+    )
+    assert score["adaptation_target_metric"] == (
+        "selected_feature_brier_reduction"
+    )
+    assert score["adaptation_target_improvement"] > 0.0
+    assert score["adaptation_improved"]
+    assert not score["counterfactual_outcome_observed"]
+
+    current_record = {
+        "team_id": "A",
+        "created_t_sec": 80.0,
+        "checkpoint_signature": "checkpoint:test",
+        "environment_signature": "environment:test",
+        "intervention_actual_action": "pass",
+        "llm_opponent_information_query_context": current_audit,
+        "opponent_information_feedback_context": feedback,
+        "llm_opponent_information_adaptation_context": adaptation,
+        "multi_horizon_regime_outcomes": {"60s": {
+            "llm_opponent_information_query_evaluation": current_score,
+            "llm_opponent_information_adaptation_evaluation": score,
+        }},
+    }
+    diagnostics = opponent_information_adaptation_diagnostics([{
+        "world_model_decision_adoption": {"records": [current_record]},
+    }])
+    assert diagnostics["realized_adaptation_scores"] == 1
+    assert diagnostics[
+        "match_clustered_adaptation_improvement_rate"
+    ] == 1.0
+    assert diagnostics["match_clustered_feedback_adaptation_rate"] == 1.0
+    assert diagnostics["provenance_compatible"]
+
+    adaptation_logs = [{
+        "world_model_decision_adoption": {
+            "records": [copy.deepcopy(current_record)],
+        },
+    } for _ in range(4)]
+    report = aggregate_online_calibration(
+        adaptation_logs, min_transitions=0,
+        require_opponent_information_adaptation=True,
+    )
+    assert report["opponent_information_adaptation_ready"]
+    assert report["gates"]["opponent_information_adaptation"]
+
+    malformed_logs = copy.deepcopy(adaptation_logs)
+    malformed_logs[0]["world_model_decision_adoption"]["records"][0][
+        "multi_horizon_regime_outcomes"
+    ]["60s"]["llm_opponent_information_adaptation_evaluation"][
+        "adaptation_target_improvement"
+    ] -= 0.1
+    rejected = aggregate_online_calibration(
+        malformed_logs, min_transitions=0,
+        require_opponent_information_adaptation=True,
+    )
+    assert not rejected["opponent_information_adaptation_ready"]
+    assert not rejected["gates"]["opponent_information_adaptation"]
+
+    tampered = copy.deepcopy(adaptation)
+    tampered["model_checked_consistent"] = False
+    assert not opponent_information_adaptation_audit_is_valid(
+        tampered, current_audit, feedback,
+    )
+    tampered_state = SimpleNamespace(clock_seconds=80.0)
+    sanitized = register_coach_action_decision(
+        tampered_state, team_id="A", trigger_kind="xg_swing",
+        llm_selected_action="pass", world_model_recommended_action="pass",
+        recommendation_confidence=0.8, horizon_s=10.0,
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+        llm_opponent_information_query_context=current_audit,
+        opponent_information_feedback_context=feedback,
+        llm_opponent_information_adaptation_context=tampered,
+    )
+    assert sanitized["llm_opponent_information_adaptation_context"] == {}
+
+
+def test_feedback_adaptation_rejects_unsupported_or_unavailable_claims():
+    current = evaluate_llm_opponent_information_query(
+        _packet(), _query(feature="pressing_intensity"),
+        selected_action="pass",
+    )
+    unavailable = evaluate_llm_opponent_information_adaptation(
+        _packet(), {
+            "prior_decision_id": "missing",
+            "adaptation_kind": "change_query_feature",
+            "confidence": 0.8,
+        }, current,
+    )
+    assert not unavailable["accepted"]
+    assert unavailable["reason"] == "compatible_feedback_and_query_required"
+    assert validate_llm_opponent_information_adaptation({
+        "prior_decision_id": "x",
+        "adaptation_kind": "rewrite_world_model_probability",
+        "confidence": 0.8,
+    }) is None

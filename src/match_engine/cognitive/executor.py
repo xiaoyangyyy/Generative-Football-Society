@@ -249,6 +249,15 @@ class CognitiveExecutor:
                 str(getattr(llm, "model", "rule_fallback"))
             )
         )
+        from src.match_engine.world_model.opponent_information_adaptation import (
+            llm_opponent_information_adaptation_signature,
+        )
+
+        self.llm_opponent_information_adaptation_signature = (
+            llm_opponent_information_adaptation_signature(
+                str(getattr(llm, "model", "rule_fallback"))
+            )
+        )
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -615,6 +624,23 @@ class CognitiveExecutor:
                 plan["opponent_information_query_audit"] = (
                     information_query_audit
                 )
+                from src.match_engine.world_model.opponent_information_adaptation import (
+                    evaluate_llm_opponent_information_adaptation,
+                )
+
+                information_adaptation_audit = (
+                    evaluate_llm_opponent_information_adaptation(
+                        packet,
+                        plan.get("opponent_information_adaptation"),
+                        information_query_audit,
+                        adaptation_signature=(
+                            self.llm_opponent_information_adaptation_signature
+                        ),
+                    )
+                )
+                plan["opponent_information_adaptation_audit"] = (
+                    information_adaptation_audit
+                )
                 from src.match_engine.world_model.active_learning import (
                     build_active_learning_advice,
                 )
@@ -945,6 +971,15 @@ class CognitiveExecutor:
                     ),
                     opponent_information_feedback_context=dict(
                         packet.get("opponent_information_feedback") or {}
+                    ),
+                    llm_opponent_information_adaptation_context=(
+                        dict(rec.plan.get(
+                            "opponent_information_adaptation_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "opponent_information_adaptation_audit"
+                        ) or {}).get("accepted")
+                        else {}
                     ),
                 )
                 if adoption is not None:

@@ -557,6 +557,29 @@ def observe_policy_intervention_outcomes(
                     outcome["llm_opponent_information_query_evaluation"] = (
                         information_score
                     )
+                    adaptation_context = record.get(
+                        "llm_opponent_information_adaptation_context"
+                    ) or {}
+                    feedback_context = record.get(
+                        "opponent_information_feedback_context"
+                    ) or {}
+                    if adaptation_context.get("accepted"):
+                        from src.match_engine.world_model.opponent_information_adaptation_outcomes import (
+                            score_opponent_information_adaptation,
+                        )
+
+                        adaptation_score = (
+                            score_opponent_information_adaptation(
+                                adaptation_context,
+                                information_context,
+                                feedback_context,
+                                information_score,
+                            )
+                        )
+                        if adaptation_score is not None:
+                            outcome[
+                                "llm_opponent_information_adaptation_evaluation"
+                            ] = adaptation_score
             option_context = record.get("llm_event_option_context") or {}
             option = option_context.get("option") or {}
             option_first_action_realized = (
