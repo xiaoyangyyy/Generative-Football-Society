@@ -91,6 +91,15 @@ def _resolve_cognitive_layer(
             )
             if world_model_runtime is not None else None
         ),
+        llm_critic_memory=(
+            _load_llm_critic_memory(
+                base_dir,
+                world_model_runtime,
+                environment_signature,
+                str(getattr(llm, "model", "rule_fallback")),
+            )
+            if world_model_runtime is not None else None
+        ),
     )
     return bus, executor
 
@@ -149,6 +158,26 @@ def _load_opponent_response_memory(
             world_model_runtime, "checkpoint_signature", "runtime_unspecified",
         )),
         environment_signature=str(environment_signature),
+    )
+
+
+def _load_llm_critic_memory(
+    base_dir, world_model_runtime, environment_signature, llm_model,
+):
+    from src.match_engine.world_model.llm_critic import (
+        llm_critic_signature,
+    )
+    from src.match_engine.world_model.llm_critic_memory import (
+        load_llm_critic_memory,
+    )
+
+    return load_llm_critic_memory(
+        base_dir,
+        checkpoint_signature=str(getattr(
+            world_model_runtime, "checkpoint_signature", "runtime_unspecified",
+        )),
+        environment_signature=str(environment_signature),
+        critic_signature=llm_critic_signature(str(llm_model)),
     )
 
 

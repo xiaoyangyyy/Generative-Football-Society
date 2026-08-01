@@ -43,6 +43,7 @@ def register_coach_action_decision(
     active_learning: dict[str, Any] | None = None,
     opponent_belief_context: dict[str, Any] | None = None,
     opponent_response_context: dict[str, Any] | None = None,
+    llm_world_model_critique_context: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -94,6 +95,9 @@ def register_coach_action_decision(
         "active_learning": dict(active_learning or {}),
         "opponent_belief_context": dict(opponent_belief_context or {}),
         "opponent_response_context": dict(opponent_response_context or {}),
+        "llm_world_model_critique_context": dict(
+            llm_world_model_critique_context or {}
+        ),
         "created_t_sec": created,
         "expires_t_sec": created + horizon,
         "llm_selected_action": selected,
@@ -284,7 +288,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 9,
+        "version": 10,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),

@@ -26,7 +26,7 @@ from src.match_engine.world_model.trajectory_game import (
 )
 
 
-DECISION_PACKET_VERSION = 8
+DECISION_PACKET_VERSION = 9
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -618,6 +618,7 @@ def build_coach_decision_packet(
             "opponent_belief": opponent_belief,
             "second_order_game": second_order_game,
             "active_learning": active_learning,
+            "decision_context": learning_context,
             "online_calibration": _online_calibration_diagnostics(runtime),
             "policy_outcome_calibration": outcome_calibration,
             "contextual_residual_memory": (
@@ -629,6 +630,15 @@ def build_coach_decision_packet(
                     "reason": (
                         memory_rejection or "no_compatible_history"
                     ),
+                }
+            ),
+            "llm_semantic_critic_memory": (
+                getattr(state, "_wm_llm_critic_memory").summary()
+                if getattr(state, "_wm_llm_critic_memory", None) is not None
+                else {
+                    "version": 1,
+                    "active_profiles": 0,
+                    "reason": "no_compatible_critic_history",
                 }
             ),
             "policy": (

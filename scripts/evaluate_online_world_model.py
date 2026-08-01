@@ -106,6 +106,14 @@ def main() -> int:
             "continuations backed by grouped two-step holdout gain."
         ),
     )
+    parser.add_argument(
+        "--require-llm-semantic-critic",
+        action="store_true",
+        help=(
+            "Fail readiness until enough realized LLM residual critiques use "
+            "match-held-out authority without mutating world-model forecasts."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -143,6 +151,7 @@ def main() -> int:
         require_two_step_trajectory_planning=(
             args.require_two_step_trajectory_planning
         ),
+        require_llm_semantic_critic=args.require_llm_semantic_critic,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

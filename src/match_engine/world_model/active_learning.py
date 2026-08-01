@@ -259,14 +259,21 @@ def build_active_learning_advice(
             1.0,
             0.0,
         )
+        semantic_critic_information = _bounded(
+            candidate.get("llm_semantic_critic_information", 0.0),
+            0.0,
+            1.0,
+            0.0,
+        )
         information_value = float(np.clip(
-            0.43 * epistemic
-            + 0.16 * context_novelty
-            + 0.12 * action_novelty
-            + 0.06 * disagreement
+            0.40 * epistemic
+            + 0.15 * context_novelty
+            + 0.11 * action_novelty
+            + 0.05 * disagreement
             + 0.08 * opponent_discrimination
             + 0.07 * opponent_response_information
-            + 0.08 * trajectory_planning_information,
+            + 0.08 * trajectory_planning_information
+            + 0.06 * semantic_critic_information,
             0.0, 1.0,
         ))
         value = float(candidate.get("risk_adjusted_value", -1.0))
@@ -293,6 +300,7 @@ def build_active_learning_advice(
             "trajectory_planning_information": (
                 trajectory_planning_information
             ),
+            "semantic_critic_information": semantic_critic_information,
             "action_samples": action_samples,
             "context_action_samples": context_samples,
             "estimated_regret": regret,

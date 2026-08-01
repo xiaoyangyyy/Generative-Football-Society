@@ -8,7 +8,10 @@ import pytest
 
 from src.match_engine.cognitive.config import CognitiveMatchConfig
 from src.match_engine.cognitive.events import CognitiveTriggerEvent, ENTITY_TIER_COACH
-from src.match_engine.cognitive.executor import CognitiveExecutor
+from src.match_engine.cognitive.executor import (
+    CognitiveExecutor,
+    _policy_intervention_strength,
+)
 from src.match_engine.state import (
     CoachAffectiveState,
     CrowdState,
@@ -242,6 +245,8 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
 
     assert "opponent_change_claim" in gateway.user_prompt
     assert "opponent_response_hypothesis" in gateway.user_prompt
+    assert "world_model_critique" in gateway.user_prompt
+    assert "falsifiable forecast-residual claim" in gateway.system_prompt
     assert "two-ply belief-space policy proxy" in gateway.system_prompt
     assert "from_preset" in gateway.user_prompt
     assert "cannot" in gateway.system_prompt
@@ -382,6 +387,165 @@ def test_executor_audits_llm_response_branch_and_persists_planning_context():
         "hold", "pass", "cross", "shot",
     }
     assert context["llm_hypothesis_audit"]["accepted"]
+
+
+def test_executor_registers_falsifiable_llm_critique_in_shadow_mode():
+    class CriticLLM:
+        def coach_in_match_plan(self, team_name, facts, kind):
+            packet = facts["world_model_decision_support"]
+            action = packet["recommended_action"]
+            candidate = next(
+                item for item in packet["candidates"]
+                if item["action"] == action
+            )
+            horizon = next(iter(candidate["multi_horizon_predictions"]))
+            return json.dumps({
+                "reasoning": "Register a falsifiable semantic residual claim.",
+                "confidence": 0.8,
+                "controls_delta": {},
+                "world_model_action": action,
+                "world_model_critique": {
+                    "action": action,
+                    "horizon": horizon,
+                    "direction": "underestimate",
+                    "confidence": 0.7,
+                    "evidence_features": [
+                        "zone", "epistemic_uncertainty",
+                    ],
+                    "rationale": "The current semantic regime may be sparse.",
+                },
+            })
+
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(
+            enabled=True, world_model_action_control_rate=0.0,
+        ),
+        CriticLLM(),
+        world_model_runtime=_Runtime(),
+    )
+    state = _state()
+    record = executor.process_trigger(CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    ), state)
+    audit = record.plan["world_model_critique_audit"]
+    context = state._wm_coach_decision_adoption[-1][
+        "llm_world_model_critique_context"
+    ]
+
+    assert audit["accepted"]
+    assert not audit["authority_active"]
+    assert audit["reason"] == "shadow_critique_for_validation"
+    assert audit["applied_ranking_correction"] == 0.0
+    assert not audit["world_model_prediction_mutated"]
+    assert context["critique"]["action"] == record.plan["world_model_action"]
+    assert not context["can_update_world_model"]
+
+
+def test_validated_critic_can_only_reduce_policy_bridge_authority():
+    cfg = CognitiveMatchConfig(
+        enabled=True, world_model_action_bias_max=0.4,
+    )
+    plan = {"world_model_action": "pass", "confidence": 1.0}
+    baseline_packet = {
+        "available": True,
+        "candidates": [{
+            "action": "pass", "effective_confidence": 1.0,
+        }],
+    }
+    cautious_packet = {
+        "available": True,
+        "candidates": [{
+            "action": "pass",
+            "effective_confidence": 1.0,
+            "llm_semantic_critic_bridge_factor": 0.5,
+        }],
+    }
+
+    baseline = _policy_intervention_strength(plan, baseline_packet, cfg)
+    cautious = _policy_intervention_strength(plan, cautious_packet, cfg)
+
+    assert baseline == pytest.approx(0.4)
+    assert cautious == pytest.approx(0.2)
+
+
+def test_executor_uses_only_matching_held_out_critic_as_safety_brake():
+    from src.match_engine.world_model.llm_critic import llm_critic_signature
+    from src.match_engine.world_model.llm_critic_memory import (
+        compile_llm_critic_memory,
+    )
+
+    signature = llm_critic_signature("rule_fallback")
+    historical = []
+    for _ in range(8):
+        historical.append({
+            "world_model_decision_adoption": {"records": [{
+                "checkpoint_signature": "runtime_unspecified",
+                "environment_signature": "environment_unspecified",
+                "intervention_actual_action": "shot",
+                "llm_world_model_critique_context": {
+                    "version": 1,
+                    "critic_signature": signature,
+                    "critique": {"action": "shot", "horizon": "transition"},
+                    "proposed_policy_utility_correction": -0.08,
+                },
+                "multi_horizon_regime_outcomes": {
+                    "transition": {
+                        "policy_utility": -0.08,
+                        "world_model_prediction": {
+                            "policy_utility": 0.0,
+                            "raw_policy_utility": 0.0,
+                        },
+                    },
+                },
+            }]},
+        })
+    memory = compile_llm_critic_memory(
+        historical,
+        checkpoint_signature="runtime_unspecified",
+        environment_signature="environment_unspecified",
+        critic_signature=signature,
+    )
+
+    class CautiousCriticLLM:
+        def coach_in_match_plan(self, team_name, facts, kind):
+            packet = facts["world_model_decision_support"]
+            return json.dumps({
+                "reasoning": "Apply a previously validated semantic warning.",
+                "confidence": 1.0,
+                "controls_delta": {},
+                "world_model_action": "shot",
+                "world_model_critique": {
+                    "action": "shot",
+                    "horizon": "transition",
+                    "direction": "overestimate",
+                    "confidence": 1.0,
+                    "evidence_features": ["epistemic_uncertainty"],
+                    "rationale": "This regime historically overstates shot value.",
+                },
+            })
+
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(
+            enabled=True,
+            world_model_action_control_rate=0.0,
+            world_model_action_bias_max=0.4,
+        ),
+        CautiousCriticLLM(),
+        world_model_runtime=_Runtime(),
+        llm_critic_memory=memory,
+    )
+    record = executor.process_trigger(CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    ), _state())
+
+    audit = record.plan["world_model_critique_audit"]
+    assert audit["authority_active"]
+    assert audit["correction_applied"]
+    assert audit["applied_ranking_correction"] < 0.0
+    assert 0.5 <= record.plan["world_model_critic_safety_factor"] < 1.0
+    assert record.plan["world_model_policy_intervention_strength"] < 0.4
 
 
 def test_executor_closes_llm_action_when_world_model_quality_gate_is_closed():

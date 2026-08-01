@@ -151,6 +151,22 @@ def test_information_value_exposes_validated_trajectory_disagreement():
     ]
 
 
+def test_information_value_exposes_shadow_semantic_critic_disagreement():
+    baseline = _candidate("hold", 0.50, 0.2, 0.10)
+    semantic_probe = _candidate("pass", 0.49, 0.2, 0.10)
+    semantic_probe["llm_semantic_critic_information"] = 0.9
+
+    advice = build_active_learning_advice(
+        [baseline, semantic_probe], [], context=_context(),
+    )
+    evidence = {item["action"]: item for item in advice["candidate_evidence"]}
+
+    assert evidence["pass"]["semantic_critic_information"] == 0.9
+    assert evidence["pass"]["information_value"] > evidence["hold"][
+        "information_value"
+    ]
+
+
 def test_diagnostics_measure_later_uncertainty_reduction_in_same_context():
     baseline = {
         "opponent_team_id": "Away",

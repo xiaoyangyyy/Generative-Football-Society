@@ -492,3 +492,50 @@ def test_strict_two_step_planning_gate_requires_validated_bounded_audits():
     assert diagnostics["all_active_rollouts_holdout_validated"]
     assert report["two_step_trajectory_planning_ready"]
     assert report["gates"]["validated_two_step_trajectory_planning"]
+
+
+def test_strict_llm_critic_gate_requires_realized_immutable_corrections():
+    records = []
+    for _ in range(2):
+        records.append({
+            "intervention_actual_action": "pass",
+            "llm_world_model_critique_context": {
+                "version": 1,
+                "authority_active": True,
+                "correction_applied": True,
+                "critique": {
+                    "action": "pass",
+                    "horizon": "60s",
+                },
+                "applied_ranking_correction": 0.02,
+                "world_model_prediction_mutated": False,
+                "can_update_world_model": False,
+                "can_update_critic_memory": False,
+            },
+            "multi_horizon_regime_outcomes": {
+                "60s": {
+                    "policy_utility": 0.08,
+                    "world_model_prediction": {
+                        "policy_utility": 0.0,
+                        "raw_policy_utility": 0.0,
+                    },
+                },
+            },
+        })
+    report = aggregate_online_calibration(
+        [{"world_model_decision_adoption": {"records": records}}],
+        min_residual_samples=2,
+        require_llm_semantic_critic=True,
+    )
+
+    diagnostics = report["decision_adoption"]["llm_semantic_critic"]
+    assert diagnostics["realized_authority_active_critiques"] == 2
+    assert diagnostics["realized_validated_corrections"] == 2
+    assert diagnostics["match_clustered_corrected_mse"] < (
+        diagnostics["match_clustered_baseline_mse"]
+    )
+    assert diagnostics["all_non_persistent"]
+    assert diagnostics["all_predictions_immutable"]
+    assert diagnostics["all_bridge_authority_non_increasing"]
+    assert report["llm_semantic_critic_ready"]
+    assert report["gates"]["validated_llm_semantic_critic"]

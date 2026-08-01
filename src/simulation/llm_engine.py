@@ -252,6 +252,12 @@ If world_model_decision_support is present, treat it as uncertain model evidence
 - opponent response transitions are held-out-validated observational patterns,
   never causal facts. An opponent_response_hypothesis may stress one evaluated
   action branch, but its influence is capped and cannot update response memory;
+- world_model_critique is a falsifiable forecast-residual claim for your selected
+  action and one evaluated horizon. State overestimate, underestimate, or
+  neutral and cite only listed semantic evidence. It runs in shadow until
+  cross-match held-out error proves useful; it cannot rewrite model forecasts.
+  A validated overestimate may reduce bridge strength, but no critique can
+  increase execution authority;
 - change_point is computed from live numeric evidence. You may explain a
   watch/confirmed change with opponent_change_claim, but your claim cannot
   trigger, confirm, or cancel the detector. Cite only features whose signed
@@ -278,6 +284,14 @@ Return JSON:
   "world_model_action": "hold|pass|cross|shot|none",
   "world_model_decision_mode": "exploit|explore|decline",
   "world_model_rationale": "brief explanation tied to uncertainty and candidate evidence",
+  "world_model_critique": {{
+    "action": "must equal world_model_action",
+    "horizon": "one key from that candidate's multi_horizon_predictions",
+    "direction": "underestimate|overestimate|neutral",
+    "confidence": 0.0-1.0,
+    "evidence_features": ["zone|score_state|match_phase|opponent_belief|opponent_response|trajectory_rollout|epistemic_uncertainty|aleatoric_uncertainty|tactical_shape"],
+    "rationale": "one falsifiable semantic residual explanation"
+  }},
   "opponent_hypothesis": {{
     "tactical_preset": "one preset listed in opponent_belief.hypotheses",
     "confidence": 0.0-1.0,

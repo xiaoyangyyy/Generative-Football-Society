@@ -463,6 +463,42 @@ clustering and can require learned response evidence via
 validation provenance and deployment coverage via
 `--require-two-step-trajectory-planning`.
 
+### Empirically gated LLM semantic residual critic
+
+The coach LLM can now make a falsifiable `world_model_critique` for the action
+it actually selects and one declared forecast horizon. The claim must say that
+the model is overestimating, underestimating, or neutral; it carries bounded
+confidence and may cite only semantic evidence that is present in the packet
+(match zone, score state, phase, opponent belief/response, trajectory audit,
+uncertainty, or observed tactical shape). A critique for another action, an
+unevaluated horizon, or absent evidence is rejected.
+
+Every accepted critique initially runs in shadow. It proposes at most `0.08`
+policy-utility correction but cannot alter the stored neural forecast, update
+model weights, or write its own reliability memory. After the selected action
+is actually executed, the proposal is joined to the same-horizon realized
+policy utility. Cross-match memory is isolated by checkpoint and complete policy
+environment and by a hash of the LLM model plus critic prompt contract. Changing
+the language model or critic contract therefore resets authority to shadow mode.
+The compiler gives each match equal weight, fits a non-negative correction scale
+on the chronological first half, and activates only when the held-out second
+half improves MSE by at least two percent. At least two training and two
+validation matches are required.
+
+Even after validation, reliability is capped at `0.35`; the resulting live
+ranking adjustment is capped at `0.04` and the original world-model forecast
+remains immutable for calibration. Thus semantic LLM judgment can complement a
+numeric model only after demonstrating repeatable residual skill, while harmful
+or merely eloquent criticism retains zero authority. Online diagnostics report
+match-clustered baseline/corrected MSE and can require this path with
+`--require-llm-semantic-critic`.
+
+Execution authority is asymmetric: a validated `overestimate` critique may
+reduce the selected action's policy-bridge strength by up to 50 percent, while
+an `underestimate` critique cannot increase bridge strength. This gives the
+semantic channel a learned safety-brake role without allowing it to manufacture
+additional control authority.
+
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
@@ -472,5 +508,6 @@ python scripts/evaluate_online_world_model.py \
   --require-outcome-calibration --require-uncertainty-decomposition \
   --require-transition-ensemble --require-opponent-belief \
   --require-opponent-meta-belief --require-opponent-change-detection \
-  --require-opponent-response-model --require-two-step-trajectory-planning
+  --require-opponent-response-model --require-two-step-trajectory-planning \
+  --require-llm-semantic-critic
 ```

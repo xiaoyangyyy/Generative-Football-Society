@@ -74,5 +74,12 @@ evaluated branch but cannot persist evidence, alter the learned memory, or claim
 causal opponent reactions. Realized forecasts have a separate online readiness
 gate and match-clustered Brier audit; predicted-state planning has an independent
 budget/provenance readiness gate.
+The LLM also emits optional semantic residual critiques tied to its selected
+action and an evaluated horizon. These claims are scored against realized
+policy utility, match-clustered, checkpoint/environment isolated, and receive
+bounded ranking authority only after chronological held-out MSE improvement.
+They never mutate the neural forecast or self-author their reliability. This
+creates a falsifiable semantic-numeric correction channel instead of an
+unverifiable LLM override.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

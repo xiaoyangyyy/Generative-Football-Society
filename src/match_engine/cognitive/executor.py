@@ -58,9 +58,12 @@ def _policy_intervention_strength(
     model_confidence = min(
         1.0, max(0.0, float(candidate.get("effective_confidence", 0.0)))
     )
+    critic_safety_factor = min(1.0, max(0.5, float(candidate.get(
+        "llm_semantic_critic_bridge_factor", 1.0,
+    ))))
     return float(cfg.world_model_action_bias_max) * math.sqrt(
         plan_confidence * model_confidence
-    )
+    ) * critic_safety_factor
 
 
 def _cache_key(trig: CognitiveTriggerEvent) -> str:
@@ -168,6 +171,7 @@ class CognitiveExecutor:
         outcome_residual_memory=None,
         opponent_meta_belief_memory=None,
         opponent_response_memory=None,
+        llm_critic_memory=None,
         policy_environment_signature: str = "environment_unspecified",
     ) -> None:
         self.cfg = cfg
@@ -177,6 +181,12 @@ class CognitiveExecutor:
         self.outcome_residual_memory = outcome_residual_memory
         self.opponent_meta_belief_memory = opponent_meta_belief_memory
         self.opponent_response_memory = opponent_response_memory
+        self.llm_critic_memory = llm_critic_memory
+        from src.match_engine.world_model.llm_critic import llm_critic_signature
+
+        self.llm_critic_signature = llm_critic_signature(
+            str(getattr(llm, "model", "rule_fallback"))
+        )
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -281,6 +291,8 @@ class CognitiveExecutor:
                 )
             if self.opponent_response_memory is not None:
                 state._wm_opponent_response_memory = self.opponent_response_memory
+            if self.llm_critic_memory is not None:
+                state._wm_llm_critic_memory = self.llm_critic_memory
             trig.facts["world_model_decision_support"] = (
                 build_coach_decision_packet(
                     self.world_model_runtime,
@@ -388,6 +400,18 @@ class CognitiveExecutor:
                     self.opponent_response_memory,
                 )
                 plan["opponent_response_hypothesis_audit"] = response_audit
+                from src.match_engine.world_model.llm_critic import (
+                    apply_llm_world_model_critique,
+                )
+
+                critic_audit = apply_llm_world_model_critique(
+                    packet,
+                    plan.get("world_model_critique"),
+                    self.llm_critic_memory,
+                    selected_action=str(plan.get("world_model_action", "none")),
+                    critic_signature=self.llm_critic_signature,
+                )
+                plan["world_model_critique_audit"] = critic_audit
                 from src.match_engine.world_model.active_learning import (
                     build_active_learning_advice,
                 )
@@ -638,6 +662,12 @@ class CognitiveExecutor:
                             "opponent_response_hypothesis_audit"
                         ) or {}),
                     },
+                    llm_world_model_critique_context=(
+                        dict(rec.plan.get("world_model_critique_audit") or {})
+                        if (rec.plan.get("world_model_critique_audit") or {}).get(
+                            "accepted"
+                        ) else {}
+                    ),
                 )
                 if adoption is not None:
                     rec.plan["world_model_adoption_id"] = adoption[
@@ -657,6 +687,11 @@ class CognitiveExecutor:
                     )
                     rec.plan["world_model_prediction_trust_factor"] = (
                         prediction_factor
+                    )
+                    rec.plan["world_model_critic_safety_factor"] = float(
+                        selected_candidate.get(
+                            "llm_semantic_critic_bridge_factor", 1.0,
+                        )
                     )
                     rec.plan["world_model_prediction_trust_audit"] = (
                         prediction_audit
