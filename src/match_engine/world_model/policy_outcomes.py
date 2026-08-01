@@ -487,6 +487,40 @@ def observe_policy_intervention_outcomes(
                     outcome["llm_distributional_claim_evaluation"] = (
                         distributional_score
                     )
+            preference_context = (
+                record.get("llm_risk_preference_context") or {}
+            )
+            preference = preference_context.get("preference") or {}
+            preference_action_realized = (
+                str(preference.get("selected_action", "")).lower()
+                == str(record.get("intervention_actual_action", "")).lower()
+            )
+            if (
+                key in (preference.get("horizon_weights") or {})
+                and preference_action_realized
+            ):
+                from src.match_engine.world_model import (
+                    risk_preference_evaluation,
+                )
+
+                score_preference = (
+                    risk_preference_evaluation.score_llm_risk_preference
+                )
+                preference_score = score_preference(
+                    preference_context,
+                    outcome,
+                    horizon=key,
+                    checkpoint_signature=str(record.get(
+                        "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    environment_signature=str(record.get(
+                        "environment_signature", "environment_unspecified",
+                    )),
+                )
+                if preference_score is not None:
+                    outcome["llm_risk_preference_evaluation"] = (
+                        preference_score
+                    )
             option_context = record.get("llm_event_option_context") or {}
             option = option_context.get("option") or {}
             option_first_action_realized = (

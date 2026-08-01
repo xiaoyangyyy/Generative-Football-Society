@@ -177,6 +177,14 @@ def main() -> int:
             "LLM distributional action claims."
         ),
     )
+    parser.add_argument(
+        "--require-llm-risk-preferences",
+        action="store_true",
+        help=(
+            "Require realized, model-checked multi-horizon LLM risk "
+            "preferences over calibrated predictive scenarios."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -233,6 +241,7 @@ def main() -> int:
         require_llm_distributional_decisions=(
             args.require_llm_distributional_decisions
         ),
+        require_llm_risk_preferences=args.require_llm_risk_preferences,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

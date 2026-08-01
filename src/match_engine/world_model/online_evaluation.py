@@ -51,6 +51,9 @@ from src.match_engine.world_model.risk_certificate import (
 from src.match_engine.world_model.distributional_claim import (
     distributional_claim_diagnostics,
 )
+from src.match_engine.world_model.risk_preference_evaluation import (
+    risk_preference_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -86,6 +89,7 @@ def aggregate_online_calibration(
     require_llm_contrastive_repair: bool = False,
     require_llm_risk_certificates: bool = False,
     require_llm_distributional_decisions: bool = False,
+    require_llm_risk_preferences: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -217,6 +221,7 @@ def aggregate_online_calibration(
     llm_contrastive_repair = contrastive_repair_diagnostics(logs)
     llm_risk_certificates = risk_certificate_diagnostics(logs)
     llm_distributional = distributional_claim_diagnostics(logs)
+    llm_risk_preferences = risk_preference_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -485,8 +490,34 @@ def aggregate_online_calibration(
         llm_distributional_ready
         if require_llm_distributional_decisions else True
     )
+    llm_risk_preferences_ready = bool(
+        llm_risk_preferences["realized_preference_values"]
+        >= max(4, min_residual_samples)
+        and llm_risk_preferences["matches"] >= 4
+        and llm_risk_preferences["malformed_preference_contexts"] == 0
+        and llm_risk_preferences["malformed_preference_evaluations"] == 0
+        and llm_risk_preferences[
+            "unscored_eligible_preference_horizons"
+        ] == 0
+        and llm_risk_preferences[
+            "match_clustered_prospective_consistency"
+        ] >= 0.60
+        and 0.55 <= llm_risk_preferences[
+            "match_clustered_central_80_coverage"
+        ] <= 0.98
+        and llm_risk_preferences["match_clustered_preference_value_crps"]
+        <= llm_risk_preferences["match_clustered_preference_value_mae"] + 1e-12
+        and llm_risk_preferences["all_predictive_distributions_calibrated"]
+        and llm_risk_preferences["all_shadow_only"]
+        and llm_risk_preferences["all_non_controlling"]
+        and llm_risk_preferences["all_non_causal"]
+        and llm_risk_preferences["provenance_compatible"]
+    )
+    gates["calibrated_llm_risk_preferences"] = (
+        llm_risk_preferences_ready if require_llm_risk_preferences else True
+    )
     return {
-        "version": 19,
+        "version": 20,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -522,6 +553,7 @@ def aggregate_online_calibration(
             "llm_contrastive_repairs": llm_contrastive_repair,
             "llm_risk_certificates": llm_risk_certificates,
             "llm_distributional_decisions": llm_distributional,
+            "llm_risk_preferences": llm_risk_preferences,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -549,6 +581,7 @@ def aggregate_online_calibration(
         "llm_contrastive_repair_ready": llm_contrastive_repair_ready,
         "llm_risk_certificates_ready": llm_risk_certificates_ready,
         "llm_distributional_decisions_ready": llm_distributional_ready,
+        "llm_risk_preferences_ready": llm_risk_preferences_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -569,5 +602,6 @@ def aggregate_online_calibration(
             "One-shot contrastive repair may revise only an explanation after model counterevidence; repair success cannot change the frozen action, controls, forecasts, or policy authority.",
             "LLM chance constraints are shadow certificates over transparent ensemble modes; conservative certification is observational and cannot veto or authorize an action.",
             "Distributional LLM claims are scored against realized simulator utility; calibrated member spread is descriptive and does not establish causal action value.",
+            "LLM risk preferences are model-checked on frozen scenarios; only the selected action is realized, so reported preference regret is prospective rather than counterfactual ground truth.",
         ],
     }

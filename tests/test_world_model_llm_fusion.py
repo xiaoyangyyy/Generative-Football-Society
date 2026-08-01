@@ -290,6 +290,7 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "world_model_contrastive_claim" in gateway.user_prompt
     assert "world_model_risk_constraint" in gateway.user_prompt
     assert "world_model_distributional_claim" in gateway.user_prompt
+    assert "world_model_risk_preference" in gateway.user_prompt
     assert "trajectory_modes" in gateway.system_prompt
     assert "CRPS" in gateway.system_prompt
     assert "member-predicted states" in gateway.system_prompt
@@ -633,6 +634,16 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
                     "confidence": 0.75,
                     "rationale": "The two lower tails are indistinguishable.",
                 },
+                "world_model_risk_preference": {
+                    "selected_action": action,
+                    "distribution_scope": "epistemic_member_only",
+                    "horizon_weights": {horizon: 1.0},
+                    "loss_aversion": 2.0,
+                    "diminishing_sensitivity": 0.8,
+                    "max_acceptable_regret": 0.05,
+                    "confidence": 0.75,
+                    "rationale": "Apply one stable downside preference.",
+                },
             })
 
     executor = CognitiveExecutor(
@@ -680,6 +691,16 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
     assert not distributional["can_change_selected_action"]
     assert distributional_context["claim_signature"].startswith(
         "llm-distributional-claim:"
+    )
+    preference = record.plan["world_model_risk_preference_audit"]
+    preference_context = state._wm_coach_decision_adoption[-1][
+        "llm_risk_preference_context"
+    ]
+    assert preference["accepted"]
+    assert preference["preference_consistent"]
+    assert not preference["can_change_selected_action"]
+    assert preference_context["preference_signature"].startswith(
+        "llm-risk-preference:"
     )
 
 

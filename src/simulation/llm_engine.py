@@ -285,6 +285,13 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   Only a frozen calibrated_predictive scenario lattice is eligible for strict
   CRPS, pinball-loss and interval-coverage readiness. It remains
   shadow-only and cannot change the action or ranking;
+- world_model_risk_preference is one explicit preference applied unchanged to
+  every declared horizon and all four actions. Horizon weights must sum to 1.
+  The fixed reference utility is zero; loss_aversion and
+  diminishing_sensitivity define a bounded prospect-value transform. The engine
+  recomputes every scenario value, per-horizon preference regret and aggregate
+  regret. Do not report your own utility score. This audit is shadow-only and
+  does not provide counterfactual realized outcomes for actions not taken;
 - semantic_event_fusion distinguishes transparent member-frequency projection
   from a learned event head. Treat the learned probability as evidence only when
   that event's exact rollout-depth gate is active; longer unvalidated rollouts
@@ -381,6 +388,16 @@ Return JSON:
     "relation": "selected_better|alternative_better|approximately_equal",
     "confidence": 0.5-1.0,
     "rationale": "one falsifiable distributional reason for the action"
+  }},
+  "world_model_risk_preference": {{
+    "selected_action": "must equal world_model_action",
+    "distribution_scope": "epistemic_member_only|calibrated_predictive",
+    "horizon_weights": {{"transition": 0.4, "60s": 0.6}},
+    "loss_aversion": 1.0-4.0,
+    "diminishing_sensitivity": 0.5-1.0,
+    "max_acceptable_regret": 0.0-0.5,
+    "confidence": 0.5-1.0,
+    "rationale": "why this same risk preference should hold across horizons"
   }},
   "opponent_hypothesis": {{
     "tactical_preset": "one preset listed in opponent_belief.hypotheses",

@@ -233,6 +233,13 @@ class CognitiveExecutor:
                 str(getattr(llm, "model", "rule_fallback"))
             )
         )
+        from src.match_engine.world_model.risk_preference import (
+            llm_risk_preference_signature,
+        )
+
+        self.llm_risk_preference_signature = llm_risk_preference_signature(
+            str(getattr(llm, "model", "rule_fallback"))
+        )
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -565,6 +572,21 @@ class CognitiveExecutor:
                 plan["world_model_distributional_claim_audit"] = (
                     distributional_audit
                 )
+                from src.match_engine.world_model.risk_preference import (
+                    evaluate_llm_risk_preference,
+                )
+
+                risk_preference_audit = evaluate_llm_risk_preference(
+                    packet,
+                    plan.get("world_model_risk_preference"),
+                    selected_action=str(plan.get(
+                        "world_model_action", "none",
+                    )),
+                    preference_signature=self.llm_risk_preference_signature,
+                )
+                plan["world_model_risk_preference_audit"] = (
+                    risk_preference_audit
+                )
                 from src.match_engine.world_model.active_learning import (
                     build_active_learning_advice,
                 )
@@ -872,6 +894,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "world_model_distributional_claim_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_risk_preference_context=(
+                        dict(rec.plan.get(
+                            "world_model_risk_preference_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_risk_preference_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

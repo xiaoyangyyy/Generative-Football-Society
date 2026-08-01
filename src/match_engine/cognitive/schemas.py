@@ -144,6 +144,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if distributional_claim is not None:
         out["world_model_distributional_claim"] = distributional_claim
+    from src.match_engine.world_model.risk_preference import (
+        validate_llm_risk_preference,
+    )
+
+    risk_preference = validate_llm_risk_preference(
+        plan.get("world_model_risk_preference")
+    )
+    if risk_preference is not None:
+        out["world_model_risk_preference"] = risk_preference
     return out
 
 

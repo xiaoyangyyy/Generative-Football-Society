@@ -13,6 +13,63 @@ _QUANTILE_LEVELS = (0.10, 0.25, 0.50, 0.75, 0.90)
 _QUANTILE_KEYS = ("q10", "q25", "q50", "q75", "q90")
 
 
+def predictive_lattice_is_valid(distribution: dict[str, Any]) -> bool:
+    """Rebuild and verify a persisted calibrated-predictive lattice."""
+    if (
+        str(distribution.get("distribution_scope", ""))
+        != "calibrated_predictive"
+    ):
+        return False
+    try:
+        members = np.asarray(
+            distribution["epistemic_member_values"], dtype=np.float64,
+        )
+        residuals = np.asarray(
+            distribution["residual_scenario_offsets"], dtype=np.float64,
+        )
+        scenarios = np.asarray(
+            distribution["decision_scenario_values"], dtype=np.float64,
+        )
+        samples = int(distribution["residual_calibration_samples"])
+        decomposition = distribution["uncertainty_decomposition"]
+        declared = tuple(float(decomposition[key]) for key in (
+            "epistemic_member_variance",
+            "residual_outcome_variance",
+            "predictive_lattice_variance",
+            "additive_identity_error",
+        ))
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+    if not (
+        distribution.get("predictive_distribution_available") is True
+        and distribution.get("residual_quantiles_split")
+        == "held_out_calibration"
+        and samples >= MIN_RESIDUAL_SCENARIO_SAMPLES
+        and members.ndim == residuals.ndim == scenarios.ndim == 1
+        and len(members) >= 2 and len(residuals) >= 3
+        and len(scenarios) == len(members) * len(residuals)
+        and np.all(np.isfinite(members))
+        and np.all(np.isfinite(residuals))
+        and np.all(np.isfinite(scenarios))
+        and all(np.isfinite(value) for value in declared)
+        and decomposition.get("axes_statistically_independent_claimed") is False
+    ):
+        return False
+    rebuilt = (members[:, None] + residuals[None, :]).reshape(-1)
+    actual = (
+        float(np.var(members)), float(np.var(residuals)),
+        float(np.var(rebuilt)),
+    )
+    identity = abs(actual[2] - actual[0] - actual[1])
+    return bool(
+        np.allclose(scenarios, rebuilt, atol=1e-9, rtol=0.0)
+        and all(abs(left - right) <= 1e-9 for left, right in zip(
+            declared[:3], actual,
+        ))
+        and abs(declared[3] - identity) <= 1e-9
+    )
+
+
 def _summarize(values: np.ndarray) -> dict[str, Any]:
     ordered = np.sort(values)
     count = len(values)

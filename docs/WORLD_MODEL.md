@@ -807,6 +807,36 @@ valid held-out-residual `calibrated_predictive` lattice. Enable it with
 `--require-llm-distributional-decisions`. These are simulator-distribution
 calibration claims, not causal estimates of choosing one action over another.
 
+### Model-checked multi-horizon risk preferences
+
+The coach may additionally declare one `world_model_risk_preference`. This is
+not a free-form score: it contains the selected action, an exact distribution
+scope, weights over one to four evaluated horizons that must sum to one, bounded
+loss aversion in `[1, 4]`, diminishing sensitivity in `[0.5, 1]`, and a maximum
+acceptable preference regret. The utility reference is fixed at zero, so the
+coach cannot move the gain/loss boundary after seeing the action distributions.
+
+The world model applies that same prospect-value transform to every scenario of
+all four actions at every declared horizon. It independently reports expected
+preference value, preferred actions, selected-action regret at each horizon,
+weighted aggregate regret, and whether both the local and aggregate regrets fit
+the declaration. The LLM cannot submit its own transformed values, change a
+forecast, or acquire action authority. Mixed distribution scopes and incomplete
+action/horizon evidence fail closed.
+
+When the selected action naturally occurs, each declared horizon is paired only
+with its same-horizon realized utility. The evaluator transforms both the frozen
+scenario vector and realized value under the original preference, then reports
+CRPS, point error, and central-80% coverage in preference-value space. Aggregate
+diagnostics revalidate the complete prospective audit digest, scenario transform,
+regret calculation, and realized score. No realized regret is claimed because
+the unchosen actions do not have observed counterfactual outcomes. Strict
+readiness additionally requires calibrated predictive lattices, four matches,
+zero malformed or missing eligible scores, at least `0.60` prospective
+consistency, central-80% coverage in `[0.55, 0.98]`, and CRPS no worse than the
+mean forecast's absolute error. Enable it with
+`--require-llm-risk-preferences`.
+
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
@@ -823,5 +853,6 @@ python scripts/evaluate_online_world_model.py \
   --require-llm-contrastive-faithfulness \
   --require-llm-contrastive-repair \
   --require-llm-risk-certificates \
-  --require-llm-distributional-decisions
+  --require-llm-distributional-decisions \
+  --require-llm-risk-preferences
 ```
