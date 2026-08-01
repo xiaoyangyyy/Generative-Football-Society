@@ -81,6 +81,9 @@ def couple_temporal_utility_scenarios(
         return {"available": False, "reason": "temporal_member_axis_mismatch"}
 
     residual_count = 0
+    marginal_residual_quantiles = 0
+    empirical_coupling = None
+    residual_rank_coupling_audit = None
     if scope == "calibrated_predictive":
         if not all(predictive_lattice_is_valid(distributions[horizon])
                    for horizon in horizons):
@@ -103,6 +106,7 @@ def couple_temporal_utility_scenarios(
                 "reason": "temporal_residual_axis_invalid",
             }
         residual_count = len(residual_axes[0])
+        marginal_residual_quantiles = residual_count
         reference_levels = level_axes[0]
         if (
             residual_count < 3
@@ -122,11 +126,91 @@ def couple_temporal_utility_scenarios(
                 "available": False,
                 "reason": "temporal_residual_quantile_axis_mismatch",
             }
-        columns = [
-            (members[:, None] + residuals[None, :]).reshape(-1)
-            for members, residuals in zip(member_axes, residual_axes)
+        coupling_rows = [
+            distributions[horizon].get("temporal_residual_rank_coupling")
+            for horizon in horizons
         ]
-        coupling = "member_identity_x_comonotonic_residual_quantile_rank"
+        if any(row is not None for row in coupling_rows):
+            if (
+                not all(isinstance(row, dict) for row in coupling_rows)
+                or any(row != coupling_rows[0] for row in coupling_rows[1:])
+            ):
+                return {
+                    "available": False,
+                    "reason": "temporal_empirical_rank_coupling_mismatch",
+                }
+            candidate = coupling_rows[0]
+            if candidate.get("available"):
+                try:
+                    template_values = np.asarray(
+                        candidate["rank_templates"], dtype=np.float64,
+                    )
+                    coupling_levels = np.asarray(
+                        candidate["rank_levels"], dtype=np.float64,
+                    )
+                    calibration_samples = int(
+                        candidate["calibration_samples"]
+                    )
+                    rank_correlation = float(
+                        candidate["mean_absolute_rank_correlation"]
+                    )
+                except (KeyError, TypeError, ValueError, OverflowError):
+                    return {
+                        "available": False,
+                        "reason": "temporal_empirical_rank_contract_invalid",
+                    }
+                if (
+                    int(candidate.get("version", 0)) != 1
+                    or list(candidate.get("horizon_keys") or []) != horizons
+                    or candidate.get("shared_across_candidate_actions") is not True
+                    or candidate.get("temporal_joint_calibrated") is not False
+                    or candidate.get("temporal_dependence_empirical") is not True
+                    or candidate.get("dependence_source")
+                    != "observed_multi_horizon_residual_ranks"
+                    or candidate.get("split")
+                    != "reference_then_held_out_calibration"
+                    or not np.isfinite(rank_correlation)
+                    or not 0.0 <= rank_correlation <= 1.0
+                    or coupling_levels.shape != reference_levels.shape
+                    or not np.allclose(
+                        coupling_levels, reference_levels,
+                        atol=1e-12, rtol=0.0,
+                    )
+                    or template_values.ndim != 2
+                    or template_values.shape[0] < 4
+                    or template_values.shape[1] != len(horizons)
+                    or calibration_samples != template_values.shape[0]
+                    or not np.all(np.isfinite(template_values))
+                    or not np.all(template_values == np.floor(template_values))
+                    or np.any(template_values < 0)
+                    or np.any(template_values >= residual_count)
+                ):
+                    return {
+                        "available": False,
+                        "reason": "temporal_empirical_rank_contract_invalid",
+                    }
+                templates = template_values.astype(np.int64)
+                columns = [np.asarray([
+                    member + residual_axes[horizon_index][template[horizon_index]]
+                    for member in member_axes[horizon_index]
+                    for template in templates
+                ], dtype=np.float64) for horizon_index in range(len(horizons))]
+                residual_count = templates.shape[0]
+                coupling = (
+                    "member_identity_x_empirical_residual_rank_templates"
+                )
+                empirical_coupling = dict(candidate)
+            else:
+                residual_rank_coupling_audit = {
+                    **candidate,
+                    "fallback_used": True,
+                }
+        if empirical_coupling is None:
+            columns = [
+                (members[:, None] + residuals[None, :]).reshape(-1)
+                for members, residuals in zip(member_axes, residual_axes)
+            ]
+            coupling = "member_identity_x_comonotonic_residual_quantile_rank"
     else:
         columns = member_axes
         coupling = "transition_member_identity"
@@ -144,12 +228,21 @@ def couple_temporal_utility_scenarios(
         "scenario_count": len(paths),
         "ensemble_members": member_count,
         "residual_scenarios": residual_count,
+        "marginal_residual_quantiles": marginal_residual_quantiles,
         "member_identity_preserved_across_horizons": True,
         "residual_quantile_rank_preserved_across_horizons": bool(
-            scope == "calibrated_predictive"
+            scope == "calibrated_predictive" and empirical_coupling is None
+        ),
+        "empirical_residual_rank_template_preserved_across_horizons": bool(
+            empirical_coupling is not None
         ),
         "temporal_coupling_source": coupling,
-        "temporal_dependence_learned": False,
+        "temporal_dependence_learned": bool(empirical_coupling is not None),
+        "temporal_residual_rank_coupling": empirical_coupling
+        or residual_rank_coupling_audit or {
+            "available": False,
+            "reason": "transparent_comonotonic_rank_fallback",
+        },
         "temporal_joint_calibrated": False,
         "marginals_split_calibrated": bool(
             scope == "calibrated_predictive"

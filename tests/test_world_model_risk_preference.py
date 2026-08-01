@@ -96,6 +96,30 @@ def _rationalization_packet():
     return packet
 
 
+def _empirical_temporal_packet():
+    packet = _packet()
+    coupling = {
+        "version": 1,
+        "available": True,
+        "horizon_keys": ["60s", "180s"],
+        "rank_levels": [0.1, 0.5, 0.9],
+        "rank_templates": [[0, 2], [2, 0], [0, 2], [2, 0]],
+        "calibration_samples": 4,
+        "mean_absolute_rank_correlation": 1.0,
+        "shared_across_candidate_actions": True,
+        "split": "reference_then_held_out_calibration",
+        "dependence_source": "observed_multi_horizon_residual_ranks",
+        "temporal_dependence_empirical": True,
+        "temporal_joint_calibrated": False,
+    }
+    for candidate in packet["candidates"]:
+        for prediction in candidate["multi_horizon_predictions"].values():
+            prediction["distributional_policy_utility"][
+                "temporal_residual_rank_coupling"
+            ] = copy.deepcopy(coupling)
+    return packet
+
+
 def _preference(**updates):
     value = {
         "selected_action": "pass",
@@ -202,6 +226,26 @@ def test_world_model_recomputes_scenario_values_and_multi_horizon_regret():
     ] > inconsistent["preference"]["max_acceptable_regret"]
 
 
+def test_preference_paths_share_empirical_temporal_templates_across_actions():
+    audit = evaluate_llm_risk_preference(
+        _empirical_temporal_packet(), _preference(), selected_action="pass",
+    )
+
+    assert audit["accepted"]
+    assert risk_preference_audit_is_valid(audit)
+    temporal = audit["temporal_preference"]
+    assert temporal["temporal_dependence_learned"]
+    assert temporal["temporal_coupling_source"] == (
+        "member_identity_x_empirical_residual_rank_templates"
+    )
+    assert temporal[
+        "empirical_residual_rank_templates_jointly_aligned_across_actions"
+    ]
+    assert not temporal[
+        "residual_quantile_axis_jointly_aligned_across_actions"
+    ]
+
+
 def test_preference_fails_closed_for_scope_action_and_incomplete_evidence():
     mismatch = evaluate_llm_risk_preference(
         _packet(), _preference(selected_action="shot"),
@@ -236,7 +280,7 @@ def test_preference_fails_closed_for_scope_action_and_incomplete_evidence():
 
 def test_realized_preference_scores_are_recomputed_and_strictly_gated():
     audit = evaluate_llm_risk_preference(
-        _packet(), _preference(), selected_action="pass",
+        _empirical_temporal_packet(), _preference(), selected_action="pass",
         preference_signature="llm-risk-preference:test",
     )
     logs = []
@@ -261,13 +305,16 @@ def test_realized_preference_scores_are_recomputed_and_strictly_gated():
     assert diagnostics["match_clustered_central_80_coverage"] == 0.75
     assert diagnostics["all_predictive_distributions_calibrated"]
     assert diagnostics["match_clustered_prospective_temporal_robustness"] == 1.0
+    assert diagnostics[
+        "match_clustered_empirical_temporal_dependence_rate"
+    ] == 1.0
     assert diagnostics["provenance_compatible"]
 
     report = aggregate_online_calibration(
         logs, min_transitions=0, min_residual_samples=2,
         require_llm_risk_preferences=True,
     )
-    assert report["version"] == 22
+    assert report["version"] == 23
     assert report["llm_risk_preferences_ready"]
     assert report["gates"]["calibrated_llm_risk_preferences"]
 

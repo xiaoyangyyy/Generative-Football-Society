@@ -48,6 +48,46 @@ def _payload(signature, residuals, *, action="pass", horizon="60s"):
     }
 
 
+def _multi_horizon_payload(signature, residual_paths):
+    records = []
+    for near, far in residual_paths:
+        records.append({
+            "checkpoint_signature": signature,
+            "environment_signature": "environment_unspecified",
+            "policy_utility_version": 1,
+            "team_id": "Home",
+            "intervention_actual_action": "pass",
+            "outcome_baseline": {
+                "opponent_team_id": "Away",
+                "zone": "middle",
+                "score_state": "level",
+                "match_phase": "early",
+            },
+            "multi_horizon_regime_outcomes": {
+                "60s": {
+                    "policy_utility": near,
+                    "world_model_prediction": {
+                        "raw_policy_utility": 0.0,
+                        "policy_utility": 0.0,
+                        "uncertainty": 0.2,
+                    },
+                },
+                "180s": {
+                    "policy_utility": far,
+                    "world_model_prediction": {
+                        "raw_policy_utility": 0.0,
+                        "policy_utility": 0.0,
+                        "uncertainty": 0.2,
+                    },
+                },
+            },
+        })
+    return {
+        "home": "Home", "away": "Away",
+        "world_model_decision_adoption": {"records": records},
+    }
+
+
 def test_split_conformal_memory_corrects_repeated_contextual_bias():
     memory = compile_contextual_residual_memory(
         [_payload("sig-a", [0.2] * 8)],
@@ -290,3 +330,69 @@ def test_adjacent_windows_recover_after_new_regime_stabilizes():
     assert drift["status"] == "stable"
     assert drift["window_samples"] == 16
     assert drift["standardized_mean_shift"] == 0.0
+
+
+def test_temporal_memory_learns_held_out_cross_action_rank_templates():
+    anti_correlated = [
+        (-0.3, 0.3), (-0.1, 0.1), (0.1, -0.1), (0.3, -0.3),
+    ] * 4
+    memory = compile_contextual_residual_memory(
+        [_multi_horizon_payload("sig", anti_correlated)],
+        checkpoint_signature="sig", min_samples=8,
+    )
+    coupling = memory.temporal_rank_coupling(
+        context={
+            "team_id": "Home", "opponent_team_id": "Away",
+            "zone": "middle", "score_state": "level",
+            "match_phase": "early",
+        },
+        horizon_keys=("180s", "60s"),
+    )
+
+    assert coupling["available"]
+    assert coupling["scope"] == "team_opponent_context"
+    assert coupling["horizon_keys"] == ["60s", "180s"]
+    assert coupling["calibration_samples"] == 8
+    assert coupling["rank_templates"][0][0] < coupling[
+        "rank_templates"
+    ][0][1]
+    assert coupling["rank_templates"][2][0] > coupling[
+        "rank_templates"
+    ][2][1]
+    assert coupling["mean_absolute_rank_correlation"] == pytest.approx(1.0)
+    assert coupling["shared_across_candidate_actions"]
+    assert not coupling["temporal_joint_calibrated"]
+    assert memory.summary()["temporal_residual_rank_memory"][
+        "active_groups"
+    ] > 0
+    diagnostics = memory.diagnostics()["temporal_residual_rank_memory"]
+    assert diagnostics["groups"][0]["rank_templates"]
+
+    mismatch = compile_contextual_residual_memory(
+        [_multi_horizon_payload("sig", anti_correlated)],
+        checkpoint_signature="other", min_samples=8,
+    )
+    assert not mismatch.temporal_rank_coupling(
+        context={}, horizon_keys=("60s", "180s"),
+    )["available"]
+
+    other_environment = json.loads(json.dumps(
+        _multi_horizon_payload("sig", anti_correlated)
+    ))
+    for record in other_environment["world_model_decision_adoption"][
+        "records"
+    ]:
+        record["environment_signature"] = "other-environment"
+    isolated = compile_contextual_residual_memory(
+        [other_environment], checkpoint_signature="sig", min_samples=8,
+    )
+    assert not isolated.temporal_rank_coupling(
+        context={}, horizon_keys=("60s", "180s"),
+    )["available"]
+
+    memory.temporal_rank_memory.drift = {"status": "watch"}
+    gated = memory.temporal_rank_coupling(
+        context={}, horizon_keys=("60s", "180s"),
+    )
+    assert not gated["available"]
+    assert gated["reason"] == "temporal_rank_memory_drift_gate_closed"

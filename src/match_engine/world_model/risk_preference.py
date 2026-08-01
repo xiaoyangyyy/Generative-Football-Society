@@ -20,7 +20,7 @@ from src.match_engine.world_model.temporal_preference import (
 )
 
 
-RISK_PREFERENCE_VERSION = 3
+RISK_PREFERENCE_VERSION = 4
 _DISTRIBUTION_SCOPES = {"epistemic_member_only", "calibrated_predictive"}
 
 
@@ -128,7 +128,7 @@ def _scenario_evidence(distribution: dict[str, Any]) -> dict[str, Any] | None:
             "predictive_distribution_available", "epistemic_member_values",
             "residual_scenario_offsets", "residual_calibration_samples",
             "residual_quantile_levels", "residual_quantiles_split",
-            "uncertainty_decomposition",
+            "uncertainty_decomposition", "temporal_residual_rank_coupling",
         )
         evidence.update({key: distribution.get(key) for key in keys})
         if not predictive_lattice_is_valid(evidence):

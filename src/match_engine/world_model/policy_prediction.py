@@ -146,6 +146,23 @@ def build_multi_horizon_policy_predictions(
             * float(prediction.get("residual_memory_trust_factor", 1.0))
         )
         predictions[horizon_key] = prediction
+    temporal_lookup = getattr(
+        residual_memory, "temporal_rank_coupling", None,
+    )
+    if callable(temporal_lookup) and len(predictions) >= 2:
+        coupling = temporal_lookup(
+            context=decision_context or {},
+            horizon_keys=predictions,
+        )
+        for prediction in predictions.values():
+            distribution = (
+                prediction.get("distributional_policy_utility") or {}
+            )
+            if distribution:
+                prediction["distributional_policy_utility"] = {
+                    **distribution,
+                    "temporal_residual_rank_coupling": dict(coupling),
+                }
     return predictions
 
 

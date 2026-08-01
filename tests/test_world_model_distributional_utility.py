@@ -248,11 +248,20 @@ def test_policy_prediction_composes_residual_scenarios_after_point_alignment():
                 },
             }
 
+        def temporal_rank_coupling(self, **kwargs):
+            assert list(kwargs["horizon_keys"]) == ["60s", "180s"]
+            return {
+                "version": 1,
+                "available": False,
+                "horizon_keys": ["60s", "180s"],
+                "reason": "insufficient_contextual_temporal_residual_history",
+            }
+
     predictions = build_multi_horizon_policy_predictions(
         _Runtime(), np.zeros(OBS_DIM), action_name="pass",
         target=np.zeros(2), physics_prior=0.1, confidence=0.8,
         attacking_home=True, base_horizon_s=5.0,
-        outcome_horizons_s=(60.0,), residual_memory=_ResidualMemory(),
+        outcome_horizons_s=(60.0, 180.0), residual_memory=_ResidualMemory(),
     )
     distribution = predictions["60s"]["distributional_policy_utility"]
     assert distribution["distribution_scope"] == "calibrated_predictive"
@@ -260,6 +269,9 @@ def test_policy_prediction_composes_residual_scenarios_after_point_alignment():
         [-0.05, 0.15]
     )
     assert len(distribution["decision_scenario_values"]) == 6
+    assert distribution["temporal_residual_rank_coupling"] == predictions[
+        "180s"
+    ]["distributional_policy_utility"]["temporal_residual_rank_coupling"]
 
 
 def test_distributional_claim_is_schema_limited_and_model_checked():
@@ -381,7 +393,7 @@ def test_strict_online_gate_requires_calibrated_faithful_distributions():
     diagnostics = report["decision_adoption"][
         "llm_distributional_decisions"
     ]
-    assert report["version"] == 22
+    assert report["version"] == 23
     assert diagnostics["match_clustered_central_80_coverage"] == 0.75
     assert diagnostics["match_clustered_below_median_rate"] == 0.5
     assert diagnostics["match_clustered_crps"] <= diagnostics[

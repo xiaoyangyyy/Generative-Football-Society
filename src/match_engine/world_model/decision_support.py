@@ -642,7 +642,7 @@ def build_coach_decision_packet(
             "contextual_residual_memory": (
                 residual_memory.summary()
                 if residual_memory is not None else {
-                    "version": 3,
+                    "version": 4,
                     "active_groups": 0,
                     "residual_rows": 0,
                     "reason": (

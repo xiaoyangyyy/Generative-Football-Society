@@ -523,7 +523,7 @@ def aggregate_online_calibration(
         llm_risk_preferences_ready if require_llm_risk_preferences else True
     )
     return {
-        "version": 22,
+        "version": 23,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -610,6 +610,6 @@ def aggregate_online_calibration(
             "Distributional LLM claims are scored against realized simulator utility; calibrated member spread is descriptive and does not establish causal action value.",
             "LLM risk preferences are model-checked on frozen scenarios; only the selected action is realized, so reported preference regret is prospective rather than counterfactual ground truth.",
             "Preference robustness uses fixed local parameter and leave-one-axis-out stress tests; it is a sensitivity certificate, not proof against every possible utility function or model error.",
-            "Temporal utility paths use member identity and comonotonic residual-rank coupling; path scenario rates are not learned or calibrated temporal probabilities.",
+            "Temporal utility paths use member identity plus held-out empirical residual-rank templates when compatible history exists, otherwise an explicit comonotonic fallback; path scenario rates are not calibrated temporal probabilities.",
         ],
     }

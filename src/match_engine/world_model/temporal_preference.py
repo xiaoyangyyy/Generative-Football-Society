@@ -77,6 +77,8 @@ def build_temporal_preference_report(
             or report["distribution_scope"] != reference["distribution_scope"]
             or report["temporal_coupling_source"]
             != reference["temporal_coupling_source"]
+            or report["temporal_residual_rank_coupling"]
+            != reference["temporal_residual_rank_coupling"]
             for report in coupling_reports.values()
         )
     ):
@@ -146,11 +148,18 @@ def build_temporal_preference_report(
         "scenario_count": path_shape[0],
         "distribution_scope": reference["distribution_scope"],
         "temporal_coupling_source": reference["temporal_coupling_source"],
-        "temporal_dependence_learned": False,
+        "temporal_dependence_learned": bool(
+            reference["temporal_dependence_learned"]
+        ),
         "temporal_joint_calibrated": False,
         "member_axis_jointly_aligned_across_actions": True,
         "residual_quantile_axis_jointly_aligned_across_actions": bool(
             preference["distribution_scope"] == "calibrated_predictive"
+            and not reference["temporal_dependence_learned"]
+        ),
+        "empirical_residual_rank_templates_jointly_aligned_across_actions": bool(
+            preference["distribution_scope"] == "calibrated_predictive"
+            and reference["temporal_dependence_learned"]
         ),
         "pathwise_comparison_order": (
             "compare_actions_within_scenario_then_aggregate_scenarios"

@@ -286,8 +286,10 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   CRPS, pinball-loss and interval-coverage readiness. It remains
   shadow-only and cannot change the action or ranking;
 - temporal_utility_paths connect ordered horizon marginals by the same dynamics
-  member identity and, when present, the same residual quantile rank. Their
-  drawdown, reversal and downside values are coupling-scenario rates, not learned
+  member identity. Check temporal_coupling_source: compatible historical paths
+  may supply held-out empirical residual-rank templates; otherwise the engine
+  explicitly reports a comonotonic residual-rank fallback. Their drawdown,
+  reversal and downside values are coupling-scenario rates, never calibrated
   joint temporal probabilities. Never add horizon utilities as independent
   rewards because each is a same-origin cumulative forecast;
 - world_model_risk_preference is one explicit preference applied unchanged to

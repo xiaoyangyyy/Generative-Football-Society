@@ -53,6 +53,28 @@ def _predictions():
     }
 
 
+def _empirical_coupling():
+    return {
+        "version": 1,
+        "available": True,
+        "horizon_keys": ["transition", "60s", "180s"],
+        "rank_levels": [0.1, 0.5, 0.9],
+        "rank_templates": [
+            [0, 2, 0],
+            [2, 0, 2],
+            [0, 2, 0],
+            [2, 0, 2],
+        ],
+        "calibration_samples": 4,
+        "mean_absolute_rank_correlation": 0.8,
+        "shared_across_candidate_actions": True,
+        "split": "reference_then_held_out_calibration",
+        "dependence_source": "observed_multi_horizon_residual_ranks",
+        "temporal_dependence_empirical": True,
+        "temporal_joint_calibrated": False,
+    }
+
+
 def test_predictive_paths_preserve_member_and_residual_rank_across_time():
     report = build_temporal_utility_paths(_predictions())
 
@@ -105,6 +127,78 @@ def test_temporal_coupling_fails_closed_for_scope_and_quantile_mismatch():
     }
     assert couple_temporal_utility_scenarios(nonfinite_horizon)["reason"] == (
         "at_least_two_strictly_ordered_horizons_required"
+    )
+
+
+def test_predictive_paths_use_held_out_empirical_residual_rank_templates():
+    predictions = _predictions()
+    coupling = _empirical_coupling()
+    for row in predictions.values():
+        row["distributional_policy_utility"][
+            "temporal_residual_rank_coupling"
+        ] = copy.deepcopy(coupling)
+
+    report = build_temporal_utility_paths(predictions)
+
+    assert report["available"]
+    assert report["scenario_count"] == 8
+    assert report["residual_scenarios"] == 4
+    assert report["marginal_residual_quantiles"] == 3
+    assert report["scenario_utility_paths"][0] == pytest.approx(
+        [0.0, 0.2, -0.3]
+    )
+    assert report["temporal_coupling_source"] == (
+        "member_identity_x_empirical_residual_rank_templates"
+    )
+    assert report["temporal_dependence_learned"]
+    assert report[
+        "empirical_residual_rank_template_preserved_across_horizons"
+    ]
+    assert not report["residual_quantile_rank_preserved_across_horizons"]
+    assert not report["temporal_joint_calibrated"]
+
+
+def test_empirical_temporal_coupling_tamper_closes_and_unavailable_falls_back():
+    predictions = _predictions()
+    coupling = _empirical_coupling()
+    for row in predictions.values():
+        row["distributional_policy_utility"][
+            "temporal_residual_rank_coupling"
+        ] = copy.deepcopy(coupling)
+    predictions["180s"]["distributional_policy_utility"][
+        "temporal_residual_rank_coupling"
+    ]["rank_templates"][0] = [2, 2, 2]
+    closed = build_temporal_utility_paths(predictions)
+    assert not closed["available"]
+    assert closed["reason"] == "temporal_empirical_rank_coupling_mismatch"
+
+    fractional = _predictions()
+    malformed = _empirical_coupling()
+    malformed["rank_templates"][0][0] = 0.5
+    for row in fractional.values():
+        row["distributional_policy_utility"][
+            "temporal_residual_rank_coupling"
+        ] = copy.deepcopy(malformed)
+    invalid = build_temporal_utility_paths(fractional)
+    assert not invalid["available"]
+    assert invalid["reason"] == "temporal_empirical_rank_contract_invalid"
+
+    unavailable = _predictions()
+    missing = {
+        **coupling,
+        "available": False,
+        "reason": "insufficient_contextual_temporal_residual_history",
+    }
+    for row in unavailable.values():
+        row["distributional_policy_utility"][
+            "temporal_residual_rank_coupling"
+        ] = copy.deepcopy(missing)
+    fallback = build_temporal_utility_paths(unavailable)
+    assert fallback["available"]
+    assert not fallback["temporal_dependence_learned"]
+    assert fallback["temporal_residual_rank_coupling"]["fallback_used"]
+    assert fallback["temporal_residual_rank_coupling"]["reason"] == (
+        "insufficient_contextual_temporal_residual_history"
     )
 
 

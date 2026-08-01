@@ -809,14 +809,20 @@ calibration claims, not causal estimates of choosing one action over another.
 
 Each action also exposes `temporal_utility_paths` when at least two ordered
 horizons share a valid distribution scope. Epistemic paths connect the same
-transition-member index through time. Predictive paths additionally connect the
-same held-out residual quantile rank at every horizon. The latter is an explicit
-comonotonic rank coupling, not a learned temporal copula. Reports include path
-minimum utility, lower-tail path-minimum CVaR, maximum drawdown, ever-downside,
-downside recovery, and positive-to-negative reversal scenario rates. These are
-rates under the declared coupling and are never labelled calibrated temporal
-probabilities. Every horizon is a cumulative forecast from the same origin, so
-horizon values are not treated as independent incremental rewards.
+transition-member index through time. When the same checkpoint, policy
+environment, context, and decision record provide enough multi-horizon realized
+residual paths, predictive paths additionally use residual-rank templates learned
+from a reference/held-out split. Templates preserve observed cross-horizon rank
+patterns and their repeated empirical frequency, and are shared across candidate
+actions so pathwise comparisons retain one exogenous scenario identity. Drift in
+`watch` or `quarantined` state disables this memory. If compatible history is
+insufficient, the report names and uses a transparent comonotonic residual-rank
+fallback. Neither empirical templates nor the fallback constitute a calibrated
+temporal copula or calibrated joint probability. Reports include path minimum
+utility, lower-tail path-minimum CVaR, maximum drawdown, ever-downside, downside
+recovery, and positive-to-negative reversal scenario rates. Every horizon is a
+cumulative forecast from the same origin, so horizon values are not treated as
+independent incremental rewards.
 
 ### Model-checked multi-horizon risk preferences
 
