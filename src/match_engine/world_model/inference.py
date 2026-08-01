@@ -312,6 +312,160 @@ class WorldModelRuntime:
             ),
         )
 
+    def evaluate_action_from_observation(
+        self,
+        obs: np.ndarray,
+        action: np.ndarray,
+        *,
+        action_kind: str,
+        attacking_home: bool,
+        horizon_s: float = 10.0,
+    ) -> dict:
+        """Score one action and its uncertainty with a single model rollout."""
+        if action_kind not in {"pass", "shot", "hold", "cross"}:
+            raise ValueError("unsupported action kind")
+        clean_obs = np.clip(
+            np.nan_to_num(np.asarray(obs, dtype=np.float32)), 0.0, 1.0,
+        )
+        clean_action = strip_outcome_leakage(np.nan_to_num(
+            np.asarray(action, dtype=np.float32), nan=0.0,
+        ))
+        quality_kind = "shot" if action_kind == "shot" else "pass"
+        output = self.imagine(
+            clean_obs,
+            clean_action,
+            carry_hidden=False,
+            quality_kind=quality_kind,
+        )
+        samples = output.uncertainty_samples or {}
+        pass_logits = np.clip(
+            self.pass_calibration_scale
+            * np.asarray(samples.get("pass_logits", [[[0.0]]]), dtype=float)
+            + self.pass_calibration_bias,
+            -40.0,
+            40.0,
+        )
+        shot_logits = np.clip(np.asarray(
+            samples.get("shot_logits", [[[0.0]]]), dtype=float,
+        ), -40.0, 40.0)
+        progress_samples = np.asarray(
+            samples.get("progress", [[[output.progress_delta]]]), dtype=float,
+        )
+        transition_states = samples.get("transition_states")
+        future = future_from_ensemble(
+            pass_probabilities=1.0 / (1.0 + np.exp(-pass_logits)),
+            shot_probabilities=1.0 / (1.0 + np.exp(-shot_logits)),
+            progress_samples=progress_samples,
+            action_kind=action_kind,
+            horizon_s=horizon_s,
+            progress_aleatoric=self.progress_aleatoric_scale,
+            transition_state_samples=(
+                np.asarray(transition_states, dtype=float)
+                if transition_states is not None else None
+            ),
+            transition_ensemble_trained=bool(samples.get(
+                "transition_ensemble_trained", False,
+            )),
+        )
+        future = ProbabilisticFuture(
+            event_probabilities=future.event_probabilities,
+            event_time_s=future.event_time_s,
+            progress_quantiles=future.progress_quantiles,
+            state_uncertainty=float(output.uncertainty),
+            epistemic_uncertainty=float(output.epistemic_uncertainty),
+            aleatoric_uncertainty=float(output.aleatoric_uncertainty),
+            uncertainty_source=str(output.uncertainty_source),
+            uncertainty_components=dict(output.uncertainty_components or {}),
+        )
+        if action_kind == "shot":
+            expected_value = (
+                0.10 * float(np.clip(output.progress_delta, -0.5, 0.5))
+                + 0.25 * float(np.clip(clean_action[13], 0.0, 1.0))
+                + 0.65 * finite_float(float(output.shot_goal_prob), 0.1)
+            )
+        else:
+            direction = 1.0 if attacking_home else -1.0
+            state_delta = float(np.clip(
+                direction * (
+                    finite_float(float(output.next_obs[200]), 0.5)
+                    - finite_float(float(clean_obs[200]), 0.5)
+                ),
+                -0.5,
+                0.5,
+            ))
+            learned_delta = float(np.clip(
+                finite_float(output.progress_delta, 0.0), -0.5, 0.5,
+            ))
+            pass_term = finite_float(output.pass_success, 0.5) - 0.5
+            intercept_penalty = (
+                0.25 * float(clean_action[4])
+                * (1.0 - finite_float(output.pass_success, 0.5))
+            )
+            expected_value = (
+                0.45 * state_delta
+                + 0.35 * learned_delta
+                + 0.20 * pass_term
+                - intercept_penalty
+            )
+        return {
+            "expected_value": finite_float(expected_value, 0.0),
+            "future": future,
+            "next_observation": np.asarray(output.next_obs, dtype=np.float32),
+            "model_calls": 1,
+        }
+
+    def two_step_planning_gate(self) -> dict:
+        """Authorize predicted-state search only with grouped two-step evidence."""
+        validation = self.meta.get("validation", {}) if isinstance(
+            self.meta, dict
+        ) else {}
+        evidence = validation.get("two_step_rollout") or {}
+        samples = int(evidence.get("samples", 0))
+        groups = int(evidence.get("groups", 0))
+        skill = finite_float(evidence.get("skill_vs_persistence") or 0.0, 0.0)
+        model_error = finite_float(evidence.get("weighted_mse") or 0.0, 0.0)
+        baseline_error = finite_float(
+            evidence.get("persistence_weighted_mse") or 0.0, 0.0,
+        )
+        ensemble_trained = bool(getattr(
+            self.model, "transition_ensemble_trained", False,
+        ))
+        active = bool(
+            ensemble_trained
+            and samples >= 32
+            and groups >= 4
+            and baseline_error > 1e-10
+            and model_error < baseline_error
+            and skill >= 0.02
+        )
+        sample_factor = samples / (samples + 128.0)
+        group_factor = groups / (groups + 8.0)
+        skill_factor = float(np.clip(skill / 0.25, 0.0, 1.0))
+        authority = float(np.clip(
+            0.50 * sample_factor * group_factor * skill_factor
+            if active else 0.0,
+            0.0,
+            0.50,
+        ))
+        return {
+            "version": 1,
+            "active": active,
+            "authority": authority,
+            "reason": (
+                "grouped_two_step_holdout_gain"
+                if active else "two_step_holdout_gate_closed"
+            ),
+            "samples": samples,
+            "groups": groups,
+            "weighted_mse": model_error,
+            "persistence_weighted_mse": baseline_error,
+            "skill_vs_persistence": skill,
+            "transition_ensemble_trained": ensemble_trained,
+            "action_sequence": str(evidence.get(
+                "action_sequence", "unavailable",
+            )),
+        }
+
     def predict_policy_utility(
         self,
         obs: np.ndarray,

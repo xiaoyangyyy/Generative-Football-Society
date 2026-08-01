@@ -253,13 +253,20 @@ def build_active_learning_advice(
             1.0,
             0.0,
         )
+        trajectory_planning_information = _bounded(
+            candidate.get("trajectory_planning_information", 0.0),
+            0.0,
+            1.0,
+            0.0,
+        )
         information_value = float(np.clip(
-            0.46 * epistemic
-            + 0.17 * context_novelty
-            + 0.13 * action_novelty
-            + 0.07 * disagreement
-            + 0.09 * opponent_discrimination
-            + 0.08 * opponent_response_information,
+            0.43 * epistemic
+            + 0.16 * context_novelty
+            + 0.12 * action_novelty
+            + 0.06 * disagreement
+            + 0.08 * opponent_discrimination
+            + 0.07 * opponent_response_information
+            + 0.08 * trajectory_planning_information,
             0.0, 1.0,
         ))
         value = float(candidate.get("risk_adjusted_value", -1.0))
@@ -283,6 +290,9 @@ def build_active_learning_advice(
             "multi_horizon_disagreement": disagreement,
             "opponent_hypothesis_discrimination": opponent_discrimination,
             "opponent_response_information": opponent_response_information,
+            "trajectory_planning_information": (
+                trajectory_planning_information
+            ),
             "action_samples": action_samples,
             "context_action_samples": context_samples,
             "estimated_regret": regret,

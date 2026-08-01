@@ -91,6 +91,10 @@ def attach_second_order_game(
     *,
     discount: float = 0.55,
     response_overrides: dict[str, dict[str, float]] | None = None,
+    continuation_value_matrices: (
+        dict[str, dict[str, dict[str, float]]] | None
+    ) = None,
+    trajectory_audit: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Mutate candidate ranking with a partial-observability-correct second ply."""
     if not belief or not belief.get("posterior"):
@@ -104,6 +108,7 @@ def attach_second_order_game(
         return {"version": OPPONENT_GAME_VERSION, "available": False}
     bounded_discount = float(np.clip(discount, 0.0, 0.80))
     overrides = response_overrides or {}
+    trajectory_matrices = continuation_value_matrices or {}
     branches = []
     learned_branches = 0
     for candidate in eligible:
@@ -123,12 +128,22 @@ def attach_second_order_game(
         learned_branches += bool(prediction.get("learned_active"))
         continuation_options = []
         for continuation in eligible:
+            continuation_action = str(continuation["action"])
+            hypothesis_values = (
+                trajectory_matrices.get(action, {}).get(continuation_action)
+                or continuation["opponent_hypothesis_values"]
+            )
             metrics = robust_hypothesis_value(
-                continuation["opponent_hypothesis_values"],
+                hypothesis_values,
                 prediction["response_posterior"],
             )
             continuation_options.append({
-                "action": str(continuation["action"]),
+                "action": continuation_action,
+                "evaluation_source": (
+                    "validated_predicted_state_rollout_blend"
+                    if action in trajectory_matrices
+                    else "current_state_payoff_proxy"
+                ),
                 **metrics,
             })
         best_continuation = max(
@@ -157,6 +172,9 @@ def attach_second_order_game(
         candidate["best_continuation_value"] = best_continuation["robust"]
         candidate["two_ply_risk_adjusted_value"] = two_ply
         candidate["opponent_response_information"] = information
+        candidate["trajectory_continuation_hypothesis_values"] = dict(
+            trajectory_matrices.get(action, {})
+        )
         candidate["risk_adjusted_value"] = two_ply
         branches.append({
             "first_action": action,
@@ -172,7 +190,10 @@ def attach_second_order_game(
     return {
         "version": OPPONENT_GAME_VERSION,
         "available": True,
-        "scope": "two_ply_belief_space_policy_proxy",
+        "scope": (
+            "validated_predicted_state_two_ply_belief_policy"
+            if trajectory_matrices else "two_ply_belief_space_policy_proxy"
+        ),
         "discount": bounded_discount,
         "recommended_action": str(best["action"]),
         "learned_response_branches": learned_branches,
@@ -187,8 +208,16 @@ def attach_second_order_game(
                 "reason": "response_memory_unavailable",
             }
         ),
+        "trajectory_rollout": dict(trajectory_audit or {
+            "active": False,
+            "reason": "predicted_state_rollout_not_requested",
+        }),
         "limitations": [
-            "Second-ply continuation reuses the current-state payoff matrix.",
+            (
+                "Second-ply values blend validated predicted-state rollouts with the current-state proxy."
+                if trajectory_matrices else
+                "Second-ply continuation reuses the current-state payoff matrix."
+            ),
             "Opponent response transitions are observational, not causal.",
             "The continuation action is chosen against one response belief, not hidden truth.",
         ],
@@ -264,11 +293,22 @@ def apply_llm_response_hypothesis(
                 for position, name in enumerate(OPPONENT_HYPOTHESES)
             },
         }
+        matrices = {
+            str(item.get("action")): dict(item.get(
+                "trajectory_continuation_hypothesis_values"
+            ) or {})
+            for item in packet.get("candidates") or []
+            if item.get("trajectory_continuation_hypothesis_values")
+        }
         game = attach_second_order_game(
             packet.get("candidates") or [],
             packet.get("opponent_belief"),
             response_memory,
             response_overrides=overrides,
+            continuation_value_matrices=matrices,
+            trajectory_audit=(packet.get("second_order_game") or {}).get(
+                "trajectory_rollout"
+            ),
         )
         packet["second_order_game"] = game
         packet["recommended_action"] = game.get(

@@ -55,6 +55,7 @@ class CognitiveMatchConfig:
     world_model_exploration_max_regret: float = 0.08
     world_model_exploration_min_information: float = 0.45
     world_model_exploration_strength_scale: float = 0.50
+    world_model_trajectory_branch_budget: int = 48
     # coach, referee, player_per_team, assistant_total, crowd
     tier_caps: Tuple[int, int, int, int, int] = (6, 4, 4, 2, 3)
     half_time_sec: float = 45.0 * 60.0
@@ -116,6 +117,12 @@ class CognitiveMatchConfig:
                 0.0, min(1.0, env_float(
                     values, "MATCH_WM_EXPLORATION_STRENGTH_SCALE", 0.50,
                 )),
+            ),
+            world_model_trajectory_branch_budget=max(
+                16,
+                min(112, int(env_float(
+                    values, "MATCH_WM_TRAJECTORY_BRANCH_BUDGET", 48.0,
+                ))),
             ),
             tier_caps=_parse_tier_caps(
                 values.get("MATCH_COGNITIVE_MAX_PER_TIER", ""),

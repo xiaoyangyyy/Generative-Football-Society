@@ -307,6 +307,38 @@ if _TORCH:
             ], dim=0)
             return z_members, next_members
 
+        def transition_rollout_predictions(
+            self,
+            obs: torch.Tensor,
+            actions: torch.Tensor,
+        ) -> torch.Tensor:
+            """Decode member-consistent rollouts under a changing action sequence."""
+            if actions.ndim != 3 or actions.shape[0] != obs.shape[0]:
+                raise ValueError("actions must have shape [batch, steps, action_dim]")
+            member_observations = [
+                obs.clone() for _ in range(self.transition_member_count)
+            ]
+            member_latents = [self.encode(value) for value in member_observations]
+            member_hidden: list[Optional[torch.Tensor]] = [
+                None for _ in range(self.transition_member_count)
+            ]
+            for step in range(actions.shape[1]):
+                action = actions[:, step, :]
+                for member_index in range(self.transition_member_count):
+                    transitioned, hidden = self._transition_member_step(
+                        member_latents[member_index],
+                        action,
+                        member_hidden[member_index],
+                        member_index,
+                    )
+                    decoded = self.decode_next(
+                        member_observations[member_index], transitioned,
+                    )
+                    member_observations[member_index] = decoded
+                    member_latents[member_index] = self.encode(decoded)
+                    member_hidden[member_index] = hidden
+            return torch.stack(member_observations, dim=0)
+
         def initialize_transition_ensemble_from_primary(self) -> None:
             """Make legacy checkpoint expansion exact rather than random."""
             members = (

@@ -135,6 +135,22 @@ def test_information_value_uses_epistemic_not_aleatoric_uncertainty():
     assert evidence["hold"]["aleatoric_uncertainty"] == 0.8
 
 
+def test_information_value_exposes_validated_trajectory_disagreement():
+    baseline = _candidate("hold", 0.50, 0.2, 0.10)
+    trajectory_probe = _candidate("pass", 0.49, 0.2, 0.10)
+    trajectory_probe["trajectory_planning_information"] = 0.8
+
+    advice = build_active_learning_advice(
+        [baseline, trajectory_probe], [], context=_context(),
+    )
+    evidence = {item["action"]: item for item in advice["candidate_evidence"]}
+
+    assert evidence["pass"]["trajectory_planning_information"] == 0.8
+    assert evidence["pass"]["information_value"] > evidence["hold"][
+        "information_value"
+    ]
+
+
 def test_diagnostics_measure_later_uncertainty_reduction_in_same_context():
     baseline = {
         "opponent_team_id": "Away",

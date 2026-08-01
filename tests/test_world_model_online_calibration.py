@@ -462,3 +462,33 @@ def test_strict_opponent_response_gate_requires_realized_learned_forecasts():
     assert response["validated_learned_predictions"] == 2
     assert report["opponent_response_model_ready"]
     assert report["gates"]["opponent_response_model_evidence"]
+
+
+def test_strict_two_step_planning_gate_requires_validated_bounded_audits():
+    records = [{
+        "opponent_response_context": {
+            "trajectory_rollout": {
+                "active": True,
+                "branch_evaluations": 32,
+                "branch_evaluation_budget": 48,
+                "model_calls": 36,
+                "causal_interpretation": False,
+                "validation_gate": {
+                    "active": True,
+                    "authority": 0.35,
+                },
+            },
+        },
+    } for _ in range(2)]
+    report = aggregate_online_calibration(
+        [{"world_model_decision_adoption": {"records": records}}],
+        min_residual_samples=2,
+        require_two_step_trajectory_planning=True,
+    )
+
+    diagnostics = report["decision_adoption"]["trajectory_planning"]
+    assert diagnostics["validated_predicted_state_decisions"] == 2
+    assert diagnostics["budgets_respected"]
+    assert diagnostics["all_active_rollouts_holdout_validated"]
+    assert report["two_step_trajectory_planning_ready"]
+    assert report["gates"]["validated_two_step_trajectory_planning"]

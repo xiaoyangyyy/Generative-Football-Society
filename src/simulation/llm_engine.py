@@ -245,8 +245,10 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   reject or cap claims that conflict with world-model likelihood;
 - opponent_hypothesis_values are counterfactual model estimates. Prefer actions
   robust across plausible hypotheses when posterior entropy is high;
-- second_order_game is a two-ply belief-space policy proxy. Its continuation
-  reuses the current-state payoff matrix and is not a full trajectory rollout;
+- second_order_game is a two-ply belief-space policy proxy. When its
+  trajectory_rollout gate is active, continuation values blend a budgeted
+  predicted-state search with the current-state proxy; otherwise they reuse
+  that proxy. Check validation authority, uncertainty, and compute audit;
 - opponent response transitions are held-out-validated observational patterns,
   never causal facts. An opponent_response_hypothesis may stress one evaluated
   action branch, but its influence is capped and cannot update response memory;

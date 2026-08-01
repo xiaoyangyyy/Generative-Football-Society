@@ -310,6 +310,9 @@ class CognitiveExecutor:
                             self.cfg.world_model_exploration_strength_scale
                         ),
                     },
+                    trajectory_branch_budget=(
+                        self.cfg.world_model_trajectory_branch_budget
+                    ),
                 )
             )
 
@@ -366,6 +369,18 @@ class CognitiveExecutor:
                     packet.get("candidates") or [],
                     updated_belief,
                     self.opponent_response_memory,
+                    continuation_value_matrices={
+                        str(candidate.get("action")): dict(candidate.get(
+                            "trajectory_continuation_hypothesis_values"
+                        ) or {})
+                        for candidate in packet.get("candidates") or []
+                        if candidate.get(
+                            "trajectory_continuation_hypothesis_values"
+                        )
+                    },
+                    trajectory_audit=(packet.get("second_order_game") or {}).get(
+                        "trajectory_rollout"
+                    ),
                 )
                 response_audit = apply_llm_response_hypothesis(
                     packet,
@@ -601,6 +616,9 @@ class CognitiveExecutor:
                         "scope": str((packet.get("second_order_game") or {}).get(
                             "scope", "unavailable",
                         )),
+                        "trajectory_rollout": dict((packet.get(
+                            "second_order_game"
+                        ) or {}).get("trajectory_rollout") or {}),
                         "prediction": dict(selected_candidate.get(
                             "opponent_response_prediction"
                         ) or {}),

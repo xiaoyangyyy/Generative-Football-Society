@@ -19,6 +19,11 @@ def main() -> int:
     p.add_argument("--max-traces", type=int, default=8)
     p.add_argument("--trace-dir", default=str(DEFAULT_TRACE_DIR))
     p.add_argument("--checkpoint", default=str(DEFAULT_MODEL_PATH))
+    p.add_argument(
+        "--require-two-step-planning",
+        action="store_true",
+        help="Require grouped changing-action two-step holdout authority.",
+    )
     args = p.parse_args()
     trace_dir = Path(args.trace_dir)
     model_path = Path(args.checkpoint)
@@ -81,12 +86,17 @@ def main() -> int:
     transition_ensemble_size = int(
         validation.get("transition_ensemble_size", 0)
     )
+    two_step_planning_gate = rt.two_step_planning_gate()
     ok = (
         version >= 7
         and mse < 0.12
         and transition_quality >= 0.50
         and transition_ensemble_trained
         and transition_ensemble_size >= 2
+        and (
+            two_step_planning_gate["active"]
+            if args.require_two_step_planning else True
+        )
     )
     print(
         json.dumps(
@@ -101,6 +111,7 @@ def main() -> int:
                 "transition_quality": transition_quality,
                 "transition_ensemble_trained": transition_ensemble_trained,
                 "transition_ensemble_size": transition_ensemble_size,
+                "two_step_planning_gate": two_step_planning_gate,
                 "pass_planner_quality": rt.pass_quality,
                 "shot_planner_quality": rt.shot_quality,
                 "pass_planner_active": rt.pass_quality >= rt.cfg.min_planner_quality,

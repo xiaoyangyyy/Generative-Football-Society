@@ -98,6 +98,14 @@ def main() -> int:
             "held-out-validated opponent response model."
         ),
     )
+    parser.add_argument(
+        "--require-two-step-trajectory-planning",
+        action="store_true",
+        help=(
+            "Fail readiness until enough decisions use budgeted predicted-state "
+            "continuations backed by grouped two-step holdout gain."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -132,6 +140,9 @@ def main() -> int:
             args.require_opponent_change_detection
         ),
         require_opponent_response_model=args.require_opponent_response_model,
+        require_two_step_trajectory_planning=(
+            args.require_two_step_trajectory_planning
+        ),
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

@@ -429,14 +429,28 @@ only when it improves match-clustered held-out Brier score over a transparent
 sticky structural prior. Even after validation, learned authority is capped at
 `0.50` and the transition remains explicitly observational rather than causal.
 
-The decision packet uses this response belief for a two-ply policy proxy. It
-combines the immediate robust action value with one continuation action chosen
-against the complete predicted response posterior. It never chooses a separate
-continuation using hidden opponent truth. To keep live inference bounded, the
-second ply reuses the current-state hypothesis-conditioned payoff matrix; this
-is not presented as a trajectory rollout or match-value forecast. The active
-learning score includes a bounded response-information term, allowing safe
-experiments to distinguish both current intent and possible reactions.
+The decision packet uses this response belief for a two-ply policy. It combines
+the immediate robust action value with one continuation action chosen against
+the complete predicted response posterior. It never chooses a separate
+continuation using hidden opponent truth. A changing-action rollout interface
+now advances every dynamics member through action one and re-encodes action two
+from the predicted ball state. The resulting continuation values propagate
+first- and second-step uncertainty and blend with the transparent current-state
+proxy; they do not replace it outright.
+
+Predicted-state search has its own authority gate. Training constructs only
+state-aligned adjacent transition pairs within grouped validation matches, then
+compares the changing-action two-step rollout against a persistence forecast.
+The live planner requires at least 32 pairs, four match groups, positive error
+reduction, a trained transition ensemble, and at least `0.02` skill. Authority
+is capped at `0.50` and reduced again by path uncertainty. A maximum of 48
+continuation/hypothesis evaluations is allowed per decision (hard ceiling 112),
+and unevaluated low-posterior hypotheses retain proxy values. Legacy checkpoints
+without this evidence execute no speculative rollout and remain replayable. The
+active-learning score still includes a bounded response-information term.
+The live budget is configurable with `MATCH_WM_TRAJECTORY_BRANCH_BUDGET`
+(`16..112`); it is included in the policy-environment fingerprint, so evidence
+from different search budgets cannot silently share scoped memories.
 
 The LLM may submit one conditional `opponent_response_hypothesis` for an
 evaluated first action. The engine validates its schema and model support, caps
@@ -445,7 +459,9 @@ prior exists), and records a non-persistent audit. LLM hypotheses can neither
 write response memory nor make causal claims. Online evaluation scores realized
 response forecasts against the next observed opponent belief with match-level
 clustering and can require learned response evidence via
-`--require-opponent-response-model`.
+`--require-opponent-response-model`. It separately audits rollout budgets,
+validation provenance and deployment coverage via
+`--require-two-step-trajectory-planning`.
 
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
@@ -456,5 +472,5 @@ python scripts/evaluate_online_world_model.py \
   --require-outcome-calibration --require-uncertainty-decomposition \
   --require-transition-ensemble --require-opponent-belief \
   --require-opponent-meta-belief --require-opponent-change-detection \
-  --require-opponent-response-model
+  --require-opponent-response-model --require-two-step-trajectory-planning
 ```

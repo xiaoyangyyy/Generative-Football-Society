@@ -321,6 +321,42 @@ def test_runtime_predicts_declared_policy_utility_at_requested_horizon():
     ]
 
 
+def test_runtime_scores_action_and_future_from_one_shared_imagination():
+    pytest.importorskip("torch")
+    from src.match_engine.world_model.action_codec import encode_high_level_action
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.inference import WorldModelRuntime
+    from src.match_engine.world_model.model import build_model
+
+    cfg = WorldModelConfig(latent_dim=16, hidden_dim=32, ensemble_size=2)
+    runtime = WorldModelRuntime(build_model(cfg), cfg, {
+        "validation": {
+            "planner_quality": 0.8,
+            "pass_planner_quality": 0.8,
+            "weighted_obs_mse": 0.02,
+        },
+    })
+    observation = np.full(OBS_DIM, 0.5, dtype=np.float32)
+    action = encode_high_level_action(
+        "pass", np.asarray([0.65, 0.5], dtype=np.float32),
+    )
+    action[13] = 0.72
+    result = runtime.evaluate_action_from_observation(
+        observation,
+        action,
+        action_kind="pass",
+        attacking_home=True,
+        horizon_s=10.0,
+    )
+
+    assert result["model_calls"] == 1
+    assert np.isfinite(result["expected_value"])
+    assert result["next_observation"].shape == (OBS_DIM,)
+    assert np.isfinite(result["next_observation"]).all()
+    assert sum(result["future"].event_probabilities.values()) == pytest.approx(1.0)
+    assert 0.0 <= result["future"].state_uncertainty <= 1.0
+
+
 def test_runtime_recomputes_member_uncertainty_after_probability_calibration():
     pytest.importorskip("torch")
     from src.match_engine.world_model.config import WorldModelConfig

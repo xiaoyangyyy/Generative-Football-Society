@@ -71,6 +71,7 @@ def test_policy_bridge_experiment_config_is_safely_bounded():
         "MATCH_WM_EXPLORATION_MAX_REGRET": "0.9",
         "MATCH_WM_EXPLORATION_MIN_INFORMATION": "-1",
         "MATCH_WM_EXPLORATION_STRENGTH_SCALE": "2",
+        "MATCH_WM_TRAJECTORY_BRANCH_BUDGET": "999",
     })
     assert cfg.world_model_action_bridge
     assert cfg.world_model_action_bias_max == 0.5
@@ -83,3 +84,4 @@ def test_policy_bridge_experiment_config_is_safely_bounded():
     assert cfg.world_model_exploration_max_regret == 0.30
     assert cfg.world_model_exploration_min_information == 0.0
     assert cfg.world_model_exploration_strength_scale == 1.0
+    assert cfg.world_model_trajectory_branch_budget == 112

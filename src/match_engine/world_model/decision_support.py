@@ -21,9 +21,12 @@ from src.match_engine.world_model.opponent_belief import (
     update_opponent_belief,
 )
 from src.match_engine.world_model.opponent_game import attach_second_order_game
+from src.match_engine.world_model.trajectory_game import (
+    build_predicted_state_continuations,
+)
 
 
-DECISION_PACKET_VERSION = 7
+DECISION_PACKET_VERSION = 8
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -352,6 +355,21 @@ def build_prematch_tactical_packet(
             opponent_belief,
             getattr(state, "_wm_opponent_response_memory", None),
         )
+        trajectory_values, trajectory_audit = build_predicted_state_continuations(
+            runtime,
+            observation,
+            action_evidence,
+            attacking_home=(team_id == state.home.team_id),
+            horizon_s=horizon_s,
+            uncertainty_penalty=uncertainty_penalty,
+        )
+        second_order_game = attach_second_order_game(
+            action_evidence,
+            opponent_belief,
+            getattr(state, "_wm_opponent_response_memory", None),
+            continuation_value_matrices=trajectory_values,
+            trajectory_audit=trajectory_audit,
+        )
         by_action = {item["action"]: item for item in action_evidence}
         tactical_candidates = []
         for preset_name in normalized:
@@ -466,6 +484,7 @@ def build_coach_decision_packet(
     environment_signature: str = "environment_unspecified",
     active_learning_config: dict[str, Any] | None = None,
     opponent_belief: dict[str, Any] | None = None,
+    trajectory_branch_budget: int = 48,
 ) -> dict[str, Any]:
     """Compare strategic candidates without granting the LLM direct state writes."""
     from src.match_engine.world_model.outcome_calibration import (
@@ -538,6 +557,22 @@ def build_coach_decision_packet(
             candidates,
             opponent_belief,
             getattr(state, "_wm_opponent_response_memory", None),
+        )
+        trajectory_values, trajectory_audit = build_predicted_state_continuations(
+            runtime,
+            observation,
+            candidates,
+            attacking_home=(team_id == state.home.team_id),
+            horizon_s=horizon_s,
+            uncertainty_penalty=uncertainty_penalty,
+            max_branch_evaluations=trajectory_branch_budget,
+        )
+        second_order_game = attach_second_order_game(
+            candidates,
+            opponent_belief,
+            getattr(state, "_wm_opponent_response_memory", None),
+            continuation_value_matrices=trajectory_values,
+            trajectory_audit=trajectory_audit,
         )
         from src.match_engine.world_model.active_learning import (
             build_active_learning_advice,

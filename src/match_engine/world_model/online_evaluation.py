@@ -29,6 +29,9 @@ from src.match_engine.world_model.opponent_belief import (
 from src.match_engine.world_model.opponent_response import (
     opponent_response_diagnostics,
 )
+from src.match_engine.world_model.trajectory_game import (
+    trajectory_planning_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -54,6 +57,7 @@ def aggregate_online_calibration(
     require_opponent_meta_belief: bool = False,
     require_opponent_change_detection: bool = False,
     require_opponent_response_model: bool = False,
+    require_two_step_trajectory_planning: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -177,6 +181,7 @@ def aggregate_online_calibration(
     )
     opponent_belief = opponent_belief_diagnostics(logs)
     opponent_response = opponent_response_diagnostics(logs)
+    trajectory_planning = trajectory_planning_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -266,8 +271,19 @@ def aggregate_online_calibration(
     gates["opponent_response_model_evidence"] = (
         opponent_response_ready if require_opponent_response_model else True
     )
+    trajectory_planning_ready = bool(
+        trajectory_planning["validated_predicted_state_decisions"]
+        >= max(2, min_residual_samples)
+        and trajectory_planning["budgets_respected"]
+        and trajectory_planning["all_active_rollouts_holdout_validated"]
+        and trajectory_planning["all_non_causal"]
+    )
+    gates["validated_two_step_trajectory_planning"] = (
+        trajectory_planning_ready
+        if require_two_step_trajectory_planning else True
+    )
     return {
-        "version": 8,
+        "version": 9,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -295,6 +311,7 @@ def aggregate_online_calibration(
             "uncertainty_decomposition": uncertainty_decomposition,
             "opponent_belief": opponent_belief,
             "opponent_response": opponent_response,
+            "trajectory_planning": trajectory_planning,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -312,6 +329,7 @@ def aggregate_online_calibration(
         "opponent_meta_belief_ready": opponent_meta_belief_ready,
         "opponent_change_detection_ready": opponent_change_detection_ready,
         "opponent_response_model_ready": opponent_response_ready,
+        "two_step_trajectory_planning_ready": trajectory_planning_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -322,5 +340,6 @@ def aggregate_online_calibration(
             "Active-learning acquisition is policy-selected, not randomized; its uncertainty reduction is descriptive.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
+            "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",
         ],
     }

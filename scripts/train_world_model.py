@@ -49,6 +49,27 @@ def _bootstrap_transition_loss(
     return member_losses.mean(), member_losses
 
 
+def _sequential_holdout_pairs(
+    obs: np.ndarray,
+    nxt: np.ndarray,
+    groups: np.ndarray,
+    validation_indices: np.ndarray,
+    *,
+    max_alignment_mae: float = 0.03,
+) -> np.ndarray:
+    """Find adjacent, state-aligned transitions inside held-out match groups."""
+    membership = np.zeros(len(obs), dtype=bool)
+    membership[np.asarray(validation_indices, dtype=int)] = True
+    return np.asarray([
+        index for index in range(len(obs) - 1)
+        if membership[index]
+        and membership[index + 1]
+        and groups[index] == groups[index + 1]
+        and float(np.mean(np.abs(nxt[index] - obs[index + 1])))
+        <= float(max_alignment_mae)
+    ], dtype=int)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=45)
@@ -334,6 +355,33 @@ def main() -> None:
             and np.std(transition_error) > 1e-12
             else 0.0
         )
+        pair_left = _sequential_holdout_pairs(
+            obs, nxt, groups, val_idx,
+        )
+        if len(pair_left):
+            pair_actions = np.stack([
+                act[pair_left], act[pair_left + 1],
+            ], axis=1).astype(np.float32)
+            rollout_members = model.transition_rollout_predictions(
+                torch.from_numpy(obs[pair_left]),
+                torch.from_numpy(pair_actions),
+            )
+            rollout_mean = rollout_members.mean(dim=0)
+            rollout_target = torch.from_numpy(nxt[pair_left + 1])
+            rollout_initial = torch.from_numpy(obs[pair_left])
+            two_step_mse = float((
+                ((rollout_mean - rollout_target) ** 2) * obs_weights
+            ).mean().item())
+            two_step_persistence_mse = float((
+                ((rollout_initial - rollout_target) ** 2) * obs_weights
+            ).mean().item())
+            two_step_skill = float(
+                1.0 - two_step_mse / max(1e-12, two_step_persistence_mse)
+            )
+            two_step_groups = int(len(np.unique(groups[pair_left])))
+        else:
+            two_step_mse = two_step_persistence_mse = two_step_skill = 0.0
+            two_step_groups = 0
         progress_target = torch.from_numpy(xg[val_idx]).float().view(-1)
         progress_rmse = float(torch.sqrt(torch.mean(
             (vxp.view(-1) - progress_target) ** 2
@@ -408,6 +456,15 @@ def main() -> None:
         "transition_disagreement_error_correlation": (
             transition_disagreement_error_correlation
         ),
+        "two_step_rollout": {
+            "samples": int(len(pair_left)),
+            "groups": two_step_groups,
+            "weighted_mse": two_step_mse,
+            "persistence_weighted_mse": two_step_persistence_mse,
+            "skill_vs_persistence": two_step_skill,
+            "action_sequence": "observed_changing_actions",
+            "grouped_holdout": True,
+        },
         "progress_rmse": progress_rmse,
         "pass_balanced_accuracy": pass_balanced_accuracy,
         "shot_brier": shot_brier,
