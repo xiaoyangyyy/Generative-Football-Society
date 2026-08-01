@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 22
+DECISION_PACKET_VERSION = 23
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -642,12 +642,35 @@ def build_coach_decision_packet(
             "contextual_residual_memory": (
                 residual_memory.summary()
                 if residual_memory is not None else {
-                    "version": 5,
+                    "version": 6,
                     "active_groups": 0,
                     "residual_rows": 0,
                     "reason": (
                         memory_rejection or "no_compatible_history"
                     ),
+                }
+            ),
+            "opponent_information_query_calibration": (
+                residual_memory.opponent_information_calibration_contracts(
+                    horizons={
+                        key
+                        for candidate in candidates
+                        for key in (
+                            candidate.get("multi_horizon_predictions") or {}
+                        )
+                    }
+                )
+                if residual_memory is not None and hasattr(
+                    residual_memory,
+                    "opponent_information_calibration_contracts",
+                ) else {
+                    "version": 1,
+                    "checkpoint_signature": str(getattr(
+                        runtime, "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    "environment_signature": str(environment_signature),
+                    "horizons": {},
+                    "reason": "no_compatible_history",
                 }
             ),
             "llm_semantic_critic_memory": (

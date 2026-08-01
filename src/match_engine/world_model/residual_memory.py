@@ -15,6 +15,10 @@ from src.match_engine.world_model.temporal_residual_memory import (
     TemporalResidualRankMemory,
     compile_temporal_residual_rank_memory,
 )
+from src.match_engine.world_model.opponent_information_calibration import (
+    OpponentInformationCalibrationMemory,
+    compile_opponent_information_calibration_memory,
+)
 
 
 @dataclass(frozen=True)
@@ -41,6 +45,7 @@ class ContextualResidualMemory:
     min_samples: int
     drift: dict[str, Any]
     temporal_rank_memory: TemporalResidualRankMemory
+    opponent_information_calibration: OpponentInformationCalibrationMemory
 
     def _keys(self, context: dict[str, Any], action: str, horizon: str):
         team = str(context.get("team_id", "unknown"))
@@ -139,7 +144,7 @@ class ContextualResidualMemory:
         for correction in self.groups.values():
             scopes[correction.scope] = scopes.get(correction.scope, 0) + 1
         return {
-            "version": 5,
+            "version": 6,
             "checkpoint_signature": self.checkpoint_signature,
             "environment_signature": self.environment_signature,
             "source_logs": self.source_logs,
@@ -150,6 +155,9 @@ class ContextualResidualMemory:
             "drift": self.drift,
             "temporal_residual_rank_memory": (
                 self.temporal_rank_memory.summary()
+            ),
+            "opponent_information_calibration": (
+                self.opponent_information_calibration.summary()
             ),
             "policy": (
                 "Use only same-checkpoint and same-policy-environment "
@@ -167,6 +175,9 @@ class ContextualResidualMemory:
         report["temporal_residual_rank_memory"] = (
             self.temporal_rank_memory.diagnostics()
         )
+        report["opponent_information_calibration"] = (
+            self.opponent_information_calibration.diagnostics()
+        )
         return report
 
     def temporal_rank_coupling(
@@ -179,6 +190,26 @@ class ContextualResidualMemory:
             context=context,
             horizon_keys=horizon_keys,
         )
+
+    def opponent_information_calibration_contract(
+        self, *, horizon: str,
+    ) -> dict[str, Any]:
+        return self.opponent_information_calibration.contract(horizon=horizon)
+
+    def opponent_information_calibration_contracts(
+        self, *, horizons: Iterable[str],
+    ) -> dict[str, Any]:
+        return {
+            "version": 1,
+            "checkpoint_signature": self.checkpoint_signature,
+            "environment_signature": self.environment_signature,
+            "horizons": {
+                str(horizon): self.opponent_information_calibration_contract(
+                    horizon=str(horizon)
+                )
+                for horizon in sorted(set(map(str, horizons)))
+            },
+        }
 
 
 def _contextual_keys(row: dict[str, Any]) -> tuple[tuple[str, ...], ...]:
@@ -514,6 +545,14 @@ def compile_contextual_residual_memory(
         drift=drift,
         validation=temporal_validation,
     )
+    opponent_information_calibration = (
+        compile_opponent_information_calibration_memory(
+            payloads,
+            checkpoint_signature=checkpoint_signature,
+            environment_signature=environment_signature,
+            min_samples=minimum,
+        )
+    )
     return ContextualResidualMemory(
         checkpoint_signature=checkpoint_signature,
         environment_signature=environment_signature,
@@ -523,6 +562,7 @@ def compile_contextual_residual_memory(
         min_samples=minimum,
         drift=drift,
         temporal_rank_memory=temporal_rank_memory,
+        opponent_information_calibration=opponent_information_calibration,
     )
 
 

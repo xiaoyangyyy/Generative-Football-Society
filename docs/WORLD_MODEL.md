@@ -869,6 +869,28 @@ found the model's best question for its declared purpose or merely supplied a
 plausible narrative. Rank, objective regret, and normalized objective efficiency
 make that comparison explicit rather than relying on explanation quality.
 
+The fixed Gaussian observation model remains the cold-start benchmark, but it
+is no longer assumed to be perfectly calibrated. Same-checkpoint and
+same-environment realized query scores are grouped by horizon and feature, then
+split chronologically into an earlier reference half and a later validation
+half. The reference half learns only one bounded logit-intercept correction.
+Only the first valid query for a horizon-feature group in each match is retained,
+so repeated within-match decisions cannot manufacture confidence. That correction
+becomes active only with at least eight separate matches in each half
+and strictly better held-out Brier score than the raw forecast; otherwise lookup
+falls back to the untouched Gaussian probabilities. A feature-only group can be
+used when an exact horizon group has insufficient evidence.
+
+When active, the same offset is applied to every opponent hypothesis likelihood,
+not merely to the aggregate displayed probability. High/low posteriors,
+information gain, adaptive value, and contingent-action regret are consequently
+recomputed from one coherent Bayesian branch model. Each audit freezes both raw
+and calibrated likelihoods and probabilities, and each realized score preserves
+both Brier benchmarks. The online gate rejects an active calibration whose
+match-clustered Brier score becomes worse than raw. Version-2 query history is
+not recycled as training data because it cannot prove that its stored forecast
+was an uncalibrated baseline.
+
 The same audit evaluates the proposed high/low actions against the best action in
 each posterior branch. It reports branch regrets, expected policy regret, worst
 branch regret, and a model-owned consistency certificate (`expected <= 0.03`,

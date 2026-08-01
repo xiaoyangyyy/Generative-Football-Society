@@ -20,9 +20,12 @@ from src.match_engine.world_model.opponent_response import RESPONSE_ACTIONS
 from src.match_engine.world_model.policy_experiment import (
     policy_horizon_seconds,
 )
+from src.match_engine.world_model.opponent_information_calibration import (
+    apply_logit_offset,
+)
 
 
-OPPONENT_INFORMATION_QUERY_VERSION = 2
+OPPONENT_INFORMATION_QUERY_VERSION = 3
 _PURPOSES = {"reduce_opponent_uncertainty", "resolve_action_choice"}
 _OBSERVATION_SIGMA = 0.18
 
@@ -118,7 +121,7 @@ def _action_values(raw: Any) -> dict[str, np.ndarray] | None:
     return output
 
 
-def _high_likelihoods(feature: str) -> np.ndarray:
+def _high_likelihoods(feature: str, *, logit_offset: float = 0.0) -> np.ndarray:
     index = TACTICAL_FEATURES.index(feature)
     means = np.asarray([
         tactic_feature_vector(name)[index] for name in OPPONENT_HYPOTHESES
@@ -127,7 +130,52 @@ def _high_likelihoods(feature: str) -> np.ndarray:
     probabilities = np.asarray([
         0.5 * (1.0 + math.erf(float(value))) for value in z
     ], dtype=np.float64)
-    return np.clip(probabilities, 0.02, 0.98)
+    raw = np.clip(probabilities, 0.02, 0.98)
+    return np.asarray([
+        apply_logit_offset(float(value), logit_offset) for value in raw
+    ], dtype=np.float64)
+
+
+def _feature_calibration(
+    basis: dict[str, Any], *, horizon: str, feature: str,
+) -> dict[str, Any]:
+    contract = basis.get("query_calibration") or {}
+    fallback = {
+        "available": False,
+        "reason": "insufficient_or_unvalidated_history",
+        "logit_offset": 0.0,
+    }
+    if not isinstance(contract, dict) or not contract:
+        return fallback
+    if (
+        contract.get("version") != 1
+        or str(contract.get("horizon")) != str(horizon)
+        or str(contract.get("checkpoint_signature"))
+        != str(basis.get("checkpoint_signature"))
+        or str(contract.get("environment_signature"))
+        != str(basis.get("environment_signature"))
+    ):
+        raise ValueError("incompatible opponent query calibration contract")
+    correction = (contract.get("features") or {}).get(feature) or {}
+    if not correction.get("available"):
+        return fallback
+    try:
+        offset = float(correction["logit_offset"])
+        skill = float(correction["validation_skill_vs_raw"])
+        reference = int(correction["reference_samples"])
+        validation = int(correction["validation_samples"])
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("invalid opponent query calibration") from exc
+    if (
+        not math.isfinite(offset) or abs(offset) > 2.0 + 1e-12
+        or not math.isfinite(skill) or skill <= 0.0
+        or reference < 8 or validation < 8
+        or str(correction.get("feature")) != feature
+        or str(correction.get("horizon")) not in {str(horizon), "all"}
+        or correction.get("causal_interpretation") is not False
+    ):
+        raise ValueError("unvalidated opponent query calibration")
+    return {**correction, "logit_offset": offset}
 
 
 def _branch(
@@ -151,8 +199,13 @@ def _feature_report(
     feature: str,
     posterior: np.ndarray,
     action_values: dict[str, np.ndarray],
+    *,
+    calibration: dict[str, Any],
 ) -> dict[str, Any]:
-    high_likelihood = _high_likelihoods(feature)
+    raw_high_likelihood = _high_likelihoods(feature)
+    offset = float(calibration.get("logit_offset", 0.0))
+    high_likelihood = _high_likelihoods(feature, logit_offset=offset)
+    raw_probability = float(np.dot(posterior, raw_high_likelihood))
     probability, high_posterior, high_values, high_action, high_best = _branch(
         posterior, high_likelihood, action_values,
     )
@@ -177,7 +230,14 @@ def _feature_report(
     return {
         "feature": feature,
         "binary_observation": "feature_above_neutral_0_5",
+        "raw_forecast_high_rate": raw_probability,
         "forecast_high_rate": probability,
+        "calibration_applied": bool(calibration.get("available")),
+        "calibration": calibration,
+        "raw_hypothesis_high_likelihoods": {
+            name: float(raw_high_likelihood[index])
+            for index, name in enumerate(OPPONENT_HYPOTHESES)
+        },
         "hypothesis_high_likelihoods": {
             name: float(high_likelihood[index])
             for index, name in enumerate(OPPONENT_HYPOTHESES)
@@ -242,10 +302,18 @@ def _audit_from_basis(
         }
     ):
         return None
-    leaderboard = [
-        _feature_report(feature, posterior, values)
-        for feature in TACTICAL_FEATURES
-    ]
+    try:
+        leaderboard = [
+            _feature_report(
+                feature, posterior, values,
+                calibration=_feature_calibration(
+                    basis, horizon=query["horizon"], feature=feature,
+                ),
+            )
+            for feature in TACTICAL_FEATURES
+        ]
+    except ValueError:
+        return None
     if query["purpose"] == "resolve_action_choice":
         leaderboard.sort(key=lambda row: (
             -row["expected_decision_value_of_information"],
@@ -441,6 +509,11 @@ def evaluate_llm_opponent_information_query(
         "environment_signature": str(packet.get(
             "environment_signature", "environment_unspecified",
         )),
+        "query_calibration": (
+            ((packet.get("opponent_information_query_calibration") or {}).get(
+                "horizons"
+            ) or {}).get(query["horizon"]) or {}
+        ),
     }
     audit = _audit_from_basis(
         query, basis, query_signature=query_signature,

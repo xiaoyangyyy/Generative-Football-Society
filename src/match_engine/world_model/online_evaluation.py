@@ -589,6 +589,7 @@ def aggregate_online_calibration(
         and opponent_information_queries[
             "all_hidden_intent_claims_disabled"
         ]
+        and opponent_information_queries["calibration_no_worse_than_raw"]
         and opponent_information_queries["provenance_compatible"]
     )
     gates["opponent_information_queries"] = (
@@ -596,7 +597,7 @@ def aggregate_online_calibration(
         if require_opponent_information_queries else True
     )
     return {
-        "version": 26,
+        "version": 27,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),

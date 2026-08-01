@@ -19,6 +19,9 @@ from src.match_engine.world_model.opponent_information_query_outcomes import (
 from src.match_engine.world_model.opponent_information_query_evaluation import (
     opponent_information_query_diagnostics,
 )
+from src.match_engine.world_model.opponent_information_calibration import (
+    compile_opponent_information_calibration_memory,
+)
 from src.match_engine.world_model.online_evaluation import (
     aggregate_online_calibration,
 )
@@ -266,7 +269,7 @@ def test_cross_match_query_diagnostics_and_strict_readiness_gate():
         logs, min_transitions=0,
         require_opponent_information_queries=True,
     )
-    assert report["version"] == 26
+    assert report["version"] == 27
     assert report["opponent_information_queries_ready"]
     assert report["gates"]["opponent_information_queries"]
 
@@ -338,3 +341,122 @@ def test_due_horizon_observes_opponent_controls_and_scores_query():
     assert diagnostics["opponent_information_queries"][
         "realized_query_scores"
     ] == 1
+
+
+def test_held_out_query_calibration_changes_likelihoods_coherently():
+    packet = _packet()
+    audit = evaluate_llm_opponent_information_query(
+        packet, _query(), selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+    )
+    observed = {feature: 0.8 for feature in (
+        "pressing_intensity", "risk_budget", "line_height",
+        "rotation_aggressiveness",
+    )}
+    logs = []
+    for _ in range(16):
+        score = score_opponent_information_query(
+            audit, observed, horizon="60s",
+            checkpoint_signature="checkpoint:test",
+            environment_signature="environment:test",
+        )
+        logs.append({"world_model_decision_adoption": {"records": [{
+            "intervention_actual_action": "pass",
+            "llm_opponent_information_query_context": copy.deepcopy(audit),
+            "multi_horizon_regime_outcomes": {"60s": {
+                "llm_opponent_information_query_evaluation": score,
+            }},
+        }]}})
+
+    memory = compile_opponent_information_calibration_memory(
+        logs, checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+    )
+    correction = memory.lookup(horizon="60s", feature="line_height")
+    assert correction["available"]
+    assert correction["reference_samples"] == 8
+    assert correction["validation_samples"] == 8
+    assert correction["validation_skill_vs_raw"] > 0.0
+
+    repeated_inside_one_match = [{"world_model_decision_adoption": {
+        "records": [
+            copy.deepcopy(payload["world_model_decision_adoption"]["records"][0])
+            for payload in logs
+        ],
+    }}]
+    clustered = compile_opponent_information_calibration_memory(
+        repeated_inside_one_match,
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+    )
+    assert clustered.rows == 4
+    assert clustered.summary()["active_groups"] == 0
+
+    calibrated_packet = copy.deepcopy(packet)
+    calibrated_packet["opponent_information_query_calibration"] = {
+        "version": 1,
+        "checkpoint_signature": "checkpoint:test",
+        "environment_signature": "environment:test",
+        "horizons": {"60s": memory.contract(horizon="60s")},
+    }
+    calibrated = evaluate_llm_opponent_information_query(
+        calibrated_packet, _query(), selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+    )
+    assert opponent_information_query_audit_is_valid(calibrated)
+    report = calibrated["selected_query_report"]
+    assert report["calibration_applied"]
+    assert report["forecast_high_rate"] > report["raw_forecast_high_rate"]
+    assert sum(report["posterior_if_high"].values()) == pytest.approx(1.0)
+    assert sum(report["posterior_if_low"].values()) == pytest.approx(1.0)
+    assert report["hypothesis_high_likelihoods"] != (
+        report["raw_hypothesis_high_likelihoods"]
+    )
+
+    score = score_opponent_information_query(
+        calibrated, observed, horizon="60s",
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+    )
+    assert score["any_query_calibration_applied"]
+    assert score["all_feature_mean_brier_score"] < (
+        score["raw_all_feature_mean_brier_score"]
+    )
+
+
+def test_query_calibration_rejects_tampered_or_wrong_scope_history():
+    audit = evaluate_llm_opponent_information_query(
+        _packet(), _query(), selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+    )
+    observed = {feature: 0.8 for feature in (
+        "pressing_intensity", "risk_budget", "line_height",
+        "rotation_aggressiveness",
+    )}
+    score = score_opponent_information_query(
+        audit, observed, horizon="60s",
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+    )
+    tampered = copy.deepcopy(score)
+    tampered["raw_selected_feature_brier_score"] = 0.0
+    logs = [{"world_model_decision_adoption": {"records": [{
+        "llm_opponent_information_query_context": copy.deepcopy(audit),
+        "multi_horizon_regime_outcomes": {"60s": {
+            "llm_opponent_information_query_evaluation": (
+                tampered if index == 0 else copy.deepcopy(score)
+            ),
+        }},
+    }]}} for index in range(16)]
+    memory = compile_opponent_information_calibration_memory(
+        logs, checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+    )
+    assert not memory.lookup(horizon="60s", feature="line_height")[
+        "available"
+    ]
+    wrong_scope = compile_opponent_information_calibration_memory(
+        logs, checkpoint_signature="checkpoint:other",
+        environment_signature="environment:test",
+    )
+    assert wrong_scope.rows == 0

@@ -111,6 +111,24 @@ def opponent_information_query_diagnostics(
         "match_clustered_all_feature_mean_brier": clustered(
             "all_feature_mean_brier_score"
         ),
+        "match_clustered_raw_selected_feature_brier": clustered(
+            "raw_selected_feature_brier_score"
+        ),
+        "match_clustered_raw_all_feature_mean_brier": clustered(
+            "raw_all_feature_mean_brier_score"
+        ),
+        "match_clustered_calibration_skill_vs_raw": (
+            clustered("raw_all_feature_mean_brier_score")
+            - clustered("all_feature_mean_brier_score")
+        ),
+        "calibrated_query_scores": sum(
+            bool(row.get("any_query_calibration_applied")) for row in valid
+        ),
+        "calibration_no_worse_than_raw": bool(
+            not any(row.get("any_query_calibration_applied") for row in valid)
+            or clustered("all_feature_mean_brier_score")
+            <= clustered("raw_all_feature_mean_brier_score") + 1e-12
+        ),
         "uninformative_half_probability_brier": 0.25,
         "match_clustered_model_top_query_rate": clustered_rate(
             lambda row: int(row["selected_query_model_rank"]) == 1

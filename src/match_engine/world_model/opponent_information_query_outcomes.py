@@ -69,6 +69,13 @@ def score_opponent_information_query(
         ) ** 2
         for feature in TACTICAL_FEATURES
     }
+    raw_brier = {
+        feature: (
+            float(reports[feature]["raw_forecast_high_rate"])
+            - float(events[feature])
+        ) ** 2
+        for feature in TACTICAL_FEATURES
+    }
     selected_feature = audit["query"]["feature"]
     resolved_high = bool(events[selected_feature])
     branch = "high" if resolved_high else "low"
@@ -81,8 +88,18 @@ def score_opponent_information_query(
         "observed_features": observed,
         "observed_high_events": events,
         "feature_brier_scores": brier,
+        "raw_feature_brier_scores": raw_brier,
         "selected_feature_brier_score": float(brier[selected_feature]),
+        "raw_selected_feature_brier_score": float(
+            raw_brier[selected_feature]
+        ),
         "all_feature_mean_brier_score": float(np.mean(list(brier.values()))),
+        "raw_all_feature_mean_brier_score": float(
+            np.mean(list(raw_brier.values()))
+        ),
+        "any_query_calibration_applied": any(
+            bool(row.get("calibration_applied")) for row in reports.values()
+        ),
         "selected_query_model_rank": int(audit["selected_query_model_rank"]),
         "selected_query_objective_efficiency": float(
             audit["selected_query_objective_efficiency"]
