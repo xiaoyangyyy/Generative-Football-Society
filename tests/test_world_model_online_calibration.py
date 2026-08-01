@@ -204,6 +204,11 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                     {
                         "experiment_arm": "treatment",
                         "experiment_treatment_propensity": 0.8,
+                        "opponent_belief_context": {
+                            "posterior": {"balanced": 0.7, "low_block": 0.3},
+                            "map_hypothesis": "balanced",
+                            "normalized_entropy": 0.6,
+                        },
                         "short_horizon_outcome": {
                             "policy_utility": float(adopted),
                         },
@@ -241,6 +246,11 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                     {
                         "experiment_arm": "control",
                         "experiment_treatment_propensity": 0.8,
+                        "opponent_belief_context": {
+                            "posterior": {"balanced": 0.6, "low_block": 0.4},
+                            "map_hypothesis": "balanced",
+                            "normalized_entropy": 0.7,
+                        },
                         "short_horizon_outcome": {"policy_utility": 0.0},
                         "multi_horizon_outcomes": {
                             "transition": {
@@ -309,15 +319,18 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
         require_outcome_calibration=True,
         require_uncertainty_decomposition=True,
         require_transition_ensemble=True,
+        require_opponent_belief=True,
     )
     assert policy_ready["ready"]
     assert policy_ready["policy_effect_ready"]
     assert policy_ready["uncertainty_decomposition_ready"]
     assert policy_ready["transition_ensemble_ready"]
+    assert policy_ready["opponent_belief_ready"]
     assert policy_ready["gates"][
         "world_model_uncertainty_decomposition"
     ]
     assert policy_ready["gates"]["world_model_transition_ensemble"]
+    assert policy_ready["gates"]["opponent_belief_decision_evidence"]
     outcome = policy_ready["decision_adoption"]["randomized_outcome_effect"]
     assert outcome["ready"]
     assert outcome["cluster_robust"]

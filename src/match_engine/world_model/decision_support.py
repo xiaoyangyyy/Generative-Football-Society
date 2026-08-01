@@ -14,9 +14,15 @@ from src.match_engine.world_model.policy_prediction import (
     summarize_multi_horizon_predictions,
 )
 from src.match_engine.tactical_catalog import TACTICAL_PRESETS, resolve_tactical_preset
+from src.match_engine.world_model.opponent_belief import (
+    OPPONENT_HYPOTHESES,
+    reweight_counterfactual_candidates,
+    tactic_feature_vector,
+    update_opponent_belief,
+)
 
 
-DECISION_PACKET_VERSION = 4
+DECISION_PACKET_VERSION = 5
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -207,6 +213,97 @@ def _tactical_action_weights(preset_name: str) -> dict[str, float]:
     return {key: float(value / total) for key, value in raw.items()}
 
 
+def _condition_on_opponent_hypothesis(
+    observation: np.ndarray,
+    *,
+    team_is_home: bool,
+    hypothesis: str,
+) -> np.ndarray:
+    conditioned = np.asarray(observation, dtype=np.float32).copy()
+    # Observation layout reserves [298:302] for home controls and [302:306]
+    # for away controls.  Only the opponent slice is intervened upon.
+    start = 302 if team_is_home else 298
+    conditioned[start:start + 4] = tactic_feature_vector(hypothesis)
+    return conditioned
+
+
+def _attach_opponent_counterfactuals(
+    runtime,
+    state,
+    team_id: str,
+    observation: np.ndarray,
+    candidates: list[dict[str, Any]],
+    belief: dict[str, Any] | None,
+    *,
+    horizon_s: float,
+    uncertainty_penalty: float,
+) -> None:
+    """Evaluate each action under every latent opponent tactic."""
+    if not belief or not belief.get("posterior"):
+        return
+    if not any(
+        float(candidate.get("effective_confidence", 0.0)) > 0.0
+        for candidate in candidates
+    ):
+        return
+    team_is_home = str(team_id) == str(state.home.team_id)
+    for candidate in candidates:
+        candidate["state_conditioned_risk_adjusted_value"] = float(
+            candidate["risk_adjusted_value"]
+        )
+        candidate["opponent_hypothesis_values"] = {}
+    for hypothesis in OPPONENT_HYPOTHESES:
+        conditioned = _condition_on_opponent_hypothesis(
+            observation,
+            team_is_home=team_is_home,
+            hypothesis=hypothesis,
+        )
+        for candidate in candidates:
+            action_name = str(candidate["action"])
+            action = encode_high_level_action(
+                action_name,
+                target=np.asarray(candidate["target"], dtype=np.float32),
+                horizon_s=horizon_s,
+            )
+            action[13] = float(candidate["physics_prior"])
+            future = runtime.predict_future(
+                conditioned,
+                action,
+                action_kind=action_name,
+                horizon_s=horizon_s,
+            )
+            expected = (
+                runtime.score_shot_action(
+                    conditioned, action, attacking_home=team_is_home,
+                )
+                if action_name == "shot"
+                else runtime.score_action(conditioned, action)
+            )
+            value = (
+                finite_float(expected, 0.0)
+                - uncertainty_penalty * float(future.state_uncertainty)
+                - 0.15 * float(future.event_probabilities["turnover"])
+                + float(candidate.get("multi_horizon_forecast_adjustment", 0.0))
+            )
+            candidate["opponent_hypothesis_values"][hypothesis] = finite_float(
+                value, -1.0
+            )
+    reweight_counterfactual_candidates(
+        {"candidates": candidates}, dict(belief["posterior"]),
+    )
+    entropy = float(np.clip(belief.get("normalized_entropy", 1.0), 0.0, 1.0))
+    for candidate in candidates:
+        sensitivity = float(np.clip(
+            candidate.get("opponent_belief_value_std", 0.0) / 0.25,
+            0.0,
+            1.0,
+        ))
+        candidate["opponent_belief_entropy"] = entropy
+        candidate["opponent_hypothesis_discrimination"] = (
+            entropy * sensitivity
+        )
+
+
 def build_prematch_tactical_packet(
     runtime,
     state,
@@ -215,6 +312,7 @@ def build_prematch_tactical_packet(
     horizon_s: float = 20.0,
     candidate_presets: tuple[str, ...] = PREMATCH_TACTICAL_CANDIDATES,
     uncertainty_penalty: float = 0.25,
+    opponent_belief: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Rank tactical policy mixtures using bounded world-model evidence."""
     if runtime is None:
@@ -234,6 +332,19 @@ def build_prematch_tactical_packet(
             uncertainty_penalty=uncertainty_penalty,
             prediction_horizons_s=(0.0,),
             residual_memory=None,
+        )
+        opponent_belief = opponent_belief or update_opponent_belief(
+            state, team_id,
+        )
+        _attach_opponent_counterfactuals(
+            runtime,
+            state,
+            team_id,
+            observation,
+            action_evidence,
+            opponent_belief,
+            horizon_s=horizon_s,
+            uncertainty_penalty=uncertainty_penalty,
         )
         by_action = {item["action"]: item for item in action_evidence}
         tactical_candidates = []
@@ -313,9 +424,11 @@ def build_prematch_tactical_packet(
             ),
             "candidates": tactical_candidates,
             "action_evidence": action_evidence,
+            "opponent_belief": opponent_belief,
             "limitations": [
                 "Not a full-match win-probability forecast.",
-                "Opponent adaptation is delegated to the coach model.",
+                "Opponent intent is latent and represented as a changing posterior.",
+                "Opponent-conditioned values are model counterfactuals, not observed outcomes.",
                 "Tactical presets are evaluated as high-level action mixtures.",
             ],
             "policy": (
@@ -345,6 +458,7 @@ def build_coach_decision_packet(
     residual_memory=None,
     environment_signature: str = "environment_unspecified",
     active_learning_config: dict[str, Any] | None = None,
+    opponent_belief: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compare strategic candidates without granting the LLM direct state writes."""
     from src.match_engine.world_model.outcome_calibration import (
@@ -400,6 +514,19 @@ def build_coach_decision_packet(
             prediction_horizons_s=outcome_horizons_s,
             residual_memory=residual_memory,
         )
+        opponent_belief = opponent_belief or update_opponent_belief(
+            state, team_id,
+        )
+        _attach_opponent_counterfactuals(
+            runtime,
+            state,
+            team_id,
+            observation,
+            candidates,
+            opponent_belief,
+            horizon_s=horizon_s,
+            uncertainty_penalty=uncertainty_penalty,
+        )
         from src.match_engine.world_model.active_learning import (
             build_active_learning_advice,
         )
@@ -441,6 +568,7 @@ def build_coach_decision_packet(
                 best["effective_confidence"] if best else 0.0
             ),
             "candidates": candidates,
+            "opponent_belief": opponent_belief,
             "active_learning": active_learning,
             "online_calibration": _online_calibration_diagnostics(runtime),
             "policy_outcome_calibration": outcome_calibration,

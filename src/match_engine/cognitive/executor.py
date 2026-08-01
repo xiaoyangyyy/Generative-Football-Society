@@ -319,8 +319,54 @@ class CognitiveExecutor:
             self._save_cache(key, plan)
 
         if trig.entity_tier == ENTITY_TIER_COACH:
+            from src.match_engine.world_model.opponent_belief import (
+                assimilate_llm_opponent_hypothesis,
+                reweight_counterfactual_candidates,
+                update_opponent_belief,
+            )
+
+            packet = trig.facts.get("world_model_decision_support") or {}
+            if trig.team_id and packet.get("opponent_belief"):
+                belief_audit = assimilate_llm_opponent_hypothesis(
+                    state,
+                    trig.team_id,
+                    plan.get("opponent_hypothesis"),
+                )
+                plan["opponent_belief_audit"] = belief_audit
+                updated_belief = update_opponent_belief(state, trig.team_id)
+                packet["opponent_belief"] = updated_belief
+                reweight_counterfactual_candidates(
+                    packet, updated_belief["posterior"],
+                )
+                from src.match_engine.world_model.active_learning import (
+                    build_active_learning_advice,
+                )
+                from src.match_engine.world_model.policy_outcomes import (
+                    capture_policy_outcome_baseline,
+                )
+
+                learning_context = capture_policy_outcome_baseline(
+                    state, team_id=trig.team_id,
+                )
+                learning_context["team_id"] = str(trig.team_id)
+                packet["active_learning"] = build_active_learning_advice(
+                    packet.get("candidates") or [],
+                    getattr(state, "_wm_coach_decision_adoption", None) or [],
+                    context=learning_context,
+                    config={
+                        "enabled": self.cfg.world_model_active_learning,
+                        "budget_fraction": self.cfg.world_model_exploration_budget,
+                        "max_regret": self.cfg.world_model_exploration_max_regret,
+                        "min_information_value": (
+                            self.cfg.world_model_exploration_min_information
+                        ),
+                        "intervention_scale": (
+                            self.cfg.world_model_exploration_strength_scale
+                        ),
+                    },
+                )
             plan = _reconcile_coach_world_model_plan(
-                plan, trig.facts.get("world_model_decision_support"),
+                plan, packet,
             )
 
         rec = CognitivePlanRecord(trigger=trig, plan=plan, cached=from_cache)
@@ -462,6 +508,44 @@ class CognitiveExecutor:
                             "estimated_regret",
                         ),
                         "intervention_scale": exploration_scale,
+                    },
+                    opponent_belief_context={
+                        "version": int((packet.get(
+                            "opponent_belief"
+                        ) or {}).get("version", 0)),
+                        "opponent_team_id": str((packet.get(
+                            "opponent_belief"
+                        ) or {}).get("opponent_team_id", "unknown")),
+                        "map_hypothesis": str((packet.get(
+                            "opponent_belief"
+                        ) or {}).get("map_hypothesis", "unknown")),
+                        "map_probability": float((packet.get(
+                            "opponent_belief"
+                        ) or {}).get("map_probability", 0.0)),
+                        "normalized_entropy": float((packet.get(
+                            "opponent_belief"
+                        ) or {}).get("normalized_entropy", 1.0)),
+                        "posterior": dict((packet.get(
+                            "opponent_belief"
+                        ) or {}).get("posterior") or {}),
+                        "llm_hypothesis_audit": dict(rec.plan.get(
+                            "opponent_belief_audit"
+                        ) or {}),
+                        "selected_action_value_std": float(
+                            selected_candidate.get(
+                                "opponent_belief_value_std", 0.0,
+                            )
+                        ),
+                        "selected_action_tail_value": float(
+                            selected_candidate.get(
+                                "opponent_belief_tail_value", 0.0,
+                            )
+                        ),
+                        "selected_action_hypothesis_values": dict(
+                            selected_candidate.get(
+                                "opponent_hypothesis_values"
+                            ) or {}
+                        ),
                     },
                 )
                 if adoption is not None:

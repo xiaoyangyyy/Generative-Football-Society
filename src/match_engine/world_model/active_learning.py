@@ -241,11 +241,18 @@ def build_active_learning_advice(
         )
         action_novelty = 1.0 / math.sqrt(1.0 + action_samples)
         context_novelty = 1.0 / math.sqrt(1.0 + context_samples)
+        opponent_discrimination = _bounded(
+            candidate.get("opponent_hypothesis_discrimination", 0.0),
+            0.0,
+            1.0,
+            0.0,
+        )
         information_value = float(np.clip(
-            0.55 * epistemic
-            + 0.20 * context_novelty
-            + 0.15 * action_novelty
-            + 0.10 * disagreement,
+            0.50 * epistemic
+            + 0.18 * context_novelty
+            + 0.14 * action_novelty
+            + 0.08 * disagreement
+            + 0.10 * opponent_discrimination,
             0.0, 1.0,
         ))
         value = float(candidate.get("risk_adjusted_value", -1.0))
@@ -267,6 +274,7 @@ def build_active_learning_advice(
             "aleatoric_uncertainty": aleatoric,
             "transition_epistemic_uncertainty": transition_epistemic,
             "multi_horizon_disagreement": disagreement,
+            "opponent_hypothesis_discrimination": opponent_discrimination,
             "action_samples": action_samples,
             "context_action_samples": context_samples,
             "estimated_regret": regret,

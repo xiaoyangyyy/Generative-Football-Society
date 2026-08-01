@@ -239,6 +239,12 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   aleatoric uncertainty is irreducible match randomness and must only price risk;
 - transition_epistemic uncertainty is trajectory disagreement between trained
   dynamics members; use it as evidence, never as a guaranteed model failure;
+- opponent_belief is a latent tactical posterior, not a discovered fact;
+- if proposing opponent_hypothesis, select only a listed hypothesis and cite
+  evidence_features present in its numeric feature contract; the engine will
+  reject or cap claims that conflict with world-model likelihood;
+- opponent_hypothesis_values are counterfactual model estimates. Prefer actions
+  robust across plausible hypotheses when posterior entropy is high;
 - never describe exploration as guaranteed learning or override its safety budget;
 - you may disagree, but explain why without inventing outcomes.
 Output JSON only. Adjust tactics with small bounded deltas."""
@@ -260,7 +266,13 @@ Return JSON:
   "sub_intent": "optional short note",
   "world_model_action": "hold|pass|cross|shot|none",
   "world_model_decision_mode": "exploit|explore|decline",
-  "world_model_rationale": "brief explanation tied to uncertainty and candidate evidence"
+  "world_model_rationale": "brief explanation tied to uncertainty and candidate evidence",
+  "opponent_hypothesis": {{
+    "tactical_preset": "one preset listed in opponent_belief.hypotheses",
+    "confidence": 0.0-1.0,
+    "evidence_features": ["pressing_intensity|risk_budget|line_height|rotation_aggressiveness"],
+    "rationale": "one short observation-grounded explanation"
+  }}
 }}"""
         return self._call_llm(system, user, json_mode=True, temperature=0.5)
 

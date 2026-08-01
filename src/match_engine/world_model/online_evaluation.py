@@ -23,6 +23,9 @@ from src.match_engine.world_model.active_learning import (
 from src.match_engine.world_model.uncertainty import (
     uncertainty_decomposition_diagnostics,
 )
+from src.match_engine.world_model.opponent_belief import (
+    opponent_belief_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -44,6 +47,7 @@ def aggregate_online_calibration(
     require_outcome_calibration: bool = False,
     require_uncertainty_decomposition: bool = False,
     require_transition_ensemble: bool = False,
+    require_opponent_belief: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -165,6 +169,7 @@ def aggregate_online_calibration(
     uncertainty_decomposition = uncertainty_decomposition_diagnostics(
         policy_record_clusters,
     )
+    opponent_belief = opponent_belief_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -219,8 +224,16 @@ def aggregate_online_calibration(
     gates["world_model_transition_ensemble"] = (
         transition_ensemble_ready if require_transition_ensemble else True
     )
+    opponent_belief_ready = bool(
+        opponent_belief["decision_belief_snapshots"]
+        >= max(2, min_residual_samples)
+        and opponent_belief["available"]
+    )
+    gates["opponent_belief_decision_evidence"] = (
+        opponent_belief_ready if require_opponent_belief else True
+    )
     return {
-        "version": 5,
+        "version": 6,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -246,6 +259,7 @@ def aggregate_online_calibration(
             "world_model_outcome_calibration": outcome_calibration,
             "active_learning": active_learning,
             "uncertainty_decomposition": uncertainty_decomposition,
+            "opponent_belief": opponent_belief,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -259,6 +273,7 @@ def aggregate_online_calibration(
         ),
         "uncertainty_decomposition_ready": decomposition_ready,
         "transition_ensemble_ready": transition_ensemble_ready,
+        "opponent_belief_ready": opponent_belief_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -267,5 +282,6 @@ def aggregate_online_calibration(
             "Outcome forecast trust is checkpoint- and policy-regime-specific.",
             "Residual memory is isolated by checkpoint and policy-environment fingerprint.",
             "Active-learning acquisition is policy-selected, not randomized; its uncertainty reduction is descriptive.",
+            "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
         ],
     }

@@ -66,6 +66,14 @@ def main() -> int:
             "trained transition ensemble."
         ),
     )
+    parser.add_argument(
+        "--require-opponent-belief",
+        action="store_true",
+        help=(
+            "Fail readiness until enough decisions carry a grounded opponent "
+            "belief and hypothesis-conditioned counterfactuals."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -94,6 +102,7 @@ def main() -> int:
             args.require_uncertainty_decomposition
         ),
         require_transition_ensemble=args.require_transition_ensemble,
+        require_opponent_belief=args.require_opponent_belief,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

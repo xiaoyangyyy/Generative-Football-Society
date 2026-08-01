@@ -103,6 +103,12 @@ is used as evidence rather than as an unbounded controller:
 - The LLM may disagree with the recommendation, but must select an evaluated
   candidate and provide a rationale. Out-of-set choices are constrained and
   recorded.
+- The opponent's tactical intent is represented by a persistent posterior over
+  seven interpretable archetypes. Every action is re-evaluated under every
+  archetype, then ranked by posterior mean, disagreement, and tail risk.
+- The LLM may submit a structured opponent hypothesis, but only with a listed
+  archetype and named observable tactical features. Numeric likelihood gates
+  the update and caps its posterior influence at `0.20`.
 - Missing checkpoints, closed quality gates, or disabled planning preserve the
   original deterministic fallback path.
 
@@ -127,6 +133,39 @@ python scripts/evaluate_tactical_counterfactual.py \
 
 Matched-seed estimates are causal only for the configured simulator; they do
 not establish real-world football validity.
+
+### Opponent-adaptive belief loop
+
+The four observable opponent controls do not reveal the opponent's complete
+intent. At each coach trigger, a sticky Markov prior is combined with a
+tempered likelihood over `balanced`, `gegenpress`, `possession_control`,
+`counter_attack`, `low_block`, `wing_play`, and `direct_vertical`. The packet
+exposes the complete posterior, normalized entropy, tactical-switch
+probability, observed feature vector, and observation likelihood of each
+hypothesis.
+
+For each hypothesis, the world model intervenes only on the opponent's four
+tactical observation slots and re-runs `hold`, `pass`, `cross`, and `shot`.
+Action ranking uses the posterior-weighted expected value with explicit
+penalties for between-hypothesis standard deviation and the posterior-weighted
+10% lower tail. This makes a high-entropy belief favor robust actions instead of silently
+pretending the MAP opponent tactic is certain.
+
+The coach LLM can challenge the numeric posterior through
+`opponent_hypothesis`, which contains a listed tactical preset, confidence,
+named evidence features, and a short rationale. The executor strips invented
+features and multiplies the LLM confidence by feature grounding and the world
+model's relative observation likelihood. The resulting pseudo-evidence has a
+hard maximum influence of `0.20`; unsupported claims have zero or negligible
+effect. The fused posterior then reweights the already-computed
+counterfactuals before the selected action is reconciled.
+
+Every adopted decision stores the posterior, MAP hypothesis, entropy, LLM
+hypothesis audit, selected-action sensitivity, tail value, and all
+hypothesis-conditioned values. Online reports summarize grounding acceptance,
+LLM influence, belief entropy, inferred regimes, and decision sensitivity.
+Because hidden intent has no direct truth label, these are explicitly
+descriptive diagnostics rather than tactical-classification accuracy.
 
 Successful full-fidelity counterfactual runs are also registered in
 `data/persistence/tactical_counterfactuals.jsonl`. Before the next match, the
@@ -320,7 +359,10 @@ satisfy those gates.
 The coach packet now distinguishes exploitation from data acquisition. For each
 action, the active-learning layer combines epistemic uncertainty,
 multi-horizon forecast disagreement, global action novelty, and novelty in the
-current team/opponent/zone/score/phase context. This produces an auditable
+current team/opponent/zone/score/phase context. It also includes a bounded
+opponent-hypothesis discrimination term: posterior entropy multiplied by how
+strongly the action's predicted value varies across opponent hypotheses. This
+is a probe-value proxy, not guaranteed information gain. Together these produce an auditable
 `information_value`; it is not treated as match value.
 
 An action can become an exploration candidate only when its predicted regret
@@ -355,5 +397,5 @@ python scripts/evaluate_online_world_model.py \
   --min-transitions 50 --min-policy-arm 8 --min-residual-samples 20 \
   --required-policy-horizon 60 --require-policy-effect \
   --require-outcome-calibration --require-uncertainty-decomposition \
-  --require-transition-ensemble
+  --require-transition-ensemble --require-opponent-belief
 ```

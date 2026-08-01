@@ -51,5 +51,11 @@ relevance, meta shadow/commit/rollback semantics, memory provenance and utility,
 graph shapes/no-self-edge invariants, active-sampling priority, immutable
 manifests, legacy checkpoint loading, and v7 transition-ensemble checkpoint
 round trips.
+Strategic fusion also keeps a match-local Bayesian posterior over opponent
+tactical intent, runs each action under every supported opponent hypothesis,
+and admits only bounded, observable-feature-grounded LLM pseudo-evidence into
+that posterior. Decision logs retain the posterior and counterfactual
+sensitivity so later evaluation can stratify outcomes without pretending the
+latent intent has a direct ground-truth label.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

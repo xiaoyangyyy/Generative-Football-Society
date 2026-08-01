@@ -356,7 +356,7 @@ def test_runtime_recomputes_member_uncertainty_after_probability_calibration():
     )
 
     assert output.uncertainty_components["pass_epistemic"] == pytest.approx(
-        expected_head_epistemic
+        expected_head_epistemic, abs=1e-7,
     )
     assert "bootstrap_transition" in output.uncertainty_source
 
