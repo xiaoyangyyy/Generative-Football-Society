@@ -126,6 +126,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if contrastive_claim is not None:
         out["world_model_contrastive_claim"] = contrastive_claim
+    from src.match_engine.world_model.risk_certificate import (
+        validate_llm_risk_constraint,
+    )
+
+    risk_constraint = validate_llm_risk_constraint(
+        plan.get("world_model_risk_constraint")
+    )
+    if risk_constraint is not None:
+        out["world_model_risk_constraint"] = risk_constraint
     return out
 
 

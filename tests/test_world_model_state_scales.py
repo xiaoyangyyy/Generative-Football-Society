@@ -60,6 +60,19 @@ def test_multiscale_projection_uses_member_frequency_without_false_certainty():
     assert all(0.0 < value < 1.0 for value in events.values())
     assert not forecast["claims"]["observed"]
     assert not forecast["claims"]["causal"]
+    modes = forecast["trajectory_modes"]
+    assert modes["available"]
+    assert modes["mode_count"] == 3
+    assert modes["multimodal"]
+    assert modes["normalized_mode_entropy"] == pytest.approx(1.0)
+    assert sum(mode["probability"] for mode in modes["modes"]) == pytest.approx(
+        1.0
+    )
+    assert modes["downside_event_counts"]["lose_possession"] == 1
+    assert modes["downside_event_counts"]["fail_enter_final_third"] == 1
+    assert modes["downside_event_probabilities"][
+        "lose_possession"
+    ] == pytest.approx(0.375)
 
 
 def test_multiscale_projection_respects_attacking_orientation():
@@ -90,6 +103,10 @@ def test_multiscale_projection_respects_attacking_orientation():
     assert neutral["claims"]["probability_source"] == (
         "untrained_ensemble_neutral"
     )
+    assert not neutral["trajectory_modes"]["available"]
+    assert set(neutral["trajectory_modes"][
+        "downside_event_probabilities"
+    ].values()) == {0.5}
 
 
 def test_llm_event_hypothesis_is_grounded_and_shadow_only():

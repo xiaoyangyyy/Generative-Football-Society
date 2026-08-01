@@ -698,6 +698,41 @@ to real-world causal validity or match-value improvement. Both the enable flag
 and cumulative path budget are part of the policy-environment fingerprint, so
 repair evidence cannot pool across different cost or deliberation regimes.
 
+### Transparent trajectory modes and chance constraints
+
+Every multiscale prediction now exposes `trajectory_modes`, a transparent
+partition of trained transition-ensemble members. Members are grouped by exact
+downside signatures: loss of possession, negative territorial shift, worsening
+scoreline, and failure to enter the final third. The three largest signatures
+are reported explicitly; smaller signatures are combined into a residual mixed
+tail. Each mode retains its member indices, probability, downside rates,
+progress, possession retention and score-difference movement. Normalized mode
+entropy describes disagreement between these alternative futures. These modes
+are a readable decomposition of the existing ensemble, not an additional model
+or source of truth. Untrained ensembles expose neutral `0.5` probabilities and
+untrusted counts, so they cannot issue certificates.
+
+The coach may declare one `world_model_risk_constraint` for its selected action,
+one evaluated one- or two-step horizon, one downside event, and a maximum
+violation probability. The audit compares the Jeffreys-smoothed member frequency
+with that threshold and separately computes a one-sided 90% Wilson upper bound
+from the raw member count. A constraint is conservatively certified only when
+the upper bound—not merely the point estimate—is below the declared limit.
+Two-step certificates require the same held-out planning gate as predicted-state
+search; deeper horizons and untrained modes fail closed.
+
+Certification is always shadow-only. It cannot veto, authorize, strengthen, or
+change the selected action. If the simulator later executes that exact action,
+the declared horizon is paired with its naturally realized outcome and scored
+with Brier loss; certified violations are explicitly counted as false-safe
+certificates. Cross-match diagnostics are provenance-isolated and match
+clustered. Strict readiness requires enough realized and certified observations
+across at least four matches, zero malformed rows, Brier at most `0.25`, and a
+certified violation rate no greater than the mean declared threshold. Enable it
+with `--require-llm-risk-certificates`. This validates probabilistic calibration
+inside the configured simulator; it is neither a causal safety guarantee nor a
+license for LLM control.
+
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
@@ -712,5 +747,6 @@ python scripts/evaluate_online_world_model.py \
   --require-learned-semantic-events --require-llm-event-options \
   --require-llm-event-option-values \
   --require-llm-contrastive-faithfulness \
-  --require-llm-contrastive-repair
+  --require-llm-contrastive-repair \
+  --require-llm-risk-certificates
 ```

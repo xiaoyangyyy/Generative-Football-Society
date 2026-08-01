@@ -45,6 +45,9 @@ from src.match_engine.world_model.contrastive_explanation import (
 from src.match_engine.world_model.contrastive_repair import (
     contrastive_repair_diagnostics,
 )
+from src.match_engine.world_model.risk_certificate import (
+    risk_certificate_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -78,6 +81,7 @@ def aggregate_online_calibration(
     require_llm_event_option_values: bool = False,
     require_llm_contrastive_faithfulness: bool = False,
     require_llm_contrastive_repair: bool = False,
+    require_llm_risk_certificates: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -207,6 +211,7 @@ def aggregate_online_calibration(
     llm_event_options = event_option_diagnostics(logs)
     llm_contrastive = contrastive_explanation_diagnostics(logs)
     llm_contrastive_repair = contrastive_repair_diagnostics(logs)
+    llm_risk_certificates = risk_certificate_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -419,8 +424,31 @@ def aggregate_online_calibration(
         llm_contrastive_repair_ready
         if require_llm_contrastive_repair else True
     )
+    llm_risk_certificates_ready = bool(
+        llm_risk_certificates["realized_certificates"]
+        >= max(4, min_residual_samples)
+        and llm_risk_certificates["matches"] >= 4
+        and llm_risk_certificates["malformed_certificate_evaluations"] == 0
+        and llm_risk_certificates["certified_outcomes"]
+        >= max(4, min_residual_samples)
+        and llm_risk_certificates["certified_matches"] >= 4
+        and llm_risk_certificates[
+            "match_clustered_certified_violation_rate"
+        ] <= llm_risk_certificates[
+            "match_clustered_mean_certified_threshold"
+        ]
+        and llm_risk_certificates["match_clustered_violation_brier"] <= 0.25
+        and llm_risk_certificates["all_shadow_only"]
+        and llm_risk_certificates["all_non_controlling"]
+        and llm_risk_certificates["all_non_causal"]
+        and llm_risk_certificates["provenance_compatible"]
+    )
+    gates["realized_llm_risk_certificates"] = (
+        llm_risk_certificates_ready
+        if require_llm_risk_certificates else True
+    )
     return {
-        "version": 15,
+        "version": 16,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -454,6 +482,7 @@ def aggregate_online_calibration(
             "llm_event_options": llm_event_options,
             "llm_contrastive_explanations": llm_contrastive,
             "llm_contrastive_repairs": llm_contrastive_repair,
+            "llm_risk_certificates": llm_risk_certificates,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -479,6 +508,7 @@ def aggregate_online_calibration(
         "llm_event_option_values_ready": llm_event_option_values_ready,
         "llm_contrastive_faithfulness_ready": llm_contrastive_ready,
         "llm_contrastive_repair_ready": llm_contrastive_repair_ready,
+        "llm_risk_certificates_ready": llm_risk_certificates_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -497,5 +527,6 @@ def aggregate_online_calibration(
             "Conditional option values are scored only after the naturally observed continuation matches the declared branch; this calibration is observational, not a counterfactual effect estimate.",
             "Contrastive explanation probes measure faithfulness to the configured world model under schema-level context neutralization; they do not establish real-football causal explanations.",
             "One-shot contrastive repair may revise only an explanation after model counterevidence; repair success cannot change the frozen action, controls, forecasts, or policy authority.",
+            "LLM chance constraints are shadow certificates over transparent ensemble modes; conservative certification is observational and cannot veto or authorize an action.",
         ],
     }

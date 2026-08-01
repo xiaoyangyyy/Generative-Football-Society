@@ -162,6 +162,13 @@ def main() -> int:
             "world-model faithfulness across at least four matches."
         ),
     )
+    parser.add_argument(
+        "--require-llm-risk-certificates",
+        action="store_true",
+        help=(
+            "Require realized conservative LLM chance-constraint certificates."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -214,6 +221,7 @@ def main() -> int:
         require_llm_contrastive_repair=(
             args.require_llm_contrastive_repair
         ),
+        require_llm_risk_certificates=args.require_llm_risk_certificates,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

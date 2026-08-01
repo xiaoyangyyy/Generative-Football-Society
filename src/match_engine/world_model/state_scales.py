@@ -9,12 +9,18 @@ import numpy as np
 from src.match_engine.world_model.observation import OBS_DIM
 
 
-STATE_SCALE_VERSION = 1
+STATE_SCALE_VERSION = 2
 FALSIFIABLE_SEMANTIC_EVENTS = (
     "retain_possession",
     "enter_final_third",
     "positive_territorial_shift",
     "improve_scoreline",
+)
+FALSIFIABLE_DOWNSIDE_EVENTS = (
+    "lose_possession",
+    "negative_territorial_shift",
+    "worsen_scoreline",
+    "fail_enter_final_third",
 )
 
 
@@ -121,6 +127,122 @@ def _pressure_at_ball(observations: np.ndarray) -> np.ndarray:
     return observations[np.arange(len(observations)), indices]
 
 
+def trajectory_mode_forecast(
+    current_observation: np.ndarray,
+    transition_samples: Any,
+    *,
+    attacking_home: bool,
+    ensemble_trained: bool,
+    max_explicit_modes: int = 3,
+) -> dict[str, Any]:
+    """Group members by transparent downside-event signatures."""
+    current = np.asarray(current_observation, dtype=np.float64).reshape(-1)
+    if current.shape != (OBS_DIM,):
+        raise ValueError("current observation must have shape [307]")
+    current = np.clip(np.nan_to_num(current), 0.0, 1.0)
+    current[-1] = 1.0 if attacking_home else 0.0
+    samples = _samples(transition_samples)
+    direction = 1.0 if attacking_home else -1.0
+    current_progress = current[200] if attacking_home else 1.0 - current[200]
+    future_progress = (
+        samples[:, 200] if attacking_home else 1.0 - samples[:, 200]
+    )
+    progress_delta = future_progress - current_progress
+    retention = (
+        samples[:, 209] if attacking_home else 1.0 - samples[:, 209]
+    ) >= 0.5
+    current_goal_diff = direction * 5.0 * (
+        current[204] - current[205]
+    )
+    future_goal_diff = direction * 5.0 * (
+        samples[:, 204] - samples[:, 205]
+    )
+    goal_diff_delta = future_goal_diff - current_goal_diff
+    downside = np.stack([
+        ~retention,
+        progress_delta <= -0.03,
+        goal_diff_delta <= -0.5,
+        future_progress < 0.67,
+    ], axis=1)
+    counts = {
+        event: int(downside[:, index].sum())
+        for index, event in enumerate(FALSIFIABLE_DOWNSIDE_EVENTS)
+    }
+    probabilities = {
+        event: (
+            _smoothed_probability(downside[:, index])
+            if ensemble_trained else 0.5
+        )
+        for index, event in enumerate(FALSIFIABLE_DOWNSIDE_EVENTS)
+    }
+    if not ensemble_trained or len(samples) < 2:
+        return {
+            "version": 1,
+            "available": False,
+            "reason": "trained_transition_ensemble_required",
+            "ensemble_members": int(len(samples)),
+            "modes": [],
+            "mode_count": 0,
+            "normalized_mode_entropy": 0.0,
+            "downside_event_counts": counts,
+            "downside_event_probabilities": probabilities,
+            "counts_trusted": False,
+            "causal_interpretation": False,
+        }
+    groups: dict[tuple[int, ...], list[int]] = {}
+    for member_index, signature in enumerate(downside.astype(int)):
+        groups.setdefault(tuple(map(int, signature)), []).append(member_index)
+    ordered = sorted(groups.items(), key=lambda item: (-len(item[1]), item[0]))
+    explicit = ordered[:max(1, int(max_explicit_modes))]
+    if len(ordered) > len(explicit):
+        tail = [index for _, indices in ordered[len(explicit):] for index in indices]
+        explicit.append((tuple([-1] * len(FALSIFIABLE_DOWNSIDE_EVENTS)), tail))
+    modes = []
+    for mode_index, (signature, member_indices) in enumerate(explicit):
+        selected = np.asarray(member_indices, dtype=int)
+        event_rates = {
+            event: float(np.mean(downside[selected, event_index]))
+            for event_index, event in enumerate(FALSIFIABLE_DOWNSIDE_EVENTS)
+        }
+        modes.append({
+            "mode_id": f"mode_{mode_index}",
+            "kind": "residual_mixed_signatures" if -1 in signature else (
+                "exact_downside_signature"
+            ),
+            "members": len(member_indices),
+            "member_indices": list(map(int, member_indices)),
+            "probability": float(len(member_indices) / len(samples)),
+            "downside_events": event_rates,
+            "mean_downside_rate": float(np.mean(list(event_rates.values()))),
+            "mean_progress_delta": float(np.mean(progress_delta[selected])),
+            "retention_probability": float(np.mean(retention[selected])),
+            "mean_goal_diff_delta": float(np.mean(goal_diff_delta[selected])),
+        })
+    mode_probabilities = np.asarray([
+        mode["probability"] for mode in modes
+    ], dtype=np.float64)
+    entropy = float(-np.sum(
+        mode_probabilities * np.log(np.clip(mode_probabilities, 1e-12, 1.0))
+    ))
+    entropy /= float(np.log(max(2, len(modes))))
+    return {
+        "version": 1,
+        "available": True,
+        "reason": "transparent_member_downside_signature_partition",
+        "ensemble_members": int(len(samples)),
+        "modes": modes,
+        "mode_count": len(modes),
+        "normalized_mode_entropy": float(np.clip(entropy, 0.0, 1.0)),
+        "multimodal": len(modes) >= 2,
+        "downside_event_counts": counts,
+        "downside_event_probabilities": probabilities,
+        "counts_trusted": True,
+        "probability_source": "jeffreys_smoothed_member_frequency",
+        "grouping_source": "exact_schema_downside_event_signatures",
+        "causal_interpretation": False,
+    }
+
+
 def multiscale_state_forecast(
     current_observation: np.ndarray,
     transition_samples: Any,
@@ -175,6 +297,12 @@ def multiscale_state_forecast(
         "short" if horizon <= 20.0 else "tactical" if horizon <= 120.0
         else "strategic"
     )
+    trajectory_modes = trajectory_mode_forecast(
+        current,
+        samples,
+        attacking_home=attacking_home,
+        ensemble_trained=ensemble_trained,
+    )
     return {
         "version": STATE_SCALE_VERSION,
         "source": "world_model_transition_ensemble_projection",
@@ -202,6 +330,7 @@ def multiscale_state_forecast(
             "mean_clock_fraction": float(np.mean(samples[:, 207])),
         },
         "semantic_event_probabilities": events,
+        "trajectory_modes": trajectory_modes,
         "claims": {
             "observed": False,
             "causal": False,

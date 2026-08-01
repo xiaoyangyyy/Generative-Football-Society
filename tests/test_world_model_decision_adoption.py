@@ -766,6 +766,56 @@ def test_event_option_is_not_resolved_when_first_action_differs():
     ]["60s"]
 
 
+def test_risk_certificate_is_scored_only_for_matching_action_and_horizon():
+    state = SimpleNamespace(
+        clock_seconds=10.0,
+        home=SimpleNamespace(team_id="A", score=0),
+        away=SimpleNamespace(team_id="B", score=0),
+        ball=SimpleNamespace(position=[0.50, 0.50], possession_team_id="A"),
+        micro_xg_home=0.2,
+        micro_xg_away=0.1,
+    )
+    context = {
+        "version": 1,
+        "accepted": True,
+        "constraint": {
+            "selected_action": "pass",
+            "horizon": "60s",
+            "downside_event": "lose_possession",
+            "max_violation_probability": 0.6,
+            "confidence": 0.8,
+            "rationale": "Bound turnover risk.",
+        },
+        "projected_violation_probability": 0.2,
+        "wilson_upper_violation_probability_90": 0.5,
+        "conservatively_certified": True,
+        "certificate_signature": "llm-risk-certificate:test",
+    }
+    record = register_coach_action_decision(
+        state, team_id="A", trigger_kind="clock",
+        llm_selected_action="pass", world_model_recommended_action="pass",
+        recommendation_confidence=0.8, horizon_s=10.0,
+        outcome_horizons_s=(60.0,), checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+        llm_risk_certificate_context=context,
+    )
+    baseline = capture_policy_outcome_baseline(state, team_id="A")
+    record_policy_intervention_result(
+        state, decision_id=record["decision_id"], actual_action="pass",
+        t_sec=11.0, outcome_baseline=baseline,
+    )
+    state.ball.possession_team_id = "B"
+    observe_policy_intervention_outcomes(state, t_sec=71.0)
+    evaluation = record["multi_horizon_regime_outcomes"]["60s"][
+        "llm_risk_certificate_evaluation"
+    ]
+    assert evaluation["downside_observed"]
+    assert evaluation["false_safe_certificate"]
+    assert "llm_risk_certificate_evaluation" not in record[
+        "multi_horizon_regime_outcomes"
+    ]["transition"]
+
+
 def test_longest_ready_outcome_horizon_drives_reliability_feedback():
     records = []
     for arm in ("treatment", "control"):

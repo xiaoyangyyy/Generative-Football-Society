@@ -217,6 +217,13 @@ class CognitiveExecutor:
                 str(getattr(llm, "model", "rule_fallback"))
             )
         )
+        from src.match_engine.world_model.risk_certificate import (
+            llm_risk_certificate_signature,
+        )
+
+        self.llm_risk_certificate_signature = llm_risk_certificate_signature(
+            str(getattr(llm, "model", "rule_fallback"))
+        )
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -516,6 +523,22 @@ class CognitiveExecutor:
                     plan["world_model_contrastive_claim_effective"] = dict(
                         repair_audit["effective_claim"]
                     )
+                from src.match_engine.world_model.risk_certificate import (
+                    apply_llm_risk_constraint,
+                )
+
+                risk_audit = apply_llm_risk_constraint(
+                    self.world_model_runtime,
+                    packet,
+                    plan.get("world_model_risk_constraint"),
+                    selected_action=str(plan.get(
+                        "world_model_action", "none",
+                    )),
+                    certificate_signature=(
+                        self.llm_risk_certificate_signature
+                    ),
+                )
+                plan["world_model_risk_certificate_audit"] = risk_audit
                 from src.match_engine.world_model.active_learning import (
                     build_active_learning_advice,
                 )
@@ -806,6 +829,15 @@ class CognitiveExecutor:
                         if (rec.plan.get(
                             "world_model_contrastive_repair_audit"
                         ) or {}).get("repair_attempted")
+                        else {}
+                    ),
+                    llm_risk_certificate_context=(
+                        dict(rec.plan.get(
+                            "world_model_risk_certificate_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_risk_certificate_audit"
+                        ) or {}).get("accepted")
                         else {}
                     ),
                 )

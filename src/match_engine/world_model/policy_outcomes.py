@@ -318,6 +318,36 @@ def observe_policy_intervention_outcomes(
                 )
                 if event_score is not None:
                     outcome["llm_semantic_event_evaluation"] = event_score
+            risk_context = record.get("llm_risk_certificate_context") or {}
+            risk_constraint = risk_context.get("constraint") or {}
+            risk_horizon = str(risk_constraint.get("horizon", ""))
+            risk_horizon_key = (
+                policy_horizon_key(0.0)
+                if risk_horizon == "transition" else risk_horizon
+            )
+            risk_action_realized = (
+                str(risk_constraint.get("selected_action", "")).lower()
+                == str(record.get("intervention_actual_action", "")).lower()
+            )
+            if risk_horizon_key == key and risk_action_realized:
+                from src.match_engine.world_model.risk_certificate import (
+                    score_llm_risk_certificate,
+                )
+
+                risk_score = score_llm_risk_certificate(
+                    risk_context,
+                    outcome,
+                    baseline,
+                    attacking_home=attacking_home,
+                    checkpoint_signature=str(record.get(
+                        "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    environment_signature=str(record.get(
+                        "environment_signature", "environment_unspecified",
+                    )),
+                )
+                if risk_score is not None:
+                    outcome["llm_risk_certificate_evaluation"] = risk_score
             option_context = record.get("llm_event_option_context") or {}
             option = option_context.get("option") or {}
             option_first_action_realized = (

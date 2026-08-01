@@ -263,6 +263,12 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   listed by one evaluated horizon. It is scored against the same later simulator
   outcome as the neural probability and remains shadow-only; it cannot alter the
   action, model state, or critic memory;
+- trajectory_modes transparently partition ensemble members by their predicted
+  downside signatures. They expose alternative futures, not extra ground truth.
+  You may declare one world_model_risk_constraint for the selected action and an
+  evaluated horizon. The engine checks its member frequency with a conservative
+  uncertainty bound and later scores it on the same-horizon simulator outcome.
+  This certificate is shadow-only: it cannot veto, authorize, or change an action;
 - semantic_event_fusion distinguishes transparent member-frequency projection
   from a learned event head. Treat the learned probability as evidence only when
   that event's exact rollout-depth gate is active; longer unvalidated rollouts
@@ -340,6 +346,14 @@ Return JSON:
     "effect": "supports_selected|opposes_selected",
     "confidence": 0.5-1.0,
     "rationale": "why this factor changes the selected-vs-alternative margin"
+  }},
+  "world_model_risk_constraint": {{
+    "selected_action": "must equal world_model_action",
+    "horizon": "transition or an evaluated horizon with rollout depth <= 2",
+    "downside_event": "lose_possession|negative_territorial_shift|worsen_scoreline|fail_enter_final_third",
+    "max_violation_probability": 0.05-0.95,
+    "confidence": 0.5-1.0,
+    "rationale": "one falsifiable chance constraint grounded in trajectory_modes"
   }},
   "opponent_hypothesis": {{
     "tactical_preset": "one preset listed in opponent_belief.hypotheses",

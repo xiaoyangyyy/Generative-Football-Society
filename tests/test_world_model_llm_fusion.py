@@ -249,6 +249,8 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "world_model_event_hypothesis" in gateway.user_prompt
     assert "world_model_event_option" in gateway.user_prompt
     assert "world_model_contrastive_claim" in gateway.user_prompt
+    assert "world_model_risk_constraint" in gateway.user_prompt
+    assert "trajectory_modes" in gateway.system_prompt
     assert "member-predicted states" in gateway.system_prompt
     assert "mismatched actions" in gateway.system_prompt
     assert "checks faithfulness" in gateway.system_prompt
@@ -483,13 +485,31 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
                 else "strategic"
             )
             state_scales = {
-                "version": 1,
+                "version": 2,
                 "primary_scale": scale,
                 "short": {"mean_progress_delta": 0.1},
                 "tactical": {"final_third_probability": 0.65},
                 "strategic": {"mean_goal_diff_delta": 0.0},
                 "semantic_event_probabilities": {
                     "enter_final_third": 0.65,
+                },
+                "trajectory_modes": {
+                    "version": 1,
+                    "available": True,
+                    "counts_trusted": True,
+                    "causal_interpretation": False,
+                    "ensemble_members": 8,
+                    "mode_count": 2,
+                    "normalized_mode_entropy": 0.5,
+                    "downside_event_counts": {"lose_possession": 1},
+                    "downside_event_probabilities": {
+                        "lose_possession": 1.5 / 9.0,
+                    },
+                    "modes": [{
+                        "mode_id": "mode_1",
+                        "probability": 0.125,
+                        "downside_events": {"lose_possession": 1.0},
+                    }],
                 },
             }
             return {
@@ -532,6 +552,14 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
                     "evidence_scales": ["short", "tactical"],
                     "rationale": "The tactical projection favors entry.",
                 },
+                "world_model_risk_constraint": {
+                    "selected_action": action,
+                    "horizon": horizon,
+                    "downside_event": "lose_possession",
+                    "max_violation_probability": 0.6,
+                    "confidence": 0.75,
+                    "rationale": "Keep the projected turnover chance bounded.",
+                },
             })
 
     executor = CognitiveExecutor(
@@ -557,6 +585,19 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
     assert context["hypothesis"]["event"] == "enter_final_third"
     assert context["llm_event_probability"] == pytest.approx(0.75)
     assert context["event_signature"].startswith("llm-event:")
+    risk = record.plan["world_model_risk_certificate_audit"]
+    risk_context = state._wm_coach_decision_adoption[-1][
+        "llm_risk_certificate_context"
+    ]
+    assert risk["accepted"]
+    assert risk["conservatively_certified"]
+    assert not risk["certificate_can_veto_action"]
+    assert risk_context["constraint"]["selected_action"] == record.plan[
+        "world_model_action"
+    ]
+    assert risk_context["certificate_signature"].startswith(
+        "llm-risk-certificate:"
+    )
 
 
 def test_executor_persists_model_checked_contrastive_explanation():
