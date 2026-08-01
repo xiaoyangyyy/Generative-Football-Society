@@ -363,6 +363,42 @@ Return JSON:
 }}"""
         return self._call_llm(system, user, json_mode=True, temperature=0.5)
 
+    def revise_world_model_contrastive_claim(
+        self,
+        *,
+        team_name: str,
+        immutable_selected_action: str,
+        counterevidence: dict,
+        revision_contract: dict,
+    ) -> dict:
+        """Use one bounded model-feedback turn to repair explanation only."""
+        system = f"""You are revising one explanation for coach {team_name}.
+The selected action {immutable_selected_action!r} is immutable.
+You may revise only the structured contrastive claim. You cannot change the
+action, tactics, controls, confidence of the coach plan, or world-model output.
+The prior claim failed a world-model directional-faithfulness probe. Use only
+the supplied numeric counterevidence and revision contract. A revised claim is
+still a model-faithfulness statement, never a real-world causal fact.
+Return one JSON object containing exactly the contrastive-claim fields."""
+        user = f"""WORLD_MODEL_COUNTEREVIDENCE:
+{json.dumps(counterevidence, ensure_ascii=False)}
+REVISION_CONTRACT:
+{json.dumps(revision_contract, ensure_ascii=False)}
+Return JSON:
+{{
+  "selected_action": "exactly {immutable_selected_action}",
+  "alternative_action": "one different evaluated action",
+  "horizon": "one jointly validated one- or two-step horizon",
+  "factor": "one allowed schema-grounded factor",
+  "effect": "supports_selected|opposes_selected",
+  "confidence": 0.5-1.0,
+  "rationale": "one concise explanation corrected by the counterevidence"
+}}"""
+        raw = self._call_llm(
+            system, user, json_mode=True, temperature=0.2,
+        )
+        return raw if isinstance(raw, dict) else self._extract_json_object(raw)
+
     def player_in_match_reflection(self, player_name: str, team_name: str, facts_ledger: dict, kind: str):
         system = f"""You are footballer {player_name} ({team_name}). In-match mental reflection only.
 Do NOT state match scores as predictions. JSON only."""

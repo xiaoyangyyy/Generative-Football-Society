@@ -56,6 +56,8 @@ class CognitiveMatchConfig:
     world_model_exploration_min_information: float = 0.45
     world_model_exploration_strength_scale: float = 0.50
     world_model_trajectory_branch_budget: int = 48
+    world_model_contrastive_repair: bool = False
+    world_model_contrastive_repair_path_budget: int = 128
     # coach, referee, player_per_team, assistant_total, crowd
     tier_caps: Tuple[int, int, int, int, int] = (6, 4, 4, 2, 3)
     half_time_sec: float = 45.0 * 60.0
@@ -122,6 +124,17 @@ class CognitiveMatchConfig:
                 16,
                 min(112, int(env_float(
                     values, "MATCH_WM_TRAJECTORY_BRANCH_BUDGET", 48.0,
+                ))),
+            ),
+            world_model_contrastive_repair=env_bool(
+                values, "MATCH_WM_LLM_CONTRASTIVE_REPAIR", False,
+            ),
+            world_model_contrastive_repair_path_budget=max(
+                16,
+                min(128, int(env_float(
+                    values,
+                    "MATCH_WM_LLM_CONTRASTIVE_REPAIR_PATH_BUDGET",
+                    128.0,
                 ))),
             ),
             tier_caps=_parse_tier_caps(

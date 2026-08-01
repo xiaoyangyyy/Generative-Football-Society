@@ -68,6 +68,8 @@ the model, preventing outcome leakage.
 | `MATCH_WM_SHOT_BLEND` | `0.25` | Maximum shot advantage blend |
 | `MATCH_WM_IMAGINATION_STEPS` | `1` | Counterfactual rollout depth |
 | `MATCH_WM_MIN_QUALITY` | `0.15` | Minimum branch confidence after coverage discount |
+| `MATCH_WM_LLM_CONTRASTIVE_REPAIR` | `0` | Allow one explanation-only LLM revision after model counterevidence |
+| `MATCH_WM_LLM_CONTRASTIVE_REPAIR_PATH_BUDGET` | `128` | Cumulative initial+revision member-trajectory ceiling (`16..128`) |
 
 ## Train and validate
 
@@ -668,6 +670,34 @@ answers whether the stated reason agrees with the configured model's local
 context sensitivity; it cannot prove that neutralizing the factor in reality
 would cause the same action-margin change.
 
+### One-shot counterevidence repair
+
+When `MATCH_WM_LLM_CONTRASTIVE_REPAIR=1`, an accepted but directionally
+unfaithful contrastive claim may receive exactly one explanation-only revision.
+The second prompt contains the frozen selected action, the two measured margins,
+the signed factor effect, the neutral reference, and a finite contract listing
+evaluated actions, validated horizons and allowed factors. It contains no
+permission to revise tactics, controls, action confidence or model output.
+
+The revision is schema-validated and then sent through the same world-model
+probe. An attempted action change is rejected before evaluation. The initial and
+revision probes share a cumulative member-trajectory budget (default and hard
+maximum `128`), and an exhausted budget prevents the additional LLM call rather
+than soliciting an unverifiable answer. A repair succeeds only when the revised
+claim is accepted, becomes directionally faithful and improves signed effect;
+otherwise the initial claim remains the effective audit explanation. No result
+from this loop can alter the already selected action or policy bridge.
+
+Online diagnostics report attempts, accepted revisions, match-clustered repair
+success, directional-effect gain, single-call compliance, cumulative budgets,
+action immutability and provenance. Strict readiness requires at least four
+compatible matches, a `0.50` repair-success rate and positive mean effect gain
+with `--require-llm-contrastive-repair`. This measures whether model feedback
+helps the LLM correct its own model-relative explanation; it remains unrelated
+to real-world causal validity or match-value improvement. Both the enable flag
+and cumulative path budget are part of the policy-environment fingerprint, so
+repair evidence cannot pool across different cost or deliberation regimes.
+
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
@@ -681,5 +711,6 @@ python scripts/evaluate_online_world_model.py \
   --require-llm-semantic-critic --require-llm-semantic-events \
   --require-learned-semantic-events --require-llm-event-options \
   --require-llm-event-option-values \
-  --require-llm-contrastive-faithfulness
+  --require-llm-contrastive-faithfulness \
+  --require-llm-contrastive-repair
 ```

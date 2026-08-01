@@ -42,6 +42,9 @@ from src.match_engine.world_model.event_option import event_option_diagnostics
 from src.match_engine.world_model.contrastive_explanation import (
     contrastive_explanation_diagnostics,
 )
+from src.match_engine.world_model.contrastive_repair import (
+    contrastive_repair_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -74,6 +77,7 @@ def aggregate_online_calibration(
     require_llm_event_options: bool = False,
     require_llm_event_option_values: bool = False,
     require_llm_contrastive_faithfulness: bool = False,
+    require_llm_contrastive_repair: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -202,6 +206,7 @@ def aggregate_online_calibration(
     llm_semantic_events = semantic_event_diagnostics(logs)
     llm_event_options = event_option_diagnostics(logs)
     llm_contrastive = contrastive_explanation_diagnostics(logs)
+    llm_contrastive_repair = contrastive_repair_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -392,8 +397,30 @@ def aggregate_online_calibration(
         llm_contrastive_ready
         if require_llm_contrastive_faithfulness else True
     )
+    llm_contrastive_repair_ready = bool(
+        llm_contrastive_repair["attempts"] >= max(4, min_residual_samples)
+        and llm_contrastive_repair["matches"] >= 4
+        and llm_contrastive_repair["malformed_repair_audits"] == 0
+        and llm_contrastive_repair[
+            "match_clustered_repair_success_rate"
+        ] >= 0.50
+        and llm_contrastive_repair[
+            "match_clustered_directional_effect_gain"
+        ] > 0.0
+        and llm_contrastive_repair["all_single_call"]
+        and llm_contrastive_repair["budgets_respected"]
+        and llm_contrastive_repair["all_actions_immutable"]
+        and llm_contrastive_repair["all_shadow_only"]
+        and llm_contrastive_repair["all_non_controlling"]
+        and llm_contrastive_repair["all_non_causal"]
+        and llm_contrastive_repair["provenance_compatible"]
+    )
+    gates["one_shot_llm_contrastive_repair"] = (
+        llm_contrastive_repair_ready
+        if require_llm_contrastive_repair else True
+    )
     return {
-        "version": 14,
+        "version": 15,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -426,6 +453,7 @@ def aggregate_online_calibration(
             "llm_semantic_events": llm_semantic_events,
             "llm_event_options": llm_event_options,
             "llm_contrastive_explanations": llm_contrastive,
+            "llm_contrastive_repairs": llm_contrastive_repair,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -450,6 +478,7 @@ def aggregate_online_calibration(
         "llm_event_options_ready": llm_event_options_ready,
         "llm_event_option_values_ready": llm_event_option_values_ready,
         "llm_contrastive_faithfulness_ready": llm_contrastive_ready,
+        "llm_contrastive_repair_ready": llm_contrastive_repair_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -467,5 +496,6 @@ def aggregate_online_calibration(
             "LLM event-conditioned options remain shadow-only; continuation agreement is descriptive and does not establish option value.",
             "Conditional option values are scored only after the naturally observed continuation matches the declared branch; this calibration is observational, not a counterfactual effect estimate.",
             "Contrastive explanation probes measure faithfulness to the configured world model under schema-level context neutralization; they do not establish real-football causal explanations.",
+            "One-shot contrastive repair may revise only an explanation after model counterevidence; repair success cannot change the frozen action, controls, forecasts, or policy authority.",
         ],
     }

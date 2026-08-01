@@ -112,5 +112,11 @@ factor and recomputes both action margins, producing a provenance-scoped
 directional-faithfulness audit. The probe makes explanations falsifiable with
 respect to the model while remaining non-controlling and explicitly non-causal
 with respect to real football.
+An opt-in one-shot repair loop can return failed directional evidence to the LLM
+and re-evaluate a revised explanation. The selected action and all control fields
+are frozen, the initial and revised probes share a cumulative trajectory budget,
+and cross-match diagnostics require genuine directional improvement. This adds
+model-guided self-correction without turning explanation revision into a second
+policy decision.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

@@ -886,3 +886,87 @@ def test_strict_contrastive_faithfulness_gate_is_scoped_and_non_controlling():
         "llm_contrastive_explanations"
     ]["provenance_compatible"]
     assert not mixed["llm_contrastive_faithfulness_ready"]
+
+
+def test_strict_one_shot_contrastive_repair_gate_preserves_action_authority():
+    logs = []
+    for index in range(4):
+        successful = index < 3
+        revised_directional = 0.04 if successful else -0.04
+        repair = {
+            "version": 1,
+            "repair_attempted": True,
+            "revision_accepted": True,
+            "repair_successful": successful,
+            "llm_calls": 1,
+            "llm_call_budget": 1,
+            "initial_member_trajectory_paths": 12,
+            "revised_member_trajectory_paths": 12,
+            "total_member_trajectory_paths": 24,
+            "total_member_trajectory_path_budget": 128,
+            "initial_directional_effect": -0.04,
+            "revised_directional_effect": revised_directional,
+            "directional_effect_gain": revised_directional + 0.04,
+            "revised_audit": {
+                "accepted": True,
+                "directionally_faithful": successful,
+            },
+            "revised_claim": {
+                "selected_action": "pass",
+                "alternative_action": "hold",
+                "horizon": "transition",
+                "factor": "score_context",
+                "effect": (
+                    "supports_selected"
+                    if successful else "opposes_selected"
+                ),
+                "confidence": 0.8,
+                "rationale": "One bounded explanation revision.",
+            },
+            "selected_action": "pass",
+            "selected_action_immutable": True,
+            "action_mutated": False,
+            "control_fields_mutated": False,
+            "world_model_prediction_mutated": False,
+            "shadow_only": True,
+            "authority_active": False,
+            "causal_interpretation": False,
+            "can_change_selected_action": False,
+            "repair_signature": "llm-contrastive-repair:test",
+            "checkpoint_signature": "checkpoint-a",
+            "environment_signature": "environment-a",
+        }
+        logs.append({
+            "world_model_decision_adoption": {
+                "records": [{"llm_contrastive_repair_context": repair}],
+            },
+        })
+
+    report = aggregate_online_calibration(
+        logs,
+        min_residual_samples=2,
+        require_llm_contrastive_repair=True,
+    )
+    diagnostics = report["decision_adoption"][
+        "llm_contrastive_repairs"
+    ]
+    assert diagnostics["attempts"] == 4
+    assert diagnostics["matches"] == 4
+    assert diagnostics["match_clustered_repair_success_rate"] == 0.75
+    assert diagnostics["all_single_call"]
+    assert diagnostics["all_actions_immutable"]
+    assert diagnostics["all_non_controlling"]
+    assert diagnostics["provenance_compatible"]
+    assert report["llm_contrastive_repair_ready"]
+    assert report["gates"]["one_shot_llm_contrastive_repair"]
+
+    repair["repair_signature"] = "llm-contrastive-repair:mixed"
+    mixed = aggregate_online_calibration(
+        logs,
+        min_residual_samples=2,
+        require_llm_contrastive_repair=True,
+    )
+    assert not mixed["decision_adoption"][
+        "llm_contrastive_repairs"
+    ]["provenance_compatible"]
+    assert not mixed["llm_contrastive_repair_ready"]

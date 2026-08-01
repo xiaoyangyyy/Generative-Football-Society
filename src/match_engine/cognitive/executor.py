@@ -208,6 +208,15 @@ class CognitiveExecutor:
         self.llm_contrastive_signature = llm_contrastive_signature(
             str(getattr(llm, "model", "rule_fallback"))
         )
+        from src.match_engine.world_model.contrastive_repair import (
+            llm_contrastive_repair_signature,
+        )
+
+        self.llm_contrastive_repair_signature = (
+            llm_contrastive_repair_signature(
+                str(getattr(llm, "model", "rule_fallback"))
+            )
+        )
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -480,6 +489,33 @@ class CognitiveExecutor:
                 plan["world_model_contrastive_explanation_audit"] = (
                     contrastive_audit
                 )
+                from src.match_engine.world_model.contrastive_repair import (
+                    attempt_contrastive_explanation_repair,
+                )
+
+                repair_audit = attempt_contrastive_explanation_repair(
+                    self.llm,
+                    self.world_model_runtime,
+                    state,
+                    packet,
+                    contrastive_audit,
+                    team_id=str(trig.team_id),
+                    selected_action=str(plan.get(
+                        "world_model_action", "none",
+                    )),
+                    enabled=self.cfg.world_model_contrastive_repair,
+                    repair_signature=(
+                        self.llm_contrastive_repair_signature
+                    ),
+                    total_member_trajectory_path_budget=(
+                        self.cfg.world_model_contrastive_repair_path_budget
+                    ),
+                )
+                plan["world_model_contrastive_repair_audit"] = repair_audit
+                if repair_audit.get("repair_successful"):
+                    plan["world_model_contrastive_claim_effective"] = dict(
+                        repair_audit["effective_claim"]
+                    )
                 from src.match_engine.world_model.active_learning import (
                     build_active_learning_advice,
                 )
@@ -761,6 +797,15 @@ class CognitiveExecutor:
                         if (rec.plan.get(
                             "world_model_contrastive_explanation_audit"
                         ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_contrastive_repair_context=(
+                        dict(rec.plan.get(
+                            "world_model_contrastive_repair_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_contrastive_repair_audit"
+                        ) or {}).get("repair_attempted")
                         else {}
                     ),
                 )

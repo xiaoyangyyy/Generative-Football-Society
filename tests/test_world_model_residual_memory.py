@@ -172,6 +172,10 @@ def test_policy_environment_signature_tracks_decision_relevant_settings():
             ),
         ),
     )
+    assert signature != policy_environment_signature(
+        micro,
+        replace(cognitive, world_model_contrastive_repair=True),
+    )
 
 
 def test_memory_never_pools_matching_checkpoint_across_environments():

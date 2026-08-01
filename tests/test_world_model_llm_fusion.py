@@ -260,6 +260,28 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "change_point" in gateway.system_prompt
 
 
+def test_contrastive_repair_prompt_freezes_action_and_all_control_fields():
+    gateway = _PromptGateway()
+    llm = SimulationLLM(gateway=gateway)
+    llm.revise_world_model_contrastive_claim(
+        team_name="Home",
+        immutable_selected_action="pass",
+        counterevidence={
+            "claimed_directional_effect": -0.04,
+            "directionally_faithful": False,
+        },
+        revision_contract={
+            "evaluated_actions": ["pass", "hold"],
+            "allowed_factors": ["score_context"],
+            "revision_calls_remaining": 1,
+        },
+    )
+    assert "selected action 'pass' is immutable" in gateway.system_prompt
+    assert "cannot change" in gateway.system_prompt
+    assert "revision_calls_remaining" in gateway.user_prompt
+    assert "WORLD_MODEL_COUNTEREVIDENCE" in gateway.user_prompt
+
+
 class _LLM:
     def __init__(self):
         self.facts = None
@@ -564,13 +586,16 @@ def test_executor_persists_model_checked_contrastive_explanation():
             }
 
     class ContrastiveLLM:
+        def __init__(self):
+            self.repair_calls = 0
+
         def coach_in_match_plan(self, team_name, facts, kind):
             packet = facts["world_model_decision_support"]
             selected = packet["recommended_action"]
             alternative = "hold" if selected != "hold" else "pass"
             effect = (
-                "opposes_selected"
-                if selected != "hold" else "supports_selected"
+                "supports_selected"
+                if selected != "hold" else "opposes_selected"
             )
             return json.dumps({
                 "reasoning": "Make the decision reason falsifiable.",
@@ -588,11 +613,34 @@ def test_executor_persists_model_checked_contrastive_explanation():
                 },
             })
 
+        def revise_world_model_contrastive_claim(
+            self, *, immutable_selected_action, **kwargs,
+        ):
+            self.repair_calls += 1
+            selected = immutable_selected_action
+            return {
+                "selected_action": selected,
+                "alternative_action": (
+                    "hold" if selected != "hold" else "pass"
+                ),
+                "horizon": "transition",
+                "factor": "score_context",
+                "effect": (
+                    "opposes_selected"
+                    if selected != "hold" else "supports_selected"
+                ),
+                "confidence": 0.75,
+                "rationale": "Correct the direction using model counterevidence.",
+            }
+
+    llm = ContrastiveLLM()
     executor = CognitiveExecutor(
         CognitiveMatchConfig(
-            enabled=True, world_model_action_control_rate=0.0,
+            enabled=True,
+            world_model_action_control_rate=0.0,
+            world_model_contrastive_repair=True,
         ),
-        ContrastiveLLM(),
+        llm,
         world_model_runtime=ContrastiveRuntime(),
     )
     state = _state()
@@ -604,15 +652,26 @@ def test_executor_persists_model_checked_contrastive_explanation():
     context = state._wm_coach_decision_adoption[-1][
         "llm_contrastive_explanation_context"
     ]
+    repair = record.plan["world_model_contrastive_repair_audit"]
+    repair_context = state._wm_coach_decision_adoption[-1][
+        "llm_contrastive_repair_context"
+    ]
 
     assert audit["accepted"]
-    assert audit["directionally_faithful"]
+    assert not audit["directionally_faithful"]
     assert audit["reason"] == "shadow_model_checked_contrastive_explanation"
     assert not audit["can_change_selected_action"]
     assert context["claim"]["selected_action"] == record.plan[
         "world_model_action"
     ]
     assert context["contrastive_signature"].startswith("llm-contrastive:")
+    assert repair["repair_successful"]
+    assert repair["selected_action"] == record.plan["world_model_action"]
+    assert repair_context["effective_audit_source"] == "revision"
+    assert record.plan["world_model_contrastive_claim_effective"][
+        "selected_action"
+    ] == record.plan["world_model_action"]
+    assert llm.repair_calls == 1
 
 
 def test_validated_critic_can_only_reduce_policy_bridge_authority():

@@ -154,6 +154,14 @@ def main() -> int:
             "directionally faithful across at least four matches."
         ),
     )
+    parser.add_argument(
+        "--require-llm-contrastive-repair",
+        action="store_true",
+        help=(
+            "Fail readiness until one-shot explanation repairs improve "
+            "world-model faithfulness across at least four matches."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -202,6 +210,9 @@ def main() -> int:
         ),
         require_llm_contrastive_faithfulness=(
             args.require_llm_contrastive_faithfulness
+        ),
+        require_llm_contrastive_repair=(
+            args.require_llm_contrastive_repair
         ),
     )
     output = Path(args.out)
