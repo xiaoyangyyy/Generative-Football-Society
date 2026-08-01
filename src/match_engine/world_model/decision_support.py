@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 23
+DECISION_PACKET_VERSION = 24
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -605,6 +605,19 @@ def build_coach_decision_packet(
             context=learning_context,
             config=active_learning_config,
         )
+        from src.match_engine.world_model.opponent_information_feedback import (
+            build_opponent_information_feedback,
+        )
+
+        opponent_information_feedback = build_opponent_information_feedback(
+            getattr(state, "_wm_coach_decision_adoption", None) or [],
+            team_id=str(team_id),
+            checkpoint_signature=str(getattr(
+                runtime, "checkpoint_signature", "runtime_unspecified",
+            )),
+            environment_signature=str(environment_signature),
+            as_of_t_sec=float(getattr(state, "clock_seconds", 0.0)),
+        )
         eligible = [
             candidate for candidate in candidates
             if candidate["effective_confidence"] > 0.0
@@ -636,6 +649,7 @@ def build_coach_decision_packet(
             "opponent_belief": opponent_belief,
             "second_order_game": second_order_game,
             "active_learning": active_learning,
+            "opponent_information_feedback": opponent_information_feedback,
             "decision_context": learning_context,
             "online_calibration": _online_calibration_diagnostics(runtime),
             "policy_outcome_calibration": outcome_calibration,

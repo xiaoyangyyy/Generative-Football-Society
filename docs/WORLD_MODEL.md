@@ -907,6 +907,24 @@ with `--require-opponent-information-queries`. This evaluates forecasted
 observations—not latent tactical truth. Queries are shadow-only: they cannot
 change the current action, schedule a future action, or update opponent memory.
 
+Resolved queries now close the cognitive loop as an
+`opponent_information_feedback` ledger in the next coach decision packet. The
+ledger revalidates the original query audit and realized score, requires the same
+team/checkpoint/environment and the naturally realized selected action, and then
+exposes the observed control, signed probability surprise, calibrated and raw
+Brier scores, query-rank efficiency, resolved branch, and branch-policy regret.
+It also aggregates compact per-feature profiles so the next LLM call can improve
+which question it asks and how it reasons conditionally. Pending questions,
+different-action queries, incompatible scopes, and malformed records are counted
+separately rather than silently mixed into feedback.
+
+The complete feedback packet has its own digest and is frozen into the next
+decision-adoption record, preserving exactly what evidence the LLM saw. It states
+explicitly that branch actions were not executed and that no counterfactual
+outcome or hidden intent was observed. Feedback therefore improves language-model
+reasoning without acquiring action authority or directly updating world-model
+weights.
+
 ### Model-checked multi-horizon risk preferences
 
 The coach may additionally declare one `world_model_risk_preference`. This is

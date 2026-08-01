@@ -52,6 +52,7 @@ def register_coach_action_decision(
     llm_distributional_claim_context: dict[str, Any] | None = None,
     llm_risk_preference_context: dict[str, Any] | None = None,
     llm_opponent_information_query_context: dict[str, Any] | None = None,
+    opponent_information_feedback_context: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -83,6 +84,14 @@ def register_coach_action_decision(
         strength = 0.0
     strength = min(0.5, max(0.0, strength))
     decision_id = f"{team_id}:{created:.3f}:{len(records)}"
+    feedback_context = dict(opponent_information_feedback_context or {})
+    if feedback_context:
+        from src.match_engine.world_model.opponent_information_feedback import (
+            opponent_information_feedback_is_valid,
+        )
+
+        if not opponent_information_feedback_is_valid(feedback_context):
+            feedback_context = {}
     control_rate = min(0.5, max(0.0, float(experiment_control_rate)))
     bridge_eligible = bool(intervention_enabled and strength > 0.0)
     experiment_arm = (
@@ -128,6 +137,7 @@ def register_coach_action_decision(
         "llm_opponent_information_query_context": dict(
             llm_opponent_information_query_context or {}
         ),
+        "opponent_information_feedback_context": feedback_context,
         "event_option_resolved_t_sec": None,
         "event_option_expected_action": None,
         "event_option_next_action": None,
@@ -396,6 +406,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.opponent_information_query_evaluation import (
         opponent_information_query_diagnostics,
     )
+    from src.match_engine.world_model.opponent_information_feedback import (
+        opponent_information_feedback_diagnostics,
+    )
 
     records = list(getattr(state, "_wm_coach_decision_adoption", None) or [])
     resolved = [record for record in records if record["resolved"]]
@@ -416,7 +429,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 27,
+        "version": 28,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -443,6 +456,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         "opponent_information_queries": opponent_information_query_diagnostics([{
             "world_model_decision_adoption": {"records": records},
         }]),
+        "opponent_information_feedback": (
+            opponent_information_feedback_diagnostics([records])
+        ),
         "records": records,
         "interpretation": (
             "A bounded intervention changes one action logit but does not force "

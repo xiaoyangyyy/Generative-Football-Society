@@ -27,6 +27,9 @@ from src.match_engine.world_model.decision_support import (
 )
 from src.match_engine.world_model.observation import OBS_DIM
 from src.match_engine.world_model.probabilistic import ProbabilisticFuture
+from src.match_engine.world_model.opponent_information_feedback import (
+    opponent_information_feedback_is_valid,
+)
 from src.simulation.llm_engine import SimulationLLM
 from src.simulation.tactics_sync import reconcile_world_model_tactical_choice
 
@@ -96,6 +99,8 @@ def test_decision_packet_compares_all_actions_and_recommends_risk_adjusted_best(
     ] == 0.8
     assert packet["policy_outcome_calibration"]["samples"] == 0
     assert "active_learning" in packet
+    assert "opponent_information_feedback" in packet
+    assert not packet["opponent_information_feedback"]["available"]
     assert all("active_learning" in candidate for candidate in packet["candidates"])
     assert all(
         "transition_epistemic_uncertainty" in candidate["active_learning"]
@@ -1109,6 +1114,12 @@ def test_cross_match_residual_memory_reaches_llm_and_policy_bridge():
     assert adoption["intervention_strength"] < 0.09
     packet = llm.facts["world_model_decision_support"]
     assert packet["contextual_residual_memory"]["active_groups"] == 3
+    assert opponent_information_feedback_is_valid(
+        adoption["opponent_information_feedback_context"]
+    )
+    assert adoption["opponent_information_feedback_context"] == packet[
+        "opponent_information_feedback"
+    ]
     shot = next(
         candidate for candidate in packet["candidates"]
         if candidate["action"] == "shot"

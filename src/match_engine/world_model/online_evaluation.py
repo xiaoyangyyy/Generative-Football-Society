@@ -60,6 +60,9 @@ from src.match_engine.world_model.temporal_calibration_evaluation import (
 from src.match_engine.world_model.opponent_information_query_evaluation import (
     opponent_information_query_diagnostics,
 )
+from src.match_engine.world_model.opponent_information_feedback import (
+    opponent_information_feedback_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -232,6 +235,9 @@ def aggregate_online_calibration(
     llm_risk_preferences = risk_preference_diagnostics(logs)
     temporal_path_calibration = temporal_path_calibration_diagnostics(logs)
     opponent_information_queries = opponent_information_query_diagnostics(logs)
+    opponent_information_feedback = opponent_information_feedback_diagnostics(
+        policy_record_clusters
+    )
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -597,7 +603,7 @@ def aggregate_online_calibration(
         if require_opponent_information_queries else True
     )
     return {
-        "version": 27,
+        "version": 28,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -636,6 +642,7 @@ def aggregate_online_calibration(
             "llm_risk_preferences": llm_risk_preferences,
             "temporal_path_calibration": temporal_path_calibration,
             "opponent_information_queries": opponent_information_queries,
+            "opponent_information_feedback": opponent_information_feedback,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -693,5 +700,6 @@ def aggregate_online_calibration(
             "Temporal utility paths use member identity plus held-out empirical residual-rank templates when compatible history exists, otherwise an explicit comonotonic fallback; path scenario rates are not calibrated temporal probabilities.",
             "Empirical temporal dependence is scored once per fully realized path against a frozen same-marginal comonotonic benchmark; degraded validation disables its reuse but does not establish real-football causality.",
             "LLM opponent-information queries are model-ranked questions over observable tactical controls; information gain and adaptive value are forecasts, hidden intent remains unobserved, and no future action is scheduled.",
+            "Resolved opponent-information feedback is exposed only after digest, scope, and temporal-order checks; shadow branch actions remain unexecuted counterfactual proposals.",
         ],
     }

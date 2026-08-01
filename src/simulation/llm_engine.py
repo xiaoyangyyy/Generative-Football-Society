@@ -253,6 +253,12 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   branch regrets and their expected regret. It scores the later observable
   control and resolves the relevant branch, but never observes hidden intent,
   changes the current action, or schedules either branch action;
+- opponent_information_feedback contains only previously resolved, digest-checked
+  queries from the same team, checkpoint, and policy environment. Use signed
+  probability surprise, proper scores, query rank, and realized-branch regret
+  to improve the next question and its conditional reasoning. A listed branch
+  action was never executed merely because it was proposed, so do not describe
+  it as an observed counterfactual outcome or as evidence of hidden intent;
 - second_order_game is a two-ply belief-space policy proxy. When its
   trajectory_rollout gate is active, continuation values blend a budgeted
   predicted-state search with the current-state proxy; otherwise they reuse

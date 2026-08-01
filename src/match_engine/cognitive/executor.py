@@ -943,6 +943,9 @@ class CognitiveExecutor:
                         ) or {}).get("accepted")
                         else {}
                     ),
+                    opponent_information_feedback_context=dict(
+                        packet.get("opponent_information_feedback") or {}
+                    ),
                 )
                 if adoption is not None:
                     rec.plan["world_model_adoption_id"] = adoption[

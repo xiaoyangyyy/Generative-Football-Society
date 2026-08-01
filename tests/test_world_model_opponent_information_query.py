@@ -22,6 +22,11 @@ from src.match_engine.world_model.opponent_information_query_evaluation import (
 from src.match_engine.world_model.opponent_information_calibration import (
     compile_opponent_information_calibration_memory,
 )
+from src.match_engine.world_model.opponent_information_feedback import (
+    build_opponent_information_feedback,
+    opponent_information_feedback_diagnostics,
+    opponent_information_feedback_is_valid,
+)
 from src.match_engine.world_model.online_evaluation import (
     aggregate_online_calibration,
 )
@@ -269,9 +274,12 @@ def test_cross_match_query_diagnostics_and_strict_readiness_gate():
         logs, min_transitions=0,
         require_opponent_information_queries=True,
     )
-    assert report["version"] == 27
+    assert report["version"] == 28
     assert report["opponent_information_queries_ready"]
     assert report["gates"]["opponent_information_queries"]
+    assert report["decision_adoption"][
+        "opponent_information_feedback"
+    ]["feedback_contexts"] == 0
 
     tampered = copy.deepcopy(logs)
     tampered[0]["world_model_decision_adoption"]["records"][0][
@@ -460,3 +468,119 @@ def test_query_calibration_rejects_tampered_or_wrong_scope_history():
         environment_signature="environment:test",
     )
     assert wrong_scope.rows == 0
+
+
+def test_resolved_query_becomes_safe_feedback_for_the_next_llm_turn():
+    audit = evaluate_llm_opponent_information_query(
+        _packet(), _query(), selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+    )
+    observed = {
+        "pressing_intensity": 0.8,
+        "risk_budget": 0.4,
+        "line_height": 0.7,
+        "rotation_aggressiveness": 0.3,
+    }
+    score = score_opponent_information_query(
+        audit, observed, horizon="60s",
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+    )
+    record = {
+        "decision_id": "A:10:0",
+        "team_id": "A",
+        "created_t_sec": 10.0,
+        "checkpoint_signature": "checkpoint:test",
+        "environment_signature": "environment:test",
+        "intervention_actual_action": "pass",
+        "llm_opponent_information_query_context": audit,
+        "multi_horizon_regime_outcomes": {"60s": {
+            "observed_t_sec": 70.0,
+            "llm_opponent_information_query_evaluation": score,
+        }},
+    }
+    feedback = build_opponent_information_feedback(
+        [record], team_id="A", checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test", as_of_t_sec=80.0,
+    )
+
+    assert feedback["available"]
+    assert opponent_information_feedback_is_valid(feedback)
+    resolution = feedback["recent_resolutions"][0]
+    assert resolution["observed_feature_value"] == 0.7
+    assert resolution["observed_high"]
+    assert resolution["signed_probability_surprise"] == pytest.approx(
+        1.0 - resolution["forecast_high_rate"]
+    )
+    assert not resolution["branch_action_executed"]
+    assert not resolution["counterfactual_outcome_observed"]
+    assert not resolution["hidden_opponent_intent_observed"]
+    assert feedback["feature_profiles"]["line_height"][
+        "resolved_queries"
+    ] == 1
+    premature = build_opponent_information_feedback(
+        [record], team_id="A", checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test", as_of_t_sec=60.0,
+    )
+    assert not premature["available"]
+    assert premature["future_dated_queries_excluded"] == 1
+    next_decision = {
+        "team_id": "A",
+        "created_t_sec": 80.0,
+        "checkpoint_signature": "checkpoint:test",
+        "environment_signature": "environment:test",
+        "opponent_information_feedback_context": feedback,
+    }
+    diagnostics = opponent_information_feedback_diagnostics([
+        [next_decision]
+    ])
+    assert diagnostics["available_feedback_contexts"] == 1
+    assert diagnostics["resolution_exposures"] == 1
+    assert diagnostics["all_feedback_temporally_prospective"]
+    leaked = copy.deepcopy(next_decision)
+    leaked["created_t_sec"] = 60.0
+    leak_diagnostics = opponent_information_feedback_diagnostics([[leaked]])
+    assert leak_diagnostics["future_information_leaks"] == 1
+    assert not leak_diagnostics["all_feedback_temporally_prospective"]
+
+    tampered_feedback = copy.deepcopy(feedback)
+    tampered_feedback["recent_resolutions"][0][
+        "observed_feature_value"
+    ] = 0.1
+    assert not opponent_information_feedback_is_valid(tampered_feedback)
+
+    tampered_record = copy.deepcopy(record)
+    tampered_record["multi_horizon_regime_outcomes"]["60s"][
+        "llm_opponent_information_query_evaluation"
+    ]["selected_feature_brier_score"] = 0.0
+    rejected = build_opponent_information_feedback(
+        [tampered_record], team_id="A",
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test", as_of_t_sec=80.0,
+    )
+    assert not rejected["available"]
+    assert rejected["malformed_queries"] == 1
+
+
+def test_query_feedback_separates_pending_ineligible_and_wrong_scope():
+    audit = evaluate_llm_opponent_information_query(
+        _packet(), _query(), selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+    )
+    base = {
+        "team_id": "A",
+        "checkpoint_signature": "checkpoint:test",
+        "environment_signature": "environment:test",
+        "llm_opponent_information_query_context": audit,
+        "multi_horizon_regime_outcomes": {},
+    }
+    pending = {**base, "intervention_actual_action": None}
+    ineligible = {**base, "intervention_actual_action": "shot"}
+    feedback = build_opponent_information_feedback(
+        [pending, ineligible], team_id="A",
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test", as_of_t_sec=80.0,
+    )
+    assert feedback["pending_queries"] == 1
+    assert feedback["ineligible_action_queries"] == 1
+    assert feedback["malformed_queries"] == 0
