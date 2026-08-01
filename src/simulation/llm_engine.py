@@ -258,6 +258,11 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   cross-match held-out error proves useful; it cannot rewrite model forecasts.
   A validated overestimate may reduce bridge strength, but no critique can
   increase execution authority;
+- state_scales are neural trajectory projections at short, tactical, and
+  strategic levels. A world_model_event_hypothesis must select one event already
+  listed by one evaluated horizon. It is scored against the same later simulator
+  outcome as the neural probability and remains shadow-only; it cannot alter the
+  action, model state, or critic memory;
 - change_point is computed from live numeric evidence. You may explain a
   watch/confirmed change with opponent_change_claim, but your claim cannot
   trigger, confirm, or cancel the detector. Cite only features whose signed
@@ -291,6 +296,15 @@ Return JSON:
     "confidence": 0.0-1.0,
     "evidence_features": ["zone|score_state|match_phase|opponent_belief|opponent_response|trajectory_rollout|epistemic_uncertainty|aleatoric_uncertainty|tactical_shape"],
     "rationale": "one falsifiable semantic residual explanation"
+  }},
+  "world_model_event_hypothesis": {{
+    "action": "must equal world_model_action",
+    "horizon": "one key from that candidate's multi_horizon_predictions",
+    "event": "retain_possession|enter_final_third|positive_territorial_shift|improve_scoreline",
+    "expectation": "occur|not_occur",
+    "confidence": 0.5-1.0,
+    "evidence_scales": ["short|tactical|strategic"],
+    "rationale": "one falsifiable event forecast grounded in state_scales"
   }},
   "opponent_hypothesis": {{
     "tactical_preset": "one preset listed in opponent_belief.hypotheses",

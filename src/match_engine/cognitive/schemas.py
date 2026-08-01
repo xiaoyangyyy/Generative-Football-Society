@@ -99,6 +99,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if critique is not None:
         out["world_model_critique"] = critique
+    from src.match_engine.world_model.llm_event_hypothesis import (
+        validate_llm_event_hypothesis,
+    )
+
+    event_hypothesis = validate_llm_event_hypothesis(
+        plan.get("world_model_event_hypothesis")
+    )
+    if event_hypothesis is not None:
+        out["world_model_event_hypothesis"] = event_hypothesis
     return out
 
 

@@ -246,7 +246,9 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "opponent_change_claim" in gateway.user_prompt
     assert "opponent_response_hypothesis" in gateway.user_prompt
     assert "world_model_critique" in gateway.user_prompt
+    assert "world_model_event_hypothesis" in gateway.user_prompt
     assert "falsifiable forecast-residual claim" in gateway.system_prompt
+    assert "shadow-only" in gateway.system_prompt
     assert "two-ply belief-space policy proxy" in gateway.system_prompt
     assert "from_preset" in gateway.user_prompt
     assert "cannot" in gateway.system_prompt
@@ -440,6 +442,94 @@ def test_executor_registers_falsifiable_llm_critique_in_shadow_mode():
     assert not audit["world_model_prediction_mutated"]
     assert context["critique"]["action"] == record.plan["world_model_action"]
     assert not context["can_update_world_model"]
+
+
+def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
+    class StateScaleRuntime(_Runtime):
+        def predict_policy_utility(
+            self, observation, action, *, action_kind, attacking_home,
+            horizon_s,
+        ):
+            scale = (
+                "short" if horizon_s <= 20.0
+                else "tactical" if horizon_s <= 120.0
+                else "strategic"
+            )
+            state_scales = {
+                "version": 1,
+                "primary_scale": scale,
+                "short": {"mean_progress_delta": 0.1},
+                "tactical": {"final_third_probability": 0.65},
+                "strategic": {"mean_goal_diff_delta": 0.0},
+                "semantic_event_probabilities": {
+                    "enter_final_third": 0.65,
+                },
+            }
+            return {
+                "prediction_source": "test_multiscale_runtime",
+                "horizon_s": horizon_s,
+                "policy_utility": 0.1,
+                "progress": 0.1,
+                "retention_probability": 0.7,
+                "xg_net_delta": 0.0,
+                "goal_diff_delta": 0.0,
+                "uncertainty": 0.1,
+                "epistemic_uncertainty": 0.1,
+                "aleatoric_uncertainty": 0.0,
+                "state_scales": state_scales,
+                "semantic_event_probabilities": state_scales[
+                    "semantic_event_probabilities"
+                ],
+            }
+
+    class EventLLM:
+        def coach_in_match_plan(self, team_name, facts, kind):
+            packet = facts["world_model_decision_support"]
+            action = packet["recommended_action"]
+            candidate = next(
+                item for item in packet["candidates"]
+                if item["action"] == action
+            )
+            horizon = next(iter(candidate["multi_horizon_predictions"]))
+            return json.dumps({
+                "reasoning": "Register one falsifiable event forecast.",
+                "confidence": 0.8,
+                "controls_delta": {},
+                "world_model_action": action,
+                "world_model_event_hypothesis": {
+                    "action": action,
+                    "horizon": horizon,
+                    "event": "enter_final_third",
+                    "expectation": "occur",
+                    "confidence": 0.75,
+                    "evidence_scales": ["short", "tactical"],
+                    "rationale": "The tactical projection favors entry.",
+                },
+            })
+
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(
+            enabled=True, world_model_action_control_rate=0.0,
+        ),
+        EventLLM(),
+        world_model_runtime=StateScaleRuntime(),
+    )
+    state = _state()
+    record = executor.process_trigger(CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    ), state)
+    audit = record.plan["world_model_event_hypothesis_audit"]
+    context = state._wm_coach_decision_adoption[-1][
+        "llm_semantic_event_context"
+    ]
+
+    assert audit["accepted"]
+    assert audit["reason"] == "shadow_semantic_event_hypothesis"
+    assert not audit["policy_mutated"]
+    assert context["hypothesis"]["event"] == "enter_final_third"
+    assert context["llm_event_probability"] == pytest.approx(0.75)
+    assert context["event_signature"].startswith("llm-event:")
 
 
 def test_validated_critic_can_only_reduce_policy_bridge_authority():

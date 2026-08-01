@@ -514,6 +514,42 @@ an `underestimate` critique cannot increase bridge strength. This gives the
 semantic channel a learned safety-brake role without allowing it to manufacture
 additional control authority.
 
+### Multi-scale state semantics and paired LLM event forecasts
+
+Each multi-horizon neural trajectory now carries an auditable `state_scales`
+projection instead of exposing only one policy-utility number. The short scale
+summarizes oriented ball progress, speed and possession; the tactical scale
+summarizes final-third entry, territorial gain, pressure around the ball and
+tactical-shape movement; the strategic scale summarizes score-difference and
+clock evolution. These values are deterministic projections of every dynamics
+member, not extra observed facts or an independently validated causal model.
+Binary event probabilities use Jeffreys-smoothed member frequencies, so a small
+ensemble cannot report unjustified probability zero or one.
+Legacy-expanded or otherwise untrained transition ensembles emit neutral `0.5`
+event probabilities instead of presenting identical members as confidence.
+
+The coach may submit one `world_model_event_hypothesis` for its selected action
+and one evaluated horizon. It must choose an event already exposed by the
+numeric trajectory (`retain_possession`, `enter_final_third`,
+`positive_territorial_shift`, or `improve_scoreline`), declare `occur` or
+`not_occur`, provide confidence in `[0.5, 1]`, and cite only short, tactical, or
+strategic scales actually present in that forecast. Invalid actions, horizons,
+events, absent scales, and non-finite model probabilities are rejected.
+
+Accepted hypotheses are strictly shadow-only. The LLM probability and frozen
+neural probability are persisted before the outcome and resolved from the same
+simulator-native future record at exactly the declared horizon. The log stores
+paired Brier errors and their difference; neither prediction can mutate the
+other, change action ranking, write model weights, or claim causal authority.
+Aggregate diagnostics weight matches equally, reject malformed persisted rows,
+report calibration error and event/horizon profiles, and require at least four
+matches for strict readiness. Evidence is isolated by a hash of the LLM model
+and event-contract version plus the world-model checkpoint and complete policy
+environment; mixed or unspecified provenance closes the gate. Audit this path with
+`--require-llm-semantic-events`. Readiness means that the paired shadow
+evaluation pipeline is trustworthy; it does not grant the semantic event
+channel control authority.
+
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
@@ -524,5 +560,5 @@ python scripts/evaluate_online_world_model.py \
   --require-transition-ensemble --require-opponent-belief \
   --require-opponent-meta-belief --require-opponent-change-detection \
   --require-opponent-response-model --require-two-step-trajectory-planning \
-  --require-llm-semantic-critic
+  --require-llm-semantic-critic --require-llm-semantic-events
 ```

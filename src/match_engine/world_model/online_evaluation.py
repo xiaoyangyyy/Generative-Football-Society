@@ -35,6 +35,9 @@ from src.match_engine.world_model.trajectory_game import (
 from src.match_engine.world_model.llm_critic_memory import (
     llm_critic_diagnostics,
 )
+from src.match_engine.world_model.llm_event_hypothesis import (
+    semantic_event_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -62,6 +65,7 @@ def aggregate_online_calibration(
     require_opponent_response_model: bool = False,
     require_two_step_trajectory_planning: bool = False,
     require_llm_semantic_critic: bool = False,
+    require_llm_semantic_events: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -187,6 +191,7 @@ def aggregate_online_calibration(
     opponent_response = opponent_response_diagnostics(logs)
     trajectory_planning = trajectory_planning_diagnostics(logs)
     llm_semantic_critic = llm_critic_diagnostics(logs)
+    llm_semantic_events = semantic_event_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -299,8 +304,21 @@ def aggregate_online_calibration(
     gates["validated_llm_semantic_critic"] = (
         llm_semantic_critic_ready if require_llm_semantic_critic else True
     )
+    llm_semantic_events_ready = bool(
+        llm_semantic_events["realized_predictions"]
+        >= max(2, min_residual_samples)
+        and llm_semantic_events["matches"] >= 4
+        and llm_semantic_events["all_paired_same_outcome"]
+        and llm_semantic_events["all_shadow_only"]
+        and llm_semantic_events["all_non_causal"]
+        and llm_semantic_events["provenance_compatible"]
+        and not llm_semantic_events["authority_active"]
+    )
+    gates["paired_llm_semantic_event_evaluation"] = (
+        llm_semantic_events_ready if require_llm_semantic_events else True
+    )
     return {
-        "version": 10,
+        "version": 11,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -330,6 +348,7 @@ def aggregate_online_calibration(
             "opponent_response": opponent_response,
             "trajectory_planning": trajectory_planning,
             "llm_semantic_critic": llm_semantic_critic,
+            "llm_semantic_events": llm_semantic_events,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -349,6 +368,7 @@ def aggregate_online_calibration(
         "opponent_response_model_ready": opponent_response_ready,
         "two_step_trajectory_planning_ready": trajectory_planning_ready,
         "llm_semantic_critic_ready": llm_semantic_critic_ready,
+        "llm_semantic_events_ready": llm_semantic_events_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -361,5 +381,6 @@ def aggregate_online_calibration(
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",
             "LLM semantic residual critiques remain shadow predictions until match-held-out error reduction; they never rewrite neural forecasts.",
+            "LLM semantic event hypotheses and neural event probabilities are scored against the same outcome and remain non-controlling.",
         ],
     }

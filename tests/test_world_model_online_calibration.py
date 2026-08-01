@@ -539,3 +539,100 @@ def test_strict_llm_critic_gate_requires_realized_immutable_corrections():
     assert diagnostics["all_bridge_authority_non_increasing"]
     assert report["llm_semantic_critic_ready"]
     assert report["gates"]["validated_llm_semantic_critic"]
+
+
+def test_strict_semantic_event_gate_requires_paired_shadow_match_evidence():
+    logs = []
+    for match_index in range(4):
+        observed = bool(match_index % 2)
+        target = float(observed)
+        llm_probability = 0.75 if observed else 0.25
+        model_probability = 0.65 if observed else 0.35
+        evaluation = {
+            "version": 1,
+            "event": "retain_possession",
+            "observed": observed,
+            "llm_probability": llm_probability,
+            "world_model_probability": model_probability,
+            "llm_brier": (llm_probability - target) ** 2,
+            "world_model_brier": (model_probability - target) ** 2,
+            "llm_brier_gain_vs_world_model": (
+                (model_probability - target) ** 2
+                - (llm_probability - target) ** 2
+            ),
+            "shadow_only": True,
+            "causal_interpretation": False,
+            "event_signature": "llm-event:test-contract",
+            "checkpoint_signature": "checkpoint-a",
+            "environment_signature": "environment-a",
+        }
+        logs.append({
+            "world_model_decision_adoption": {
+                "records": [{
+                    "multi_horizon_regime_outcomes": {
+                        "60s": {
+                            "llm_semantic_event_evaluation": evaluation,
+                        },
+                    },
+                }],
+            },
+        })
+    report = aggregate_online_calibration(
+        logs,
+        min_residual_samples=4,
+        require_llm_semantic_events=True,
+    )
+
+    diagnostics = report["decision_adoption"]["llm_semantic_events"]
+    assert diagnostics["realized_predictions"] == 4
+    assert diagnostics["matches"] == 4
+    assert diagnostics["match_clustered_llm_gain_vs_world_model"] > 0.0
+    assert diagnostics["all_paired_same_outcome"]
+    assert diagnostics["all_shadow_only"]
+    assert not diagnostics["authority_active"]
+    assert report["llm_semantic_events_ready"]
+    assert report["gates"]["paired_llm_semantic_event_evaluation"]
+
+    last_evaluation = logs[-1]["world_model_decision_adoption"]["records"][0][
+        "multi_horizon_regime_outcomes"
+    ]["60s"]["llm_semantic_event_evaluation"]
+    last_evaluation["event_signature"] = "llm-event:different-contract"
+    mixed = aggregate_online_calibration(
+        logs,
+        min_residual_samples=4,
+        require_llm_semantic_events=True,
+    )
+    assert not mixed["decision_adoption"]["llm_semantic_events"][
+        "provenance_compatible"
+    ]
+    assert not mixed["llm_semantic_events_ready"]
+    last_evaluation["event_signature"] = "llm-event:test-contract"
+
+    logs.append({
+        "world_model_decision_adoption": {
+            "records": [{
+                "multi_horizon_regime_outcomes": {
+                    "60s": {
+                        "llm_semantic_event_evaluation": {
+                            "event": "retain_possession",
+                            "llm_probability": float("nan"),
+                            "world_model_probability": 0.5,
+                            "llm_brier": 0.25,
+                            "world_model_brier": 0.25,
+                            "shadow_only": True,
+                            "causal_interpretation": False,
+                        },
+                    },
+                },
+            }],
+        },
+    })
+    contaminated = aggregate_online_calibration(
+        logs,
+        min_residual_samples=4,
+        require_llm_semantic_events=True,
+    )
+    assert contaminated["decision_adoption"]["llm_semantic_events"][
+        "malformed_evaluations"
+    ] == 1
+    assert not contaminated["llm_semantic_events_ready"]

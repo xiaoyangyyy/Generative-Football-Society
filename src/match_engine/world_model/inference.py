@@ -27,6 +27,9 @@ from src.match_engine.world_model.uncertainty import (
     compound_uncertainty,
     ensemble_uncertainty_decomposition,
 )
+from src.match_engine.world_model.state_scales import (
+    multiscale_state_forecast,
+)
 
 try:
     import torch
@@ -523,7 +526,7 @@ class WorldModelRuntime:
         action_kind: str,
         attacking_home: bool,
         horizon_s: float,
-    ) -> dict[str, float | int | str]:
+    ) -> dict[str, object]:
         """Predict the same declared utility later measured by policy outcomes."""
         rollout_steps = max(1, int(np.ceil(
             max(0.1, float(horizon_s)) / HORIZON_SCALE_SECONDS
@@ -575,6 +578,19 @@ class WorldModelRuntime:
             + 0.15 * progress
             + 0.05 * retention_edge
         )
+        transition_samples = (output.uncertainty_samples or {}).get(
+            "transition_states",
+            np.asarray(future, dtype=np.float32).reshape(1, 1, -1),
+        )
+        state_scales = multiscale_state_forecast(
+            current,
+            transition_samples,
+            attacking_home=attacking_home,
+            horizon_s=horizon_s,
+            ensemble_trained=bool((output.uncertainty_samples or {}).get(
+                "transition_ensemble_trained", False,
+            )),
+        )
         return {
             "prediction_source": "autoregressive_action_persistence_rollout",
             "horizon_s": float(horizon_s),
@@ -590,6 +606,10 @@ class WorldModelRuntime:
             "aleatoric_uncertainty": aleatoric_uncertainty,
             "uncertainty_source": output.uncertainty_source,
             "uncertainty_components": output.uncertainty_components or {},
+            "state_scales": state_scales,
+            "semantic_event_probabilities": dict(
+                state_scales["semantic_event_probabilities"]
+            ),
         }
 
     def score_action(self, obs: np.ndarray, action: np.ndarray) -> float:

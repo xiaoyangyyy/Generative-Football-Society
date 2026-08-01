@@ -114,6 +114,14 @@ def main() -> int:
             "match-held-out authority without mutating world-model forecasts."
         ),
     )
+    parser.add_argument(
+        "--require-llm-semantic-events",
+        action="store_true",
+        help=(
+            "Fail readiness until paired LLM/neural semantic-event forecasts "
+            "are realized across at least four matches and remain shadow-only."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -152,6 +160,7 @@ def main() -> int:
             args.require_two_step_trajectory_planning
         ),
         require_llm_semantic_critic=args.require_llm_semantic_critic,
+        require_llm_semantic_events=args.require_llm_semantic_events,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

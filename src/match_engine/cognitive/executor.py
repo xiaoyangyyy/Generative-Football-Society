@@ -187,6 +187,13 @@ class CognitiveExecutor:
         self.llm_critic_signature = llm_critic_signature(
             str(getattr(llm, "model", "rule_fallback"))
         )
+        from src.match_engine.world_model.llm_event_hypothesis import (
+            llm_event_signature,
+        )
+
+        self.llm_event_signature = llm_event_signature(
+            str(getattr(llm, "model", "rule_fallback"))
+        )
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -412,6 +419,19 @@ class CognitiveExecutor:
                     critic_signature=self.llm_critic_signature,
                 )
                 plan["world_model_critique_audit"] = critic_audit
+                from src.match_engine.world_model.llm_event_hypothesis import (
+                    apply_llm_event_hypothesis,
+                )
+
+                event_audit = apply_llm_event_hypothesis(
+                    packet,
+                    plan.get("world_model_event_hypothesis"),
+                    selected_action=str(plan.get(
+                        "world_model_action", "none",
+                    )),
+                    event_signature=self.llm_event_signature,
+                )
+                plan["world_model_event_hypothesis_audit"] = event_audit
                 from src.match_engine.world_model.active_learning import (
                     build_active_learning_advice,
                 )
@@ -667,6 +687,15 @@ class CognitiveExecutor:
                         if (rec.plan.get("world_model_critique_audit") or {}).get(
                             "accepted"
                         ) else {}
+                    ),
+                    llm_semantic_event_context=(
+                        dict(rec.plan.get(
+                            "world_model_event_hypothesis_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_event_hypothesis_audit"
+                        ) or {}).get("accepted")
+                        else {}
                     ),
                 )
                 if adoption is not None:

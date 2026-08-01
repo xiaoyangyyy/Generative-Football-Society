@@ -426,6 +426,118 @@ def test_multi_horizon_outcomes_are_recorded_and_future_overlap_is_censored():
     assert "180s" in record["multi_horizon_regime_outcomes"]
 
 
+def test_semantic_event_hypothesis_is_scored_at_its_declared_horizon():
+    home = SimpleNamespace(team_id="A", score=0)
+    away = SimpleNamespace(team_id="B", score=0)
+    state = SimpleNamespace(
+        clock_seconds=10.0,
+        home=home,
+        away=away,
+        ball=SimpleNamespace(
+            position=[0.50, 0.50], possession_team_id="A",
+        ),
+        micro_xg_home=0.2,
+        micro_xg_away=0.1,
+    )
+    event_context = {
+        "accepted": True,
+        "hypothesis": {
+            "action": "pass",
+            "horizon": "60s",
+            "event": "enter_final_third",
+        },
+        "llm_event_probability": 0.8,
+        "world_model_event_probability": 0.6,
+    }
+    record = register_coach_action_decision(
+        state,
+        team_id="A",
+        trigger_kind="clock",
+        llm_selected_action="pass",
+        world_model_recommended_action="pass",
+        recommendation_confidence=0.8,
+        horizon_s=10.0,
+        intervention_enabled=True,
+        intervention_strength=0.3,
+        outcome_horizons_s=(0.0, 60.0),
+        llm_semantic_event_context=event_context,
+    )
+    baseline = capture_policy_outcome_baseline(state, team_id="A")
+    record_policy_intervention_result(
+        state,
+        decision_id=record["decision_id"],
+        actual_action="pass",
+        t_sec=11.0,
+        outcome_baseline=baseline,
+    )
+    state.ball.position[0] = 0.55
+    observe_policy_intervention_outcomes(state, t_sec=11.0)
+    assert "llm_semantic_event_evaluation" not in record[
+        "multi_horizon_regime_outcomes"
+    ]["transition"]
+
+    state.ball.position[0] = 0.75
+    observe_policy_intervention_outcomes(state, t_sec=71.0)
+    score = record["multi_horizon_regime_outcomes"]["60s"][
+        "llm_semantic_event_evaluation"
+    ]
+    assert score["observed"]
+    assert score["llm_brier"] == pytest.approx(0.04)
+    assert score["world_model_brier"] == pytest.approx(0.16)
+    assert score["shadow_only"]
+
+
+def test_semantic_event_hypothesis_is_not_scored_for_a_different_action():
+    home = SimpleNamespace(team_id="A", score=0)
+    away = SimpleNamespace(team_id="B", score=0)
+    state = SimpleNamespace(
+        clock_seconds=10.0,
+        home=home,
+        away=away,
+        ball=SimpleNamespace(
+            position=[0.50, 0.50], possession_team_id="A",
+        ),
+        micro_xg_home=0.2,
+        micro_xg_away=0.1,
+    )
+    record = register_coach_action_decision(
+        state,
+        team_id="A",
+        trigger_kind="clock",
+        llm_selected_action="pass",
+        world_model_recommended_action="pass",
+        recommendation_confidence=0.8,
+        horizon_s=10.0,
+        intervention_enabled=True,
+        intervention_strength=0.3,
+        outcome_horizons_s=(60.0,),
+        llm_semantic_event_context={
+            "accepted": True,
+            "hypothesis": {
+                "action": "pass",
+                "horizon": "60s",
+                "event": "enter_final_third",
+            },
+            "llm_event_probability": 0.8,
+            "world_model_event_probability": 0.6,
+        },
+    )
+    baseline = capture_policy_outcome_baseline(state, team_id="A")
+    record_policy_intervention_result(
+        state,
+        decision_id=record["decision_id"],
+        actual_action="hold",
+        t_sec=11.0,
+        outcome_baseline=baseline,
+    )
+    state.ball.position[0] = 0.75
+    observe_policy_intervention_outcomes(state, t_sec=71.0)
+
+    assert "llm_semantic_event_evaluation" not in record[
+        "multi_horizon_regime_outcomes"
+    ]["60s"]
+
+
 def test_longest_ready_outcome_horizon_drives_reliability_feedback():
     records = []
     for arm in ("treatment", "control"):

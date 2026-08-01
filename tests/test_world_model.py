@@ -303,6 +303,16 @@ def test_runtime_predicts_declared_policy_utility_at_requested_horizon():
         - (1.0 - prediction["epistemic_uncertainty"])
         * (1.0 - prediction["aleatoric_uncertainty"])
     )
+    assert prediction["state_scales"]["primary_scale"] == "tactical"
+    assert set(prediction["state_scales"]) >= {
+        "short", "tactical", "strategic",
+    }
+    assert set(prediction["semantic_event_probabilities"]) >= {
+        "retain_possession",
+        "enter_final_third",
+        "positive_territorial_shift",
+        "improve_scoreline",
+    }
     longer = runtime.predict_policy_utility(
         observation,
         zero_action(),
@@ -311,6 +321,7 @@ def test_runtime_predicts_declared_policy_utility_at_requested_horizon():
         horizon_s=180.0,
     )
     assert longer["rollout_steps"] == 3
+    assert longer["state_scales"]["primary_scale"] == "strategic"
     assert longer["segment_horizon_s"] == 60.0
     assert longer["uncertainty"] >= prediction["uncertainty"]
     assert longer["epistemic_uncertainty"] >= prediction[

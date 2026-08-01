@@ -168,6 +168,34 @@ def observe_policy_intervention_outcomes(
                     outcome["standardized_prediction_residual"] = (
                         residual / uncertainty
                     )
+            event_context = record.get("llm_semantic_event_context") or {}
+            event_hypothesis = event_context.get("hypothesis") or {}
+            event_action_realized = (
+                str(event_hypothesis.get("action", "")).lower()
+                == str(record.get("intervention_actual_action", "")).lower()
+            )
+            if (
+                str(event_hypothesis.get("horizon", "")) == key
+                and event_action_realized
+            ):
+                from src.match_engine.world_model.llm_event_hypothesis import (
+                    score_llm_event_hypothesis,
+                )
+
+                event_score = score_llm_event_hypothesis(
+                    event_context,
+                    outcome,
+                    baseline,
+                    attacking_home=attacking_home,
+                    checkpoint_signature=str(record.get(
+                        "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    environment_signature=str(record.get(
+                        "environment_signature", "environment_unspecified",
+                    )),
+                )
+                if event_score is not None:
+                    outcome["llm_semantic_event_evaluation"] = event_score
             regime[key] = outcome
             if censor_t is None or due_t <= float(censor_t) + 1e-9:
                 isolated[key] = outcome

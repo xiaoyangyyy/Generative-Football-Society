@@ -83,5 +83,11 @@ bounded ranking authority only after chronological held-out MSE improvement.
 They never mutate the neural forecast or self-author their reliability. This
 creates a falsifiable semantic-numeric correction channel instead of an
 unverifiable LLM override.
+Every horizon also exposes short, tactical, and strategic projections from all
+dynamics members. The LLM may make one schema-limited event forecast over those
+projections. Its probability and the neural member-frequency probability are
+frozen, joined to the exact same later simulator outcome, and compared with
+paired match-clustered Brier scores. This semantic event path remains
+non-controlling even when its evaluation gate is ready.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.
