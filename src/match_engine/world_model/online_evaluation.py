@@ -57,6 +57,9 @@ from src.match_engine.world_model.risk_preference_evaluation import (
 from src.match_engine.world_model.temporal_calibration_evaluation import (
     temporal_path_calibration_diagnostics,
 )
+from src.match_engine.world_model.opponent_information_query_evaluation import (
+    opponent_information_query_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -94,6 +97,7 @@ def aggregate_online_calibration(
     require_llm_distributional_decisions: bool = False,
     require_llm_risk_preferences: bool = False,
     require_temporal_path_calibration: bool = False,
+    require_opponent_information_queries: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -227,6 +231,7 @@ def aggregate_online_calibration(
     llm_distributional = distributional_claim_diagnostics(logs)
     llm_risk_preferences = risk_preference_diagnostics(logs)
     temporal_path_calibration = temporal_path_calibration_diagnostics(logs)
+    opponent_information_queries = opponent_information_query_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -548,8 +553,44 @@ def aggregate_online_calibration(
         temporal_path_calibration_ready
         if require_temporal_path_calibration else True
     )
+    opponent_information_queries_ready = bool(
+        opponent_information_queries["realized_query_scores"] >= 4
+        and opponent_information_queries["matches"] >= 4
+        and opponent_information_queries["missing_scores"] == 0
+        and opponent_information_queries["malformed_query_contexts"] == 0
+        and opponent_information_queries["malformed_query_scores"] == 0
+        and opponent_information_queries[
+            "match_clustered_selected_feature_brier"
+        ] <= 0.30
+        and opponent_information_queries[
+            "match_clustered_all_feature_mean_brier"
+        ] <= opponent_information_queries[
+            "uninformative_half_probability_brier"
+        ]
+        and opponent_information_queries[
+            "match_clustered_model_top_query_rate"
+        ] >= 0.60
+        and opponent_information_queries[
+            "match_clustered_query_objective_efficiency"
+        ] >= 0.80
+        and opponent_information_queries[
+            "match_clustered_supported_query_purpose_rate"
+        ] >= 0.60
+        and opponent_information_queries["all_paired_same_action_horizon"]
+        and opponent_information_queries["all_shadow_only"]
+        and opponent_information_queries["all_non_controlling"]
+        and opponent_information_queries["all_non_causal"]
+        and opponent_information_queries[
+            "all_hidden_intent_claims_disabled"
+        ]
+        and opponent_information_queries["provenance_compatible"]
+    )
+    gates["opponent_information_queries"] = (
+        opponent_information_queries_ready
+        if require_opponent_information_queries else True
+    )
     return {
-        "version": 24,
+        "version": 25,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -587,6 +628,7 @@ def aggregate_online_calibration(
             "llm_distributional_decisions": llm_distributional,
             "llm_risk_preferences": llm_risk_preferences,
             "temporal_path_calibration": temporal_path_calibration,
+            "opponent_information_queries": opponent_information_queries,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -616,6 +658,9 @@ def aggregate_online_calibration(
         "llm_distributional_decisions_ready": llm_distributional_ready,
         "llm_risk_preferences_ready": llm_risk_preferences_ready,
         "temporal_path_calibration_ready": temporal_path_calibration_ready,
+        "opponent_information_queries_ready": (
+            opponent_information_queries_ready
+        ),
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -640,5 +685,6 @@ def aggregate_online_calibration(
             "Preference robustness uses fixed local parameter and leave-one-axis-out stress tests; it is a sensitivity certificate, not proof against every possible utility function or model error.",
             "Temporal utility paths use member identity plus held-out empirical residual-rank templates when compatible history exists, otherwise an explicit comonotonic fallback; path scenario rates are not calibrated temporal probabilities.",
             "Empirical temporal dependence is scored once per fully realized path against a frozen same-marginal comonotonic benchmark; degraded validation disables its reuse but does not establish real-football causality.",
+            "LLM opponent-information queries are model-ranked questions over observable tactical controls; information gain and adaptive value are forecasts, hidden intent remains unobserved, and no future action is scheduled.",
         ],
     }

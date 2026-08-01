@@ -846,6 +846,37 @@ the feature explicitly exploratory. Use
 gate. Forecasts, scores, and their benchmark remain shadow-only, non-causal, and
 make no calibrated joint-probability claim.
 
+### Model-checked opponent information queries
+
+The coach may submit one `opponent_information_query` for its selected action.
+It chooses only an observable tactical feature, an already evaluated future
+horizon, and whether the question is intended to reduce opponent uncertainty or
+resolve an action choice. The LLM cannot choose a threshold, likelihood model,
+posterior update, information-gain value, or action value. The engine fixes the
+binary observation at `feature >= 0.5` with a bounded observation-noise model and
+evaluates all four tactical features, not only the feature selected by the LLM.
+
+For every feature, the world model reports the forecast observation rate,
+posterior under high/low observations, normalized information gain, best action
+inside each observation branch, and expected decision value of information. The
+prior is the selected action's predicted opponent-response posterior when
+available, otherwise the current opponent belief. Action values come entirely
+from the existing opponent-hypothesis counterfactual grid. The leaderboard ranks
+information gain first for uncertainty-reduction queries and adaptive decision
+value first for action-resolution queries. It therefore exposes whether the LLM
+found the model's best question for its declared purpose or merely supplied a
+plausible narrative. Rank, objective regret, and normalized objective efficiency
+make that comparison explicit rather than relying on explanation quality.
+
+At the declared horizon, the simulator records all four observable opponent
+tactical controls and computes Brier scores for the frozen feature forecasts.
+Cross-match diagnostics require at least four scored matches, compatible model
+provenance, no missing or malformed scores, useful query-purpose agreement, and
+frequent agreement with the model-owned query ranking. Enable the strict gate
+with `--require-opponent-information-queries`. This evaluates forecasted
+observations—not latent tactical truth. Queries are shadow-only: they cannot
+change the current action, schedule a future action, or update opponent memory.
+
 ### Model-checked multi-horizon risk preferences
 
 The coach may additionally declare one `world_model_risk_preference`. This is

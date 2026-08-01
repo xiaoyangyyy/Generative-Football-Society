@@ -240,6 +240,15 @@ class CognitiveExecutor:
         self.llm_risk_preference_signature = llm_risk_preference_signature(
             str(getattr(llm, "model", "rule_fallback"))
         )
+        from src.match_engine.world_model.opponent_information_query import (
+            llm_opponent_information_query_signature,
+        )
+
+        self.llm_opponent_information_query_signature = (
+            llm_opponent_information_query_signature(
+                str(getattr(llm, "model", "rule_fallback"))
+            )
+        )
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -587,6 +596,25 @@ class CognitiveExecutor:
                 plan["world_model_risk_preference_audit"] = (
                     risk_preference_audit
                 )
+                from src.match_engine.world_model.opponent_information_query import (
+                    evaluate_llm_opponent_information_query,
+                )
+
+                information_query_audit = (
+                    evaluate_llm_opponent_information_query(
+                        packet,
+                        plan.get("opponent_information_query"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        query_signature=(
+                            self.llm_opponent_information_query_signature
+                        ),
+                    )
+                )
+                plan["opponent_information_query_audit"] = (
+                    information_query_audit
+                )
                 from src.match_engine.world_model.active_learning import (
                     build_active_learning_advice,
                 )
@@ -903,6 +931,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "world_model_risk_preference_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_opponent_information_query_context=(
+                        dict(rec.plan.get(
+                            "opponent_information_query_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "opponent_information_query_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

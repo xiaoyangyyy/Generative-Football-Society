@@ -245,6 +245,12 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   reject or cap claims that conflict with world-model likelihood;
 - opponent_hypothesis_values are counterfactual model estimates. Prefer actions
   robust across plausible hypotheses when posterior entropy is high;
+- opponent_information_query lets you choose one observable tactical control to
+  monitor at one evaluated future horizon. You may state only the feature and
+  purpose; the engine owns the 0.5 threshold, observation noise, every feature's
+  posterior branches, information gain, adaptive action value and model ranking.
+  It scores the later observable control but never observes hidden intent, changes
+  the current action, or schedules a branch action;
 - second_order_game is a two-ply belief-space policy proxy. When its
   trajectory_rollout gate is active, continuation values blend a budgeted
   predicted-state search with the current-state proxy; otherwise they reuse
@@ -418,6 +424,14 @@ Return JSON:
     "confidence": 0.0-1.0,
     "evidence_features": ["pressing_intensity|risk_budget|line_height|rotation_aggressiveness"],
     "rationale": "one short observation-grounded explanation"
+  }},
+  "opponent_information_query": {{
+    "selected_action": "must equal world_model_action",
+    "feature": "pressing_intensity|risk_budget|line_height|rotation_aggressiveness",
+    "horizon": "an evaluated non-transition horizon from 10s to 300s",
+    "purpose": "reduce_opponent_uncertainty|resolve_action_choice",
+    "confidence": 0.5-1.0,
+    "rationale": "why observing this control would clarify the decision"
   }},
   "opponent_response_hypothesis": {{
     "if_action": "hold|pass|cross|shot",

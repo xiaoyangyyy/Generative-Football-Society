@@ -51,6 +51,7 @@ def register_coach_action_decision(
     llm_risk_certificate_context: dict[str, Any] | None = None,
     llm_distributional_claim_context: dict[str, Any] | None = None,
     llm_risk_preference_context: dict[str, Any] | None = None,
+    llm_opponent_information_query_context: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -123,6 +124,9 @@ def register_coach_action_decision(
         ),
         "llm_risk_preference_context": dict(
             llm_risk_preference_context or {}
+        ),
+        "llm_opponent_information_query_context": dict(
+            llm_opponent_information_query_context or {}
         ),
         "event_option_resolved_t_sec": None,
         "event_option_expected_action": None,
@@ -389,6 +393,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.temporal_calibration_evaluation import (
         temporal_path_calibration_diagnostics,
     )
+    from src.match_engine.world_model.opponent_information_query_evaluation import (
+        opponent_information_query_diagnostics,
+    )
 
     records = list(getattr(state, "_wm_coach_decision_adoption", None) or [])
     resolved = [record for record in records if record["resolved"]]
@@ -409,7 +416,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 24,
+        "version": 25,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -431,6 +438,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
             uncertainty_decomposition_diagnostics([records])
         ),
         "temporal_path_calibration": temporal_path_calibration_diagnostics([{
+            "world_model_decision_adoption": {"records": records},
+        }]),
+        "opponent_information_queries": opponent_information_query_diagnostics([{
             "world_model_decision_adoption": {"records": records},
         }]),
         "records": records,

@@ -193,6 +193,14 @@ def main() -> int:
             "their same-marginal comonotonic benchmark on realized paths."
         ),
     )
+    parser.add_argument(
+        "--require-opponent-information-queries",
+        action="store_true",
+        help=(
+            "Require calibrated, model-ranked LLM questions about observable "
+            "opponent tactical information."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -252,6 +260,9 @@ def main() -> int:
         require_llm_risk_preferences=args.require_llm_risk_preferences,
         require_temporal_path_calibration=(
             args.require_temporal_path_calibration
+        ),
+        require_opponent_information_queries=(
+            args.require_opponent_information_queries
         ),
     )
     output = Path(args.out)
