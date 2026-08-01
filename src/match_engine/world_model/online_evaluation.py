@@ -670,6 +670,7 @@ def aggregate_online_calibration(
             "match_clustered_focus_priority_efficiency"
         ] >= 0.80
         and llm_deliberation_focus["all_shadow_only_non_controlling"]
+        and llm_deliberation_focus["all_unfocused_compute_isolated"]
         and llm_deliberation_focus["provenance_compatible"]
     )
     gates["llm_deliberation_focus"] = (

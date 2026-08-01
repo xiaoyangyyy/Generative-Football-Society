@@ -15,7 +15,7 @@ from src.match_engine.world_model.llm_decision_brief import (
 )
 
 
-LLM_DELIBERATION_FOCUS_VERSION = 1
+LLM_DELIBERATION_FOCUS_VERSION = 2
 TASK_CONTRACTS = {
     "opponent_hypothesis": (
         "opponent_hypothesis", "opponent_belief_audit",
@@ -93,6 +93,38 @@ def validate_llm_deliberation_focus(raw: Any) -> dict[str, Any] | None:
     }
 
 
+def deliberation_task_enabled(plan: dict[str, Any], task: str) -> bool:
+    """Legacy plans run normally; valid focus plans execute selected tasks only."""
+    focus = validate_llm_deliberation_focus(
+        plan.get("world_model_deliberation_focus")
+    )
+    return bool(focus is None or task in focus["tasks"])
+
+
+def deliberation_task_skipped_audit(
+    plan: dict[str, Any], task: str,
+) -> dict[str, Any]:
+    focus = validate_llm_deliberation_focus(
+        plan.get("world_model_deliberation_focus")
+    )
+    contract_key = TASK_CONTRACTS[task][0]
+    return {
+        "version": LLM_DELIBERATION_FOCUS_VERSION,
+        "accepted": False,
+        "reason": "task_not_selected_by_deliberation_focus",
+        "task": task,
+        "declared_focus_tasks": list((focus or {}).get("tasks") or []),
+        "unfocused_contract_was_emitted": plan.get(contract_key) is not None,
+        "compute_executed": False,
+        "belief_or_memory_mutated": False,
+        "authority_active": False,
+        "policy_mutated": False,
+        "can_change_current_action": False,
+        "can_relax_downstream_validators": False,
+        "causal_interpretation": False,
+    }
+
+
 def _digest(payload: dict[str, Any]) -> str:
     encoded = json.dumps(
         payload, sort_keys=True, separators=(",", ":"), allow_nan=False,
@@ -136,6 +168,14 @@ def _audit_from_evidence(
     unfocused = sorted(emitted - selected)
     missing = sorted(selected - emitted)
     rejected = sorted(selected - accepted)
+    short_circuited = sorted(
+        task for task, (_, audit_key) in TASK_CONTRACTS.items()
+        if (plan.get(audit_key) or {}).get("reason")
+        == "task_not_selected_by_deliberation_focus"
+    )
+    unfocused_compute_isolated = not (
+        set(unfocused) - set(short_circuited)
+    )
     selected_priority = sum(
         float(agenda_tasks[task]["priority"])
         for task in selected if task in agenda_tasks
@@ -163,6 +203,10 @@ def _audit_from_evidence(
         "accepted_optional_contracts": sorted(accepted),
         "unsupported_selected_tasks": unsupported,
         "unfocused_emitted_contracts": unfocused,
+        "short_circuited_unfocused_contracts": sorted(
+            set(unfocused) & set(short_circuited)
+        ),
+        "unfocused_compute_isolated": unfocused_compute_isolated,
         "missing_selected_contracts": missing,
         "rejected_selected_contracts": rejected,
         "selected_priority_sum": selected_priority,
@@ -236,6 +280,8 @@ def llm_deliberation_focus_diagnostics(
     record_clusters: Iterable[Iterable[dict[str, Any]]],
 ) -> dict[str, Any]:
     accepted = consistent = malformed = 0
+    short_circuited_unfocused = 0
+    all_unfocused_compute_isolated = True
     clustered_consistency = []
     clustered_efficiency = []
     focus_counts: dict[str, int] = {}
@@ -260,6 +306,13 @@ def llm_deliberation_focus_diagnostics(
                 continue
             accepted += 1
             consistent += bool(audit["model_checked_consistent"])
+            short_circuited_unfocused += len(
+                audit.get("short_circuited_unfocused_contracts") or []
+            )
+            all_unfocused_compute_isolated = bool(
+                all_unfocused_compute_isolated
+                and audit.get("unfocused_compute_isolated") is True
+            )
             signatures.add(str(audit.get("focus_signature", "")))
             match_audits.append(audit)
             for task in audit["focus"]["tasks"]:
@@ -285,6 +338,12 @@ def llm_deliberation_focus_diagnostics(
         "deliberation_focus_declarations": declarations,
         "model_checked_consistent_focus_audits": consistent,
         "malformed_focus_audits": malformed,
+        "short_circuited_unfocused_contracts": (
+            short_circuited_unfocused
+        ),
+        "all_unfocused_compute_isolated": bool(
+            accepted > 0 and all_unfocused_compute_isolated
+        ),
         "matches": len(clustered_consistency),
         "match_clustered_consistency_rate": float(np.mean(
             clustered_consistency

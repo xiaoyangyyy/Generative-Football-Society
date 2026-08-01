@@ -995,12 +995,22 @@ their downstream validator. Focus priority efficiency compares the selected
 priority sum with the best eligible tasks under the same budget; efficiency below
 `0.80` cannot receive a consistency certificate.
 
-Focus remains shadow-only and cannot change the chosen action, activate a failed
-contract, or relax a quality gate. The optional strict readiness flag
+For a valid declaration, the executor now enforces the same boundary before any
+optional task runs. Unselected contracts are short-circuited before trajectory
+rollouts, opponent-belief assimilation, response-memory updates, critique/event
+application, or risk/query evaluation. Their explicit skip audits record
+`compute_executed=false` and `belief_or_memory_mutated=false`; the aggregate
+focus audit verifies that every emitted out-of-focus contract was isolated.
+Plans with no valid focus retain the legacy execution path for compatibility,
+but cannot satisfy focus readiness.
+
+Focus remains non-authoritative and cannot change the chosen action, activate a
+failed contract, or relax a quality gate. The optional strict readiness flag
 `--require-llm-deliberation-focus` requires four matches, at least `0.80` focus
 declaration coverage, model consistency, and priority efficiency, one compatible
-LLM signature, and zero malformed focus audits. This prevents a few curated
-focus examples from hiding generally unfocused model behavior.
+LLM signature, complete out-of-focus compute isolation, and zero malformed focus
+audits. This prevents a few curated focus examples from hiding generally
+unfocused model behavior.
 
 ### Model-checked multi-horizon risk preferences
 

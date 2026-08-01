@@ -20,6 +20,8 @@ from src.match_engine.world_model.llm_decision_brief import (
 from src.match_engine.world_model.llm_deliberation_focus import (
     TASK_CONTRACTS,
     evaluate_llm_deliberation_focus,
+    deliberation_task_enabled,
+    deliberation_task_skipped_audit,
     llm_deliberation_focus_audit_is_valid,
     llm_deliberation_focus_diagnostics,
     validate_llm_deliberation_focus,
@@ -83,6 +85,7 @@ def test_model_checks_focus_budget_alignment_and_priority_efficiency():
     assert not audit["unfocused_emitted_contracts"]
     assert not audit["missing_selected_contracts"]
     assert not audit["rejected_selected_contracts"]
+    assert audit["unfocused_compute_isolated"]
     assert llm_deliberation_focus_audit_is_valid(audit)
     assert not audit["can_change_current_action"]
     assert not audit["can_relax_downstream_validators"]
@@ -98,6 +101,7 @@ def test_model_checks_focus_budget_alignment_and_priority_efficiency():
     )
     assert not unfocused["model_checked_consistent"]
     assert unfocused["unfocused_emitted_contracts"] == [other]
+    assert not unfocused["unfocused_compute_isolated"]
 
     rejected_plan = copy.deepcopy(plan)
     rejected_plan[TASK_CONTRACTS[task][1]] = {"accepted": False}
@@ -111,6 +115,17 @@ def test_model_checks_focus_budget_alignment_and_priority_efficiency():
     tampered = copy.deepcopy(audit)
     tampered["focus_priority_efficiency"] = 0.0
     assert not llm_deliberation_focus_audit_is_valid(tampered)
+
+    assert deliberation_task_enabled(plan, task)
+    assert not deliberation_task_enabled(plan, other)
+    legacy_plan = copy.deepcopy(plan)
+    legacy_plan.pop("world_model_deliberation_focus")
+    assert deliberation_task_enabled(legacy_plan, other)
+    skipped = deliberation_task_skipped_audit(unfocused_plan, other)
+    assert skipped["reason"] == "task_not_selected_by_deliberation_focus"
+    assert skipped["unfocused_contract_was_emitted"]
+    assert not skipped["compute_executed"]
+    assert not skipped["belief_or_memory_mutated"]
 
 
 def test_focus_diagnostics_and_strict_online_gate_are_match_clustered():
@@ -140,6 +155,7 @@ def test_focus_diagnostics_and_strict_online_gate_are_match_clustered():
     assert diagnostics["match_clustered_consistency_rate"] == 1.0
     assert diagnostics["match_clustered_focus_priority_efficiency"] == 1.0
     assert diagnostics["provenance_compatible"]
+    assert diagnostics["all_unfocused_compute_isolated"]
 
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_llm_deliberation_focus=True,
@@ -201,3 +217,74 @@ def test_executor_persists_focus_failure_without_relaxing_any_contract():
     assert llm_deliberation_focus_audit_is_valid(stored)
     assert not stored["authority_active"]
     assert not stored["can_relax_downstream_validators"]
+
+
+def test_executor_never_calls_unfocused_compute_or_belief_paths(monkeypatch):
+    class _AdversarialFocusedLLM:
+        model = "focus-compute-test"
+
+        def coach_in_match_plan(self, team_name, facts, kind):
+            return json.dumps({
+                "reasoning": "Declare one focus but emit unrelated contracts.",
+                "confidence": 0.8,
+                "controls_delta": {},
+                "world_model_action": "shot",
+                "world_model_deliberation_focus": {
+                    "tasks": ["world_model_contrastive_claim"],
+                    "confidence": 0.8,
+                    "rationale": "Inspect the close action margin.",
+                },
+                "world_model_event_option": {
+                    "first_action": "shot",
+                    "horizon": "transition",
+                    "event": "retain_possession",
+                    "on_occurrence": "pass",
+                    "on_absence": "hold",
+                    "confidence": 0.8,
+                    "rationale": "This must be skipped because it is unfocused.",
+                },
+                "opponent_hypothesis": {
+                    "tactical_preset": "balanced",
+                    "confidence": 0.8,
+                    "evidence_features": ["line_height"],
+                    "rationale": "This must not update belief when unfocused.",
+                },
+            })
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("unfocused task executed")
+
+    monkeypatch.setattr(
+        "src.match_engine.world_model.event_option.evaluate_llm_event_option",
+        forbidden,
+    )
+    monkeypatch.setattr(
+        "src.match_engine.world_model.opponent_belief."
+        "assimilate_llm_opponent_hypothesis",
+        forbidden,
+    )
+    state = _state()
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(enabled=True), _AdversarialFocusedLLM(),
+        world_model_runtime=_Runtime(),
+    )
+    result = executor.process_trigger(CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    ), state)
+
+    option = result.plan["world_model_event_option_audit"]
+    belief = result.plan["opponent_belief_audit"]
+    assert option["reason"] == "task_not_selected_by_deliberation_focus"
+    assert belief["reason"] == "task_not_selected_by_deliberation_focus"
+    assert not option["compute_executed"]
+    assert not belief["belief_or_memory_mutated"]
+    focus = result.plan["world_model_deliberation_focus_audit"]
+    assert "world_model_event_option" in focus[
+        "unfocused_emitted_contracts"
+    ]
+    assert "opponent_hypothesis" in focus["unfocused_emitted_contracts"]
+    assert focus["unfocused_compute_isolated"]
+    assert focus["short_circuited_unfocused_contracts"] == [
+        "opponent_hypothesis", "world_model_event_option",
+    ]

@@ -434,6 +434,17 @@ class CognitiveExecutor:
             self._save_cache(key, plan)
 
         if trig.entity_tier == ENTITY_TIER_COACH:
+            from src.match_engine.world_model.llm_deliberation_focus import (
+                deliberation_task_enabled,
+                deliberation_task_skipped_audit,
+            )
+
+            def task_enabled(task: str) -> bool:
+                return deliberation_task_enabled(plan, task)
+
+            def task_skipped(task: str) -> dict[str, Any]:
+                return deliberation_task_skipped_audit(plan, task)
+
             from src.match_engine.world_model.opponent_belief import (
                 assimilate_llm_opponent_change_claim,
                 assimilate_llm_opponent_hypothesis,
@@ -443,10 +454,14 @@ class CognitiveExecutor:
 
             packet = trig.facts.get("world_model_decision_support") or {}
             if trig.team_id and packet.get("opponent_belief"):
-                belief_audit = assimilate_llm_opponent_hypothesis(
-                    state,
-                    trig.team_id,
-                    plan.get("opponent_hypothesis"),
+                belief_audit = (
+                    assimilate_llm_opponent_hypothesis(
+                        state,
+                        trig.team_id,
+                        plan.get("opponent_hypothesis"),
+                    )
+                    if task_enabled("opponent_hypothesis")
+                    else task_skipped("opponent_hypothesis")
                 )
                 plan["opponent_belief_audit"] = belief_audit
                 if plan.get("opponent_change_claim") is not None:
@@ -456,6 +471,8 @@ class CognitiveExecutor:
                             trig.team_id,
                             plan.get("opponent_change_claim"),
                         )
+                        if task_enabled("opponent_change_claim")
+                        else task_skipped("opponent_change_claim")
                     )
                 updated_belief = update_opponent_belief(state, trig.team_id)
                 packet["opponent_belief"] = updated_belief
@@ -484,67 +501,89 @@ class CognitiveExecutor:
                         "trajectory_rollout"
                     ),
                 )
-                response_audit = apply_llm_response_hypothesis(
-                    packet,
-                    plan.get("opponent_response_hypothesis"),
-                    self.opponent_response_memory,
+                response_audit = (
+                    apply_llm_response_hypothesis(
+                        packet,
+                        plan.get("opponent_response_hypothesis"),
+                        self.opponent_response_memory,
+                    )
+                    if task_enabled("opponent_response_hypothesis")
+                    else task_skipped("opponent_response_hypothesis")
                 )
                 plan["opponent_response_hypothesis_audit"] = response_audit
                 from src.match_engine.world_model.llm_critic import (
                     apply_llm_world_model_critique,
                 )
 
-                critic_audit = apply_llm_world_model_critique(
-                    packet,
-                    plan.get("world_model_critique"),
-                    self.llm_critic_memory,
-                    selected_action=str(plan.get("world_model_action", "none")),
-                    critic_signature=self.llm_critic_signature,
+                critic_audit = (
+                    apply_llm_world_model_critique(
+                        packet,
+                        plan.get("world_model_critique"),
+                        self.llm_critic_memory,
+                        selected_action=str(plan.get(
+                            "world_model_action", "none"
+                        )),
+                        critic_signature=self.llm_critic_signature,
+                    )
+                    if task_enabled("world_model_critique")
+                    else task_skipped("world_model_critique")
                 )
                 plan["world_model_critique_audit"] = critic_audit
                 from src.match_engine.world_model.llm_event_hypothesis import (
                     apply_llm_event_hypothesis,
                 )
 
-                event_audit = apply_llm_event_hypothesis(
-                    packet,
-                    plan.get("world_model_event_hypothesis"),
-                    selected_action=str(plan.get(
-                        "world_model_action", "none",
-                    )),
-                    event_signature=self.llm_event_signature,
+                event_audit = (
+                    apply_llm_event_hypothesis(
+                        packet,
+                        plan.get("world_model_event_hypothesis"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        event_signature=self.llm_event_signature,
+                    )
+                    if task_enabled("world_model_event_hypothesis")
+                    else task_skipped("world_model_event_hypothesis")
                 )
                 plan["world_model_event_hypothesis_audit"] = event_audit
                 from src.match_engine.world_model.event_option import (
                     evaluate_llm_event_option,
                 )
 
-                option_audit = evaluate_llm_event_option(
-                    self.world_model_runtime,
-                    state,
-                    packet,
-                    plan.get("world_model_event_option"),
-                    team_id=str(trig.team_id),
-                    selected_action=str(plan.get(
-                        "world_model_action", "none",
-                    )),
-                    option_signature=self.llm_event_option_signature,
+                option_audit = (
+                    evaluate_llm_event_option(
+                        self.world_model_runtime,
+                        state,
+                        packet,
+                        plan.get("world_model_event_option"),
+                        team_id=str(trig.team_id),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        option_signature=self.llm_event_option_signature,
+                    )
+                    if task_enabled("world_model_event_option")
+                    else task_skipped("world_model_event_option")
                 )
                 plan["world_model_event_option_audit"] = option_audit
                 from src.match_engine.world_model.contrastive_explanation import (
                     evaluate_llm_contrastive_claim,
                 )
 
-                contrastive_audit = evaluate_llm_contrastive_claim(
-                    self.world_model_runtime,
-                    state,
-                    packet,
-                    plan.get("world_model_contrastive_claim"),
-                    team_id=str(trig.team_id),
-                    selected_action=str(plan.get(
-                        "world_model_action", "none",
-                    )),
-                    contrastive_signature=self.llm_contrastive_signature,
+                contrastive_audit = (
+                    evaluate_llm_contrastive_claim(
+                        self.world_model_runtime,
+                        state,
+                        packet,
+                        plan.get("world_model_contrastive_claim"),
+                        team_id=str(trig.team_id),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        contrastive_signature=self.llm_contrastive_signature,
+                    )
+                    if task_enabled("world_model_contrastive_claim")
+                    else task_skipped("world_model_contrastive_claim")
                 )
                 plan["world_model_contrastive_explanation_audit"] = (
                     contrastive_audit
@@ -553,23 +592,31 @@ class CognitiveExecutor:
                     attempt_contrastive_explanation_repair,
                 )
 
-                repair_audit = attempt_contrastive_explanation_repair(
-                    self.llm,
-                    self.world_model_runtime,
-                    state,
-                    packet,
-                    contrastive_audit,
-                    team_id=str(trig.team_id),
-                    selected_action=str(plan.get(
-                        "world_model_action", "none",
-                    )),
-                    enabled=self.cfg.world_model_contrastive_repair,
-                    repair_signature=(
-                        self.llm_contrastive_repair_signature
-                    ),
-                    total_member_trajectory_path_budget=(
-                        self.cfg.world_model_contrastive_repair_path_budget
-                    ),
+                repair_audit = (
+                    attempt_contrastive_explanation_repair(
+                        self.llm,
+                        self.world_model_runtime,
+                        state,
+                        packet,
+                        contrastive_audit,
+                        team_id=str(trig.team_id),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        enabled=self.cfg.world_model_contrastive_repair,
+                        repair_signature=(
+                            self.llm_contrastive_repair_signature
+                        ),
+                        total_member_trajectory_path_budget=(
+                            self.cfg.world_model_contrastive_repair_path_budget
+                        ),
+                    )
+                    if task_enabled("world_model_contrastive_claim")
+                    else {
+                        **task_skipped("world_model_contrastive_claim"),
+                        "repair_attempted": False,
+                        "repair_successful": False,
+                    }
                 )
                 plan["world_model_contrastive_repair_audit"] = repair_audit
                 if repair_audit.get("repair_successful"):
@@ -580,31 +627,39 @@ class CognitiveExecutor:
                     apply_llm_risk_constraint,
                 )
 
-                risk_audit = apply_llm_risk_constraint(
-                    self.world_model_runtime,
-                    packet,
-                    plan.get("world_model_risk_constraint"),
-                    selected_action=str(plan.get(
-                        "world_model_action", "none",
-                    )),
-                    certificate_signature=(
-                        self.llm_risk_certificate_signature
-                    ),
+                risk_audit = (
+                    apply_llm_risk_constraint(
+                        self.world_model_runtime,
+                        packet,
+                        plan.get("world_model_risk_constraint"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        certificate_signature=(
+                            self.llm_risk_certificate_signature
+                        ),
+                    )
+                    if task_enabled("world_model_risk_constraint")
+                    else task_skipped("world_model_risk_constraint")
                 )
                 plan["world_model_risk_certificate_audit"] = risk_audit
                 from src.match_engine.world_model.distributional_claim import (
                     evaluate_llm_distributional_claim,
                 )
 
-                distributional_audit = evaluate_llm_distributional_claim(
-                    packet,
-                    plan.get("world_model_distributional_claim"),
-                    selected_action=str(plan.get(
-                        "world_model_action", "none",
-                    )),
-                    claim_signature=(
-                        self.llm_distributional_claim_signature
-                    ),
+                distributional_audit = (
+                    evaluate_llm_distributional_claim(
+                        packet,
+                        plan.get("world_model_distributional_claim"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        claim_signature=(
+                            self.llm_distributional_claim_signature
+                        ),
+                    )
+                    if task_enabled("world_model_distributional_claim")
+                    else task_skipped("world_model_distributional_claim")
                 )
                 plan["world_model_distributional_claim_audit"] = (
                     distributional_audit
@@ -613,13 +668,19 @@ class CognitiveExecutor:
                     evaluate_llm_risk_preference,
                 )
 
-                risk_preference_audit = evaluate_llm_risk_preference(
-                    packet,
-                    plan.get("world_model_risk_preference"),
-                    selected_action=str(plan.get(
-                        "world_model_action", "none",
-                    )),
-                    preference_signature=self.llm_risk_preference_signature,
+                risk_preference_audit = (
+                    evaluate_llm_risk_preference(
+                        packet,
+                        plan.get("world_model_risk_preference"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        preference_signature=(
+                            self.llm_risk_preference_signature
+                        ),
+                    )
+                    if task_enabled("world_model_risk_preference")
+                    else task_skipped("world_model_risk_preference")
                 )
                 plan["world_model_risk_preference_audit"] = (
                     risk_preference_audit
@@ -639,6 +700,8 @@ class CognitiveExecutor:
                             self.llm_opponent_information_query_signature
                         ),
                     )
+                    if task_enabled("opponent_information_query")
+                    else task_skipped("opponent_information_query")
                 )
                 plan["opponent_information_query_audit"] = (
                     information_query_audit
@@ -656,6 +719,8 @@ class CognitiveExecutor:
                             self.llm_opponent_information_adaptation_signature
                         ),
                     )
+                    if task_enabled("opponent_information_adaptation")
+                    else task_skipped("opponent_information_adaptation")
                 )
                 plan["opponent_information_adaptation_audit"] = (
                     information_adaptation_audit
