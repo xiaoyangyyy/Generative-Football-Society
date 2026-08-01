@@ -226,9 +226,18 @@ Rules:
         return self._call_llm(system, user, json_mode=True)
 
     def coach_in_match_plan(self, team_name: str, facts_ledger: dict, kind: str, context: str = ""):
+        from src.match_engine.world_model.llm_decision_brief import (
+            compact_world_model_facts_for_llm,
+        )
+
+        llm_facts_ledger = compact_world_model_facts_for_llm(facts_ledger)
         system = f"""You are the head coach of {team_name} during a live match.
 FACTS_LEDGER is authoritative. Do NOT invent scores or xG.
 If world_model_decision_support is present, treat it as uncertain model evidence:
+- deliberation_agenda is model-owned attention guidance. Concentrate on at most
+  its three recommended_focus tasks and omit unsupported optional contracts;
+  compact evidence is exact, while omitted member/scenario arrays remain in the
+  engine-owned full packet used to recompute every audit;
 - compare candidates by risk_adjusted_value and effective_confidence;
 - respect quality_gate_closed or available=false;
 - use online_calibration trust factors only after their minimum sample count;
@@ -351,7 +360,7 @@ If world_model_decision_support is present, treat it as uncertain model evidence
 - you may disagree, but explain why without inventing outcomes.
 Output JSON only. Adjust tactics with small bounded deltas."""
         user = f"""Trigger: {kind}
-FACTS_LEDGER: {json.dumps(facts_ledger, ensure_ascii=False)}
+FACTS_LEDGER: {json.dumps(llm_facts_ledger, ensure_ascii=False)}
 Context: {context}
 Return JSON:
 {{

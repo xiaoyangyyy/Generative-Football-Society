@@ -66,6 +66,9 @@ from src.match_engine.world_model.opponent_information_feedback import (
 from src.match_engine.world_model.opponent_information_adaptation_evaluation import (
     opponent_information_adaptation_diagnostics,
 )
+from src.match_engine.world_model.llm_decision_brief import (
+    llm_decision_brief_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -244,6 +247,9 @@ def aggregate_online_calibration(
     )
     opponent_information_adaptation = (
         opponent_information_adaptation_diagnostics(logs)
+    )
+    llm_decision_briefs = llm_decision_brief_diagnostics(
+        policy_record_clusters
     )
     memory_scopes = sorted({
         (
@@ -644,7 +650,7 @@ def aggregate_online_calibration(
         if require_opponent_information_adaptation else True
     )
     return {
-        "version": 29,
+        "version": 30,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -687,6 +693,7 @@ def aggregate_online_calibration(
             "opponent_information_adaptation": (
                 opponent_information_adaptation
             ),
+            "llm_decision_briefs": llm_decision_briefs,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -748,6 +755,7 @@ def aggregate_online_calibration(
             "Empirical temporal dependence is scored once per fully realized path against a frozen same-marginal comonotonic benchmark; degraded validation disables its reuse but does not establish real-football causality.",
             "LLM opponent-information queries are model-ranked questions over observable tactical controls; information gain and adaptive value are forecasts, hidden intent remains unobserved, and no future action is scheduled.",
             "Resolved opponent-information feedback is exposed only after digest, scope, and temporal-order checks; shadow branch actions remain unexecuted counterfactual proposals.",
-            "LLM feedback adaptations are paired consecutive-query comparisons; improvement is observational and cannot establish the counterfactual effect of adapting.",
+            "LLM feedback adaptations compare a cited prior query with the current query; improvement is observational and cannot establish the counterfactual effect of adapting.",
+            "Coach LLM prompts receive a digest-linked compact evidence projection and agenda; omitted scenario arrays remain in the full engine packet used for every model-owned audit.",
         ],
     }

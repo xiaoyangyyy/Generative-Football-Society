@@ -955,6 +955,36 @@ improvement before online readiness opens. It also requires an explicit
 adaptation on at least `0.60` of compatible feedback-bearing decisions, so a
 small hand-picked subset cannot stand in for general feedback use.
 
+### Compact LLM evidence and deliberation agenda
+
+The engine no longer serializes the complete decision packet into the production
+coach prompt. A trained packet can contain large member-level distributions,
+temporal scenario paths, residual-rank templates, and trajectory-mode arrays.
+Those tensors are essential for recomputation but are poor language-model input:
+they consume context and repeat evidence already summarized by model-owned
+statistics.
+
+For each coach call, `llm_decision_brief` creates a deterministic projection with
+the exact action names, horizon keys, calibrated point forecasts, uncertainty
+decomposition, semantic-event probabilities, downside rates, distribution
+scopes, frontier summaries, opponent beliefs, feedback, and provenance. Raw
+member values and scenario paths are deliberately omitted. The brief carries a
+fingerprint of the complete pre-call source packet plus its own digest; any
+altered brief is discarded and rebuilt before prompt serialization. The
+full-resolution packet remains in the cognitive executor and is still used for
+every query, risk, counterfactual, and adaptation audit, including explicit
+post-LLM belief updates rather than hidden prompt-side mutations.
+
+The same projection contains a world-model-owned `deliberation_agenda`. It ranks
+optional reasoning tasks from current evidence such as action ambiguity,
+opponent entropy, trajectory downside, temporal reversal, distributional Pareto
+trade-offs, validated search, residual memory, and resolved-query feedback. The
+LLM is asked to focus on at most three eligible tasks rather than manufacture all
+optional contracts on every turn. Agenda priority changes attention only: it
+cannot change the action ranking or relax any downstream validator. A compact
+metadata record freezes the brief digest, source-packet fingerprint, and
+recommended focus alongside the decision for later audit.
+
 ### Model-checked multi-horizon risk preferences
 
 The coach may additionally declare one `world_model_risk_preference`. This is

@@ -30,6 +30,14 @@ from src.match_engine.world_model.probabilistic import ProbabilisticFuture
 from src.match_engine.world_model.opponent_information_feedback import (
     opponent_information_feedback_is_valid,
 )
+from src.match_engine.world_model.llm_decision_brief import (
+    build_llm_decision_brief,
+    compact_world_model_facts_for_llm,
+    llm_decision_brief_diagnostics,
+    llm_decision_brief_metadata_is_valid,
+    llm_decision_brief_self_is_valid,
+    llm_decision_brief_is_valid,
+)
 from src.simulation.llm_engine import SimulationLLM
 from src.simulation.tactics_sync import reconcile_world_model_tactical_choice
 
@@ -138,6 +146,48 @@ def test_trained_runtime_builds_member_utility_frontiers_end_to_end():
     packet = build_coach_decision_packet(
         runtime, _state(), "Home", outcome_horizons_s=(0.0, 60.0),
     )
+
+    brief = build_llm_decision_brief(packet)
+    assert llm_decision_brief_is_valid(brief, packet)
+    assert len(json.dumps(brief)) < 0.70 * len(json.dumps(packet))
+    assert [row["action"] for row in brief["candidates"]] == [
+        row["action"] for row in packet["candidates"]
+    ]
+    for full, compact in zip(packet["candidates"], brief["candidates"]):
+        assert set(compact["multi_horizon_predictions"]) == set(
+            full["multi_horizon_predictions"]
+        )
+        for prediction in compact["multi_horizon_predictions"].values():
+            distribution = prediction["distributional_policy_utility"]
+            assert "member_values" not in distribution
+            assert "decision_scenario_values" not in distribution
+        assert "scenario_utility_paths" not in compact[
+            "temporal_utility_paths"
+        ]
+    projected = compact_world_model_facts_for_llm({
+        "score": "0-0",
+        "world_model_decision_support": packet,
+        "world_model_llm_decision_brief": brief,
+    })
+    assert projected["world_model_decision_support"] == brief
+    assert "world_model_llm_decision_brief" not in projected
+    assert "llm_decision_brief" not in packet
+    agenda = brief["deliberation_agenda"]
+    assert len(agenda["recommended_focus"]) <= 3
+    eligible_tasks = {
+        task["task"] for task in agenda["tasks"] if task["eligible"]
+    }
+    assert set(agenda["recommended_focus"]) <= eligible_tasks
+    tampered_brief = json.loads(json.dumps(brief))
+    tampered_brief["deliberation_agenda"]["recommended_focus"] = [
+        "rewrite_world_model"
+    ]
+    assert not llm_decision_brief_is_valid(tampered_brief, packet)
+    repaired_projection = compact_world_model_facts_for_llm({
+        "world_model_decision_support": packet,
+        "world_model_llm_decision_brief": tampered_brief,
+    })
+    assert repaired_projection["world_model_decision_support"] == brief
 
     assert packet["available"]
     frontiers = packet["distributional_action_frontiers"]["horizons"]
@@ -286,6 +336,9 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     gateway = _PromptGateway()
     llm = SimulationLLM(gateway=gateway)
     packet = build_coach_decision_packet(_Runtime(), _state(), "Home")
+    packet["engine_only_scenario_sentinel"] = (
+        "FULL_MEMBER_ARRAY_MUST_NOT_ENTER_LLM_PROMPT"
+    )
 
     llm.coach_in_match_plan(
         "Home", {"world_model_decision_support": packet}, "shape_change",
@@ -312,6 +365,13 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "from_preset" in gateway.user_prompt
     assert "cannot" in gateway.system_prompt
     assert "change_point" in gateway.system_prompt
+    assert "deliberation_agenda" in gateway.user_prompt
+    assert "brief_digest" in gateway.user_prompt
+    assert "source_packet_fingerprint" in gateway.user_prompt
+    assert "recommended_focus" in gateway.system_prompt
+    assert "FULL_MEMBER_ARRAY_MUST_NOT_ENTER_LLM_PROMPT" not in (
+        gateway.user_prompt
+    )
 
 
 def test_contrastive_repair_prompt_freezes_action_and_all_control_fields():
@@ -397,12 +457,26 @@ def test_executor_injects_world_model_evidence_before_llm_and_applies_plan():
     )
     state = _state()
     record = executor.process_trigger(trigger, state)
+    adoption = state._wm_coach_decision_adoption[0]
     packet = llm.facts["world_model_decision_support"]
+    brief = llm.facts["world_model_llm_decision_brief"]
+    assert llm_decision_brief_self_is_valid(brief)
+    assert adoption["llm_decision_brief_context"]["brief_digest"] == (
+        brief["brief_digest"]
+    )
+    assert adoption["llm_decision_brief_context"][
+        "full_packet_retained_for_engine_audit"
+    ]
+    assert llm_decision_brief_metadata_is_valid(
+        adoption["llm_decision_brief_context"]
+    )
+    brief_diagnostics = llm_decision_brief_diagnostics([[adoption]])
+    assert brief_diagnostics["brief_contexts"] == 1
+    assert brief_diagnostics["all_briefs_digest_linked_and_bounded"]
     assert packet["recommended_action"] == "shot"
     assert record.plan["world_model_action"] == "shot"
     assert record.plan["world_model_adoption_id"]
     assert len(state._wm_coach_decision_adoption) == 1
-    adoption = state._wm_coach_decision_adoption[0]
     assert adoption["intervention_enabled"]
     assert 0.0 < adoption["intervention_strength"] <= 0.35
     assert record.plan["world_model_policy_intervention_enabled"]

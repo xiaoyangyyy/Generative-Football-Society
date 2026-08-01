@@ -398,6 +398,16 @@ class CognitiveExecutor:
                     ),
                 )
             )
+            from src.match_engine.world_model.llm_decision_brief import (
+                build_llm_decision_brief,
+                llm_decision_brief_metadata,
+            )
+
+            trig.facts["world_model_llm_decision_brief"] = (
+                build_llm_decision_brief(
+                    trig.facts["world_model_decision_support"]
+                )
+            )
 
         key = _cache_key(trig)
         cached = self._load_cache(key)
@@ -980,6 +990,13 @@ class CognitiveExecutor:
                             "opponent_information_adaptation_audit"
                         ) or {}).get("accepted")
                         else {}
+                    ),
+                    llm_decision_brief_context=(
+                        llm_decision_brief_metadata(
+                            trig.facts.get(
+                                "world_model_llm_decision_brief", {}
+                            )
+                        )
                     ),
                 )
                 if adoption is not None:
