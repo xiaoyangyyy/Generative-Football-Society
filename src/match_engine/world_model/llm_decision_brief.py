@@ -229,6 +229,11 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
     memory_active = int((packet.get("contextual_residual_memory") or {}).get(
         "active_groups", 0
     )) > 0
+    change_status = str(
+        ((packet.get("opponent_belief") or {}).get("change_point") or {}).get(
+            "status", "stable"
+        )
+    )
     task_specs = [
         ("opponent_information_adaptation", bool(feedback.get("available")),
          1.00, "resolved_query_feedback_available"),
@@ -253,6 +258,11 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
          "forecast_ambiguity_or_residual_memory"),
         ("opponent_response_hypothesis", entropy >= 0.35,
          0.25 + 0.45 * entropy, "uncertain_action_conditioned_response"),
+        ("opponent_hypothesis", entropy >= 0.35,
+         0.20 + 0.40 * entropy, "uncertain_current_opponent_tactic"),
+        ("opponent_change_claim", change_status in {"watch", "confirmed"},
+         0.80 if change_status == "confirmed" else 0.60,
+         "numeric_opponent_change_detector"),
     ]
     tasks = [
         {
@@ -282,6 +292,7 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
             "distributional_pareto_tradeoff": pareto_tradeoff,
             "trajectory_search_active": trajectory_active,
             "resolved_query_feedback_available": bool(feedback.get("available")),
+            "opponent_change_point_status": change_status,
         },
         "policy": (
             "Focus on at most three recommended tasks; omit unsupported optional "

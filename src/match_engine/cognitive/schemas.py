@@ -66,6 +66,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
         out["world_model_rationale"] = str(
             plan["world_model_rationale"]
         )[:300]
+    from src.match_engine.world_model.llm_deliberation_focus import (
+        validate_llm_deliberation_focus,
+    )
+
+    deliberation_focus = validate_llm_deliberation_focus(
+        plan.get("world_model_deliberation_focus")
+    )
+    if deliberation_focus is not None:
+        out["world_model_deliberation_focus"] = deliberation_focus
     from src.match_engine.world_model.opponent_belief import (
         validate_llm_opponent_change_claim,
         validate_llm_opponent_hypothesis,

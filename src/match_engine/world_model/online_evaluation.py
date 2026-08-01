@@ -69,6 +69,9 @@ from src.match_engine.world_model.opponent_information_adaptation_evaluation imp
 from src.match_engine.world_model.llm_decision_brief import (
     llm_decision_brief_diagnostics,
 )
+from src.match_engine.world_model.llm_deliberation_focus import (
+    llm_deliberation_focus_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -108,6 +111,7 @@ def aggregate_online_calibration(
     require_temporal_path_calibration: bool = False,
     require_opponent_information_queries: bool = False,
     require_opponent_information_adaptation: bool = False,
+    require_llm_deliberation_focus: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -249,6 +253,9 @@ def aggregate_online_calibration(
         opponent_information_adaptation_diagnostics(logs)
     )
     llm_decision_briefs = llm_decision_brief_diagnostics(
+        policy_record_clusters
+    )
+    llm_deliberation_focus = llm_deliberation_focus_diagnostics(
         policy_record_clusters
     )
     memory_scopes = sorted({
@@ -649,8 +656,28 @@ def aggregate_online_calibration(
         opponent_information_adaptation_ready
         if require_opponent_information_adaptation else True
     )
+    llm_deliberation_focus_ready = bool(
+        llm_deliberation_focus["accepted_focus_audits"] >= 4
+        and llm_deliberation_focus["matches"] >= 4
+        and llm_deliberation_focus["malformed_focus_audits"] == 0
+        and llm_deliberation_focus[
+            "match_clustered_focus_declaration_rate"
+        ] >= 0.80
+        and llm_deliberation_focus[
+            "match_clustered_consistency_rate"
+        ] >= 0.80
+        and llm_deliberation_focus[
+            "match_clustered_focus_priority_efficiency"
+        ] >= 0.80
+        and llm_deliberation_focus["all_shadow_only_non_controlling"]
+        and llm_deliberation_focus["provenance_compatible"]
+    )
+    gates["llm_deliberation_focus"] = (
+        llm_deliberation_focus_ready
+        if require_llm_deliberation_focus else True
+    )
     return {
-        "version": 30,
+        "version": 31,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -694,6 +721,7 @@ def aggregate_online_calibration(
                 opponent_information_adaptation
             ),
             "llm_decision_briefs": llm_decision_briefs,
+            "llm_deliberation_focus": llm_deliberation_focus,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -729,6 +757,7 @@ def aggregate_online_calibration(
         "opponent_information_adaptation_ready": (
             opponent_information_adaptation_ready
         ),
+        "llm_deliberation_focus_ready": llm_deliberation_focus_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -757,5 +786,6 @@ def aggregate_online_calibration(
             "Resolved opponent-information feedback is exposed only after digest, scope, and temporal-order checks; shadow branch actions remain unexecuted counterfactual proposals.",
             "LLM feedback adaptations compare a cited prior query with the current query; improvement is observational and cannot establish the counterfactual effect of adapting.",
             "Coach LLM prompts receive a digest-linked compact evidence projection and agenda; omitted scenario arrays remain in the full engine packet used for every model-owned audit.",
+            "Deliberation focus is an attention and contract-consistency audit only; it cannot change an action or relax any downstream evidence gate.",
         ],
     }

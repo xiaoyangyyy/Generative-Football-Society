@@ -55,6 +55,7 @@ def register_coach_action_decision(
     opponent_information_feedback_context: dict[str, Any] | None = None,
     llm_opponent_information_adaptation_context: dict[str, Any] | None = None,
     llm_decision_brief_context: dict[str, Any] | None = None,
+    llm_deliberation_focus_context: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -126,6 +127,18 @@ def register_coach_action_decision(
 
         if not llm_decision_brief_metadata_is_valid(decision_brief_context):
             decision_brief_context = {}
+    deliberation_focus_context = dict(
+        llm_deliberation_focus_context or {}
+    )
+    if deliberation_focus_context:
+        from src.match_engine.world_model.llm_deliberation_focus import (
+            llm_deliberation_focus_audit_is_valid,
+        )
+
+        if not llm_deliberation_focus_audit_is_valid(
+            deliberation_focus_context
+        ):
+            deliberation_focus_context = {}
     control_rate = min(0.5, max(0.0, float(experiment_control_rate)))
     bridge_eligible = bool(intervention_enabled and strength > 0.0)
     experiment_arm = (
@@ -172,6 +185,7 @@ def register_coach_action_decision(
         "opponent_information_feedback_context": feedback_context,
         "llm_opponent_information_adaptation_context": adaptation_context,
         "llm_decision_brief_context": decision_brief_context,
+        "llm_deliberation_focus_context": deliberation_focus_context,
         "event_option_resolved_t_sec": None,
         "event_option_expected_action": None,
         "event_option_next_action": None,
@@ -449,6 +463,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.llm_decision_brief import (
         llm_decision_brief_diagnostics,
     )
+    from src.match_engine.world_model.llm_deliberation_focus import (
+        llm_deliberation_focus_diagnostics,
+    )
 
     records = list(getattr(state, "_wm_coach_decision_adoption", None) or [])
     resolved = [record for record in records if record["resolved"]]
@@ -469,7 +486,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 30,
+        "version": 31,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -505,6 +522,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
             }])
         ),
         "llm_decision_briefs": llm_decision_brief_diagnostics([records]),
+        "llm_deliberation_focus": llm_deliberation_focus_diagnostics([
+            records
+        ]),
         "records": records,
         "interpretation": (
             "A bounded intervention changes one action logit but does not force "

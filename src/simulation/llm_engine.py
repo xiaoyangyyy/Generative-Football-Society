@@ -238,6 +238,10 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   its three recommended_focus tasks and omit unsupported optional contracts;
   compact evidence is exact, while omitted member/scenario arrays remain in the
   engine-owned full packet used to recompute every audit;
+- world_model_deliberation_focus must name one to three eligible agenda tasks.
+  Emit structured optional contracts only for those named tasks. The engine
+  audits unsupported selections, missing selected contracts, extra unfocused
+  contracts, downstream contract rejection, and priority efficiency;
 - compare candidates by risk_adjusted_value and effective_confidence;
 - respect quality_gate_closed or available=false;
 - use online_calibration trust factors only after their minimum sample count;
@@ -378,6 +382,11 @@ Return JSON:
   "world_model_action": "hold|pass|cross|shot|none",
   "world_model_decision_mode": "exploit|explore|decline",
   "world_model_rationale": "brief explanation tied to uncertainty and candidate evidence",
+  "world_model_deliberation_focus": {{
+    "tasks": ["one to three eligible task names from deliberation_agenda.tasks"],
+    "confidence": 0.5-1.0,
+    "rationale": "why these tasks deserve the limited reasoning budget"
+  }},
   "world_model_critique": {{
     "action": "must equal world_model_action",
     "horizon": "one key from that candidate's multi_horizon_predictions",

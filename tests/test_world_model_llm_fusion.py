@@ -353,6 +353,7 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "world_model_risk_constraint" in gateway.user_prompt
     assert "world_model_distributional_claim" in gateway.user_prompt
     assert "world_model_risk_preference" in gateway.user_prompt
+    assert "world_model_deliberation_focus" in gateway.user_prompt
     assert "nominal consistency is not robustness" in gateway.system_prompt
     assert "trajectory_modes" in gateway.system_prompt
     assert "CRPS" in gateway.system_prompt
@@ -369,6 +370,7 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "brief_digest" in gateway.user_prompt
     assert "source_packet_fingerprint" in gateway.user_prompt
     assert "recommended_focus" in gateway.system_prompt
+    assert "unfocused" in gateway.system_prompt
     assert "FULL_MEMBER_ARRAY_MUST_NOT_ENTER_LLM_PROMPT" not in (
         gateway.user_prompt
     )

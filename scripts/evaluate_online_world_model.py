@@ -209,6 +209,14 @@ def main() -> int:
             "opponent-information feedback to improve their declared metric."
         ),
     )
+    parser.add_argument(
+        "--require-llm-deliberation-focus",
+        action="store_true",
+        help=(
+            "Require the coach LLM to follow the model-ranked deliberation "
+            "agenda without extra, missing, or rejected optional contracts."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -274,6 +282,9 @@ def main() -> int:
         ),
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation
+        ),
+        require_llm_deliberation_focus=(
+            args.require_llm_deliberation_focus
         ),
     )
     output = Path(args.out)

@@ -985,6 +985,23 @@ cannot change the action ranking or relax any downstream validator. A compact
 metadata record freezes the brief digest, source-packet fingerprint, and
 recommended focus alongside the decision for later audit.
 
+The LLM makes that allocation explicit through
+`world_model_deliberation_focus`, selecting one to three task identifiers from
+the agenda. A separate audit compares the declaration with the actual structured
+contracts in the same plan and with each contract's existing model-owned audit.
+It reports unsupported selected tasks, selected tasks with no emitted contract,
+extra contracts emitted outside the focus, and selected contracts rejected by
+their downstream validator. Focus priority efficiency compares the selected
+priority sum with the best eligible tasks under the same budget; efficiency below
+`0.80` cannot receive a consistency certificate.
+
+Focus remains shadow-only and cannot change the chosen action, activate a failed
+contract, or relax a quality gate. The optional strict readiness flag
+`--require-llm-deliberation-focus` requires four matches, at least `0.80` focus
+declaration coverage, model consistency, and priority efficiency, one compatible
+LLM signature, and zero malformed focus audits. This prevents a few curated
+focus examples from hiding generally unfocused model behavior.
+
 ### Model-checked multi-horizon risk preferences
 
 The coach may additionally declare one `world_model_risk_preference`. This is
