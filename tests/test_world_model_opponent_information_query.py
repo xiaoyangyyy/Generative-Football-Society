@@ -39,6 +39,8 @@ def _query(**updates):
         "feature": "line_height",
         "horizon": "60s",
         "purpose": "resolve_action_choice",
+        "action_if_high": "pass",
+        "action_if_low": "shot",
         "confidence": 0.8,
         "rationale": "Check whether the opponent will keep a high line.",
     }
@@ -91,6 +93,9 @@ def test_query_schema_is_bounded_and_preserved_by_coach_plan():
     assert validate_llm_opponent_information_query(
         _query(horizon="transition")
     ) is None
+    assert validate_llm_opponent_information_query(
+        _query(action_if_high="none")
+    ) is None
     plan = validate_coach_plan({
         "world_model_action": "pass",
         "opponent_information_query": _query(),
@@ -128,6 +133,11 @@ def test_world_model_computes_all_queries_and_independent_voi():
     )
     assert not audit["can_change_current_action"]
     assert not audit["can_schedule_future_action"]
+    contingent = audit["contingent_policy"]
+    assert contingent["expected_policy_regret"] >= 0.0
+    assert contingent["worst_branch_regret"] >= 0.0
+    assert contingent["regret_thresholds_model_owned"]
+    assert contingent["expected_regret_identity_error"] <= 1e-12
 
     uncertainty = evaluate_llm_opponent_information_query(
         _packet(), _query(purpose="reduce_opponent_uncertainty"),
@@ -143,6 +153,9 @@ def test_world_model_computes_all_queries_and_independent_voi():
     tampered_contract = copy.deepcopy(audit)
     tampered_contract["model_evidence"]["observation_sigma"] = 0.01
     assert not opponent_information_query_audit_is_valid(tampered_contract)
+    tampered_policy = copy.deepcopy(audit)
+    tampered_policy["contingent_policy"]["expected_policy_regret"] = 0.0
+    assert not opponent_information_query_audit_is_valid(tampered_policy)
 
 
 def test_query_fails_closed_for_action_horizon_and_incomplete_values():
@@ -185,6 +198,11 @@ def test_realized_tactical_observation_scores_frozen_query_forecasts():
     assert score["observed_high_events"]["line_height"]
     assert 0.0 <= score["selected_feature_brier_score"] <= 1.0
     assert len(score["feature_brier_scores"]) == 4
+    assert score["resolved_observation_branch"] in {"high", "low"}
+    assert score["proposed_continuation_action"] in {
+        "hold", "pass", "cross", "shot",
+    }
+    assert score["observed_branch_policy_regret"] >= 0.0
     assert not score["hidden_opponent_intent_observed"]
 
     tampered = copy.deepcopy(score)
@@ -203,6 +221,12 @@ def test_cross_match_query_diagnostics_and_strict_readiness_gate():
         _query(
             feature=seed["model_recommended_feature"],
             purpose="reduce_opponent_uncertainty",
+            action_if_high=seed["query_leaderboard"][0][
+                "best_action_if_high"
+            ],
+            action_if_low=seed["query_leaderboard"][0][
+                "best_action_if_low"
+            ],
         ),
         selected_action="pass",
         query_signature="llm-opponent-information-query:test",
@@ -232,13 +256,17 @@ def test_cross_match_query_diagnostics_and_strict_readiness_gate():
     assert diagnostics["match_clustered_model_top_query_rate"] == 1.0
     assert diagnostics["match_clustered_query_objective_efficiency"] == 1.0
     assert diagnostics["match_clustered_supported_query_purpose_rate"] == 1.0
+    assert diagnostics[
+        "match_clustered_contingent_policy_consistency_rate"
+    ] == 1.0
+    assert diagnostics["match_clustered_observed_branch_policy_regret"] == 0.0
     assert diagnostics["provenance_compatible"]
 
     report = aggregate_online_calibration(
         logs, min_transitions=0,
         require_opponent_information_queries=True,
     )
-    assert report["version"] == 25
+    assert report["version"] == 26
     assert report["opponent_information_queries_ready"]
     assert report["gates"]["opponent_information_queries"]
 

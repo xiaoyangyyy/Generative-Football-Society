@@ -22,7 +22,7 @@ from src.match_engine.world_model.policy_experiment import (
 )
 
 
-OPPONENT_INFORMATION_QUERY_VERSION = 1
+OPPONENT_INFORMATION_QUERY_VERSION = 2
 _PURPOSES = {"reduce_opponent_uncertainty", "resolve_action_choice"}
 _OBSERVATION_SIGMA = 0.18
 
@@ -47,6 +47,8 @@ def validate_llm_opponent_information_query(
     feature = str(raw.get("feature", "")).strip().lower()
     horizon = str(raw.get("horizon", "")).strip().lower()
     purpose = str(raw.get("purpose", "")).strip().lower()
+    action_if_high = str(raw.get("action_if_high", "")).strip().lower()
+    action_if_low = str(raw.get("action_if_low", "")).strip().lower()
     try:
         confidence = float(raw.get("confidence", 0.0))
         horizon_s = float(policy_horizon_seconds(horizon))
@@ -54,6 +56,8 @@ def validate_llm_opponent_information_query(
         return None
     if (
         action not in RESPONSE_ACTIONS
+        or action_if_high not in RESPONSE_ACTIONS
+        or action_if_low not in RESPONSE_ACTIONS
         or feature not in TACTICAL_FEATURES
         or purpose not in _PURPOSES
         or not 10.0 <= horizon_s <= 300.0
@@ -65,6 +69,8 @@ def validate_llm_opponent_information_query(
         "feature": feature,
         "horizon": horizon,
         "purpose": purpose,
+        "action_if_high": action_if_high,
+        "action_if_low": action_if_low,
         "confidence": confidence,
         "rationale": str(raw.get("rationale", ""))[:240],
     }
@@ -276,6 +282,60 @@ def _audit_from_basis(
         else selected["branch_action_switch"]
         and selected["expected_decision_value_of_information"] >= 0.005
     )
+    probability_high = float(selected["forecast_high_rate"])
+    proposed_high = query["action_if_high"]
+    proposed_low = query["action_if_low"]
+    high_value = float(selected["action_values_if_high"][proposed_high])
+    low_value = float(selected["action_values_if_low"][proposed_low])
+    best_high_value = float(selected["action_values_if_high"][
+        selected["best_action_if_high"]
+    ])
+    best_low_value = float(selected["action_values_if_low"][
+        selected["best_action_if_low"]
+    ])
+    high_regret = max(0.0, best_high_value - high_value)
+    low_regret = max(0.0, best_low_value - low_value)
+    expected_policy_value = (
+        probability_high * high_value
+        + (1.0 - probability_high) * low_value
+    )
+    expected_policy_regret = max(
+        0.0,
+        float(selected["expected_adaptive_value"]) - expected_policy_value,
+    )
+    weighted_branch_regret = (
+        probability_high * high_regret
+        + (1.0 - probability_high) * low_regret
+    )
+    contingent_policy = {
+        "action_if_high": proposed_high,
+        "action_if_low": proposed_low,
+        "model_best_action_if_high": selected["best_action_if_high"],
+        "model_best_action_if_low": selected["best_action_if_low"],
+        "proposed_value_if_high": high_value,
+        "proposed_value_if_low": low_value,
+        "regret_if_high": high_regret,
+        "regret_if_low": low_regret,
+        "expected_policy_value": expected_policy_value,
+        "expected_policy_regret": expected_policy_regret,
+        "expected_weighted_branch_regret": weighted_branch_regret,
+        "expected_regret_identity_error": abs(
+            expected_policy_regret - weighted_branch_regret
+        ),
+        "worst_branch_regret": max(high_regret, low_regret),
+        "high_branch_action_aligned": (
+            proposed_high == selected["best_action_if_high"]
+        ),
+        "low_branch_action_aligned": (
+            proposed_low == selected["best_action_if_low"]
+        ),
+        "model_checked_consistent": bool(
+            expected_policy_regret <= 0.03 + 1e-12
+            and max(high_regret, low_regret) <= 0.05 + 1e-12
+            and abs(expected_policy_regret - weighted_branch_regret) <= 1e-9
+        ),
+        "regret_thresholds_model_owned": True,
+    }
     payload = {
         "version": OPPONENT_INFORMATION_QUERY_VERSION,
         "accepted": True,
@@ -297,6 +357,7 @@ def _audit_from_basis(
             objective_efficiency, 0.0, 1.0,
         )),
         "purpose_supported": purpose_supported,
+        "contingent_policy": contingent_policy,
         "query_signature": str(query_signature),
         "shadow_only": True,
         "authority_active": False,

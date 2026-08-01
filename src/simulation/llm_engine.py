@@ -249,8 +249,10 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   monitor at one evaluated future horizon. You may state only the feature and
   purpose; the engine owns the 0.5 threshold, observation noise, every feature's
   posterior branches, information gain, adaptive action value and model ranking.
-  It scores the later observable control but never observes hidden intent, changes
-  the current action, or schedules a branch action;
+  Declare shadow actions for high and low observations; the engine computes both
+  branch regrets and their expected regret. It scores the later observable
+  control and resolves the relevant branch, but never observes hidden intent,
+  changes the current action, or schedules either branch action;
 - second_order_game is a two-ply belief-space policy proxy. When its
   trajectory_rollout gate is active, continuation values blend a budgeted
   predicted-state search with the current-state proxy; otherwise they reuse
@@ -430,6 +432,8 @@ Return JSON:
     "feature": "pressing_intensity|risk_budget|line_height|rotation_aggressiveness",
     "horizon": "an evaluated non-transition horizon from 10s to 300s",
     "purpose": "reduce_opponent_uncertainty|resolve_action_choice",
+    "action_if_high": "hold|pass|cross|shot (shadow continuation only)",
+    "action_if_low": "hold|pass|cross|shot (shadow continuation only)",
     "confidence": 0.5-1.0,
     "rationale": "why observing this control would clarify the decision"
   }},

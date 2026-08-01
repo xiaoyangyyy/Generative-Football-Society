@@ -294,7 +294,7 @@ def test_online_gate_requires_realized_calibrated_risk_certificates():
         logs, min_transitions=0, min_residual_samples=2,
         require_llm_risk_certificates=True,
     )
-    assert report["version"] == 25
+    assert report["version"] == 26
     assert report["llm_risk_certificates_ready"]
     assert report["gates"]["realized_llm_risk_certificates"]
     assert report["decision_adoption"]["llm_risk_certificates"][

@@ -70,6 +70,9 @@ def score_opponent_information_query(
         for feature in TACTICAL_FEATURES
     }
     selected_feature = audit["query"]["feature"]
+    resolved_high = bool(events[selected_feature])
+    branch = "high" if resolved_high else "low"
+    contingent = audit["contingent_policy"]
     return {
         "version": OPPONENT_INFORMATION_QUERY_VERSION,
         "audit_digest": audit["audit_digest"],
@@ -85,6 +88,23 @@ def score_opponent_information_query(
             audit["selected_query_objective_efficiency"]
         ),
         "purpose_supported": bool(audit["purpose_supported"]),
+        "resolved_observation_branch": branch,
+        "proposed_continuation_action": contingent[f"action_if_{branch}"],
+        "model_best_continuation_action": contingent[
+            f"model_best_action_if_{branch}"
+        ],
+        "observed_branch_policy_regret": float(
+            contingent[f"regret_if_{branch}"]
+        ),
+        "observed_branch_action_aligned": bool(
+            contingent[f"{branch}_branch_action_aligned"]
+        ),
+        "contingent_policy_model_checked_consistent": bool(
+            contingent["model_checked_consistent"]
+        ),
+        "expected_contingent_policy_regret": float(
+            contingent["expected_policy_regret"]
+        ),
         "paired_same_action_horizon": True,
         "checkpoint_signature": str(checkpoint_signature),
         "environment_signature": str(environment_signature),

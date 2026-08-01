@@ -296,7 +296,7 @@ def test_strict_online_gate_requires_validated_temporal_path_skill():
         validated_logs, min_transitions=0, min_residual_samples=8,
         require_temporal_path_calibration=True,
     )
-    assert report["version"] == 25
+    assert report["version"] == 26
     assert report["temporal_path_calibration_ready"]
     assert report["gates"]["temporal_path_calibration"]
 

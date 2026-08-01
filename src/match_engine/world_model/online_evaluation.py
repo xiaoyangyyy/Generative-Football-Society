@@ -576,6 +576,12 @@ def aggregate_online_calibration(
         and opponent_information_queries[
             "match_clustered_supported_query_purpose_rate"
         ] >= 0.60
+        and opponent_information_queries[
+            "match_clustered_contingent_policy_consistency_rate"
+        ] >= 0.60
+        and opponent_information_queries[
+            "match_clustered_observed_branch_policy_regret"
+        ] <= 0.05
         and opponent_information_queries["all_paired_same_action_horizon"]
         and opponent_information_queries["all_shadow_only"]
         and opponent_information_queries["all_non_controlling"]
@@ -590,7 +596,7 @@ def aggregate_online_calibration(
         if require_opponent_information_queries else True
     )
     return {
-        "version": 25,
+        "version": 26,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),

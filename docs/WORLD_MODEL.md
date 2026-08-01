@@ -850,9 +850,10 @@ make no calibrated joint-probability claim.
 
 The coach may submit one `opponent_information_query` for its selected action.
 It chooses only an observable tactical feature, an already evaluated future
-horizon, and whether the question is intended to reduce opponent uncertainty or
-resolve an action choice. The LLM cannot choose a threshold, likelihood model,
-posterior update, information-gain value, or action value. The engine fixes the
+horizon, whether the question is intended to reduce opponent uncertainty or
+resolve an action choice, and one shadow action for each high/low observation.
+The LLM cannot choose a threshold, likelihood model, posterior update,
+information-gain value, or action value. The engine fixes the
 binary observation at `feature >= 0.5` with a bounded observation-noise model and
 evaluates all four tactical features, not only the feature selected by the LLM.
 
@@ -867,6 +868,13 @@ value first for action-resolution queries. It therefore exposes whether the LLM
 found the model's best question for its declared purpose or merely supplied a
 plausible narrative. Rank, objective regret, and normalized objective efficiency
 make that comparison explicit rather than relying on explanation quality.
+
+The same audit evaluates the proposed high/low actions against the best action in
+each posterior branch. It reports branch regrets, expected policy regret, worst
+branch regret, and a model-owned consistency certificate (`expected <= 0.03`,
+`worst branch <= 0.05`). When the observation later resolves, the score records
+the applicable proposed action and its branch regret. This is a test of conditional
+reasoning only: neither action is queued or automatically executed.
 
 At the declared horizon, the simulator records all four observable opponent
 tactical controls and computes Brier scores for the frozen feature forecasts.

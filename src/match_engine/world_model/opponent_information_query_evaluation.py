@@ -121,6 +121,18 @@ def opponent_information_query_diagnostics(
         "match_clustered_supported_query_purpose_rate": clustered_rate(
             lambda row: row["purpose_supported"]
         ),
+        "match_clustered_contingent_policy_consistency_rate": clustered_rate(
+            lambda row: row["contingent_policy_model_checked_consistent"]
+        ),
+        "match_clustered_observed_branch_action_alignment_rate": clustered_rate(
+            lambda row: row["observed_branch_action_aligned"]
+        ),
+        "match_clustered_observed_branch_policy_regret": clustered(
+            "observed_branch_policy_regret"
+        ),
+        "match_clustered_expected_contingent_policy_regret": clustered(
+            "expected_contingent_policy_regret"
+        ),
         "all_paired_same_action_horizon": all(
             row.get("paired_same_action_horizon") for row in valid
         ),
