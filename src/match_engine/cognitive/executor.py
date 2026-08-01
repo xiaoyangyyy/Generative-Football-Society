@@ -167,6 +167,7 @@ class CognitiveExecutor:
         world_model_runtime=None,
         outcome_residual_memory=None,
         opponent_meta_belief_memory=None,
+        opponent_response_memory=None,
         policy_environment_signature: str = "environment_unspecified",
     ) -> None:
         self.cfg = cfg
@@ -175,6 +176,7 @@ class CognitiveExecutor:
         self.world_model_runtime = world_model_runtime
         self.outcome_residual_memory = outcome_residual_memory
         self.opponent_meta_belief_memory = opponent_meta_belief_memory
+        self.opponent_response_memory = opponent_response_memory
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -277,6 +279,8 @@ class CognitiveExecutor:
                 state._wm_opponent_meta_belief_memory = (
                     self.opponent_meta_belief_memory
                 )
+            if self.opponent_response_memory is not None:
+                state._wm_opponent_response_memory = self.opponent_response_memory
             trig.facts["world_model_decision_support"] = (
                 build_coach_decision_packet(
                     self.world_model_runtime,
@@ -353,6 +357,22 @@ class CognitiveExecutor:
                 reweight_counterfactual_candidates(
                     packet, updated_belief["posterior"],
                 )
+                from src.match_engine.world_model.opponent_game import (
+                    apply_llm_response_hypothesis,
+                    attach_second_order_game,
+                )
+
+                packet["second_order_game"] = attach_second_order_game(
+                    packet.get("candidates") or [],
+                    updated_belief,
+                    self.opponent_response_memory,
+                )
+                response_audit = apply_llm_response_hypothesis(
+                    packet,
+                    plan.get("opponent_response_hypothesis"),
+                    self.opponent_response_memory,
+                )
+                plan["opponent_response_hypothesis_audit"] = response_audit
                 from src.match_engine.world_model.active_learning import (
                     build_active_learning_advice,
                 )
@@ -573,6 +593,32 @@ class CognitiveExecutor:
                                 "opponent_hypothesis_values"
                             ) or {}
                         ),
+                    },
+                    opponent_response_context={
+                        "version": int((packet.get("second_order_game") or {}).get(
+                            "version", 0,
+                        )),
+                        "scope": str((packet.get("second_order_game") or {}).get(
+                            "scope", "unavailable",
+                        )),
+                        "prediction": dict(selected_candidate.get(
+                            "opponent_response_prediction"
+                        ) or {}),
+                        "best_continuation_action": str(selected_candidate.get(
+                            "best_continuation_action", "none",
+                        )),
+                        "best_continuation_value": float(selected_candidate.get(
+                            "best_continuation_value", 0.0,
+                        )),
+                        "single_ply_value": float(selected_candidate.get(
+                            "single_ply_risk_adjusted_value", 0.0,
+                        )),
+                        "two_ply_value": float(selected_candidate.get(
+                            "two_ply_risk_adjusted_value", 0.0,
+                        )),
+                        "llm_hypothesis_audit": dict(rec.plan.get(
+                            "opponent_response_hypothesis_audit"
+                        ) or {}),
                     },
                 )
                 if adoption is not None:

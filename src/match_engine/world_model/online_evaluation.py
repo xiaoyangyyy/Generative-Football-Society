@@ -26,6 +26,9 @@ from src.match_engine.world_model.uncertainty import (
 from src.match_engine.world_model.opponent_belief import (
     opponent_belief_diagnostics,
 )
+from src.match_engine.world_model.opponent_response import (
+    opponent_response_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -50,6 +53,7 @@ def aggregate_online_calibration(
     require_opponent_belief: bool = False,
     require_opponent_meta_belief: bool = False,
     require_opponent_change_detection: bool = False,
+    require_opponent_response_model: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -172,6 +176,7 @@ def aggregate_online_calibration(
         policy_record_clusters,
     )
     opponent_belief = opponent_belief_diagnostics(logs)
+    opponent_response = opponent_response_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -250,8 +255,19 @@ def aggregate_online_calibration(
         opponent_change_detection_ready
         if require_opponent_change_detection else True
     )
+    opponent_response_ready = bool(
+        opponent_response["realized_predictions"]
+        >= max(2, min_residual_samples)
+        and opponent_response["validated_learned_predictions"]
+        >= max(2, min_residual_samples)
+        and opponent_response["mean_composition_identity_error"] <= 1e-6
+        and opponent_response["all_llm_hypotheses_non_persistent"]
+    )
+    gates["opponent_response_model_evidence"] = (
+        opponent_response_ready if require_opponent_response_model else True
+    )
     return {
-        "version": 7,
+        "version": 8,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -278,6 +294,7 @@ def aggregate_online_calibration(
             "active_learning": active_learning,
             "uncertainty_decomposition": uncertainty_decomposition,
             "opponent_belief": opponent_belief,
+            "opponent_response": opponent_response,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -294,6 +311,7 @@ def aggregate_online_calibration(
         "opponent_belief_ready": opponent_belief_ready,
         "opponent_meta_belief_ready": opponent_meta_belief_ready,
         "opponent_change_detection_ready": opponent_change_detection_ready,
+        "opponent_response_model_ready": opponent_response_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -303,5 +321,6 @@ def aggregate_online_calibration(
             "Residual memory is isolated by checkpoint and policy-environment fingerprint.",
             "Active-learning acquisition is policy-selected, not randomized; its uncertainty reduction is descriptive.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
+            "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
         ],
     }

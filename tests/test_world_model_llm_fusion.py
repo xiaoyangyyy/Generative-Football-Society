@@ -241,6 +241,8 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     )
 
     assert "opponent_change_claim" in gateway.user_prompt
+    assert "opponent_response_hypothesis" in gateway.user_prompt
+    assert "two-ply belief-space policy proxy" in gateway.system_prompt
     assert "from_preset" in gateway.user_prompt
     assert "cannot" in gateway.system_prompt
     assert "change_point" in gateway.system_prompt
@@ -327,6 +329,59 @@ def test_executor_injects_world_model_evidence_before_llm_and_applies_plan():
     assert adoption["action_outcome_predictions"]["shot"]["60s"]
     assert record.applied
     assert state.home.coach.tactical_current["pressing_intensity"] > 0.5
+
+
+def test_executor_audits_llm_response_branch_and_persists_planning_context():
+    class ResponseLLM:
+        def coach_in_match_plan(self, team_name, facts, kind):
+            packet = facts["world_model_decision_support"]
+            action = packet["recommended_action"]
+            candidate = next(
+                item for item in packet["candidates"]
+                if item["action"] == action
+            )
+            posterior = candidate["opponent_response_prediction"][
+                "response_posterior"
+            ]
+            response = max(posterior, key=posterior.get)
+            return json.dumps({
+                "reasoning": "Stress the model-supported response branch.",
+                "confidence": 0.8,
+                "controls_delta": {},
+                "world_model_action": action,
+                "opponent_response_hypothesis": {
+                    "if_action": action,
+                    "response_preset": response,
+                    "confidence": 0.8,
+                    "rationale": "Conditional scenario only.",
+                },
+            })
+
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(
+            enabled=True, world_model_action_control_rate=0.0,
+        ),
+        ResponseLLM(),
+        world_model_runtime=_Runtime(),
+    )
+    state = _state()
+    record = executor.process_trigger(CognitiveTriggerEvent(
+        60.0, "xg_swing", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    ), state)
+    audit = record.plan["opponent_response_hypothesis_audit"]
+    context = state._wm_coach_decision_adoption[-1][
+        "opponent_response_context"
+    ]
+
+    assert audit["accepted"]
+    assert audit["bounded_influence"] <= 0.15
+    assert not audit["can_update_response_memory"]
+    assert context["prediction"]["action"] == record.plan["world_model_action"]
+    assert context["best_continuation_action"] in {
+        "hold", "pass", "cross", "shot",
+    }
+    assert context["llm_hypothesis_audit"]["accepted"]
 
 
 def test_executor_closes_llm_action_when_world_model_quality_gate_is_closed():

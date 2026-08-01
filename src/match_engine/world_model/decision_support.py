@@ -20,9 +20,10 @@ from src.match_engine.world_model.opponent_belief import (
     tactic_feature_vector,
     update_opponent_belief,
 )
+from src.match_engine.world_model.opponent_game import attach_second_order_game
 
 
-DECISION_PACKET_VERSION = 6
+DECISION_PACKET_VERSION = 7
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -346,6 +347,11 @@ def build_prematch_tactical_packet(
             horizon_s=horizon_s,
             uncertainty_penalty=uncertainty_penalty,
         )
+        second_order_game = attach_second_order_game(
+            action_evidence,
+            opponent_belief,
+            getattr(state, "_wm_opponent_response_memory", None),
+        )
         by_action = {item["action"]: item for item in action_evidence}
         tactical_candidates = []
         for preset_name in normalized:
@@ -425,6 +431,7 @@ def build_prematch_tactical_packet(
             "candidates": tactical_candidates,
             "action_evidence": action_evidence,
             "opponent_belief": opponent_belief,
+            "second_order_game": second_order_game,
             "limitations": [
                 "Not a full-match win-probability forecast.",
                 "Opponent intent is latent and represented as a changing posterior.",
@@ -527,6 +534,11 @@ def build_coach_decision_packet(
             horizon_s=horizon_s,
             uncertainty_penalty=uncertainty_penalty,
         )
+        second_order_game = attach_second_order_game(
+            candidates,
+            opponent_belief,
+            getattr(state, "_wm_opponent_response_memory", None),
+        )
         from src.match_engine.world_model.active_learning import (
             build_active_learning_advice,
         )
@@ -569,6 +581,7 @@ def build_coach_decision_packet(
             ),
             "candidates": candidates,
             "opponent_belief": opponent_belief,
+            "second_order_game": second_order_game,
             "active_learning": active_learning,
             "online_calibration": _online_calibration_diagnostics(runtime),
             "policy_outcome_calibration": outcome_calibration,

@@ -90,6 +90,14 @@ def main() -> int:
             "detector contract and every LLM change claim is non-controlling."
         ),
     )
+    parser.add_argument(
+        "--require-opponent-response-model",
+        action="store_true",
+        help=(
+            "Fail readiness until enough realized predictions come from a "
+            "held-out-validated opponent response model."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -123,6 +131,7 @@ def main() -> int:
         require_opponent_change_detection=(
             args.require_opponent_change_detection
         ),
+        require_opponent_response_model=args.require_opponent_response_model,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

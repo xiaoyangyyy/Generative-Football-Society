@@ -81,6 +81,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if change_claim is not None:
         out["opponent_change_claim"] = change_claim
+    from src.match_engine.world_model.opponent_game import (
+        validate_llm_response_hypothesis,
+    )
+
+    response_hypothesis = validate_llm_response_hypothesis(
+        plan.get("opponent_response_hypothesis")
+    )
+    if response_hypothesis is not None:
+        out["opponent_response_hypothesis"] = response_hypothesis
     return out
 
 

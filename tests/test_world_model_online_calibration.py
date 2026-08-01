@@ -417,3 +417,48 @@ def test_online_report_isolates_residual_profiles_by_policy_environment():
     }
     assert profiles["checkpoint-a|env-a"]["residual_rows"] == 8
     assert profiles["checkpoint-a|env-b"]["residual_rows"] == 8
+
+
+def test_strict_opponent_response_gate_requires_realized_learned_forecasts():
+    hypotheses = (
+        "balanced", "gegenpress", "possession_control", "counter_attack",
+        "low_block", "wing_play", "direct_vertical",
+    )
+
+    def posterior(primary):
+        return {
+            name: 0.94 if name == primary else 0.01
+            for name in hypotheses
+        }
+
+    records = []
+    for index in range(3):
+        records.append({
+            "team_id": "Home",
+            "created_t_sec": float(index * 60),
+            "intervention_actual_action": "pass" if index < 2 else None,
+            "opponent_belief_context": {
+                "opponent_team_id": "Away",
+                "posterior": posterior("low_block"),
+            },
+            "opponent_response_context": {
+                "prediction": {
+                    "action": "pass",
+                    "learned_active": True,
+                    "source": "validated_action_conditioned_response_memory",
+                    "response_posterior": posterior("low_block"),
+                    "structural_posterior": posterior("balanced"),
+                },
+            },
+        })
+    report = aggregate_online_calibration(
+        [{"world_model_decision_adoption": {"records": records}}],
+        min_residual_samples=2,
+        require_opponent_response_model=True,
+    )
+
+    response = report["decision_adoption"]["opponent_response"]
+    assert response["realized_predictions"] == 2
+    assert response["validated_learned_predictions"] == 2
+    assert report["opponent_response_model_ready"]
+    assert report["gates"]["opponent_response_model_evidence"]

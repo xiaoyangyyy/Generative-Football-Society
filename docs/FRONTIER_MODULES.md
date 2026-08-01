@@ -61,5 +61,13 @@ tactical regime shift. LLM change explanations are directionally verified and
 cannot control the detector. Decision logs retain the posterior,
 counterfactual sensitivity, meta provenance, and regime audit without
 pretending the latent intent has a direct ground-truth label.
+Second-order planning learns action-conditioned opponent belief responses only
+after chronological, match-clustered held-out improvement over a sticky
+structural baseline. A two-ply belief-space planner selects one continuation
+policy against that response distribution, while clearly labelling its reuse of
+the current-state payoff matrix. Bounded LLM response scenarios can stress an
+evaluated branch but cannot persist evidence, alter the learned memory, or claim
+causal opponent reactions. Realized forecasts have a separate online readiness
+gate and match-clustered Brier audit.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

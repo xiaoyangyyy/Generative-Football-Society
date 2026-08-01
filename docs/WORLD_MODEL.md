@@ -417,6 +417,36 @@ These estimates still do not establish long-horizon match improvement or real
 football validity. Aggregate experiments should keep the checkpoint, control
 rate, tactics, and simulator configuration fixed.
 
+### Action-conditioned opponent response and two-ply planning
+
+Sequential coach-decision records now provide a second-order belief transition:
+`P(next opponent tactic belief | current belief, our executed action)`. Evidence
+is isolated by world-model checkpoint and complete policy-environment
+fingerprint. Each match contributes equal total weight, so repeated triggers in
+one match cannot imitate independent sample size. Training and validation are
+chronological; an action-specific transition matrix receives non-zero authority
+only when it improves match-clustered held-out Brier score over a transparent
+sticky structural prior. Even after validation, learned authority is capped at
+`0.50` and the transition remains explicitly observational rather than causal.
+
+The decision packet uses this response belief for a two-ply policy proxy. It
+combines the immediate robust action value with one continuation action chosen
+against the complete predicted response posterior. It never chooses a separate
+continuation using hidden opponent truth. To keep live inference bounded, the
+second ply reuses the current-state hypothesis-conditioned payoff matrix; this
+is not presented as a trajectory rollout or match-value forecast. The active
+learning score includes a bounded response-information term, allowing safe
+experiments to distinguish both current intent and possible reactions.
+
+The LLM may submit one conditional `opponent_response_hypothesis` for an
+evaluated first action. The engine validates its schema and model support, caps
+its branch influence at `0.15` (with half authority when only the structural
+prior exists), and records a non-persistent audit. LLM hypotheses can neither
+write response memory nor make causal claims. Online evaluation scores realized
+response forecasts against the next observed opponent belief with match-level
+clustering and can require learned response evidence via
+`--require-opponent-response-model`.
+
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
@@ -425,5 +455,6 @@ python scripts/evaluate_online_world_model.py \
   --required-policy-horizon 60 --require-policy-effect \
   --require-outcome-calibration --require-uncertainty-decomposition \
   --require-transition-ensemble --require-opponent-belief \
-  --require-opponent-meta-belief --require-opponent-change-detection
+  --require-opponent-meta-belief --require-opponent-change-detection \
+  --require-opponent-response-model
 ```

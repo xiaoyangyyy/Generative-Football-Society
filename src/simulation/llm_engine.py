@@ -245,6 +245,11 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   reject or cap claims that conflict with world-model likelihood;
 - opponent_hypothesis_values are counterfactual model estimates. Prefer actions
   robust across plausible hypotheses when posterior entropy is high;
+- second_order_game is a two-ply belief-space policy proxy. Its continuation
+  reuses the current-state payoff matrix and is not a full trajectory rollout;
+- opponent response transitions are held-out-validated observational patterns,
+  never causal facts. An opponent_response_hypothesis may stress one evaluated
+  action branch, but its influence is capped and cannot update response memory;
 - change_point is computed from live numeric evidence. You may explain a
   watch/confirmed change with opponent_change_claim, but your claim cannot
   trigger, confirm, or cancel the detector. Cite only features whose signed
@@ -276,6 +281,12 @@ Return JSON:
     "confidence": 0.0-1.0,
     "evidence_features": ["pressing_intensity|risk_budget|line_height|rotation_aggressiveness"],
     "rationale": "one short observation-grounded explanation"
+  }},
+  "opponent_response_hypothesis": {{
+    "if_action": "hold|pass|cross|shot",
+    "response_preset": "one preset listed in opponent_belief.hypotheses",
+    "confidence": 0.0-1.0,
+    "rationale": "one short conditional scenario explanation"
   }},
   "opponent_change_claim": {{
     "from_preset": "listed prior preset",
