@@ -174,3 +174,6 @@ def test_llm_and_world_model_event_probabilities_share_one_outcome_score():
     assert score["llm_brier"] == pytest.approx(0.04)
     assert score["world_model_brier"] == pytest.approx(0.140625)
     assert score["llm_brier_gain_vs_world_model"] > 0.0
+    components = score["world_model_event_components"]
+    assert components["projection_brier"] == pytest.approx(0.140625)
+    assert not components["gate"]["active"]

@@ -49,7 +49,7 @@ sealed BA/AUC/Brier/ECE gates. Shot planning remains disabled.
 Tests cover paired-noise cancellation, event hazard statistics, hierarchy role
 relevance, meta shadow/commit/rollback semantics, memory provenance and utility,
 graph shapes/no-self-edge invariants, active-sampling priority, immutable
-manifests, legacy checkpoint loading, and v7 transition-ensemble checkpoint
+manifests, legacy checkpoint loading, and v8 transition/semantic-ensemble checkpoint
 round trips.
 Strategic fusion also keeps a match-local Bayesian posterior over opponent
 tactical intent, runs each action under every supported opponent hypothesis,
@@ -89,5 +89,10 @@ projections. Its probability and the neural member-frequency probability are
 frozen, joined to the exact same later simulator outcome, and compared with
 paired match-clustered Brier scores. This semantic event path remains
 non-controlling even when its evaluation gate is ready.
+V8 additionally trains member-aligned semantic event heads from realized
+one- and two-step future states with proper BCE. Each event/depth must beat both
+the training prevalence and transparent geometry projection under grouped
+validation before receiving capped blending authority; unsupported longer
+horizons remain projection-only.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

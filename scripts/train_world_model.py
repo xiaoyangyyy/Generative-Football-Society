@@ -13,6 +13,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 
+from src.match_engine.world_model.semantic_event_training import (
+    bootstrap_semantic_event_loss,
+    semantic_event_validation,
+)
+from src.match_engine.world_model.state_scales import (
+    FALSIFIABLE_SEMANTIC_EVENTS,
+    projected_semantic_event_probabilities,
+    semantic_event_targets,
+)
+
 
 def _merge(*arrays):
     parts = [a for a in arrays if len(a) > 0]
@@ -122,6 +132,12 @@ def main() -> None:
         default=0.20,
         help="Fraction of epochs reserved for one-step warmup before linear ramp.",
     )
+    parser.add_argument(
+        "--semantic-event-loss-weight",
+        type=float,
+        default=0.20,
+        help="Final proper-BCE weight for member-specific semantic event heads.",
+    )
     parser.add_argument("--dataset-manifest", type=str, default="")
     args = parser.parse_args()
     if args.epochs < 1:
@@ -130,6 +146,8 @@ def main() -> None:
         parser.error("--multi-step-loss-weight must be in [0, 1]")
     if not 0.0 <= args.multi_step_warmup_fraction < 1.0:
         parser.error("--multi-step-warmup-fraction must be in [0, 1)")
+    if not 0.0 <= args.semantic_event_loss_weight <= 1.0:
+        parser.error("--semantic-event-loss-weight must be in [0, 1]")
 
     try:
         import torch
@@ -218,6 +236,7 @@ def main() -> None:
     progress_after = np.where(attacking_home, nxt[:, 200], 1.0 - nxt[:, 200])
     xg_delta = np.clip(progress_after - progress_before, -1.0, 1.0).astype(np.float32)
     act = strip_outcome_leakage(act)
+    event_targets = semantic_event_targets(obs, nxt)
 
     cfg = WorldModelConfig.from_env()
     cfg.transition_type = args.transition
@@ -263,6 +282,7 @@ def main() -> None:
         torch.from_numpy(xg_delta[train_idx]),
         torch.from_numpy(pass_mask[train_idx]),
         torch.from_numpy(shot_mask[train_idx]),
+        torch.from_numpy(event_targets[train_idx]),
     )
     loader_generator = torch.Generator().manual_seed(42)
     loader = DataLoader(
@@ -274,14 +294,24 @@ def main() -> None:
         obs, nxt, groups, train_idx,
     )
     train_pair_groups = int(len(np.unique(groups[train_pair_left])))
+    train_event_base_rates = (
+        event_targets[train_idx].sum(axis=0) + 0.5
+    ) / (len(train_idx) + 1.0)
     if len(train_pair_left):
         train_pair_actions = np.stack([
             act[train_pair_left], act[train_pair_left + 1],
         ], axis=1).astype(np.float32)
+        train_pair_event_targets = semantic_event_targets(
+            obs[train_pair_left], nxt[train_pair_left + 1],
+        )
+        train_pair_event_base_rates = (
+            train_pair_event_targets.sum(axis=0) + 0.5
+        ) / (len(train_pair_event_targets) + 1.0)
         sequence_ds = TensorDataset(
             torch.from_numpy(obs[train_pair_left]),
             torch.from_numpy(train_pair_actions),
             torch.from_numpy(nxt[train_pair_left + 1]),
+            torch.from_numpy(train_pair_event_targets),
         )
         sequence_loader = DataLoader(
             sequence_ds,
@@ -292,10 +322,16 @@ def main() -> None:
         )
     else:
         sequence_loader = None
+        train_pair_event_base_rates = np.full(
+            len(FALSIFIABLE_SEMANTIC_EVENTS), 0.5, dtype=np.float32,
+        )
 
     model.train()
     total_sequence_optimization_steps = 0
     max_sequence_weight_applied = 0.0
+    semantic_event_one_step_optimization_steps = 0
+    semantic_event_two_step_optimization_steps = 0
+    max_semantic_event_weight_applied = 0.0
     for epoch in range(args.epochs):
         loss_sum = 0.0
         sequence_loss_sum = 0.0
@@ -307,9 +343,15 @@ def main() -> None:
             args.epochs,
             warmup_fraction=args.multi_step_warmup_fraction,
         )
+        semantic_event_weight = _multi_step_curriculum_weight(
+            args.semantic_event_loss_weight,
+            epoch,
+            args.epochs,
+            warmup_fraction=args.multi_step_warmup_fraction,
+        )
         sequence_iterator = iter(sequence_loader) if sequence_loader else None
         for batch in loader:
-            o, a, no, ps, sg, xg, pm, sm = batch
+            o, a, no, ps, sg, xg_batch, pm, sm, event_target = batch
             z_members, pred_obs_members = model.transition_predictions(o, a)
             transition_bootstrap = torch.stack([
                 torch.empty_like(pm).exponential_().clamp_max(4.0)
@@ -365,7 +407,7 @@ def main() -> None:
                     progress_losses.append(
                         (((progress_all[
                             member_index, head_idx,
-                        ].view(-1) - xg) ** 2) * joint_bootstrap).sum()
+                        ].view(-1) - xg_batch) ** 2) * joint_bootstrap).sum()
                         / joint_bootstrap.sum().clamp_min(1.0)
                     )
             pass_loss = torch.stack(pass_losses).mean()
@@ -377,16 +419,38 @@ def main() -> None:
                 + 0.30 * shot_loss
                 + 0.20 * progress_loss
             )
-            if sequence_iterator is not None and sequence_weight > 0.0:
-                try:
-                    sequence_obs, sequence_actions, sequence_target = next(
-                        sequence_iterator
+            if semantic_event_weight > 0.0:
+                event_logits = model.semantic_event_logits(
+                    o, pred_obs_members, a,
+                )
+                event_loss, _event_member_losses = (
+                    bootstrap_semantic_event_loss(
+                        event_logits,
+                        event_target,
+                        transition_bootstrap,
                     )
+                )
+                loss = loss + semantic_event_weight * event_loss
+                semantic_event_one_step_optimization_steps += 1
+                max_semantic_event_weight_applied = max(
+                    max_semantic_event_weight_applied,
+                    semantic_event_weight,
+                )
+            if (
+                sequence_iterator is not None
+                and (sequence_weight > 0.0 or semantic_event_weight > 0.0)
+            ):
+                try:
+                    sequence_batch = next(sequence_iterator)
                 except StopIteration:
                     sequence_iterator = iter(sequence_loader)
-                    sequence_obs, sequence_actions, sequence_target = next(
-                        sequence_iterator
-                    )
+                    sequence_batch = next(sequence_iterator)
+                (
+                    sequence_obs,
+                    sequence_actions,
+                    sequence_target,
+                    sequence_event_target,
+                ) = sequence_batch
                 sequence_predictions = model.transition_rollout_predictions(
                     sequence_obs, sequence_actions,
                 )
@@ -396,21 +460,37 @@ def main() -> None:
                     ).exponential_().clamp_max(4.0)
                     for _ in range(model.transition_member_count)
                 ], dim=0)
-                sequence_loss, _sequence_member_losses = (
-                    _bootstrap_transition_loss(
+                if sequence_weight > 0.0:
+                    sequence_loss, _sequence_member_losses = (
+                        _bootstrap_transition_loss(
+                            sequence_predictions,
+                            sequence_target,
+                            obs_weights,
+                            sequence_bootstrap,
+                        )
+                    )
+                    loss = loss + sequence_weight * sequence_loss
+                    sequence_loss_sum += float(sequence_loss.item())
+                    sequence_batches += 1
+                    total_sequence_optimization_steps += 1
+                    max_sequence_weight_applied = max(
+                        max_sequence_weight_applied, sequence_weight,
+                    )
+                if semantic_event_weight > 0.0:
+                    sequence_event_logits = model.semantic_event_logits(
+                        sequence_obs,
                         sequence_predictions,
-                        sequence_target,
-                        obs_weights,
+                        sequence_actions.mean(dim=1),
+                    )
+                    sequence_event_loss, _ = bootstrap_semantic_event_loss(
+                        sequence_event_logits,
+                        sequence_event_target,
                         sequence_bootstrap,
                     )
-                )
-                loss = loss + sequence_weight * sequence_loss
-                sequence_loss_sum += float(sequence_loss.item())
-                sequence_batches += 1
-                total_sequence_optimization_steps += 1
-                max_sequence_weight_applied = max(
-                    max_sequence_weight_applied, sequence_weight,
-                )
+                    loss = loss + (
+                        semantic_event_weight * sequence_event_loss
+                    )
+                    semantic_event_two_step_optimization_steps += 1
             opt.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -423,8 +503,13 @@ def main() -> None:
             f"members={model.transition_member_count} "
             f"two_step_pairs={len(train_pair_left)} "
             f"two_step_weight={sequence_weight:.4f} "
-            f"two_step_loss={sequence_loss_sum/max(1,sequence_batches):.4f}"
+            f"two_step_loss={sequence_loss_sum/max(1,sequence_batches):.4f} "
+            f"semantic_event_weight={semantic_event_weight:.4f}"
         )
+
+    model.semantic_event_heads_trained = bool(
+        semantic_event_one_step_optimization_steps > 0
+    )
 
     model.eval()
     with torch.no_grad():
@@ -467,6 +552,21 @@ def main() -> None:
             if np.std(transition_disagreement) > 1e-12
             and np.std(transition_error) > 1e-12
             else 0.0
+        )
+        one_step_event_members = torch.sigmoid(
+            model.semantic_event_logits(vo, vp_members, va)
+        ).numpy()
+        one_step_projection = projected_semantic_event_probabilities(
+            obs[val_idx],
+            vp_members.numpy(),
+            ensemble_trained=model.transition_ensemble_trained,
+        )
+        one_step_event_validation = semantic_event_validation(
+            one_step_event_members,
+            event_targets[val_idx],
+            one_step_projection,
+            train_event_base_rates,
+            groups[val_idx],
         )
         pair_left = _sequential_transition_pairs(
             obs, nxt, groups, val_idx,
@@ -513,12 +613,35 @@ def main() -> None:
                 else 0.0
             )
             two_step_groups = int(len(np.unique(groups[pair_left])))
+            two_step_event_targets = semantic_event_targets(
+                obs[pair_left], nxt[pair_left + 1],
+            )
+            two_step_event_members = torch.sigmoid(
+                model.semantic_event_logits(
+                    torch.from_numpy(obs[pair_left]),
+                    rollout_members,
+                    torch.from_numpy(pair_actions).mean(dim=1),
+                )
+            ).numpy()
+            two_step_projection = projected_semantic_event_probabilities(
+                obs[pair_left],
+                rollout_members.numpy(),
+                ensemble_trained=model.transition_ensemble_trained,
+            )
+            two_step_event_validation = semantic_event_validation(
+                two_step_event_members,
+                two_step_event_targets,
+                two_step_projection,
+                train_pair_event_base_rates,
+                groups[pair_left],
+            )
         else:
             two_step_mse = two_step_persistence_mse = two_step_skill = 0.0
             two_step_member_mean_mse = two_step_ensemble_gain = 0.0
             two_step_disagreement_error_correlation = 0.0
             two_step_groups = 0
-        progress_target = torch.from_numpy(xg[val_idx]).float().view(-1)
+            two_step_event_validation = {"version": 1, "events": {}}
+        progress_target = torch.from_numpy(xg_delta[val_idx]).float().view(-1)
         progress_rmse = float(torch.sqrt(torch.mean(
             (vxp.view(-1) - progress_target) ** 2
         )).item())
@@ -616,6 +739,23 @@ def main() -> None:
             "max_curriculum_weight_applied": max_sequence_weight_applied,
             "warmup_fraction": float(args.multi_step_warmup_fraction),
         },
+        "semantic_event_heads": {
+            "version": 1,
+            "trained": model.semantic_event_heads_trained,
+            "event_order": list(FALSIFIABLE_SEMANTIC_EVENTS),
+            "max_validated_rollout_steps": 2,
+            "one_step": one_step_event_validation,
+            "two_step": two_step_event_validation,
+            "one_step_optimization_steps": (
+                semantic_event_one_step_optimization_steps
+            ),
+            "two_step_optimization_steps": (
+                semantic_event_two_step_optimization_steps
+            ),
+            "max_loss_weight_applied": max_semantic_event_weight_applied,
+            "proper_scoring": True,
+            "outcome_reweighting": False,
+        },
         "progress_rmse": progress_rmse,
         "pass_balanced_accuracy": pass_balanced_accuracy,
         "shot_brier": shot_brier,
@@ -657,6 +797,21 @@ def main() -> None:
                 "member_independent_bootstrap": True,
                 "optimization_steps": total_sequence_optimization_steps,
                 "max_curriculum_weight_applied": max_sequence_weight_applied,
+            },
+            "semantic_event_training": {
+                "events": list(FALSIFIABLE_SEMANTIC_EVENTS),
+                "one_step_optimization_steps": (
+                    semantic_event_one_step_optimization_steps
+                ),
+                "two_step_optimization_steps": (
+                    semantic_event_two_step_optimization_steps
+                ),
+                "configured_loss_weight": float(
+                    args.semantic_event_loss_weight
+                ),
+                "max_loss_weight_applied": max_semantic_event_weight_applied,
+                "member_independent_bootstrap": True,
+                "labels": "realized_future_state_only",
             },
         },
     )

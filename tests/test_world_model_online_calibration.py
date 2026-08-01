@@ -548,6 +548,8 @@ def test_strict_semantic_event_gate_requires_paired_shadow_match_evidence():
         target = float(observed)
         llm_probability = 0.75 if observed else 0.25
         model_probability = 0.65 if observed else 0.35
+        projection_probability = 0.55 if observed else 0.45
+        learned_probability = 0.75 if observed else 0.25
         evaluation = {
             "version": 1,
             "event": "retain_possession",
@@ -565,6 +567,21 @@ def test_strict_semantic_event_gate_requires_paired_shadow_match_evidence():
             "event_signature": "llm-event:test-contract",
             "checkpoint_signature": "checkpoint-a",
             "environment_signature": "environment-a",
+            "world_model_event_components": {
+                "projection_probability": projection_probability,
+                "projection_brier": (
+                    projection_probability - target
+                ) ** 2,
+                "learned_probability": learned_probability,
+                "learned_brier": (learned_probability - target) ** 2,
+                "fused_probability": model_probability,
+                "fused_brier": (model_probability - target) ** 2,
+                "gate": {
+                    "active": True,
+                    "authority": 0.4,
+                    "reason": "grouped_event_head_gain",
+                },
+            },
         }
         logs.append({
             "world_model_decision_adoption": {
@@ -581,6 +598,7 @@ def test_strict_semantic_event_gate_requires_paired_shadow_match_evidence():
         logs,
         min_residual_samples=4,
         require_llm_semantic_events=True,
+        require_learned_semantic_events=True,
     )
 
     diagnostics = report["decision_adoption"]["llm_semantic_events"]
@@ -592,6 +610,17 @@ def test_strict_semantic_event_gate_requires_paired_shadow_match_evidence():
     assert not diagnostics["authority_active"]
     assert report["llm_semantic_events_ready"]
     assert report["gates"]["paired_llm_semantic_event_evaluation"]
+    assert diagnostics["realized_learned_head_predictions"] == 4
+    assert diagnostics["learned_head_matches"] == 4
+    assert diagnostics["match_clustered_learned_head_brier"] < (
+        diagnostics["match_clustered_projection_brier"]
+    )
+    assert diagnostics["match_clustered_fused_event_brier"] < (
+        diagnostics["match_clustered_projection_brier"]
+    )
+    assert diagnostics["all_learned_authority_bounded"]
+    assert report["learned_semantic_events_ready"]
+    assert report["gates"]["validated_learned_semantic_event_fusion"]
 
     last_evaluation = logs[-1]["world_model_decision_adoption"]["records"][0][
         "multi_horizon_regime_outcomes"

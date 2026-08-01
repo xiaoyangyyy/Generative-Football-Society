@@ -148,6 +148,25 @@ def apply_llm_event_hypothesis(
             "hypothesis": hypothesis,
         }
     model_probability = float(np.clip(raw_model_probability, 0.0, 1.0))
+    fusion = (
+        (state_scales.get("semantic_event_fusion") or {}).get(
+            hypothesis["event"]
+        ) or {}
+    )
+    model_components = {
+        "projection_probability": float(np.clip(float(fusion.get(
+            "projection_probability", model_probability,
+        )), 0.0, 1.0)),
+        "learned_probability": float(np.clip(float(fusion.get(
+            "learned_probability", 0.5,
+        )), 0.0, 1.0)),
+        "fused_probability": model_probability,
+        "gate": dict(fusion.get("gate") or {
+            "active": False,
+            "authority": 0.0,
+            "reason": "projection_only",
+        }),
+    }
     llm_probability = (
         hypothesis["confidence"]
         if hypothesis["expectation"] == "occur"
@@ -160,6 +179,7 @@ def apply_llm_event_hypothesis(
         "hypothesis": hypothesis,
         "grounded_evidence_scales": grounded_scales,
         "world_model_event_probability": model_probability,
+        "world_model_event_components": model_components,
         "llm_event_probability": float(llm_probability),
         "probability_disagreement": float(abs(
             llm_probability - model_probability
@@ -228,6 +248,22 @@ def score_llm_event_hypothesis(
     ))
     llm_brier = (llm_probability - target) ** 2
     model_brier = (model_probability - target) ** 2
+    components = context.get("world_model_event_components") or {}
+    component_scores = {}
+    for name in ("projection_probability", "learned_probability"):
+        try:
+            probability = float(components[name])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if np.isfinite(probability):
+            probability = float(np.clip(probability, 0.0, 1.0))
+            component_scores[name] = probability
+            component_scores[name.replace("probability", "brier")] = float(
+                (probability - target) ** 2
+            )
+    component_scores["fused_probability"] = model_probability
+    component_scores["fused_brier"] = float(model_brier)
+    component_scores["gate"] = dict(components.get("gate") or {})
     return {
         "version": LLM_EVENT_HYPOTHESIS_VERSION,
         "event": event,
@@ -236,6 +272,7 @@ def score_llm_event_hypothesis(
         "world_model_probability": model_probability,
         "llm_brier": float(llm_brier),
         "world_model_brier": float(model_brier),
+        "world_model_event_components": component_scores,
         "llm_brier_gain_vs_world_model": float(model_brier - llm_brier),
         "shadow_only": True,
         "causal_interpretation": False,
@@ -286,6 +323,15 @@ def _match_equal_calibration_error(
     ]))
 
 
+def _match_equal_field(
+    match_rows: list[list[dict[str, Any]]], field: str,
+) -> float:
+    populated = [rows for rows in match_rows if rows]
+    return float(np.mean([
+        np.mean([float(row[field]) for row in rows]) for rows in populated
+    ])) if populated else 0.0
+
+
 def semantic_event_diagnostics(match_logs: list[dict[str, Any]]) -> dict[str, Any]:
     """Match-equal audit of paired LLM and neural semantic-event forecasts."""
     match_rows: list[list[dict[str, Any]]] = []
@@ -327,12 +373,41 @@ def semantic_event_diagnostics(match_logs: list[dict[str, Any]]) -> dict[str, An
                     continue
                 row = dict(evaluation)
                 row["horizon"] = str(horizon)
+                components = row.get("world_model_event_components") or {}
+                component_gate = components.get("gate") or {}
+                if component_gate.get("active"):
+                    required_components = (
+                        "projection_brier", "learned_brier", "fused_brier",
+                    )
+                    try:
+                        component_values = [
+                            float(components[key]) for key in required_components
+                        ]
+                    except (KeyError, TypeError, ValueError):
+                        malformed_evaluations += 1
+                        continue
+                    if not all(np.isfinite(value) for value in component_values):
+                        malformed_evaluations += 1
+                        continue
+                    row["_projection_brier"] = component_values[0]
+                    row["_learned_brier"] = component_values[1]
+                    row["_fused_brier"] = component_values[2]
                 rows.append(row)
                 key = f"{row.get('event', 'unknown')}|{horizon}"
                 profile_rows.setdefault(key, []).append(row)
         if rows:
             match_rows.append(rows)
     flat = [row for rows in match_rows for row in rows]
+    learned_match_rows = [
+        [
+            row for row in rows
+            if bool(((row.get("world_model_event_components") or {}).get(
+                "gate"
+            ) or {}).get("active"))
+        ]
+        for rows in match_rows
+    ]
+    learned_match_rows = [rows for rows in learned_match_rows if rows]
     clustered_llm_brier = float(np.mean([
         np.mean([float(row["llm_brier"]) for row in rows])
         for rows in match_rows
@@ -387,6 +462,25 @@ def semantic_event_diagnostics(match_logs: list[dict[str, Any]]) -> dict[str, An
         ),
         "world_model_calibration_error": _match_equal_calibration_error(
             match_rows, "world_model_probability",
+        ),
+        "realized_learned_head_predictions": sum(map(
+            len, learned_match_rows,
+        )),
+        "learned_head_matches": len(learned_match_rows),
+        "match_clustered_projection_brier": _match_equal_field(
+            learned_match_rows, "_projection_brier",
+        ),
+        "match_clustered_learned_head_brier": _match_equal_field(
+            learned_match_rows, "_learned_brier",
+        ),
+        "match_clustered_fused_event_brier": _match_equal_field(
+            learned_match_rows, "_fused_brier",
+        ),
+        "all_learned_authority_bounded": all(
+            0.0 < float(((
+                row.get("world_model_event_components") or {}
+            ).get("gate") or {}).get("authority", 0.0)) <= 0.50
+            for rows in learned_match_rows for row in rows
         ),
         "all_paired_same_outcome": all(
             "llm_brier" in row and "world_model_brier" in row

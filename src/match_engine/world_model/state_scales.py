@@ -18,6 +18,87 @@ FALSIFIABLE_SEMANTIC_EVENTS = (
 )
 
 
+def semantic_event_targets(
+    current_observations: Any,
+    future_observations: Any,
+) -> np.ndarray:
+    """Derive event labels only from current and realized future states."""
+    current = np.asarray(current_observations, dtype=np.float64)
+    future = np.asarray(future_observations, dtype=np.float64)
+    if current.ndim == 1:
+        current = current.reshape(1, -1)
+    if future.ndim == 1:
+        future = future.reshape(1, -1)
+    if (
+        current.ndim != 2
+        or future.shape != current.shape
+        or current.shape[1] != OBS_DIM
+    ):
+        raise ValueError("event states must have matching shape [samples, 307]")
+    current = np.clip(np.nan_to_num(current), 0.0, 1.0)
+    future = np.clip(np.nan_to_num(future), 0.0, 1.0)
+    attacking_home = current[:, -1] >= 0.5
+    direction = np.where(attacking_home, 1.0, -1.0)
+    current_progress = np.where(
+        attacking_home, current[:, 200], 1.0 - current[:, 200],
+    )
+    future_progress = np.where(
+        attacking_home, future[:, 200], 1.0 - future[:, 200],
+    )
+    retention = np.where(
+        attacking_home, future[:, 209], 1.0 - future[:, 209],
+    ) >= 0.5
+    current_goal_diff = direction * 5.0 * (
+        current[:, 204] - current[:, 205]
+    )
+    future_goal_diff = direction * 5.0 * (
+        future[:, 204] - future[:, 205]
+    )
+    return np.stack([
+        retention,
+        future_progress >= 0.67,
+        future_progress - current_progress >= 0.03,
+        future_goal_diff - current_goal_diff >= 0.5,
+    ], axis=1).astype(np.float32)
+
+
+def semantic_event_member_indicators(
+    current_observations: Any,
+    future_member_observations: Any,
+) -> np.ndarray:
+    """Return per-member event indicators with shape [members, samples, events]."""
+    members = np.asarray(future_member_observations, dtype=np.float64)
+    if members.ndim == 2:
+        members = members[:, None, :]
+    if members.ndim != 3 or members.shape[2] != OBS_DIM:
+        raise ValueError("member states must have shape [members, samples, 307]")
+    current = np.asarray(current_observations, dtype=np.float64)
+    if current.ndim == 1:
+        current = current.reshape(1, -1)
+    if current.shape != members.shape[1:]:
+        raise ValueError("current states must align with member samples")
+    return np.stack([
+        semantic_event_targets(current, member) for member in members
+    ], axis=0)
+
+
+def projected_semantic_event_probabilities(
+    current_observations: Any,
+    future_member_observations: Any,
+    *,
+    ensemble_trained: bool,
+) -> np.ndarray:
+    """Jeffreys-smoothed event probabilities for every sample and event."""
+    indicators = semantic_event_member_indicators(
+        current_observations, future_member_observations,
+    )
+    if not ensemble_trained:
+        return np.full(indicators.shape[1:], 0.5, dtype=np.float32)
+    return (
+        (indicators.sum(axis=0) + 0.5) / (indicators.shape[0] + 1.0)
+    ).astype(np.float32)
+
+
 def _samples(values: Any) -> np.ndarray:
     array = np.asarray(values, dtype=np.float64)
     if array.ndim == 3 and array.shape[1] == 1:
@@ -55,6 +136,9 @@ def multiscale_state_forecast(
     current = np.clip(
         np.nan_to_num(current, nan=0.0, posinf=1.0), 0.0, 1.0,
     )
+    # The explicit runtime orientation is authoritative; sparse or synthetic
+    # observations may not carry a reliable attack flag.
+    current[-1] = 1.0 if attacking_home else 0.0
     samples = _samples(transition_samples)
     direction = 1.0 if attacking_home else -1.0
     current_progress = current[200] if attacking_home else 1.0 - current[200]
@@ -77,19 +161,15 @@ def multiscale_state_forecast(
     tactic_shift = np.mean(
         np.abs(samples[:, 298:306] - current[298:306]), axis=1,
     )
-    events = {
-        "retain_possession": _smoothed_probability(possession >= 0.5),
-        "enter_final_third": _smoothed_probability(future_progress >= 0.67),
-        "positive_territorial_shift": _smoothed_probability(
-            progress_delta >= 0.03
-        ),
-        "relieve_ball_pressure": _smoothed_probability(
-            future_pressure <= current_pressure - 0.05
-        ),
-        "improve_scoreline": _smoothed_probability(goal_diff_delta >= 0.5),
-    }
-    if not ensemble_trained:
-        events = {event: 0.5 for event in events}
+    projected = projected_semantic_event_probabilities(
+        current.reshape(1, -1), samples[:, None, :],
+        ensemble_trained=ensemble_trained,
+    )[0]
+    events = dict(zip(FALSIFIABLE_SEMANTIC_EVENTS, map(float, projected)))
+    events["relieve_ball_pressure"] = (
+        _smoothed_probability(future_pressure <= current_pressure - 0.05)
+        if ensemble_trained else 0.5
+    )
     horizon = max(0.0, float(horizon_s))
     primary_scale = (
         "short" if horizon <= 20.0 else "tactical" if horizon <= 120.0

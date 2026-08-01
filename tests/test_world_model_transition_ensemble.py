@@ -173,3 +173,50 @@ def test_autoregressive_two_step_loss_reaches_each_dynamics_member():
     )
     assert primary_grad > 0.0
     assert secondary_grad > 0.0
+
+
+def test_semantic_event_heads_are_member_aligned_and_trainable():
+    torch = pytest.importorskip("torch")
+    from scripts.train_world_model import _bootstrap_transition_loss
+    from src.match_engine.world_model.action_codec import ACTION_DIM
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.model import build_model
+    from src.match_engine.world_model.observation import OBS_DIM
+    from src.match_engine.world_model.semantic_event_training import (
+        bootstrap_semantic_event_loss,
+    )
+
+    model = build_model(WorldModelConfig(
+        latent_dim=16,
+        hidden_dim=32,
+        ensemble_size=2,
+        transition_ensemble_size=2,
+    )).train()
+    observations = torch.rand((2, OBS_DIM))
+    actions = torch.rand((2, ACTION_DIM))
+    _, future_members = model.transition_predictions(observations, actions)
+    logits = model.semantic_event_logits(
+        observations, future_members, actions,
+    )
+    targets = torch.tensor([
+        [1.0, 0.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0, 1.0],
+    ])
+    bootstrap = torch.tensor([[1.0, 0.0], [0.0, 1.0]])
+    event_loss, _ = bootstrap_semantic_event_loss(
+        logits, targets, bootstrap,
+    )
+    transition_loss, _ = _bootstrap_transition_loss(
+        future_members,
+        torch.rand((2, OBS_DIM)),
+        torch.ones(OBS_DIM),
+        bootstrap,
+    )
+    (event_loss + transition_loss).backward()
+
+    assert logits.shape == (2, 2, 4)
+    assert all(
+        head.weight.grad is not None
+        and float(head.weight.grad.abs().sum()) > 0.0
+        for head in model.semantic_event_heads
+    )

@@ -154,7 +154,7 @@ def test_transition_ensemble_config_is_explicit_and_bounded():
         WorldModelConfig(transition_ensemble_size=1)
 
 
-def test_v7_transition_ensemble_checkpoint_round_trip(tmp_path):
+def test_v8_transition_and_semantic_ensemble_checkpoint_round_trip(tmp_path):
     pytest.importorskip("torch")
     from src.match_engine.world_model.config import WorldModelConfig
     from src.match_engine.world_model.model import build_model, load_checkpoint, save_checkpoint
@@ -164,9 +164,10 @@ def test_v7_transition_ensemble_checkpoint_round_trip(tmp_path):
     path = tmp_path / "wm.pt"
     save_checkpoint(str(path), model, cfg, {"quality": 0.0})
     loaded, _, meta = load_checkpoint(str(path))
-    assert loaded.checkpoint_version == 7
+    assert loaded.checkpoint_version == 8
     assert loaded.transition_member_count == cfg.transition_ensemble_size
     assert loaded.transition_ensemble_trained
+    assert loaded.semantic_event_heads_trained
     assert meta["quality"] == 0.0
     from src.match_engine.world_model.inference import WorldModelRuntime
 
@@ -207,6 +208,57 @@ def test_transition_members_produce_independent_state_forecasts(
     )
 
 
+def test_v7_checkpoint_loads_with_neutral_untrained_semantic_heads(tmp_path):
+    torch = pytest.importorskip("torch")
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.model import build_model, load_checkpoint
+
+    cfg = WorldModelConfig(latent_dim=16, hidden_dim=32, ensemble_size=2)
+    model = build_model(cfg)
+    v7_state = {
+        key: value for key, value in model.state_dict().items()
+        if not key.startswith("semantic_event_heads.")
+    }
+    path = tmp_path / "legacy-v7.pt"
+    torch.save({
+        "state_dict": v7_state,
+        "cfg": cfg.__dict__,
+        "obs_dim": OBS_DIM,
+        "action_dim": ACTION_DIM,
+        "meta": {},
+        "version": 7,
+    }, path)
+
+    loaded, _, _ = load_checkpoint(str(path))
+    observation = torch.full((2, OBS_DIM), 0.5)
+    action = torch.zeros((2, ACTION_DIM))
+    _, future_members = loaded.transition_predictions(observation, action)
+    logits = loaded.semantic_event_logits(
+        observation, future_members, action,
+    )
+
+    assert loaded.transition_ensemble_trained
+    assert not loaded.semantic_event_heads_trained
+    assert torch.count_nonzero(logits) == 0
+
+
+def test_v8_checkpoint_preserves_disabled_semantic_training_flag(tmp_path):
+    pytest.importorskip("torch")
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.model import build_model, load_checkpoint, save_checkpoint
+
+    cfg = WorldModelConfig(latent_dim=16, hidden_dim=32, ensemble_size=2)
+    model = build_model(cfg)
+    model.semantic_event_heads_trained = False
+    path = tmp_path / "v8-untrained-events.pt"
+    save_checkpoint(str(path), model, cfg)
+
+    loaded, _, _ = load_checkpoint(str(path))
+
+    assert loaded.checkpoint_version == 8
+    assert not loaded.semantic_event_heads_trained
+
+
 @pytest.mark.parametrize("transition_type", ["gru", "transformer"])
 def test_v6_checkpoint_expands_dynamics_without_fake_disagreement(
     tmp_path, transition_type,
@@ -225,7 +277,10 @@ def test_v6_checkpoint_expands_dynamics_without_fake_disagreement(
     legacy_state = {
         key: value
         for key, value in model.state_dict().items()
-        if not key.startswith(("extra_grus.", "extra_sequence_encoders."))
+        if not key.startswith((
+            "extra_grus.", "extra_sequence_encoders.",
+            "semantic_event_heads.",
+        ))
     }
     legacy_cfg = dict(cfg.__dict__)
     legacy_cfg.pop("transition_ensemble_size")
@@ -247,11 +302,21 @@ def test_v6_checkpoint_expands_dynamics_without_fake_disagreement(
     assert loaded.checkpoint_version == 6
     assert loaded_cfg.transition_ensemble_size == 3
     assert not loaded.transition_ensemble_trained
+    assert not loaded.semantic_event_heads_trained
     assert torch.allclose(predictions[0], predictions[1])
     imagined = loaded.imagine(
         observation[0].numpy(), action[0].numpy(),
     )
     assert imagined.uncertainty_components["transition_epistemic"] == 0.0
+
+    migrated_path = tmp_path / f"migrated-{transition_type}.pt"
+    from src.match_engine.world_model.model import save_checkpoint
+
+    save_checkpoint(str(migrated_path), loaded, loaded_cfg)
+    migrated, _, _ = load_checkpoint(str(migrated_path))
+    assert migrated.checkpoint_version == 8
+    assert not migrated.transition_ensemble_trained
+    assert not migrated.semantic_event_heads_trained
 
 
 def test_v6_zero_pass_residual_preserves_physics_prior():
@@ -330,6 +395,81 @@ def test_runtime_predicts_declared_policy_utility_at_requested_horizon():
     assert longer["aleatoric_uncertainty"] >= prediction[
         "aleatoric_uncertainty"
     ]
+
+
+def test_runtime_blends_only_grouped_validated_event_head_probability():
+    pytest.importorskip("torch")
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.inference import WorldModelRuntime
+    from src.match_engine.world_model.model import build_model
+
+    profile = {
+        "samples": 200,
+        "groups": 12,
+        "positives": 80,
+        "negatives": 120,
+        "learned_brier": 0.12,
+        "best_baseline_brier": 0.16,
+        "skill_vs_best_baseline": 0.25,
+        "ensemble_gain_vs_member_mean": 0.01,
+        "disagreement_error_correlation": 0.20,
+        "calibration_error": 0.05,
+    }
+    cfg = WorldModelConfig(latent_dim=16, hidden_dim=32, ensemble_size=2)
+    runtime = WorldModelRuntime(build_model(cfg), cfg, {
+        "validation": {
+            "planner_quality": 0.8,
+            "weighted_obs_mse": 0.02,
+            "semantic_event_heads": {
+                "trained": True,
+                "one_step_optimization_steps": 100,
+                "two_step_optimization_steps": 50,
+                "one_step": {"events": {
+                    "retain_possession": profile,
+                }},
+                "two_step": {"events": {
+                    "retain_possession": profile,
+                }},
+            },
+        },
+    })
+    prediction = runtime.predict_policy_utility(
+        np.full(OBS_DIM, 0.5, dtype=np.float32),
+        zero_action(),
+        action_kind="hold",
+        attacking_home=True,
+        horizon_s=60.0,
+    )
+    retain = prediction["state_scales"]["semantic_event_fusion"][
+        "retain_possession"
+    ]
+    enter = prediction["state_scales"]["semantic_event_fusion"][
+        "enter_final_third"
+    ]
+
+    assert retain["gate"]["active"]
+    assert retain["learned_probability"] == pytest.approx(0.5)
+    expected = retain["projection_probability"] + retain["gate"][
+        "authority"
+    ] * (0.5 - retain["projection_probability"])
+    assert retain["fused_probability"] == pytest.approx(expected)
+    assert not enter["gate"]["active"]
+    assert enter["fused_probability"] == enter["projection_probability"]
+
+    longer = runtime.predict_policy_utility(
+        np.full(OBS_DIM, 0.5, dtype=np.float32),
+        zero_action(),
+        action_kind="hold",
+        attacking_home=True,
+        horizon_s=180.0,
+    )
+    assert all(
+        not audit["gate"]["active"]
+        and audit["gate"]["reason"] == "rollout_depth_not_validated"
+        for audit in longer["state_scales"][
+            "semantic_event_fusion"
+        ].values()
+    )
 
 
 def test_runtime_scores_action_and_future_from_one_shared_imagination():

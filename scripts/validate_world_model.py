@@ -24,6 +24,14 @@ def main() -> int:
         action="store_true",
         help="Require grouped changing-action two-step holdout authority.",
     )
+    p.add_argument(
+        "--require-semantic-event-heads",
+        action="store_true",
+        help=(
+            "Require at least two grouped-validated learned events at both "
+            "one-step and two-step rollout depths."
+        ),
+    )
     args = p.parse_args()
     trace_dir = Path(args.trace_dir)
     model_path = Path(args.checkpoint)
@@ -87,6 +95,25 @@ def main() -> int:
         validation.get("transition_ensemble_size", 0)
     )
     two_step_planning_gate = rt.two_step_planning_gate()
+    from src.match_engine.world_model.state_scales import (
+        FALSIFIABLE_SEMANTIC_EVENTS,
+    )
+
+    semantic_event_gates = {
+        f"{steps}_step": {
+            event: rt.semantic_event_head_gate(event, rollout_steps=steps)
+            for event in FALSIFIABLE_SEMANTIC_EVENTS
+        }
+        for steps in (1, 2)
+    }
+    semantic_event_heads_ready = bool(
+        version >= 8
+        and getattr(rt.model, "semantic_event_heads_trained", False)
+        and all(
+            sum(bool(gate["active"]) for gate in gates.values()) >= 2
+            for gates in semantic_event_gates.values()
+        )
+    )
     ok = (
         version >= 7
         and mse < 0.12
@@ -96,6 +123,10 @@ def main() -> int:
         and (
             two_step_planning_gate["active"]
             if args.require_two_step_planning else True
+        )
+        and (
+            semantic_event_heads_ready
+            if args.require_semantic_event_heads else True
         )
     )
     print(
@@ -112,6 +143,8 @@ def main() -> int:
                 "transition_ensemble_trained": transition_ensemble_trained,
                 "transition_ensemble_size": transition_ensemble_size,
                 "two_step_planning_gate": two_step_planning_gate,
+                "semantic_event_head_gates": semantic_event_gates,
+                "semantic_event_heads_ready": semantic_event_heads_ready,
                 "pass_planner_quality": rt.pass_quality,
                 "shot_planner_quality": rt.shot_quality,
                 "pass_planner_active": rt.pass_quality >= rt.cfg.min_planner_quality,

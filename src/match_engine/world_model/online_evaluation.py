@@ -66,6 +66,7 @@ def aggregate_online_calibration(
     require_two_step_trajectory_planning: bool = False,
     require_llm_semantic_critic: bool = False,
     require_llm_semantic_events: bool = False,
+    require_learned_semantic_events: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -317,6 +318,21 @@ def aggregate_online_calibration(
     gates["paired_llm_semantic_event_evaluation"] = (
         llm_semantic_events_ready if require_llm_semantic_events else True
     )
+    learned_semantic_events_ready = bool(
+        llm_semantic_events["realized_learned_head_predictions"]
+        >= max(2, min_residual_samples)
+        and llm_semantic_events["learned_head_matches"] >= 4
+        and llm_semantic_events["match_clustered_learned_head_brier"]
+        < llm_semantic_events["match_clustered_projection_brier"] - 1e-12
+        and llm_semantic_events["match_clustered_fused_event_brier"]
+        < llm_semantic_events["match_clustered_projection_brier"] - 1e-12
+        and llm_semantic_events["all_learned_authority_bounded"]
+        and llm_semantic_events["provenance_compatible"]
+    )
+    gates["validated_learned_semantic_event_fusion"] = (
+        learned_semantic_events_ready
+        if require_learned_semantic_events else True
+    )
     return {
         "version": 11,
         "evaluation_kind": (
@@ -369,6 +385,7 @@ def aggregate_online_calibration(
         "two_step_trajectory_planning_ready": trajectory_planning_ready,
         "llm_semantic_critic_ready": llm_semantic_critic_ready,
         "llm_semantic_events_ready": llm_semantic_events_ready,
+        "learned_semantic_events_ready": learned_semantic_events_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -382,5 +399,6 @@ def aggregate_online_calibration(
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",
             "LLM semantic residual critiques remain shadow predictions until match-held-out error reduction; they never rewrite neural forecasts.",
             "LLM semantic event hypotheses and neural event probabilities are scored against the same outcome and remain non-controlling.",
+            "Learned semantic event fusion is evaluated against its transparent projection baseline under bounded per-event authority.",
         ],
     }

@@ -263,6 +263,10 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   listed by one evaluated horizon. It is scored against the same later simulator
   outcome as the neural probability and remains shadow-only; it cannot alter the
   action, model state, or critic memory;
+- semantic_event_fusion distinguishes transparent member-frequency projection
+  from a learned event head. Treat the learned probability as evidence only when
+  that event's exact rollout-depth gate is active; longer unvalidated rollouts
+  intentionally remain projection-only;
 - change_point is computed from live numeric evidence. You may explain a
   watch/confirmed change with opponent_change_claim, but your claim cannot
   trigger, confirm, or cancel the detector. Cite only features whose signed

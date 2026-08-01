@@ -28,6 +28,7 @@ from src.match_engine.world_model.uncertainty import (
     ensemble_uncertainty_decomposition,
 )
 from src.match_engine.world_model.state_scales import (
+    FALSIFIABLE_SEMANTIC_EVENTS,
     multiscale_state_forecast,
 )
 
@@ -591,6 +592,53 @@ class WorldModelRuntime:
                 "transition_ensemble_trained", False,
             )),
         )
+        future_members = np.asarray(transition_samples, dtype=np.float32)
+        if future_members.ndim == 2:
+            future_members = future_members[:, None, :]
+        with torch.no_grad():
+            learned_event_probabilities = torch.sigmoid(
+                self.model.semantic_event_logits(
+                    torch.from_numpy(current.astype(np.float32)).unsqueeze(0),
+                    torch.from_numpy(future_members),
+                    torch.from_numpy(conditioned_action).unsqueeze(0),
+                )
+            ).mean(dim=0).squeeze(0).numpy()
+        projected_events = dict(
+            state_scales["semantic_event_probabilities"]
+        )
+        event_fusion = {}
+        for index, event in enumerate(FALSIFIABLE_SEMANTIC_EVENTS):
+            gate = self.semantic_event_head_gate(
+                event, rollout_steps=rollout_steps,
+            )
+            projected = float(projected_events[event])
+            learned = float(np.clip(
+                learned_event_probabilities[index], 0.0, 1.0,
+            ))
+            authority = float(gate["authority"])
+            fused = float(np.clip(
+                projected + authority * (learned - projected), 0.0, 1.0,
+            ))
+            projected_events[event] = fused
+            event_fusion[event] = {
+                "projection_probability": projected,
+                "learned_probability": learned,
+                "fused_probability": fused,
+                "gate": gate,
+            }
+        state_scales["semantic_event_probabilities"] = projected_events
+        state_scales["semantic_event_fusion"] = event_fusion
+        active_learned_events = [
+            event for event, audit in event_fusion.items()
+            if audit["gate"]["active"]
+        ]
+        state_scales["claims"]["learned_event_heads_active"] = (
+            active_learned_events
+        )
+        if active_learned_events:
+            state_scales["claims"]["probability_source"] = (
+                "per_event_grouped_validation_gated_blend"
+            )
         return {
             "prediction_source": "autoregressive_action_persistence_rollout",
             "horizon_s": float(horizon_s),
@@ -610,6 +658,118 @@ class WorldModelRuntime:
             "semantic_event_probabilities": dict(
                 state_scales["semantic_event_probabilities"]
             ),
+        }
+
+    def semantic_event_head_gate(
+        self,
+        event: str,
+        *,
+        rollout_steps: int,
+    ) -> dict[str, object]:
+        """Authorize learned event blending only for its exact validated depth."""
+        validation = self.meta.get("validation", {}) if isinstance(
+            self.meta, dict
+        ) else {}
+        contract = validation.get("semantic_event_heads") or {}
+        steps = max(1, int(rollout_steps))
+        scope = "one_step" if steps == 1 else (
+            "two_step" if steps == 2 else "unsupported_depth"
+        )
+        scope_report = contract.get(scope) or {}
+        profile = (scope_report.get("events") or {}).get(str(event)) or {}
+        def safe_int(name: str, default: int = 0) -> int:
+            try:
+                return int(profile.get(name, default))
+            except (TypeError, ValueError):
+                return int(default)
+
+        def safe_float(name: str, default: float) -> float:
+            try:
+                return finite_float(float(profile.get(name, default)), default)
+            except (TypeError, ValueError):
+                return float(default)
+
+        samples = safe_int("samples")
+        groups = safe_int("groups")
+        positives = safe_int("positives")
+        negatives = safe_int("negatives")
+        learned_brier = safe_float("learned_brier", 1.0)
+        baseline_brier = safe_float("best_baseline_brier", 0.0)
+        skill = safe_float("skill_vs_best_baseline", -1.0)
+        ensemble_gain = safe_float("ensemble_gain_vs_member_mean", -1.0)
+        calibration_error = safe_float("calibration_error", 1.0)
+        disagreement_correlation = safe_float(
+            "disagreement_error_correlation", -1.0,
+        )
+        trained = bool(
+            getattr(self.model, "semantic_event_heads_trained", False)
+            and contract.get("trained")
+        )
+        optimization_key = (
+            "one_step_optimization_steps"
+            if steps == 1 else "two_step_optimization_steps"
+        )
+        try:
+            optimization_steps = int(contract.get(optimization_key, 0))
+        except (TypeError, ValueError):
+            optimization_steps = 0
+        active = bool(
+            event in FALSIFIABLE_SEMANTIC_EVENTS
+            and scope != "unsupported_depth"
+            and trained
+            and optimization_steps > 0
+            and samples >= 32
+            and groups >= 4
+            and positives >= 4
+            and negatives >= 4
+            and baseline_brier > 1e-10
+            and learned_brier < baseline_brier
+            and skill >= 0.01
+            and ensemble_gain >= -1e-8
+            and disagreement_correlation >= 0.0
+            and calibration_error <= 0.20
+        )
+        sample_factor = samples / (samples + 128.0)
+        group_factor = groups / (groups + 8.0)
+        support_factor = min(positives, negatives) / (
+            min(positives, negatives) + 16.0
+        )
+        skill_factor = float(np.clip(skill / 0.20, 0.0, 1.0))
+        calibration_factor = float(np.clip(
+            1.0 - calibration_error / 0.20, 0.0, 1.0,
+        ))
+        authority = float(np.clip(
+            0.50 * sample_factor * group_factor * support_factor
+            * skill_factor * calibration_factor if active else 0.0,
+            0.0,
+            0.50,
+        ))
+        return {
+            "version": 1,
+            "active": active,
+            "authority": authority,
+            "reason": (
+                "grouped_event_head_gain"
+                if active else (
+                    "rollout_depth_not_validated"
+                    if scope == "unsupported_depth"
+                    else "semantic_event_head_gate_closed"
+                )
+            ),
+            "event": str(event),
+            "rollout_steps": steps,
+            "validation_scope": scope,
+            "samples": samples,
+            "groups": groups,
+            "positives": positives,
+            "negatives": negatives,
+            "learned_brier": learned_brier,
+            "best_baseline_brier": baseline_brier,
+            "skill_vs_best_baseline": skill,
+            "calibration_error": calibration_error,
+            "disagreement_error_correlation": disagreement_correlation,
+            "optimization_steps": optimization_steps,
+            "heads_trained": trained,
         }
 
     def score_action(self, obs: np.ndarray, action: np.ndarray) -> float:

@@ -122,6 +122,14 @@ def main() -> int:
             "are realized across at least four matches and remain shadow-only."
         ),
     )
+    parser.add_argument(
+        "--require-learned-semantic-events",
+        action="store_true",
+        help=(
+            "Fail readiness until validated learned event heads and their "
+            "bounded fusion beat projection across at least four matches."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -161,6 +169,9 @@ def main() -> int:
         ),
         require_llm_semantic_critic=args.require_llm_semantic_critic,
         require_llm_semantic_events=args.require_llm_semantic_events,
+        require_learned_semantic_events=(
+            args.require_learned_semantic_events
+        ),
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

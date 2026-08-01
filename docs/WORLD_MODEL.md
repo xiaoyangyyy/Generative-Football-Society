@@ -1,4 +1,4 @@
-# World Model v7
+# World Model v8
 
 The world model learns action-conditioned match transitions for counterfactual
 pass and shot planning. It is an optional advisory layer: the deterministic
@@ -82,11 +82,13 @@ Manual workflow:
 python scripts/collect_world_model_traces.py --pairs 48
 python scripts/backfill_wm_from_ball_log.py
 python scripts/train_world_model.py --epochs 50 --use-ball-log \
-  --transition gru --transition-ensemble-size 3
-python scripts/validate_world_model.py
+  --transition gru --transition-ensemble-size 3 \
+  --semantic-event-loss-weight 0.20
+python scripts/validate_world_model.py --require-semantic-event-heads
 ```
 
-Only validated v7 checkpoints are allowed to influence planning. A missing,
+Only validated v7+ checkpoints are allowed to influence transition planning;
+learned semantic-event blending additionally requires v8 evidence. A missing,
 legacy, low-quality, or sparse-input model contributes a zero bonus.
 
 ## LLM decision fusion
@@ -371,7 +373,9 @@ advance every member separately, then compound epistemic and aleatoric terms
 before recomposition. Every forecast also carries its source and component
 audit. A v6 checkpoint is expanded by exact copies of its primary transition,
 so it remains replayable but reports zero dynamics disagreement and cannot pass
-the v7 readiness gate.
+the transition-ensemble readiness gate. A v7 checkpoint loads into v8 with
+neutral, explicitly untrained semantic heads and retains its prior transition
+behavior.
 
 The LLM is explicitly told that epistemic uncertainty may justify bounded data
 acquisition, while aleatoric uncertainty can only increase caution. The online
@@ -528,6 +532,28 @@ ensemble cannot report unjustified probability zero or one.
 Legacy-expanded or otherwise untrained transition ensembles emit neutral `0.5`
 event probabilities instead of presenting identical members as confidence.
 
+V8 adds one semantic-event head per independently bootstrapped dynamics member.
+Each head sees the current latent, its own member-consistent predicted future
+latent, and the action context. Labels are derived only from realized future
+states inside the same training split; the LLM never supplies supervision.
+Training uses unweighted binary cross-entropy as a proper scoring rule at both
+one-step and changing-action autoregressive two-step depths. The existing
+one-step warmup and curriculum also ramps the event objective, configurable via
+`--semantic-event-loss-weight` (default `0.20`).
+
+Grouped validation gives every match equal weight and compares the learned
+Brier score against both the training-split event prevalence and the transparent
+member-frequency projection. Runtime blending is authorized separately for
+each event and exact rollout depth only after at least 32 samples, four matches,
+four positive and negative examples, positive skill, non-negative ensemble and
+disagreement evidence, and calibration error at most `0.20`. Learned authority
+is capped at `0.50`; three-step and longer horizons remain projection-only until
+they receive their own training and validation evidence. Strict offline
+validation requires at least two active events at both supported depths with
+`--require-semantic-event-heads`. Online deployment evidence can independently
+require at least four matches where bounded learned/fused probabilities both
+beat the transparent projection via `--require-learned-semantic-events`.
+
 The coach may submit one `world_model_event_hypothesis` for its selected action
 and one evaluated horizon. It must choose an event already exposed by the
 numeric trajectory (`retain_possession`, `enter_final_third`,
@@ -560,5 +586,6 @@ python scripts/evaluate_online_world_model.py \
   --require-transition-ensemble --require-opponent-belief \
   --require-opponent-meta-belief --require-opponent-change-detection \
   --require-opponent-response-model --require-two-step-trajectory-planning \
-  --require-llm-semantic-critic --require-llm-semantic-events
+  --require-llm-semantic-critic --require-llm-semantic-events \
+  --require-learned-semantic-events
 ```

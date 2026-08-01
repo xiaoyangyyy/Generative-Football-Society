@@ -10,6 +10,9 @@ import numpy as np
 from src.match_engine.world_model.action_codec import ACTION_DIM
 from src.match_engine.world_model.config import WorldModelConfig
 from src.match_engine.world_model.observation import OBS_DIM
+from src.match_engine.world_model.state_scales import (
+    FALSIFIABLE_SEMANTIC_EVENTS,
+)
 from src.match_engine.world_model.uncertainty import (
     ensemble_uncertainty_decomposition,
 )
@@ -51,8 +54,9 @@ if _TORCH:
         def __init__(self, cfg: WorldModelConfig):
             super().__init__()
             self.cfg = cfg
-            self.checkpoint_version = 7
+            self.checkpoint_version = 8
             self.transition_ensemble_trained = True
+            self.semantic_event_heads_trained = True
             d = cfg.latent_dim
             h = cfg.hidden_dim
             self.encoder = nn.Sequential(
@@ -156,6 +160,16 @@ if _TORCH:
             nn.init.zeros_(self.head_shot.weight)
             nn.init.zeros_(self.head_shot.bias)
             for head in self.extra_shot_heads:
+                nn.init.zeros_(head.weight)
+                nn.init.zeros_(head.bias)
+            semantic_input_dim = 2 * d + ACTION_DIM
+            self.semantic_event_heads = nn.ModuleList(
+                nn.Linear(
+                    semantic_input_dim, len(FALSIFIABLE_SEMANTIC_EVENTS),
+                )
+                for _ in range(cfg.transition_ensemble_size)
+            )
+            for head in self.semantic_event_heads:
                 nn.init.zeros_(head.weight)
                 nn.init.zeros_(head.bias)
 
@@ -339,6 +353,45 @@ if _TORCH:
                     member_hidden[member_index] = hidden
             return torch.stack(member_observations, dim=0)
 
+        def semantic_event_logits(
+            self,
+            current_obs: torch.Tensor,
+            future_obs_members: torch.Tensor,
+            action_context: torch.Tensor,
+        ) -> torch.Tensor:
+            """Predict event logits with one independently trained head per member."""
+            expected = (
+                self.transition_member_count,
+                current_obs.shape[0],
+                OBS_DIM,
+            )
+            if tuple(future_obs_members.shape) != expected:
+                raise ValueError(
+                    "future observations must have shape "
+                    "[members, batch, observation_dim]"
+                )
+            if (
+                action_context.ndim != 2
+                or action_context.shape[0] != current_obs.shape[0]
+                or action_context.shape[1] != ACTION_DIM
+            ):
+                raise ValueError("action context must have shape [batch, action_dim]")
+            current_z = self.encode(current_obs)
+            logits = []
+            for member_index, head in enumerate(self.semantic_event_heads):
+                future_z = self.encode(future_obs_members[member_index])
+                features = torch.cat([
+                    current_z, future_z, action_context,
+                ], dim=-1)
+                logits.append(head(features))
+            return torch.stack(logits, dim=0)
+
+        def initialize_semantic_event_heads_neutral(self) -> None:
+            for head in self.semantic_event_heads:
+                nn.init.zeros_(head.weight)
+                nn.init.zeros_(head.bias)
+            self.semantic_event_heads_trained = False
+
         def initialize_transition_ensemble_from_primary(self) -> None:
             """Make legacy checkpoint expansion exact rather than random."""
             members = (
@@ -504,7 +557,13 @@ def save_checkpoint(
         "obs_dim": OBS_DIM,
         "action_dim": ACTION_DIM,
         "meta": meta or {},
-        "version": 7,
+        "version": 8,
+        "transition_ensemble_trained": bool(
+            getattr(model, "transition_ensemble_trained", False)
+        ),
+        "semantic_event_heads_trained": bool(
+            getattr(model, "semantic_event_heads_trained", False)
+        ),
     }
     torch.save(payload, path)
 
@@ -519,9 +578,30 @@ def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Di
     if model.checkpoint_version < 4:
         cfg.imagination_steps = 1
     try:
-        if model.checkpoint_version >= 7:
+        if model.checkpoint_version >= 8:
             model.load_state_dict(payload["state_dict"], strict=True)
+            model.transition_ensemble_trained = bool(
+                payload.get("transition_ensemble_trained", False)
+            )
+            model.semantic_event_heads_trained = bool(
+                payload.get("semantic_event_heads_trained", False)
+            )
+        elif model.checkpoint_version == 7:
+            incompatible = model.load_state_dict(
+                payload["state_dict"], strict=False,
+            )
+            unexpected_missing = [
+                key for key in incompatible.missing_keys
+                if not key.startswith("semantic_event_heads.")
+            ]
+            if unexpected_missing or incompatible.unexpected_keys:
+                raise RuntimeError(
+                    "unexpected v7 state mismatch: "
+                    f"missing={unexpected_missing}, "
+                    f"unexpected={incompatible.unexpected_keys}"
+                )
             model.transition_ensemble_trained = True
+            model.initialize_semantic_event_heads_neutral()
         else:
             incompatible = model.load_state_dict(
                 payload["state_dict"], strict=False,
@@ -529,6 +609,7 @@ def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Di
             if model.checkpoint_version >= 5:
                 allowed_prefixes = (
                     "extra_grus.", "extra_sequence_encoders.",
+                    "semantic_event_heads.",
                 )
                 unexpected_missing = [
                     key for key in incompatible.missing_keys
@@ -541,6 +622,7 @@ def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Di
                         f"unexpected={incompatible.unexpected_keys}"
                     )
             model.initialize_transition_ensemble_from_primary()
+            model.initialize_semantic_event_heads_neutral()
     except RuntimeError as exc:
         raise RuntimeError(
             f"Checkpoint incompatible ({exc}). Retrain: python scripts/ensure_world_model.py"
