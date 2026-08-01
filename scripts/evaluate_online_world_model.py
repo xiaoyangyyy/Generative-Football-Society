@@ -130,6 +130,14 @@ def main() -> int:
             "bounded fusion beat projection across at least four matches."
         ),
     )
+    parser.add_argument(
+        "--require-llm-event-options",
+        action="store_true",
+        help=(
+            "Fail readiness until shadow event-conditioned options resolve "
+            "events and observe later actions across at least four matches."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -172,6 +180,7 @@ def main() -> int:
         require_learned_semantic_events=(
             args.require_learned_semantic_events
         ),
+        require_llm_event_options=args.require_llm_event_options,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

@@ -576,6 +576,38 @@ environment; mixed or unspecified provenance closes the gate. Audit this path wi
 evaluation pipeline is trustworthy; it does not grant the semantic event
 channel control authority.
 
+### Shadow event-conditioned continuation options
+
+The coach may also propose one `world_model_event_option`: its already selected
+first action, one supported event and horizon, and two different continuation
+actions for event occurrence versus absence. The contract is deliberately a
+binary, depth-limited strategy tree rather than a free-form plan. The first
+action must equal the coach selection, the horizon must already exist in that
+candidate's packet, and only validated one- or two-step rollout depths are
+eligible.
+
+The world model evaluates only those two proposed continuations from every
+member-predicted state. Transparent member event indicators are blended with a
+learned semantic head only when that exact event/depth gate is open, with
+learned authority capped at `0.50`. Jeffreys branch shrinkage prevents an empty
+or tiny event branch from claiming extreme value. A decision defaults to at
+most 16 continuation evaluations, has a hard ceiling of 32, and fails closed if
+both branches cannot be evaluated for every member. The audit records member
+support, conditional and fixed-branch values, model calls, budget, checkpoint,
+environment, and LLM option-contract signature.
+
+This tree is shadow-only: it cannot schedule or execute either continuation,
+change the selected first action, mutate policy, write world-model weights, or
+acquire causal authority. If the simulator later executes the proposed first
+action, the declared event is resolved at the exact horizon. The next same-team
+action within 120 seconds is then attached as a descriptive follow-up and
+compared with the corresponding proposed continuation. Cross-match readiness
+requires at least four compatible matches, enough resolved events and observed
+follow-ups, zero malformed rows, respected budgets, complete provenance, and
+all non-control safety flags. Use `--require-llm-event-options` to require that
+audit path. Continuation agreement is neither a causal effect nor evidence that
+the conditional option improved match value.
+
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
@@ -587,5 +619,5 @@ python scripts/evaluate_online_world_model.py \
   --require-opponent-meta-belief --require-opponent-change-detection \
   --require-opponent-response-model --require-two-step-trajectory-planning \
   --require-llm-semantic-critic --require-llm-semantic-events \
-  --require-learned-semantic-events
+  --require-learned-semantic-events --require-llm-event-options
 ```

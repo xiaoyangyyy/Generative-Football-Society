@@ -194,6 +194,13 @@ class CognitiveExecutor:
         self.llm_event_signature = llm_event_signature(
             str(getattr(llm, "model", "rule_fallback"))
         )
+        from src.match_engine.world_model.event_option import (
+            llm_event_option_signature,
+        )
+
+        self.llm_event_option_signature = llm_event_option_signature(
+            str(getattr(llm, "model", "rule_fallback"))
+        )
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -432,6 +439,22 @@ class CognitiveExecutor:
                     event_signature=self.llm_event_signature,
                 )
                 plan["world_model_event_hypothesis_audit"] = event_audit
+                from src.match_engine.world_model.event_option import (
+                    evaluate_llm_event_option,
+                )
+
+                option_audit = evaluate_llm_event_option(
+                    self.world_model_runtime,
+                    state,
+                    packet,
+                    plan.get("world_model_event_option"),
+                    team_id=str(trig.team_id),
+                    selected_action=str(plan.get(
+                        "world_model_action", "none",
+                    )),
+                    option_signature=self.llm_event_option_signature,
+                )
+                plan["world_model_event_option_audit"] = option_audit
                 from src.match_engine.world_model.active_learning import (
                     build_active_learning_advice,
                 )
@@ -694,6 +717,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "world_model_event_hypothesis_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_event_option_context=(
+                        dict(rec.plan.get(
+                            "world_model_event_option_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_event_option_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

@@ -196,6 +196,71 @@ def observe_policy_intervention_outcomes(
                 )
                 if event_score is not None:
                     outcome["llm_semantic_event_evaluation"] = event_score
+            option_context = record.get("llm_event_option_context") or {}
+            option = option_context.get("option") or {}
+            option_first_action_realized = (
+                str(option.get("first_action", "")).lower()
+                == str(record.get("intervention_actual_action", "")).lower()
+            )
+            if (
+                option_context.get("accepted")
+                and str(option.get("horizon", "")) == key
+                and option_first_action_realized
+            ):
+                from src.match_engine.world_model.llm_event_hypothesis import (
+                    observed_semantic_event,
+                )
+
+                option_event_observed = observed_semantic_event(
+                    str(option.get("event", "")),
+                    outcome,
+                    baseline,
+                    attacking_home=attacking_home,
+                )
+                expected_action = str(
+                    option.get(
+                        "on_occurrence"
+                        if option_event_observed else "on_absence",
+                        "none",
+                    )
+                )
+                option_evaluation = {
+                    "version": int(option_context.get("version", 1)),
+                    "option": dict(option),
+                    "event_observed": bool(option_event_observed),
+                    "expected_continuation_action": expected_action,
+                    "next_action_observed": False,
+                    "expected_action_matched": None,
+                    "conditional_gain_vs_best_fixed": float(
+                        option_context.get(
+                            "conditional_gain_vs_best_fixed", 0.0,
+                        )
+                    ),
+                    "member_evaluations": int(option_context.get(
+                        "member_evaluations", 0,
+                    )),
+                    "member_evaluation_budget": int(option_context.get(
+                        "member_evaluation_budget", 0,
+                    )),
+                    "shadow_only": True,
+                    "authority_active": False,
+                    "policy_mutated": False,
+                    "can_execute_future_action": False,
+                    "causal_interpretation": False,
+                    "option_signature": str(option_context.get(
+                        "option_signature", "",
+                    )),
+                    "checkpoint_signature": str(record.get(
+                        "checkpoint_signature", "",
+                    )),
+                    "environment_signature": str(record.get(
+                        "environment_signature", "",
+                    )),
+                    "resolved_t_sec": now,
+                }
+                outcome["llm_event_option_evaluation"] = option_evaluation
+                record["event_option_resolved_t_sec"] = now
+                record["event_option_expected_action"] = expected_action
             regime[key] = outcome
             if censor_t is None or due_t <= float(censor_t) + 1e-9:
                 isolated[key] = outcome

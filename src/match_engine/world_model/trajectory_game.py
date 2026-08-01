@@ -85,7 +85,7 @@ def _condition_opponent(
     return conditioned
 
 
-def _evaluate(
+def evaluate_predicted_state_action(
     runtime,
     observation: np.ndarray,
     *,
@@ -241,7 +241,7 @@ def build_predicted_state_continuations(
                     hypothesis=hypothesis,
                 )
                 try:
-                    result = _evaluate(
+                    result = evaluate_predicted_state_action(
                         runtime,
                         conditioned,
                         action_name=continuation_action,

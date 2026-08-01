@@ -247,6 +247,8 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "opponent_response_hypothesis" in gateway.user_prompt
     assert "world_model_critique" in gateway.user_prompt
     assert "world_model_event_hypothesis" in gateway.user_prompt
+    assert "world_model_event_option" in gateway.user_prompt
+    assert "member-predicted states" in gateway.system_prompt
     assert "falsifiable forecast-residual claim" in gateway.system_prompt
     assert "shadow-only" in gateway.system_prompt
     assert "two-ply belief-space policy proxy" in gateway.system_prompt

@@ -94,5 +94,12 @@ one- and two-step future states with proper BCE. Each event/depth must beat both
 the training prevalence and transparent geometry projection under grouped
 validation before receiving capped blending authority; unsupported longer
 horizons remain projection-only.
+The LLM may propose one binary event-conditioned continuation option for its
+selected first action. The dynamics members evaluate only the two declared
+branches under a hard compute budget; validated semantic heads may only blend
+their event weights. The option remains shadow-only, and later simulator event
+resolution plus the next same-team action provide provenance-isolated,
+descriptive follow-up evidence without scheduling a future action or claiming
+causal value.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

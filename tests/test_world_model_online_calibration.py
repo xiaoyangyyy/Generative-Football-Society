@@ -665,3 +665,75 @@ def test_strict_semantic_event_gate_requires_paired_shadow_match_evidence():
         "malformed_evaluations"
     ] == 1
     assert not contaminated["llm_semantic_events_ready"]
+
+
+def test_strict_event_option_gate_requires_safe_cross_match_followups():
+    logs = []
+    for index in range(4):
+        evaluation = {
+            "version": 1,
+            "event_observed": bool(index % 2),
+            "expected_continuation_action": "shot",
+            "next_action_observed": True,
+            "observed_continuation_action": (
+                "shot" if index < 3 else "hold"
+            ),
+            "expected_action_matched": index < 3,
+            "conditional_gain_vs_best_fixed": 0.02 + 0.01 * index,
+            "member_evaluations": 8,
+            "member_evaluation_budget": 16,
+            "shadow_only": True,
+            "authority_active": False,
+            "policy_mutated": False,
+            "can_execute_future_action": False,
+            "causal_interpretation": False,
+            "option_signature": "llm-event-option:test-contract",
+            "checkpoint_signature": "checkpoint-a",
+            "environment_signature": "environment-a",
+        }
+        logs.append({
+            "world_model_decision_adoption": {
+                "records": [{
+                    "multi_horizon_regime_outcomes": {
+                        "60s": {"llm_event_option_evaluation": evaluation},
+                    },
+                }],
+            },
+        })
+
+    report = aggregate_online_calibration(
+        logs,
+        min_residual_samples=2,
+        require_llm_event_options=True,
+    )
+    diagnostics = report["decision_adoption"]["llm_event_options"]
+    assert diagnostics["resolved_events"] == 4
+    assert diagnostics["continuations_observed"] == 4
+    assert diagnostics["continuation_match_rate"] == pytest.approx(0.75)
+    assert diagnostics["budgets_respected"]
+    assert diagnostics["provenance_compatible"]
+    assert report["llm_event_options_ready"]
+    assert report["gates"]["shadow_llm_event_option_evaluation"]
+
+    evaluation["option_signature"] = "llm-event-option:mixed-contract"
+    mixed = aggregate_online_calibration(
+        logs,
+        min_residual_samples=2,
+        require_llm_event_options=True,
+    )
+    assert not mixed["decision_adoption"]["llm_event_options"][
+        "provenance_compatible"
+    ]
+    assert not mixed["llm_event_options_ready"]
+
+    evaluation["option_signature"] = "llm-event-option:test-contract"
+    evaluation["conditional_gain_vs_best_fixed"] = float("nan")
+    malformed = aggregate_online_calibration(
+        logs,
+        min_residual_samples=2,
+        require_llm_event_options=True,
+    )
+    assert malformed["decision_adoption"]["llm_event_options"][
+        "malformed_evaluations"
+    ] == 1
+    assert not malformed["llm_event_options_ready"]

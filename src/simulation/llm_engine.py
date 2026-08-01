@@ -267,6 +267,11 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   from a learned event head. Treat the learned probability as evidence only when
   that event's exact rollout-depth gate is active; longer unvalidated rollouts
   intentionally remain projection-only;
+- world_model_event_option is one shadow-only conditional continuation policy.
+  Its first action must equal your selected action; choose different continuation
+  actions for event occurrence and absence. The engine re-evaluates only those
+  branches on member-predicted states under a hard compute budget. It cannot
+  schedule or execute either future action;
 - change_point is computed from live numeric evidence. You may explain a
   watch/confirmed change with opponent_change_claim, but your claim cannot
   trigger, confirm, or cancel the detector. Cite only features whose signed
@@ -309,6 +314,15 @@ Return JSON:
     "confidence": 0.5-1.0,
     "evidence_scales": ["short|tactical|strategic"],
     "rationale": "one falsifiable event forecast grounded in state_scales"
+  }},
+  "world_model_event_option": {{
+    "first_action": "must equal world_model_action",
+    "horizon": "transition or an evaluated horizon with rollout depth <= 2",
+    "event": "retain_possession|enter_final_third|positive_territorial_shift|improve_scoreline",
+    "on_occurrence": "hold|pass|cross|shot",
+    "on_absence": "a different hold|pass|cross|shot action",
+    "confidence": 0.5-1.0,
+    "rationale": "one short conditional policy explanation"
   }},
   "opponent_hypothesis": {{
     "tactical_preset": "one preset listed in opponent_belief.hypotheses",

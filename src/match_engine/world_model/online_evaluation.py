@@ -38,6 +38,7 @@ from src.match_engine.world_model.llm_critic_memory import (
 from src.match_engine.world_model.llm_event_hypothesis import (
     semantic_event_diagnostics,
 )
+from src.match_engine.world_model.event_option import event_option_diagnostics
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -67,6 +68,7 @@ def aggregate_online_calibration(
     require_llm_semantic_critic: bool = False,
     require_llm_semantic_events: bool = False,
     require_learned_semantic_events: bool = False,
+    require_llm_event_options: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -193,6 +195,7 @@ def aggregate_online_calibration(
     trajectory_planning = trajectory_planning_diagnostics(logs)
     llm_semantic_critic = llm_critic_diagnostics(logs)
     llm_semantic_events = semantic_event_diagnostics(logs)
+    llm_event_options = event_option_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -333,8 +336,23 @@ def aggregate_online_calibration(
         learned_semantic_events_ready
         if require_learned_semantic_events else True
     )
+    llm_event_options_ready = bool(
+        llm_event_options["resolved_events"] >= max(2, min_residual_samples)
+        and llm_event_options["malformed_evaluations"] == 0
+        and llm_event_options["continuations_observed"]
+        >= max(2, min_residual_samples)
+        and llm_event_options["matches"] >= 4
+        and llm_event_options["budgets_respected"]
+        and llm_event_options["all_shadow_only"]
+        and llm_event_options["all_non_controlling"]
+        and llm_event_options["all_non_causal"]
+        and llm_event_options["provenance_compatible"]
+    )
+    gates["shadow_llm_event_option_evaluation"] = (
+        llm_event_options_ready if require_llm_event_options else True
+    )
     return {
-        "version": 11,
+        "version": 12,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -365,6 +383,7 @@ def aggregate_online_calibration(
             "trajectory_planning": trajectory_planning,
             "llm_semantic_critic": llm_semantic_critic,
             "llm_semantic_events": llm_semantic_events,
+            "llm_event_options": llm_event_options,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -386,6 +405,7 @@ def aggregate_online_calibration(
         "llm_semantic_critic_ready": llm_semantic_critic_ready,
         "llm_semantic_events_ready": llm_semantic_events_ready,
         "learned_semantic_events_ready": learned_semantic_events_ready,
+        "llm_event_options_ready": llm_event_options_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -400,5 +420,6 @@ def aggregate_online_calibration(
             "LLM semantic residual critiques remain shadow predictions until match-held-out error reduction; they never rewrite neural forecasts.",
             "LLM semantic event hypotheses and neural event probabilities are scored against the same outcome and remain non-controlling.",
             "Learned semantic event fusion is evaluated against its transparent projection baseline under bounded per-event authority.",
+            "LLM event-conditioned options remain shadow-only; continuation agreement is descriptive and does not establish option value.",
         ],
     }

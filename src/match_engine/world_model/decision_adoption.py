@@ -45,6 +45,7 @@ def register_coach_action_decision(
     opponent_response_context: dict[str, Any] | None = None,
     llm_world_model_critique_context: dict[str, Any] | None = None,
     llm_semantic_event_context: dict[str, Any] | None = None,
+    llm_event_option_context: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -102,6 +103,11 @@ def register_coach_action_decision(
         "llm_semantic_event_context": dict(
             llm_semantic_event_context or {}
         ),
+        "llm_event_option_context": dict(llm_event_option_context or {}),
+        "event_option_resolved_t_sec": None,
+        "event_option_expected_action": None,
+        "event_option_next_action": None,
+        "event_option_followup_expired": False,
         "created_t_sec": created,
         "expires_t_sec": created + horizon,
         "llm_selected_action": selected,
@@ -232,6 +238,34 @@ def observe_executed_action(
     now = float(t_sec)
     action = str(action_kind).lower()
     for record in records:
+        option_resolved_t = record.get("event_option_resolved_t_sec")
+        if (
+            option_resolved_t is not None
+            and record.get("event_option_expected_action")
+            and record.get("event_option_next_action") is None
+            and not record.get("event_option_followup_expired")
+            and str(record.get("team_id")) == str(team_id)
+            and now > float(option_resolved_t)
+        ):
+            if now > float(option_resolved_t) + 120.0:
+                record["event_option_followup_expired"] = True
+            else:
+                expected = str(record["event_option_expected_action"])
+                record["event_option_next_action"] = action
+                for outcome in (
+                    record.get("multi_horizon_regime_outcomes") or {}
+                ).values():
+                    evaluation = (
+                        outcome.get("llm_event_option_evaluation")
+                        if isinstance(outcome, dict) else None
+                    )
+                    if isinstance(evaluation, dict):
+                        evaluation["next_action_observed"] = True
+                        evaluation["observed_continuation_action"] = action
+                        evaluation["expected_action_matched"] = (
+                            action == expected
+                        )
+                        evaluation["continuation_observed_t_sec"] = now
         if record["resolved"]:
             continue
         # Decisions are registered after the current tick's action; strict
@@ -292,7 +326,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 11,
+        "version": 12,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
