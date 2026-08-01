@@ -905,6 +905,69 @@ def test_within_horizon_final_third_failure_uses_never_entered_semantics():
     assert not monitor["downside_observed"]
 
 
+def test_distributional_claim_is_scored_on_exact_action_and_horizon():
+    state = SimpleNamespace(
+        clock_seconds=10.0,
+        home=SimpleNamespace(team_id="A", score=0),
+        away=SimpleNamespace(team_id="B", score=0),
+        ball=SimpleNamespace(position=[0.50, 0.50], possession_team_id="A"),
+        micro_xg_home=0.2,
+        micro_xg_away=0.1,
+    )
+    context = {
+        "version": 1,
+        "accepted": True,
+        "directionally_faithful": True,
+        "selected_criterion_value": 0.05,
+        "alternative_criterion_value": 0.0,
+        "criterion_tolerance": 0.01,
+        "measured_relation": "selected_better",
+        "claim": {
+            "selected_action": "pass",
+            "alternative_action": "hold",
+            "horizon": "60s",
+            "criterion": "mean_utility",
+            "relation": "selected_better",
+            "confidence": 0.8,
+            "rationale": "Pass has higher mean member utility.",
+        },
+        "selected_distribution": {
+            "member_values": [-0.1, 0.0, 0.1, 0.2],
+            "mean_utility": 0.05,
+            "quantiles": {"q10": -0.07, "q50": 0.05, "q90": 0.17},
+            "member_identity_preserved": True,
+        },
+        "claim_signature": "llm-distributional-claim:test",
+        "checkpoint_signature": "checkpoint:test",
+        "environment_signature": "environment:test",
+    }
+    record = register_coach_action_decision(
+        state, team_id="A", trigger_kind="clock",
+        llm_selected_action="pass", world_model_recommended_action="pass",
+        recommendation_confidence=0.8, horizon_s=10.0,
+        outcome_horizons_s=(60.0,), checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test",
+        llm_distributional_claim_context=context,
+    )
+    baseline = capture_policy_outcome_baseline(state, team_id="A")
+    record_policy_intervention_result(
+        state, decision_id=record["decision_id"], actual_action="pass",
+        t_sec=11.0, outcome_baseline=baseline,
+    )
+    state.ball.position[0] = 0.65
+    observe_policy_intervention_outcomes(state, t_sec=71.0)
+
+    assert "llm_distributional_claim_evaluation" not in record[
+        "multi_horizon_regime_outcomes"
+    ]["transition"]
+    evaluation = record["multi_horizon_regime_outcomes"]["60s"][
+        "llm_distributional_claim_evaluation"
+    ]
+    assert evaluation["paired_same_action_horizon"]
+    assert evaluation["empirical_crps"] >= 0.0
+    assert evaluation["member_identity_preserved"]
+
+
 def test_longest_ready_outcome_horizon_drives_reliability_feedback():
     records = []
     for arm in ("treatment", "control"):

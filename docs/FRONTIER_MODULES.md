@@ -128,5 +128,13 @@ scored against either the endpoint or a coverage-audited live interval monitor.
 The certificate remains shadow-only and can never veto or authorize play,
 making temporal risk language falsifiable without quietly granting the language
 model policy authority.
+Policy utility is additionally retained as a full transition-member
+distribution rather than only a mean. Each horizon exposes quantiles,
+worst-quartile CVaR, upside/downside probability, and a three-objective Pareto
+frontier across actions. The LLM may state which one of those objectives supports
+its chosen action relative to an alternative; the engine verifies the relation
+and later scores the frozen distribution with CRPS, pinball loss and interval
+coverage on the exact realized action/horizon. This separates an interpretable
+risk preference from both model calibration and control authority.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

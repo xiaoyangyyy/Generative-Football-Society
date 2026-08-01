@@ -583,14 +583,15 @@ class WorldModelRuntime:
             "transition_states",
             np.asarray(future, dtype=np.float32).reshape(1, 1, -1),
         )
+        ensemble_trained = bool((output.uncertainty_samples or {}).get(
+            "transition_ensemble_trained", False,
+        ))
         state_scales = multiscale_state_forecast(
             current,
             transition_samples,
             attacking_home=attacking_home,
             horizon_s=horizon_s,
-            ensemble_trained=bool((output.uncertainty_samples or {}).get(
-                "transition_ensemble_trained", False,
-            )),
+            ensemble_trained=ensemble_trained,
             transition_trajectory_samples=(
                 (output.uncertainty_samples or {}).get(
                     "transition_state_trajectory"
@@ -644,6 +645,25 @@ class WorldModelRuntime:
             state_scales["claims"]["probability_source"] = (
                 "per_event_grouped_validation_gated_blend"
             )
+        from src.match_engine.world_model.distributional_utility import (
+            member_policy_utility_distribution,
+        )
+
+        distributional_utility = member_policy_utility_distribution(
+            current,
+            transition_samples,
+            (output.uncertainty_samples or {}).get(
+                "progress", np.zeros((len(future_members), 1)),
+            ),
+            attacking_home=attacking_home,
+            rollout_steps=rollout_steps,
+            ensemble_trained=ensemble_trained,
+        )
+        if distributional_utility.get("available"):
+            distributional_utility["aggregate_mean_identity_error"] = abs(
+                float(distributional_utility["mean_utility"])
+                - float(utility)
+            )
         return {
             "prediction_source": "autoregressive_action_persistence_rollout",
             "horizon_s": float(horizon_s),
@@ -663,6 +683,7 @@ class WorldModelRuntime:
             "semantic_event_probabilities": dict(
                 state_scales["semantic_event_probabilities"]
             ),
+            "distributional_policy_utility": distributional_utility,
         }
 
     def semantic_event_head_gate(

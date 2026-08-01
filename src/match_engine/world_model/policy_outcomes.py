@@ -455,6 +455,38 @@ def observe_policy_intervention_outcomes(
                 )
                 if risk_score is not None:
                     outcome["llm_risk_certificate_evaluation"] = risk_score
+            distributional_context = (
+                record.get("llm_distributional_claim_context") or {}
+            )
+            distributional_claim = (
+                distributional_context.get("claim") or {}
+            )
+            distributional_action_realized = (
+                str(distributional_claim.get("selected_action", "")).lower()
+                == str(record.get("intervention_actual_action", "")).lower()
+            )
+            if (
+                str(distributional_claim.get("horizon", "")) == key
+                and distributional_action_realized
+            ):
+                from src.match_engine.world_model.distributional_claim import (
+                    score_distributional_claim,
+                )
+
+                distributional_score = score_distributional_claim(
+                    distributional_context,
+                    outcome,
+                    checkpoint_signature=str(record.get(
+                        "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    environment_signature=str(record.get(
+                        "environment_signature", "environment_unspecified",
+                    )),
+                )
+                if distributional_score is not None:
+                    outcome["llm_distributional_claim_evaluation"] = (
+                        distributional_score
+                    )
             option_context = record.get("llm_event_option_context") or {}
             option = option_context.get("option") or {}
             option_first_action_realized = (

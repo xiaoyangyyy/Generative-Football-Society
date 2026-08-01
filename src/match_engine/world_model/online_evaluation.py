@@ -48,6 +48,9 @@ from src.match_engine.world_model.contrastive_repair import (
 from src.match_engine.world_model.risk_certificate import (
     risk_certificate_diagnostics,
 )
+from src.match_engine.world_model.distributional_claim import (
+    distributional_claim_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -82,6 +85,7 @@ def aggregate_online_calibration(
     require_llm_contrastive_faithfulness: bool = False,
     require_llm_contrastive_repair: bool = False,
     require_llm_risk_certificates: bool = False,
+    require_llm_distributional_decisions: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -212,6 +216,7 @@ def aggregate_online_calibration(
     llm_contrastive = contrastive_explanation_diagnostics(logs)
     llm_contrastive_repair = contrastive_repair_diagnostics(logs)
     llm_risk_certificates = risk_certificate_diagnostics(logs)
+    llm_distributional = distributional_claim_diagnostics(logs)
     memory_scopes = sorted({
         (
             str(record.get("checkpoint_signature")),
@@ -452,8 +457,35 @@ def aggregate_online_calibration(
         llm_risk_certificates_ready
         if require_llm_risk_certificates else True
     )
+    llm_distributional_ready = bool(
+        llm_distributional["realized_distributions"]
+        >= max(4, min_residual_samples)
+        and llm_distributional["matches"] >= 4
+        and llm_distributional["malformed_evaluations"] == 0
+        and llm_distributional["unscored_eligible_claims"] == 0
+        and llm_distributional[
+            "match_clustered_directional_faithfulness"
+        ] >= 0.60
+        and 0.55 <= llm_distributional[
+            "match_clustered_central_80_coverage"
+        ] <= 0.98
+        and 0.25 <= llm_distributional[
+            "match_clustered_below_median_rate"
+        ] <= 0.75
+        and llm_distributional["match_clustered_crps"]
+        <= llm_distributional["match_clustered_mean_absolute_error"] + 1e-12
+        and llm_distributional["all_shadow_only"]
+        and llm_distributional["all_non_controlling"]
+        and llm_distributional["all_non_causal"]
+        and llm_distributional["all_member_identity_preserved"]
+        and llm_distributional["provenance_compatible"]
+    )
+    gates["calibrated_llm_distributional_decisions"] = (
+        llm_distributional_ready
+        if require_llm_distributional_decisions else True
+    )
     return {
-        "version": 17,
+        "version": 18,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -488,6 +520,7 @@ def aggregate_online_calibration(
             "llm_contrastive_explanations": llm_contrastive,
             "llm_contrastive_repairs": llm_contrastive_repair,
             "llm_risk_certificates": llm_risk_certificates,
+            "llm_distributional_decisions": llm_distributional,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -514,6 +547,7 @@ def aggregate_online_calibration(
         "llm_contrastive_faithfulness_ready": llm_contrastive_ready,
         "llm_contrastive_repair_ready": llm_contrastive_repair_ready,
         "llm_risk_certificates_ready": llm_risk_certificates_ready,
+        "llm_distributional_decisions_ready": llm_distributional_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -533,5 +567,6 @@ def aggregate_online_calibration(
             "Contrastive explanation probes measure faithfulness to the configured world model under schema-level context neutralization; they do not establish real-football causal explanations.",
             "One-shot contrastive repair may revise only an explanation after model counterevidence; repair success cannot change the frozen action, controls, forecasts, or policy authority.",
             "LLM chance constraints are shadow certificates over transparent ensemble modes; conservative certification is observational and cannot veto or authorize an action.",
+            "Distributional LLM claims are scored against realized simulator utility; calibrated member spread is descriptive and does not establish causal action value.",
         ],
     }

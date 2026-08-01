@@ -169,6 +169,14 @@ def main() -> int:
             "Require realized conservative LLM chance-constraint certificates."
         ),
     )
+    parser.add_argument(
+        "--require-llm-distributional-decisions",
+        action="store_true",
+        help=(
+            "Require calibrated member-utility distributions and faithful "
+            "LLM distributional action claims."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -222,6 +230,9 @@ def main() -> int:
             args.require_llm_contrastive_repair
         ),
         require_llm_risk_certificates=args.require_llm_risk_certificates,
+        require_llm_distributional_decisions=(
+            args.require_llm_distributional_decisions
+        ),
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

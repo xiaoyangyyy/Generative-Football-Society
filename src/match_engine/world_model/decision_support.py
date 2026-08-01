@@ -24,9 +24,12 @@ from src.match_engine.world_model.opponent_game import attach_second_order_game
 from src.match_engine.world_model.trajectory_game import (
     build_predicted_state_continuations,
 )
+from src.match_engine.world_model.distributional_utility import (
+    build_distributional_action_frontiers,
+)
 
 
-DECISION_PACKET_VERSION = 17
+DECISION_PACKET_VERSION = 18
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -371,6 +374,9 @@ def build_prematch_tactical_packet(
             trajectory_audit=trajectory_audit,
         )
         by_action = {item["action"]: item for item in action_evidence}
+        distributional_frontiers = build_distributional_action_frontiers(
+            action_evidence
+        )
         tactical_candidates = []
         for preset_name in normalized:
             weights = _tactical_action_weights(preset_name)
@@ -448,6 +454,7 @@ def build_prematch_tactical_packet(
             ),
             "candidates": tactical_candidates,
             "action_evidence": action_evidence,
+            "distributional_action_frontiers": distributional_frontiers,
             "opponent_belief": opponent_belief,
             "second_order_game": second_order_game,
             "limitations": [
@@ -599,6 +606,9 @@ def build_coach_decision_packet(
             eligible, key=lambda item: item["risk_adjusted_value"],
             default=None,
         )
+        distributional_frontiers = build_distributional_action_frontiers(
+            candidates
+        )
         return {
             "version": DECISION_PACKET_VERSION,
             "available": best is not None,
@@ -615,6 +625,7 @@ def build_coach_decision_packet(
                 best["effective_confidence"] if best else 0.0
             ),
             "candidates": candidates,
+            "distributional_action_frontiers": distributional_frontiers,
             "opponent_belief": opponent_belief,
             "second_order_game": second_order_game,
             "active_learning": active_learning,

@@ -378,6 +378,18 @@ def test_runtime_predicts_declared_policy_utility_at_requested_horizon():
         "positive_territorial_shift",
         "improve_scoreline",
     }
+    distribution = prediction["distributional_policy_utility"]
+    assert distribution["available"]
+    assert len(distribution["member_values"]) == distribution[
+        "ensemble_members"
+    ]
+    assert distribution["lower_tail_cvar_25"] <= distribution[
+        "mean_utility"
+    ]
+    assert distribution["quantiles"]["q10"] <= distribution[
+        "quantiles"
+    ]["q90"]
+    assert distribution["member_identity_preserved"]
     longer = runtime.predict_policy_utility(
         observation,
         zero_action(),

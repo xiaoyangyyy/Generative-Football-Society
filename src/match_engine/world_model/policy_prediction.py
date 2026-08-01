@@ -110,6 +110,23 @@ def build_multi_horizon_policy_predictions(
                 action=action_name,
                 horizon_key=horizon_key,
             )
+        distribution = prediction.get("distributional_policy_utility") or {}
+        if distribution:
+            from src.match_engine.world_model.distributional_utility import (
+                align_distribution_location,
+            )
+
+            prediction["distributional_policy_utility"] = (
+                align_distribution_location(
+                    distribution,
+                    float(prediction.get("policy_utility", 0.0)),
+                    source=(
+                        "contextual_residual_memory_and_declared_point_mean"
+                        if residual_memory is not None
+                        else "declared_point_mean"
+                    ),
+                )
+            )
         uncertainty = float(np.clip(
             float(prediction.get("uncertainty", 1.0)), 0.0, 1.0,
         ))

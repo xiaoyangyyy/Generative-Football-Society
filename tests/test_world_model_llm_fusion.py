@@ -112,6 +112,45 @@ def test_decision_packet_compares_all_actions_and_recommends_risk_adjusted_best(
         assert abs(candidate["multi_horizon_forecast_adjustment"]) <= 0.1
 
 
+def test_trained_runtime_builds_member_utility_frontiers_end_to_end():
+    pytest.importorskip("torch")
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.inference import WorldModelRuntime
+    from src.match_engine.world_model.model import build_model
+
+    cfg = WorldModelConfig(
+        latent_dim=16, hidden_dim=32, ensemble_size=2,
+        transition_ensemble_size=2,
+    )
+    runtime = WorldModelRuntime(build_model(cfg), cfg, {
+        "validation": {
+            "planner_quality": 0.8,
+            "pass_planner_quality": 0.8,
+            "shot_planner_quality": 0.8,
+            "weighted_obs_mse": 0.02,
+        },
+    })
+    packet = build_coach_decision_packet(
+        runtime, _state(), "Home", outcome_horizons_s=(0.0, 60.0),
+    )
+
+    assert packet["available"]
+    frontiers = packet["distributional_action_frontiers"]["horizons"]
+    assert frontiers["transition"]["available"]
+    assert frontiers["60s"]["available"]
+    assert frontiers["60s"]["pareto_actions"]
+    for candidate in packet["candidates"]:
+        for prediction in candidate["multi_horizon_predictions"].values():
+            distribution = prediction["distributional_policy_utility"]
+            assert distribution["available"]
+            assert distribution["mean_utility"] == pytest.approx(
+                prediction["policy_utility"]
+            )
+            assert distribution[
+                "spread_preserved_by_location_alignment"
+            ]
+
+
 def test_decision_packet_closes_recommendation_when_quality_gate_is_closed():
     packet = build_coach_decision_packet(
         _Runtime(confidence=0.0), _state(), "Home",
@@ -250,7 +289,9 @@ def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
     assert "world_model_event_option" in gateway.user_prompt
     assert "world_model_contrastive_claim" in gateway.user_prompt
     assert "world_model_risk_constraint" in gateway.user_prompt
+    assert "world_model_distributional_claim" in gateway.user_prompt
     assert "trajectory_modes" in gateway.system_prompt
+    assert "CRPS" in gateway.system_prompt
     assert "member-predicted states" in gateway.system_prompt
     assert "mismatched actions" in gateway.system_prompt
     assert "checks faithfulness" in gateway.system_prompt
@@ -527,6 +568,21 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
                 "semantic_event_probabilities": state_scales[
                     "semantic_event_probabilities"
                 ],
+                "distributional_policy_utility": {
+                    "version": 1,
+                    "available": True,
+                    "counts_trusted": True,
+                    "member_identity_preserved": True,
+                    "member_values": [-0.1, 0.0, 0.1, 0.2],
+                    "mean_utility": 0.05,
+                    "utility_std": 0.1118,
+                    "lower_tail_cvar_25": -0.1,
+                    "upside_probability": 0.5,
+                    "quantiles": {
+                        "q10": -0.07, "q25": -0.025, "q50": 0.05,
+                        "q75": 0.125, "q90": 0.17,
+                    },
+                },
             }
 
     class EventLLM:
@@ -538,6 +594,10 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
                 if item["action"] == action
             )
             horizon = next(iter(candidate["multi_horizon_predictions"]))
+            alternative = next(
+                item["action"] for item in packet["candidates"]
+                if item["action"] != action
+            )
             return json.dumps({
                 "reasoning": "Register one falsifiable event forecast.",
                 "confidence": 0.8,
@@ -559,6 +619,15 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
                     "max_violation_probability": 0.6,
                     "confidence": 0.75,
                     "rationale": "Keep the projected turnover chance bounded.",
+                },
+                "world_model_distributional_claim": {
+                    "selected_action": action,
+                    "alternative_action": alternative,
+                    "horizon": horizon,
+                    "criterion": "lower_tail_cvar_25",
+                    "relation": "approximately_equal",
+                    "confidence": 0.75,
+                    "rationale": "The two lower tails are indistinguishable.",
                 },
             })
 
@@ -597,6 +666,16 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
     ]
     assert risk_context["certificate_signature"].startswith(
         "llm-risk-certificate:"
+    )
+    distributional = record.plan["world_model_distributional_claim_audit"]
+    distributional_context = state._wm_coach_decision_adoption[-1][
+        "llm_distributional_claim_context"
+    ]
+    assert distributional["accepted"]
+    assert distributional["directionally_faithful"]
+    assert not distributional["can_change_selected_action"]
+    assert distributional_context["claim_signature"].startswith(
+        "llm-distributional-claim:"
     )
 
 

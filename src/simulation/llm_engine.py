@@ -272,6 +272,13 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   checks member-consistent intermediate states and requires a validated two-step
   rollout plus sufficiently dense live interval monitoring;
   This certificate is shadow-only: it cannot veto, authorize, or change an action;
+- distributional_action_frontiers compare member-level declared policy utility
+  by mean, lower-tail CVaR and upside probability. These are distinct objectives,
+  not interchangeable confidence scores. A world_model_distributional_claim may
+  explain the selected action against one alternative using exactly one listed
+  criterion. The engine checks that relation and later scores the frozen member
+  distribution with CRPS, pinball losses and interval coverage. It remains
+  shadow-only and cannot change the action or ranking;
 - semantic_event_fusion distinguishes transparent member-frequency projection
   from a learned event head. Treat the learned probability as evidence only when
   that event's exact rollout-depth gate is active; longer unvalidated rollouts
@@ -358,6 +365,15 @@ Return JSON:
     "max_violation_probability": 0.05-0.95,
     "confidence": 0.5-1.0,
     "rationale": "one falsifiable chance constraint grounded in trajectory_modes"
+  }},
+  "world_model_distributional_claim": {{
+    "selected_action": "must equal world_model_action",
+    "alternative_action": "a different evaluated hold|pass|cross|shot action",
+    "horizon": "one key from both candidates' multi_horizon_predictions",
+    "criterion": "mean_utility|lower_tail_cvar_25|upside_probability",
+    "relation": "selected_better|alternative_better|approximately_equal",
+    "confidence": 0.5-1.0,
+    "rationale": "one falsifiable distributional reason for the action"
   }},
   "opponent_hypothesis": {{
     "tactical_preset": "one preset listed in opponent_belief.hypotheses",

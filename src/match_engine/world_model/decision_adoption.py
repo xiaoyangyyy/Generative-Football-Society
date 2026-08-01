@@ -49,6 +49,7 @@ def register_coach_action_decision(
     llm_contrastive_explanation_context: dict[str, Any] | None = None,
     llm_contrastive_repair_context: dict[str, Any] | None = None,
     llm_risk_certificate_context: dict[str, Any] | None = None,
+    llm_distributional_claim_context: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Register a prospective decision; never count an already-executed action."""
     selected = str(llm_selected_action).lower()
@@ -115,6 +116,9 @@ def register_coach_action_decision(
         ),
         "llm_risk_certificate_context": dict(
             llm_risk_certificate_context or {}
+        ),
+        "llm_distributional_claim_context": dict(
+            llm_distributional_claim_context or {}
         ),
         "event_option_resolved_t_sec": None,
         "event_option_expected_action": None,
@@ -383,7 +387,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 17,
+        "version": 18,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),

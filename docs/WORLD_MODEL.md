@@ -750,6 +750,45 @@ with `--require-llm-risk-certificates`. This validates probabilistic calibration
 inside the configured simulator; it is neither a causal safety guarantee nor a
 license for LLM control.
 
+### Distributional policy utility and model-checked risk preference
+
+Each trained transition member now carries its own value through the exact
+policy-utility definition later used by the simulator: score-difference change,
+xG-net movement, territorial progress and possession retention. The runtime
+preserves the transition-member axis through the outcome heads and reports the
+full member-value vector, mean, standard deviation, `q10/q25/q50/q75/q90`,
+worst-quartile CVaR, best-quartile mean, and Jeffreys-smoothed upside/downside
+probabilities. Untrained or single-member dynamics fail closed rather than
+presenting a fake distribution.
+
+For every evaluated horizon, `distributional_action_frontiers` identifies the
+actions that are nondominated across three deliberately distinct objectives:
+mean utility, lower-tail `CVaR_25`, and probability of positive utility. It also
+lists each criterion's leaders. This exposes real tradeoffs—for example, a shot
+may lead on upside while holding leads on the lower tail—instead of hiding all
+risk preferences inside one scalar rank. The frontier is evidence only and does
+not modify the existing policy recommendation.
+
+The coach may provide one `world_model_distributional_claim` comparing its
+selected action with one evaluated alternative at the same horizon. It must name
+exactly one criterion and state whether the selected action is better, worse or
+approximately equal. The engine recomputes that relation with an explicit
+tolerance and records directional faithfulness. The claim cannot change either
+distribution, the selected action, or policy authority.
+
+If the exact selected action is naturally executed, the frozen distribution is
+paired with the same-horizon realized simulator utility. Evaluation reports
+empirical CRPS, pinball loss at `q10/q50/q90`, central-80% coverage, median
+calibration, point MAE/MSE and claim faithfulness. Cross-match aggregation
+recomputes every proper score from the stored member vector, gives each match
+equal weight, rejects provenance mixing, and exposes eligible claims that reached
+their horizon without a score. Strict readiness requires sufficient evidence
+over at least four matches, directional faithfulness of at least `0.60`, central
+80% coverage between `0.55` and `0.98`, median frequency between `0.25` and
+`0.75`, and CRPS no worse than mean-point MAE. Enable it with
+`--require-llm-distributional-decisions`. These are simulator-distribution
+calibration claims, not causal estimates of choosing one action over another.
+
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
@@ -765,5 +804,6 @@ python scripts/evaluate_online_world_model.py \
   --require-llm-event-option-values \
   --require-llm-contrastive-faithfulness \
   --require-llm-contrastive-repair \
-  --require-llm-risk-certificates
+  --require-llm-risk-certificates \
+  --require-llm-distributional-decisions
 ```

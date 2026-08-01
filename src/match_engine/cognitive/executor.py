@@ -224,6 +224,15 @@ class CognitiveExecutor:
         self.llm_risk_certificate_signature = llm_risk_certificate_signature(
             str(getattr(llm, "model", "rule_fallback"))
         )
+        from src.match_engine.world_model.distributional_claim import (
+            llm_distributional_claim_signature,
+        )
+
+        self.llm_distributional_claim_signature = (
+            llm_distributional_claim_signature(
+                str(getattr(llm, "model", "rule_fallback"))
+            )
+        )
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -539,6 +548,23 @@ class CognitiveExecutor:
                     ),
                 )
                 plan["world_model_risk_certificate_audit"] = risk_audit
+                from src.match_engine.world_model.distributional_claim import (
+                    evaluate_llm_distributional_claim,
+                )
+
+                distributional_audit = evaluate_llm_distributional_claim(
+                    packet,
+                    plan.get("world_model_distributional_claim"),
+                    selected_action=str(plan.get(
+                        "world_model_action", "none",
+                    )),
+                    claim_signature=(
+                        self.llm_distributional_claim_signature
+                    ),
+                )
+                plan["world_model_distributional_claim_audit"] = (
+                    distributional_audit
+                )
                 from src.match_engine.world_model.active_learning import (
                     build_active_learning_advice,
                 )
@@ -837,6 +863,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "world_model_risk_certificate_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_distributional_claim_context=(
+                        dict(rec.plan.get(
+                            "world_model_distributional_claim_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_distributional_claim_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),
