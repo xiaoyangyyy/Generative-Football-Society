@@ -131,7 +131,7 @@ def _reconcile_coach_world_model_plan(
         for candidate in evidence.get("candidates", [])
         if isinstance(candidate, dict)
     }
-    constrained = False
+    constrained = bool(out.get("world_model_selection_constrained", False))
     if not available and requested != "none":
         out["world_model_action"] = "none"
         constrained = True
@@ -145,7 +145,9 @@ def _reconcile_coach_world_model_plan(
     out["world_model_evidence_available"] = available
     learning = evidence.get("active_learning") or {}
     mode = str(out.get("world_model_decision_mode", "exploit")).lower()
-    learning_constrained = False
+    learning_constrained = bool(out.get(
+        "world_model_exploration_constrained", False,
+    ))
     if out.get("world_model_action") == "none":
         mode = "decline"
     elif mode == "explore" and not (
@@ -346,6 +348,115 @@ class CognitiveExecutor:
         )
         return _rule_fallback_plan(trig)
 
+    def _call_post_action_shadow_deliberation(
+        self, trig: CognitiveTriggerEvent, frozen_plan: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        provider = getattr(
+            self.llm, "coach_world_model_deliberation", None,
+        )
+        if (
+            not self.cfg.world_model_two_stage_deliberation
+            or not callable(provider)
+        ):
+            return frozen_plan
+        from src.match_engine.world_model.llm_deliberation_encouragement import (
+            build_shadow_deliberation_brief,
+            shadow_deliberation_brief_is_valid,
+        )
+        from src.match_engine.world_model.llm_deliberation_focus import (
+            TASK_CONTRACTS,
+        )
+
+        authoritative = trig.facts.get(
+            "world_model_llm_decision_brief"
+        ) or {}
+        shadow = build_shadow_deliberation_brief(authoritative)
+        optional_keys = {
+            contract for contract, _ in TASK_CONTRACTS.values()
+        } | {"world_model_deliberation_focus"}
+        output = {
+            key: value for key, value in frozen_plan.items()
+            if key not in optional_keys
+        }
+        base_audit = {
+            "version": 1,
+            "accepted": False,
+            "reason": "post_action_shadow_deliberation_failed",
+            "two_stage_active": True,
+            "action_frozen": str(frozen_plan.get(
+                "world_model_action", "none"
+            )),
+            "action_mutation_ignored": False,
+            "tactical_mutation_ignored": False,
+            "action_preserved": True,
+            "tactical_controls_preserved": True,
+            "can_change_current_action": False,
+            "can_change_tactical_controls": False,
+            "can_relax_downstream_validators": False,
+        }
+        if not shadow_deliberation_brief_is_valid(shadow, authoritative):
+            output["world_model_deliberation_encouragement_audit"] = {
+                **base_audit, "reason": "compatible_shadow_brief_required",
+            }
+            return output
+        facts = dict(trig.facts)
+        facts["world_model_shadow_deliberation_phase"] = True
+        facts["world_model_shadow_deliberation_brief"] = shadow
+        try:
+            raw = provider(
+                trig.team_id or "team", facts, trig.kind, dict(frozen_plan),
+            )
+            data = json.loads(raw) if isinstance(raw, str) else raw
+            shadow_plan = validate_coach_plan(data)
+        except Exception as exc:
+            output["world_model_deliberation_encouragement_audit"] = {
+                **base_audit,
+                "reason": f"shadow_deliberation_error:{type(exc).__name__}",
+                "encouragement": dict(
+                    shadow.get("shadow_task_encouragement") or {}
+                ),
+            }
+            return output
+        focus = shadow_plan.get("world_model_deliberation_focus")
+        if focus is None:
+            output["world_model_deliberation_encouragement_audit"] = {
+                **base_audit,
+                "reason": "valid_shadow_focus_required",
+                "encouragement": dict(
+                    shadow.get("shadow_task_encouragement") or {}
+                ),
+            }
+            return output
+        for key in optional_keys:
+            if key in shadow_plan:
+                output[key] = shadow_plan[key]
+        action_mutated = str(shadow_plan.get(
+            "world_model_action", "none"
+        )) != str(frozen_plan.get("world_model_action", "none"))
+        tactical_fields = (
+            "controls_delta", "tactical_hints", "tactical_preset",
+            "world_model_decision_mode",
+        )
+        tactical_mutated = any(
+            shadow_plan.get(field) != frozen_plan.get(field)
+            for field in tactical_fields
+        )
+        output["world_model_deliberation_encouragement_audit"] = {
+            **base_audit,
+            "accepted": True,
+            "reason": "post_action_shadow_deliberation_accepted",
+            "encouragement": dict(
+                shadow.get("shadow_task_encouragement") or {}
+            ),
+            "shadow_brief_digest": str(shadow.get(
+                "shadow_brief_digest", ""
+            )),
+            "declared_focus_tasks": list(focus.get("tasks") or []),
+            "action_mutation_ignored": action_mutated,
+            "tactical_mutation_ignored": tactical_mutated,
+        }
+        return output
+
     def process_trigger(
         self,
         trig: CognitiveTriggerEvent,
@@ -425,12 +536,42 @@ class CognitiveExecutor:
         if cached is not None:
             try:
                 plan = self._validate_plan(trig, cached)
+                if trig.entity_tier == ENTITY_TIER_COACH:
+                    from src.match_engine.world_model.llm_deliberation_encouragement import (
+                        deliberation_encouragement_audit_is_valid,
+                    )
+
+                    cached_encouragement = cached.get(
+                        "world_model_deliberation_encouragement_audit"
+                    ) or {}
+                    if deliberation_encouragement_audit_is_valid(
+                        cached_encouragement,
+                        plan,
+                        trig.facts.get(
+                            "world_model_llm_decision_brief"
+                        ) or {},
+                    ):
+                        plan[
+                            "world_model_deliberation_encouragement_audit"
+                        ] = dict(cached_encouragement)
                 from_cache = True
             except (TypeError, ValueError, KeyError):
                 plan = self._call_llm_for_trigger(trig)
+                if trig.entity_tier == ENTITY_TIER_COACH:
+                    plan = _reconcile_coach_world_model_plan(
+                        plan, trig.facts.get("world_model_decision_support"),
+                    )
+                    plan = self._call_post_action_shadow_deliberation(
+                        trig, plan,
+                    )
                 self._save_cache(key, plan)
         else:
             plan = self._call_llm_for_trigger(trig)
+            if trig.entity_tier == ENTITY_TIER_COACH:
+                plan = _reconcile_coach_world_model_plan(
+                    plan, trig.facts.get("world_model_decision_support"),
+                )
+                plan = self._call_post_action_shadow_deliberation(trig, plan)
             self._save_cache(key, plan)
 
         if trig.entity_tier == ENTITY_TIER_COACH:

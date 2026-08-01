@@ -30,6 +30,9 @@ from src.match_engine.world_model.probabilistic import ProbabilisticFuture
 from src.match_engine.world_model.opponent_information_feedback import (
     opponent_information_feedback_is_valid,
 )
+from src.match_engine.world_model.llm_deliberation_encouragement import (
+    task_selection_value_memory_is_valid,
+)
 from src.match_engine.world_model.llm_decision_brief import (
     build_llm_decision_brief,
     compact_world_model_facts_for_llm,
@@ -174,6 +177,12 @@ def test_trained_runtime_builds_member_utility_frontiers_end_to_end():
     assert "world_model_llm_decision_brief" not in projected
     assert "llm_decision_brief" not in packet
     agenda = brief["deliberation_agenda"]
+    assert task_selection_value_memory_is_valid(
+        packet["task_selection_value_memory"]
+    )
+    assert brief["task_selection_value_memory"] == packet[
+        "task_selection_value_memory"
+    ]
     assert len(agenda["recommended_focus"]) <= 3
     eligible_tasks = {
         task["task"] for task in agenda["tasks"] if task["eligible"]
@@ -193,6 +202,7 @@ def test_trained_runtime_builds_member_utility_frontiers_end_to_end():
         assert task["reasoning_domain"]
         assert 1 <= task["expected_compute_credits"] <= 2
         assert -0.08 <= task["learned_compute_value_adjustment"] <= 0.08
+        assert -0.06 <= task["learned_task_selection_adjustment"] <= 0.06
         assert 0.0 <= task["portfolio_score"] <= 1.0
     same_domain = {
         "a": {"portfolio_score": 0.5, "reasoning_domain": "one"},

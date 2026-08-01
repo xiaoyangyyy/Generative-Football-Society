@@ -16,7 +16,7 @@ from src.match_engine.world_model.llm_decision_brief import (
 )
 
 
-LLM_DELIBERATION_FOCUS_VERSION = 5
+LLM_DELIBERATION_FOCUS_VERSION = 6
 TASK_CONTRACTS = {
     "opponent_hypothesis": (
         "opponent_hypothesis", "opponent_belief_audit",
@@ -361,6 +361,48 @@ def _audit_from_evidence(
     nonexperimental_rejected = sorted(
         set(rejected) - set(experimental_budget_rejections)
     )
+    encouragement_audit = plan.get(
+        "world_model_deliberation_encouragement_audit"
+    ) or {}
+    from src.match_engine.world_model.llm_deliberation_encouragement import (
+        deliberation_encouragement_audit_is_valid,
+    )
+
+    encouragement_valid = bool(
+        not encouragement_audit
+        or deliberation_encouragement_audit_is_valid(
+            encouragement_audit, plan, brief,
+        )
+    )
+    encouragement = encouragement_audit.get("encouragement") or {}
+    assigned_trial = bool(
+        encouragement_audit.get("accepted")
+        and encouragement.get("eligible")
+        and encouragement.get("assigned_arm") in {"control", "treatment"}
+    )
+    encouragement_context = {
+        "two_stage_active": bool(encouragement_audit.get("two_stage_active")),
+        "audit_valid": encouragement_valid,
+        "randomized_trial": assigned_trial,
+        "assigned_arm": str(encouragement.get("assigned_arm", "disabled")),
+        "treatment_probability": float(encouragement.get(
+            "treatment_probability", 0.0,
+        )),
+        "assigned_focus": list(encouragement.get("assigned_focus") or []),
+        "declared_focus": sorted(selected),
+        "complied_with_assigned_focus": bool(
+            assigned_trial
+            and set(encouragement.get("assigned_focus") or []) == selected
+        ),
+        "useful_shadow_artifact": bool(any(
+            row.get("useful_artifact")
+            for row in compute_task_outcomes.values()
+        )),
+        "artifact_outcome_observed": assigned_trial,
+        "outcome_scope": "post_action_shadow_reasoning_only",
+        "can_change_current_action": False,
+        "can_claim_match_outcome_causality": False,
+    }
     short_circuited = sorted(
         task for task, (_, audit_key) in TASK_CONTRACTS.items()
         if (plan.get(audit_key) or {}).get("reason")
@@ -430,6 +472,7 @@ def _audit_from_evidence(
             and not compute_budget_mismatches
         ),
         "compute_task_outcomes": compute_task_outcomes,
+        "task_encouragement_context": encouragement_context,
         "missing_selected_contracts": missing,
         "rejected_selected_contracts": rejected,
         "experimental_budget_rejections": (
@@ -451,6 +494,7 @@ def _audit_from_evidence(
             and not nonexperimental_rejected
             and compute_allocation_valid and compute_allocation_matches_model
             and not compute_budget_mismatches
+            and encouragement_valid
             and efficiency >= 0.80 - 1e-12
             and portfolio_efficiency >= 0.80 - 1e-12
         ),
@@ -512,6 +556,7 @@ def llm_deliberation_focus_audit_is_valid(audit: Any) -> bool:
     )
     mismatches = payload.get("compute_budget_mismatches")
     outcomes = payload.get("compute_task_outcomes")
+    encouragement_context = payload.get("task_encouragement_context")
     try:
         rejected = set(payload.get("rejected_selected_contracts") or [])
         experimental_rejected = set(
@@ -529,6 +574,17 @@ def llm_deliberation_focus_audit_is_valid(audit: Any) -> bool:
         and payload.get("compute_allocation_matches_model") is True
         and isinstance(mismatches, list)
         and isinstance(outcomes, dict)
+        and isinstance(encouragement_context, dict)
+        and encouragement_context.get("audit_valid") is True
+        and encouragement_context.get("outcome_scope")
+        == "post_action_shadow_reasoning_only"
+        and (
+            not encouragement_context.get("randomized_trial")
+            or encouragement_context.get("two_stage_active") is True
+        )
+        and encouragement_context.get("can_change_current_action") is False
+        and encouragement_context.get("can_claim_match_outcome_causality")
+        is False
         and experimental_rejected <= rejected
         and experimental_rejected == {
             task for task, row in outcomes.items()

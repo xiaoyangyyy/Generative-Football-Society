@@ -225,6 +225,14 @@ def main() -> int:
             "compute credit produces useful model-internal artifacts."
         ),
     )
+    parser.add_argument(
+        "--require-llm-task-encouragement",
+        action="store_true",
+        help=(
+            "Require balanced post-action randomized task encouragement and "
+            "at least 50 percent exact LLM portfolio compliance."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -296,6 +304,9 @@ def main() -> int:
         ),
         require_llm_deliberation_compute_value=(
             args.require_llm_deliberation_compute_value
+        ),
+        require_llm_task_encouragement=(
+            args.require_llm_task_encouragement
         ),
     )
     output = Path(args.out)

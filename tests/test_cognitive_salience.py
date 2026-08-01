@@ -74,6 +74,7 @@ def test_policy_bridge_experiment_config_is_safely_bounded():
         "MATCH_WM_TRAJECTORY_BRANCH_BUDGET": "999",
         "MATCH_WM_LLM_CONTRASTIVE_REPAIR": "1",
         "MATCH_WM_LLM_CONTRASTIVE_REPAIR_PATH_BUDGET": "999",
+        "MATCH_WM_LLM_TWO_STAGE_DELIBERATION": "0",
     })
     assert cfg.world_model_action_bridge
     assert cfg.world_model_action_bias_max == 0.5
@@ -89,3 +90,4 @@ def test_policy_bridge_experiment_config_is_safely_bounded():
     assert cfg.world_model_trajectory_branch_budget == 112
     assert cfg.world_model_contrastive_repair
     assert cfg.world_model_contrastive_repair_path_budget == 128
+    assert not cfg.world_model_two_stage_deliberation

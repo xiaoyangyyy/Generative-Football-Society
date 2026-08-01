@@ -58,6 +58,7 @@ class CognitiveMatchConfig:
     world_model_trajectory_branch_budget: int = 48
     world_model_contrastive_repair: bool = False
     world_model_contrastive_repair_path_budget: int = 128
+    world_model_two_stage_deliberation: bool = True
     # coach, referee, player_per_team, assistant_total, crowd
     tier_caps: Tuple[int, int, int, int, int] = (6, 4, 4, 2, 3)
     half_time_sec: float = 45.0 * 60.0
@@ -136,6 +137,9 @@ class CognitiveMatchConfig:
                     "MATCH_WM_LLM_CONTRASTIVE_REPAIR_PATH_BUDGET",
                     128.0,
                 ))),
+            ),
+            world_model_two_stage_deliberation=env_bool(
+                values, "MATCH_WM_LLM_TWO_STAGE_DELIBERATION", True,
             ),
             tier_caps=_parse_tier_caps(
                 values.get("MATCH_COGNITIVE_MAX_PER_TIER", ""),

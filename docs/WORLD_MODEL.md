@@ -1034,6 +1034,39 @@ efficiency against the best eligible portfolio of the same size. Both must reach
 or duplicates one reasoning domain, while learned value can influence attention
 only after its randomized evidence gate has passed.
 
+### Frozen-action two-stage deliberation and task-selection value
+
+Models exposing the two-stage coach interface now make the live decision before
+optional world-model reasoning. The first call is reconciled against the engine
+candidate gate, freezing the action, decision mode, tactical controls, hints and
+preset. A second call may return only the focus declaration and optional task
+contracts; every action or tactical mutation is recorded and discarded. The
+merge uses a fixed contract allowlist, and cache hits retain the second-stage
+audit only after rebuilding and validating its prompt-only shadow brief. Models
+without the new interface keep the legacy single-call path.
+The second call is enabled by default and can be disabled explicitly with
+`MATCH_WM_LLM_TWO_STAGE_DELIBERATION=0` when latency or provider cost takes
+precedence; disabling it also disables task-encouragement evidence collection.
+
+This separation makes task-selection experiments safe enough to run without
+randomizing the current football action. When both `world_model_event_option`
+and `world_model_contrastive_claim` are eligible and the optimized portfolio
+contains exactly one, the shadow brief may swap only those two tasks. Every
+non-shadow task stays identical. The alternative must remain under six expected
+credits and above both the `0.80` raw-priority and `0.80` joint-portfolio floors.
+A digest-derived 50/50 assignment is revealed only to the post-action call.
+
+The resulting estimator is intention-to-treat: non-compliance remains in the
+assigned arm rather than being discarded. Its common outcome is whether the
+post-action portfolio produced a useful shadow artifact, not whether the match
+was won. A Beta-Bernoulli posterior with four trials per arm learns the relative
+event-option-versus-contrastive encouragement value. Only a non-overlapping 90%
+interval activates a task-selection adjustment, bounded to `[-0.06, 0.06]` and
+still subject to the raw-evidence floor. `--require-llm-task-encouragement`
+requires eight balanced trials across four matches, at least `0.50` exact
+portfolio compliance, valid focus audits, frozen-action execution and explicit
+non-causal scope.
+
 For trajectory tasks, credits become concrete engine limits: event options are
 bounded at `8/16/32` member evaluations and `48/96/144` member-trajectory paths;
 contrastive explanations are bounded at `16/32/64` paths and their optional

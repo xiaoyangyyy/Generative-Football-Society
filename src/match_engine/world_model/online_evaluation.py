@@ -75,6 +75,9 @@ from src.match_engine.world_model.llm_deliberation_focus import (
 from src.match_engine.world_model.llm_deliberation_compute_value import (
     deliberation_compute_value_diagnostics,
 )
+from src.match_engine.world_model.llm_deliberation_encouragement import (
+    task_encouragement_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -116,6 +119,7 @@ def aggregate_online_calibration(
     require_opponent_information_adaptation: bool = False,
     require_llm_deliberation_focus: bool = False,
     require_llm_deliberation_compute_value: bool = False,
+    require_llm_task_encouragement: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -264,6 +268,9 @@ def aggregate_online_calibration(
     )
     llm_deliberation_compute_value = (
         deliberation_compute_value_diagnostics(policy_record_clusters)
+    )
+    llm_task_encouragement = task_encouragement_diagnostics(
+        policy_record_clusters
     )
     memory_scopes = sorted({
         (
@@ -714,8 +721,24 @@ def aggregate_online_calibration(
         llm_deliberation_compute_value_ready
         if require_llm_deliberation_compute_value else True
     )
+    llm_task_encouragement_ready = bool(
+        llm_task_encouragement["randomized_encouragement_trials"] >= 8
+        and llm_task_encouragement["matches"] >= 4
+        and llm_task_encouragement["balanced_randomized_evidence"]
+        and llm_task_encouragement["overall_compliance_rate"] >= 0.50
+        and llm_task_encouragement["malformed_focus_audits"] == 0
+        and llm_task_encouragement["all_trials_post_action_shadow_only"]
+        and not llm_task_encouragement["can_change_current_action"]
+        and not llm_task_encouragement[
+            "can_claim_match_outcome_causality"
+        ]
+    )
+    gates["llm_task_encouragement"] = (
+        llm_task_encouragement_ready
+        if require_llm_task_encouragement else True
+    )
     return {
-        "version": 34,
+        "version": 35,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -763,6 +786,7 @@ def aggregate_online_calibration(
             "llm_deliberation_compute_value": (
                 llm_deliberation_compute_value
             ),
+            "llm_task_encouragement": llm_task_encouragement,
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -802,6 +826,7 @@ def aggregate_online_calibration(
         "llm_deliberation_compute_value_ready": (
             llm_deliberation_compute_value_ready
         ),
+        "llm_task_encouragement_ready": llm_task_encouragement_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -811,6 +836,7 @@ def aggregate_online_calibration(
             "Residual memory is isolated by checkpoint and policy-environment fingerprint.",
             "Active-learning acquisition is policy-selected, not randomized; its uncertainty reduction is descriptive.",
             "Deliberation compute experiments randomize only a shadow resource cap; useful-artifact yield is not match-outcome value.",
+            "Task encouragement is post-action intention-to-treat over two shadow tasks; it cannot establish match-outcome value.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",

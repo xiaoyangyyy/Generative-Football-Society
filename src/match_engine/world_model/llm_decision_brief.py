@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 4
+LLM_DECISION_BRIEF_VERSION = 5
 
 
 TASK_REASONING_DOMAINS = {
@@ -345,6 +345,18 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
         compute_value_memory
     )
     value_rows = compute_value_memory.get("task_values") or {}
+    task_selection_memory = packet.get("task_selection_value_memory") or {}
+    from src.match_engine.world_model.llm_deliberation_encouragement import (
+        task_selection_value_memory_is_valid,
+    )
+
+    selection_memory_valid = task_selection_value_memory_is_valid(
+        task_selection_memory
+    )
+    selection_status = str(task_selection_memory.get("status", ""))
+    selection_effect = float(task_selection_memory.get(
+        "event_option_minus_contrastive_itt", 0.0,
+    )) if selection_memory_valid else 0.0
     tasks = [
         {
             "task": task,
@@ -378,6 +390,18 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
                 ),
                 -0.08, 0.08,
             )),
+            "learned_task_selection_adjustment": float(np.clip(
+                (
+                    0.08 * selection_effect
+                    if task == "world_model_event_option"
+                    and selection_status.startswith("validated_")
+                    else -0.08 * selection_effect
+                    if task == "world_model_contrastive_claim"
+                    and selection_status.startswith("validated_")
+                    else 0.0
+                ),
+                -0.06, 0.06,
+            )),
         }
         for task, eligible, priority, reason in task_specs
     ]
@@ -385,6 +409,7 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
         task["portfolio_score"] = float(np.clip(
             task["priority"]
             + task["learned_compute_value_adjustment"]
+            + task["learned_task_selection_adjustment"]
             - (0.03 if task["compute_cost_class"] == "trajectory_rollout"
                else 0.0),
             0.0, 1.0,
@@ -412,6 +437,7 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
             "trajectory_compute_cost_penalty": 0.03,
             "maximum_expected_compute_credits": 6,
             "learned_value_adjustment_bounds": [-0.08, 0.08],
+            "learned_task_selection_adjustment_bounds": [-0.06, 0.06],
             "minimum_raw_priority_fraction": 0.80,
         },
         "tasks": tasks,
@@ -470,6 +496,9 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
         ),
         "deliberation_compute_value_memory": source_packet.get(
             "deliberation_compute_value_memory", {}
+        ),
+        "task_selection_value_memory": source_packet.get(
+            "task_selection_value_memory", {}
         ),
         "online_calibration": source_packet.get("online_calibration", {}),
         "policy_outcome_calibration": source_packet.get(
@@ -556,6 +585,20 @@ def compact_world_model_facts_for_llm(
     facts: dict[str, Any],
 ) -> dict[str, Any]:
     """Swap only the serialized LLM view; callers retain the full packet."""
+    shadow = facts.get("world_model_shadow_deliberation_brief") or {}
+    authoritative = facts.get("world_model_llm_decision_brief") or {}
+    if facts.get("world_model_shadow_deliberation_phase"):
+        from src.match_engine.world_model.llm_deliberation_encouragement import (
+            shadow_deliberation_brief_is_valid,
+        )
+
+        if shadow_deliberation_brief_is_valid(shadow, authoritative):
+            output = dict(facts)
+            output["world_model_decision_support"] = shadow
+            output.pop("world_model_llm_decision_brief", None)
+            output.pop("world_model_shadow_deliberation_brief", None)
+            output.pop("world_model_shadow_deliberation_phase", None)
+            return output
     output = dict(facts)
     packet = facts.get("world_model_decision_support") or {}
     if not isinstance(packet, dict) or not packet:
@@ -591,6 +634,9 @@ def llm_decision_brief_metadata(brief: dict[str, Any]) -> dict[str, Any]:
         "compute_value_memory_digest": str((brief.get(
             "deliberation_compute_value_memory"
         ) or {}).get("memory_digest", "")),
+        "task_selection_value_memory_digest": str((brief.get(
+            "task_selection_value_memory"
+        ) or {}).get("memory_digest", "")),
         "full_packet_retained_for_engine_audit": True,
         "brief_used_for_llm_serialization": True,
     }
@@ -607,6 +653,9 @@ def llm_decision_brief_metadata_is_valid(metadata: Any) -> bool:
             "maximum_compute_credits_per_task"
         ))
         memory_digest = str(metadata.get("compute_value_memory_digest", ""))
+        selection_memory_digest = str(metadata.get(
+            "task_selection_value_memory_digest", ""
+        ))
     except (TypeError, ValueError, OverflowError):
         return False
     return bool(
@@ -624,6 +673,12 @@ def llm_decision_brief_metadata_is_valid(metadata: Any) -> bool:
         and (
             not memory_digest
             or memory_digest.startswith("llm-deliberation-compute-value:")
+        )
+        and (
+            not selection_memory_digest
+            or selection_memory_digest.startswith(
+                "llm-deliberation-encouragement:"
+            )
         )
         and len(focus) <= maximum
         and len(focus) == len(set(map(str, focus)))

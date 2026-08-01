@@ -632,6 +632,18 @@ def build_coach_decision_packet(
                 as_of_t_sec=float(getattr(state, "clock_seconds", 0.0)),
             )
         )
+        from src.match_engine.world_model.llm_deliberation_encouragement import (
+            build_task_selection_value_memory,
+        )
+
+        task_selection_value_memory = build_task_selection_value_memory(
+            getattr(state, "_wm_coach_decision_adoption", None) or [],
+            checkpoint_signature=str(getattr(
+                runtime, "checkpoint_signature", "runtime_unspecified",
+            )),
+            environment_signature=str(environment_signature),
+            as_of_t_sec=float(getattr(state, "clock_seconds", 0.0)),
+        )
         eligible = [
             candidate for candidate in candidates
             if candidate["effective_confidence"] > 0.0
@@ -667,6 +679,7 @@ def build_coach_decision_packet(
             "deliberation_compute_value_memory": (
                 deliberation_compute_value_memory
             ),
+            "task_selection_value_memory": task_selection_value_memory,
             "decision_context": learning_context,
             "online_calibration": _online_calibration_diagnostics(runtime),
             "policy_outcome_calibration": outcome_calibration,

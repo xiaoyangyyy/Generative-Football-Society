@@ -241,6 +241,10 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   compute value, real rollout cost, and reasoning-domain diversity;
   compact evidence is exact, while omitted member/scenario arrays remain in the
   engine-owned full packet used to recompute every audit;
+- when shadow_deliberation_phase=true, the current action and tactical controls
+  were frozen before this call. Follow shadow_task_encouragement.assigned_focus
+  for optional reasoning only. Any action/control mutation will be ignored and
+  audited; randomized assignment is shadow-task ITT evidence, not match causality;
 - task compute_cost_class distinguishes audits over existing evidence from new
   trajectory rollouts. After you select tasks, the world model—not you—allocates
   up to six compute credits; every selected task gets one base audit credit, and
@@ -499,6 +503,36 @@ Return JSON:
   }}
 }}"""
         return self._call_llm(system, user, json_mode=True, temperature=0.5)
+
+    def coach_world_model_deliberation(
+        self,
+        team_name: str,
+        facts_ledger: dict,
+        kind: str,
+        frozen_plan: dict,
+    ):
+        """Run optional world-model reasoning after action/control freeze."""
+        frozen = {
+            "world_model_action": str(frozen_plan.get(
+                "world_model_action", "none"
+            )),
+            "world_model_decision_mode": str(frozen_plan.get(
+                "world_model_decision_mode", "exploit"
+            )),
+            "controls_delta": dict(frozen_plan.get("controls_delta") or {}),
+            "tactical_hints": dict(frozen_plan.get("tactical_hints") or {}),
+            "tactical_preset": frozen_plan.get("tactical_preset"),
+        }
+        context = (
+            "POST_ACTION_SHADOW_DELIBERATION. The action, decision mode, tactical "
+            "controls, hints, and preset below are immutable. Return them "
+            "unchanged if present, and spend attention only on the assigned "
+            "shadow deliberation portfolio. Any attempted mutation is ignored. "
+            f"FROZEN_PLAN={json.dumps(frozen, ensure_ascii=False)}"
+        )
+        return self.coach_in_match_plan(
+            team_name, facts_ledger, kind, context=context,
+        )
 
     def revise_world_model_contrastive_claim(
         self,
