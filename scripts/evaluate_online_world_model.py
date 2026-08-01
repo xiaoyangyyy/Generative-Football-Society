@@ -138,6 +138,14 @@ def main() -> int:
             "events and observe later actions across at least four matches."
         ),
     )
+    parser.add_argument(
+        "--require-llm-event-option-values",
+        action="store_true",
+        help=(
+            "Fail readiness until naturally matched continuation branches "
+            "have calibrated policy-utility predictions across four matches."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -181,6 +189,9 @@ def main() -> int:
             args.require_learned_semantic_events
         ),
         require_llm_event_options=args.require_llm_event_options,
+        require_llm_event_option_values=(
+            args.require_llm_event_option_values
+        ),
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

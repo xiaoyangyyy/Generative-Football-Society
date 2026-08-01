@@ -643,6 +643,25 @@ def _begin_world_model_tick(state, *, dt, wm_recorder, wm_runtime, wm_cfg):
     state._wm_obs_pre = encode_observation(
         state, attacking_home=attacking_home, cfg=wm_cfg,
     )
+    waiting_for_option_followup = any(
+        record.get("event_option_resolved_t_sec") is not None
+        and record.get("event_option_next_action") is None
+        and not record.get("event_option_followup_expired")
+        and str(record.get("team_id")) == str(state._wm_actor_team_id_pre)
+        for record in (
+            getattr(state, "_wm_coach_decision_adoption", None) or []
+        )
+    )
+    if waiting_for_option_followup:
+        from src.match_engine.world_model.policy_outcomes import (
+            capture_policy_outcome_baseline,
+        )
+
+        state._wm_outcome_baseline_pre = capture_policy_outcome_baseline(
+            state, team_id=str(state._wm_actor_team_id_pre),
+        )
+    else:
+        state._wm_outcome_baseline_pre = None
     state._wm_last_action = None
 
 
@@ -764,6 +783,9 @@ def _finish_world_model_tick(
         team_id=str(getattr(state, "_wm_actor_team_id_pre", "")),
         action_kind=decode_action_kind(action),
         t_sec=t1,
+        outcome_baseline=getattr(
+            state, "_wm_outcome_baseline_pre", None,
+        ),
     )
     observe_policy_intervention_outcomes(
         state,

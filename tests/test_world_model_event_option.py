@@ -94,6 +94,18 @@ class _OptionRuntime:
             ),
         }
 
+    def predict_policy_utility(
+        self, observation, action, *, action_kind, attacking_home, horizon_s,
+    ):
+        self.calls.append(action_kind)
+        x = float(observation[200])
+        value = x if action_kind == "shot" else 1.2 - x
+        return {
+            "policy_utility": value,
+            "uncertainty": 0.1,
+            "retention_probability": 0.9,
+        }
+
 
 def test_event_option_contract_is_strict_and_survives_plan_sanitization():
     assert validate_llm_event_option(_option())["on_occurrence"] == "shot"
@@ -124,8 +136,15 @@ def test_member_conditioned_option_is_evaluated_with_hard_shadow_budget():
     assert audit["accepted"]
     assert audit["member_evaluations"] == 8
     assert audit["member_evaluation_budget"] == 8
+    assert audit["trajectory_member_paths"] == 36
+    assert audit["trajectory_member_path_budget"] == 144
     assert runtime.calls == ["shot"] * 4 + ["hold"] * 4
     assert audit["conditional_gain_vs_best_fixed"] > 0.0
+    assert audit["continuation_value_calibratable"]
+    assert set(audit["conditional_policy_utility_predictions"]) == {
+        "on_occurrence", "on_absence",
+    }
+    assert audit["continuation_prediction_horizon_s"] == 10.0
     assert audit["shadow_only"]
     assert not audit["authority_active"]
     assert not audit["policy_mutated"]
@@ -159,3 +178,19 @@ def test_event_option_fails_closed(runtime, packet, budget, reason):
     assert not audit["accepted"]
     assert audit["reason"] == reason
     assert audit["shadow_only"]
+
+
+def test_event_option_counts_nested_ensemble_paths_in_compute_budget():
+    audit = evaluate_llm_event_option(
+        _OptionRuntime(),
+        SimpleNamespace(home=SimpleNamespace(team_id="A")),
+        _packet(),
+        _option(),
+        team_id="A",
+        selected_action="pass",
+        max_member_evaluations=8,
+        max_member_trajectory_paths=35,
+    )
+    assert not audit["accepted"]
+    assert audit["reason"] == "option_nested_trajectory_budget_insufficient"
+    assert audit["trajectory_member_paths_required"] == 36

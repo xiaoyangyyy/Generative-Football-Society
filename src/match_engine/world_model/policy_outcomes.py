@@ -28,9 +28,34 @@ def censor_overlapping_policy_outcomes(
 ) -> None:
     """Censor only the isolated-effect view; regime outcomes keep running."""
     for previous in records:
+        if str(previous["team_id"]) != str(team_id):
+            continue
+        evaluation = _event_option_evaluation(previous)
         if (
-            str(previous["team_id"]) == str(team_id)
-            and previous.get("policy_opportunity_observed")
+            previous.get("event_option_resolved_t_sec") is not None
+            and previous.get("event_option_next_action") is None
+            and not previous.get("event_option_followup_expired")
+        ):
+            previous["event_option_followup_expired"] = True
+            previous["event_option_followup_superseded_t_sec"] = float(t_sec)
+            if evaluation is not None:
+                evaluation["continuation_followup_expired"] = True
+                evaluation["continuation_calibration_eligible"] = False
+                evaluation["continuation_calibration_reason"] = (
+                    "superseded_by_newer_same_team_coach_decision"
+                )
+        elif (
+            previous.get("event_option_followup_anchor_t_sec") is not None
+            and evaluation is not None
+            and not evaluation.get("continuation_calibration_observed")
+        ):
+            previous["event_option_followup_censored_t_sec"] = float(t_sec)
+            evaluation["continuation_calibration_eligible"] = False
+            evaluation["continuation_calibration_reason"] = (
+                "followup_value_censored_by_newer_same_team_coach_decision"
+            )
+        if (
+            previous.get("policy_opportunity_observed")
             and previous.get("outcome_baseline") is not None
             and previous.get("outcome_censored_t_sec") is None
         ):
@@ -87,6 +112,123 @@ def capture_policy_outcome_baseline(
     }
 
 
+def _realized_policy_utility(
+    state,
+    *,
+    team_id: str,
+    baseline: dict[str, Any],
+    now: float,
+    anchor: float,
+) -> dict[str, Any]:
+    attacking_home = str(team_id) == str(state.home.team_id)
+    team = state.home if attacking_home else state.away
+    opponent = state.away if attacking_home else state.home
+    direction = 1.0 if attacking_home else -1.0
+    xg_for = float(
+        state.micro_xg_home if attacking_home else state.micro_xg_away
+    )
+    xg_against = float(
+        state.micro_xg_away if attacking_home else state.micro_xg_home
+    )
+    progress = direction * (
+        float(state.ball.position[0]) - float(baseline["ball_x"])
+    )
+    xg_net = (
+        xg_for - float(baseline["xg_for"])
+        - xg_against + float(baseline["xg_against"])
+    )
+    goal_delta = (
+        float(team.score - opponent.score) - float(baseline["goal_diff"])
+    )
+    retained = str(state.ball.possession_team_id) == str(team_id)
+    utility = (
+        goal_delta
+        + 0.35 * xg_net
+        + 0.15 * progress
+        + 0.05 * (1.0 if retained else -1.0)
+    )
+    return {
+        "elapsed_s": max(0.0, now - anchor),
+        "observed_t_sec": now,
+        "progress": progress,
+        "retained_possession": retained,
+        "xg_net_delta": xg_net,
+        "goal_diff_delta": goal_delta,
+        "policy_utility": utility,
+    }
+
+
+def _event_option_evaluation(record: dict[str, Any]) -> dict[str, Any] | None:
+    for outcome in (
+        record.get("multi_horizon_regime_outcomes") or {}
+    ).values():
+        if not isinstance(outcome, dict):
+            continue
+        evaluation = outcome.get("llm_event_option_evaluation")
+        if isinstance(evaluation, dict):
+            return evaluation
+    return None
+
+
+def _observe_event_option_followup(state, record: dict[str, Any], now: float) -> None:
+    evaluation = _event_option_evaluation(record)
+    if evaluation is None or evaluation.get("continuation_calibration_observed"):
+        return
+    resolved = record.get("event_option_resolved_t_sec")
+    if (
+        resolved is not None
+        and record.get("event_option_next_action") is None
+        and now > float(resolved) + 120.0
+    ):
+        record["event_option_followup_expired"] = True
+        evaluation["continuation_followup_expired"] = True
+        evaluation["continuation_calibration_eligible"] = False
+        evaluation["continuation_calibration_reason"] = (
+            "no_same_team_action_within_followup_window"
+        )
+        return
+    if not evaluation.get("continuation_calibration_eligible"):
+        return
+    anchor = record.get("event_option_followup_anchor_t_sec")
+    due = record.get("event_option_followup_due_t_sec")
+    baseline = record.get("event_option_followup_baseline")
+    if anchor is None or due is None or not isinstance(baseline, dict):
+        return
+    if now + 1e-9 < float(due):
+        return
+    try:
+        predicted = float(evaluation["expected_continuation_policy_utility"])
+        realized = _realized_policy_utility(
+            state,
+            team_id=str(record["team_id"]),
+            baseline=baseline,
+            now=now,
+            anchor=float(anchor),
+        )
+    except (KeyError, TypeError, ValueError, AttributeError):
+        evaluation["continuation_calibration_eligible"] = False
+        evaluation["continuation_calibration_reason"] = (
+            "malformed_followup_calibration_state"
+        )
+        return
+    observed = float(realized["policy_utility"])
+    if not math.isfinite(predicted) or not math.isfinite(observed):
+        evaluation["continuation_calibration_eligible"] = False
+        evaluation["continuation_calibration_reason"] = (
+            "non_finite_followup_calibration_value"
+        )
+        return
+    residual = observed - predicted
+    evaluation["continuation_calibration_observed"] = True
+    evaluation["continuation_calibration_reason"] = (
+        "matching_branch_value_scored_on_realized_followup"
+    )
+    evaluation["realized_continuation_outcome"] = realized
+    evaluation["continuation_policy_utility_residual"] = residual
+    evaluation["continuation_policy_utility_absolute_error"] = abs(residual)
+    evaluation["continuation_policy_utility_squared_error"] = residual ** 2
+
+
 def observe_policy_intervention_outcomes(
     state,
     *,
@@ -96,6 +238,7 @@ def observe_policy_intervention_outcomes(
     records = getattr(state, "_wm_coach_decision_adoption", None) or []
     now = float(t_sec)
     for record in records:
+        _observe_event_option_followup(state, record, now)
         baseline = record.get("outcome_baseline")
         if (
             not record.get("policy_opportunity_observed")
@@ -105,37 +248,22 @@ def observe_policy_intervention_outcomes(
             continue
         team_id = str(record["team_id"])
         attacking_home = team_id == str(state.home.team_id)
-        team = state.home if attacking_home else state.away
-        opponent = state.away if attacking_home else state.home
-        direction = 1.0 if attacking_home else -1.0
         anchor = float(record.get("outcome_anchor_t_sec") or 0.0)
         isolated = record.setdefault("multi_horizon_outcomes", {})
         regime = record.setdefault("multi_horizon_regime_outcomes", {})
         censor_t = record.get("outcome_censored_t_sec")
-        xg_for = float(
-            state.micro_xg_home if attacking_home else state.micro_xg_away
+        realized = _realized_policy_utility(
+            state,
+            team_id=team_id,
+            baseline=baseline,
+            now=now,
+            anchor=anchor,
         )
-        xg_against = float(
-            state.micro_xg_away if attacking_home else state.micro_xg_home
-        )
-        progress = direction * (
-            float(state.ball.position[0]) - float(baseline["ball_x"])
-        )
-        xg_net = (
-            xg_for - float(baseline["xg_for"])
-            - xg_against + float(baseline["xg_against"])
-        )
-        goal_delta = (
-            float(team.score - opponent.score) - float(baseline["goal_diff"])
-        )
-        retained = str(state.ball.possession_team_id) == team_id
-        retention_edge = 1.0 if retained else -1.0
-        utility = (
-            goal_delta
-            + 0.35 * xg_net
-            + 0.15 * progress
-            + 0.05 * retention_edge
-        )
+        progress = float(realized["progress"])
+        xg_net = float(realized["xg_net_delta"])
+        goal_delta = float(realized["goal_diff_delta"])
+        retained = bool(realized["retained_possession"])
+        utility = float(realized["policy_utility"])
         for horizon_s in record.get("outcome_horizons_s", [0.0]):
             horizon_s = max(0.0, float(horizon_s))
             key = policy_horizon_key(horizon_s)
@@ -144,13 +272,7 @@ def observe_policy_intervention_outcomes(
                 continue
             outcome = {
                 "horizon_s": horizon_s,
-                "elapsed_s": max(0.0, now - anchor),
-                "observed_t_sec": now,
-                "progress": progress,
-                "retained_possession": retained,
-                "xg_net_delta": xg_net,
-                "goal_diff_delta": goal_delta,
-                "policy_utility": utility,
+                **realized,
             }
             prediction = (
                 record.get("world_model_outcome_predictions") or {}
@@ -236,6 +358,26 @@ def observe_policy_intervention_outcomes(
                             "conditional_gain_vs_best_fixed", 0.0,
                         )
                     ),
+                    "continuation_value_calibratable": bool(
+                        option_context.get(
+                            "continuation_value_calibratable", False,
+                        )
+                    ),
+                    "continuation_prediction_horizon_s": float(
+                        option_context.get(
+                            "continuation_prediction_horizon_s", 10.0,
+                        )
+                    ),
+                    "expected_continuation_policy_utility": (
+                        (option_context.get(
+                            "conditional_policy_utility_predictions"
+                        ) or {}).get(
+                            "on_occurrence"
+                            if option_event_observed else "on_absence"
+                        )
+                    ),
+                    "continuation_calibration_eligible": False,
+                    "continuation_calibration_observed": False,
                     "member_evaluations": int(option_context.get(
                         "member_evaluations", 0,
                     )),

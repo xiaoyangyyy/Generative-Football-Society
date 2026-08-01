@@ -101,5 +101,10 @@ their event weights. The option remains shadow-only, and later simulator event
 resolution plus the next same-team action provide provenance-isolated,
 descriptive follow-up evidence without scheduling a future action or claiming
 causal value.
+For naturally matching follow-up actions, the member-conditioned continuation
+utility is now frozen before execution and scored after a second outcome window.
+Action mismatches are never relabelled as counterfactual outcomes. Cross-match
+value readiness therefore measures compositional forecast calibration, not the
+causal benefit of adopting the LLM branch.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

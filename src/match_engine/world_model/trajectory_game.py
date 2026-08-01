@@ -69,6 +69,22 @@ def _physics_prior(
     return float(np.clip(0.35 * (1.0 - distance), 0.03, 0.45))
 
 
+def encode_predicted_state_action(
+    observation: np.ndarray,
+    *,
+    action_name: str,
+    attacking_home: bool,
+    horizon_s: float,
+) -> np.ndarray:
+    """Encode an action from a predicted state without hidden simulator data."""
+    target = _target(observation, action_name, attacking_home)
+    action = encode_high_level_action(
+        action_name, target=target, horizon_s=horizon_s,
+    )
+    action[13] = _physics_prior(observation, action_name, attacking_home)
+    return action
+
+
 def _condition_opponent(
     observation: np.ndarray,
     *,
@@ -93,11 +109,12 @@ def evaluate_predicted_state_action(
     attacking_home: bool,
     horizon_s: float,
 ) -> dict[str, Any]:
-    target = _target(observation, action_name, attacking_home)
-    action = encode_high_level_action(
-        action_name, target=target, horizon_s=horizon_s,
+    action = encode_predicted_state_action(
+        observation,
+        action_name=action_name,
+        attacking_home=attacking_home,
+        horizon_s=horizon_s,
     )
-    action[13] = _physics_prior(observation, action_name, attacking_home)
     evaluator = getattr(runtime, "evaluate_action_from_observation", None)
     if callable(evaluator):
         result = evaluator(

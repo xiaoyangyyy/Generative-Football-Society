@@ -69,6 +69,7 @@ def aggregate_online_calibration(
     require_llm_semantic_events: bool = False,
     require_learned_semantic_events: bool = False,
     require_llm_event_options: bool = False,
+    require_llm_event_option_values: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -351,8 +352,23 @@ def aggregate_online_calibration(
     gates["shadow_llm_event_option_evaluation"] = (
         llm_event_options_ready if require_llm_event_options else True
     )
+    llm_event_option_values_ready = bool(
+        llm_event_options["value_predictions_realized"]
+        >= max(2, min_residual_samples)
+        and llm_event_options["value_calibration_matches"] >= 4
+        and llm_event_options["malformed_value_evaluations"] == 0
+        and llm_event_options[
+            "all_value_targets_natural_matching_actions"
+        ]
+        and llm_event_options["match_clustered_value_skill_vs_zero"] > 0.0
+        and llm_event_options["provenance_compatible"]
+    )
+    gates["calibrated_llm_event_option_values"] = (
+        llm_event_option_values_ready
+        if require_llm_event_option_values else True
+    )
     return {
-        "version": 12,
+        "version": 13,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -406,6 +422,7 @@ def aggregate_online_calibration(
         "llm_semantic_events_ready": llm_semantic_events_ready,
         "learned_semantic_events_ready": learned_semantic_events_ready,
         "llm_event_options_ready": llm_event_options_ready,
+        "llm_event_option_values_ready": llm_event_option_values_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -421,5 +438,6 @@ def aggregate_online_calibration(
             "LLM semantic event hypotheses and neural event probabilities are scored against the same outcome and remain non-controlling.",
             "Learned semantic event fusion is evaluated against its transparent projection baseline under bounded per-event authority.",
             "LLM event-conditioned options remain shadow-only; continuation agreement is descriptive and does not establish option value.",
+            "Conditional option values are scored only after the naturally observed continuation matches the declared branch; this calibration is observational, not a counterfactual effect estimate.",
         ],
     }

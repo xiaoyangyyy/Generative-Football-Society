@@ -591,8 +591,10 @@ member-predicted state. Transparent member event indicators are blended with a
 learned semantic head only when that exact event/depth gate is open, with
 learned authority capped at `0.50`. Jeffreys branch shrinkage prevents an empty
 or tiny event branch from claiming extreme value. A decision defaults to at
-most 16 continuation evaluations, has a hard ceiling of 32, and fails closed if
-both branches cannot be evaluated for every member. The audit records member
+most 16 continuation evaluations, has a hard ceiling of 32, and also counts the
+nested ensemble work inside each continuation under a 144 member-trajectory
+hard ceiling. It fails closed if both branches cannot be evaluated for every
+member. The audit records member
 support, conditional and fixed-branch values, model calls, budget, checkpoint,
 environment, and LLM option-contract signature.
 
@@ -608,6 +610,28 @@ all non-control safety flags. Use `--require-llm-event-options` to require that
 audit path. Continuation agreement is neither a causal effect nor evidence that
 the conditional option improved match value.
 
+V2 closes the remaining temporal-value loop. When the runtime exposes the
+multi-horizon policy-utility head, each proposed continuation is scored on every
+event-conditioned member state using the same utility definition later measured
+by the simulator. If and only if the proposed first action occurred, the event
+resolved, the next same-team action naturally matched the corresponding branch,
+and a pre-action baseline was captured, that branch prediction receives a new
+delayed outcome window. The realized continuation utility, residual, absolute
+error, and squared error are then attached to the immutable option audit.
+Mismatched actions receive no counterfactual label; missing baselines and expired
+follow-up windows fail closed. A newer same-team coach decision terminates an
+unobserved continuation and censors an already anchored value window, preventing
+one plan from borrowing another plan's behavior or outcome.
+
+Aggregate value calibration gives every match equal weight and reports bias,
+MAE, MSE, and skill against a zero-utility prediction. Strict readiness requires
+enough realized matching branches, at least four compatible matches, zero
+malformed value rows, and positive match-clustered skill via
+`--require-llm-event-option-values`. This establishes calibration of the
+world-model value estimate under naturally selected matching branches. It does
+not estimate what would have happened under an unobserved continuation and does
+not authorize the LLM option to control play.
+
 All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 
 ```bash
@@ -619,5 +643,6 @@ python scripts/evaluate_online_world_model.py \
   --require-opponent-meta-belief --require-opponent-change-detection \
   --require-opponent-response-model --require-two-step-trajectory-planning \
   --require-llm-semantic-critic --require-llm-semantic-events \
-  --require-learned-semantic-events --require-llm-event-options
+  --require-learned-semantic-events --require-llm-event-options \
+  --require-llm-event-option-values
 ```

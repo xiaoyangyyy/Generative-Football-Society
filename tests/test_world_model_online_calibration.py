@@ -7,7 +7,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from src.match_engine.match_micro_runner import _finish_world_model_tick
+from src.match_engine.match_micro_runner import (
+    _begin_world_model_tick,
+    _finish_world_model_tick,
+)
 from src.match_engine.state import (
     CoachAffectiveState,
     CrowdState,
@@ -167,6 +170,47 @@ def test_tick_calibration_runs_without_trace_recorder():
     )
     assert len(runtime.calls) == 1
     assert state._wm_online_last["trust_factor"] == 0.8
+
+
+def test_begin_tick_captures_pre_action_baseline_only_for_pending_option():
+    state = MatchAffectiveState(
+        home=TeamAffectiveState(
+            team_id="Home", coach=CoachAffectiveState(team_id="Home"),
+        ),
+        away=TeamAffectiveState(
+            team_id="Away", coach=CoachAffectiveState(team_id="Away"),
+        ),
+        referee=RefereeAffectiveState(),
+        crowd=CrowdState(),
+    )
+    state.ball.possession_team_id = "Home"
+    state.ball.position = [0.62, 0.48]
+    state._wm_coach_decision_adoption = [{
+        "team_id": "Home",
+        "event_option_resolved_t_sec": 60.0,
+        "event_option_next_action": None,
+        "event_option_followup_expired": False,
+    }]
+
+    _begin_world_model_tick(
+        state,
+        dt=5.0,
+        wm_recorder=None,
+        wm_runtime=object(),
+        wm_cfg=WorldModelConfig(),
+    )
+    assert state._wm_outcome_baseline_pre["ball_x"] == pytest.approx(0.62)
+    assert state._wm_outcome_baseline_pre["goal_diff"] == 0.0
+
+    state._wm_coach_decision_adoption[0]["event_option_followup_expired"] = True
+    _begin_world_model_tick(
+        state,
+        dt=5.0,
+        wm_recorder=None,
+        wm_runtime=object(),
+        wm_cfg=WorldModelConfig(),
+    )
+    assert state._wm_outcome_baseline_pre is None
 
 
 def test_online_reports_aggregate_transition_and_adoption_evidence():
@@ -551,7 +595,7 @@ def test_strict_semantic_event_gate_requires_paired_shadow_match_evidence():
         projection_probability = 0.55 if observed else 0.45
         learned_probability = 0.75 if observed else 0.25
         evaluation = {
-            "version": 1,
+            "version": 2,
             "event": "retain_possession",
             "observed": observed,
             "llm_probability": llm_probability,
@@ -670,23 +714,34 @@ def test_strict_semantic_event_gate_requires_paired_shadow_match_evidence():
 def test_strict_event_option_gate_requires_safe_cross_match_followups():
     logs = []
     for index in range(4):
+        observed_utility = 0.10 if index % 2 else -0.10
+        predicted_utility = observed_utility - 0.01
         evaluation = {
-            "version": 1,
+            "version": 2,
             "event_observed": bool(index % 2),
             "expected_continuation_action": "shot",
             "next_action_observed": True,
-            "observed_continuation_action": (
-                "shot" if index < 3 else "hold"
-            ),
-            "expected_action_matched": index < 3,
+            "observed_continuation_action": "shot",
+            "expected_action_matched": True,
             "conditional_gain_vs_best_fixed": 0.02 + 0.01 * index,
             "member_evaluations": 8,
             "member_evaluation_budget": 16,
+            "trajectory_member_paths": 27,
+            "trajectory_member_path_budget": 144,
             "shadow_only": True,
             "authority_active": False,
             "policy_mutated": False,
             "can_execute_future_action": False,
             "causal_interpretation": False,
+            "continuation_value_calibratable": True,
+            "continuation_calibration_eligible": True,
+            "continuation_calibration_observed": True,
+            "expected_continuation_policy_utility": predicted_utility,
+            "realized_continuation_outcome": {
+                "policy_utility": observed_utility,
+            },
+            "continuation_policy_utility_residual": 0.01,
+            "continuation_policy_utility_squared_error": 0.0001,
             "option_signature": "llm-event-option:test-contract",
             "checkpoint_signature": "checkpoint-a",
             "environment_signature": "environment-a",
@@ -705,15 +760,21 @@ def test_strict_event_option_gate_requires_safe_cross_match_followups():
         logs,
         min_residual_samples=2,
         require_llm_event_options=True,
+        require_llm_event_option_values=True,
     )
     diagnostics = report["decision_adoption"]["llm_event_options"]
     assert diagnostics["resolved_events"] == 4
     assert diagnostics["continuations_observed"] == 4
-    assert diagnostics["continuation_match_rate"] == pytest.approx(0.75)
+    assert diagnostics["continuation_match_rate"] == pytest.approx(1.0)
     assert diagnostics["budgets_respected"]
     assert diagnostics["provenance_compatible"]
     assert report["llm_event_options_ready"]
     assert report["gates"]["shadow_llm_event_option_evaluation"]
+    assert diagnostics["value_predictions_realized"] == 4
+    assert diagnostics["value_calibration_matches"] == 4
+    assert diagnostics["match_clustered_value_skill_vs_zero"] > 0.0
+    assert report["llm_event_option_values_ready"]
+    assert report["gates"]["calibrated_llm_event_option_values"]
 
     evaluation["option_signature"] = "llm-event-option:mixed-contract"
     mixed = aggregate_online_calibration(
@@ -727,6 +788,18 @@ def test_strict_event_option_gate_requires_safe_cross_match_followups():
     assert not mixed["llm_event_options_ready"]
 
     evaluation["option_signature"] = "llm-event-option:test-contract"
+    evaluation["expected_action_matched"] = False
+    contaminated_value = aggregate_online_calibration(
+        logs,
+        min_residual_samples=2,
+        require_llm_event_option_values=True,
+    )
+    assert contaminated_value["decision_adoption"]["llm_event_options"][
+        "malformed_value_evaluations"
+    ] == 1
+    assert not contaminated_value["llm_event_option_values_ready"]
+
+    evaluation["expected_action_matched"] = True
     evaluation["conditional_gain_vs_best_fixed"] = float("nan")
     malformed = aggregate_online_calibration(
         logs,

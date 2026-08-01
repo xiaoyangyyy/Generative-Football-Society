@@ -16,6 +16,7 @@ from src.match_engine.world_model.decision_adoption import (
 )
 from src.match_engine.world_model.policy_outcomes import (
     capture_policy_outcome_baseline,
+    censor_overlapping_policy_outcomes,
     observe_policy_intervention_outcomes,
 )
 from src.match_engine.world_model.policy_experiment import (
@@ -561,6 +562,12 @@ def test_event_option_resolves_then_observes_next_same_team_action():
         "member_evaluations": 8,
         "member_evaluation_budget": 16,
         "option_signature": "llm-event-option:test",
+        "continuation_value_calibratable": True,
+        "continuation_prediction_horizon_s": 10.0,
+        "conditional_policy_utility_predictions": {
+            "on_occurrence": 0.06,
+            "on_absence": 0.02,
+        },
     }
     record = register_coach_action_decision(
         state,
@@ -598,14 +605,121 @@ def test_event_option_resolves_then_observes_next_same_team_action():
         state, team_id="B", action_kind="hold", t_sec=71.5,
     )
     assert not evaluation["next_action_observed"]
+    followup_baseline = capture_policy_outcome_baseline(state, team_id="A")
     observe_executed_action(
         state, team_id="A", action_kind="shot", t_sec=72.0,
+        outcome_baseline=followup_baseline,
     )
     assert evaluation["next_action_observed"]
     assert evaluation["observed_continuation_action"] == "shot"
     assert evaluation["expected_action_matched"]
+    assert evaluation["continuation_calibration_eligible"]
     assert evaluation["shadow_only"]
     assert not evaluation["can_execute_future_action"]
+
+    state.ball.position[0] = 0.80
+    observe_policy_intervention_outcomes(state, t_sec=82.0)
+    assert evaluation["continuation_calibration_observed"]
+    assert evaluation["realized_continuation_outcome"][
+        "policy_utility"
+    ] == pytest.approx(0.0575)
+    assert evaluation["continuation_policy_utility_residual"] == pytest.approx(
+        -0.0025
+    )
+
+
+def test_mismatched_natural_followup_never_becomes_a_value_label():
+    state = SimpleNamespace(
+        clock_seconds=72.0,
+        home=SimpleNamespace(team_id="A", score=0),
+        away=SimpleNamespace(team_id="B", score=0),
+        ball=SimpleNamespace(position=[0.75, 0.50], possession_team_id="A"),
+        micro_xg_home=0.2,
+        micro_xg_away=0.1,
+    )
+    evaluation = {
+        "expected_continuation_action": "shot",
+        "continuation_value_calibratable": True,
+        "continuation_prediction_horizon_s": 10.0,
+        "expected_continuation_policy_utility": 0.08,
+        "continuation_calibration_observed": False,
+    }
+    record = {
+        "team_id": "A",
+        "resolved": True,
+        "event_option_resolved_t_sec": 71.0,
+        "event_option_expected_action": "shot",
+        "event_option_next_action": None,
+        "event_option_followup_expired": False,
+        "event_option_followup_anchor_t_sec": None,
+        "event_option_followup_due_t_sec": None,
+        "event_option_followup_baseline": None,
+        "multi_horizon_regime_outcomes": {
+            "60s": {"llm_event_option_evaluation": evaluation},
+        },
+    }
+    state._wm_coach_decision_adoption = [record]
+    baseline = capture_policy_outcome_baseline(state, team_id="A")
+
+    observe_executed_action(
+        state,
+        team_id="A",
+        action_kind="hold",
+        t_sec=72.0,
+        outcome_baseline=baseline,
+    )
+    assert evaluation["next_action_observed"]
+    assert not evaluation["expected_action_matched"]
+    assert not evaluation["continuation_calibration_eligible"]
+    assert record["event_option_followup_anchor_t_sec"] is None
+
+    state.ball.position[0] = 0.90
+    observe_policy_intervention_outcomes(state, t_sec=100.0)
+    assert not evaluation["continuation_calibration_observed"]
+    assert "continuation_policy_utility_residual" not in evaluation
+
+
+def test_new_coach_decision_censors_an_older_option_followup():
+    waiting_evaluation = {"continuation_calibration_observed": False}
+    waiting = {
+        "team_id": "A",
+        "event_option_resolved_t_sec": 70.0,
+        "event_option_next_action": None,
+        "event_option_followup_expired": False,
+        "event_option_followup_anchor_t_sec": None,
+        "policy_opportunity_observed": False,
+        "multi_horizon_regime_outcomes": {
+            "60s": {"llm_event_option_evaluation": waiting_evaluation},
+        },
+    }
+    anchored_evaluation = {
+        "continuation_calibration_observed": False,
+        "continuation_calibration_eligible": True,
+    }
+    anchored = {
+        "team_id": "A",
+        "event_option_resolved_t_sec": 60.0,
+        "event_option_next_action": "shot",
+        "event_option_followup_expired": False,
+        "event_option_followup_anchor_t_sec": 71.0,
+        "policy_opportunity_observed": False,
+        "multi_horizon_regime_outcomes": {
+            "60s": {"llm_event_option_evaluation": anchored_evaluation},
+        },
+    }
+
+    censor_overlapping_policy_outcomes(
+        [waiting, anchored], team_id="A", t_sec=75.0,
+    )
+
+    assert waiting["event_option_followup_expired"]
+    assert waiting_evaluation["continuation_calibration_reason"] == (
+        "superseded_by_newer_same_team_coach_decision"
+    )
+    assert not anchored_evaluation["continuation_calibration_eligible"]
+    assert anchored_evaluation["continuation_calibration_reason"] == (
+        "followup_value_censored_by_newer_same_team_coach_decision"
+    )
 
 
 def test_event_option_is_not_resolved_when_first_action_differs():

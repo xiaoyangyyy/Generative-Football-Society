@@ -108,6 +108,9 @@ def register_coach_action_decision(
         "event_option_expected_action": None,
         "event_option_next_action": None,
         "event_option_followup_expired": False,
+        "event_option_followup_anchor_t_sec": None,
+        "event_option_followup_due_t_sec": None,
+        "event_option_followup_baseline": None,
         "created_t_sec": created,
         "expires_t_sec": created + horizon,
         "llm_selected_action": selected,
@@ -233,6 +236,7 @@ def observe_executed_action(
     team_id: str,
     action_kind: str,
     t_sec: float,
+    outcome_baseline: dict[str, float] | None = None,
 ) -> None:
     records = getattr(state, "_wm_coach_decision_adoption", None) or []
     now = float(t_sec)
@@ -266,6 +270,47 @@ def observe_executed_action(
                             action == expected
                         )
                         evaluation["continuation_observed_t_sec"] = now
+                        calibratable = bool(evaluation.get(
+                            "continuation_value_calibratable"
+                        ))
+                        if action == expected and calibratable:
+                            baseline = dict(outcome_baseline or {})
+                            if baseline:
+                                horizon = max(0.1, min(60.0, float(
+                                    evaluation.get(
+                                        "continuation_prediction_horizon_s",
+                                        10.0,
+                                    )
+                                )))
+                                record["event_option_followup_anchor_t_sec"] = now
+                                record["event_option_followup_due_t_sec"] = (
+                                    now + horizon
+                                )
+                                record["event_option_followup_baseline"] = baseline
+                                evaluation[
+                                    "continuation_calibration_eligible"
+                                ] = True
+                                evaluation[
+                                    "continuation_calibration_reason"
+                                ] = "matching_natural_followup_action"
+                            else:
+                                evaluation[
+                                    "continuation_calibration_eligible"
+                                ] = False
+                                evaluation[
+                                    "continuation_calibration_reason"
+                                ] = "followup_pre_action_baseline_unavailable"
+                        else:
+                            evaluation[
+                                "continuation_calibration_eligible"
+                            ] = False
+                            evaluation[
+                                "continuation_calibration_reason"
+                            ] = (
+                                "followup_action_mismatch"
+                                if action != expected
+                                else "policy_utility_prediction_unavailable"
+                            )
         if record["resolved"]:
             continue
         # Decisions are registered after the current tick's action; strict
@@ -326,7 +371,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 12,
+        "version": 13,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),

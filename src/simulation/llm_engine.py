@@ -271,7 +271,10 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   Its first action must equal your selected action; choose different continuation
   actions for event occurrence and absence. The engine re-evaluates only those
   branches on member-predicted states under a hard compute budget. It cannot
-  schedule or execute either future action;
+  schedule or execute either future action. If the naturally observed next
+  action matches the resolved branch, its frozen value prediction is scored on
+  a later simulator outcome; mismatched actions never become counterfactual
+  labels;
 - change_point is computed from live numeric evidence. You may explain a
   watch/confirmed change with opponent_change_claim, but your claim cannot
   trigger, confirm, or cancel the detector. Cite only features whose signed
