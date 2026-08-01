@@ -27,9 +27,12 @@ from src.match_engine.world_model.trajectory_game import (
 from src.match_engine.world_model.distributional_utility import (
     build_distributional_action_frontiers,
 )
+from src.match_engine.world_model.temporal_utility import (
+    build_temporal_utility_paths,
+)
 
 
-DECISION_PACKET_VERSION = 21
+DECISION_PACKET_VERSION = 22
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -149,6 +152,9 @@ def _evaluate_action_candidates(
             residual_memory=residual_memory,
             decision_context=decision_context,
         )
+        temporal_utility_paths = build_temporal_utility_paths(
+            multi_horizon_predictions,
+        )
         forecast_summary = summarize_multi_horizon_predictions(
             multi_horizon_predictions,
         )
@@ -187,6 +193,7 @@ def _evaluate_action_candidates(
             ],
             "event_time_s": [float(value) for value in future.event_time_s],
             "multi_horizon_predictions": multi_horizon_predictions,
+            "temporal_utility_paths": temporal_utility_paths,
         })
     return observation, candidates
 
@@ -635,7 +642,7 @@ def build_coach_decision_packet(
             "contextual_residual_memory": (
                 residual_memory.summary()
                 if residual_memory is not None else {
-                    "version": 2,
+                    "version": 3,
                     "active_groups": 0,
                     "residual_rows": 0,
                     "reason": (

@@ -285,6 +285,11 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   Only a frozen calibrated_predictive scenario lattice is eligible for strict
   CRPS, pinball-loss and interval-coverage readiness. It remains
   shadow-only and cannot change the action or ranking;
+- temporal_utility_paths connect ordered horizon marginals by the same dynamics
+  member identity and, when present, the same residual quantile rank. Their
+  drawdown, reversal and downside values are coupling-scenario rates, not learned
+  joint temporal probabilities. Never add horizon utilities as independent
+  rewards because each is a same-origin cumulative forecast;
 - world_model_risk_preference is one explicit preference applied unchanged to
   every declared horizon and all four actions. Horizon weights must sum to 1.
   The fixed reference utility is zero; loss_aversion and
@@ -293,6 +298,8 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   regret. It also owns a fixed preference-neighborhood grid and jointly removes
   one aligned dynamics member or residual-quantile scenario at a time. You
   cannot choose these stress ranges; nominal consistency is not robustness.
+  The engine also compares all actions inside each coupled temporal scenario
+  before aggregating pathwise regret, so horizon weights cannot hide reversals.
   Do not report your own utility score. This audit is shadow-only and
   does not provide counterfactual realized outcomes for actions not taken;
 - semantic_event_fusion distinguishes transparent member-frequency projection
@@ -400,7 +407,7 @@ Return JSON:
     "diminishing_sensitivity": 0.5-1.0,
     "max_acceptable_regret": 0.0-0.5,
     "confidence": 0.5-1.0,
-    "rationale": "why this same risk preference should hold across horizons"
+    "rationale": "why this same risk preference should hold across at least two horizons"
   }},
   "opponent_hypothesis": {{
     "tactical_preset": "one preset listed in opponent_belief.hypotheses",

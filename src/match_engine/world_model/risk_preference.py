@@ -15,9 +15,12 @@ from src.match_engine.world_model.predictive_distribution import (
 from src.match_engine.world_model.preference_robustness import (
     build_preference_robustness_report,
 )
+from src.match_engine.world_model.temporal_preference import (
+    build_temporal_preference_report,
+)
 
 
-RISK_PREFERENCE_VERSION = 2
+RISK_PREFERENCE_VERSION = 3
 _DISTRIBUTION_SCOPES = {"epistemic_member_only", "calibrated_predictive"}
 
 
@@ -45,7 +48,7 @@ def validate_llm_risk_preference(raw: Any) -> dict[str, Any] | None:
         confidence = float(raw.get("confidence", 0.0))
     except (TypeError, ValueError, OverflowError):
         return None
-    if not isinstance(weights, dict) or not 1 <= len(weights) <= 4:
+    if not isinstance(weights, dict) or not 2 <= len(weights) <= 4:
         return None
     normalized_weights: dict[str, float] = {}
     try:
@@ -243,10 +246,12 @@ def _audit_digest(
     evidence: dict[str, Any],
     results: dict[str, Any],
     robustness: dict[str, Any],
+    temporal_preference: dict[str, Any],
 ) -> str:
     encoded = json.dumps(
         {"preference": preference, "scenario_evidence": evidence,
-         "results": results, "robustness": robustness},
+         "results": results, "robustness": robustness,
+         "temporal_preference": temporal_preference},
         sort_keys=True, separators=(",", ":"), allow_nan=False,
     ).encode("utf-8")
     return "risk-preference-audit:" + hashlib.sha256(encoded).hexdigest()[:24]
@@ -268,6 +273,11 @@ def risk_preference_audit_is_valid(audit: dict[str, Any]) -> bool:
         )
         if expected_robustness is None:
             return False
+        expected_temporal = build_temporal_preference_report(
+            preference, evidence,
+        )
+        if expected_temporal is None:
+            return False
         expected_consistency = bool(
             expected["aggregate_within_declared_regret"]
             and expected["all_horizons_within_declared_regret"]
@@ -284,8 +294,12 @@ def risk_preference_audit_is_valid(audit: dict[str, Any]) -> bool:
             and audit.get("robustness") == expected_robustness
             and bool(audit.get("preference_robust"))
             == bool(expected_robustness["preference_robust"])
+            and audit.get("temporal_preference") == expected_temporal
+            and bool(audit.get("preference_temporally_robust"))
+            == bool(expected_temporal["preference_temporally_robust"])
             and audit.get("audit_digest") == _audit_digest(
                 preference, evidence, expected, expected_robustness,
+                expected_temporal,
             )
         )
     except (AttributeError, KeyError, TypeError, ValueError, OverflowError):
@@ -357,6 +371,14 @@ def evaluate_llm_risk_preference(
             **base, "reason": "risk_preference_robustness_unavailable",
             "preference": preference,
         }
+    temporal_preference = build_temporal_preference_report(
+        preference, evidence,
+    )
+    if temporal_preference is None:
+        return {
+            **base, "reason": "risk_preference_temporal_paths_unavailable",
+            "preference": preference,
+        }
     audit = {
         **base,
         "accepted": True,
@@ -365,11 +387,15 @@ def evaluate_llm_risk_preference(
         "scenario_evidence": evidence,
         "results": results,
         "robustness": robustness,
+        "temporal_preference": temporal_preference,
         "preference_consistent": bool(
             results["aggregate_within_declared_regret"]
             and results["all_horizons_within_declared_regret"]
         ),
         "preference_robust": bool(robustness["preference_robust"]),
+        "preference_temporally_robust": bool(
+            temporal_preference["preference_temporally_robust"]
+        ),
         "checkpoint_signature": str(packet.get(
             "checkpoint_signature", "runtime_unspecified",
         )),
@@ -378,7 +404,7 @@ def evaluate_llm_risk_preference(
         )),
     }
     audit["audit_digest"] = _audit_digest(
-        preference, evidence, results, robustness,
+        preference, evidence, results, robustness, temporal_preference,
     )
     packet["llm_risk_preference_audit"] = audit
     return audit

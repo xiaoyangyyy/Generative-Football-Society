@@ -78,6 +78,9 @@ def score_llm_risk_preference(
         "prospective_preference_robust": bool(
             context["preference_robust"]
         ),
+        "prospective_preference_temporally_robust": bool(
+            context["preference_temporally_robust"]
+        ),
         "distribution_scope": preference["distribution_scope"],
         "predictive_distribution_calibrated": (
             preference["distribution_scope"] == "calibrated_predictive"
@@ -160,6 +163,8 @@ def _valid_score(row: dict[str, Any], context: dict[str, Any]) -> bool:
         == bool(context.get("preference_consistent"))
         and bool(row.get("prospective_preference_robust"))
         == bool(context.get("preference_robust"))
+        and bool(row.get("prospective_preference_temporally_robust"))
+        == bool(context.get("preference_temporally_robust"))
         and str(row.get("distribution_scope", ""))
         == preference["distribution_scope"]
         and row.get("paired_same_action_horizon")
@@ -237,6 +242,9 @@ def risk_preference_diagnostics(
     coverage = match_rate("central_80_covered")
     consistent = match_rate("prospective_preference_consistent")
     robust = match_rate("prospective_preference_robust")
+    temporal_robust = match_rate(
+        "prospective_preference_temporally_robust"
+    )
     signatures = sorted({
         str(row.get("preference_signature", "")) for row in valid
     })
@@ -271,6 +279,9 @@ def risk_preference_diagnostics(
         ),
         "match_clustered_prospective_robustness": (
             float(np.mean(robust)) if robust else 0.0
+        ),
+        "match_clustered_prospective_temporal_robustness": (
+            float(np.mean(temporal_robust)) if temporal_robust else 0.0
         ),
         "all_predictive_distributions_calibrated": all(
             row.get("predictive_distribution_calibrated") for row in valid

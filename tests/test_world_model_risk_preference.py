@@ -63,7 +63,7 @@ def _packet():
         "hold": [0.02, 0.04, 0.06, 0.08],
         "pass": [0.10, 0.15, 0.20, 0.25],
         "cross": [-0.05, 0.08, 0.12, 0.22],
-        "shot": [-0.50, -0.20, 0.40, 0.90],
+        "shot": [-0.50, -0.20, 0.15, 0.30],
     }
     return {
         "available": True,
@@ -77,6 +77,23 @@ def _packet():
             },
         } for action, row in values.items()],
     }
+
+
+def _rationalization_packet():
+    packet = _packet()
+    shot = next(
+        candidate for candidate in packet["candidates"]
+        if candidate["action"] == "shot"
+    )
+    shot["multi_horizon_predictions"] = {
+        horizon: {
+            "distributional_policy_utility": _distribution(
+                [-0.50, -0.20, 0.40, 0.90]
+            )
+        }
+        for horizon in ("60s", "180s")
+    }
+    return packet
 
 
 def _preference(**updates):
@@ -105,6 +122,9 @@ def test_preference_schema_is_bounded_and_preserved_by_coach_schema():
     assert validate_llm_risk_preference(
         _preference(diminishing_sensitivity=0.4)
     ) is None
+    assert validate_llm_risk_preference(
+        _preference(horizon_weights={"60s": 1.0})
+    ) is None
     plan = validate_coach_plan({
         "world_model_action": "pass",
         "world_model_risk_preference": _preference(),
@@ -126,6 +146,14 @@ def test_world_model_recomputes_scenario_values_and_multi_horizon_regret():
     assert set(audit["results"]["horizons"]) == {"60s", "180s"}
     assert not audit["can_change_selected_action"]
     assert audit["preference_robust"]
+    assert audit["preference_temporally_robust"]
+    assert audit["temporal_preference"][
+        "pathwise_comparison_order"
+    ] == "compare_actions_within_scenario_then_aggregate_scenarios"
+    assert audit["temporal_preference"][
+        "pathwise_regret_within_declared_rate"
+    ] == 1.0
+    assert not audit["temporal_preference"]["temporal_joint_calibrated"]
     assert audit["robustness"]["joint_stress_cases"] == 72
     assert audit["robustness"]["member_axis_jointly_aligned"]
     assert audit["robustness"]["residual_quantile_axis_jointly_aligned"]
@@ -134,7 +162,8 @@ def test_world_model_recomputes_scenario_values_and_multi_horizon_regret():
     assert abs(transformed_loss) == pytest.approx(2.0 * transformed_gain)
 
     fragile = evaluate_llm_risk_preference(
-        _packet(), _preference(max_acceptable_regret=0.05),
+        _rationalization_packet(),
+        _preference(max_acceptable_regret=0.05),
         selected_action="pass",
     )
     assert fragile["preference_consistent"]
@@ -142,6 +171,10 @@ def test_world_model_recomputes_scenario_values_and_multi_horizon_regret():
     assert 0.90 < fragile["robustness"]["robustness_rate"] < 1.0
     assert fragile["robustness"]["rationalization_fragility"] > 0.0
     assert len(fragile["robustness"]["failed_cases"]) == 3
+    assert not fragile["preference_temporally_robust"]
+    assert fragile["temporal_preference"][
+        "pathwise_regret_within_declared_rate"
+    ] == 0.5
 
     tampered = copy.deepcopy(audit)
     tampered["results"]["selected_aggregate_preference_regret"] = 0.2
@@ -149,6 +182,11 @@ def test_world_model_recomputes_scenario_values_and_multi_horizon_regret():
     tampered_robustness = copy.deepcopy(audit)
     tampered_robustness["robustness"]["robustness_rate"] = 0.5
     assert not risk_preference_audit_is_valid(tampered_robustness)
+    tampered_temporal = copy.deepcopy(audit)
+    tampered_temporal["temporal_preference"][
+        "pathwise_regret_within_declared_rate"
+    ] = 0.5
+    assert not risk_preference_audit_is_valid(tampered_temporal)
     wrong_version = copy.deepcopy(audit)
     wrong_version["version"] = 1
     assert not risk_preference_audit_is_valid(wrong_version)
@@ -222,13 +260,14 @@ def test_realized_preference_scores_are_recomputed_and_strictly_gated():
     assert diagnostics["malformed_preference_evaluations"] == 0
     assert diagnostics["match_clustered_central_80_coverage"] == 0.75
     assert diagnostics["all_predictive_distributions_calibrated"]
+    assert diagnostics["match_clustered_prospective_temporal_robustness"] == 1.0
     assert diagnostics["provenance_compatible"]
 
     report = aggregate_online_calibration(
         logs, min_transitions=0, min_residual_samples=2,
         require_llm_risk_preferences=True,
     )
-    assert report["version"] == 21
+    assert report["version"] == 22
     assert report["llm_risk_preferences_ready"]
     assert report["gates"]["calibrated_llm_risk_preferences"]
 
@@ -251,7 +290,7 @@ def test_realized_preference_scores_are_recomputed_and_strictly_gated():
 
 def test_preference_is_scored_only_after_exact_action_horizon_realizes():
     audit = evaluate_llm_risk_preference(
-        _packet(), _preference(horizon_weights={"60s": 1.0}),
+        _packet(), _preference(),
         selected_action="pass",
         preference_signature="llm-risk-preference:test",
     )

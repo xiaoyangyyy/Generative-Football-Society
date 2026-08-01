@@ -140,6 +140,10 @@ def test_trained_runtime_builds_member_utility_frontiers_end_to_end():
     assert frontiers["60s"]["available"]
     assert frontiers["60s"]["pareto_actions"]
     for candidate in packet["candidates"]:
+        temporal = candidate["temporal_utility_paths"]
+        assert temporal["available"]
+        assert temporal["member_identity_preserved_across_horizons"]
+        assert not temporal["temporal_dependence_learned"]
         for prediction in candidate["multi_horizon_predictions"].values():
             distribution = prediction["distributional_policy_utility"]
             assert distribution["available"]
@@ -599,6 +603,9 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
                 if item["action"] == action
             )
             horizon = next(iter(candidate["multi_horizon_predictions"]))
+            preference_horizons = list(
+                candidate["multi_horizon_predictions"]
+            )[:2]
             alternative = next(
                 item["action"] for item in packet["candidates"]
                 if item["action"] != action
@@ -638,7 +645,10 @@ def test_executor_registers_grounded_multiscale_event_in_shadow_mode():
                 "world_model_risk_preference": {
                     "selected_action": action,
                     "distribution_scope": "epistemic_member_only",
-                    "horizon_weights": {horizon: 1.0},
+                    "horizon_weights": {
+                        preference_horizons[0]: 0.5,
+                        preference_horizons[1]: 0.5,
+                    },
                     "loss_aversion": 2.0,
                     "diminishing_sensitivity": 0.8,
                     "max_acceptable_regret": 0.05,

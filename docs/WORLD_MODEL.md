@@ -807,11 +807,22 @@ valid held-out-residual `calibrated_predictive` lattice. Enable it with
 `--require-llm-distributional-decisions`. These are simulator-distribution
 calibration claims, not causal estimates of choosing one action over another.
 
+Each action also exposes `temporal_utility_paths` when at least two ordered
+horizons share a valid distribution scope. Epistemic paths connect the same
+transition-member index through time. Predictive paths additionally connect the
+same held-out residual quantile rank at every horizon. The latter is an explicit
+comonotonic rank coupling, not a learned temporal copula. Reports include path
+minimum utility, lower-tail path-minimum CVaR, maximum drawdown, ever-downside,
+downside recovery, and positive-to-negative reversal scenario rates. These are
+rates under the declared coupling and are never labelled calibrated temporal
+probabilities. Every horizon is a cumulative forecast from the same origin, so
+horizon values are not treated as independent incremental rewards.
+
 ### Model-checked multi-horizon risk preferences
 
 The coach may additionally declare one `world_model_risk_preference`. This is
 not a free-form score: it contains the selected action, an exact distribution
-scope, weights over one to four evaluated horizons that must sum to one, bounded
+scope, weights over two to four evaluated horizons that must sum to one, bounded
 loss aversion in `[1, 4]`, diminishing sensitivity in `[0.5, 1]`, and a maximum
 acceptable preference regret. The utility reference is fixed at zero, so the
 coach cannot move the gain/loss boundary after seeing the action distributions.
@@ -823,6 +834,14 @@ weighted aggregate regret, and whether both the local and aggregate regrets fit
 the declaration. The LLM cannot submit its own transformed values, change a
 forecast, or acquire action authority. Mixed distribution scopes and incomplete
 action/horizon evidence fail closed.
+
+The preference audit then compares all four actions *inside each aligned temporal
+scenario* before aggregating across scenarios. It reports mean, q90 and worst
+pathwise regret, the rate within declared regret, action-rank switches over time,
+and the worst/failed paths. This ordering matters: comparing expected action
+values first can hide a choice that performs poorly in many member-consistent
+futures. The model-owned minimum pathwise robustness rate is `0.75`; this is a
+sensitivity threshold over coupled scenarios, not a probability guarantee.
 
 To prevent post-hoc parameter tuning from becoming a sophisticated form of
 rationalization, a second model-owned audit perturbs loss aversion by `±0.5` and
@@ -845,7 +864,8 @@ regret calculation, and realized score. No realized regret is claimed because
 the unchosen actions do not have observed counterfactual outcomes. Strict
 readiness additionally requires calibrated predictive lattices, four matches,
 zero malformed or missing eligible scores, at least `0.60` prospective
-consistency and fully certified preference robustness, central-80% coverage in
+consistency, fully certified local preference robustness, and pathwise temporal
+robustness, central-80% coverage in
 `[0.55, 0.98]`, and CRPS no worse than the
 mean forecast's absolute error. Enable it with
 `--require-llm-risk-preferences`.
