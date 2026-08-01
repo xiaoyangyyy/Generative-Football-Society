@@ -11,11 +11,12 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 6
+LLM_DECISION_BRIEF_VERSION = 7
 
 
 TASK_REASONING_DOMAINS = {
     "opponent_information_adaptation": "opponent_information",
+    "opponent_information_policy": "opponent_information",
     "opponent_information_query": "opponent_information",
     "opponent_response_hypothesis": "opponent_game",
     "opponent_hypothesis": "opponent_belief",
@@ -280,6 +281,10 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
         "normalized_entropy"
     ))
     feedback = packet.get("opponent_information_feedback") or {}
+    question_policy = packet.get(
+        "opponent_information_cognitive_policy"
+    ) or {}
+    policy_available = bool(question_policy.get("available"))
     reversal = _max_temporal(
         candidates, "positive_to_negative_reversal_scenario_rate",
     )
@@ -307,9 +312,12 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
     task_specs = [
         ("opponent_information_adaptation", bool(feedback.get("available")),
          1.00, "resolved_query_feedback_available"),
-        ("opponent_information_query", entropy >= 0.25,
+        ("opponent_information_policy", policy_available,
+         0.45 + 0.35 * entropy + 0.15 * ambiguity,
+         "finite_horizon_ask_or_stop_policy"),
+        ("opponent_information_query", not policy_available and entropy >= 0.25,
          0.35 + 0.40 * entropy + 0.20 * ambiguity,
-         "opponent_belief_uncertainty"),
+         "legacy_opponent_belief_uncertainty"),
         ("world_model_risk_preference", reversal >= 0.10 or drawdown >= 0.08,
          0.30 + 0.35 * reversal + 0.35 * min(1.0, drawdown),
          "temporal_reversal_or_drawdown"),
@@ -496,6 +504,9 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
         ),
         "opponent_information_question_menu": source_packet.get(
             "opponent_information_question_menu", {}
+        ),
+        "opponent_information_cognitive_policy": source_packet.get(
+            "opponent_information_cognitive_policy", {}
         ),
         "deliberation_compute_value_memory": source_packet.get(
             "deliberation_compute_value_memory", {}

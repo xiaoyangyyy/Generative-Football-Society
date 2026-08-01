@@ -66,6 +66,9 @@ from src.match_engine.world_model.opponent_information_feedback import (
 from src.match_engine.world_model.opponent_information_adaptation_evaluation import (
     opponent_information_adaptation_diagnostics,
 )
+from src.match_engine.world_model.opponent_information_policy import (
+    opponent_information_policy_diagnostics,
+)
 from src.match_engine.world_model.llm_decision_brief import (
     llm_decision_brief_diagnostics,
 )
@@ -117,6 +120,7 @@ def aggregate_online_calibration(
     require_temporal_path_calibration: bool = False,
     require_opponent_information_queries: bool = False,
     require_world_model_question_loop: bool = False,
+    require_multi_round_question_policy: bool = False,
     require_opponent_information_adaptation: bool = False,
     require_llm_deliberation_focus: bool = False,
     require_llm_deliberation_compute_value: bool = False,
@@ -260,6 +264,9 @@ def aggregate_online_calibration(
     )
     opponent_information_adaptation = (
         opponent_information_adaptation_diagnostics(logs)
+    )
+    opponent_information_policy = opponent_information_policy_diagnostics(
+        policy_record_clusters
     )
     llm_decision_briefs = llm_decision_brief_diagnostics(
         policy_record_clusters
@@ -674,6 +681,27 @@ def aggregate_online_calibration(
         world_model_question_loop_ready
         if require_world_model_question_loop else True
     )
+    multi_round_question_policy_ready = bool(
+        opponent_information_policy["accepted_policy_audits"] >= 6
+        and opponent_information_policy["matches"] >= 4
+        and opponent_information_policy["realized_policy_answers"] >= 4
+        and opponent_information_policy["multi_round_episodes"] >= 2
+        and opponent_information_policy["completed_stop_episodes"] >= 2
+        and opponent_information_policy["stop_decisions"] >= 2
+        and opponent_information_policy["malformed_policy_audits"] == 0
+        and opponent_information_policy["question_budget_violations"] == 0
+        and opponent_information_policy["redundant_second_questions"] == 0
+        and opponent_information_policy[
+            "match_clustered_model_consistency_rate"
+        ] >= 0.80
+        and opponent_information_policy[
+            "all_policy_decisions_post_action_shadow_only"
+        ]
+    )
+    gates["multi_round_question_policy"] = (
+        multi_round_question_policy_ready
+        if require_multi_round_question_policy else True
+    )
     opponent_information_adaptation_ready = bool(
         opponent_information_adaptation["realized_adaptation_scores"] >= 4
         and opponent_information_adaptation["matches"] >= 4
@@ -776,7 +804,7 @@ def aggregate_online_calibration(
         if require_llm_task_encouragement else True
     )
     return {
-        "version": 36,
+        "version": 37,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -819,6 +847,7 @@ def aggregate_online_calibration(
             "opponent_information_adaptation": (
                 opponent_information_adaptation
             ),
+            "opponent_information_policy": opponent_information_policy,
             "llm_decision_briefs": llm_decision_briefs,
             "llm_deliberation_focus": llm_deliberation_focus,
             "llm_deliberation_compute_value": (
@@ -858,6 +887,7 @@ def aggregate_online_calibration(
             opponent_information_queries_ready
         ),
         "world_model_question_loop_ready": world_model_question_loop_ready,
+        "multi_round_question_policy_ready": multi_round_question_policy_ready,
         "opponent_information_adaptation_ready": (
             opponent_information_adaptation_ready
         ),
@@ -877,6 +907,7 @@ def aggregate_online_calibration(
             "Deliberation compute experiments randomize only a shadow resource cap; useful-artifact yield is not match-outcome value.",
             "Task encouragement is post-action intention-to-treat over two shadow tasks; it cannot establish match-outcome value.",
             "Question answers update future query calibration and reasoning, while live opponent belief uses the underlying observation exactly once.",
+            "Multi-round question policies optimize bounded shadow information acquisition; stop/continue value is not a match-outcome causal effect.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",

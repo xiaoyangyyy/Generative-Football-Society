@@ -44,6 +44,39 @@ def _resolution(
     audit = record.get("llm_opponent_information_query_context") or {}
     if not opponent_information_query_audit_is_valid(audit):
         return None
+    policy_audit = record.get(
+        "llm_opponent_information_policy_context"
+    ) or {}
+    question_policy = {}
+    if policy_audit:
+        from src.match_engine.world_model.opponent_information_policy import (
+            opponent_information_policy_audit_is_valid,
+        )
+
+        if (
+            not opponent_information_policy_audit_is_valid(policy_audit)
+            or (policy_audit.get("query_audit") or {}).get("audit_digest")
+            != audit.get("audit_digest")
+            or (policy_audit.get("choice") or {}).get("decision") != "ask"
+        ):
+            return None
+        recommendation = policy_audit["recommendation"]
+        question_policy = {
+            "episode_id": str(recommendation["episode_id"]),
+            "round_index": int(recommendation["round_index"]),
+            "maximum_questions": int(recommendation["maximum_questions"]),
+            "decision": "ask",
+            "decision_matches_model": bool(
+                policy_audit["decision_matches_model"]
+            ),
+            "proposal_matches_model": bool(
+                policy_audit["proposal_matches_model"]
+            ),
+            "model_checked_consistent": bool(
+                policy_audit["model_checked_consistent"]
+            ),
+            "policy_audit_digest": str(policy_audit["audit_digest"]),
+        }
     query = audit["query"]
     if str(record.get("intervention_actual_action", "")).lower() != query[
         "selected_action"
@@ -97,6 +130,7 @@ def _resolution(
             score["llm_question_selected_after_action_freeze"]
         ),
         "question_proposal_id": str(score["question_proposal_id"]),
+        "question_policy": question_policy,
         "forecast_high_rate": forecast,
         "raw_forecast_high_rate": raw_forecast,
         "calibration_applied": bool(selected["calibration_applied"]),
@@ -292,6 +326,24 @@ def opponent_information_feedback_is_valid(feedback: Any) -> bool:
             and (row.get("resolved_answer") or {}).get(
                 "live_observation_already_assimilated"
             ) is True
+            for row in payload.get("recent_resolutions") or []
+        )
+        and all(
+            not row.get("question_policy")
+            or (
+                bool((row.get("question_policy") or {}).get("episode_id"))
+                and isinstance((row.get("question_policy") or {}).get(
+                    "round_index"
+                ), int)
+                and (row.get("question_policy") or {}).get(
+                    "round_index", 0
+                ) >= 1
+                and (row.get("question_policy") or {}).get("decision")
+                == "ask"
+                and bool((row.get("question_policy") or {}).get(
+                    "policy_audit_digest"
+                ))
+            )
             for row in payload.get("recent_resolutions") or []
         )
     )

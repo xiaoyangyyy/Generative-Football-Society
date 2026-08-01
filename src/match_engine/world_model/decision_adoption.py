@@ -52,6 +52,7 @@ def register_coach_action_decision(
     llm_distributional_claim_context: dict[str, Any] | None = None,
     llm_risk_preference_context: dict[str, Any] | None = None,
     llm_opponent_information_query_context: dict[str, Any] | None = None,
+    llm_opponent_information_policy_context: dict[str, Any] | None = None,
     opponent_information_feedback_context: dict[str, Any] | None = None,
     llm_opponent_information_adaptation_context: dict[str, Any] | None = None,
     llm_decision_brief_context: dict[str, Any] | None = None,
@@ -107,6 +108,31 @@ def register_coach_action_decision(
     information_query_context = dict(
         llm_opponent_information_query_context or {}
     )
+    information_policy_context = dict(
+        llm_opponent_information_policy_context or {}
+    )
+    if information_policy_context:
+        from src.match_engine.world_model.opponent_information_policy import (
+            opponent_information_policy_audit_is_valid,
+        )
+
+        if not opponent_information_policy_audit_is_valid(
+            information_policy_context
+        ):
+            information_policy_context = {}
+        elif (
+            (information_policy_context.get("choice") or {}).get("decision")
+            == "ask"
+            and (information_policy_context.get("query_audit") or {}).get(
+                "audit_digest"
+            ) != information_query_context.get("audit_digest")
+        ):
+            information_policy_context = {}
+        elif (
+            (information_policy_context.get("choice") or {}).get("decision")
+            == "stop" and information_query_context
+        ):
+            information_policy_context = {}
     adaptation_context = dict(
         llm_opponent_information_adaptation_context or {}
     )
@@ -182,6 +208,7 @@ def register_coach_action_decision(
             llm_risk_preference_context or {}
         ),
         "llm_opponent_information_query_context": information_query_context,
+        "llm_opponent_information_policy_context": information_policy_context,
         "opponent_information_feedback_context": feedback_context,
         "llm_opponent_information_adaptation_context": adaptation_context,
         "llm_decision_brief_context": decision_brief_context,
@@ -460,6 +487,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.opponent_information_adaptation_evaluation import (
         opponent_information_adaptation_diagnostics,
     )
+    from src.match_engine.world_model.opponent_information_policy import (
+        opponent_information_policy_diagnostics,
+    )
     from src.match_engine.world_model.llm_decision_brief import (
         llm_decision_brief_diagnostics,
     )
@@ -492,7 +522,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 36,
+        "version": 37,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -526,6 +556,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
             opponent_information_adaptation_diagnostics([{
                 "world_model_decision_adoption": {"records": records},
             }])
+        ),
+        "opponent_information_policy": (
+            opponent_information_policy_diagnostics([records])
         ),
         "llm_decision_briefs": llm_decision_brief_diagnostics([records]),
         "llm_deliberation_focus": llm_deliberation_focus_diagnostics([

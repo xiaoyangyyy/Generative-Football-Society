@@ -105,7 +105,11 @@ def test_executor_freezes_action_and_preserves_two_stage_audit_in_cache(
             proposal = next(
                 row for row in menu["proposals"]
                 if row["selected_action"] == "pass"
-                and row["purpose"] == "reduce_opponent_uncertainty"
+                and row["proposal_id"] == facts[
+                    "world_model_shadow_deliberation_brief"
+                ]["opponent_information_cognitive_policy"][
+                    "recommendations_by_action"
+                ]["pass"]["recommended_proposal_id"]
             )
             return json.dumps({
                 "reasoning": "Attempted mutations must be ignored.",
@@ -113,18 +117,13 @@ def test_executor_freezes_action_and_preserves_two_stage_audit_in_cache(
                 "controls_delta": {"risk_budget": 0.15},
                 "world_model_action": "shot",
                 "world_model_deliberation_focus": {
-                    "tasks": ["opponent_information_query"],
+                    "tasks": ["opponent_information_policy"],
                     "confidence": 0.8,
                     "rationale": "Resolve opponent uncertainty.",
                 },
-                "opponent_information_query": {
-                    **{
-                        key: proposal[key] for key in (
-                            "proposal_id", "selected_action", "feature",
-                            "horizon", "purpose", "action_if_high",
-                            "action_if_low",
-                        )
-                    },
+                "opponent_information_policy": {
+                    "decision": "ask",
+                    "proposal_id": proposal["proposal_id"],
                     "confidence": 0.8,
                     "rationale": "Select the model-proposed information query.",
                 },
@@ -290,7 +289,7 @@ def test_randomized_task_encouragement_learns_itt_value_and_strict_gate():
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_llm_task_encouragement=True,
     )
-    assert report["version"] == 36
+    assert report["version"] == 37
     assert report["llm_task_encouragement_ready"]
     assert report["gates"]["llm_task_encouragement"]
 

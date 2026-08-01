@@ -279,6 +279,13 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   branch actions exactly. The engine rejects altered proposal fields. Legacy
   free-form queries remain accepted for compatibility but do not count as a
   completed world-model-question loop;
+- opponent_information_cognitive_policy turns querying into a bounded episode.
+  For the frozen action, follow its recommended ask/stop decision and exact
+  proposal_id through opponent_information_policy. The world model owns the
+  two-question budget, marginal information value, redundancy penalty, and stop
+  threshold. When this policy is available, omit the legacy
+  opponent_information_query contract. A stop is an explicit audited decision,
+  not a missing answer;
 - opponent_information_query selects one observable tactical control to monitor.
   The engine owns the 0.5 threshold, observation noise, posterior branches,
   information gain, adaptive value and ranking. A later observed answer produces
@@ -486,6 +493,12 @@ Return JSON:
     "action_if_low": "hold|pass|cross|shot (shadow continuation only)",
     "confidence": 0.5-1.0,
     "rationale": "why observing this control would clarify the decision"
+  }},
+  "opponent_information_policy": {{
+    "decision": "ask|stop",
+    "proposal_id": "required for ask and empty for stop; follow opponent_information_cognitive_policy for the frozen action",
+    "confidence": 0.5-1.0,
+    "rationale": "why marginal information value justifies asking or stopping"
   }},
   "opponent_information_adaptation": {{
     "prior_decision_id": "one decision_id from opponent_information_feedback.recent_resolutions",

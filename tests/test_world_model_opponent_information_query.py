@@ -18,6 +18,13 @@ from src.match_engine.world_model.opponent_information_query_outcomes import (
     opponent_information_query_score_is_valid,
     score_opponent_information_query,
 )
+from src.match_engine.world_model.opponent_information_policy import (
+    build_opponent_information_cognitive_policy,
+    evaluate_llm_opponent_information_policy,
+    opponent_information_cognitive_policy_is_valid,
+    opponent_information_policy_audit_is_valid,
+    opponent_information_policy_diagnostics,
+)
 from src.match_engine.world_model.opponent_information_query_evaluation import (
     opponent_information_query_diagnostics,
 )
@@ -113,6 +120,19 @@ def _packet_with_question_menu():
     return packet
 
 
+def _packet_with_cognitive_policy(feedback=None):
+    packet = _packet()
+    if feedback is not None:
+        packet["opponent_information_feedback"] = feedback
+    packet["opponent_information_question_menu"] = (
+        build_opponent_information_question_menu(packet)
+    )
+    packet["opponent_information_cognitive_policy"] = (
+        build_opponent_information_cognitive_policy(packet)
+    )
+    return packet
+
+
 def _proposed_query(packet, *, purpose="reduce_opponent_uncertainty"):
     proposal = next(
         row for row in packet["opponent_information_question_menu"][
@@ -147,6 +167,12 @@ def test_query_schema_is_bounded_and_preserved_by_coach_plan():
     plan = validate_coach_plan({
         "world_model_action": "pass",
         "opponent_information_query": _query(),
+        "opponent_information_policy": {
+            "decision": "stop",
+            "proposal_id": "",
+            "confidence": 0.8,
+            "rationale": "The bounded information budget is exhausted.",
+        },
         "opponent_information_adaptation": {
             "prior_decision_id": "A:10:0",
             "adaptation_kind": "change_query_feature",
@@ -160,6 +186,7 @@ def test_query_schema_is_bounded_and_preserved_by_coach_plan():
     assert plan["opponent_information_adaptation"]["adaptation_kind"] == (
         "change_query_feature"
     )
+    assert plan["opponent_information_policy"]["decision"] == "stop"
 
 
 def test_world_model_computes_all_queries_and_independent_voi():
@@ -219,7 +246,7 @@ def test_world_model_proposes_exact_questions_for_post_action_llm_selection():
     packet = _packet_with_question_menu()
     menu = packet["opponent_information_question_menu"]
     assert opponent_information_question_menu_is_valid(menu, packet)
-    assert menu["proposal_count"] == 8
+    assert menu["proposal_count"] == 16
     assert all(row["shadow_only"] for row in menu["proposals"])
     assert all(not row["can_change_current_action"] for row in menu[
         "proposals"
@@ -260,6 +287,194 @@ def test_world_model_proposes_exact_questions_for_post_action_llm_selection():
     )
     assert not rejected["accepted"]
     assert rejected["reason"] == "question_proposal_fields_must_be_exact"
+
+
+def test_finite_horizon_policy_makes_ask_and_stop_explicit_after_freeze():
+    packet = _packet_with_cognitive_policy()
+    policy = packet["opponent_information_cognitive_policy"]
+    assert opponent_information_cognitive_policy_is_valid(policy, packet)
+    recommendation = policy["recommendations_by_action"]["pass"]
+    assert recommendation["recommended_decision"] == "ask"
+    assert recommendation["round_index"] == 1
+
+    audit = evaluate_llm_opponent_information_policy(
+        packet,
+        {
+            "decision": "ask",
+            "proposal_id": recommendation["recommended_proposal_id"],
+            "confidence": 0.85,
+            "rationale": "Acquire the highest marginal information value.",
+        },
+        selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+        selected_after_action_freeze=True,
+    )
+    assert audit["accepted"]
+    assert audit["model_checked_consistent"]
+    assert opponent_information_policy_audit_is_valid(audit)
+    assert opponent_information_query_audit_is_valid(audit["query_audit"])
+
+    unsafe_phase = evaluate_llm_opponent_information_policy(
+        packet,
+        {
+            "decision": "ask",
+            "proposal_id": recommendation["recommended_proposal_id"],
+            "confidence": 0.85,
+            "rationale": "This was selected before action freeze.",
+        },
+        selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+        selected_after_action_freeze=False,
+    )
+    assert not unsafe_phase["accepted"]
+    assert unsafe_phase["reason"] == (
+        "post_action_valid_policy_evidence_required"
+    )
+
+
+def test_resolved_answers_drive_second_question_then_budgeted_stop():
+    observed = {
+        "pressing_intensity": 0.8,
+        "risk_budget": 0.4,
+        "line_height": 0.7,
+        "rotation_aggressiveness": 0.3,
+    }
+
+    def issue(packet, *, issued, observed_t, decision_id):
+        recommendation = packet[
+            "opponent_information_cognitive_policy"
+        ]["recommendations_by_action"]["pass"]
+        audit = evaluate_llm_opponent_information_policy(
+            packet,
+            {
+                "decision": "ask",
+                "proposal_id": recommendation["recommended_proposal_id"],
+                "confidence": 0.85,
+                "rationale": "Follow the finite-horizon acquisition policy.",
+            },
+            selected_action="pass",
+            query_signature="llm-opponent-information-query:test",
+            selected_after_action_freeze=True,
+        )
+        query_audit = audit["query_audit"]
+        score = score_opponent_information_query(
+            query_audit,
+            observed,
+            horizon=query_audit["query"]["horizon"],
+            checkpoint_signature="checkpoint:test",
+            environment_signature="environment:test",
+        )
+        return {
+            "decision_id": decision_id,
+            "team_id": "A",
+            "created_t_sec": issued,
+            "checkpoint_signature": "checkpoint:test",
+            "environment_signature": "environment:test",
+            "intervention_actual_action": "pass",
+            "llm_opponent_information_query_context": query_audit,
+            "llm_opponent_information_policy_context": audit,
+            "multi_horizon_regime_outcomes": {
+                query_audit["query"]["horizon"]: {
+                    "observed_t_sec": observed_t,
+                    "llm_opponent_information_query_evaluation": score,
+                },
+            },
+        }
+
+    first_packet = _packet_with_cognitive_policy()
+    first_record = issue(
+        first_packet, issued=10.0, observed_t=70.0, decision_id="A:10:0",
+    )
+    first_feedback = build_opponent_information_feedback(
+        [first_record], team_id="A",
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test", as_of_t_sec=80.0,
+    )
+    first_resolution = first_feedback["recent_resolutions"][0]
+    assert first_resolution["question_policy"]["round_index"] == 1
+
+    second_packet = _packet_with_cognitive_policy(first_feedback)
+    second_recommendation = second_packet[
+        "opponent_information_cognitive_policy"
+    ]["recommendations_by_action"]["pass"]
+    assert second_recommendation["round_index"] == 2
+    assert second_recommendation["recommended_decision"] == "ask"
+    second_proposal = next(
+        row for row in second_packet["opponent_information_question_menu"][
+            "proposals"
+        ] if row["proposal_id"]
+        == second_recommendation["recommended_proposal_id"]
+    )
+    assert second_proposal["feature"] != first_resolution["feature"]
+
+    second_record = issue(
+        second_packet, issued=80.0, observed_t=140.0,
+        decision_id="A:80:1",
+    )
+    second_feedback = build_opponent_information_feedback(
+        [first_record, second_record], team_id="A",
+        checkpoint_signature="checkpoint:test",
+        environment_signature="environment:test", as_of_t_sec=150.0,
+    )
+    third_packet = _packet_with_cognitive_policy(second_feedback)
+    stop = third_packet["opponent_information_cognitive_policy"][
+        "recommendations_by_action"
+    ]["pass"]
+    assert stop["round_index"] == 3
+    assert stop["recommended_decision"] == "stop"
+    assert stop["stop_reason"] == "episode_question_budget_exhausted"
+
+    stop_audit = evaluate_llm_opponent_information_policy(
+        third_packet,
+        {
+            "decision": "stop", "proposal_id": "", "confidence": 0.9,
+            "rationale": "The two-question evidence budget is exhausted.",
+        },
+        selected_action="pass",
+        query_signature="llm-opponent-information-query:test",
+        selected_after_action_freeze=True,
+    )
+    assert stop_audit["accepted"]
+    assert stop_audit["model_checked_consistent"]
+    assert not stop_audit["query_audit"]
+    assert opponent_information_policy_audit_is_valid(stop_audit)
+
+    stop_record = {
+        "decision_id": "A:150:2",
+        "team_id": "A",
+        "created_t_sec": 150.0,
+        "checkpoint_signature": "checkpoint:test",
+        "environment_signature": "environment:test",
+        "intervention_actual_action": "pass",
+        "llm_opponent_information_policy_context": stop_audit,
+        "multi_horizon_regime_outcomes": {},
+    }
+    logs = [
+        {"world_model_decision_adoption": {"records": copy.deepcopy([
+            first_record, second_record, stop_record,
+        ])}}
+        for _ in range(4)
+    ]
+    diagnostics = opponent_information_policy_diagnostics([
+        payload["world_model_decision_adoption"]["records"]
+        for payload in logs
+    ])
+    assert diagnostics["accepted_policy_audits"] == 12
+    assert diagnostics["multi_round_episodes"] == 4
+    assert diagnostics["completed_stop_episodes"] == 4
+    assert diagnostics["realized_policy_answers"] == 8
+    assert diagnostics["question_budget_violations"] == 0
+    assert diagnostics["redundant_second_questions"] == 0
+    assert diagnostics["all_policy_decisions_post_action_shadow_only"]
+
+    report = aggregate_online_calibration(
+        logs,
+        min_transitions=0,
+        require_multi_round_question_policy=True,
+    )
+    assert report["version"] == 37
+    assert report["multi_round_question_policy_ready"]
+    assert report["gates"]["multi_round_question_policy"]
 
 
 def test_query_fails_closed_for_action_horizon_and_incomplete_values():
@@ -366,7 +581,7 @@ def test_cross_match_query_diagnostics_and_strict_readiness_gate():
         require_opponent_information_queries=True,
         require_world_model_question_loop=True,
     )
-    assert report["version"] == 36
+    assert report["version"] == 37
     assert report["opponent_information_queries_ready"]
     assert report["gates"]["opponent_information_queries"]
     assert report["world_model_question_loop_ready"]

@@ -867,7 +867,38 @@ class CognitiveExecutor:
                     evaluate_llm_opponent_information_query,
                 )
 
+                from src.match_engine.world_model.opponent_information_policy import (
+                    evaluate_llm_opponent_information_policy,
+                )
+
+                after_action_freeze = bool((
+                    plan.get("world_model_deliberation_encouragement_audit")
+                    or {}
+                ).get("accepted"))
+                information_policy_audit = (
+                    evaluate_llm_opponent_information_policy(
+                        packet,
+                        plan.get("opponent_information_policy"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        query_signature=(
+                            self.llm_opponent_information_query_signature
+                        ),
+                        selected_after_action_freeze=after_action_freeze,
+                    )
+                    if task_enabled("opponent_information_policy")
+                    else task_skipped("opponent_information_policy")
+                )
+                plan["opponent_information_policy_audit"] = (
+                    information_policy_audit
+                )
+                policy_query_audit = (
+                    information_policy_audit.get("query_audit") or {}
+                ) if information_policy_audit.get("accepted") else {}
                 information_query_audit = (
+                    policy_query_audit
+                    if policy_query_audit else
                     evaluate_llm_opponent_information_query(
                         packet,
                         plan.get("opponent_information_query"),
@@ -877,11 +908,7 @@ class CognitiveExecutor:
                         query_signature=(
                             self.llm_opponent_information_query_signature
                         ),
-                        selected_after_action_freeze=bool((
-                            plan.get(
-                                "world_model_deliberation_encouragement_audit"
-                            ) or {}
-                        ).get("accepted")),
+                        selected_after_action_freeze=after_action_freeze,
                     )
                     if task_enabled("opponent_information_query")
                     else task_skipped("opponent_information_query")
@@ -1245,6 +1272,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "opponent_information_query_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_opponent_information_policy_context=(
+                        dict(rec.plan.get(
+                            "opponent_information_policy_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "opponent_information_policy_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

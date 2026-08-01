@@ -927,6 +927,35 @@ change the current action, schedule a future action, or update opponent memory.
 world-model proposal selection after action freeze, complete Bayesian answer
 feedback, and proof that answer contracts cannot mutate the live belief.
 
+### Finite-horizon ask/stop policy
+
+The question loop is now controlled by an
+`opponent_information_cognitive_policy`, rather than treating every coach turn
+as an isolated opportunity to ask. For each possible frozen action, the world
+model prices candidate proposals using expected normalized information gain,
+decision VOI, horizon latency, and a redundancy penalty. It opens a digest-bound
+episode with at most two resolved questions. After the first answer, the next
+packet preserves the episode identifier, posterior entropy, used feature, round
+index, remaining budget, and the best non-redundant follow-up.
+
+The LLM responds through an explicit `opponent_information_policy` contract:
+`ask` must name an exact proposal from the action-scoped menu, while `stop` must
+carry no proposal. The engine expands an accepted `ask` into the existing query
+contract itself, so the LLM cannot silently rewrite the feature, horizon,
+purpose, conditional actions, or observation model. Both choices are valid
+auditable shadow decisions; model agreement is reported separately. A policy
+submitted before action freeze is rejected.
+
+Stopping is model-owned when the two-question budget is exhausted, the answer
+posterior entropy falls below `0.25`, no compatible observable question remains,
+or the best marginal question value fails to exceed the `0.015` question cost.
+This makes omission distinguishable from a deliberate stop. Cross-match policy
+diagnostics check complete two-round episodes, explicit stops, non-redundant
+second questions, realized answers, budget compliance, and post-action safety.
+Enable `--require-multi-round-question-policy` to make those properties a strict
+readiness gate. Information value remains a shadow epistemic objective, not a
+causal estimate of match outcomes.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same

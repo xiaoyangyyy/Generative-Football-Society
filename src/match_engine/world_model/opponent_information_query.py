@@ -388,6 +388,7 @@ def _question_proposal(
         "horizon": str(horizon),
         "purpose": str(purpose),
         "feature": str(report["feature"]),
+        "model_rank": int(report["model_rank"]),
         "question": (
             f"Will opponent {report['feature']} be at or above 0.5 "
             f"after {horizon}?"
@@ -446,12 +447,12 @@ def build_opponent_information_question_menu(
                     reports = _ranked_feature_reports(
                         basis, horizon=str(horizon), purpose=purpose,
                     )
-                    if reports:
+                    for report in (reports or [])[:2]:
                         proposals.append(_question_proposal(
                             action=action,
                             horizon=str(horizon),
                             purpose=purpose,
-                            report=reports[0],
+                            report=report,
                             basis=basis,
                         ))
     payload = {
@@ -497,6 +498,52 @@ def opponent_information_question_menu_is_valid(
         )
     except (KeyError, TypeError, ValueError, OverflowError):
         return False
+
+
+def opponent_information_question_menu_self_is_valid(menu: Any) -> bool:
+    if not isinstance(menu, dict):
+        return False
+    payload = dict(menu)
+    digest = payload.pop("menu_digest", None)
+    proposals = payload.get("proposals") or []
+    if (
+        digest != _question_digest(payload, "world-model-question-menu:")
+        or payload.get("version")
+        != OPPONENT_INFORMATION_QUESTION_MENU_VERSION
+        or payload.get("proposal_count") != len(proposals)
+        or payload.get("shadow_only") is not True
+        or payload.get("can_change_current_action") is not False
+        or payload.get("can_schedule_future_action") is not False
+        or payload.get("hidden_opponent_intent_observed") is not False
+    ):
+        return False
+    ids = []
+    for proposal in proposals:
+        if not isinstance(proposal, dict):
+            return False
+        proposal_payload = dict(proposal)
+        proposal_id = proposal_payload.pop("proposal_id", None)
+        try:
+            model_rank = int(proposal.get("model_rank", 0))
+        except (TypeError, ValueError, OverflowError):
+            return False
+        if (
+            proposal_id != _question_digest(
+                proposal_payload, "world-model-question-proposal:"
+            )
+            or proposal.get("selected_action") not in RESPONSE_ACTIONS
+            or proposal.get("feature") not in TACTICAL_FEATURES
+            or proposal.get("purpose") not in _PURPOSES
+            or model_rank not in {1, 2}
+            or proposal.get("shadow_only") is not True
+            or proposal.get("can_change_current_action") is not False
+            or proposal.get("can_schedule_future_action") is not False
+        ):
+            return False
+        ids.append(str(proposal_id))
+    return len(ids) == len(set(ids)) and bool(proposals) == bool(
+        payload.get("available")
+    )
 
 
 def _audit_from_basis(
@@ -766,8 +813,6 @@ def opponent_information_query_audit_is_valid(audit: Any) -> bool:
     proposal = selection.get("selected_proposal") or {}
     if proposal:
         selected = (expected or {}).get("selected_query_report") or {}
-        if int(selected.get("model_rank", 0)) != 1:
-            return False
         expected_proposal = _question_proposal(
             action=query["selected_action"],
             horizon=query["horizon"],

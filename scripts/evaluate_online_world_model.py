@@ -210,6 +210,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-multi-round-question-policy",
+        action="store_true",
+        help=(
+            "Require model-consistent two-question episodes with explicit "
+            "budgeted stop decisions and non-redundant follow-ups."
+        ),
+    )
+    parser.add_argument(
         "--require-opponent-information-adaptation",
         action="store_true",
         help=(
@@ -306,6 +314,9 @@ def main() -> int:
         ),
         require_world_model_question_loop=(
             args.require_world_model_question_loop
+        ),
+        require_multi_round_question_policy=(
+            args.require_multi_round_question_policy
         ),
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation

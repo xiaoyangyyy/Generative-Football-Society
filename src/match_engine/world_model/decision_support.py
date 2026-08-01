@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 25
+DECISION_PACKET_VERSION = 26
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -737,6 +737,13 @@ def build_coach_decision_packet(
 
         packet["opponent_information_question_menu"] = (
             build_opponent_information_question_menu(packet)
+        )
+        from src.match_engine.world_model.opponent_information_policy import (
+            build_opponent_information_cognitive_policy,
+        )
+
+        packet["opponent_information_cognitive_policy"] = (
+            build_opponent_information_cognitive_policy(packet)
         )
         return packet
     except Exception as exc:
