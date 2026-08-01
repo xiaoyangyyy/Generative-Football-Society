@@ -144,12 +144,23 @@ exposes the complete posterior, normalized entropy, tactical-switch
 probability, observed feature vector, and observation likelihood of each
 hypothesis.
 
+Before the first live update, compatible cognitive logs provide a weak
+cross-match meta-prior for the opponent. Compatibility requires both the exact
+world-model checkpoint signature and the complete policy-environment
+fingerprint. All decisions from one match are collapsed into one match-level
+distribution, preventing repeated coach triggers from inflating sample size.
+When raw four-control observations are present, the compiler reconstructs an
+observation-only posterior and discards the prior/LLM-contaminated posterior;
+legacy posterior fallback is permitted with lower trust. Meta-prior trust is
+bounded at `0.45` and reduced under between-match instability, `watch`, or
+`quarantined` recent-style drift.
+
 For each hypothesis, the world model intervenes only on the opponent's four
 tactical observation slots and re-runs `hold`, `pass`, `cross`, and `shot`.
 Action ranking uses the posterior-weighted expected value with explicit
 penalties for between-hypothesis standard deviation and the posterior-weighted
-10% lower tail. This makes a high-entropy belief favor robust actions instead of silently
-pretending the MAP opponent tactic is certain.
+10% lower tail. This makes a high-entropy belief favor robust actions instead
+of silently pretending the MAP opponent tactic is certain.
 
 The coach LLM can challenge the numeric posterior through
 `opponent_hypothesis`, which contains a listed tactical preset, confidence,
@@ -160,8 +171,24 @@ hard maximum influence of `0.20`; unsupported claims have zero or negligible
 effect. The fused posterior then reweights the already-computed
 counterfactuals before the selected action is reconciled.
 
+The live detector separates gradual control drift from a tactical regime
+change. It combines normalized feature displacement, Jensen-Shannon divergence
+between predictive and updated beliefs, and posterior predictive surprise. A
+moderate shift enters `watch` and needs a second consistent candidate; only an
+extreme single observation can confirm immediately. Confirmation increments a
+regime identifier, resets the within-match run length, and releases the sticky
+old posterior: the fresh belief retains only a `0.15` meta-prior anchor.
+
+The LLM may return `opponent_change_claim` with explicit from/to presets,
+confidence, cited features, and a falsifiable rationale. Acceptance requires
+alignment with the detector, observed feature changes in the claimed direction,
+and likelihood support. This explanation is audit-only and always carries
+`can_trigger_change_point=false`; it cannot create, confirm, cancel, or reset a
+numeric change point.
+
 Every adopted decision stores the posterior, MAP hypothesis, entropy, LLM
-hypothesis audit, selected-action sensitivity, tail value, and all
+hypothesis audit, meta-prior provenance, change-point state, any non-controlling
+change explanation, selected-action sensitivity, tail value, and all
 hypothesis-conditioned values. Online reports summarize grounding acceptance,
 LLM influence, belief entropy, inferred regimes, and decision sensitivity.
 Because hidden intent has no direct truth label, these are explicitly
@@ -397,5 +424,6 @@ python scripts/evaluate_online_world_model.py \
   --min-transitions 50 --min-policy-arm 8 --min-residual-samples 20 \
   --required-policy-horizon 60 --require-policy-effect \
   --require-outcome-calibration --require-uncertainty-decomposition \
-  --require-transition-ensemble --require-opponent-belief
+  --require-transition-ensemble --require-opponent-belief \
+  --require-opponent-meta-belief --require-opponent-change-detection
 ```

@@ -199,8 +199,10 @@ class _PromptGateway:
         self.client = object()
         self.config = SimpleNamespace(model="fake", timeout_s=1, max_retries=1)
         self.user_prompt = ""
+        self.system_prompt = ""
 
     def complete(self, system_prompt, user_prompt, **kwargs):
+        self.system_prompt = system_prompt
         self.user_prompt = user_prompt
         return json.dumps({
             "formation": "4-3-3",
@@ -227,6 +229,21 @@ def test_prematch_llm_prompt_receives_world_model_packet():
     assert "WORLD_MODEL_DECISION_SUPPORT" in gateway.user_prompt
     assert packet["recommended_tactical_preset"] in gateway.user_prompt
     assert response["world_model_rationale"] == "The quality gate is open."
+
+
+def test_in_match_prompt_exposes_non_controlling_change_explanation_contract():
+    gateway = _PromptGateway()
+    llm = SimulationLLM(gateway=gateway)
+    packet = build_coach_decision_packet(_Runtime(), _state(), "Home")
+
+    llm.coach_in_match_plan(
+        "Home", {"world_model_decision_support": packet}, "shape_change",
+    )
+
+    assert "opponent_change_claim" in gateway.user_prompt
+    assert "from_preset" in gateway.user_prompt
+    assert "cannot" in gateway.system_prompt
+    assert "change_point" in gateway.system_prompt
 
 
 class _LLM:

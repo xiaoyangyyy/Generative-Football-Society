@@ -23,6 +23,7 @@ from src.match_engine.world_model.decision_support import (
 from src.match_engine.world_model.observation import OBS_DIM
 from src.match_engine.world_model.opponent_belief import (
     OPPONENT_HYPOTHESES,
+    assimilate_llm_opponent_change_claim,
     assimilate_llm_opponent_hypothesis,
     opponent_belief_diagnostics,
     reweight_counterfactual_candidates,
@@ -131,6 +132,104 @@ def test_numeric_observations_build_a_persistent_non_degenerate_posterior():
     assert second["posterior"]["low_block"] > first["posterior"]["low_block"]
     assert 0.0 < second["normalized_entropy"] < 1.0
     assert abs(sum(second["posterior"].values()) - 1.0) < 1e-9
+
+
+def test_abrupt_tactical_shift_confirms_change_and_unlocks_old_posterior():
+    state = _state("low_block")
+    before = update_opponent_belief(state, "Home")
+    state.away.coach.tactical_current = {
+        feature: TACTICAL_PRESETS["gegenpress"][feature]
+        for feature in (
+            "pressing_intensity", "risk_budget", "line_height",
+            "rotation_aggressiveness",
+        )
+    }
+    state.clock_seconds = 60.0
+    watch = update_opponent_belief(state, "Home")
+    state.clock_seconds = 120.0
+    after = update_opponent_belief(state, "Home")
+
+    assert before["map_hypothesis"] == "low_block"
+    assert watch["change_point"]["status"] == "watch"
+    assert not watch["change_point"]["confirmed"]
+    assert watch["change_point"]["regime_hypothesis"] == "low_block"
+    assert after["change_point"]["confirmed"]
+    assert after["change_point"]["status"] == "confirmed"
+    assert after["change_point"]["regime_id"] == 1
+    assert after["change_point"]["regime_hypothesis"] == "gegenpress"
+    assert after["change_point"]["previous_map_hypothesis"] == "low_block"
+    assert after["map_hypothesis"] == "gegenpress"
+    assert after["posterior"]["gegenpress"] > after["posterior"]["low_block"]
+
+
+def test_small_tactical_drift_does_not_create_a_false_change_point():
+    state = _state("balanced")
+    update_opponent_belief(state, "Home")
+    state.away.coach.tactical_current = {
+        key: min(1.0, value + 0.015)
+        for key, value in state.away.coach.tactical_current.items()
+    }
+    state.clock_seconds = 60.0
+    belief = update_opponent_belief(state, "Home")
+
+    assert not belief["change_point"]["confirmed"]
+    assert belief["change_point"]["status"] == "stable"
+    assert belief["change_point"]["feature_shift"] < 0.05
+
+
+def test_llm_can_explain_but_cannot_trigger_a_numeric_change_point():
+    state = _state("low_block")
+    update_opponent_belief(state, "Home")
+    state.away.coach.tactical_current = {
+        feature: TACTICAL_PRESETS["gegenpress"][feature]
+        for feature in (
+            "pressing_intensity", "risk_budget", "line_height",
+            "rotation_aggressiveness",
+        )
+    }
+    state.clock_seconds = 60.0
+    update_opponent_belief(state, "Home")
+    state.clock_seconds = 120.0
+    belief = update_opponent_belief(state, "Home")
+    claim = {
+        "from_preset": "low_block",
+        "to_preset": "gegenpress",
+        "confidence": 0.9,
+        "evidence_features": [
+            "pressing_intensity", "risk_budget", "line_height",
+            "rotation_aggressiveness",
+        ],
+        "rationale": "All four controls moved toward an aggressive press.",
+    }
+    audit = assimilate_llm_opponent_change_claim(state, "Home", claim)
+    reverse = assimilate_llm_opponent_change_claim(state, "Home", {
+        **claim,
+        "from_preset": "gegenpress",
+        "to_preset": "low_block",
+    })
+
+    assert belief["change_point"]["confirmed"]
+    assert audit["accepted"]
+    assert audit["detector_alignment"]
+    assert audit["directional_fraction"] == 1.0
+    assert not audit["can_trigger_change_point"]
+    assert not reverse["accepted"]
+    assert not reverse["can_trigger_change_point"]
+
+
+def test_llm_change_claim_is_rejected_when_numeric_detector_is_stable():
+    state = _state("balanced")
+    update_opponent_belief(state, "Home")
+    audit = assimilate_llm_opponent_change_claim(state, "Home", {
+        "from_preset": "balanced",
+        "to_preset": "gegenpress",
+        "confidence": 1.0,
+        "evidence_features": ["pressing_intensity", "line_height"],
+    })
+
+    assert not audit["accepted"]
+    assert audit["detector_status"] == "initializing"
+    assert audit["evidence_score"] == 0.0
 
 
 def test_llm_hypothesis_is_schema_constrained_and_likelihood_bounded():
@@ -272,6 +371,32 @@ class _HypothesisLLM:
         })
 
 
+class _ChangeExplanationLLM:
+    def coach_in_match_plan(self, team_name, facts, kind):
+        packet = facts["world_model_decision_support"]
+        return json.dumps({
+            "reasoning": "The live detector supports a pressing-regime change.",
+            "confidence": 0.8,
+            "controls_delta": {},
+            "world_model_action": packet["recommended_action"],
+            "opponent_hypothesis": {
+                "tactical_preset": "gegenpress",
+                "confidence": 0.8,
+                "evidence_features": ["pressing_intensity", "line_height"],
+            },
+            "opponent_change_claim": {
+                "from_preset": "low_block",
+                "to_preset": "gegenpress",
+                "confidence": 0.9,
+                "evidence_features": [
+                    "pressing_intensity", "risk_budget", "line_height",
+                    "rotation_aggressiveness",
+                ],
+                "rationale": "All controls shifted toward the press.",
+            },
+        })
+
+
 def test_executor_closes_model_llm_belief_loop_and_exports_audit():
     state = _state("low_block")
     llm = _HypothesisLLM()
@@ -306,3 +431,35 @@ def test_executor_closes_model_llm_belief_loop_and_exports_audit():
     assert diagnostics["mean_counterfactual_action_sensitivity"] > 0.0
     assert diagnostics["decision_belief_snapshots"] == 1
     assert not diagnostics["calibrated_against_hidden_truth"]
+
+
+def test_executor_records_a_falsifiable_change_explanation_without_control():
+    state = _state("low_block")
+    update_opponent_belief(state, "Home")
+    state.away.coach.tactical_current = {
+        feature: TACTICAL_PRESETS["gegenpress"][feature]
+        for feature in (
+            "pressing_intensity", "risk_budget", "line_height",
+            "rotation_aggressiveness",
+        )
+    }
+    state.clock_seconds = 60.0
+    update_opponent_belief(state, "Home")
+    state.clock_seconds = 120.0
+    update_opponent_belief(state, "Home")
+    executor = CognitiveExecutor(
+        CognitiveMatchConfig(enabled=True, world_model_action_control_rate=0.0),
+        _ChangeExplanationLLM(),
+        world_model_runtime=_OpponentSensitiveRuntime(),
+    )
+    record = executor.process_trigger(CognitiveTriggerEvent(
+        120.0, "shape_change", ENTITY_TIER_COACH,
+        "coach:Home", team_id="Home", salience=1.0,
+    ), state)
+
+    audit = record.plan["opponent_change_claim_audit"]
+    context = state._wm_coach_decision_adoption[-1]["opponent_belief_context"]
+    assert audit["accepted"]
+    assert not audit["can_trigger_change_point"]
+    assert context["change_point"]["confirmed"]
+    assert context["llm_change_claim_audit"]["accepted"]

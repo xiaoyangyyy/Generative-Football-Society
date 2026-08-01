@@ -205,9 +205,15 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                         "experiment_arm": "treatment",
                         "experiment_treatment_propensity": 0.8,
                         "opponent_belief_context": {
+                            "opponent_team_id": "Away",
                             "posterior": {"balanced": 0.7, "low_block": 0.3},
                             "map_hypothesis": "balanced",
                             "normalized_entropy": 0.6,
+                            "meta_prior": {"available": True, "matches": 3},
+                            "change_point": {
+                                "version": 1, "status": "stable",
+                                "confirmed": False,
+                            },
                         },
                         "short_horizon_outcome": {
                             "policy_utility": float(adopted),
@@ -247,9 +253,15 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                         "experiment_arm": "control",
                         "experiment_treatment_propensity": 0.8,
                         "opponent_belief_context": {
+                            "opponent_team_id": "Away",
                             "posterior": {"balanced": 0.6, "low_block": 0.4},
                             "map_hypothesis": "balanced",
                             "normalized_entropy": 0.7,
+                            "meta_prior": {"available": True, "matches": 3},
+                            "change_point": {
+                                "version": 1, "status": "stable",
+                                "confirmed": False,
+                            },
                         },
                         "short_horizon_outcome": {"policy_utility": 0.0},
                         "multi_horizon_outcomes": {
@@ -320,17 +332,23 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
         require_uncertainty_decomposition=True,
         require_transition_ensemble=True,
         require_opponent_belief=True,
+        require_opponent_meta_belief=True,
+        require_opponent_change_detection=True,
     )
     assert policy_ready["ready"]
     assert policy_ready["policy_effect_ready"]
     assert policy_ready["uncertainty_decomposition_ready"]
     assert policy_ready["transition_ensemble_ready"]
     assert policy_ready["opponent_belief_ready"]
+    assert policy_ready["opponent_meta_belief_ready"]
+    assert policy_ready["opponent_change_detection_ready"]
     assert policy_ready["gates"][
         "world_model_uncertainty_decomposition"
     ]
     assert policy_ready["gates"]["world_model_transition_ensemble"]
     assert policy_ready["gates"]["opponent_belief_decision_evidence"]
+    assert policy_ready["gates"]["opponent_meta_belief_evidence"]
+    assert policy_ready["gates"]["opponent_change_detection_audit"]
     outcome = policy_ready["decision_adoption"]["randomized_outcome_effect"]
     assert outcome["ready"]
     assert outcome["cluster_robust"]
@@ -389,6 +407,8 @@ def test_online_report_isolates_residual_profiles_by_policy_environment():
 
     assert not report["uncertainty_decomposition_ready"]
     assert not report["transition_ensemble_ready"]
+    assert not report["opponent_meta_belief_ready"]
+    assert not report["opponent_change_detection_ready"]
     assert report["decision_adoption"]["uncertainty_decomposition"][
         "legacy_predictions"
     ] == 16

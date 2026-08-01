@@ -166,6 +166,7 @@ class CognitiveExecutor:
         use_llm: bool = True,
         world_model_runtime=None,
         outcome_residual_memory=None,
+        opponent_meta_belief_memory=None,
         policy_environment_signature: str = "environment_unspecified",
     ) -> None:
         self.cfg = cfg
@@ -173,6 +174,7 @@ class CognitiveExecutor:
         self.use_llm = use_llm and llm is not None
         self.world_model_runtime = world_model_runtime
         self.outcome_residual_memory = outcome_residual_memory
+        self.opponent_meta_belief_memory = opponent_meta_belief_memory
         self.policy_environment_signature = str(policy_environment_signature)
         self.records: List[CognitivePlanRecord] = []
         if cfg.cache_dir:
@@ -271,6 +273,10 @@ class CognitiveExecutor:
                 build_coach_decision_packet,
             )
 
+            if self.opponent_meta_belief_memory is not None:
+                state._wm_opponent_meta_belief_memory = (
+                    self.opponent_meta_belief_memory
+                )
             trig.facts["world_model_decision_support"] = (
                 build_coach_decision_packet(
                     self.world_model_runtime,
@@ -320,6 +326,7 @@ class CognitiveExecutor:
 
         if trig.entity_tier == ENTITY_TIER_COACH:
             from src.match_engine.world_model.opponent_belief import (
+                assimilate_llm_opponent_change_claim,
                 assimilate_llm_opponent_hypothesis,
                 reweight_counterfactual_candidates,
                 update_opponent_belief,
@@ -333,6 +340,14 @@ class CognitiveExecutor:
                     plan.get("opponent_hypothesis"),
                 )
                 plan["opponent_belief_audit"] = belief_audit
+                if plan.get("opponent_change_claim") is not None:
+                    plan["opponent_change_claim_audit"] = (
+                        assimilate_llm_opponent_change_claim(
+                            state,
+                            trig.team_id,
+                            plan.get("opponent_change_claim"),
+                        )
+                    )
                 updated_belief = update_opponent_belief(state, trig.team_id)
                 packet["opponent_belief"] = updated_belief
                 reweight_counterfactual_candidates(
@@ -528,8 +543,20 @@ class CognitiveExecutor:
                         "posterior": dict((packet.get(
                             "opponent_belief"
                         ) or {}).get("posterior") or {}),
+                        "observed_feature_vector": list((packet.get(
+                            "opponent_belief"
+                        ) or {}).get("observed_feature_vector") or []),
+                        "meta_prior": dict((packet.get(
+                            "opponent_belief"
+                        ) or {}).get("meta_prior") or {}),
+                        "change_point": dict((packet.get(
+                            "opponent_belief"
+                        ) or {}).get("change_point") or {}),
                         "llm_hypothesis_audit": dict(rec.plan.get(
                             "opponent_belief_audit"
+                        ) or {}),
+                        "llm_change_claim_audit": dict(rec.plan.get(
+                            "opponent_change_claim_audit"
                         ) or {}),
                         "selected_action_value_std": float(
                             selected_candidate.get(

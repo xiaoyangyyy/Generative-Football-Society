@@ -22,7 +22,7 @@ from src.match_engine.world_model.opponent_belief import (
 )
 
 
-DECISION_PACKET_VERSION = 5
+DECISION_PACKET_VERSION = 6
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",

@@ -48,6 +48,8 @@ def aggregate_online_calibration(
     require_uncertainty_decomposition: bool = False,
     require_transition_ensemble: bool = False,
     require_opponent_belief: bool = False,
+    require_opponent_meta_belief: bool = False,
+    require_opponent_change_detection: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -232,8 +234,24 @@ def aggregate_online_calibration(
     gates["opponent_belief_decision_evidence"] = (
         opponent_belief_ready if require_opponent_belief else True
     )
+    opponent_meta_belief_ready = bool(
+        opponent_belief["meta_prior_backed_decisions"]
+        >= max(2, min_residual_samples)
+    )
+    opponent_change_detection_ready = bool(
+        opponent_belief["change_detector_snapshots"]
+        >= max(2, min_residual_samples)
+        and opponent_belief["all_change_claims_non_controlling"]
+    )
+    gates["opponent_meta_belief_evidence"] = (
+        opponent_meta_belief_ready if require_opponent_meta_belief else True
+    )
+    gates["opponent_change_detection_audit"] = (
+        opponent_change_detection_ready
+        if require_opponent_change_detection else True
+    )
     return {
-        "version": 6,
+        "version": 7,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -274,6 +292,8 @@ def aggregate_online_calibration(
         "uncertainty_decomposition_ready": decomposition_ready,
         "transition_ensemble_ready": transition_ensemble_ready,
         "opponent_belief_ready": opponent_belief_ready,
+        "opponent_meta_belief_ready": opponent_meta_belief_ready,
+        "opponent_change_detection_ready": opponent_change_detection_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",

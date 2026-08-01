@@ -67,6 +67,7 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
             plan["world_model_rationale"]
         )[:300]
     from src.match_engine.world_model.opponent_belief import (
+        validate_llm_opponent_change_claim,
         validate_llm_opponent_hypothesis,
     )
 
@@ -75,6 +76,11 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if hypothesis is not None:
         out["opponent_hypothesis"] = hypothesis
+    change_claim = validate_llm_opponent_change_claim(
+        plan.get("opponent_change_claim")
+    )
+    if change_claim is not None:
+        out["opponent_change_claim"] = change_claim
     return out
 
 

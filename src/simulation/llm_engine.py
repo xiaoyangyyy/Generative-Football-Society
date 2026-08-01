@@ -245,6 +245,10 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   reject or cap claims that conflict with world-model likelihood;
 - opponent_hypothesis_values are counterfactual model estimates. Prefer actions
   robust across plausible hypotheses when posterior entropy is high;
+- change_point is computed from live numeric evidence. You may explain a
+  watch/confirmed change with opponent_change_claim, but your claim cannot
+  trigger, confirm, or cancel the detector. Cite only features whose signed
+  changes support the claimed from/to presets;
 - never describe exploration as guaranteed learning or override its safety budget;
 - you may disagree, but explain why without inventing outcomes.
 Output JSON only. Adjust tactics with small bounded deltas."""
@@ -272,6 +276,13 @@ Return JSON:
     "confidence": 0.0-1.0,
     "evidence_features": ["pressing_intensity|risk_budget|line_height|rotation_aggressiveness"],
     "rationale": "one short observation-grounded explanation"
+  }},
+  "opponent_change_claim": {{
+    "from_preset": "listed prior preset",
+    "to_preset": "listed candidate preset",
+    "confidence": 0.0-1.0,
+    "evidence_features": ["only features with observed signed changes"],
+    "rationale": "a falsifiable explanation, only when change_point is watch or confirmed"
   }}
 }}"""
         return self._call_llm(system, user, json_mode=True, temperature=0.5)

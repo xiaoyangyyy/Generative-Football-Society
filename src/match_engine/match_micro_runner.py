@@ -64,15 +64,22 @@ def _resolve_cognitive_layer(
         llm = SimulationLLM()
     except Exception:
         llm = None
+    environment_signature = _policy_environment_signature(cfg, cog_cfg)
     executor = CognitiveExecutor(
         cog_cfg, llm, use_llm=bool(llm),
         world_model_runtime=world_model_runtime,
-        policy_environment_signature=(
-            _policy_environment_signature(cfg, cog_cfg)
-        ),
+        policy_environment_signature=environment_signature,
         outcome_residual_memory=(
             _load_policy_residual_memory(
                 base_dir, world_model_runtime, cfg, cog_cfg,
+            )
+            if world_model_runtime is not None else None
+        ),
+        opponent_meta_belief_memory=(
+            _load_opponent_meta_belief_memory(
+                base_dir,
+                world_model_runtime,
+                environment_signature,
             )
             if world_model_runtime is not None else None
         ),
@@ -102,6 +109,22 @@ def _load_policy_residual_memory(
         )),
         environment_signature=_policy_environment_signature(cfg, cog_cfg),
         min_samples=cog_cfg.world_model_residual_min_samples,
+    )
+
+
+def _load_opponent_meta_belief_memory(
+    base_dir, world_model_runtime, environment_signature,
+):
+    from src.match_engine.world_model.opponent_meta_memory import (
+        load_opponent_meta_belief_memory,
+    )
+
+    return load_opponent_meta_belief_memory(
+        base_dir,
+        checkpoint_signature=str(getattr(
+            world_model_runtime, "checkpoint_signature", "runtime_unspecified",
+        )),
+        environment_signature=str(environment_signature),
     )
 
 

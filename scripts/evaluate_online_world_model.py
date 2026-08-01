@@ -74,6 +74,22 @@ def main() -> int:
             "belief and hypothesis-conditioned counterfactuals."
         ),
     )
+    parser.add_argument(
+        "--require-opponent-meta-belief",
+        action="store_true",
+        help=(
+            "Fail readiness until enough decisions use a compatible "
+            "cross-match opponent prior."
+        ),
+    )
+    parser.add_argument(
+        "--require-opponent-change-detection",
+        action="store_true",
+        help=(
+            "Fail readiness until enough decisions carry the numeric change "
+            "detector contract and every LLM change claim is non-controlling."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -103,6 +119,10 @@ def main() -> int:
         ),
         require_transition_ensemble=args.require_transition_ensemble,
         require_opponent_belief=args.require_opponent_belief,
+        require_opponent_meta_belief=args.require_opponent_meta_belief,
+        require_opponent_change_detection=(
+            args.require_opponent_change_detection
+        ),
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)
