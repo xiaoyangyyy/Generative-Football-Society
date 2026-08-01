@@ -94,6 +94,10 @@ def test_decision_packet_compares_all_actions_and_recommends_risk_adjusted_best(
     assert packet["policy_outcome_calibration"]["samples"] == 0
     assert "active_learning" in packet
     assert all("active_learning" in candidate for candidate in packet["candidates"])
+    assert all(
+        "transition_epistemic_uncertainty" in candidate["active_learning"]
+        for candidate in packet["candidates"]
+    )
     for candidate in packet["candidates"]:
         assert set(candidate["multi_horizon_predictions"]) == {
             "transition", "60s", "180s",

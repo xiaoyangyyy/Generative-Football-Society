@@ -49,6 +49,7 @@ sealed BA/AUC/Brier/ECE gates. Shot planning remains disabled.
 Tests cover paired-noise cancellation, event hazard statistics, hierarchy role
 relevance, meta shadow/commit/rollback semantics, memory provenance and utility,
 graph shapes/no-self-edge invariants, active-sampling priority, immutable
-manifests, legacy checkpoint loading, and v6 checkpoint round trips.
+manifests, legacy checkpoint loading, and v7 transition-ensemble checkpoint
+round trips.
 The current v6 completion branch adds a bounded residual around the physics
 success prior and is validated by BA, AUC, Brier, and ECE on sealed matches.

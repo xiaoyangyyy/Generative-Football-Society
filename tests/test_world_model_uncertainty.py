@@ -7,6 +7,7 @@ from src.match_engine.world_model.uncertainty import (
     compose_uncertainty,
     ensemble_uncertainty_decomposition,
     uncertainty_decomposition_diagnostics,
+    transition_ensemble_uncertainty,
 )
 
 
@@ -42,6 +43,42 @@ def test_head_disagreement_and_bernoulli_noise_are_not_conflated():
             disagreement["aleatoric_uncertainty"],
         )
     )
+
+
+def test_transition_disagreement_requires_independently_trained_members():
+    states = np.zeros((3, 1, 307), dtype=float)
+    states[1, 0, 200] = 0.10
+    states[2, 0, 200] = -0.10
+    trained = transition_ensemble_uncertainty(states, trained=True)
+    legacy = transition_ensemble_uncertainty(states, trained=False)
+
+    assert trained["members"] == 3
+    assert trained["ball_rms_disagreement"] > 0.0
+    assert trained["epistemic_uncertainty"] > 0.0
+    assert legacy["epistemic_uncertainty"] == 0.0
+
+
+def test_hierarchical_variance_separates_heads_from_dynamics_members():
+    states = np.zeros((2, 1, 307), dtype=float)
+    member_shift = ensemble_uncertainty_decomposition(
+        np.array([[0.2, 0.2], [0.8, 0.8]]),
+        np.full((2, 2), 0.2),
+        np.zeros((2, 2)),
+        transition_state_samples=states,
+        transition_ensemble_trained=True,
+    )
+    head_shift = ensemble_uncertainty_decomposition(
+        np.array([[0.2, 0.8], [0.2, 0.8]]),
+        np.full((2, 2), 0.2),
+        np.zeros((2, 2)),
+        transition_state_samples=states,
+        transition_ensemble_trained=True,
+    )
+
+    assert member_shift["components"]["pass_epistemic"] == 0.0
+    assert member_shift["components"]["pass_transition_epistemic"] > 0.0
+    assert head_shift["components"]["pass_epistemic"] > 0.0
+    assert head_shift["components"]["pass_transition_epistemic"] == 0.0
 
 
 def test_decomposition_diagnostics_audit_realized_prediction_errors():

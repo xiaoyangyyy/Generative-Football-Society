@@ -237,6 +237,8 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   only select its exploration_action, and weigh information value against regret;
 - epistemic uncertainty is reducible model ignorance and may motivate learning;
   aleatoric uncertainty is irreducible match randomness and must only price risk;
+- transition_epistemic uncertainty is trajectory disagreement between trained
+  dynamics members; use it as evidence, never as a guaranteed model failure;
 - never describe exploration as guaranteed learning or override its safety budget;
 - you may disagree, but explain why without inventing outcomes.
 Output JSON only. Adjust tactics with small bounded deltas."""

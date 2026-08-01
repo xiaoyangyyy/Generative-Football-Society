@@ -215,6 +215,11 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                                     "uncertainty": 0.1,
                                     "epistemic_uncertainty": 0.1,
                                     "aleatoric_uncertainty": 0.0,
+                                    "uncertainty_components": {
+                                        "transition_ensemble_trained": True,
+                                        "transition_ensemble_members": 3,
+                                        "transition_epistemic": 0.05,
+                                    },
                                 },
                             },
                             "60s": {
@@ -224,6 +229,11 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                                     "uncertainty": 0.1,
                                     "epistemic_uncertainty": 0.1,
                                     "aleatoric_uncertainty": 0.0,
+                                    "uncertainty_components": {
+                                        "transition_ensemble_trained": True,
+                                        "transition_ensemble_members": 3,
+                                        "transition_epistemic": 0.05,
+                                    },
                                 },
                             },
                         },
@@ -240,6 +250,11 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                                     "uncertainty": 0.1,
                                     "epistemic_uncertainty": 0.1,
                                     "aleatoric_uncertainty": 0.0,
+                                    "uncertainty_components": {
+                                        "transition_ensemble_trained": True,
+                                        "transition_ensemble_members": 3,
+                                        "transition_epistemic": 0.05,
+                                    },
                                 },
                             },
                             "60s": {
@@ -249,6 +264,11 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
                                     "uncertainty": 0.1,
                                     "epistemic_uncertainty": 0.1,
                                     "aleatoric_uncertainty": 0.0,
+                                    "uncertainty_components": {
+                                        "transition_ensemble_trained": True,
+                                        "transition_ensemble_members": 3,
+                                        "transition_epistemic": 0.05,
+                                    },
                                 },
                             },
                         },
@@ -288,13 +308,16 @@ def test_online_reports_aggregate_transition_and_adoption_evidence():
         min_residual_samples=2,
         require_outcome_calibration=True,
         require_uncertainty_decomposition=True,
+        require_transition_ensemble=True,
     )
     assert policy_ready["ready"]
     assert policy_ready["policy_effect_ready"]
     assert policy_ready["uncertainty_decomposition_ready"]
+    assert policy_ready["transition_ensemble_ready"]
     assert policy_ready["gates"][
         "world_model_uncertainty_decomposition"
     ]
+    assert policy_ready["gates"]["world_model_transition_ensemble"]
     outcome = policy_ready["decision_adoption"]["randomized_outcome_effect"]
     assert outcome["ready"]
     assert outcome["cluster_robust"]
@@ -352,6 +375,7 @@ def test_online_report_isolates_residual_profiles_by_policy_environment():
     ]
 
     assert not report["uncertainty_decomposition_ready"]
+    assert not report["transition_ensemble_ready"]
     assert report["decision_adoption"]["uncertainty_decomposition"][
         "legacy_predictions"
     ] == 16

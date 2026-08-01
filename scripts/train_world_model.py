@@ -30,6 +30,25 @@ def _match_group(name: str) -> str:
     return re.sub(r"_wm_collect$", "", value)
 
 
+def _bootstrap_transition_loss(
+    predictions,
+    target,
+    feature_weights,
+    bootstrap_weights,
+):
+    """Member-specific Bayesian-bootstrap transition objective."""
+    if predictions.ndim != 3 or bootstrap_weights.shape != predictions.shape[:2]:
+        raise ValueError("invalid transition bootstrap shapes")
+    per_member_sample_error = (
+        ((predictions - target.unsqueeze(0)) ** 2) * feature_weights
+    ).mean(dim=2)
+    member_losses = (
+        (per_member_sample_error * bootstrap_weights).sum(dim=1)
+        / bootstrap_weights.sum(dim=1).clamp_min(1.0)
+    )
+    return member_losses.mean(), member_losses
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=45)
@@ -40,6 +59,12 @@ def main() -> None:
     parser.add_argument("--use-ball-log", action="store_true")
     parser.add_argument("--out", type=str, default="")
     parser.add_argument("--transition", type=str, default="gru", choices=("gru", "transformer"))
+    parser.add_argument(
+        "--transition-ensemble-size",
+        type=int,
+        default=0,
+        help="Independent dynamics members; 0 uses MATCH_WM_TRANSITION_ENSEMBLE_SIZE.",
+    )
     parser.add_argument("--dataset-manifest", type=str, default="")
     args = parser.parse_args()
 
@@ -133,6 +158,9 @@ def main() -> None:
 
     cfg = WorldModelConfig.from_env()
     cfg.transition_type = args.transition
+    if args.transition_ensemble_size > 0:
+        cfg.transition_ensemble_size = args.transition_ensemble_size
+        cfg.__post_init__()
     model = build_model(cfg)
     opt = torch.optim.Adam(model.parameters(), lr=min(args.lr, 3e-4))
     obs_weights = torch.from_numpy(observation_loss_weights())
@@ -185,25 +213,64 @@ def main() -> None:
         n = 0
         for batch in loader:
             o, a, no, ps, sg, xg, pm, sm = batch
-            z, pred_obs, _pass_logit, _xg_pred, _shot_logit, _h = model(o, a, h=None)
-            obs_loss = (((pred_obs - no) ** 2) * obs_weights).mean()
-            pass_all, progress_all, shot_all = model.outcome_ensemble(z, a)
+            z_members, pred_obs_members = model.transition_predictions(o, a)
+            transition_bootstrap = torch.stack([
+                torch.empty_like(pm).exponential_().clamp_max(4.0)
+                for _ in range(model.transition_member_count)
+            ], dim=0)
+            obs_loss, _transition_losses = _bootstrap_transition_loss(
+                pred_obs_members,
+                no,
+                obs_weights,
+                transition_bootstrap,
+            )
+            outcome_members = [
+                model.outcome_ensemble(member, a) for member in z_members
+            ]
+            pass_all = torch.stack([
+                item[0] for item in outcome_members
+            ], dim=0)
+            progress_all = torch.stack([
+                item[1] for item in outcome_members
+            ], dim=0)
+            shot_all = torch.stack([
+                item[2] for item in outcome_members
+            ], dim=0)
             pass_losses, shot_losses, progress_losses = [], [], []
-            for head_idx in range(pass_all.shape[0]):
-                bootstrap = torch.empty_like(pm).exponential_().clamp_max(4.0)
-                # v6 learns a bounded residual around the calibrated physics
+            for head_idx in range(pass_all.shape[1]):
+                outcome_bootstrap = (
+                    torch.empty_like(pm).exponential_().clamp_max(4.0)
+                )
+                # v7 learns a bounded residual around the calibrated physics
                 # prior. Proper BCE preserves probability meaning; class
                 # weighting would move the optimum away from that prior.
-                pass_w = pm * bootstrap
-                shot_w = sm * bootstrap
-                pass_raw = pass_bce(pass_all[head_idx].view(-1), ps)
-                shot_raw = shot_bce(shot_all[head_idx].view(-1), sg)
-                pass_losses.append((pass_raw * pass_w).sum() / pass_w.sum().clamp_min(1.0))
-                shot_losses.append((shot_raw * shot_w).sum() / shot_w.sum().clamp_min(1.0))
-                progress_losses.append(
-                    (((progress_all[head_idx].view(-1) - xg) ** 2) * bootstrap).sum()
-                    / bootstrap.sum().clamp_min(1.0)
-                )
+                for member_index in range(model.transition_member_count):
+                    joint_bootstrap = (
+                        outcome_bootstrap
+                        * transition_bootstrap[member_index]
+                    )
+                    pass_w = pm * joint_bootstrap
+                    shot_w = sm * joint_bootstrap
+                    pass_raw = pass_bce(
+                        pass_all[member_index, head_idx].view(-1), ps,
+                    )
+                    shot_raw = shot_bce(
+                        shot_all[member_index, head_idx].view(-1), sg,
+                    )
+                    pass_losses.append(
+                        (pass_raw * pass_w).sum()
+                        / pass_w.sum().clamp_min(1.0)
+                    )
+                    shot_losses.append(
+                        (shot_raw * shot_w).sum()
+                        / shot_w.sum().clamp_min(1.0)
+                    )
+                    progress_losses.append(
+                        (((progress_all[
+                            member_index, head_idx,
+                        ].view(-1) - xg) ** 2) * joint_bootstrap).sum()
+                        / joint_bootstrap.sum().clamp_min(1.0)
+                    )
             pass_loss = torch.stack(pass_losses).mean()
             shot_loss = torch.stack(shot_losses).mean()
             progress_loss = torch.stack(progress_losses).mean()
@@ -221,7 +288,8 @@ def main() -> None:
             n += 1
         print(
             f"epoch {epoch+1}/{args.epochs} loss={loss_sum/max(1,n):.4f} "
-            f"n={len(train_idx)} val={len(val_idx)} transition={args.transition}"
+            f"n={len(train_idx)} val={len(val_idx)} transition={args.transition} "
+            f"members={model.transition_member_count}"
         )
 
     model.eval()
@@ -229,15 +297,50 @@ def main() -> None:
         vo = torch.from_numpy(obs[val_idx])
         va = torch.from_numpy(act[val_idx])
         vn = torch.from_numpy(nxt[val_idx])
-        _z, vp, vpl, vxp, vsl, _h = model(vo, va, h=None)
+        vz_members, vp_members = model.transition_predictions(vo, va)
+        vp = vp_members.mean(dim=0)
+        validation_outcomes = [
+            model.outcome_ensemble(member, va) for member in vz_members
+        ]
+        vpass_all = torch.stack([
+            item[0] for item in validation_outcomes
+        ], dim=0)
+        vxg_all = torch.stack([
+            item[1] for item in validation_outcomes
+        ], dim=0)
+        vshot_all = torch.stack([
+            item[2] for item in validation_outcomes
+        ], dim=0)
+        vxp = vxg_all.mean(dim=(0, 1))
         weighted_mse = float(((((vp - vn) ** 2) * obs_weights).mean()).item())
+        transition_primary_mse = float(
+            ((((vp_members[0] - vn) ** 2) * obs_weights).mean()).item()
+        )
+        transition_member_mean_mse = float(torch.stack([
+            (((member - vn) ** 2) * obs_weights).mean()
+            for member in vp_members
+        ]).mean().item())
+        transition_disagreement = torch.sqrt(torch.mean(
+            torch.var(vp_members, dim=0, unbiased=False), dim=1,
+        )).numpy()
+        transition_error = torch.sqrt(torch.mean(
+            (vp - vn) ** 2, dim=1,
+        )).numpy()
+        transition_disagreement_error_correlation = (
+            float(np.corrcoef(
+                transition_disagreement, transition_error,
+            )[0, 1])
+            if np.std(transition_disagreement) > 1e-12
+            and np.std(transition_error) > 1e-12
+            else 0.0
+        )
         progress_target = torch.from_numpy(xg[val_idx]).float().view(-1)
         progress_rmse = float(torch.sqrt(torch.mean(
             (vxp.view(-1) - progress_target) ** 2
         )).item())
         pm = pass_mask[val_idx] > 0.5
         sm = shot_mask[val_idx] > 0.5
-        pass_logits = vpl.view(-1)[torch.from_numpy(pm)]
+        pass_logits = vpass_all[:, :, torch.from_numpy(pm), :].squeeze(-1)
         pass_targets = torch.from_numpy(pass_success[val_idx][pm]).float()
     # Class-balanced training learns a ranking score, not a calibrated probability.
     # Fit a two-parameter Platt map on dev only; the sealed test remains untouched.
@@ -246,8 +349,11 @@ def main() -> None:
     calibrator = torch.optim.LBFGS([scale, bias], lr=0.2, max_iter=80)
     def closure():
         calibrator.zero_grad()
-        loss = torch.nn.functional.binary_cross_entropy_with_logits(
-            scale.clamp(0.05, 10.0) * pass_logits + bias, pass_targets
+        calibrated_probability = torch.sigmoid(
+            scale.clamp(0.05, 10.0) * pass_logits + bias
+        ).mean(dim=(0, 1))
+        loss = torch.nn.functional.binary_cross_entropy(
+            calibrated_probability, pass_targets,
         )
         loss.backward()
         return loss
@@ -256,7 +362,7 @@ def main() -> None:
     with torch.no_grad():
         pass_prob = torch.sigmoid(
             pass_calibration["scale"] * pass_logits + pass_calibration["bias"]
-        ).numpy()
+        ).mean(dim=(0, 1)).numpy()
         pass_true = pass_success[val_idx][pm] >= 0.5
         candidates = np.linspace(0.05, 0.95, 181)
         scores = []
@@ -270,7 +376,9 @@ def main() -> None:
         pass_tpr = float(pass_pred[pass_true].mean()) if pass_true.any() else 0.5
         pass_tnr = float((~pass_pred[~pass_true]).mean()) if (~pass_true).any() else 0.5
         pass_balanced_accuracy = 0.5 * (pass_tpr + pass_tnr)
-        shot_prob = torch.sigmoid(vsl.view(-1)).numpy()[sm]
+        shot_prob = torch.sigmoid(vshot_all).mean(
+            dim=(0, 1),
+        ).view(-1).numpy()[sm]
         shot_true = shot_goal[val_idx][sm]
         shot_brier = float(np.mean((shot_prob - shot_true) ** 2)) if sm.any() else 0.25
         transition_quality = float(np.clip(np.exp(-20.0 * weighted_mse), 0.0, 1.0))
@@ -290,6 +398,16 @@ def main() -> None:
         planner_quality = min(pass_planner_quality, shot_planner_quality)
     validation = {
         "weighted_obs_mse": weighted_mse,
+        "transition_ensemble_size": model.transition_member_count,
+        "transition_ensemble_trained": True,
+        "transition_primary_mse": transition_primary_mse,
+        "transition_member_mean_mse": transition_member_mean_mse,
+        "transition_ensemble_gain_vs_primary": (
+            transition_primary_mse - weighted_mse
+        ),
+        "transition_disagreement_error_correlation": (
+            transition_disagreement_error_correlation
+        ),
         "progress_rmse": progress_rmse,
         "pass_balanced_accuracy": pass_balanced_accuracy,
         "shot_brier": shot_brier,

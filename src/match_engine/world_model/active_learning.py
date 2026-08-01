@@ -95,7 +95,7 @@ def _coverage_counts(
 
 def _forecast_information(
     candidate: dict[str, Any],
-) -> tuple[float, float, float]:
+) -> tuple[float, float, float, float]:
     predictions = candidate.get("multi_horizon_predictions") or {}
     epistemic_values = [
         _bounded(
@@ -107,6 +107,16 @@ def _forecast_information(
     ]
     aleatoric_values = [
         _bounded(item.get("aleatoric_uncertainty", 0.0), 0.0, 1.0, 0.0)
+        for item in predictions.values()
+        if isinstance(item, dict)
+    ]
+    transition_epistemic_values = [
+        _bounded(
+            (item.get("uncertainty_components") or {}).get(
+                "transition_epistemic", 0.0,
+            ),
+            0.0, 1.0, 0.0,
+        )
         for item in predictions.values()
         if isinstance(item, dict)
     ]
@@ -141,7 +151,11 @@ def _forecast_information(
         float(np.clip((max(utilities) - min(utilities)) / 0.25, 0.0, 1.0))
         if len(utilities) >= 2 else 0.0
     )
-    return epistemic, aleatoric, disagreement
+    transition_epistemic = (
+        float(np.mean(transition_epistemic_values))
+        if transition_epistemic_values else 0.0
+    )
+    return epistemic, aleatoric, transition_epistemic, disagreement
 
 
 def _cross_match_coverage(candidate: dict[str, Any]) -> tuple[int, int]:
@@ -212,7 +226,12 @@ def build_active_learning_advice(
     scored = []
     for candidate in candidates:
         action = str(candidate.get("action", "unknown"))
-        epistemic, aleatoric, disagreement = _forecast_information(candidate)
+        (
+            epistemic,
+            aleatoric,
+            transition_epistemic,
+            disagreement,
+        ) = _forecast_information(candidate)
         memory_action_samples, memory_context_samples = (
             _cross_match_coverage(candidate)
         )
@@ -246,6 +265,7 @@ def build_active_learning_advice(
             "model_uncertainty": epistemic,
             "epistemic_uncertainty": epistemic,
             "aleatoric_uncertainty": aleatoric,
+            "transition_epistemic_uncertainty": transition_epistemic,
             "multi_horizon_disagreement": disagreement,
             "action_samples": action_samples,
             "context_action_samples": context_samples,
@@ -282,7 +302,7 @@ def build_active_learning_advice(
     else:
         reason = "safe_information_gain_opportunity"
     return {
-        "version": 1,
+        "version": 2,
         "eligible": eligible,
         "reason": reason,
         "exploit_action": str(exploit.get("action")) if exploit else "none",
@@ -373,7 +393,7 @@ def active_learning_diagnostics(
     })
     contexts = {_record_context(record) for record in executed}
     return {
-        "version": 1,
+        "version": 2,
         "exploration_decisions": len(exploration),
         "executed_explorations": len(executed),
         "execution_rate": len(executed) / max(1, len(exploration)),

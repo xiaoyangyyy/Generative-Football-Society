@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Ensure data/world_model/latent_wm.pt exists and is a validated v6 checkpoint.
+Ensure data/world_model/latent_wm.pt exists and is a validated v7 checkpoint.
 Used by restart_full_run.ps1 before LLM full tournament.
 """
 
@@ -39,11 +39,22 @@ def main() -> None:
             version = int(getattr(model, "checkpoint_version", 2))
             validation = meta.get("validation") or {}
             quality = float(validation.get("transition_quality", 0.0))
-            if version < 6:
-                raise RuntimeError(f"legacy checkpoint v{version}; v6 required")
+            if version < 7:
+                raise RuntimeError(f"legacy checkpoint v{version}; v7 required")
             if quality < 0.50:
                 raise RuntimeError(
                     f"transition quality {quality:.3f} below checkpoint gate 0.500"
+                )
+            if not bool(validation.get("transition_ensemble_trained")):
+                raise RuntimeError("transition ensemble is not independently trained")
+            members = int(validation.get("transition_ensemble_size", 0))
+            if members < 2:
+                raise RuntimeError(f"only {members} transition ensemble members")
+            primary_mse = float(validation.get("transition_primary_mse", 1.0))
+            ensemble_mse = float(validation.get("weighted_obs_mse", 1.0))
+            if ensemble_mse > primary_mse * 1.05:
+                raise RuntimeError(
+                    "transition ensemble mean degrades primary MSE by more than 5%"
                 )
             print(f"[ensure_world_model] OK: {ckpt}")
             return

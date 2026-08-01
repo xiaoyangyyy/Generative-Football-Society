@@ -74,7 +74,20 @@ def main() -> int:
     version = int(getattr(rt.model, "checkpoint_version", 2))
     planner_quality = float(rt.base_quality)
     transition_quality = float((rt.meta.get("validation") or {}).get("transition_quality", 0.0))
-    ok = version >= 6 and mse < 0.12 and transition_quality >= 0.50
+    validation = rt.meta.get("validation") or {}
+    transition_ensemble_trained = bool(
+        validation.get("transition_ensemble_trained")
+    )
+    transition_ensemble_size = int(
+        validation.get("transition_ensemble_size", 0)
+    )
+    ok = (
+        version >= 7
+        and mse < 0.12
+        and transition_quality >= 0.50
+        and transition_ensemble_trained
+        and transition_ensemble_size >= 2
+    )
     print(
         json.dumps(
             {
@@ -86,6 +99,8 @@ def main() -> int:
                 "transition_metrics": transition_report,
                 "planner_quality": planner_quality,
                 "transition_quality": transition_quality,
+                "transition_ensemble_trained": transition_ensemble_trained,
+                "transition_ensemble_size": transition_ensemble_size,
                 "pass_planner_quality": rt.pass_quality,
                 "shot_planner_quality": rt.shot_quality,
                 "pass_planner_active": rt.pass_quality >= rt.cfg.min_planner_quality,

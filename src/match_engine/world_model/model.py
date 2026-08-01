@@ -37,6 +37,7 @@ class WorldModelOutput:
     aleatoric_uncertainty: float | None = None
     uncertainty_source: str = "legacy_total_as_epistemic_proxy"
     uncertainty_components: dict | None = None
+    uncertainty_samples: dict | None = None
 
     def __post_init__(self) -> None:
         if self.epistemic_uncertainty is None:
@@ -50,7 +51,8 @@ if _TORCH:
         def __init__(self, cfg: WorldModelConfig):
             super().__init__()
             self.cfg = cfg
-            self.checkpoint_version = 6
+            self.checkpoint_version = 7
+            self.transition_ensemble_trained = True
             d = cfg.latent_dim
             h = cfg.hidden_dim
             self.encoder = nn.Sequential(
@@ -114,9 +116,29 @@ if _TORCH:
                     dropout=0.05,
                 )
                 self.sequence_encoder = nn.TransformerEncoder(enc_layer, num_layers=cfg.transformer_layers)
+                self.extra_sequence_encoders = nn.ModuleList()
+                for _ in range(cfg.transition_ensemble_size - 1):
+                    member_layer = nn.TransformerEncoderLayer(
+                        d_model=d,
+                        nhead=max(1, cfg.transformer_heads),
+                        dim_feedforward=h,
+                        batch_first=True,
+                        dropout=0.05,
+                    )
+                    self.extra_sequence_encoders.append(
+                        nn.TransformerEncoder(
+                            member_layer, num_layers=cfg.transformer_layers,
+                        )
+                    )
+                self.extra_grus = nn.ModuleList()
                 self.transition_kind = "transformer"
             else:
                 self.gru = nn.GRU(d + ACTION_DIM, d, batch_first=True)
+                self.extra_grus = nn.ModuleList(
+                    nn.GRU(d + ACTION_DIM, d, batch_first=True)
+                    for _ in range(cfg.transition_ensemble_size - 1)
+                )
+                self.extra_sequence_encoders = nn.ModuleList()
                 self.transition_kind = "gru"
 
             self.decoder = nn.Sequential(
@@ -206,28 +228,98 @@ if _TORCH:
                 shot_logits = shot_logits + prior_logit
             return pass_logits, progress, shot_logits
 
+        @property
+        def transition_member_count(self) -> int:
+            return 1 + (
+                len(self.extra_sequence_encoders)
+                if self.transition_kind == "transformer"
+                else len(self.extra_grus)
+            )
+
+        def _transition_member_step(
+            self,
+            z: torch.Tensor,
+            action: torch.Tensor,
+            h: Optional[torch.Tensor],
+            member_index: int,
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
+            if self.transition_kind == "transformer":
+                encoder = (
+                    self.sequence_encoder
+                    if member_index == 0
+                    else self.extra_sequence_encoders[member_index - 1]
+                )
+                za = z + self.action_embed(action)
+                seq = torch.stack([z, za], dim=1)
+                if h is not None and h.dim() == 3:
+                    seq = torch.cat([h, seq], dim=1)
+                out = encoder(seq)
+                z_next = out[:, -1, :]
+                h_new = out[:, -2:, :]
+                return z_next, h_new
+
+            inp = torch.cat([z, action], dim=-1).unsqueeze(1)
+            recurrent = (
+                self.gru
+                if member_index == 0 else self.extra_grus[member_index - 1]
+            )
+            if h is None:
+                out, h_new = recurrent(inp)
+            else:
+                out, h_new = recurrent(inp, h)
+            return out.squeeze(1), h_new
+
         def _transition_step(
             self,
             z: torch.Tensor,
             action: torch.Tensor,
             h: Optional[torch.Tensor],
         ) -> Tuple[torch.Tensor, torch.Tensor]:
-            if self.transition_kind == "transformer":
-                za = z + self.action_embed(action)
-                seq = torch.stack([z, za], dim=1)
-                if h is not None and h.dim() == 3:
-                    seq = torch.cat([h, seq], dim=1)
-                out = self.sequence_encoder(seq)
-                z_next = out[:, -1, :]
-                h_new = out[:, -2:, :]
-                return z_next, h_new
+            """Primary-member compatibility path."""
+            return self._transition_member_step(z, action, h, 0)
 
-            inp = torch.cat([z, action], dim=-1).unsqueeze(1)
-            if h is None:
-                out, h_new = self.gru(inp)
-            else:
-                out, h_new = self.gru(inp, h)
-            return out.squeeze(1), h_new
+        def transition_ensemble_step(
+            self,
+            z: torch.Tensor,
+            action: torch.Tensor,
+            h_members: Optional[list[Optional[torch.Tensor]]] = None,
+        ) -> tuple[torch.Tensor, list[torch.Tensor]]:
+            hidden = h_members or [None] * self.transition_member_count
+            outputs = [
+                self._transition_member_step(z, action, hidden[index], index)
+                for index in range(self.transition_member_count)
+            ]
+            return (
+                torch.stack([item[0] for item in outputs], dim=0),
+                [item[1] for item in outputs],
+            )
+
+        def transition_predictions(
+            self,
+            obs: torch.Tensor,
+            action: torch.Tensor,
+        ) -> tuple[torch.Tensor, torch.Tensor]:
+            """Return member-specific latent and decoded next-state forecasts."""
+            z = self.encode(obs)
+            z_members, _ = self.transition_ensemble_step(z, action)
+            next_members = torch.stack([
+                self.decode_next(obs, member) for member in z_members
+            ], dim=0)
+            return z_members, next_members
+
+        def initialize_transition_ensemble_from_primary(self) -> None:
+            """Make legacy checkpoint expansion exact rather than random."""
+            members = (
+                self.extra_sequence_encoders
+                if self.transition_kind == "transformer" else self.extra_grus
+            )
+            primary = (
+                self.sequence_encoder
+                if self.transition_kind == "transformer" else self.gru
+            )
+            for member in members:
+                member.load_state_dict(primary.state_dict())
+            self.transition_ensemble_trained = False
 
         def forward(
             self,
@@ -254,23 +346,57 @@ if _TORCH:
         ) -> WorldModelOutput:
             self.eval()
             with torch.no_grad():
-                current_obs = torch.from_numpy(obs).float().unsqueeze(0)
-                z = self.encode(current_obs)
+                initial_obs = torch.from_numpy(obs).float().unsqueeze(0)
                 act = torch.from_numpy(action).float().unsqueeze(0)
-                h_t = None
+                member_obs = [
+                    initial_obs.clone() for _ in range(self.transition_member_count)
+                ]
+                member_z = [self.encode(value) for value in member_obs]
+                member_hidden: list[Optional[torch.Tensor]] = [
+                    None for _ in range(self.transition_member_count)
+                ]
                 if h is not None:
-                    h_t = torch.from_numpy(h).float()
-                    if h_t.dim() == 2:
-                        h_t = h_t.unsqueeze(0)
+                    initial_hidden = torch.from_numpy(h).float()
+                    if initial_hidden.dim() == 2:
+                        initial_hidden = initial_hidden.unsqueeze(0)
+                    member_hidden = [
+                        initial_hidden.clone()
+                        for _ in range(self.transition_member_count)
+                    ]
                 for _ in range(max(1, steps)):
-                    z, h_t = self._transition_step(z, act, h_t)
-                    current_obs = self.decode_next(current_obs, z)
-                    z = self.encode(current_obs)
-                next_obs_t = current_obs
-                pass_all, xg_all, shot_all = self.outcome_ensemble(z, act)
-                pass_probs = torch.sigmoid(pass_all).reshape(-1)
-                shot_probs = torch.sigmoid(shot_all).reshape(-1)
-                progress_vals = xg_all.reshape(-1)
+                    next_obs = []
+                    next_z = []
+                    next_hidden = []
+                    for index in range(self.transition_member_count):
+                        transitioned, hidden = self._transition_member_step(
+                            member_z[index], act, member_hidden[index], index,
+                        )
+                        decoded = self.decode_next(
+                            member_obs[index], transitioned,
+                        )
+                        next_obs.append(decoded)
+                        next_z.append(self.encode(decoded))
+                        next_hidden.append(hidden)
+                    member_obs = next_obs
+                    member_z = next_z
+                    member_hidden = next_hidden
+                next_obs_members = torch.stack(member_obs, dim=0)
+                next_obs_t = next_obs_members.mean(dim=0)
+                outcome_members = [
+                    self.outcome_ensemble(z_value, act)
+                    for z_value in member_z
+                ]
+                pass_logits = torch.stack([
+                    item[0] for item in outcome_members
+                ], dim=0)
+                pass_probs = torch.sigmoid(pass_logits)
+                progress_vals = torch.stack([
+                    item[1] for item in outcome_members
+                ], dim=0)
+                shot_logits = torch.stack([
+                    item[2] for item in outcome_members
+                ], dim=0)
+                shot_probs = torch.sigmoid(shot_logits)
                 ps = pass_probs.mean().item()
                 xg = progress_vals.mean().item()
                 sg = shot_probs.mean().item()
@@ -278,10 +404,21 @@ if _TORCH:
                     pass_probs.detach().cpu().numpy(),
                     shot_probs.detach().cpu().numpy(),
                     progress_vals.detach().cpu().numpy(),
+                    transition_state_samples=(
+                        next_obs_members.detach().cpu().numpy()
+                    ),
+                    transition_ensemble_trained=(
+                        self.transition_ensemble_trained
+                    ),
                 )
-                h_out = h_t.squeeze(0).numpy() if h_t is not None else z.squeeze(0).numpy()
+                hidden_mean = torch.stack([
+                    value for value in member_hidden if value is not None
+                ], dim=0).mean(dim=0)
+                h_out = hidden_mean.squeeze(0).detach().cpu().numpy()
             return WorldModelOutput(
-                next_obs=next_obs_t.squeeze(0).numpy().astype(np.float32),
+                next_obs=(
+                    next_obs_t.squeeze(0).detach().cpu().numpy().astype(np.float32)
+                ),
                 pass_success=float(ps),
                 progress_delta=float(xg),
                 shot_goal_prob=float(sg),
@@ -295,6 +432,17 @@ if _TORCH:
                 ),
                 uncertainty_source=str(decomposition["source"]),
                 uncertainty_components=dict(decomposition["components"]),
+                uncertainty_samples={
+                    "pass_logits": pass_logits.detach().cpu().numpy(),
+                    "shot_logits": shot_logits.detach().cpu().numpy(),
+                    "progress": progress_vals.detach().cpu().numpy(),
+                    "transition_states": (
+                        next_obs_members.detach().cpu().numpy()
+                    ),
+                    "transition_ensemble_trained": (
+                        self.transition_ensemble_trained
+                    ),
+                },
             )
 
 else:
@@ -324,7 +472,7 @@ def save_checkpoint(
         "obs_dim": OBS_DIM,
         "action_dim": ACTION_DIM,
         "meta": meta or {},
-        "version": 6,
+        "version": 7,
     }
     torch.save(payload, path)
 
@@ -339,7 +487,28 @@ def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Di
     if model.checkpoint_version < 4:
         cfg.imagination_steps = 1
     try:
-        model.load_state_dict(payload["state_dict"], strict=model.checkpoint_version >= 5)
+        if model.checkpoint_version >= 7:
+            model.load_state_dict(payload["state_dict"], strict=True)
+            model.transition_ensemble_trained = True
+        else:
+            incompatible = model.load_state_dict(
+                payload["state_dict"], strict=False,
+            )
+            if model.checkpoint_version >= 5:
+                allowed_prefixes = (
+                    "extra_grus.", "extra_sequence_encoders.",
+                )
+                unexpected_missing = [
+                    key for key in incompatible.missing_keys
+                    if not key.startswith(allowed_prefixes)
+                ]
+                if unexpected_missing or incompatible.unexpected_keys:
+                    raise RuntimeError(
+                        "unexpected legacy state mismatch: "
+                        f"missing={unexpected_missing}, "
+                        f"unexpected={incompatible.unexpected_keys}"
+                    )
+            model.initialize_transition_ensemble_from_primary()
     except RuntimeError as exc:
         raise RuntimeError(
             f"Checkpoint incompatible ({exc}). Retrain: python scripts/ensure_world_model.py"

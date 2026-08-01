@@ -43,6 +43,7 @@ def aggregate_online_calibration(
     min_residual_samples: int = 20,
     require_outcome_calibration: bool = False,
     require_uncertainty_decomposition: bool = False,
+    require_transition_ensemble: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -211,8 +212,15 @@ def aggregate_online_calibration(
     gates["world_model_uncertainty_decomposition"] = (
         decomposition_ready if require_uncertainty_decomposition else True
     )
+    transition_ensemble_ready = bool(
+        uncertainty_decomposition["transition_ensemble_predictions"]
+        >= max(2, min_residual_samples)
+    )
+    gates["world_model_transition_ensemble"] = (
+        transition_ensemble_ready if require_transition_ensemble else True
+    )
     return {
-        "version": 4,
+        "version": 5,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -250,6 +258,7 @@ def aggregate_online_calibration(
             and required_outcome["cluster_robust"]
         ),
         "uncertainty_decomposition_ready": decomposition_ready,
+        "transition_ensemble_ready": transition_ensemble_ready,
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",

@@ -143,7 +143,18 @@ def test_structured_encoder_has_multiple_outcome_members():
     assert pass_heads.shape == progress_heads.shape == shot_heads.shape == (3, 2, 1)
 
 
-def test_v6_graph_checkpoint_round_trip(tmp_path):
+def test_transition_ensemble_config_is_explicit_and_bounded():
+    from src.match_engine.world_model.config import WorldModelConfig
+
+    cfg = WorldModelConfig.from_mapping({
+        "MATCH_WM_TRANSITION_ENSEMBLE_SIZE": "5",
+    })
+    assert cfg.transition_ensemble_size == 5
+    with pytest.raises(ValueError, match="transition_ensemble_size"):
+        WorldModelConfig(transition_ensemble_size=1)
+
+
+def test_v7_transition_ensemble_checkpoint_round_trip(tmp_path):
     pytest.importorskip("torch")
     from src.match_engine.world_model.config import WorldModelConfig
     from src.match_engine.world_model.model import build_model, load_checkpoint, save_checkpoint
@@ -153,13 +164,94 @@ def test_v6_graph_checkpoint_round_trip(tmp_path):
     path = tmp_path / "wm.pt"
     save_checkpoint(str(path), model, cfg, {"quality": 0.0})
     loaded, _, meta = load_checkpoint(str(path))
-    assert loaded.checkpoint_version == 6
+    assert loaded.checkpoint_version == 7
+    assert loaded.transition_member_count == cfg.transition_ensemble_size
+    assert loaded.transition_ensemble_trained
     assert meta["quality"] == 0.0
     from src.match_engine.world_model.inference import WorldModelRuntime
 
     runtime = WorldModelRuntime.load(str(path))
     assert runtime.checkpoint_signature.startswith("sha256:")
     assert len(runtime.checkpoint_signature) == len("sha256:") + 64
+
+
+@pytest.mark.parametrize("transition_type", ["gru", "transformer"])
+def test_transition_members_produce_independent_state_forecasts(
+    transition_type,
+):
+    torch = pytest.importorskip("torch")
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.model import build_model
+
+    cfg = WorldModelConfig(
+        latent_dim=16,
+        hidden_dim=32,
+        ensemble_size=2,
+        transition_ensemble_size=3,
+        transition_type=transition_type,
+        transformer_layers=1,
+    )
+    model = build_model(cfg).eval()
+    observation = torch.full((2, OBS_DIM), 0.5, dtype=torch.float32)
+    action = torch.zeros((2, ACTION_DIM), dtype=torch.float32)
+    _, predictions = model.transition_predictions(observation, action)
+
+    assert predictions.shape == (3, 2, OBS_DIM)
+    assert not torch.allclose(predictions[0], predictions[1])
+    imagined = model.imagine(
+        observation[0].numpy(), action[0].numpy(), steps=2,
+    )
+    assert imagined.uncertainty_components["transition_epistemic"] > 0.0
+    assert imagined.uncertainty_source == (
+        "bootstrap_transition_and_outcome_total_variance"
+    )
+
+
+@pytest.mark.parametrize("transition_type", ["gru", "transformer"])
+def test_v6_checkpoint_expands_dynamics_without_fake_disagreement(
+    tmp_path, transition_type,
+):
+    torch = pytest.importorskip("torch")
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.model import build_model, load_checkpoint
+
+    cfg = WorldModelConfig(
+        latent_dim=16, hidden_dim=32, ensemble_size=2,
+        transition_ensemble_size=3,
+        transition_type=transition_type,
+        transformer_layers=1,
+    )
+    model = build_model(cfg)
+    legacy_state = {
+        key: value
+        for key, value in model.state_dict().items()
+        if not key.startswith(("extra_grus.", "extra_sequence_encoders."))
+    }
+    legacy_cfg = dict(cfg.__dict__)
+    legacy_cfg.pop("transition_ensemble_size")
+    path = tmp_path / "legacy-v6.pt"
+    torch.save({
+        "state_dict": legacy_state,
+        "cfg": legacy_cfg,
+        "obs_dim": OBS_DIM,
+        "action_dim": ACTION_DIM,
+        "meta": {},
+        "version": 6,
+    }, path)
+
+    loaded, loaded_cfg, _ = load_checkpoint(str(path))
+    observation = torch.full((1, OBS_DIM), 0.5, dtype=torch.float32)
+    action = torch.zeros((1, ACTION_DIM), dtype=torch.float32)
+    _, predictions = loaded.transition_predictions(observation, action)
+
+    assert loaded.checkpoint_version == 6
+    assert loaded_cfg.transition_ensemble_size == 3
+    assert not loaded.transition_ensemble_trained
+    assert torch.allclose(predictions[0], predictions[1])
+    imagined = loaded.imagine(
+        observation[0].numpy(), action[0].numpy(),
+    )
+    assert imagined.uncertainty_components["transition_epistemic"] == 0.0
 
 
 def test_v6_zero_pass_residual_preserves_physics_prior():
@@ -227,6 +319,46 @@ def test_runtime_predicts_declared_policy_utility_at_requested_horizon():
     assert longer["aleatoric_uncertainty"] >= prediction[
         "aleatoric_uncertainty"
     ]
+
+
+def test_runtime_recomputes_member_uncertainty_after_probability_calibration():
+    pytest.importorskip("torch")
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.inference import WorldModelRuntime
+    from src.match_engine.world_model.model import build_model
+
+    cfg = WorldModelConfig(
+        latent_dim=16,
+        hidden_dim=32,
+        ensemble_size=2,
+        transition_ensemble_size=2,
+    )
+    runtime = WorldModelRuntime(build_model(cfg), cfg, {
+        "validation": {
+            "planner_quality": 1.0,
+            "pass_planner_quality": 1.0,
+            "shot_planner_quality": 1.0,
+            "weighted_obs_mse": 0.0,
+            "progress_rmse": 0.0,
+            "pass_calibration": {"scale": 0.2, "bias": 0.1},
+        },
+    })
+    observation = np.full(OBS_DIM, 0.5, dtype=np.float32)
+    action = zero_action()
+    action[13] = 0.5
+    output = runtime.imagine(observation, action, quality_kind="pass")
+    raw_logits = np.asarray(output.uncertainty_samples["pass_logits"])
+    calibrated = 1.0 / (1.0 + np.exp(-(0.2 * raw_logits + 0.1)))
+    shaped = calibrated.reshape(calibrated.shape[0], calibrated.shape[1], -1)
+    expected_head_epistemic = min(
+        1.0,
+        float(np.sqrt(np.mean(np.var(shaped, axis=1)))) / 0.5,
+    )
+
+    assert output.uncertainty_components["pass_epistemic"] == pytest.approx(
+        expected_head_epistemic
+    )
+    assert "bootstrap_transition" in output.uncertainty_source
 
 
 @pytest.mark.skipif(

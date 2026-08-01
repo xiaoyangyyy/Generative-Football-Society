@@ -58,6 +58,14 @@ def main() -> int:
             "epistemic/aleatoric decomposition."
         ),
     )
+    parser.add_argument(
+        "--require-transition-ensemble",
+        action="store_true",
+        help=(
+            "Fail readiness until enough realized forecasts come from a "
+            "trained transition ensemble."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -85,6 +93,7 @@ def main() -> int:
         require_uncertainty_decomposition=(
             args.require_uncertainty_decomposition
         ),
+        require_transition_ensemble=args.require_transition_ensemble,
     )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)

@@ -1,4 +1,4 @@
-# World Model v6
+# World Model v7
 
 The world model learns action-conditioned match transitions for counterfactual
 pass and shot planning. It is an optional advisory layer: the deterministic
@@ -11,11 +11,11 @@ full observation + candidate action
               |
  CNN grid + player attention + context encoder
               |
-         GRU/Transformer
+ bootstrap GRU/Transformer ensemble
               |
         residual state delta
               |
- next observation + bootstrap outcome ensemble
+ mean next observation + trajectory disagreement + outcome ensemble
               |
  quality/OOD gate -> bounded planner advantage
 ```
@@ -49,6 +49,8 @@ the model, preventing outcome leakage.
 - Uses independent pass and shot quality gates; a weak branch contributes zero.
 - Uses a legal hold action as the counterfactual baseline.
 - Uses ensemble disagreement and observation coverage to reduce OOD influence.
+- Trains each dynamics member with independent Bayesian-bootstrap sample
+  weights and rolls members forward separately at inference.
 - Territorial progress is exposed only as `progress_delta`; the misleading
   historical xG alias has been removed.
 
@@ -61,6 +63,7 @@ the model, preventing outcome leakage.
 | `MATCH_WM_RECORD` | `0` | Record full-state transitions |
 | `MATCH_WM_CHECKPOINT` | `data/world_model/latent_wm.pt` | Checkpoint path |
 | `MATCH_WM_TRANSITION` | `gru` | `gru` or `transformer` |
+| `MATCH_WM_TRANSITION_ENSEMBLE_SIZE` | `3` | Independently bootstrapped latent dynamics members; minimum `2` |
 | `MATCH_WM_PLANNER_BLEND` | `0.30` | Maximum pass advantage blend |
 | `MATCH_WM_SHOT_BLEND` | `0.25` | Maximum shot advantage blend |
 | `MATCH_WM_IMAGINATION_STEPS` | `1` | Counterfactual rollout depth |
@@ -78,11 +81,12 @@ Manual workflow:
 ```bash
 python scripts/collect_world_model_traces.py --pairs 48
 python scripts/backfill_wm_from_ball_log.py
-python scripts/train_world_model.py --epochs 50 --use-ball-log --transition gru
+python scripts/train_world_model.py --epochs 50 --use-ball-log \
+  --transition gru --transition-ensemble-size 3
 python scripts/validate_world_model.py
 ```
 
-Only validated v6 checkpoints are allowed to influence planning. A missing,
+Only validated v7 checkpoints are allowed to influence planning. A missing,
 legacy, low-quality, or sparse-input model contributes a zero bonus.
 
 ## LLM decision fusion
@@ -283,28 +287,33 @@ recalibrated for materially different data rates or utility scales.
 ### Reducible and irreducible uncertainty
 
 World-model forecasts expose three separate quantities. `epistemic_uncertainty`
-is estimated from disagreement among independently bootstrapped outcome heads,
-plus the checkpoint's held-out quality gap; it represents model ignorance that
-additional representative data may reduce. `aleatoric_uncertainty` uses the
+is estimated from disagreement among independently bootstrapped dynamics and
+outcome heads, plus the checkpoint's held-out quality gap; it represents model
+ignorance that additional representative data may reduce. `aleatoric_uncertainty` uses the
 within-head Bernoulli variance of pass/shot events and the held-out progress
 residual scale; it represents match randomness that a larger dataset should not
 be expected to remove. `uncertainty` composes both monotonically and remains the
 quantity used for risk penalties and interval calibration.
 
 The decomposition follows total-variance semantics but remains a simulator
-proxy: the transition decoder itself is not a deep ensemble, so its epistemic
-term is backed by validation quality and outcome-head disagreement rather than
-independent transition networks. New checkpoints persist `progress_rmse` from
-held-out data; older checkpoints use a conservative weighted-transition-error
-fallback. Long-horizon rollouts compound both components separately before
-recomposition. Every forecast also carries its source and component audit.
+proxy. Dynamics members have independent GRU/Transformer parameters and
+bootstrap supervision while sharing the observation encoder and decoder; their
+decoded ball, player, and whole-state trajectory disagreement is audited
+separately. New checkpoints persist `progress_rmse`, ensemble mean/primary MSE,
+and disagreement-error correlation from held-out data. Long-horizon rollouts
+advance every member separately, then compound epistemic and aleatoric terms
+before recomposition. Every forecast also carries its source and component
+audit. A v6 checkpoint is expanded by exact copies of its primary transition,
+so it remains replayable but reports zero dynamics disagreement and cannot pass
+the v7 readiness gate.
 
 The LLM is explicitly told that epistemic uncertainty may justify bounded data
 acquisition, while aleatoric uncertainty can only increase caution. The online
 report audits realized-error correlations and verifies the composition identity.
 Deployments may make this mandatory with
-`--require-uncertainty-decomposition`; legacy forecasts remain readable but
-cannot satisfy that gate.
+`--require-uncertainty-decomposition` and
+`--require-transition-ensemble`; legacy forecasts remain readable but cannot
+satisfy those gates.
 
 ### Risk-constrained active learning
 
@@ -345,5 +354,6 @@ All diagnostics are stored in the per-match cognitive log. Aggregate them with:
 python scripts/evaluate_online_world_model.py \
   --min-transitions 50 --min-policy-arm 8 --min-residual-samples 20 \
   --required-policy-horizon 60 --require-policy-effect \
-  --require-outcome-calibration --require-uncertainty-decomposition
+  --require-outcome-calibration --require-uncertainty-decomposition \
+  --require-transition-ensemble
 ```

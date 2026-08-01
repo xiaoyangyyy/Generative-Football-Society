@@ -60,7 +60,7 @@ def main() -> int:
             "sealed_evaluation": ranker.get("sealed_evaluation", {}),
             "ok": all(item["hash_ok"] for item in tracking) and bool(ranker.get("sealed_evaluation", {}).get("candidate_ready")),
         },
-        "checkpoint": {"version": checkpoint_version, "ok": checkpoint_version >= 6},
+        "checkpoint": {"version": checkpoint_version, "ok": checkpoint_version >= 7},
         "architecture": {"standings_service": (ROOT / "src/simulation/standings.py").is_file(), "stable_app_api": (ROOT / "src/app.py").is_file()},
         "compatibility_env_reads": {
             "count": len(env_hits), "core_count": len(core_env_hits),

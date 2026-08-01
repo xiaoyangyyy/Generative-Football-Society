@@ -20,6 +20,7 @@ class WorldModelConfig:
     legacy_quality: float = 0.10
     min_planner_quality: float = 0.15
     ensemble_size: int = 3
+    transition_ensemble_size: int = 3
     grid_gx: int = 8
     grid_gy: int = 5
     transition_type: str = "gru"  # gru | transformer
@@ -33,6 +34,11 @@ class WorldModelConfig:
             raise ValueError("World-model dimensions are too small for structured encoding")
         if self.ensemble_size < 2:
             raise ValueError("World-model uncertainty requires ensemble_size >= 2")
+        if self.transition_ensemble_size < 2:
+            raise ValueError(
+                "World-model dynamics uncertainty requires "
+                "transition_ensemble_size >= 2"
+            )
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, str]) -> "WorldModelConfig":
@@ -46,6 +52,9 @@ class WorldModelConfig:
             legacy_quality=env_float(values, "MATCH_WM_LEGACY_QUALITY", 0.10),
             min_planner_quality=env_float(values, "MATCH_WM_MIN_QUALITY", 0.15),
             ensemble_size=env_int(values, "MATCH_WM_ENSEMBLE_SIZE", 3),
+            transition_ensemble_size=env_int(
+                values, "MATCH_WM_TRANSITION_ENSEMBLE_SIZE", 3,
+            ),
             grid_gx=env_int(values, "MATCH_WM_GRID_GX", 8),
             grid_gy=env_int(values, "MATCH_WM_GRID_GY", 5),
             transition_type=values.get("MATCH_WM_TRANSITION", "gru").strip().lower() or "gru",

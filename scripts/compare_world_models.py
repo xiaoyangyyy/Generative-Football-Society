@@ -47,9 +47,17 @@ def main() -> None:
     for path in args.checkpoints:
         model, _, meta = load_checkpoint(path)
         with torch.no_grad():
-            _, pred, pass_logit, _, shot_logit, _ = model(
-                torch.from_numpy(obs[idx]), torch.from_numpy(model_actions), h=None
+            obs_tensor = torch.from_numpy(obs[idx])
+            action_tensor = torch.from_numpy(model_actions)
+            z_members, pred_members = model.transition_predictions(
+                obs_tensor, action_tensor,
             )
+            pred = pred_members.mean(dim=0)
+            pass_all, _, shot_all = model.outcome_ensemble(
+                z_members.mean(dim=0), action_tensor,
+            )
+            pass_logit = pass_all.mean(dim=0)
+            shot_logit = shot_all.mean(dim=0)
         mse = float(((((pred - torch.from_numpy(nxt[idx])) ** 2) * weights).mean()).item())
         pass_prob = torch.sigmoid(pass_logit.view(-1)).numpy()[is_pass]
         pass_true = original_actions[is_pass, PASS_OUTCOME_INDEX] > 0.5
@@ -61,6 +69,8 @@ def main() -> None:
         print({
             "path": path,
             "version": model.checkpoint_version,
+            "transition_members": model.transition_member_count,
+            "transition_ensemble_trained": model.transition_ensemble_trained,
             "weighted_obs_mse": mse,
             "pass_balanced_accuracy": 0.5 * (tpr + tnr),
             "shot_brier": float(np.mean((shot_prob - shot_true) ** 2)),

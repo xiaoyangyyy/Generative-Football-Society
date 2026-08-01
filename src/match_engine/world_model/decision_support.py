@@ -16,7 +16,7 @@ from src.match_engine.world_model.policy_prediction import (
 from src.match_engine.tactical_catalog import TACTICAL_PRESETS, resolve_tactical_preset
 
 
-DECISION_PACKET_VERSION = 3
+DECISION_PACKET_VERSION = 4
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",

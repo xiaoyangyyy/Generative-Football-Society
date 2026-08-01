@@ -25,6 +25,7 @@ from src.match_engine.world_model.online_calibration import OnlineTransitionCali
 from src.match_engine.world_model.uncertainty import (
     compose_uncertainty,
     compound_uncertainty,
+    ensemble_uncertainty_decomposition,
 )
 
 try:
@@ -47,6 +48,11 @@ class WorldModelRuntime:
             "transition_kind": str(getattr(model, "transition_kind", "unknown")),
             "latent_dim": int(cfg.latent_dim),
             "hidden_dim": int(cfg.hidden_dim),
+            "outcome_ensemble_size": int(cfg.ensemble_size),
+            "transition_ensemble_size": int(cfg.transition_ensemble_size),
+            "transition_ensemble_trained": bool(getattr(
+                model, "transition_ensemble_trained", False,
+            )),
             "validation": self.meta.get("validation", {}),
         }
         self.checkpoint_signature = "meta:" + hashlib.sha256(
@@ -103,7 +109,9 @@ class WorldModelRuntime:
         print(f"  [WORLD_MODEL] transition={kind} latent={cfg.latent_dim} (meta rows={meta.get('rows', '?')})")
         print(
             f"  [WORLD_MODEL] checkpoint=v{getattr(model, 'checkpoint_version', 2)} "
-            f"quality pass={rt.pass_quality:.3f} shot={rt.shot_quality:.3f}"
+            f"quality pass={rt.pass_quality:.3f} shot={rt.shot_quality:.3f} "
+            f"dynamics_members={model.transition_member_count} "
+            f"trained={model.transition_ensemble_trained}"
         )
         return rt
 
@@ -154,21 +162,55 @@ class WorldModelRuntime:
         quality_uncertainty = 1.0 - self.planner_confidence(
             clean_obs, kind=quality_kind,
         )
-        model_epistemic = float(out.epistemic_uncertainty or 0.0)
+        samples = out.uncertainty_samples or {}
+        if samples:
+            calibrated_pass_logit = np.clip(
+                self.pass_calibration_scale
+                * np.asarray(samples["pass_logits"], dtype=float)
+                + self.pass_calibration_bias,
+                -40.0,
+                40.0,
+            )
+            pass_probability = 1.0 / (1.0 + np.exp(-calibrated_pass_logit))
+            shot_logit = np.clip(np.asarray(
+                samples["shot_logits"], dtype=float,
+            ), -40.0, 40.0)
+            shot_probability = 1.0 / (1.0 + np.exp(-shot_logit))
+            decomposition = ensemble_uncertainty_decomposition(
+                pass_probability,
+                shot_probability,
+                np.asarray(samples["progress"], dtype=float),
+                progress_aleatoric=self.progress_aleatoric_scale,
+                transition_state_samples=np.asarray(
+                    samples["transition_states"], dtype=float,
+                ),
+                transition_ensemble_trained=bool(
+                    samples["transition_ensemble_trained"]
+                ),
+            )
+            model_epistemic = float(
+                decomposition["epistemic_uncertainty"]
+            )
+            aleatoric = float(decomposition["aleatoric_uncertainty"])
+            out.uncertainty_components = dict(decomposition["components"])
+            base_source = str(decomposition["source"])
+        else:
+            model_epistemic = float(out.epistemic_uncertainty or 0.0)
+            aleatoric = float(np.clip(
+                float(out.aleatoric_uncertainty or 0.0)
+                + 0.10 * self.progress_aleatoric_scale,
+                0.0,
+                0.50,
+            ))
+            base_source = str(out.uncertainty_source)
         epistemic = float(np.clip(
             max(quality_uncertainty, 2.0 * model_epistemic), 0.0, 1.0,
-        ))
-        aleatoric = float(np.clip(
-            float(out.aleatoric_uncertainty or 0.0)
-            + 0.10 * self.progress_aleatoric_scale,
-            0.0,
-            0.50,
         ))
         out.epistemic_uncertainty = epistemic
         out.aleatoric_uncertainty = aleatoric
         out.uncertainty = compose_uncertainty(epistemic, aleatoric)
         out.uncertainty_source = (
-            "bootstrap_heads_plus_validation_quality_and_progress_residual"
+            base_source + "+validation_quality_and_progress_residual"
         )
         out.uncertainty_components = {
             **(out.uncertainty_components or {}),
@@ -234,18 +276,40 @@ class WorldModelRuntime:
             obs_t = torch.from_numpy(clean_obs).unsqueeze(0)
             action_t = torch.from_numpy(clean_action).unsqueeze(0)
             z = self.model.encode(obs_t)
-            z_next, _ = self.model._transition_step(z, action_t, None)
-            pass_heads, progress_heads, shot_heads = self.model.outcome_ensemble(z_next, action_t)
+            z_members, _ = self.model.transition_ensemble_step(
+                z, action_t,
+            )
+            next_obs_members = torch.stack([
+                self.model.decode_next(obs_t, member)
+                for member in z_members
+            ], dim=0)
+            outcome_members = [
+                self.model.outcome_ensemble(member, action_t)
+                for member in z_members
+            ]
+            pass_heads = torch.stack([
+                item[0] for item in outcome_members
+            ], dim=0)
+            progress_heads = torch.stack([
+                item[1] for item in outcome_members
+            ], dim=0)
+            shot_heads = torch.stack([
+                item[2] for item in outcome_members
+            ], dim=0)
             pass_probability = torch.sigmoid(
                 self.pass_calibration_scale * pass_heads
                 + self.pass_calibration_bias
-            ).reshape(-1).numpy()
-            shot_probability = torch.sigmoid(shot_heads).reshape(-1).numpy()
-            progress = progress_heads.reshape(-1).numpy()
+            ).numpy()
+            shot_probability = torch.sigmoid(shot_heads).numpy()
+            progress = progress_heads.numpy()
         return future_from_ensemble(
             pass_probabilities=pass_probability, shot_probabilities=shot_probability,
             progress_samples=progress, action_kind=action_kind, horizon_s=horizon_s,
             progress_aleatoric=self.progress_aleatoric_scale,
+            transition_state_samples=next_obs_members.numpy(),
+            transition_ensemble_trained=(
+                self.model.transition_ensemble_trained
+            ),
         )
 
     def predict_policy_utility(

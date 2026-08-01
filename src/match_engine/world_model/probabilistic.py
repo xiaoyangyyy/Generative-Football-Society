@@ -90,6 +90,8 @@ def future_from_ensemble(
     action_kind: str,
     horizon_s: float,
     progress_aleatoric: float = 0.0,
+    transition_state_samples: np.ndarray | None = None,
+    transition_ensemble_trained: bool = True,
 ) -> ProbabilisticFuture:
     passes = np.clip(np.asarray(pass_probabilities, dtype=float), 0.0, 1.0)
     shots = np.clip(np.asarray(shot_probabilities, dtype=float), 0.0, 1.0)
@@ -106,6 +108,8 @@ def future_from_ensemble(
         shots,
         progress,
         progress_aleatoric=progress_aleatoric,
+        transition_state_samples=transition_state_samples,
+        transition_ensemble_trained=transition_ensemble_trained,
     )
     uncertainty = decomposition["total_uncertainty"]
     expected_time = max(0.1, float(horizon_s) * (0.45 + 0.4 * uncertainty))
