@@ -15,7 +15,7 @@ from src.match_engine.world_model.llm_decision_brief import (
 )
 
 
-LLM_DELIBERATION_FOCUS_VERSION = 3
+LLM_DELIBERATION_FOCUS_VERSION = 4
 TASK_CONTRACTS = {
     "opponent_hypothesis": (
         "opponent_hypothesis", "opponent_belief_audit",
@@ -274,6 +274,92 @@ def _audit_from_evidence(
             compute_budget_mismatches.append(
                 "world_model_contrastive_claim:repair_total_path_budget"
             )
+    compute_task_outcomes = {}
+    allocation_rows = compute_allocation.get("allocations") or {}
+    for task, audit_key in (
+        ("world_model_event_option", "world_model_event_option_audit"),
+        (
+            "world_model_contrastive_claim",
+            "world_model_contrastive_explanation_audit",
+        ),
+    ):
+        if task not in allocation_rows:
+            continue
+        task_audit = plan.get(audit_key) or {}
+        reason = str(task_audit.get("reason", "accepted"))
+        task_accepted = bool(task_audit.get("accepted"))
+        budget_rejection = "budget_insufficient" in reason
+        planned_limits = allocation_rows[task].get(
+            "planned_resource_limits"
+        ) or {}
+        required_to_planned = []
+        if task == "world_model_event_option":
+            for required_key, cap_key in (
+                ("member_evaluations_required", "member_evaluation_cap"),
+                (
+                    "trajectory_member_paths_required",
+                    "trajectory_member_path_cap",
+                ),
+            ):
+                if required_key in task_audit and cap_key in planned_limits:
+                    required_to_planned.append(
+                        int(task_audit[required_key])
+                        <= int(planned_limits[cap_key])
+                    )
+        elif (
+            "trajectory_member_paths_required" in task_audit
+            and "trajectory_member_path_cap" in planned_limits
+        ):
+            required_to_planned.append(
+                int(task_audit["trajectory_member_paths_required"])
+                <= int(planned_limits["trajectory_member_path_cap"])
+            )
+        would_fit_planned = bool(
+            budget_rejection and required_to_planned
+            and all(required_to_planned)
+        )
+        if task == "world_model_event_option":
+            artifact_score = float(task_audit.get(
+                "conditional_gain_vs_best_fixed", 0.0,
+            )) if task_accepted else 0.0
+            useful = bool(task_accepted and artifact_score > 0.0)
+        else:
+            artifact_score = float(bool(task_audit.get(
+                "directionally_faithful"
+            ))) if task_accepted else 0.0
+            useful = bool(task_accepted and artifact_score > 0.0)
+        compute_task_outcomes[task] = {
+            "accepted": task_accepted,
+            "reason": reason,
+            "conclusive": bool(task_accepted or budget_rejection),
+            "useful_artifact": useful,
+            "model_internal_artifact_score": artifact_score,
+            "budget_rejection": budget_rejection,
+            "would_fit_planned_budget": would_fit_planned,
+            "compute_credits": int(allocation_rows[task].get(
+                "compute_credits", 0,
+            )),
+            "compute_value_experiment": dict(allocation_rows[task].get(
+                "compute_value_experiment"
+            ) or {}),
+            "outcome_scope": "model_internal_useful_artifact",
+            "can_claim_match_outcome_causality": False,
+        }
+    experimental_budget_rejections = sorted(
+        task for task, outcome in compute_task_outcomes.items()
+        if (
+            outcome.get("budget_rejection")
+            and outcome.get("would_fit_planned_budget")
+            and (outcome.get("compute_value_experiment") or {}).get(
+                "randomized"
+            )
+            and (outcome.get("compute_value_experiment") or {}).get("arm")
+            == "control"
+        )
+    )
+    nonexperimental_rejected = sorted(
+        set(rejected) - set(experimental_budget_rejections)
+    )
     short_circuited = sorted(
         task for task, (_, audit_key) in TASK_CONTRACTS.items()
         if (plan.get(audit_key) or {}).get("reason")
@@ -323,13 +409,21 @@ def _audit_from_evidence(
             compute_allocation_valid and compute_allocation_matches_model
             and not compute_budget_mismatches
         ),
+        "compute_task_outcomes": compute_task_outcomes,
         "missing_selected_contracts": missing,
         "rejected_selected_contracts": rejected,
+        "experimental_budget_rejections": (
+            experimental_budget_rejections
+        ),
+        "nonexperimental_rejected_selected_contracts": (
+            nonexperimental_rejected
+        ),
         "selected_priority_sum": selected_priority,
         "optimal_same_budget_priority_sum": optimal_priority,
         "focus_priority_efficiency": efficiency,
         "model_checked_consistent": bool(
-            not unsupported and not unfocused and not missing and not rejected
+            not unsupported and not unfocused and not missing
+            and not nonexperimental_rejected
             and compute_allocation_valid and compute_allocation_matches_model
             and not compute_budget_mismatches
             and efficiency >= 0.80 - 1e-12
@@ -391,12 +485,45 @@ def llm_deliberation_focus_audit_is_valid(audit: Any) -> bool:
         payload.get("compute_allocation")
     )
     mismatches = payload.get("compute_budget_mismatches")
+    outcomes = payload.get("compute_task_outcomes")
+    try:
+        rejected = set(payload.get("rejected_selected_contracts") or [])
+        experimental_rejected = set(
+            payload.get("experimental_budget_rejections") or []
+        )
+        nonexperimental_rejected = set(
+            payload.get("nonexperimental_rejected_selected_contracts") or []
+        )
+    except TypeError:
+        return False
     return bool(
         digest == expected
         and payload.get("version") == LLM_DELIBERATION_FOCUS_VERSION
         and compute_valid == bool(payload.get("compute_allocation_valid"))
         and payload.get("compute_allocation_matches_model") is True
         and isinstance(mismatches, list)
+        and isinstance(outcomes, dict)
+        and experimental_rejected <= rejected
+        and experimental_rejected == {
+            task for task, row in outcomes.items()
+            if (
+                row.get("budget_rejection")
+                and row.get("would_fit_planned_budget")
+                and (row.get("compute_value_experiment") or {}).get(
+                    "randomized"
+                )
+                and (row.get("compute_value_experiment") or {}).get("arm")
+                == "control"
+            )
+        }
+        and nonexperimental_rejected == rejected - experimental_rejected
+        and all(
+            isinstance(row, dict)
+            and row.get("outcome_scope")
+            == "model_internal_useful_artifact"
+            and row.get("can_claim_match_outcome_causality") is False
+            for row in outcomes.values()
+        )
         and payload.get("compute_budget_respected")
         is bool(compute_valid and not mismatches)
         and payload.get("can_change_current_action") is False

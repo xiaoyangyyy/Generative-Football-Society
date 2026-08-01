@@ -466,6 +466,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.llm_deliberation_focus import (
         llm_deliberation_focus_diagnostics,
     )
+    from src.match_engine.world_model.llm_deliberation_compute_value import (
+        deliberation_compute_value_diagnostics,
+    )
 
     records = list(getattr(state, "_wm_coach_decision_adoption", None) or [])
     resolved = [record for record in records if record["resolved"]]
@@ -486,7 +489,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 32,
+        "version": 33,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -525,6 +528,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         "llm_deliberation_focus": llm_deliberation_focus_diagnostics([
             records
         ]),
+        "llm_deliberation_compute_value": (
+            deliberation_compute_value_diagnostics([records])
+        ),
         "records": records,
         "interpretation": (
             "A bounded intervention changes one action logit but does not force "

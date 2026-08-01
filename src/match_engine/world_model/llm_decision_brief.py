@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 2
+LLM_DECISION_BRIEF_VERSION = 3
 
 
 def _json_hash(value: Any, prefix: str) -> str:
@@ -345,6 +345,9 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
         "opponent_information_feedback": source_packet.get(
             "opponent_information_feedback", {}
         ),
+        "deliberation_compute_value_memory": source_packet.get(
+            "deliberation_compute_value_memory", {}
+        ),
         "online_calibration": source_packet.get("online_calibration", {}),
         "policy_outcome_calibration": source_packet.get(
             "policy_outcome_calibration", {}
@@ -445,6 +448,9 @@ def llm_decision_brief_metadata(brief: dict[str, Any]) -> dict[str, Any]:
         "maximum_compute_credits_per_task": int(
             agenda.get("maximum_compute_credits_per_task", 0)
         ),
+        "compute_value_memory_digest": str((brief.get(
+            "deliberation_compute_value_memory"
+        ) or {}).get("memory_digest", "")),
         "full_packet_retained_for_engine_audit": True,
         "brief_used_for_llm_serialization": True,
     }
@@ -460,6 +466,7 @@ def llm_decision_brief_metadata_is_valid(metadata: Any) -> bool:
         per_task_budget = int(metadata.get(
             "maximum_compute_credits_per_task"
         ))
+        memory_digest = str(metadata.get("compute_value_memory_digest", ""))
     except (TypeError, ValueError, OverflowError):
         return False
     return bool(
@@ -474,6 +481,10 @@ def llm_decision_brief_metadata_is_valid(metadata: Any) -> bool:
         and 1 <= maximum <= 3
         and compute_budget == 6
         and per_task_budget == 3
+        and (
+            not memory_digest
+            or memory_digest.startswith("llm-deliberation-compute-value:")
+        )
         and len(focus) <= maximum
         and len(focus) == len(set(map(str, focus)))
         and metadata.get("full_packet_retained_for_engine_audit") is True

@@ -217,6 +217,14 @@ def main() -> int:
             "agenda without extra, missing, or rejected optional contracts."
         ),
     )
+    parser.add_argument(
+        "--require-llm-deliberation-compute-value",
+        action="store_true",
+        help=(
+            "Require balanced randomized evidence that the final shadow "
+            "compute credit produces useful model-internal artifacts."
+        ),
+    )
     args = parser.parse_args()
 
     log_dir = Path(args.log_dir)
@@ -285,6 +293,9 @@ def main() -> int:
         ),
         require_llm_deliberation_focus=(
             args.require_llm_deliberation_focus
+        ),
+        require_llm_deliberation_compute_value=(
+            args.require_llm_deliberation_compute_value
         ),
     )
     output = Path(args.out)

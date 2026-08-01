@@ -72,6 +72,9 @@ from src.match_engine.world_model.llm_decision_brief import (
 from src.match_engine.world_model.llm_deliberation_focus import (
     llm_deliberation_focus_diagnostics,
 )
+from src.match_engine.world_model.llm_deliberation_compute_value import (
+    deliberation_compute_value_diagnostics,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -112,6 +115,7 @@ def aggregate_online_calibration(
     require_opponent_information_queries: bool = False,
     require_opponent_information_adaptation: bool = False,
     require_llm_deliberation_focus: bool = False,
+    require_llm_deliberation_compute_value: bool = False,
 ) -> dict[str, Any]:
     logs = list(match_logs)
     branch_rows: dict[str, list[dict[str, Any]]] = {
@@ -257,6 +261,9 @@ def aggregate_online_calibration(
     )
     llm_deliberation_focus = llm_deliberation_focus_diagnostics(
         policy_record_clusters
+    )
+    llm_deliberation_compute_value = (
+        deliberation_compute_value_diagnostics(policy_record_clusters)
     )
     memory_scopes = sorted({
         (
@@ -678,8 +685,34 @@ def aggregate_online_calibration(
         llm_deliberation_focus_ready
         if require_llm_deliberation_focus else True
     )
+    llm_deliberation_compute_value_ready = bool(
+        llm_deliberation_compute_value["randomized_trials"] >= 8
+        and llm_deliberation_compute_value[
+            "conclusive_randomized_trials"
+        ] >= 8
+        and llm_deliberation_compute_value[
+            "matches_with_randomized_trials"
+        ] >= 4
+        and llm_deliberation_compute_value[
+            "tasks_with_balanced_randomized_evidence"
+        ] >= 1
+        and llm_deliberation_compute_value["malformed_focus_audits"] == 0
+        and llm_deliberation_compute_value[
+            "all_outcomes_model_internal_and_noncausal"
+        ]
+        and not llm_deliberation_compute_value[
+            "allocation_can_change_current_action"
+        ]
+        and not llm_deliberation_compute_value[
+            "allocation_can_relax_downstream_validators"
+        ]
+    )
+    gates["llm_deliberation_compute_value"] = (
+        llm_deliberation_compute_value_ready
+        if require_llm_deliberation_compute_value else True
+    )
     return {
-        "version": 32,
+        "version": 33,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -724,6 +757,9 @@ def aggregate_online_calibration(
             ),
             "llm_decision_briefs": llm_decision_briefs,
             "llm_deliberation_focus": llm_deliberation_focus,
+            "llm_deliberation_compute_value": (
+                llm_deliberation_compute_value
+            ),
             "contextual_residual_memory_by_policy_environment": (
                 residual_memory_profiles
             ),
@@ -760,6 +796,9 @@ def aggregate_online_calibration(
             opponent_information_adaptation_ready
         ),
         "llm_deliberation_focus_ready": llm_deliberation_focus_ready,
+        "llm_deliberation_compute_value_ready": (
+            llm_deliberation_compute_value_ready
+        ),
         "limitations": [
             "Trust factors are valid only for the configured checkpoint and simulator.",
             "Action adoption is temporal association, not causal attribution.",
@@ -768,6 +807,7 @@ def aggregate_online_calibration(
             "Outcome forecast trust is checkpoint- and policy-regime-specific.",
             "Residual memory is isolated by checkpoint and policy-environment fingerprint.",
             "Active-learning acquisition is policy-selected, not randomized; its uncertainty reduction is descriptive.",
+            "Deliberation compute experiments randomize only a shadow resource cap; useful-artifact yield is not match-outcome value.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",

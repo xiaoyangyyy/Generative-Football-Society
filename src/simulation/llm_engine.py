@@ -242,7 +242,9 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   trajectory rollouts. After you select tasks, the world model—not you—allocates
   up to six compute credits; every selected task gets one base audit credit, and
   only real trajectory work can receive more under diminishing returns. Credits
-  become hard member/path caps. Never invent or request a larger budget;
+  become hard member/path caps. A randomized last-credit experiment learns only
+  whether deeper shadow compute yields a useful model-internal artifact; it is
+  not evidence of match-outcome causality. Never invent or request a budget;
 - world_model_deliberation_focus must name one to three eligible agenda tasks.
   Emit structured optional contracts only for those named tasks. The engine
   audits unsupported selections, missing selected contracts, extra unfocused

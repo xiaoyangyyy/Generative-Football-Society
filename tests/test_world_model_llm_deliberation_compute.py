@@ -24,6 +24,14 @@ from src.match_engine.world_model.llm_deliberation_focus import (
     TASK_CONTRACTS,
     evaluate_llm_deliberation_focus,
 )
+from src.match_engine.world_model.llm_deliberation_compute_value import (
+    build_deliberation_compute_value_memory,
+    deliberation_compute_value_diagnostics,
+    deliberation_compute_value_memory_is_valid,
+)
+from src.match_engine.world_model.online_evaluation import (
+    aggregate_online_calibration,
+)
 from tests.test_world_model_llm_fusion import _Runtime, _state
 
 
@@ -49,15 +57,19 @@ def test_compute_allocation_is_bounded_deterministic_and_tamper_evident():
     allocation = build_deliberation_compute_allocation(brief, _plan(tasks))
 
     assert allocation["accepted"]
-    assert allocation["allocated_compute_credits"] == 5
-    assert allocation["unallocated_compute_credits"] == 1
+    contrastive = allocation["allocations"][
+        "world_model_contrastive_claim"
+    ]
+    assigned = contrastive["compute_credits"]
+    assert assigned in {2, 3}
+    assert contrastive["planned_compute_credits"] == 3
+    assert contrastive["compute_value_experiment"]["randomized"]
+    assert allocation["allocated_compute_credits"] == assigned + 2
+    assert allocation["unallocated_compute_credits"] == 4 - assigned
     assert sum(
         row["compute_credits"]
         for row in allocation["allocations"].values()
-    ) == 5
-    assert allocation["allocations"][
-        "world_model_contrastive_claim"
-    ]["compute_credits"] == 3
+    ) == assigned + 2
     assert all(
         allocation["allocations"][task]["compute_credits"] == 1
         for task in cheap
@@ -96,11 +108,15 @@ def test_event_option_credits_map_to_hard_member_and_path_caps():
     limits = deliberation_compute_limits(
         allocation, "world_model_event_option",
     )
-    assert allocation["allocated_compute_credits"] == 3
-    assert allocation["unallocated_compute_credits"] == 3
+    credits = allocation["allocations"][
+        "world_model_event_option"
+    ]["compute_credits"]
+    assert credits in {2, 3}
+    assert allocation["allocated_compute_credits"] == credits
+    assert allocation["unallocated_compute_credits"] == 6 - credits
     assert limits == {
-        "member_evaluation_cap": 32,
-        "trajectory_member_path_cap": 144,
+        "member_evaluation_cap": {2: 16, 3: 32}[credits],
+        "trajectory_member_path_cap": {2: 96, 3: 144}[credits],
     }
 
 
@@ -204,16 +220,136 @@ def test_executor_passes_signed_deep_caps_to_contrastive_compute(monkeypatch):
     limits = deliberation_compute_limits(
         allocation, "world_model_contrastive_claim",
     )
+    credits = allocation["allocations"][
+        "world_model_contrastive_claim"
+    ]["compute_credits"]
     assert allocation["allocations"][
         "world_model_contrastive_claim"
-    ]["compute_tier"] == "deep"
+    ]["compute_tier"] == {2: "standard", 3: "deep"}[credits]
     assert captured["trajectory_cap"] == limits[
         "trajectory_member_path_cap"
-    ] == 64
+    ] == {2: 32, 3: 64}[credits]
     assert captured["repair_cap"] == limits[
         "repair_total_member_trajectory_path_cap"
-    ] == 128
+    ] == {2: 64, 3: 128}[credits]
     focus = result.plan["world_model_deliberation_focus_audit"]
     assert focus["compute_allocation_valid"]
     assert focus["compute_budget_respected"]
     assert not focus["compute_budget_mismatches"]
+
+
+def test_randomized_prior_learns_value_without_current_record_leakage():
+    base_packet = build_coach_decision_packet(_Runtime(), _state(), "Home")
+    records = []
+    arm_counts = {"control": 0, "treatment": 0}
+    nonce = 0
+    while min(arm_counts.values()) < 4:
+        packet = copy.deepcopy(base_packet)
+        packet["compute_value_test_nonce"] = nonce
+        brief = build_llm_decision_brief(packet)
+        plan = _plan(["world_model_contrastive_claim"])
+        plan["world_model_contrastive_claim"] = {"placeholder": True}
+        allocation = build_deliberation_compute_allocation(brief, plan)
+        row = allocation["allocations"]["world_model_contrastive_claim"]
+        arm = row["compute_value_experiment"]["arm"]
+        if arm_counts[arm] >= 4:
+            nonce += 1
+            continue
+        arm_counts[arm] += 1
+        limits = row["resource_limits"]
+        useful = arm == "treatment"
+        plan["world_model_deliberation_compute_allocation"] = allocation
+        plan["world_model_contrastive_explanation_audit"] = {
+            "accepted": useful,
+            "reason": (
+                "accepted" if useful
+                else "contrastive_trajectory_budget_insufficient"
+            ),
+            "directionally_faithful": useful,
+            "trajectory_member_path_budget": limits[
+                "trajectory_member_path_cap"
+            ],
+            "trajectory_member_paths_required": row[
+                "planned_resource_limits"
+            ]["trajectory_member_path_cap"],
+        }
+        plan["world_model_contrastive_repair_audit"] = {
+            "total_member_trajectory_path_budget": limits[
+                "repair_total_member_trajectory_path_cap"
+            ],
+        }
+        focus = evaluate_llm_deliberation_focus(
+            brief, plan, focus_signature="llm-deliberation-focus:test",
+        )
+        if arm == "control":
+            assert focus["experimental_budget_rejections"] == [
+                "world_model_contrastive_claim"
+            ]
+            assert not focus[
+                "nonexperimental_rejected_selected_contracts"
+            ]
+        records.append({
+            "created_t_sec": float(nonce + 1),
+            "checkpoint_signature": "test-runtime",
+            "environment_signature": "environment-unspecified",
+            "llm_deliberation_focus_context": focus,
+        })
+        nonce += 1
+
+    records.append({
+        **copy.deepcopy(records[-1]),
+        "created_t_sec": 100.0,
+    })
+    memory = build_deliberation_compute_value_memory(
+        records,
+        checkpoint_signature="test-runtime",
+        environment_signature="environment-unspecified",
+        as_of_t_sec=100.0,
+        min_per_arm=4,
+    )
+    value = memory["task_values"]["world_model_contrastive_claim"]
+    assert deliberation_compute_value_memory_is_valid(memory)
+    assert value["status"] == "validated_positive_compute_value"
+    assert value["control"]["samples"] == 4
+    assert value["treatment"]["samples"] == 4
+    assert memory["excluded_records"]["future_or_current"] == 1
+    assert not value["can_claim_match_outcome_causality"]
+
+    diagnostics = deliberation_compute_value_diagnostics(
+        [[record] for record in records[:-1]]
+    )
+    assert diagnostics["randomized_trials"] == 8
+    assert diagnostics["conclusive_randomized_trials"] == 8
+    assert diagnostics["matches_with_randomized_trials"] == 8
+    assert diagnostics["tasks_with_balanced_randomized_evidence"] == 1
+    assert diagnostics["all_outcomes_model_internal_and_noncausal"]
+    logs = [{
+        "world_model_decision_adoption": {"records": [record]},
+    } for record in records[:-1]]
+    report = aggregate_online_calibration(
+        logs, min_transitions=0,
+        require_llm_deliberation_compute_value=True,
+    )
+    assert report["version"] == 33
+    assert report["llm_deliberation_compute_value_ready"]
+    assert report["gates"]["llm_deliberation_compute_value"]
+
+    next_packet = copy.deepcopy(base_packet)
+    next_packet["deliberation_compute_value_memory"] = memory
+    next_brief = build_llm_decision_brief(next_packet)
+    learned = build_deliberation_compute_allocation(
+        next_brief, _plan(["world_model_contrastive_claim"]),
+    )
+    learned_row = learned["allocations"][
+        "world_model_contrastive_claim"
+    ]
+    assert learned_row["compute_value_status"] == (
+        "validated_positive_compute_value"
+    )
+    assert learned_row["compute_credits"] == 3
+    assert learned_row["compute_value_experiment"] == {
+        "randomized": False,
+        "arm": "learned_exploit",
+        "treatment_probability": 1.0,
+        "withheld_compute_credits": 0,
+    }

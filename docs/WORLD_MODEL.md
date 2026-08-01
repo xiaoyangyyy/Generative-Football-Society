@@ -1025,6 +1025,31 @@ The focus audit independently rebuilds it, rejects a valid allocation borrowed
 from another selection, checks reported task budgets against the issued caps,
 and aggregates credits by task plus mean agenda priority per compute credit.
 
+The last discretionary credit is also a safe randomized experiment. While the
+value of deeper compute is unknown, a digest-derived 50/50 assignment runs either
+the planned trajectory depth or one credit less. Only conclusive compute outcomes
+enter memory: a budget rejection is a failed artifact, a contrastive result is
+useful only when directionally faithful, and an event option is useful only when
+its conditional continuation beats the best fixed branch. Invalid LLM syntax,
+unsupported claims, and unrelated validator failures are excluded instead of
+being mislabelled as compute failures.
+An otherwise valid contract rejected solely because its randomized control arm
+withheld the last credit is reported as `experimental_budget_rejection`; it
+remains a negative compute-yield observation but is excluded from the LLM's
+semantic focus-consistency penalty. Non-experimental validator rejection still
+fails focus consistency normally.
+
+The memory is checkpoint-, policy-environment-, and time-bounded. It uses a
+Beta-Bernoulli posterior for each randomized arm and requires at least four
+conclusive samples per arm. A strictly positive 90% marginal-value interval
+switches to the planned depth; a non-positive upper bound conserves the last
+credit; overlapping intervals keep the experiment running. This learned prior
+controls only shadow member/path caps. Its outcome is explicitly
+`model_internal_useful_artifact`, never match performance or real-world causal
+value. `--require-llm-deliberation-compute-value` requires at least eight
+conclusive randomized trials across four matches, balanced evidence for at least
+one trajectory task, valid audits, and the non-controlling/non-causal contract.
+
 Focus remains non-authoritative and cannot change the chosen action, activate a
 failed contract, or relax a quality gate. The optional strict readiness flag
 `--require-llm-deliberation-focus` requires four matches, at least `0.80` focus

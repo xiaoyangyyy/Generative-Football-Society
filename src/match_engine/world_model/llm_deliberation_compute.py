@@ -15,7 +15,7 @@ from src.match_engine.world_model.llm_deliberation_focus import (
 )
 
 
-LLM_DELIBERATION_COMPUTE_VERSION = 1
+LLM_DELIBERATION_COMPUTE_VERSION = 2
 TOTAL_COMPUTE_CREDITS = 6
 MAX_TASK_COMPUTE_CREDITS = 3
 
@@ -72,6 +72,44 @@ def _allocate_compute_credits(
     return credits, remaining
 
 
+def _assign_compute_credits(
+    *, brief_digest: str, task: str, planned: int, value_status: str,
+) -> tuple[int, dict[str, Any]]:
+    if planned <= 1 or not _resource_limits(task, planned):
+        return planned, {
+            "randomized": False,
+            "arm": "not_applicable",
+            "treatment_probability": 0.0,
+            "withheld_compute_credits": 0,
+        }
+    if value_status == "validated_positive_compute_value":
+        return planned, {
+            "randomized": False,
+            "arm": "learned_exploit",
+            "treatment_probability": 1.0,
+            "withheld_compute_credits": 0,
+        }
+    if value_status == "validated_no_compute_value":
+        return planned - 1, {
+            "randomized": False,
+            "arm": "learned_conserve",
+            "treatment_probability": 0.0,
+            "withheld_compute_credits": 1,
+        }
+    from src.match_engine.world_model.llm_deliberation_compute_value import (
+        compute_value_experiment_arm,
+    )
+
+    arm = compute_value_experiment_arm(brief_digest, task)
+    assigned = planned if arm == "treatment" else planned - 1
+    return assigned, {
+        "randomized": True,
+        "arm": arm,
+        "treatment_probability": 0.5,
+        "withheld_compute_credits": planned - assigned,
+    }
+
+
 def build_deliberation_compute_allocation(
     brief: dict[str, Any], plan: dict[str, Any],
 ) -> dict[str, Any]:
@@ -105,16 +143,44 @@ def build_deliberation_compute_allocation(
     priorities = {
         task: float(agenda_rows[task]["priority"]) for task in tasks
     }
-    credits, remaining = _allocate_compute_credits(tasks, priorities)
+    planned_credits, _ = _allocate_compute_credits(tasks, priorities)
+    from src.match_engine.world_model.llm_deliberation_compute_value import (
+        deliberation_compute_value_memory_is_valid,
+    )
+
+    value_memory = brief.get("deliberation_compute_value_memory") or {}
+    memory_valid = deliberation_compute_value_memory_is_valid(value_memory)
+    value_rows = value_memory.get("task_values") or {}
+    credits = {}
+    experiments = {}
+    statuses = {}
+    for task in tasks:
+        status = str((value_rows.get(task) or {}).get(
+            "status", "insufficient_randomized_evidence",
+        )) if memory_valid else "insufficient_randomized_evidence"
+        credits[task], experiments[task] = _assign_compute_credits(
+            brief_digest=str(brief["brief_digest"]),
+            task=task,
+            planned=planned_credits[task],
+            value_status=status,
+        )
+        statuses[task] = status
+    remaining = TOTAL_COMPUTE_CREDITS - sum(credits.values())
 
     allocations = {
         task: {
             "compute_credits": credits[task],
+            "planned_compute_credits": planned_credits[task],
             "compute_tier": {1: "light", 2: "standard", 3: "deep"}[
                 credits[task]
             ],
             "agenda_priority": float(agenda_rows[task]["priority"]),
             "resource_limits": _resource_limits(task, credits[task]),
+            "planned_resource_limits": _resource_limits(
+                task, planned_credits[task]
+            ),
+            "compute_value_status": statuses[task],
+            "compute_value_experiment": experiments[task],
         }
         for task in tasks
     }
@@ -128,14 +194,15 @@ def build_deliberation_compute_allocation(
         "accepted": True,
         "reason": "world_model_budget_allocated",
         "brief_digest": brief["brief_digest"],
+        "compute_value_memory_digest": str(
+            value_memory.get("memory_digest", "") if memory_valid else ""
+        ),
         "focus_tasks": tasks,
         "total_compute_credit_budget": TOTAL_COMPUTE_CREDITS,
         "allocated_compute_credits": allocated_credits,
         "unallocated_compute_credits": remaining,
         "allocations": allocations,
-        "allocation_policy": (
-            "priority_weighted_diminishing_returns_for_real_resources"
-        ),
+        "allocation_policy": "priority_planning_randomized_last_credit_learning",
         "priority_weighted_compute_sum": priority_weighted_compute_sum,
         "mean_priority_per_allocated_credit": (
             priority_weighted_compute_sum / allocated_credits
@@ -171,12 +238,23 @@ def deliberation_compute_allocation_is_valid(allocation: Any) -> bool:
         reported_weighted = float(payload["priority_weighted_compute_sum"])
         reported_mean = float(payload["mean_priority_per_allocated_credit"])
         total_budget = int(payload["total_compute_credit_budget"])
-        expected_credits, expected_unallocated = _allocate_compute_credits(
+        expected_credits, _ = _allocate_compute_credits(
             tasks, {
                 task: float(rows[task]["agenda_priority"])
                 for task in tasks
             },
         )
+        expected_assigned = {}
+        expected_experiments = {}
+        for task in tasks:
+            expected_assigned[task], expected_experiments[task] = (
+                _assign_compute_credits(
+                    brief_digest=str(payload["brief_digest"]),
+                    task=task,
+                    planned=expected_credits[task],
+                    value_status=str(rows[task]["compute_value_status"]),
+                )
+            )
         expected = _digest(payload)
     except (AttributeError, KeyError, TypeError, ValueError, OverflowError):
         return False
@@ -186,6 +264,7 @@ def deliberation_compute_allocation_is_valid(allocation: Any) -> bool:
             return False
         try:
             row_credits = int(row["compute_credits"])
+            planned_credits = int(row["planned_compute_credits"])
             priority = float(row["agenda_priority"])
             tier = {1: "light", 2: "standard", 3: "deep"}[row_credits]
         except (KeyError, TypeError, ValueError, OverflowError):
@@ -194,9 +273,19 @@ def deliberation_compute_allocation_is_valid(allocation: Any) -> bool:
             math.isfinite(priority)
             and 0.0 <= priority <= 1.0
             and row.get("compute_tier") == tier
+            and 1 <= planned_credits <= MAX_TASK_COMPUTE_CREDITS
             and row.get("resource_limits") == _resource_limits(
                 task, row_credits,
             )
+            and row.get("planned_resource_limits") == _resource_limits(
+                task, planned_credits,
+            )
+            and row.get("compute_value_status") in {
+                "insufficient_randomized_evidence",
+                "randomized_effect_uncertain",
+                "validated_positive_compute_value",
+                "validated_no_compute_value",
+            }
         )
 
     return bool(
@@ -209,11 +298,28 @@ def deliberation_compute_allocation_is_valid(allocation: Any) -> bool:
         and {
             task: int(row["compute_credits"])
             for task, row in rows.items()
+        } == expected_assigned
+        and {
+            task: int(row["planned_compute_credits"])
+            for task, row in rows.items()
         } == expected_credits
-        and unallocated == expected_unallocated
+        and all(
+            rows[task].get("compute_value_experiment")
+            == expected_experiments[task]
+            for task in tasks
+        )
+        and unallocated == (
+            TOTAL_COMPUTE_CREDITS - sum(expected_assigned.values())
+        )
         and total_budget == TOTAL_COMPUTE_CREDITS
         and payload.get("allocation_policy")
-        == "priority_weighted_diminishing_returns_for_real_resources"
+        == "priority_planning_randomized_last_credit_learning"
+        and (
+            not payload.get("compute_value_memory_digest")
+            or str(payload["compute_value_memory_digest"]).startswith(
+                "llm-deliberation-compute-value:"
+            )
+        )
         and abs(reported_weighted - weighted) <= 1e-12
         and abs(reported_mean - weighted / credits) <= 1e-12
         and 1 <= len(tasks) <= 3
