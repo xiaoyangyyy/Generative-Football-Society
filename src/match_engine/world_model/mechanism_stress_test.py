@@ -24,6 +24,8 @@ MECHANISM_STRESS_TEST_VERSION = 1
 MAXIMUM_STRESSED_MECHANISMS = 2
 MAXIMUM_MODEL_CALLS = 10
 MAXIMUM_STRESS_OPTIONS = 8
+STRESS_LOG_EVIDENCE_BOUNDARY = math.log(20.0)
+STRESS_MAXIMUM_MATCHES = 20
 _CELLS = (
     "driver_false_outcome_false", "driver_false_outcome_true",
     "driver_true_outcome_false", "driver_true_outcome_true",
@@ -61,9 +63,96 @@ def _classification(score: float, flipped: bool) -> str:
     return "robust_within_tested_neutralization"
 
 
+def _inactive_evidence_contract(
+    source: dict[str, Any], *, factor: str,
+    checkpoint_signature: str, environment_signature: str,
+) -> dict[str, Any]:
+    key = tuple(map(str, (
+        source["action"], source["horizon"], source["driver_event"],
+        source["outcome_event"], source["relationship"], factor,
+    )))
+    payload = {
+        "version": 1, "status": "start", "profile_matches": 0,
+        "cumulative_log_likelihood_ratio": 0.0,
+        "mean_log_likelihood_ratio": 0.0, "mean_brier_skill": 0.0,
+        "positive_log_evidence_boundary": STRESS_LOG_EVIDENCE_BOUNDARY,
+        "negative_log_evidence_boundary": -STRESS_LOG_EVIDENCE_BOUNDARY,
+        "maximum_matches": STRESS_MAXIMUM_MATCHES,
+        "profile_key": "|".join(key),
+        "checkpoint_signature": str(checkpoint_signature),
+        "environment_signature": str(environment_signature),
+        "can_change_current_action": False,
+        "can_update_world_model": False,
+        "causal_interpretation": False,
+    }
+    return {
+        **payload,
+        "contract_digest": _digest(
+            payload, "mechanism-stress-memory-contract:",
+        ),
+    }
+
+
+def _evidence_contract_is_valid(contract: Any) -> bool:
+    if not isinstance(contract, dict):
+        return False
+    payload = dict(contract)
+    digest = payload.pop("contract_digest", None)
+    try:
+        matches = int(contract["profile_matches"])
+        cumulative = float(contract["cumulative_log_likelihood_ratio"])
+        mean = float(contract["mean_log_likelihood_ratio"])
+        brier = float(contract["mean_brier_skill"])
+        positive = float(contract["positive_log_evidence_boundary"])
+        negative = float(contract["negative_log_evidence_boundary"])
+        maximum = int(contract["maximum_matches"])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+    expected = (
+        "validated_context_dependence" if cumulative >= positive
+        else "invalidated_context_dependence" if cumulative <= negative
+        else "retired_inconclusive" if matches >= maximum
+        else "start" if matches == 0 else "continue"
+    )
+    status = contract.get("status")
+    return bool(
+        digest == _digest(payload, "mechanism-stress-memory-contract:")
+        and contract.get("version") == 1 and matches >= 0
+        and all(math.isfinite(value) for value in (
+            cumulative, mean, brier, positive, negative,
+        ))
+        and abs(positive - STRESS_LOG_EVIDENCE_BOUNDARY) <= 1e-12
+        and abs(negative + STRESS_LOG_EVIDENCE_BOUNDARY) <= 1e-12
+        and maximum == STRESS_MAXIMUM_MATCHES
+        and abs(mean - (cumulative / matches if matches else 0.0)) <= 1e-9
+        and status in {expected, "incompatible_checkpoint_or_environment"}
+        and (status == expected or (matches == 0 and cumulative == 0.0))
+        and bool(contract.get("profile_key"))
+        and bool(contract.get("checkpoint_signature"))
+        and bool(contract.get("environment_signature"))
+        and contract.get("can_change_current_action") is False
+        and contract.get("can_update_world_model") is False
+        and contract.get("causal_interpretation") is False
+    )
+
+
+def _stress_priority(fragility: float, evidence: dict[str, Any]) -> float:
+    matches = int(evidence["profile_matches"])
+    cumulative = float(evidence["cumulative_log_likelihood_ratio"])
+    evidence_remaining = 1.0 - min(
+        1.0, abs(cumulative) / STRESS_LOG_EVIDENCE_BOUNDARY,
+    )
+    novelty = 1.0 / (1.0 + matches / 4.0)
+    return float(min(1.0, max(
+        0.0, 0.65 * fragility + 0.20 * evidence_remaining
+        + 0.15 * novelty,
+    )))
+
+
 def _stress_option(
     source: dict[str, Any], *, factor: str, masked_indices: list[int],
     intervention_magnitude: float, neutralized_edge: dict[str, Any],
+    evidence: dict[str, Any],
 ) -> dict[str, Any] | None:
     observed = _joint(source.get("joint_probabilities"))
     neutralized = _joint(neutralized_edge.get("joint_probabilities"))
@@ -111,6 +200,8 @@ def _stress_option(
         "joint_total_variation": float(total_variation),
         "relationship_flipped": relation_flipped,
         "fragility_score": fragility,
+        "cross_match_evidence": evidence,
+        "stress_priority": _stress_priority(fragility, evidence),
         "classification": _classification(fragility, relation_flipped),
         "neutralized_ensemble_members": members,
         "stress_scope": "single_schema_grounded_neutralization",
@@ -137,6 +228,7 @@ def _option_is_valid(option: Any) -> bool:
     neutralized = _joint(
         option.get("neutralized_context_joint_probabilities")
     )
+    evidence = option.get("cross_match_evidence") or {}
     try:
         observed_lift = float(option["observed_context_conditional_lift"])
         neutralized_lift = float(option[
@@ -145,6 +237,7 @@ def _option_is_valid(option: Any) -> bool:
         lift_shift = float(option["conditional_lift_shift"])
         total_variation = float(option["joint_total_variation"])
         fragility = float(option["fragility_score"])
+        priority = float(option["stress_priority"])
         magnitude = float(option["intervention_magnitude"])
         members = int(option["neutralized_ensemble_members"])
     except (KeyError, TypeError, ValueError, OverflowError):
@@ -170,16 +263,21 @@ def _option_is_valid(option: Any) -> bool:
         and bool(option.get("horizon"))
         and option.get("driver_event") != option.get("outcome_event")
         and option.get("context_factor") in CONTEXT_FACTORS
+        and _evidence_contract_is_valid(evidence)
         and bool(option.get("masked_feature_indices"))
         and math.isfinite(magnitude) and magnitude > 0.0
         and all(math.isfinite(value) for value in (
             observed_lift, neutralized_lift, lift_shift,
             total_variation, fragility,
+            priority,
         ))
         and abs(lift_shift - (neutralized_lift - observed_lift)) <= 1e-9
         and abs(total_variation - expected_tv) <= 1e-9
         and option.get("relationship_flipped") == expected_flip
         and abs(fragility - expected_fragility) <= 1e-9
+        and abs(priority - _stress_priority(
+            expected_fragility, evidence,
+        )) <= 1e-9
         and option.get("classification")
         == _classification(expected_fragility, expected_flip)
         and members >= 2
@@ -211,6 +309,7 @@ def _planning_allowed(runtime: Any, rollout_steps: int) -> bool:
 def build_mechanism_stress_test_design(
     runtime: Any, state: Any, packet: dict[str, Any], *, team_id: str,
     selected_action: str, maximum_model_calls: int = MAXIMUM_MODEL_CALLS,
+    evidence_memory: Any = None,
 ) -> dict[str, Any]:
     mechanism_design = packet.get("predictive_mechanism_design") or {}
     action = str(selected_action).lower()
@@ -225,6 +324,7 @@ def build_mechanism_stress_test_design(
     budget = max(0, min(MAXIMUM_MODEL_CALLS, int(maximum_model_calls)))
     options = []
     calls = 0
+    skipped_resolved = 0
     if (
         runtime is not None and candidate is not None
         and predictive_mechanism_design_is_valid(mechanism_design)
@@ -257,6 +357,45 @@ def build_mechanism_stress_test_design(
             for factor in CONTEXT_FACTORS:
                 if calls >= budget:
                     break
+                evidence = _inactive_evidence_contract(
+                    source, factor=factor,
+                    checkpoint_signature=str(packet.get(
+                        "checkpoint_signature", "",
+                    )),
+                    environment_signature=str(packet.get(
+                        "environment_signature", "",
+                    )),
+                )
+                evidence_provider = getattr(evidence_memory, "evidence", None)
+                if callable(evidence_provider):
+                    try:
+                        candidate_evidence = evidence_provider(
+                            action=action, horizon=str(source["horizon"]),
+                            driver_event=str(source["driver_event"]),
+                            outcome_event=str(source["outcome_event"]),
+                            relationship=str(source["relationship"]),
+                            context_factor=factor,
+                            checkpoint_signature=str(packet.get(
+                                "checkpoint_signature", "",
+                            )),
+                            environment_signature=str(packet.get(
+                                "environment_signature", "",
+                            )),
+                        )
+                    except (
+                        AttributeError, KeyError, TypeError, ValueError,
+                        OverflowError,
+                    ):
+                        candidate_evidence = None
+                    if _evidence_contract_is_valid(candidate_evidence):
+                        evidence = candidate_evidence
+                if evidence["status"] in {
+                    "validated_context_dependence",
+                    "invalidated_context_dependence",
+                    "retired_inconclusive",
+                }:
+                    skipped_resolved += 1
+                    continue
                 try:
                     neutral, indices, magnitude = neutralize_context(
                         observation, factor=factor,
@@ -293,6 +432,7 @@ def build_mechanism_stress_test_design(
                         source, factor=factor, masked_indices=indices,
                         intervention_magnitude=magnitude,
                         neutralized_edge=edge,
+                        evidence=evidence,
                     )
                 except (
                     AttributeError, KeyError, RuntimeError, TypeError,
@@ -302,11 +442,36 @@ def build_mechanism_stress_test_design(
                 if option is not None:
                     options.append(option)
     options.sort(key=lambda row: (
+        -float(row["stress_priority"]),
         -float(row["fragility_score"]),
         -float(row["joint_total_variation"]),
         str(row["context_factor"]), str(row["stress_test_id"]),
     ))
     options = options[:MAXIMUM_STRESS_OPTIONS]
+    summary_builder = getattr(evidence_memory, "summary", None)
+    raw_memory_summary = (
+        summary_builder() if callable(summary_builder) else {
+            "version": 1, "continuing_profiles": 0,
+            "validated_profiles": 0, "invalidated_profiles": 0,
+            "retired_inconclusive_profiles": 0,
+            "reason": "no_cross_match_stress_memory",
+            "can_change_current_action": False,
+            "can_update_world_model": False,
+            "causal_interpretation": False,
+        }
+    )
+    memory_summary = {
+        key: raw_memory_summary[key]
+        for key in (
+            "version", "checkpoint_signature", "environment_signature",
+            "source_logs", "compatible_matches", "continuing_profiles",
+            "validated_profiles", "invalidated_profiles",
+            "retired_inconclusive_profiles", "memory_digest", "reason",
+            "can_change_current_action", "can_update_world_model",
+            "causal_interpretation",
+        )
+        if key in raw_memory_summary
+    }
     payload = {
         "version": MECHANISM_STRESS_TEST_VERSION,
         "available": bool(options),
@@ -327,6 +492,8 @@ def build_mechanism_stress_test_design(
         "stressed_mechanisms": len(source_options),
         "maximum_stressed_mechanisms": MAXIMUM_STRESSED_MECHANISMS,
         "model_calls": calls, "model_call_budget": budget,
+        "resolved_tests_skipped_before_rollout": skipped_resolved,
+        "stress_memory_summary": memory_summary,
         "selection_scope": "post_action_explanation_only",
         "can_change_current_action": False,
         "can_change_tactical_controls": False,
@@ -351,6 +518,9 @@ def mechanism_stress_test_design_is_valid(design: Any) -> bool:
         budget = int(design["model_call_budget"])
         stressed = int(design["stressed_mechanisms"])
         maximum_stressed = int(design["maximum_stressed_mechanisms"])
+        skipped_resolved = int(design[
+            "resolved_tests_skipped_before_rollout"
+        ])
     except (KeyError, TypeError, ValueError, OverflowError):
         return False
     return bool(
@@ -364,6 +534,7 @@ def mechanism_stress_test_design_is_valid(design: Any) -> bool:
         and design.get("recommended_stress_test_id")
         == (options[0]["stress_test_id"] if options else "none")
         and 0 <= calls <= budget <= MAXIMUM_MODEL_CALLS
+        and skipped_resolved >= 0
         and stressed <= maximum_stressed == MAXIMUM_STRESSED_MECHANISMS
         and design.get("selection_scope") == "post_action_explanation_only"
         and design.get("can_change_current_action") is False

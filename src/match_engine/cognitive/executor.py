@@ -176,6 +176,7 @@ class CognitiveExecutor:
         llm_critic_memory=None,
         active_probe_memory=None,
         predictive_mechanism_memory=None,
+        mechanism_stress_memory=None,
         policy_environment_signature: str = "environment_unspecified",
     ) -> None:
         self.cfg = cfg
@@ -188,6 +189,7 @@ class CognitiveExecutor:
         self.llm_critic_memory = llm_critic_memory
         self.active_probe_memory = active_probe_memory
         self.predictive_mechanism_memory = predictive_mechanism_memory
+        self.mechanism_stress_memory = mechanism_stress_memory
         from src.match_engine.world_model.llm_critic import llm_critic_signature
 
         self.llm_critic_signature = llm_critic_signature(
@@ -374,6 +376,7 @@ class CognitiveExecutor:
                 selected_action=str(frozen_plan.get(
                     "world_model_action", "none",
                 )),
+                evidence_memory=self.mechanism_stress_memory,
             )
         )
         trig.facts["world_model_llm_decision_brief"] = (

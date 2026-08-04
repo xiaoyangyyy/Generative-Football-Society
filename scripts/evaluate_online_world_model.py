@@ -282,6 +282,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-mechanism-stress-memory",
+        action="store_true",
+        help=(
+            "Require a machine-resolved, match-clustered context-stress "
+            "profile with scoped immutable evidence."
+        ),
+    )
+    parser.add_argument(
         "--require-opponent-information-adaptation",
         action="store_true",
         help=(
@@ -403,6 +411,9 @@ def main() -> int:
         ),
         require_mechanism_stress_tests=(
             args.require_mechanism_stress_tests
+        ),
+        require_mechanism_stress_memory=(
+            args.require_mechanism_stress_memory
         ),
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation

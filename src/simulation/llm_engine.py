@@ -553,7 +553,7 @@ Return JSON:
     "stress_test_id": "one exact id from the post-action mechanism_stress_test_design.options",
     "confidence": 0.5-1.0,
     "failure_condition": "plain-language condition under which the frozen-action mechanism is fragile, sensitive, or robust",
-    "rationale": "explain only the engine-computed observed-versus-neutralized difference; do not claim causality"
+    "rationale": "explain only the engine-computed observed-versus-neutralized difference and its cross-match evidence status; do not reopen resolved tests or claim causality"
   }},
   "opponent_information_adaptation": {{
     "prior_decision_id": "one decision_id from opponent_information_feedback.recent_resolutions",

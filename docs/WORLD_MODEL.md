@@ -1155,6 +1155,27 @@ naturally scored tests over four matches, at least two context factors,
 non-negative mean likelihood and Brier evidence, and zero malformed or
 controlling claims.
 
+`MechanismStressMemory` closes the loop across matches. It accumulates one
+equal-weight likelihood and Brier contribution per match for each exact
+checkpoint/environment/action/horizon/driver/consequence/relationship/context
+factor profile. Fixed `+/-log(20)` boundaries validate or invalidate modeled
+context dependence, while a 20-match cap retires unresolved profiles. Resolved
+profiles are skipped before the counterfactual rollout, saving compute as well
+as preventing repeated testing after a machine-owned conclusion.
+
+Continuing profiles receive an immutable evidence contract beside every raw
+stress option. Future `stress_priority` combines current raw fragility, distance
+from an evidence boundary, and sample novelty. It changes only which shadow
+test the LLM is encouraged to inspect: it does not alter the original joint
+distributions, fragility score, action, tactics, simulator state, or world-model
+weights. The compact memory summary and exact profile evidence are visible in
+the second-stage LLM brief, so its explanation can distinguish a novel failure
+condition from one that has accumulated support or counterevidence.
+
+Use `--require-mechanism-stress-memory` to require at least one machine-resolved
+profile with checkpoint/environment isolation, match clustering, exact stopping
+rules, and zero action, learning, or causal authority.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same

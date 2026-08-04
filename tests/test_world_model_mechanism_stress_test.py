@@ -27,6 +27,10 @@ from src.match_engine.world_model.mechanism_stress_test import (
     mechanism_stress_test_audit_is_valid,
     mechanism_stress_test_design_is_valid,
 )
+from src.match_engine.world_model.mechanism_stress_memory import (
+    compile_mechanism_stress_memory,
+    mechanism_stress_memory_diagnostics,
+)
 from src.match_engine.world_model.observation import OBS_DIM
 from src.match_engine.world_model.predictive_mechanism import (
     build_predictive_mechanism_design,
@@ -219,7 +223,7 @@ def test_mechanism_stress_tests_have_an_independent_strict_online_gate():
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_mechanism_stress_tests=True,
     )
-    assert report["version"] == 44
+    assert report["version"] == 45
     assert report["mechanism_stress_tests_ready"]
     assert report["gates"]["mechanism_stress_tests"]
 
@@ -272,3 +276,144 @@ def test_registered_stress_test_scores_the_natural_future_only_once():
     assert record["llm_mechanism_stress_test_context"]["audit_digest"] == (
         audit["audit_digest"]
     )
+
+
+def test_cross_match_stress_memory_validates_and_skips_resolved_rollout():
+    _, runtime, packet = _setup()
+    initial = build_mechanism_stress_test_design(
+        runtime, SimpleNamespace(home=SimpleNamespace(team_id="Home")),
+        packet, team_id="Home", selected_action="pass",
+    )
+    packet["mechanism_stress_test_design"] = initial
+    option = next(
+        row for row in initial["options"]
+        if row["context_factor"] == "score_context"
+    )
+    logs = []
+    for index in range(6):
+        audit = evaluate_llm_mechanism_stress_test(
+            packet, {"stress_test_id": option["stress_test_id"],
+                     "confidence": 0.8},
+            selected_action="pass", selected_after_action_freeze=True,
+        )
+        evaluation = score_mechanism_stress_test(
+            audit, {"retained_possession": True, "progress": 0.20,
+                    "goal_diff_delta": 1.0}, {"ball_x": 0.50},
+            attacking_home=True, horizon="60s", realized_action="pass",
+            checkpoint_signature="checkpoint-a",
+            environment_signature="env-a",
+        )
+        logs.append({"world_model_decision_adoption": {"records": [{
+            "decision_id": f"Home:{index}",
+            "checkpoint_signature": "checkpoint-a",
+            "environment_signature": "env-a",
+            "llm_mechanism_stress_test_context": audit,
+            "multi_horizon_regime_outcomes": {"60s": {
+                "llm_mechanism_stress_test_evaluation": evaluation,
+            }},
+        }]}})
+    memory = compile_mechanism_stress_memory(
+        logs, checkpoint_signature="checkpoint-a",
+        environment_signature="env-a",
+    )
+    key = (
+        option["action"], option["horizon"], option["driver_event"],
+        option["outcome_event"], option["observed_relationship"],
+        option["context_factor"],
+    )
+    profile = memory.profiles[key]
+    assert profile.status == "validated_context_dependence"
+    assert profile.matches == 6
+
+    _, learned_runtime, learned_packet = _setup()
+    learned = build_mechanism_stress_test_design(
+        learned_runtime,
+        SimpleNamespace(home=SimpleNamespace(team_id="Home")),
+        learned_packet, team_id="Home", selected_action="pass",
+        evidence_memory=memory,
+    )
+    assert learned["resolved_tests_skipped_before_rollout"] >= 1
+    assert learned["model_calls"] < initial["model_calls"]
+    assert learned["stress_memory_summary"]["validated_profiles"] == 1
+    assert not any(
+        row["context_factor"] == option["context_factor"]
+        and row["driver_event"] == option["driver_event"]
+        and row["outcome_event"] == option["outcome_event"]
+        for row in learned["options"]
+    )
+    assert mechanism_stress_test_design_is_valid(learned)
+
+    diagnostics = mechanism_stress_memory_diagnostics(logs)
+    assert diagnostics["validated_profiles"] == 1
+    assert diagnostics["all_match_clustered"]
+    assert diagnostics["all_stopping_rules_machine_owned"]
+    report = aggregate_online_calibration(
+        logs, min_transitions=0, require_mechanism_stress_memory=True,
+    )
+    assert report["version"] == 45
+    assert report["mechanism_stress_memory_ready"]
+    assert report["gates"]["mechanism_stress_memory"]
+
+
+def test_stress_memory_invalidates_negative_evidence_and_caps_inconclusive():
+    _, runtime, packet = _setup()
+    design = build_mechanism_stress_test_design(
+        runtime, SimpleNamespace(home=SimpleNamespace(team_id="Home")),
+        packet, team_id="Home", selected_action="pass",
+    )
+    packet["mechanism_stress_test_design"] = design
+    negative = next(
+        row for row in design["options"]
+        if row["context_factor"] == "score_context"
+    )
+    neutral = next(
+        row for row in design["options"]
+        if row["context_factor"] == "match_phase"
+    )
+    logs = []
+    for option, count, progress in (
+        (negative, 2, 0.10),
+        (neutral, 20, 0.20),
+    ):
+        for index in range(count):
+            audit = evaluate_llm_mechanism_stress_test(
+                packet, {"stress_test_id": option["stress_test_id"],
+                         "confidence": 0.8},
+                selected_action="pass", selected_after_action_freeze=True,
+            )
+            evaluation = score_mechanism_stress_test(
+                audit, {"retained_possession": True, "progress": progress,
+                        "goal_diff_delta": 0.0}, {"ball_x": 0.50},
+                attacking_home=True, horizon="60s", realized_action="pass",
+                checkpoint_signature="checkpoint-a",
+                environment_signature="env-a",
+            )
+            logs.append({"world_model_decision_adoption": {"records": [{
+                "decision_id": f"{option['context_factor']}:{index}",
+                "checkpoint_signature": "checkpoint-a",
+                "environment_signature": "env-a",
+                "llm_mechanism_stress_test_context": audit,
+                "multi_horizon_regime_outcomes": {"60s": {
+                    "llm_mechanism_stress_test_evaluation": evaluation,
+                }},
+            }]}})
+    memory = compile_mechanism_stress_memory(
+        logs, checkpoint_signature="checkpoint-a",
+        environment_signature="env-a",
+    )
+    negative_profile = next(
+        row for row in memory.profiles.values()
+        if row.context_factor == "score_context"
+        and row.driver_event == negative["driver_event"]
+        and row.outcome_event == negative["outcome_event"]
+    )
+    neutral_profile = next(
+        row for row in memory.profiles.values()
+        if row.context_factor == "match_phase"
+        and row.driver_event == neutral["driver_event"]
+        and row.outcome_event == neutral["outcome_event"]
+    )
+    assert negative_profile.status == "invalidated_context_dependence"
+    assert negative_profile.matches == 2
+    assert neutral_profile.status == "retired_inconclusive"
+    assert neutral_profile.matches == 20

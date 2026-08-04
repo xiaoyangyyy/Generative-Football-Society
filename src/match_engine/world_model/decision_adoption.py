@@ -651,6 +651,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.mechanism_stress_evaluation import (
         mechanism_stress_test_diagnostics,
     )
+    from src.match_engine.world_model.mechanism_stress_memory import (
+        mechanism_stress_memory_diagnostics,
+    )
     from src.match_engine.world_model.llm_decision_brief import (
         llm_decision_brief_diagnostics,
     )
@@ -683,7 +686,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 44,
+        "version": 45,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -740,6 +743,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         "mechanism_stress_tests": mechanism_stress_test_diagnostics([
             records
         ]),
+        "mechanism_stress_memory": mechanism_stress_memory_diagnostics([{
+            "world_model_decision_adoption": {"records": records},
+        }]),
         "llm_decision_briefs": llm_decision_brief_diagnostics([records]),
         "llm_deliberation_focus": llm_deliberation_focus_diagnostics([
             records

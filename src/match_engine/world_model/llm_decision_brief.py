@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 14
+LLM_DECISION_BRIEF_VERSION = 15
 
 
 TASK_REASONING_DOMAINS = {
@@ -367,7 +367,7 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
          "member_grounded_joint_event_mechanism"),
         ("mechanism_stress_test", bool(mechanism_stress.get("available")),
          0.52 + 0.35 * max((
-             _finite(row.get("fragility_score"))
+             _finite(row.get("stress_priority"))
              for row in mechanism_stress.get("options") or []
              if isinstance(row, dict)
          ), default=0.0),
@@ -670,19 +670,41 @@ def _mechanism_stress_test_brief(design: Any) -> dict[str, Any]:
         "observed_context_conditional_lift",
         "neutralized_context_conditional_lift", "conditional_lift_shift",
         "joint_total_variation", "relationship_flipped",
-        "fragility_score", "classification", "neutralized_ensemble_members",
+        "fragility_score", "stress_priority", "classification",
+        "neutralized_ensemble_members",
     )
     return {
         **_pick(design, (
             "available", "reason", "selected_action",
             "recommended_stress_test_id", "stressed_mechanisms",
             "maximum_stressed_mechanisms", "model_calls",
-            "model_call_budget",
+            "model_call_budget", "resolved_tests_skipped_before_rollout",
         )),
         "options": [
-            _pick(option, fields) for option in design.get("options") or []
+            {
+                **_pick(option, fields),
+                "cross_match_evidence": _pick(
+                    option.get("cross_match_evidence", {}),
+                    (
+                        "status", "profile_matches",
+                        "cumulative_log_likelihood_ratio",
+                        "mean_log_likelihood_ratio", "mean_brier_skill",
+                        "positive_log_evidence_boundary",
+                        "negative_log_evidence_boundary", "maximum_matches",
+                    ),
+                ),
+            }
+            for option in design.get("options") or []
             if isinstance(option, dict)
         ],
+        "stress_memory_summary": _pick(
+            design.get("stress_memory_summary", {}),
+            (
+                "version", "compatible_matches", "continuing_profiles",
+                "validated_profiles", "invalidated_profiles",
+                "retired_inconclusive_profiles", "memory_digest", "reason",
+            ),
+        ),
     }
 
 

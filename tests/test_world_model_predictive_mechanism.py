@@ -171,7 +171,7 @@ def test_predictive_mechanism_tournament_has_a_strict_online_gate():
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_predictive_mechanisms=True,
     )
-    assert report["version"] == 44
+    assert report["version"] == 45
     assert report["predictive_mechanisms_ready"]
     assert report["gates"]["predictive_mechanisms"]
 
