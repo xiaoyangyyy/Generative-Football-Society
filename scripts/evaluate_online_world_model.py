@@ -274,6 +274,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-mechanism-stress-tests",
+        action="store_true",
+        help=(
+            "Require post-action context stress tests with naturally scored "
+            "joint outcomes across multiple context factors."
+        ),
+    )
+    parser.add_argument(
         "--require-opponent-information-adaptation",
         action="store_true",
         help=(
@@ -392,6 +400,9 @@ def main() -> int:
         ),
         require_predictive_mechanism_memory=(
             args.require_predictive_mechanism_memory
+        ),
+        require_mechanism_stress_tests=(
+            args.require_mechanism_stress_tests
         ),
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation

@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 13
+LLM_DECISION_BRIEF_VERSION = 14
 
 
 TASK_REASONING_DOMAINS = {
@@ -23,6 +23,7 @@ TASK_REASONING_DOMAINS = {
     "active_probe_portfolio": "experimental_design",
     "active_probe_sequential_policy": "experimental_design",
     "predictive_mechanism": "mechanism_reasoning",
+    "mechanism_stress_test": "mechanism_reasoning",
     "opponent_response_hypothesis": "opponent_game",
     "opponent_hypothesis": "opponent_belief",
     "opponent_change_claim": "opponent_belief",
@@ -299,6 +300,7 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
         "active_probe_sequential_policy_design"
     ) or {}
     predictive_mechanism = packet.get("predictive_mechanism_design") or {}
+    mechanism_stress = packet.get("mechanism_stress_test_design") or {}
     active_probe_priority = max((
         _finite(option.get("experiment_priority"))
         for option in active_probe.get("options") or []
@@ -363,6 +365,13 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
              if isinstance(row, dict)
          ), default=0.0),
          "member_grounded_joint_event_mechanism"),
+        ("mechanism_stress_test", bool(mechanism_stress.get("available")),
+         0.52 + 0.35 * max((
+             _finite(row.get("fragility_score"))
+             for row in mechanism_stress.get("options") or []
+             if isinstance(row, dict)
+         ), default=0.0),
+         "post_action_context_mechanism_stress_test"),
         ("world_model_risk_preference", reversal >= 0.10 or drawdown >= 0.08,
          0.30 + 0.35 * reversal + 0.35 * min(1.0, drawdown),
          "temporal_reversal_or_drawdown"),
@@ -651,6 +660,32 @@ def _predictive_mechanism_brief(design: Any) -> dict[str, Any]:
     }
 
 
+def _mechanism_stress_test_brief(design: Any) -> dict[str, Any]:
+    if not isinstance(design, dict):
+        return {}
+    fields = (
+        "stress_test_id", "source_hypothesis_id", "action", "horizon",
+        "driver_event", "outcome_event", "observed_relationship",
+        "context_factor", "intervention_magnitude",
+        "observed_context_conditional_lift",
+        "neutralized_context_conditional_lift", "conditional_lift_shift",
+        "joint_total_variation", "relationship_flipped",
+        "fragility_score", "classification", "neutralized_ensemble_members",
+    )
+    return {
+        **_pick(design, (
+            "available", "reason", "selected_action",
+            "recommended_stress_test_id", "stressed_mechanisms",
+            "maximum_stressed_mechanisms", "model_calls",
+            "model_call_budget",
+        )),
+        "options": [
+            _pick(option, fields) for option in design.get("options") or []
+            if isinstance(option, dict)
+        ],
+    }
+
+
 def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
     """Project a full packet into compact exact evidence for language reasoning."""
     source_packet = {
@@ -702,6 +737,9 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
                 "retained_profiles", "eliminated_profiles",
                 "retired_inconclusive_profiles", "memory_digest", "reason",
             ),
+        ),
+        "mechanism_stress_test_design": _mechanism_stress_test_brief(
+            source_packet.get("mechanism_stress_test_design", {})
         ),
         "active_probe_discovery_memory": _pick(
             source_packet.get("active_probe_discovery_memory", {}),

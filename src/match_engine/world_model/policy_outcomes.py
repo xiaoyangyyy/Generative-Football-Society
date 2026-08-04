@@ -762,6 +762,39 @@ def observe_policy_intervention_outcomes(
                     outcome["llm_predictive_mechanism_evaluation"] = (
                         mechanism_score
                     )
+            stress_context = record.get(
+                "llm_mechanism_stress_test_context"
+            ) or {}
+            stress_test = stress_context.get("stress_test") or {}
+            if (
+                stress_context.get("accepted")
+                and str(stress_test.get("horizon", "")) == key
+                and str(stress_test.get("action", "")).lower()
+                == str(record.get(
+                    "intervention_actual_action", "",
+                )).lower()
+            ):
+                from src.match_engine.world_model.mechanism_stress_evaluation import (
+                    score_mechanism_stress_test,
+                )
+
+                stress_score = score_mechanism_stress_test(
+                    stress_context, outcome, baseline,
+                    attacking_home=attacking_home, horizon=key,
+                    realized_action=str(record.get(
+                        "intervention_actual_action", "",
+                    )),
+                    checkpoint_signature=str(record.get(
+                        "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    environment_signature=str(record.get(
+                        "environment_signature", "environment_unspecified",
+                    )),
+                )
+                if stress_score is not None:
+                    outcome["llm_mechanism_stress_test_evaluation"] = (
+                        stress_score
+                    )
             regime[key] = outcome
             if censor_t is None or due_t <= float(censor_t) + 1e-9:
                 isolated[key] = outcome

@@ -228,6 +228,6 @@ def test_cross_match_probe_gate_requires_realized_scored_evidence():
         min_transitions=0,
         require_active_probe_design=True,
     )
-    assert report["version"] == 43
+    assert report["version"] == 44
     assert report["active_probe_design_ready"]
     assert report["gates"]["active_probe_design"]

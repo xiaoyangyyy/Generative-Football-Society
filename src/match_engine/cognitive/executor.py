@@ -352,8 +352,36 @@ class CognitiveExecutor:
         )
         return _rule_fallback_plan(trig)
 
+    def _attach_mechanism_stress_design(
+        self, trig: CognitiveTriggerEvent, frozen_plan: Dict[str, Any], state,
+    ) -> None:
+        if not self.cfg.world_model_two_stage_deliberation:
+            return
+        packet = trig.facts.get("world_model_decision_support") or {}
+        if not packet:
+            return
+        from src.match_engine.world_model.mechanism_stress_test import (
+            build_mechanism_stress_test_design,
+        )
+        from src.match_engine.world_model.llm_decision_brief import (
+            build_llm_decision_brief,
+        )
+
+        packet["mechanism_stress_test_design"] = (
+            build_mechanism_stress_test_design(
+                self.world_model_runtime, state, packet,
+                team_id=str(trig.team_id or ""),
+                selected_action=str(frozen_plan.get(
+                    "world_model_action", "none",
+                )),
+            )
+        )
+        trig.facts["world_model_llm_decision_brief"] = (
+            build_llm_decision_brief(packet)
+        )
+
     def _call_post_action_shadow_deliberation(
-        self, trig: CognitiveTriggerEvent, frozen_plan: Dict[str, Any],
+        self, trig: CognitiveTriggerEvent, frozen_plan: Dict[str, Any], state,
     ) -> Dict[str, Any]:
         provider = getattr(
             self.llm, "coach_world_model_deliberation", None,
@@ -363,6 +391,7 @@ class CognitiveExecutor:
             or not callable(provider)
         ):
             return frozen_plan
+        self._attach_mechanism_stress_design(trig, frozen_plan, state)
         from src.match_engine.world_model.llm_deliberation_encouragement import (
             build_shadow_deliberation_brief,
             shadow_deliberation_brief_is_valid,
@@ -545,6 +574,7 @@ class CognitiveExecutor:
             try:
                 plan = self._validate_plan(trig, cached)
                 if trig.entity_tier == ENTITY_TIER_COACH:
+                    self._attach_mechanism_stress_design(trig, plan, state)
                     from src.match_engine.world_model.llm_deliberation_encouragement import (
                         deliberation_encouragement_audit_is_valid,
                     )
@@ -570,7 +600,7 @@ class CognitiveExecutor:
                         plan, trig.facts.get("world_model_decision_support"),
                     )
                     plan = self._call_post_action_shadow_deliberation(
-                        trig, plan,
+                        trig, plan, state,
                     )
                 self._save_cache(key, plan)
         else:
@@ -579,7 +609,9 @@ class CognitiveExecutor:
                 plan = _reconcile_coach_world_model_plan(
                     plan, trig.facts.get("world_model_decision_support"),
                 )
-                plan = self._call_post_action_shadow_deliberation(trig, plan)
+                plan = self._call_post_action_shadow_deliberation(
+                    trig, plan, state,
+                )
             self._save_cache(key, plan)
 
         if trig.entity_tier == ENTITY_TIER_COACH:
@@ -1102,6 +1134,25 @@ class CognitiveExecutor:
                 plan["world_model_predictive_mechanism_audit"] = (
                     predictive_mechanism_audit
                 )
+                from src.match_engine.world_model.mechanism_stress_test import (
+                    evaluate_llm_mechanism_stress_test,
+                )
+
+                mechanism_stress_audit = (
+                    evaluate_llm_mechanism_stress_test(
+                        packet,
+                        plan.get("world_model_mechanism_stress_test"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        selected_after_action_freeze=after_action_freeze,
+                    )
+                    if task_enabled("mechanism_stress_test")
+                    else task_skipped("mechanism_stress_test")
+                )
+                plan["world_model_mechanism_stress_test_audit"] = (
+                    mechanism_stress_audit
+                )
                 from src.match_engine.world_model.opponent_information_adaptation import (
                     evaluate_llm_opponent_information_adaptation,
                 )
@@ -1485,6 +1536,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "world_model_predictive_mechanism_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_mechanism_stress_test_context=(
+                        dict(rec.plan.get(
+                            "world_model_mechanism_stress_test_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_mechanism_stress_test_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

@@ -549,6 +549,12 @@ Return JSON:
     "mechanism_statement": "plain-language articulation of the exact driver, consequence, direction, and horizon; association only",
     "rationale": "why this member-aligned joint forecast is more informative than its independence null"
   }},
+  "world_model_mechanism_stress_test": {{
+    "stress_test_id": "one exact id from the post-action mechanism_stress_test_design.options",
+    "confidence": 0.5-1.0,
+    "failure_condition": "plain-language condition under which the frozen-action mechanism is fragile, sensitive, or robust",
+    "rationale": "explain only the engine-computed observed-versus-neutralized difference; do not claim causality"
+  }},
   "opponent_information_adaptation": {{
     "prior_decision_id": "one decision_id from opponent_information_feedback.recent_resolutions",
     "adaptation_kind": "change_query_feature|change_query_horizon|repair_contingent_policy|retain_validated_query",

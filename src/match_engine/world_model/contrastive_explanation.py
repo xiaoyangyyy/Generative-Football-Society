@@ -11,18 +11,14 @@ import numpy as np
 
 from src.match_engine.math_utils import finite_float
 from src.match_engine.world_model.action_codec import encode_high_level_action
-from src.match_engine.world_model.opponent_contract import tactic_feature_vector
 from src.match_engine.world_model.opponent_response import RESPONSE_ACTIONS
+from src.match_engine.world_model.context_interventions import (
+    CONTEXT_FACTORS,
+    neutralize_context as _neutralize_context,
+)
 
 
 CONTRASTIVE_EXPLANATION_VERSION = 1
-CONTEXT_FACTORS = (
-    "score_context",
-    "match_phase",
-    "own_tactics",
-    "opponent_tactics",
-    "crowd_context",
-)
 CLAIMED_EFFECTS = ("supports_selected", "opposes_selected")
 _HORIZON_PATTERN = re.compile(r"^(transition|\d+(?:\.\d+)?s)$")
 
@@ -70,36 +66,6 @@ def validate_llm_contrastive_claim(raw: Any) -> dict[str, Any] | None:
         "confidence": confidence,
         "rationale": str(raw.get("rationale", ""))[:280],
     }
-
-
-def _neutralize_context(
-    observation: np.ndarray,
-    *,
-    factor: str,
-    attacking_home: bool,
-) -> tuple[np.ndarray, list[int], float]:
-    neutral = np.asarray(observation, dtype=np.float32).copy()
-    if factor == "score_context":
-        indices = [204, 205, 206]
-        neutral[indices] = [0.0, 0.0, 0.5]
-    elif factor == "match_phase":
-        indices = [207]
-        neutral[207] = 0.5
-    elif factor == "crowd_context":
-        indices = [208]
-        neutral[208] = 0.5
-    elif factor in {"own_tactics", "opponent_tactics"}:
-        own_start = 298 if attacking_home else 302
-        opponent_start = 302 if attacking_home else 298
-        start = own_start if factor == "own_tactics" else opponent_start
-        indices = list(range(start, start + 4))
-        neutral[indices] = tactic_feature_vector("balanced")
-    else:
-        raise ValueError("unsupported contrastive context factor")
-    magnitude = float(np.max(np.abs(
-        neutral[indices] - np.asarray(observation, dtype=np.float32)[indices]
-    )))
-    return neutral, indices, magnitude
 
 
 def _planning_gate(runtime, *, rollout_steps: int) -> dict[str, Any]:

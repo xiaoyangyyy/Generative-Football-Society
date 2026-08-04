@@ -1125,6 +1125,36 @@ require a machine-resolved, correctly scoped and match-clustered profile. These
 are tests of predictive dependence inside the simulator protocol, not proof of
 mediation or real-football causal mechanisms.
 
+### Post-action mechanism stress tests
+
+With two-stage deliberation enabled, the engine now inserts a bounded mechanism
+stress phase between action freeze and the shadow LLM call. For at most two
+high-value mechanisms belonging to the frozen action, it evaluates the five
+schema-grounded context neutralizations already used by contrastive model
+checks: score context, match phase, own tactics, opponent tactics, and crowd
+context. At most ten additional world-model calls are allowed. Neutralizations
+change only documented observation indices and never mutate simulator state.
+
+Every valid `mechanism_stress_test_design` option compares the original and
+neutralized member-aligned joint distributions. It records total-variation
+distance, conditional-lift shift, relationship reversal, intervention
+magnitude, member support, and a machine-owned classification of robust,
+context-sensitive, or fragile. The menu is computed in full before the second
+LLM call and ranked by fragility, so the LLM cannot choose which counterfactuals
+the engine evaluates. It may only select an exact `stress_test_id` and explain
+the already computed failure condition. Cached plans reconstruct the same
+post-action design before validation.
+
+When the natural future horizon is observed, the stress test compares the
+likelihood and categorical Brier score of that event pair under the original
+context forecast versus the neutralized-context forecast. This can establish
+whether modeled context sensitivity is predictively useful; it cannot observe
+the neutralized counterfactual or establish causality. The optional
+`--require-mechanism-stress-tests` gate requires four accepted, executed and
+naturally scored tests over four matches, at least two context factors,
+non-negative mean likelihood and Brier evidence, and zero malformed or
+controlling claims.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same

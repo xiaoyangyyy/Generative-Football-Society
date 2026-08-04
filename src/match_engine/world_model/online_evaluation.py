@@ -90,6 +90,9 @@ from src.match_engine.world_model.predictive_mechanism_evaluation import (
 from src.match_engine.world_model.predictive_mechanism_memory import (
     predictive_mechanism_memory_diagnostics,
 )
+from src.match_engine.world_model.mechanism_stress_evaluation import (
+    mechanism_stress_test_diagnostics,
+)
 from src.match_engine.world_model.llm_decision_brief import (
     llm_decision_brief_diagnostics,
 )
@@ -149,6 +152,7 @@ def aggregate_online_calibration(
     require_active_probe_sequential_policy: bool = False,
     require_predictive_mechanisms: bool = False,
     require_predictive_mechanism_memory: bool = False,
+    require_mechanism_stress_tests: bool = False,
     require_opponent_information_adaptation: bool = False,
     require_llm_deliberation_focus: bool = False,
     require_llm_deliberation_compute_value: bool = False,
@@ -311,6 +315,9 @@ def aggregate_online_calibration(
         policy_record_clusters
     )
     predictive_mechanism_memory = predictive_mechanism_memory_diagnostics(logs)
+    mechanism_stress_tests = mechanism_stress_test_diagnostics(
+        policy_record_clusters
+    )
     llm_decision_briefs = llm_decision_brief_diagnostics(
         policy_record_clusters
     )
@@ -894,6 +901,31 @@ def aggregate_online_calibration(
         predictive_mechanism_memory_ready
         if require_predictive_mechanism_memory else True
     )
+    mechanism_stress_tests_ready = bool(
+        mechanism_stress_tests["accepted_stress_audits"] >= 4
+        and mechanism_stress_tests["executed_stress_actions"] >= 4
+        and mechanism_stress_tests["scored_natural_outcomes"] >= 4
+        and mechanism_stress_tests["distinct_context_factors"] >= 2
+        and mechanism_stress_tests["matches"] >= 4
+        and mechanism_stress_tests["malformed_stress_audits"] == 0
+        and mechanism_stress_tests["malformed_stress_scores"] == 0
+        and mechanism_stress_tests[
+            "mean_log_likelihood_observed_vs_neutralized"
+        ] >= 0.0
+        and mechanism_stress_tests[
+            "mean_brier_skill_observed_vs_neutralized"
+        ] >= 0.0
+        and mechanism_stress_tests[
+            "unsafe_action_tactical_or_learning_authority_claims"
+        ] == 0
+        and mechanism_stress_tests[
+            "all_stress_tests_post_action_shadow_only"
+        ]
+    )
+    gates["mechanism_stress_tests"] = (
+        mechanism_stress_tests_ready
+        if require_mechanism_stress_tests else True
+    )
     opponent_information_adaptation_ready = bool(
         opponent_information_adaptation["realized_adaptation_scores"] >= 4
         and opponent_information_adaptation["matches"] >= 4
@@ -996,7 +1028,7 @@ def aggregate_online_calibration(
         if require_llm_task_encouragement else True
     )
     return {
-        "version": 43,
+        "version": 44,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -1049,6 +1081,7 @@ def aggregate_online_calibration(
             ),
             "predictive_mechanisms": predictive_mechanisms,
             "predictive_mechanism_memory": predictive_mechanism_memory,
+            "mechanism_stress_tests": mechanism_stress_tests,
             "llm_decision_briefs": llm_decision_briefs,
             "llm_deliberation_focus": llm_deliberation_focus,
             "llm_deliberation_compute_value": (
@@ -1102,6 +1135,7 @@ def aggregate_online_calibration(
         "predictive_mechanism_memory_ready": (
             predictive_mechanism_memory_ready
         ),
+        "mechanism_stress_tests_ready": mechanism_stress_tests_ready,
         "opponent_information_adaptation_ready": (
             opponent_information_adaptation_ready
         ),
@@ -1128,6 +1162,7 @@ def aggregate_online_calibration(
             "Active-probe portfolios observe multiple horizons of one realized action with an explicit redundancy penalty; those horizons are correlated observations, not separate interventions or independent causal samples.",
             "Active-probe sequential stopping uses one raw pre-registered alternative-versus-null likelihood update per profile per match, fixed +/-log(20) boundaries, a 20-match cap, and machine-owned cross-horizon conflict review; it is predictive rather than causal and depends on the logged forecast protocol assumptions.",
             "Predictive mechanisms are member-aligned joint event associations scored against an independence null; LLM articulation does not identify mediation or real-football causality.",
+            "Mechanism stress tests neutralize bounded observed context fields after action freeze and compare member-aligned joints; natural outcomes can validate predictive context dependence but never reveal the unobserved counterfactual or establish causality.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",
