@@ -258,6 +258,22 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-predictive-mechanisms",
+        action="store_true",
+        help=(
+            "Require member-grounded joint-event mechanism hypotheses to "
+            "beat their independence null across matches."
+        ),
+    )
+    parser.add_argument(
+        "--require-predictive-mechanism-memory",
+        action="store_true",
+        help=(
+            "Require at least one machine-resolved predictive mechanism "
+            "profile under checkpoint/environment isolation."
+        ),
+    )
+    parser.add_argument(
         "--require-opponent-information-adaptation",
         action="store_true",
         help=(
@@ -370,6 +386,12 @@ def main() -> int:
         ),
         require_active_probe_sequential_policy=(
             args.require_active_probe_sequential_policy
+        ),
+        require_predictive_mechanisms=(
+            args.require_predictive_mechanisms
+        ),
+        require_predictive_mechanism_memory=(
+            args.require_predictive_mechanism_memory
         ),
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation

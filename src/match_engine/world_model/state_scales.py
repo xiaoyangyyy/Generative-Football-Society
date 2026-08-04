@@ -9,7 +9,7 @@ import numpy as np
 from src.match_engine.world_model.observation import OBS_DIM
 
 
-STATE_SCALE_VERSION = 3
+STATE_SCALE_VERSION = 4
 FALSIFIABLE_SEMANTIC_EVENTS = (
     "retain_possession",
     "enter_final_third",
@@ -21,6 +21,12 @@ FALSIFIABLE_DOWNSIDE_EVENTS = (
     "negative_territorial_shift",
     "worsen_scoreline",
     "fail_enter_final_third",
+)
+PREDICTIVE_MECHANISM_EDGES = (
+    ("retain_possession", "positive_territorial_shift"),
+    ("retain_possession", "enter_final_third"),
+    ("positive_territorial_shift", "enter_final_third"),
+    ("enter_final_third", "improve_scoreline"),
 )
 
 
@@ -103,6 +109,95 @@ def projected_semantic_event_probabilities(
     return (
         (indicators.sum(axis=0) + 0.5) / (indicators.shape[0] + 1.0)
     ).astype(np.float32)
+
+
+def predictive_mechanism_edges(
+    current_observations: Any,
+    future_member_observations: Any,
+    *,
+    ensemble_trained: bool,
+) -> dict[str, dict[str, Any]]:
+    """Project member-aligned event pairs into coherent predictive joints."""
+    indicators = semantic_event_member_indicators(
+        current_observations, future_member_observations,
+    )
+    if indicators.shape[1] != 1:
+        raise ValueError("mechanism projection requires one current state")
+    events = indicators[:, 0, :] >= 0.5
+    event_indices = {
+        event: index for index, event in enumerate(FALSIFIABLE_SEMANTIC_EVENTS)
+    }
+    rows = {}
+    for driver, outcome in PREDICTIVE_MECHANISM_EDGES:
+        left = events[:, event_indices[driver]]
+        right = events[:, event_indices[outcome]]
+        counts = {
+            "driver_false_outcome_false": int(np.sum(~left & ~right)),
+            "driver_false_outcome_true": int(np.sum(~left & right)),
+            "driver_true_outcome_false": int(np.sum(left & ~right)),
+            "driver_true_outcome_true": int(np.sum(left & right)),
+        }
+        # Symmetric Dirichlet(1/2) smoothing keeps the joint coherent and
+        # prevents tiny ensembles from emitting impossible certainty.
+        denominator = len(left) + 2.0
+        joint = {
+            key: float((value + 0.5) / denominator)
+            for key, value in counts.items()
+        }
+        driver_probability = (
+            joint["driver_true_outcome_false"]
+            + joint["driver_true_outcome_true"]
+        )
+        outcome_probability = (
+            joint["driver_false_outcome_true"]
+            + joint["driver_true_outcome_true"]
+        )
+        outcome_given_driver = (
+            joint["driver_true_outcome_true"] / driver_probability
+        )
+        outcome_without_driver = (
+            joint["driver_false_outcome_true"]
+            / (1.0 - driver_probability)
+        )
+        independence = {
+            "driver_false_outcome_false": (
+                (1.0 - driver_probability) * (1.0 - outcome_probability)
+            ),
+            "driver_false_outcome_true": (
+                (1.0 - driver_probability) * outcome_probability
+            ),
+            "driver_true_outcome_false": (
+                driver_probability * (1.0 - outcome_probability)
+            ),
+            "driver_true_outcome_true": (
+                driver_probability * outcome_probability
+            ),
+        }
+        rows[f"{driver}->{outcome}"] = {
+            "driver_event": driver,
+            "outcome_event": outcome,
+            "available": bool(ensemble_trained and len(left) >= 2),
+            "reason": (
+                "member_aligned_joint_projection" if ensemble_trained
+                and len(left) >= 2 else "trained_transition_ensemble_required"
+            ),
+            "ensemble_members": int(len(left)),
+            "cell_counts": counts,
+            "joint_probabilities": joint,
+            "independence_null_probabilities": independence,
+            "driver_probability": float(driver_probability),
+            "outcome_probability": float(outcome_probability),
+            "outcome_probability_given_driver": float(outcome_given_driver),
+            "outcome_probability_without_driver": float(
+                outcome_without_driver
+            ),
+            "conditional_lift": float(
+                outcome_given_driver - outcome_without_driver
+            ),
+            "association_only": True,
+            "causal_interpretation": False,
+        }
+    return rows
 
 
 def _samples(values: Any) -> np.ndarray:
@@ -370,6 +465,10 @@ def multiscale_state_forecast(
         ensemble_trained=ensemble_trained,
     )[0]
     events = dict(zip(FALSIFIABLE_SEMANTIC_EVENTS, map(float, projected)))
+    mechanism_edges = predictive_mechanism_edges(
+        current.reshape(1, -1), samples[:, None, :],
+        ensemble_trained=ensemble_trained,
+    )
     events["relieve_ball_pressure"] = (
         _smoothed_probability(future_pressure <= current_pressure - 0.05)
         if ensemble_trained else 0.5
@@ -413,6 +512,7 @@ def multiscale_state_forecast(
             "mean_clock_fraction": float(np.mean(samples[:, 207])),
         },
         "semantic_event_probabilities": events,
+        "predictive_mechanism_edges": mechanism_edges,
         "trajectory_modes": trajectory_modes,
         "claims": {
             "observed": False,

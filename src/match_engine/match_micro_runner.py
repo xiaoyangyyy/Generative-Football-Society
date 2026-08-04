@@ -108,6 +108,14 @@ def _resolve_cognitive_layer(
             )
             if world_model_runtime is not None else None
         ),
+        predictive_mechanism_memory=(
+            _load_predictive_mechanism_memory(
+                base_dir,
+                world_model_runtime,
+                environment_signature,
+            )
+            if world_model_runtime is not None else None
+        ),
     )
     return bus, executor
 
@@ -197,6 +205,22 @@ def _load_active_probe_discovery_memory(
     )
 
     return load_active_probe_discovery_memory(
+        base_dir,
+        checkpoint_signature=str(getattr(
+            world_model_runtime, "checkpoint_signature", "runtime_unspecified",
+        )),
+        environment_signature=str(environment_signature),
+    )
+
+
+def _load_predictive_mechanism_memory(
+    base_dir, world_model_runtime, environment_signature,
+):
+    from src.match_engine.world_model.predictive_mechanism_memory import (
+        load_predictive_mechanism_memory,
+    )
+
+    return load_predictive_mechanism_memory(
         base_dir,
         checkpoint_signature=str(getattr(
             world_model_runtime, "checkpoint_signature", "runtime_unspecified",

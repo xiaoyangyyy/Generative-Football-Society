@@ -13,6 +13,7 @@ from src.match_engine.world_model.semantic_event_training import (
 )
 from src.match_engine.world_model.state_scales import (
     FALSIFIABLE_SEMANTIC_EVENTS,
+    predictive_mechanism_edges,
     semantic_event_targets,
 )
 
@@ -36,6 +37,32 @@ def test_semantic_event_labels_are_future_only_and_attack_oriented():
     assert np.all(labels == 1.0)
     with pytest.raises(ValueError, match="matching shape"):
         semantic_event_targets(current, future[:, :-1])
+
+
+def test_member_aligned_mechanism_projection_is_a_coherent_joint_not_marginals():
+    current = np.zeros(OBS_DIM, dtype=np.float32)
+    current[200] = 0.50
+    current[-1] = 1.0
+    future = np.repeat(current[None, :], 8, axis=0)
+    future[:4, 209] = 1.0
+    future[:4, 200] = 0.60
+    future[4:, 209] = 0.0
+    future[4:, 200] = 0.50
+
+    edge = predictive_mechanism_edges(
+        current, future, ensemble_trained=True,
+    )["retain_possession->positive_territorial_shift"]
+
+    assert edge["available"]
+    assert edge["cell_counts"]["driver_true_outcome_true"] == 4
+    assert edge["cell_counts"]["driver_false_outcome_false"] == 4
+    assert sum(edge["joint_probabilities"].values()) == pytest.approx(1.0)
+    assert sum(edge["independence_null_probabilities"].values()) == (
+        pytest.approx(1.0)
+    )
+    assert edge["conditional_lift"] > 0.0
+    assert edge["association_only"]
+    assert not edge["causal_interpretation"]
 
 
 def test_semantic_event_bce_keeps_member_bootstrap_routing():

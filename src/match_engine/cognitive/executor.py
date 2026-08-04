@@ -175,6 +175,7 @@ class CognitiveExecutor:
         opponent_response_memory=None,
         llm_critic_memory=None,
         active_probe_memory=None,
+        predictive_mechanism_memory=None,
         policy_environment_signature: str = "environment_unspecified",
     ) -> None:
         self.cfg = cfg
@@ -186,6 +187,7 @@ class CognitiveExecutor:
         self.opponent_response_memory = opponent_response_memory
         self.llm_critic_memory = llm_critic_memory
         self.active_probe_memory = active_probe_memory
+        self.predictive_mechanism_memory = predictive_mechanism_memory
         from src.match_engine.world_model.llm_critic import llm_critic_signature
 
         self.llm_critic_signature = llm_critic_signature(
@@ -516,6 +518,9 @@ class CognitiveExecutor:
                         ),
                     },
                     active_probe_memory=self.active_probe_memory,
+                    predictive_mechanism_memory=(
+                        self.predictive_mechanism_memory
+                    ),
                     trajectory_branch_budget=(
                         self.cfg.world_model_trajectory_branch_budget
                     ),
@@ -1004,6 +1009,16 @@ class CognitiveExecutor:
                 packet["active_probe_sequential_policy_design"] = (
                     build_active_probe_sequential_policy_design(packet)
                 )
+                from src.match_engine.world_model.predictive_mechanism import (
+                    build_predictive_mechanism_design,
+                )
+
+                packet["predictive_mechanism_design"] = (
+                    build_predictive_mechanism_design(
+                        packet,
+                        evidence_memory=self.predictive_mechanism_memory,
+                    )
+                )
                 from src.match_engine.world_model.active_probe import (
                     evaluate_llm_active_probe,
                 )
@@ -1067,6 +1082,25 @@ class CognitiveExecutor:
                 )
                 plan["world_model_active_probe_sequential_policy_audit"] = (
                     sequential_policy_audit
+                )
+                from src.match_engine.world_model.predictive_mechanism import (
+                    evaluate_llm_predictive_mechanism,
+                )
+
+                predictive_mechanism_audit = (
+                    evaluate_llm_predictive_mechanism(
+                        packet,
+                        plan.get("world_model_predictive_mechanism"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        selected_after_action_freeze=after_action_freeze,
+                    )
+                    if task_enabled("predictive_mechanism")
+                    else task_skipped("predictive_mechanism")
+                )
+                plan["world_model_predictive_mechanism_audit"] = (
+                    predictive_mechanism_audit
                 )
                 from src.match_engine.world_model.opponent_information_adaptation import (
                     evaluate_llm_opponent_information_adaptation,
@@ -1442,6 +1476,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "world_model_active_probe_sequential_policy_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_predictive_mechanism_context=(
+                        dict(rec.plan.get(
+                            "world_model_predictive_mechanism_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_predictive_mechanism_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

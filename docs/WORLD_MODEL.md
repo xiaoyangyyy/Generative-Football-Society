@@ -1088,6 +1088,43 @@ claims. These likelihood ratios compare predictive forecasts under the logged
 protocol. They are not causal evidence, and optional-stopping interpretations
 still depend on the previsible-forecast and data-generation assumptions.
 
+## Predictive mechanism tournaments
+
+The world model now projects four predeclared event pathways from aligned
+transition-ensemble members: possession retention to territorial gain,
+possession retention to final-third entry, territorial gain to final-third
+entry, and final-third entry to score improvement. Each edge is a coherent
+four-cell joint distribution over driver/consequence truth values with symmetric
+Dirichlet smoothing. It also contains the product-of-marginals independence
+null, conditional lift, member support, and Jensen-Shannon discrimination.
+Because both events come from the same member state, this preserves dependence
+information that cannot be reconstructed from separate marginal forecasts.
+
+The engine turns sufficiently discriminating edges into digest-bound
+`predictive_mechanism_design` options. Only after the action is frozen may the
+LLM choose an exact `hypothesis_id` and articulate it in ordinary football
+language. It cannot invent an edge, reverse its direction, alter its joint
+probabilities, change the action or tactics, schedule a future action, update
+model weights, or call the association causal. When the declared horizon is
+observed, the realized event pair selects one joint cell and is scored by
+categorical Brier skill and log likelihood ratio against the independence null.
+
+Cross-match `PredictiveMechanismMemory` gives every match equal weight and uses
+fixed `+/-log(20)` evidence boundaries with a 20-match cap. Supported mechanisms
+are retained as resolved discoveries, falsified mechanisms are eliminated, and
+budget-exhausted mechanisms are retired as inconclusive; all three are removed
+from future testing menus. Memory is isolated by checkpoint, environment,
+action, horizon, driver, consequence, and relationship direction. The LLM has no authority over these
+states or thresholds.
+
+Use `--require-predictive-mechanisms` to demand four scored hypotheses over four
+matches, at least two distinct pathways, non-negative mean likelihood and Brier
+skill, at least 50 percent positive likelihood evidence, and zero malformed or
+controlling claims. Use `--require-predictive-mechanism-memory` to additionally
+require a machine-resolved, correctly scoped and match-clustered profile. These
+are tests of predictive dependence inside the simulator protocol, not proof of
+mediation or real-football causal mechanisms.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same

@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 12
+LLM_DECISION_BRIEF_VERSION = 13
 
 
 TASK_REASONING_DOMAINS = {
@@ -22,6 +22,7 @@ TASK_REASONING_DOMAINS = {
     "active_probe_design": "experimental_design",
     "active_probe_portfolio": "experimental_design",
     "active_probe_sequential_policy": "experimental_design",
+    "predictive_mechanism": "mechanism_reasoning",
     "opponent_response_hypothesis": "opponent_game",
     "opponent_hypothesis": "opponent_belief",
     "opponent_change_claim": "opponent_belief",
@@ -297,6 +298,7 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
     sequential_policy = packet.get(
         "active_probe_sequential_policy_design"
     ) or {}
+    predictive_mechanism = packet.get("predictive_mechanism_design") or {}
     active_probe_priority = max((
         _finite(option.get("experiment_priority"))
         for option in active_probe.get("options") or []
@@ -354,6 +356,13 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
             and not active_probe_portfolio.get("available")
         ), 0.55 + 0.40 * active_probe_priority,
          "single_probe_fallback_without_portfolio"),
+        ("predictive_mechanism", bool(predictive_mechanism.get("available")),
+         0.48 + 0.35 * max((
+             _finite(row.get("expected_discrimination"))
+             for row in predictive_mechanism.get("options") or []
+             if isinstance(row, dict)
+         ), default=0.0),
+         "member_grounded_joint_event_mechanism"),
         ("world_model_risk_preference", reversal >= 0.10 or drawdown >= 0.08,
          0.30 + 0.35 * reversal + 0.35 * min(1.0, drawdown),
          "temporal_reversal_or_drawdown"),
@@ -615,6 +624,33 @@ def _active_probe_sequential_policy_brief(design: Any) -> dict[str, Any]:
     }
 
 
+def _predictive_mechanism_brief(design: Any) -> dict[str, Any]:
+    if not isinstance(design, dict):
+        return {}
+    fields = (
+        "hypothesis_id", "action", "horizon", "driver_event",
+        "outcome_event", "relationship", "conditional_lift",
+        "joint_probabilities", "independence_null_probabilities",
+        "expected_discrimination", "ensemble_members", "association_only",
+    )
+    return {
+        **_pick(design, (
+            "available", "reason", "recommended_hypothesis_id",
+            "evidence_scope", "maximum_options", "retained_hypotheses",
+            "eliminated_hypotheses", "maximum_resolved_hypotheses",
+        )),
+        "options": [
+            _pick(option, fields) for option in design.get("options") or []
+            if isinstance(option, dict)
+        ],
+        "resolved_hypotheses": [
+            _pick(option, fields)
+            for option in design.get("resolved_hypotheses") or []
+            if isinstance(option, dict)
+        ],
+    }
+
+
 def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
     """Project a full packet into compact exact evidence for language reasoning."""
     source_packet = {
@@ -655,6 +691,17 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
             _active_probe_sequential_policy_brief(source_packet.get(
                 "active_probe_sequential_policy_design", {}
             ))
+        ),
+        "predictive_mechanism_design": _predictive_mechanism_brief(
+            source_packet.get("predictive_mechanism_design", {})
+        ),
+        "predictive_mechanism_memory": _pick(
+            source_packet.get("predictive_mechanism_memory", {}),
+            (
+                "version", "compatible_matches", "continuing_profiles",
+                "retained_profiles", "eliminated_profiles",
+                "retired_inconclusive_profiles", "memory_digest", "reason",
+            ),
         ),
         "active_probe_discovery_memory": _pick(
             source_packet.get("active_probe_discovery_memory", {}),

@@ -84,6 +84,12 @@ from src.match_engine.world_model.active_probe_portfolio_evaluation import (
 from src.match_engine.world_model.active_probe_sequential_policy_evaluation import (
     active_probe_sequential_policy_diagnostics,
 )
+from src.match_engine.world_model.predictive_mechanism_evaluation import (
+    predictive_mechanism_diagnostics,
+)
+from src.match_engine.world_model.predictive_mechanism_memory import (
+    predictive_mechanism_memory_diagnostics,
+)
 from src.match_engine.world_model.llm_decision_brief import (
     llm_decision_brief_diagnostics,
 )
@@ -141,6 +147,8 @@ def aggregate_online_calibration(
     require_active_probe_discovery_memory: bool = False,
     require_active_probe_portfolios: bool = False,
     require_active_probe_sequential_policy: bool = False,
+    require_predictive_mechanisms: bool = False,
+    require_predictive_mechanism_memory: bool = False,
     require_opponent_information_adaptation: bool = False,
     require_llm_deliberation_focus: bool = False,
     require_llm_deliberation_compute_value: bool = False,
@@ -299,6 +307,10 @@ def aggregate_online_calibration(
     active_probe_sequential_policy = (
         active_probe_sequential_policy_diagnostics(policy_record_clusters)
     )
+    predictive_mechanisms = predictive_mechanism_diagnostics(
+        policy_record_clusters
+    )
+    predictive_mechanism_memory = predictive_mechanism_memory_diagnostics(logs)
     llm_decision_briefs = llm_decision_brief_diagnostics(
         policy_record_clusters
     )
@@ -840,6 +852,48 @@ def aggregate_online_calibration(
         active_probe_sequential_policy_ready
         if require_active_probe_sequential_policy else True
     )
+    predictive_mechanisms_ready = bool(
+        predictive_mechanisms["accepted_hypothesis_audits"] >= 4
+        and predictive_mechanisms["executed_hypothesis_actions"] >= 4
+        and predictive_mechanisms["scored_joint_outcomes"] >= 4
+        and predictive_mechanisms["distinct_mechanism_edges"] >= 2
+        and predictive_mechanisms["matches"] >= 4
+        and predictive_mechanisms["malformed_hypothesis_audits"] == 0
+        and predictive_mechanisms["malformed_joint_scores"] == 0
+        and predictive_mechanisms[
+            "unsafe_action_tactical_or_learning_authority_claims"
+        ] == 0
+        and predictive_mechanisms[
+            "mean_log_likelihood_ratio_vs_independence"
+        ] >= 0.0
+        and predictive_mechanisms[
+            "mean_brier_skill_vs_independence"
+        ] >= 0.0
+        and predictive_mechanisms[
+            "positive_likelihood_evidence_rate"
+        ] >= 0.50
+        and predictive_mechanisms[
+            "all_hypotheses_post_action_association_only"
+        ]
+    )
+    gates["predictive_mechanisms"] = (
+        predictive_mechanisms_ready if require_predictive_mechanisms else True
+    )
+    predictive_mechanism_memory_ready = bool(
+        predictive_mechanism_memory["resolved_profiles"] >= 1
+        and predictive_mechanism_memory["resolved_profile_matches"] >= 2
+        and predictive_mechanism_memory["all_checkpoint_environment_scoped"]
+        and predictive_mechanism_memory["all_match_clustered"]
+        and predictive_mechanism_memory[
+            "all_stopping_rules_machine_owned"
+        ]
+        and predictive_mechanism_memory["can_update_world_model"] is False
+        and predictive_mechanism_memory["causal_interpretation"] is False
+    )
+    gates["predictive_mechanism_memory"] = (
+        predictive_mechanism_memory_ready
+        if require_predictive_mechanism_memory else True
+    )
     opponent_information_adaptation_ready = bool(
         opponent_information_adaptation["realized_adaptation_scores"] >= 4
         and opponent_information_adaptation["matches"] >= 4
@@ -942,7 +996,7 @@ def aggregate_online_calibration(
         if require_llm_task_encouragement else True
     )
     return {
-        "version": 42,
+        "version": 43,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -993,6 +1047,8 @@ def aggregate_online_calibration(
             "active_probe_sequential_policy": (
                 active_probe_sequential_policy
             ),
+            "predictive_mechanisms": predictive_mechanisms,
+            "predictive_mechanism_memory": predictive_mechanism_memory,
             "llm_decision_briefs": llm_decision_briefs,
             "llm_deliberation_focus": llm_deliberation_focus,
             "llm_deliberation_compute_value": (
@@ -1042,6 +1098,10 @@ def aggregate_online_calibration(
         "active_probe_sequential_policy_ready": (
             active_probe_sequential_policy_ready
         ),
+        "predictive_mechanisms_ready": predictive_mechanisms_ready,
+        "predictive_mechanism_memory_ready": (
+            predictive_mechanism_memory_ready
+        ),
         "opponent_information_adaptation_ready": (
             opponent_information_adaptation_ready
         ),
@@ -1067,6 +1127,7 @@ def aggregate_online_calibration(
             "Active-probe discovery memory learns only a bounded probe-forecast calibration on chronological training matches, requires held-out gain, quarantines observed-rate drift, and never rewrites the neural world model.",
             "Active-probe portfolios observe multiple horizons of one realized action with an explicit redundancy penalty; those horizons are correlated observations, not separate interventions or independent causal samples.",
             "Active-probe sequential stopping uses one raw pre-registered alternative-versus-null likelihood update per profile per match, fixed +/-log(20) boundaries, a 20-match cap, and machine-owned cross-horizon conflict review; it is predictive rather than causal and depends on the logged forecast protocol assumptions.",
+            "Predictive mechanisms are member-aligned joint event associations scored against an independence null; LLM articulation does not identify mediation or real-football causality.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",

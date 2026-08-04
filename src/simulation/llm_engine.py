@@ -543,6 +543,12 @@ Return JSON:
     "confidence": 0.5-1.0,
     "rationale": "explain the exact engine-authorized continue portfolio or stop decision; never move a boundary or choose a stopped horizon"
   }},
+  "world_model_predictive_mechanism": {{
+    "hypothesis_id": "one exact id from predictive_mechanism_design.options for the frozen action",
+    "confidence": 0.5-1.0,
+    "mechanism_statement": "plain-language articulation of the exact driver, consequence, direction, and horizon; association only",
+    "rationale": "why this member-aligned joint forecast is more informative than its independence null"
+  }},
   "opponent_information_adaptation": {{
     "prior_decision_id": "one decision_id from opponent_information_feedback.recent_resolutions",
     "adaptation_kind": "change_query_feature|change_query_horizon|repair_contingent_policy|retain_validated_query",

@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 31
+DECISION_PACKET_VERSION = 32
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -498,6 +498,7 @@ def build_coach_decision_packet(
     environment_signature: str = "environment_unspecified",
     active_learning_config: dict[str, Any] | None = None,
     active_probe_memory=None,
+    predictive_mechanism_memory=None,
     opponent_belief: dict[str, Any] | None = None,
     trajectory_branch_budget: int = 48,
 ) -> dict[str, Any]:
@@ -691,6 +692,32 @@ def build_coach_decision_packet(
                 ),
             })
         )
+        from src.match_engine.world_model.predictive_mechanism import (
+            build_predictive_mechanism_design,
+        )
+
+        predictive_mechanism_design = build_predictive_mechanism_design({
+            "team_id": str(team_id),
+            "checkpoint_signature": str(getattr(
+                runtime, "checkpoint_signature", "runtime_unspecified",
+            )),
+            "environment_signature": str(environment_signature),
+            "candidates": candidates,
+        }, evidence_memory=predictive_mechanism_memory)
+        mechanism_memory_summary_builder = getattr(
+            predictive_mechanism_memory, "summary", None,
+        )
+        predictive_mechanism_memory_summary = (
+            mechanism_memory_summary_builder()
+            if callable(mechanism_memory_summary_builder) else {
+                "version": 1, "continuing_profiles": 0,
+                "retained_profiles": 0, "eliminated_profiles": 0,
+                "retired_inconclusive_profiles": 0,
+                "reason": "no_cross_match_mechanism_memory",
+                "can_update_world_model": False,
+                "causal_interpretation": False,
+            }
+        )
         memory_summary_builder = getattr(
             active_probe_memory, "summary", None,
         )
@@ -767,6 +794,10 @@ def build_coach_decision_packet(
             "active_probe_portfolio_design": active_probe_portfolio_design,
             "active_probe_sequential_policy_design": (
                 active_probe_sequential_policy_design
+            ),
+            "predictive_mechanism_design": predictive_mechanism_design,
+            "predictive_mechanism_memory": (
+                predictive_mechanism_memory_summary
             ),
             "active_probe_discovery_memory": active_probe_memory_summary,
             "opponent_information_feedback": opponent_information_feedback,

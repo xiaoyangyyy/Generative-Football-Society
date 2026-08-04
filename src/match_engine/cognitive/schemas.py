@@ -216,6 +216,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if sequential_policy is not None:
         out["world_model_active_probe_sequential_policy"] = sequential_policy
+    from src.match_engine.world_model.predictive_mechanism import (
+        validate_llm_predictive_mechanism,
+    )
+
+    predictive_mechanism = validate_llm_predictive_mechanism(
+        plan.get("world_model_predictive_mechanism")
+    )
+    if predictive_mechanism is not None:
+        out["world_model_predictive_mechanism"] = predictive_mechanism
     from src.match_engine.world_model.opponent_information_adaptation import (
         validate_llm_opponent_information_adaptation,
     )

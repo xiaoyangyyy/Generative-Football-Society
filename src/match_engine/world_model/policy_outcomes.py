@@ -729,6 +729,39 @@ def observe_policy_intervention_outcomes(
                 )
                 if probe_score is not None:
                     outcome["llm_active_probe_evaluation"] = probe_score
+            mechanism_context = record.get(
+                "llm_predictive_mechanism_context"
+            ) or {}
+            mechanism = mechanism_context.get("hypothesis") or {}
+            if (
+                mechanism_context.get("accepted")
+                and str(mechanism.get("horizon", "")) == key
+                and str(mechanism.get("action", "")).lower()
+                == str(record.get(
+                    "intervention_actual_action", "",
+                )).lower()
+            ):
+                from src.match_engine.world_model.predictive_mechanism import (
+                    score_predictive_mechanism,
+                )
+
+                mechanism_score = score_predictive_mechanism(
+                    mechanism_context, outcome, baseline,
+                    attacking_home=attacking_home, horizon=key,
+                    realized_action=str(record.get(
+                        "intervention_actual_action", "",
+                    )),
+                    checkpoint_signature=str(record.get(
+                        "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    environment_signature=str(record.get(
+                        "environment_signature", "environment_unspecified",
+                    )),
+                )
+                if mechanism_score is not None:
+                    outcome["llm_predictive_mechanism_evaluation"] = (
+                        mechanism_score
+                    )
             regime[key] = outcome
             if censor_t is None or due_t <= float(censor_t) + 1e-9:
                 isolated[key] = outcome

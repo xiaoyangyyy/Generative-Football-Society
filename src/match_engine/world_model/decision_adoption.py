@@ -57,6 +57,7 @@ def register_coach_action_decision(
     llm_active_probe_context: dict[str, Any] | None = None,
     llm_active_probe_portfolio_context: dict[str, Any] | None = None,
     llm_active_probe_sequential_policy_context: dict[str, Any] | None = None,
+    llm_predictive_mechanism_context: dict[str, Any] | None = None,
     opponent_information_feedback_context: dict[str, Any] | None = None,
     llm_opponent_information_adaptation_context: dict[str, Any] | None = None,
     llm_decision_brief_context: dict[str, Any] | None = None,
@@ -218,6 +219,30 @@ def register_coach_action_decision(
             if nested_portfolio:
                 active_probe_portfolio_context = dict(nested_portfolio)
                 active_probe_context = {}
+    predictive_mechanism_context = dict(
+        llm_predictive_mechanism_context or {}
+    )
+    if predictive_mechanism_context:
+        from src.match_engine.world_model.predictive_mechanism import (
+            predictive_mechanism_audit_is_valid,
+        )
+
+        hypothesis = predictive_mechanism_context.get("hypothesis") or {}
+        if (
+            not predictive_mechanism_audit_is_valid(
+                predictive_mechanism_context
+            )
+            or str(predictive_mechanism_context.get("team_id"))
+            != str(team_id)
+            or str(predictive_mechanism_context.get(
+                "checkpoint_signature"
+            )) != str(checkpoint_signature)
+            or str(predictive_mechanism_context.get(
+                "environment_signature"
+            )) != str(environment_signature)
+            or str(hypothesis.get("action")) != selected
+        ):
+            predictive_mechanism_context = {}
     adaptation_context = dict(
         llm_opponent_information_adaptation_context or {}
     )
@@ -302,6 +327,7 @@ def register_coach_action_decision(
         "llm_active_probe_sequential_policy_context": (
             sequential_policy_context
         ),
+        "llm_predictive_mechanism_context": predictive_mechanism_context,
         "opponent_information_feedback_context": feedback_context,
         "llm_opponent_information_adaptation_context": adaptation_context,
         "llm_decision_brief_context": decision_brief_context,
@@ -595,6 +621,12 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.active_probe_sequential_policy_evaluation import (
         active_probe_sequential_policy_diagnostics,
     )
+    from src.match_engine.world_model.predictive_mechanism_evaluation import (
+        predictive_mechanism_diagnostics,
+    )
+    from src.match_engine.world_model.predictive_mechanism_memory import (
+        predictive_mechanism_memory_diagnostics,
+    )
     from src.match_engine.world_model.llm_decision_brief import (
         llm_decision_brief_diagnostics,
     )
@@ -627,7 +659,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 42,
+        "version": 43,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -674,6 +706,12 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         ]),
         "active_probe_sequential_policy": (
             active_probe_sequential_policy_diagnostics([records])
+        ),
+        "predictive_mechanisms": predictive_mechanism_diagnostics([records]),
+        "predictive_mechanism_memory": (
+            predictive_mechanism_memory_diagnostics([{
+                "world_model_decision_adoption": {"records": records},
+            }])
         ),
         "llm_decision_briefs": llm_decision_brief_diagnostics([records]),
         "llm_deliberation_focus": llm_deliberation_focus_diagnostics([
