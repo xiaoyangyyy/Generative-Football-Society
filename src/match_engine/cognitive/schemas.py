@@ -189,6 +189,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if meta_plan is not None:
         out["world_model_belief_space_meta_plan"] = meta_plan
+    from src.match_engine.world_model.active_probe import (
+        validate_llm_active_probe,
+    )
+
+    active_probe = validate_llm_active_probe(
+        plan.get("world_model_active_probe")
+    )
+    if active_probe is not None:
+        out["world_model_active_probe"] = active_probe
     from src.match_engine.world_model.opponent_information_adaptation import (
         validate_llm_opponent_information_adaptation,
     )

@@ -944,6 +944,69 @@ class CognitiveExecutor:
                     preference_store[str(trig.team_id)] = dict(
                         belief_space_meta_audit["compute_preference"]
                     )
+                from src.match_engine.world_model.active_learning import (
+                    build_active_learning_advice,
+                )
+                from src.match_engine.world_model.policy_outcomes import (
+                    capture_policy_outcome_baseline,
+                )
+
+                learning_context = capture_policy_outcome_baseline(
+                    state, team_id=trig.team_id,
+                )
+                learning_context["team_id"] = str(trig.team_id)
+                packet["active_learning"] = build_active_learning_advice(
+                    packet.get("candidates") or [],
+                    getattr(state, "_wm_coach_decision_adoption", None) or [],
+                    context=learning_context,
+                    config={
+                        "enabled": self.cfg.world_model_active_learning,
+                        "budget_fraction": self.cfg.world_model_exploration_budget,
+                        "max_regret": self.cfg.world_model_exploration_max_regret,
+                        "min_information_value": (
+                            self.cfg.world_model_exploration_min_information
+                        ),
+                        "intervention_scale": (
+                            self.cfg.world_model_exploration_strength_scale
+                        ),
+                    },
+                )
+                from src.match_engine.world_model.active_probe import (
+                    build_active_probe_design,
+                )
+
+                packet["active_probe_design"] = build_active_probe_design({
+                    "team_id": str(trig.team_id),
+                    "checkpoint_signature": str(packet.get(
+                        "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    "environment_signature": str(packet.get(
+                        "environment_signature", "environment_unspecified",
+                    )),
+                    "candidates": packet.get("candidates") or [],
+                    "active_learning": packet["active_learning"],
+                    "decision_context": learning_context,
+                })
+                from src.match_engine.world_model.active_probe import (
+                    evaluate_llm_active_probe,
+                )
+
+                active_probe_audit = (
+                    evaluate_llm_active_probe(
+                        packet,
+                        plan.get("world_model_active_probe"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        decision_mode=str(plan.get(
+                            "world_model_decision_mode", "exploit",
+                        )),
+                        selected_after_action_freeze=after_action_freeze,
+                    )
+                    if task_enabled("active_probe_design")
+                    else task_skipped("active_probe_design")
+                )
+                plan["world_model_active_probe_audit"] = active_probe_audit
                 from src.match_engine.world_model.opponent_information_adaptation import (
                     evaluate_llm_opponent_information_adaptation,
                 )
@@ -974,33 +1037,6 @@ class CognitiveExecutor:
                 )
                 plan["world_model_deliberation_focus_audit"] = (
                     deliberation_focus_audit
-                )
-                from src.match_engine.world_model.active_learning import (
-                    build_active_learning_advice,
-                )
-                from src.match_engine.world_model.policy_outcomes import (
-                    capture_policy_outcome_baseline,
-                )
-
-                learning_context = capture_policy_outcome_baseline(
-                    state, team_id=trig.team_id,
-                )
-                learning_context["team_id"] = str(trig.team_id)
-                packet["active_learning"] = build_active_learning_advice(
-                    packet.get("candidates") or [],
-                    getattr(state, "_wm_coach_decision_adoption", None) or [],
-                    context=learning_context,
-                    config={
-                        "enabled": self.cfg.world_model_active_learning,
-                        "budget_fraction": self.cfg.world_model_exploration_budget,
-                        "max_regret": self.cfg.world_model_exploration_max_regret,
-                        "min_information_value": (
-                            self.cfg.world_model_exploration_min_information
-                        ),
-                        "intervention_scale": (
-                            self.cfg.world_model_exploration_strength_scale
-                        ),
-                    },
                 )
             plan = _reconcile_coach_world_model_plan(
                 plan, packet,
@@ -1318,6 +1354,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "world_model_belief_space_meta_plan_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_active_probe_context=(
+                        dict(rec.plan.get(
+                            "world_model_active_probe_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_active_probe_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

@@ -226,6 +226,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-active-probe-design",
+        action="store_true",
+        help=(
+            "Require post-action pre-registered probes to execute and beat "
+            "their exploit-forecast predictive null across matches."
+        ),
+    )
+    parser.add_argument(
         "--require-opponent-information-adaptation",
         action="store_true",
         help=(
@@ -329,6 +337,7 @@ def main() -> int:
         require_belief_space_meta_planning=(
             args.require_belief_space_meta_planning
         ),
+        require_active_probe_design=args.require_active_probe_design,
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation
         ),

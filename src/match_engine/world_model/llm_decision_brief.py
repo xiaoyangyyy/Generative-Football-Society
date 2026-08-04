@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 8
+LLM_DECISION_BRIEF_VERSION = 9
 
 
 TASK_REASONING_DOMAINS = {
@@ -19,6 +19,7 @@ TASK_REASONING_DOMAINS = {
     "opponent_information_policy": "opponent_information",
     "opponent_information_query": "opponent_information",
     "belief_space_meta_planning": "compute_planning",
+    "active_probe_design": "experimental_design",
     "opponent_response_hypothesis": "opponent_game",
     "opponent_hypothesis": "opponent_belief",
     "opponent_change_claim": "opponent_belief",
@@ -287,6 +288,7 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
     ) or {}
     policy_available = bool(question_policy.get("available"))
     meta_plan = packet.get("belief_space_meta_plan") or {}
+    active_probe = packet.get("active_probe_design") or {}
     reversal = _max_temporal(
         candidates, "positive_to_negative_reversal_scenario_rate",
     )
@@ -325,6 +327,9 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
              0.20 if meta_plan.get("answer_conditioned_route_available")
              else 0.0
          ), "answer_conditioned_world_model_compute_routing"),
+        ("active_probe_design", bool(active_probe.get("available")),
+         0.88 + 0.10 * float(bool(active_probe.get("available"))),
+         "pre_registered_falsifiable_safe_exploration"),
         ("world_model_risk_preference", reversal >= 0.10 or drawdown >= 0.08,
          0.30 + 0.35 * reversal + 0.35 * min(1.0, drawdown),
          "temporal_reversal_or_drawdown"),
@@ -486,11 +491,19 @@ def _belief_space_meta_plan_brief(plan: Any) -> dict[str, Any]:
             return {}
         route = option.get("route") or {}
         compact_route = (
-            {key: value for key, value in route.items() if key != "action_values"}
+            _pick(route, (
+                "route_digest", "source_answer_feature",
+                "source_answer_branch", "target_first_actions",
+                "target_continuation_actions", "hypothesis_priority",
+                "posterior_normalized_entropy", "top_action_robust_margin",
+            ))
             if isinstance(route, dict) else {}
         )
         return {
-            **{key: value for key, value in option.items() if key != "route"},
+            **_pick(option, (
+                "option_id", "mode", "branch_evaluation_budget",
+                "expected_compute_role",
+            )),
             "route": compact_route,
         }
 
@@ -506,6 +519,26 @@ def _belief_space_meta_plan_brief(plan: Any) -> dict[str, Any]:
         "applied_option_id": str(
             (plan.get("applied_option") or {}).get("option_id", "")
         ),
+    }
+
+
+def _active_probe_design_brief(design: Any) -> dict[str, Any]:
+    if not isinstance(design, dict):
+        return {}
+    option_fields = (
+        "probe_id", "action", "horizon", "endpoint",
+        "alternative_probability", "null_probability",
+        "expected_discrimination",
+    )
+    return {
+        **_pick(design, (
+            "available", "recommended_probe_id",
+        )),
+        "options": [
+            _pick(option, option_fields)
+            for option in design.get("options") or []
+            if isinstance(option, dict)
+        ],
     }
 
 
@@ -539,6 +572,9 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
         "opponent_belief": source_packet.get("opponent_belief", {}),
         "second_order_game": source_packet.get("second_order_game", {}),
         "active_learning": source_packet.get("active_learning", {}),
+        "active_probe_design": _active_probe_design_brief(
+            source_packet.get("active_probe_design", {})
+        ),
         "opponent_information_feedback": source_packet.get(
             "opponent_information_feedback", {}
         ),

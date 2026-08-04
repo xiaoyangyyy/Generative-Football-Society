@@ -291,6 +291,12 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   choice affects only the next decision's bounded shadow rollout allocation:
   answer-conditioned routing, broad coverage, or minimum safe coverage. It can
   never change the frozen action, tactics, total cap, or schedule a future action;
+- active_probe_design turns an already-frozen safe exploration choice into a
+  pre-registered predictive experiment. Select one exact probe_id only when
+  the frozen action and decision_mode=explore match it. The probe compares a
+  world-model retention forecast with the exploit-action forecast as a null;
+  it cannot change the action or tactics, and one outcome is evidence rather
+  than a causal conclusion;
 - opponent_information_query selects one observable tactical control to monitor.
   The engine owns the 0.5 threshold, observation noise, posterior branches,
   information gain, adaptive value and ranking. A later observed answer produces
@@ -509,6 +515,11 @@ Return JSON:
     "option_id": "one exact id from belief_space_meta_plan.options",
     "confidence": 0.5-1.0,
     "rationale": "why the next decision should focus, broaden, or stop extra shadow compute"
+  }},
+  "world_model_active_probe": {{
+    "probe_id": "one exact id from active_probe_design.options",
+    "confidence": 0.5-1.0,
+    "rationale": "why this endpoint best discriminates the frozen safe exploration from its exploit null"
   }},
   "opponent_information_adaptation": {{
     "prior_decision_id": "one decision_id from opponent_information_feedback.recent_resolutions",

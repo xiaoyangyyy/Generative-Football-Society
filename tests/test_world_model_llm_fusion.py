@@ -39,6 +39,9 @@ from src.match_engine.world_model.opponent_information_policy import (
 from src.match_engine.world_model.belief_space_meta_planner import (
     belief_space_meta_plan_is_valid,
 )
+from src.match_engine.world_model.active_probe import (
+    active_probe_design_is_valid,
+)
 from src.match_engine.world_model.llm_deliberation_encouragement import (
     task_selection_value_memory_is_valid,
 )
@@ -170,6 +173,14 @@ def test_trained_runtime_builds_member_utility_frontiers_end_to_end():
     brief = build_llm_decision_brief(packet)
     assert llm_decision_brief_is_valid(brief, packet)
     assert belief_space_meta_plan_is_valid(packet["belief_space_meta_plan"])
+    assert active_probe_design_is_valid(packet["active_probe_design"])
+    compact_probe = brief["active_probe_design"]
+    assert {
+        option["probe_id"] for option in compact_probe["options"]
+    } == {
+        option["probe_id"]
+        for option in packet["active_probe_design"]["options"]
+    }
     compact_meta_plan = brief["belief_space_meta_plan"]
     assert compact_meta_plan["recommended_option_id"] in {
         option["option_id"] for option in compact_meta_plan["options"]

@@ -665,6 +665,34 @@ def observe_policy_intervention_outcomes(
                 outcome["llm_event_option_evaluation"] = option_evaluation
                 record["event_option_resolved_t_sec"] = now
                 record["event_option_expected_action"] = expected_action
+            active_probe_context = record.get(
+                "llm_active_probe_context"
+            ) or {}
+            active_probe = active_probe_context.get("probe") or {}
+            if (
+                active_probe_context.get("accepted")
+                and str(active_probe.get("horizon", "")) == key
+            ):
+                from src.match_engine.world_model.active_probe import (
+                    score_active_probe,
+                )
+
+                probe_score = score_active_probe(
+                    active_probe_context,
+                    outcome,
+                    horizon=key,
+                    realized_action=str(record.get(
+                        "intervention_actual_action", "",
+                    )),
+                    checkpoint_signature=str(record.get(
+                        "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    environment_signature=str(record.get(
+                        "environment_signature", "environment_unspecified",
+                    )),
+                )
+                if probe_score is not None:
+                    outcome["llm_active_probe_evaluation"] = probe_score
             regime[key] = outcome
             if censor_t is None or due_t <= float(censor_t) + 1e-9:
                 isolated[key] = outcome

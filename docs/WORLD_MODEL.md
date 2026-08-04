@@ -986,6 +986,35 @@ preferences across four matches, answer-conditioned routing evidence, complete
 This evaluates compute-routing fidelity, not real-world action value or causal
 match improvement.
 
+### Pre-registered active world-model probes
+
+Safe active learning now produces an `active_probe_design` whenever a bounded
+non-greedy action passes the existing regret, turnover, confidence, and rolling
+exploration-budget checks. For each compatible forecast horizon, the design
+compares that exploration action's possession-retention probability with the
+greedy action's forecast as an explicit predictive null. Options with less than
+`0.02` probability separation are discarded; the remaining options are ranked
+by Bernoulli Jensen-Shannon discrimination and carry digest-bound action,
+horizon, endpoint, regret, and falsification definitions.
+
+After the action and `explore` mode are frozen, the LLM may pre-register one
+exact option through `world_model_active_probe`. It cannot change the action,
+modify tactical controls, schedule a future action, invent an endpoint, or
+relax the original active-learning safety certificate. Execution remains in
+the existing randomized, bounded policy bridge and ordinary action sampler. If
+another action is realized or the declared horizon is not observed, the probe
+is not scored.
+
+A realized probe receives paired Brier scores and a Bernoulli log-likelihood
+ratio against its pre-registered exploit-forecast null. A negative likelihood
+ratio is a falsification signal, not permission to rewrite the model; a single
+positive result is likewise only an evidence update. The optional
+`--require-active-probe-design` gate requires at least four executed and scored
+probes across four matches, zero malformed or controlling claims, non-negative
+aggregate Brier skill and likelihood evidence, and at least 50 percent positive
+Brier skill. These diagnostics evaluate conditional predictive discrimination,
+not a real-football causal treatment effect.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same

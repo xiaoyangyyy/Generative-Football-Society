@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 27
+DECISION_PACKET_VERSION = 28
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -646,6 +646,20 @@ def build_coach_decision_packet(
             context=learning_context,
             config=active_learning_config,
         )
+        from src.match_engine.world_model.active_probe import (
+            build_active_probe_design,
+        )
+
+        active_probe_design = build_active_probe_design({
+            "team_id": str(team_id),
+            "checkpoint_signature": str(getattr(
+                runtime, "checkpoint_signature", "runtime_unspecified",
+            )),
+            "environment_signature": str(environment_signature),
+            "candidates": candidates,
+            "active_learning": active_learning,
+            "decision_context": learning_context,
+        })
         from src.match_engine.world_model.llm_deliberation_compute_value import (
             build_deliberation_compute_value_memory,
         )
@@ -704,6 +718,7 @@ def build_coach_decision_packet(
             "second_order_game": second_order_game,
             "belief_space_meta_plan": meta_plan,
             "active_learning": active_learning,
+            "active_probe_design": active_probe_design,
             "opponent_information_feedback": opponent_information_feedback,
             "deliberation_compute_value_memory": (
                 deliberation_compute_value_memory
