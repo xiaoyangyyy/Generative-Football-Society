@@ -665,12 +665,48 @@ def observe_policy_intervention_outcomes(
                 outcome["llm_event_option_evaluation"] = option_evaluation
                 record["event_option_resolved_t_sec"] = now
                 record["event_option_expected_action"] = expected_action
+            active_probe_portfolio_context = record.get(
+                "llm_active_probe_portfolio_context"
+            ) or {}
+            portfolio_probe_audit = next((
+                audit for audit in (
+                    active_probe_portfolio_context.get("probe_audits") or []
+                )
+                if str((audit.get("probe") or {}).get("horizon", "")) == key
+            ), None)
+            if (
+                active_probe_portfolio_context.get("accepted")
+                and portfolio_probe_audit is not None
+            ):
+                from src.match_engine.world_model.active_probe import (
+                    score_active_probe,
+                )
+
+                portfolio_probe_score = score_active_probe(
+                    portfolio_probe_audit,
+                    outcome,
+                    horizon=key,
+                    realized_action=str(record.get(
+                        "intervention_actual_action", "",
+                    )),
+                    checkpoint_signature=str(record.get(
+                        "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    environment_signature=str(record.get(
+                        "environment_signature", "environment_unspecified",
+                    )),
+                )
+                if portfolio_probe_score is not None:
+                    outcome["llm_active_probe_portfolio_evaluation"] = (
+                        portfolio_probe_score
+                    )
             active_probe_context = record.get(
                 "llm_active_probe_context"
             ) or {}
             active_probe = active_probe_context.get("probe") or {}
             if (
                 active_probe_context.get("accepted")
+                and not active_probe_portfolio_context.get("accepted")
                 and str(active_probe.get("horizon", "")) == key
             ):
                 from src.match_engine.world_model.active_probe import (

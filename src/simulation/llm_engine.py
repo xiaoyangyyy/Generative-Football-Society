@@ -303,6 +303,12 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   calibrated probabilities, prefer informative under-validated probes, and
   treat quarantined drift as zero authority. This memory never rewrites the
   neural forecast;
+- active_probe_portfolio_design combines one or two nonredundant horizons for
+  the same already-frozen exploration action. Select one exact portfolio_id;
+  the engine owns its observation budget, redundancy penalty, and sub-probes.
+  Multiple horizons add observations only, never another action or independent
+  causal samples. Omit world_model_active_probe when this portfolio task is
+  selected;
 - opponent_information_query selects one observable tactical control to monitor.
   The engine owns the 0.5 threshold, observation noise, posterior branches,
   information gain, adaptive value and ranking. A later observed answer produces
@@ -526,6 +532,11 @@ Return JSON:
     "probe_id": "one exact id from active_probe_design.options",
     "confidence": 0.5-1.0,
     "rationale": "why this endpoint best discriminates the frozen safe exploration from its exploit null"
+  }},
+  "world_model_active_probe_portfolio": {{
+    "portfolio_id": "one exact id from active_probe_portfolio_design.options",
+    "confidence": 0.5-1.0,
+    "rationale": "why the redundancy-adjusted observation bundle is worth its bounded budget"
   }},
   "opponent_information_adaptation": {{
     "prior_decision_id": "one decision_id from opponent_information_feedback.recent_resolutions",

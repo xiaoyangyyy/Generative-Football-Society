@@ -990,6 +990,13 @@ class CognitiveExecutor:
                     "active_learning": packet["active_learning"],
                     "decision_context": learning_context,
                 }, discovery_memory=self.active_probe_memory)
+                from src.match_engine.world_model.active_probe_portfolio import (
+                    build_active_probe_portfolio_design,
+                )
+
+                packet["active_probe_portfolio_design"] = (
+                    build_active_probe_portfolio_design(packet)
+                )
                 from src.match_engine.world_model.active_probe import (
                     evaluate_llm_active_probe,
                 )
@@ -1010,6 +1017,28 @@ class CognitiveExecutor:
                     else task_skipped("active_probe_design")
                 )
                 plan["world_model_active_probe_audit"] = active_probe_audit
+                from src.match_engine.world_model.active_probe_portfolio import (
+                    evaluate_llm_active_probe_portfolio,
+                )
+
+                active_probe_portfolio_audit = (
+                    evaluate_llm_active_probe_portfolio(
+                        packet,
+                        plan.get("world_model_active_probe_portfolio"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        decision_mode=str(plan.get(
+                            "world_model_decision_mode", "exploit",
+                        )),
+                        selected_after_action_freeze=after_action_freeze,
+                    )
+                    if task_enabled("active_probe_portfolio")
+                    else task_skipped("active_probe_portfolio")
+                )
+                plan["world_model_active_probe_portfolio_audit"] = (
+                    active_probe_portfolio_audit
+                )
                 from src.match_engine.world_model.opponent_information_adaptation import (
                     evaluate_llm_opponent_information_adaptation,
                 )
@@ -1366,6 +1395,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "world_model_active_probe_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_active_probe_portfolio_context=(
+                        dict(rec.plan.get(
+                            "world_model_active_probe_portfolio_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_active_probe_portfolio_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

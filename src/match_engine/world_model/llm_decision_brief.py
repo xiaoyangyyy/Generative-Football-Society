@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 10
+LLM_DECISION_BRIEF_VERSION = 11
 
 
 TASK_REASONING_DOMAINS = {
@@ -20,6 +20,7 @@ TASK_REASONING_DOMAINS = {
     "opponent_information_query": "opponent_information",
     "belief_space_meta_planning": "compute_planning",
     "active_probe_design": "experimental_design",
+    "active_probe_portfolio": "experimental_design",
     "opponent_response_hypothesis": "opponent_game",
     "opponent_hypothesis": "opponent_belief",
     "opponent_change_claim": "opponent_belief",
@@ -289,6 +290,9 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
     policy_available = bool(question_policy.get("available"))
     meta_plan = packet.get("belief_space_meta_plan") or {}
     active_probe = packet.get("active_probe_design") or {}
+    active_probe_portfolio = packet.get(
+        "active_probe_portfolio_design"
+    ) or {}
     active_probe_priority = max((
         _finite(option.get("experiment_priority"))
         for option in active_probe.get("options") or []
@@ -332,9 +336,14 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
              0.20 if meta_plan.get("answer_conditioned_route_available")
              else 0.0
          ), "answer_conditioned_world_model_compute_routing"),
-        ("active_probe_design", bool(active_probe.get("available")),
+        ("active_probe_portfolio", bool(active_probe_portfolio.get("available")),
          0.55 + 0.40 * active_probe_priority,
-         "pre_registered_discovery_memory_frontier"),
+         "bounded_multi_horizon_experiment_portfolio"),
+        ("active_probe_design", bool(
+            active_probe.get("available")
+            and not active_probe_portfolio.get("available")
+        ), 0.55 + 0.40 * active_probe_priority,
+         "single_probe_fallback_without_portfolio"),
         ("world_model_risk_preference", reversal >= 0.10 or drawdown >= 0.08,
          0.30 + 0.35 * reversal + 0.35 * min(1.0, drawdown),
          "temporal_reversal_or_drawdown"),
@@ -556,6 +565,26 @@ def _active_probe_design_brief(design: Any) -> dict[str, Any]:
     }
 
 
+def _active_probe_portfolio_brief(design: Any) -> dict[str, Any]:
+    if not isinstance(design, dict):
+        return {}
+    fields = (
+        "portfolio_id", "action", "probe_ids", "horizons",
+        "observation_count", "observation_budget", "redundancy_penalty",
+        "additional_observation_cost", "joint_information_value",
+    )
+    return {
+        **_pick(design, (
+            "available", "recommended_portfolio_id",
+            "maximum_probes_per_portfolio",
+        )),
+        "options": [
+            _pick(option, fields) for option in design.get("options") or []
+            if isinstance(option, dict)
+        ],
+    }
+
+
 def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
     """Project a full packet into compact exact evidence for language reasoning."""
     source_packet = {
@@ -588,6 +617,9 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
         "active_learning": source_packet.get("active_learning", {}),
         "active_probe_design": _active_probe_design_brief(
             source_packet.get("active_probe_design", {})
+        ),
+        "active_probe_portfolio_design": _active_probe_portfolio_brief(
+            source_packet.get("active_probe_portfolio_design", {})
         ),
         "active_probe_discovery_memory": _pick(
             source_packet.get("active_probe_discovery_memory", {}),

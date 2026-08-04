@@ -242,6 +242,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-active-probe-portfolios",
+        action="store_true",
+        help=(
+            "Require completed redundancy-aware multi-horizon portfolios "
+            "for one realized safe exploration action across matches."
+        ),
+    )
+    parser.add_argument(
         "--require-opponent-information-adaptation",
         action="store_true",
         help=(
@@ -348,6 +356,9 @@ def main() -> int:
         require_active_probe_design=args.require_active_probe_design,
         require_active_probe_discovery_memory=(
             args.require_active_probe_discovery_memory
+        ),
+        require_active_probe_portfolios=(
+            args.require_active_probe_portfolios
         ),
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation

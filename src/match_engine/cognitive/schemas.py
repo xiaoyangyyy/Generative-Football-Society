@@ -198,6 +198,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if active_probe is not None:
         out["world_model_active_probe"] = active_probe
+    from src.match_engine.world_model.active_probe_portfolio import (
+        validate_llm_active_probe_portfolio,
+    )
+
+    active_probe_portfolio = validate_llm_active_probe_portfolio(
+        plan.get("world_model_active_probe_portfolio")
+    )
+    if active_probe_portfolio is not None:
+        out["world_model_active_probe_portfolio"] = active_probe_portfolio
     from src.match_engine.world_model.opponent_information_adaptation import (
         validate_llm_opponent_information_adaptation,
     )

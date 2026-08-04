@@ -15,6 +15,9 @@ from src.match_engine.world_model.active_probe import (
     active_probe_audit_is_valid,
     active_probe_evaluation_is_valid,
 )
+from src.match_engine.world_model.active_probe_portfolio import (
+    active_probe_portfolio_audit_is_valid,
+)
 
 
 ACTIVE_PROBE_MEMORY_VERSION = 1
@@ -184,36 +187,55 @@ def _match_rows(
             )) != environment_signature
         ):
             continue
-        audit = record.get("llm_active_probe_context") or {}
-        if not active_probe_audit_is_valid(audit):
-            continue
-        probe = audit["probe"]
-        if str(record.get("intervention_actual_action")) != str(probe["action"]):
-            continue
-        outcome = (
-            record.get("multi_horizon_regime_outcomes") or {}
-        ).get(str(probe["horizon"])) or {}
-        evaluation = outcome.get("llm_active_probe_evaluation") or {}
-        if not active_probe_evaluation_is_valid(evaluation, audit):
-            continue
-        try:
-            raw_probability = float(evaluation.get(
-                "raw_alternative_probability",
-                evaluation["alternative_probability"],
-            ))
-            observed = 1.0 if bool(evaluation["observed_value"]) else 0.0
-        except (KeyError, TypeError, ValueError, OverflowError):
-            continue
-        if not math.isfinite(raw_probability) or not 0.0 <= raw_probability <= 1.0:
-            continue
-        key = (
-            str(probe["action"]), str(probe["null_action"]),
-            str(probe["horizon"]), str(probe["endpoint"]),
-        )
-        grouped.setdefault(key, []).append({
-            "raw_probability": raw_probability,
-            "observed": observed,
-        })
+        audit_rows = []
+        single_audit = record.get("llm_active_probe_context") or {}
+        if single_audit:
+            audit_rows.append((single_audit, "llm_active_probe_evaluation"))
+        portfolio_audit = record.get(
+            "llm_active_probe_portfolio_context"
+        ) or {}
+        if active_probe_portfolio_audit_is_valid(portfolio_audit):
+            audit_rows.extend((
+                audit, "llm_active_probe_portfolio_evaluation"
+            ) for audit in portfolio_audit["probe_audits"])
+        for audit, evaluation_key in audit_rows:
+            if not active_probe_audit_is_valid(audit):
+                continue
+            probe = audit["probe"]
+            if (
+                str(record.get("intervention_actual_action"))
+                != str(probe["action"])
+            ):
+                continue
+            outcome = (
+                record.get("multi_horizon_regime_outcomes") or {}
+            ).get(str(probe["horizon"])) or {}
+            evaluation = outcome.get(evaluation_key) or {}
+            if not active_probe_evaluation_is_valid(evaluation, audit):
+                continue
+            try:
+                raw_probability = float(evaluation.get(
+                    "raw_alternative_probability",
+                    evaluation["alternative_probability"],
+                ))
+                observed = (
+                    1.0 if bool(evaluation["observed_value"]) else 0.0
+                )
+            except (KeyError, TypeError, ValueError, OverflowError):
+                continue
+            if (
+                not math.isfinite(raw_probability)
+                or not 0.0 <= raw_probability <= 1.0
+            ):
+                continue
+            key = (
+                str(probe["action"]), str(probe["null_action"]),
+                str(probe["horizon"]), str(probe["endpoint"]),
+            )
+            grouped.setdefault(key, []).append({
+                "raw_probability": raw_probability,
+                "observed": observed,
+            })
     return grouped
 
 
@@ -372,22 +394,36 @@ def active_probe_discovery_memory_diagnostics(
                 "records"
             ) or []
         ):
-            audit = record.get("llm_active_probe_context") or {}
-            if not audit:
-                continue
-            source_audits += 1
-            if not active_probe_audit_is_valid(audit):
-                malformed_source_rows += 1
-                continue
-            probe = audit["probe"]
-            outcome = (
-                record.get("multi_horizon_regime_outcomes") or {}
-            ).get(str(probe["horizon"])) or {}
-            evaluation = outcome.get("llm_active_probe_evaluation") or {}
-            if evaluation and not active_probe_evaluation_is_valid(
-                evaluation, audit,
-            ):
-                malformed_source_rows += 1
+            audit_rows = []
+            single_audit = record.get("llm_active_probe_context") or {}
+            if single_audit:
+                audit_rows.append((
+                    single_audit, "llm_active_probe_evaluation",
+                ))
+            portfolio_audit = record.get(
+                "llm_active_probe_portfolio_context"
+            ) or {}
+            if portfolio_audit:
+                if not active_probe_portfolio_audit_is_valid(portfolio_audit):
+                    malformed_source_rows += 1
+                else:
+                    audit_rows.extend((
+                        audit, "llm_active_probe_portfolio_evaluation"
+                    ) for audit in portfolio_audit["probe_audits"])
+            for audit, evaluation_key in audit_rows:
+                source_audits += 1
+                if not active_probe_audit_is_valid(audit):
+                    malformed_source_rows += 1
+                    continue
+                probe = audit["probe"]
+                outcome = (
+                    record.get("multi_horizon_regime_outcomes") or {}
+                ).get(str(probe["horizon"])) or {}
+                evaluation = outcome.get(evaluation_key) or {}
+                if evaluation and not active_probe_evaluation_is_valid(
+                    evaluation, audit,
+                ):
+                    malformed_source_rows += 1
     scopes = sorted({
         (
             str(record.get("checkpoint_signature", "")),
@@ -401,7 +437,10 @@ def active_probe_discovery_memory_diagnostics(
                 "records"
             ) or []
         )
-        if record.get("llm_active_probe_context")
+        if (
+            record.get("llm_active_probe_context")
+            or record.get("llm_active_probe_portfolio_context")
+        )
     })
     memories = [
         compile_active_probe_discovery_memory(

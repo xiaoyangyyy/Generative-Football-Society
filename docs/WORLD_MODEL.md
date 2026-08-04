@@ -1039,6 +1039,30 @@ with at least eight matches, held-out skill of at least `0.02`, correct scope,
 and authority no greater than `0.35`. This promotes a bounded probe calibration,
 not a neural weight update or causal football law.
 
+When more than one compatible horizon exists, the engine also constructs an
+`active_probe_portfolio_design`. It enumerates every one- and two-probe bundle
+for the same exploration action. Joint value is the sum of discovery-aware
+probe priorities minus a `0.02` second-observation cost and a proximity-weighted
+redundancy penalty. Two probes with the same endpoint and nearby horizons pay
+the largest penalty; a second probe is retained only when its remaining
+marginal value is at least `0.02`. The maximum portfolio size is fixed at two.
+
+The post-action LLM selects one exact
+`world_model_active_probe_portfolio.portfolio_id`. The engine expands it into
+the underlying digest-bound probe audits; the LLM cannot replace probes,
+increase the observation budget, change the frozen exploration action, or
+schedule another action. Each declared horizon is scored once when its ordinary
+regime outcome becomes due. A portfolio is complete only when every child probe
+has a valid digest-linked evaluation. The discovery-memory compiler treats the
+child horizons as separate predictive profiles but keeps the match as the unit
+of weighting; it never presents them as independent interventions.
+
+Enable `--require-active-probe-portfolios` to require at least four completed
+portfolios across four matches, at least two completed multi-horizon bundles,
+six scored child probes, at least 80 percent observation completion, and zero
+malformed or controlling claims. Portfolio information value remains a
+redundancy-adjusted planning objective, not a causal estimate.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same

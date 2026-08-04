@@ -12,6 +12,9 @@ from src.match_engine.world_model.active_probe import (
     active_probe_audit_is_valid,
     active_probe_evaluation_is_valid,
 )
+from src.match_engine.world_model.active_probe_portfolio import (
+    active_probe_portfolio_audit_is_valid,
+)
 
 
 def active_probe_diagnostics(
@@ -26,53 +29,69 @@ def active_probe_diagnostics(
     for cluster in record_clusters:
         match_scored = 0
         for record in cluster:
-            audit = record.get("llm_active_probe_context") or {}
-            if not audit:
-                continue
-            if not active_probe_audit_is_valid(audit):
-                malformed += 1
-                continue
-            accepted += 1
-            unsafe += int(
-                audit.get("selected_after_action_freeze") is not True
-                or audit.get("can_change_current_action") is not False
-                or audit.get("can_change_tactical_controls") is not False
-                or audit.get("can_schedule_future_action") is not False
-                or audit.get("causal_interpretation") is not False
-            )
-            probe = audit["probe"]
-            action_executed = bool(
-                str(record.get("intervention_actual_action", ""))
-                == str(probe["action"])
-            )
-            executed += int(action_executed)
-            if not action_executed:
-                continue
-            outcome = (
-                record.get("multi_horizon_regime_outcomes") or {}
-            ).get(str(probe["horizon"])) or {}
-            evaluation = outcome.get("llm_active_probe_evaluation") or {}
-            if not evaluation:
-                continue
-            if not active_probe_evaluation_is_valid(evaluation, audit):
-                malformed_evaluations += 1
-                continue
-            try:
-                skill = float(evaluation["brier_skill_vs_null"])
-                log_ratio = float(
-                    evaluation["log_likelihood_ratio_vs_null"]
+            audit_rows = []
+            single_audit = record.get("llm_active_probe_context") or {}
+            if single_audit:
+                audit_rows.append((
+                    single_audit, "llm_active_probe_evaluation",
+                ))
+            portfolio_audit = record.get(
+                "llm_active_probe_portfolio_context"
+            ) or {}
+            if portfolio_audit:
+                if not active_probe_portfolio_audit_is_valid(portfolio_audit):
+                    malformed += 1
+                else:
+                    audit_rows.extend((
+                        audit, "llm_active_probe_portfolio_evaluation"
+                    ) for audit in portfolio_audit["probe_audits"])
+            for audit, evaluation_key in audit_rows:
+                if not active_probe_audit_is_valid(audit):
+                    malformed += 1
+                    continue
+                accepted += 1
+                unsafe += int(
+                    audit.get("selected_after_action_freeze") is not True
+                    or audit.get("can_change_current_action") is not False
+                    or audit.get("can_change_tactical_controls") is not False
+                    or audit.get("can_schedule_future_action") is not False
+                    or audit.get("causal_interpretation") is not False
                 )
-            except (KeyError, TypeError, ValueError, OverflowError):
-                continue
-            if not all(math.isfinite(value) for value in (skill, log_ratio)):
-                continue
-            scored += 1
-            match_scored += 1
-            brier_skills.append(skill)
-            log_ratios.append(log_ratio)
-            falsification_signals += int(bool(
-                evaluation.get("falsification_signal")
-            ))
+                probe = audit["probe"]
+                action_executed = bool(
+                    str(record.get("intervention_actual_action", ""))
+                    == str(probe["action"])
+                )
+                executed += int(action_executed)
+                if not action_executed:
+                    continue
+                outcome = (
+                    record.get("multi_horizon_regime_outcomes") or {}
+                ).get(str(probe["horizon"])) or {}
+                evaluation = outcome.get(evaluation_key) or {}
+                if not evaluation:
+                    continue
+                if not active_probe_evaluation_is_valid(evaluation, audit):
+                    malformed_evaluations += 1
+                    continue
+                try:
+                    skill = float(evaluation["brier_skill_vs_null"])
+                    log_ratio = float(
+                        evaluation["log_likelihood_ratio_vs_null"]
+                    )
+                except (KeyError, TypeError, ValueError, OverflowError):
+                    continue
+                if not all(math.isfinite(value) for value in (
+                    skill, log_ratio,
+                )):
+                    continue
+                scored += 1
+                match_scored += 1
+                brier_skills.append(skill)
+                log_ratios.append(log_ratio)
+                falsification_signals += int(bool(
+                    evaluation.get("falsification_signal")
+                ))
         matches += int(match_scored > 0)
     return {
         "version": ACTIVE_PROBE_VERSION,
