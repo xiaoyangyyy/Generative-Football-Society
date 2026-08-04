@@ -250,6 +250,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-active-probe-sequential-policy",
+        action="store_true",
+        help=(
+            "Require machine-owned sequential continue/stop decisions with "
+            "fixed evidence boundaries and conflict arbitration."
+        ),
+    )
+    parser.add_argument(
         "--require-opponent-information-adaptation",
         action="store_true",
         help=(
@@ -359,6 +367,9 @@ def main() -> int:
         ),
         require_active_probe_portfolios=(
             args.require_active_probe_portfolios
+        ),
+        require_active_probe_sequential_policy=(
+            args.require_active_probe_sequential_policy
         ),
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation

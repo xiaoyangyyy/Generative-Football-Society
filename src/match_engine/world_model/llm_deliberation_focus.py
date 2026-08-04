@@ -16,7 +16,7 @@ from src.match_engine.world_model.llm_decision_brief import (
 )
 
 
-LLM_DELIBERATION_FOCUS_VERSION = 10
+LLM_DELIBERATION_FOCUS_VERSION = 11
 TASK_CONTRACTS = {
     "opponent_hypothesis": (
         "opponent_hypothesis", "opponent_belief_audit",
@@ -64,6 +64,10 @@ TASK_CONTRACTS = {
     "active_probe_portfolio": (
         "world_model_active_probe_portfolio",
         "world_model_active_probe_portfolio_audit",
+    ),
+    "active_probe_sequential_policy": (
+        "world_model_active_probe_sequential_policy",
+        "world_model_active_probe_sequential_policy_audit",
     ),
     "opponent_information_adaptation": (
         "opponent_information_adaptation",

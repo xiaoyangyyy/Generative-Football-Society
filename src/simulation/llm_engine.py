@@ -538,6 +538,11 @@ Return JSON:
     "confidence": 0.5-1.0,
     "rationale": "why the redundancy-adjusted observation bundle is worth its bounded budget"
   }},
+  "world_model_active_probe_sequential_policy": {{
+    "policy_option_id": "one exact id from active_probe_sequential_policy_design.options",
+    "confidence": 0.5-1.0,
+    "rationale": "explain the exact engine-authorized continue portfolio or stop decision; never move a boundary or choose a stopped horizon"
+  }},
   "opponent_information_adaptation": {{
     "prior_decision_id": "one decision_id from opponent_information_feedback.recent_resolutions",
     "adaptation_kind": "change_query_feature|change_query_horizon|repair_contingent_policy|retain_validated_query",

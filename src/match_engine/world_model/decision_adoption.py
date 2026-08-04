@@ -56,6 +56,7 @@ def register_coach_action_decision(
     llm_belief_space_meta_plan_context: dict[str, Any] | None = None,
     llm_active_probe_context: dict[str, Any] | None = None,
     llm_active_probe_portfolio_context: dict[str, Any] | None = None,
+    llm_active_probe_sequential_policy_context: dict[str, Any] | None = None,
     opponent_information_feedback_context: dict[str, Any] | None = None,
     llm_opponent_information_adaptation_context: dict[str, Any] | None = None,
     llm_decision_brief_context: dict[str, Any] | None = None,
@@ -191,6 +192,32 @@ def register_coach_action_decision(
             active_probe_portfolio_context = {}
         else:
             active_probe_context = {}
+    sequential_policy_context = dict(
+        llm_active_probe_sequential_policy_context or {}
+    )
+    if sequential_policy_context:
+        from src.match_engine.world_model.active_probe_sequential_policy import (
+            active_probe_sequential_policy_audit_is_valid,
+        )
+
+        if (
+            not active_probe_sequential_policy_audit_is_valid(
+                sequential_policy_context
+            )
+            or str(sequential_policy_context.get("team_id")) != str(team_id)
+            or str(sequential_policy_context.get("checkpoint_signature"))
+            != str(checkpoint_signature)
+            or str(sequential_policy_context.get("environment_signature"))
+            != str(environment_signature)
+        ):
+            sequential_policy_context = {}
+        else:
+            nested_portfolio = sequential_policy_context.get(
+                "portfolio_audit"
+            )
+            if nested_portfolio:
+                active_probe_portfolio_context = dict(nested_portfolio)
+                active_probe_context = {}
     adaptation_context = dict(
         llm_opponent_information_adaptation_context or {}
     )
@@ -271,6 +298,9 @@ def register_coach_action_decision(
         "llm_active_probe_context": active_probe_context,
         "llm_active_probe_portfolio_context": (
             active_probe_portfolio_context
+        ),
+        "llm_active_probe_sequential_policy_context": (
+            sequential_policy_context
         ),
         "opponent_information_feedback_context": feedback_context,
         "llm_opponent_information_adaptation_context": adaptation_context,
@@ -562,6 +592,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.active_probe_portfolio_evaluation import (
         active_probe_portfolio_diagnostics,
     )
+    from src.match_engine.world_model.active_probe_sequential_policy_evaluation import (
+        active_probe_sequential_policy_diagnostics,
+    )
     from src.match_engine.world_model.llm_decision_brief import (
         llm_decision_brief_diagnostics,
     )
@@ -594,7 +627,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 41,
+        "version": 42,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -639,6 +672,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         "active_probe_portfolios": active_probe_portfolio_diagnostics([
             records
         ]),
+        "active_probe_sequential_policy": (
+            active_probe_sequential_policy_diagnostics([records])
+        ),
         "llm_decision_briefs": llm_decision_brief_diagnostics([records]),
         "llm_deliberation_focus": llm_deliberation_focus_diagnostics([
             records

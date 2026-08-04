@@ -9,6 +9,8 @@ from typing import Any
 
 
 ACTIVE_PROBE_VERSION = 2
+SEQUENTIAL_LOG_EVIDENCE_BOUNDARY = math.log(20.0)
+SEQUENTIAL_MAXIMUM_MATCHES = 20
 
 
 def _digest(payload: dict[str, Any], prefix: str) -> str:
@@ -61,6 +63,11 @@ def _memory_contract_is_valid(contract: Any) -> bool:
         authority = float(contract["authority"])
         skill = float(contract["validation_skill"])
         matches = int(contract["profile_matches"])
+        cumulative = float(contract["cumulative_log_likelihood_ratio"])
+        mean = float(contract["mean_log_likelihood_ratio"])
+        positive_boundary = float(contract["positive_log_evidence_boundary"])
+        negative_boundary = float(contract["negative_log_evidence_boundary"])
+        maximum_matches = int(contract["maximum_sequential_matches"])
     except (KeyError, TypeError, ValueError, OverflowError):
         return False
     return bool(
@@ -68,11 +75,23 @@ def _memory_contract_is_valid(contract: Any) -> bool:
         and contract.get("version") == 1
         and raw is not None and calibrated is not None
         and all(math.isfinite(value) for value in (
-            adjustment, authority, skill,
+            adjustment, authority, skill, cumulative, mean,
+            positive_boundary, negative_boundary,
         ))
         and abs(calibrated - raw - adjustment) <= 1e-9
         and 0.0 <= authority <= 0.35
         and matches >= 0
+        and abs(positive_boundary - SEQUENTIAL_LOG_EVIDENCE_BOUNDARY) <= 1e-12
+        and abs(negative_boundary + SEQUENTIAL_LOG_EVIDENCE_BOUNDARY) <= 1e-12
+        and maximum_matches == SEQUENTIAL_MAXIMUM_MATCHES
+        and abs(mean - (cumulative / matches if matches else 0.0)) <= 1e-9
+        and contract.get("sequential_status") == (
+            "stop_supported" if cumulative >= positive_boundary
+            else "stop_falsified" if cumulative <= negative_boundary
+            else "stop_inconclusive_maximum_matches"
+            if matches >= maximum_matches else "start" if matches == 0
+            else "continue"
+        )
         and bool(contract.get("active")) == (authority > 0.0)
         and (
             contract.get("status") == "active"
@@ -109,6 +128,12 @@ def _inactive_memory_contract(
         "authority": 0.0,
         "validation_skill": 0.0,
         "profile_matches": 0,
+        "cumulative_log_likelihood_ratio": 0.0,
+        "mean_log_likelihood_ratio": 0.0,
+        "sequential_status": "start",
+        "positive_log_evidence_boundary": SEQUENTIAL_LOG_EVIDENCE_BOUNDARY,
+        "negative_log_evidence_boundary": -SEQUENTIAL_LOG_EVIDENCE_BOUNDARY,
+        "maximum_sequential_matches": SEQUENTIAL_MAXIMUM_MATCHES,
         "profile_key": profile_key,
         "checkpoint_signature": str(checkpoint_signature),
         "environment_signature": str(environment_signature),

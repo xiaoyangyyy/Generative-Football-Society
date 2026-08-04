@@ -207,6 +207,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if active_probe_portfolio is not None:
         out["world_model_active_probe_portfolio"] = active_probe_portfolio
+    from src.match_engine.world_model.active_probe_sequential_policy import (
+        validate_llm_active_probe_sequential_policy,
+    )
+
+    sequential_policy = validate_llm_active_probe_sequential_policy(
+        plan.get("world_model_active_probe_sequential_policy")
+    )
+    if sequential_policy is not None:
+        out["world_model_active_probe_sequential_policy"] = sequential_policy
     from src.match_engine.world_model.opponent_information_adaptation import (
         validate_llm_opponent_information_adaptation,
     )

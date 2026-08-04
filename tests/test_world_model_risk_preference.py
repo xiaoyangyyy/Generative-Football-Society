@@ -317,7 +317,7 @@ def test_realized_preference_scores_are_recomputed_and_strictly_gated():
         logs, min_transitions=0, min_residual_samples=2,
         require_llm_risk_preferences=True,
     )
-    assert report["version"] == 41
+    assert report["version"] == 42
     assert report["llm_risk_preferences_ready"]
     assert report["gates"]["calibrated_llm_risk_preferences"]
 

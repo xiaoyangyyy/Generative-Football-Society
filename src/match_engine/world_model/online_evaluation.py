@@ -81,6 +81,9 @@ from src.match_engine.world_model.active_probe_memory import (
 from src.match_engine.world_model.active_probe_portfolio_evaluation import (
     active_probe_portfolio_diagnostics,
 )
+from src.match_engine.world_model.active_probe_sequential_policy_evaluation import (
+    active_probe_sequential_policy_diagnostics,
+)
 from src.match_engine.world_model.llm_decision_brief import (
     llm_decision_brief_diagnostics,
 )
@@ -137,6 +140,7 @@ def aggregate_online_calibration(
     require_active_probe_design: bool = False,
     require_active_probe_discovery_memory: bool = False,
     require_active_probe_portfolios: bool = False,
+    require_active_probe_sequential_policy: bool = False,
     require_opponent_information_adaptation: bool = False,
     require_llm_deliberation_focus: bool = False,
     require_llm_deliberation_compute_value: bool = False,
@@ -291,6 +295,9 @@ def aggregate_online_calibration(
     active_probe_memory = active_probe_discovery_memory_diagnostics(logs)
     active_probe_portfolios = active_probe_portfolio_diagnostics(
         policy_record_clusters
+    )
+    active_probe_sequential_policy = (
+        active_probe_sequential_policy_diagnostics(policy_record_clusters)
     )
     llm_decision_briefs = llm_decision_brief_diagnostics(
         policy_record_clusters
@@ -813,6 +820,26 @@ def aggregate_online_calibration(
         active_probe_portfolios_ready
         if require_active_probe_portfolios else True
     )
+    active_probe_sequential_policy_ready = bool(
+        active_probe_sequential_policy["accepted_policy_audits"] >= 4
+        and active_probe_sequential_policy["continue_decisions"] >= 2
+        and active_probe_sequential_policy["machine_stop_decisions"] >= 2
+        and active_probe_sequential_policy["matches"] >= 4
+        and active_probe_sequential_policy["malformed_policy_audits"] == 0
+        and active_probe_sequential_policy[
+            "boundary_compliance_violations"
+        ] == 0
+        and active_probe_sequential_policy[
+            "unsafe_action_or_tactical_authority_claims"
+        ] == 0
+        and active_probe_sequential_policy[
+            "all_decisions_post_action_non_controlling"
+        ]
+    )
+    gates["active_probe_sequential_policy"] = (
+        active_probe_sequential_policy_ready
+        if require_active_probe_sequential_policy else True
+    )
     opponent_information_adaptation_ready = bool(
         opponent_information_adaptation["realized_adaptation_scores"] >= 4
         and opponent_information_adaptation["matches"] >= 4
@@ -915,7 +942,7 @@ def aggregate_online_calibration(
         if require_llm_task_encouragement else True
     )
     return {
-        "version": 41,
+        "version": 42,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -963,6 +990,9 @@ def aggregate_online_calibration(
             "active_probe_design": active_probes,
             "active_probe_discovery_memory": active_probe_memory,
             "active_probe_portfolios": active_probe_portfolios,
+            "active_probe_sequential_policy": (
+                active_probe_sequential_policy
+            ),
             "llm_decision_briefs": llm_decision_briefs,
             "llm_deliberation_focus": llm_deliberation_focus,
             "llm_deliberation_compute_value": (
@@ -1009,6 +1039,9 @@ def aggregate_online_calibration(
             active_probe_discovery_memory_ready
         ),
         "active_probe_portfolios_ready": active_probe_portfolios_ready,
+        "active_probe_sequential_policy_ready": (
+            active_probe_sequential_policy_ready
+        ),
         "opponent_information_adaptation_ready": (
             opponent_information_adaptation_ready
         ),
@@ -1033,6 +1066,7 @@ def aggregate_online_calibration(
             "Active probes pre-register predictive comparisons after action freeze; single outcomes are evidence updates, and even randomized bridge execution does not by itself identify real-football causal effects.",
             "Active-probe discovery memory learns only a bounded probe-forecast calibration on chronological training matches, requires held-out gain, quarantines observed-rate drift, and never rewrites the neural world model.",
             "Active-probe portfolios observe multiple horizons of one realized action with an explicit redundancy penalty; those horizons are correlated observations, not separate interventions or independent causal samples.",
+            "Active-probe sequential stopping uses one raw pre-registered alternative-versus-null likelihood update per profile per match, fixed +/-log(20) boundaries, a 20-match cap, and machine-owned cross-horizon conflict review; it is predictive rather than causal and depends on the logged forecast protocol assumptions.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",

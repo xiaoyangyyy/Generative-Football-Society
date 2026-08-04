@@ -315,7 +315,7 @@ def test_randomized_task_encouragement_learns_itt_value_and_strict_gate():
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_llm_task_encouragement=True,
     )
-    assert report["version"] == 41
+    assert report["version"] == 42
     assert report["llm_task_encouragement_ready"]
     assert report["gates"]["llm_task_encouragement"]
 

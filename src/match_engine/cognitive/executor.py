@@ -997,6 +997,13 @@ class CognitiveExecutor:
                 packet["active_probe_portfolio_design"] = (
                     build_active_probe_portfolio_design(packet)
                 )
+                from src.match_engine.world_model.active_probe_sequential_policy import (
+                    build_active_probe_sequential_policy_design,
+                )
+
+                packet["active_probe_sequential_policy_design"] = (
+                    build_active_probe_sequential_policy_design(packet)
+                )
                 from src.match_engine.world_model.active_probe import (
                     evaluate_llm_active_probe,
                 )
@@ -1038,6 +1045,28 @@ class CognitiveExecutor:
                 )
                 plan["world_model_active_probe_portfolio_audit"] = (
                     active_probe_portfolio_audit
+                )
+                from src.match_engine.world_model.active_probe_sequential_policy import (
+                    evaluate_llm_active_probe_sequential_policy,
+                )
+
+                sequential_policy_audit = (
+                    evaluate_llm_active_probe_sequential_policy(
+                        packet,
+                        plan.get("world_model_active_probe_sequential_policy"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        decision_mode=str(plan.get(
+                            "world_model_decision_mode", "exploit",
+                        )),
+                        selected_after_action_freeze=after_action_freeze,
+                    )
+                    if task_enabled("active_probe_sequential_policy")
+                    else task_skipped("active_probe_sequential_policy")
+                )
+                plan["world_model_active_probe_sequential_policy_audit"] = (
+                    sequential_policy_audit
                 )
                 from src.match_engine.world_model.opponent_information_adaptation import (
                     evaluate_llm_opponent_information_adaptation,
@@ -1404,6 +1433,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "world_model_active_probe_portfolio_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_active_probe_sequential_policy_context=(
+                        dict(rec.plan.get(
+                            "world_model_active_probe_sequential_policy_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_active_probe_sequential_policy_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

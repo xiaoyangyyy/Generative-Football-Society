@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 11
+LLM_DECISION_BRIEF_VERSION = 12
 
 
 TASK_REASONING_DOMAINS = {
@@ -21,6 +21,7 @@ TASK_REASONING_DOMAINS = {
     "belief_space_meta_planning": "compute_planning",
     "active_probe_design": "experimental_design",
     "active_probe_portfolio": "experimental_design",
+    "active_probe_sequential_policy": "experimental_design",
     "opponent_response_hypothesis": "opponent_game",
     "opponent_hypothesis": "opponent_belief",
     "opponent_change_claim": "opponent_belief",
@@ -293,6 +294,9 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
     active_probe_portfolio = packet.get(
         "active_probe_portfolio_design"
     ) or {}
+    sequential_policy = packet.get(
+        "active_probe_sequential_policy_design"
+    ) or {}
     active_probe_priority = max((
         _finite(option.get("experiment_priority"))
         for option in active_probe.get("options") or []
@@ -336,7 +340,13 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
              0.20 if meta_plan.get("answer_conditioned_route_available")
              else 0.0
          ), "answer_conditioned_world_model_compute_routing"),
-        ("active_probe_portfolio", bool(active_probe_portfolio.get("available")),
+        ("active_probe_sequential_policy", bool(sequential_policy.get("available")),
+         0.62 + 0.35 * active_probe_priority,
+         "machine_bounded_sequential_continue_or_stop"),
+        ("active_probe_portfolio", bool(
+            active_probe_portfolio.get("available")
+            and not sequential_policy.get("available")
+        ),
          0.55 + 0.40 * active_probe_priority,
          "bounded_multi_horizon_experiment_portfolio"),
         ("active_probe_design", bool(
@@ -585,6 +595,26 @@ def _active_probe_portfolio_brief(design: Any) -> dict[str, Any]:
     }
 
 
+def _active_probe_sequential_policy_brief(design: Any) -> dict[str, Any]:
+    if not isinstance(design, dict):
+        return {}
+    fields = (
+        "policy_option_id", "decision", "reason", "portfolio_id",
+        "probe_ids", "evidence", "positive_log_evidence_boundary",
+        "negative_log_evidence_boundary", "maximum_matches",
+    )
+    return {
+        **_pick(design, (
+            "available", "reason", "recommended_policy_option_id",
+            "conflict_review_required", "evidence_basis",
+        )),
+        "options": [
+            _pick(option, fields) for option in design.get("options") or []
+            if isinstance(option, dict)
+        ],
+    }
+
+
 def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
     """Project a full packet into compact exact evidence for language reasoning."""
     source_packet = {
@@ -620,6 +650,11 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
         ),
         "active_probe_portfolio_design": _active_probe_portfolio_brief(
             source_packet.get("active_probe_portfolio_design", {})
+        ),
+        "active_probe_sequential_policy_design": (
+            _active_probe_sequential_policy_brief(source_packet.get(
+                "active_probe_sequential_policy_design", {}
+            ))
         ),
         "active_probe_discovery_memory": _pick(
             source_packet.get("active_probe_discovery_memory", {}),

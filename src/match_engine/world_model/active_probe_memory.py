@@ -21,6 +21,8 @@ from src.match_engine.world_model.active_probe_portfolio import (
 
 
 ACTIVE_PROBE_MEMORY_VERSION = 1
+SEQUENTIAL_LOG_EVIDENCE_BOUNDARY = math.log(20.0)
+SEQUENTIAL_MAXIMUM_MATCHES = 20
 
 
 def _digest(payload: dict[str, Any], prefix: str) -> str:
@@ -49,6 +51,9 @@ class ActiveProbeDiscoveryProfile:
     observed_rate_shift: float
     status: str
     authority: float
+    cumulative_log_likelihood_ratio: float
+    mean_log_likelihood_ratio: float
+    sequential_status: str
 
     @property
     def active(self) -> bool:
@@ -123,6 +128,24 @@ class ActiveProbeDiscoveryMemory:
                 float(profile.validation_skill) if profile is not None else 0.0
             ),
             "profile_matches": int(profile.matches) if profile else 0,
+            "cumulative_log_likelihood_ratio": (
+                float(profile.cumulative_log_likelihood_ratio)
+                if profile is not None else 0.0
+            ),
+            "mean_log_likelihood_ratio": (
+                float(profile.mean_log_likelihood_ratio)
+                if profile is not None else 0.0
+            ),
+            "sequential_status": (
+                profile.sequential_status if profile is not None else "start"
+            ),
+            "positive_log_evidence_boundary": (
+                SEQUENTIAL_LOG_EVIDENCE_BOUNDARY
+            ),
+            "negative_log_evidence_boundary": (
+                -SEQUENTIAL_LOG_EVIDENCE_BOUNDARY
+            ),
+            "maximum_sequential_matches": SEQUENTIAL_MAXIMUM_MATCHES,
             "profile_key": "|".join((
                 str(action), str(null_action), str(horizon), str(endpoint),
             )),
@@ -221,11 +244,16 @@ def _match_rows(
                 observed = (
                     1.0 if bool(evaluation["observed_value"]) else 0.0
                 )
+                null_probability = float(evaluation.get(
+                    "null_probability", probe["null_probability"],
+                ))
             except (KeyError, TypeError, ValueError, OverflowError):
                 continue
             if (
                 not math.isfinite(raw_probability)
+                or not math.isfinite(null_probability)
                 or not 0.0 <= raw_probability <= 1.0
+                or not 0.0 <= null_probability <= 1.0
             ):
                 continue
             key = (
@@ -234,6 +262,7 @@ def _match_rows(
             )
             grouped.setdefault(key, []).append({
                 "raw_probability": raw_probability,
+                "null_probability": null_probability,
                 "observed": observed,
             })
     return grouped
@@ -246,6 +275,9 @@ def _match_means(
         {
             "raw_probability": float(np.mean([
                 row["raw_probability"] for row in rows
+            ])),
+            "null_probability": float(np.mean([
+                row["null_probability"] for row in rows
             ])),
             "observed": float(np.mean([row["observed"] for row in rows])),
         }
@@ -264,6 +296,31 @@ def _brier(rows: list[dict[str, float]], offset: float) -> float:
         ) ** 2
         for row in rows
     ]))
+
+
+def _bernoulli_log_likelihood_ratio(row: dict[str, float]) -> float:
+    epsilon = 1e-6
+    alternative = min(
+        1.0 - epsilon, max(epsilon, row["raw_probability"]),
+    )
+    null = min(1.0 - epsilon, max(epsilon, row["null_probability"]))
+    observed = min(1.0, max(0.0, row["observed"]))
+    return float(
+        observed * math.log(alternative / null)
+        + (1.0 - observed) * math.log(
+            (1.0 - alternative) / (1.0 - null)
+        )
+    )
+
+
+def _sequential_status(matches: int, cumulative: float) -> str:
+    if cumulative >= SEQUENTIAL_LOG_EVIDENCE_BOUNDARY:
+        return "stop_supported"
+    if cumulative <= -SEQUENTIAL_LOG_EVIDENCE_BOUNDARY:
+        return "stop_falsified"
+    if matches >= SEQUENTIAL_MAXIMUM_MATCHES:
+        return "stop_inconclusive_maximum_matches"
+    return "start" if matches == 0 else "continue"
 
 
 def compile_active_probe_discovery_memory(
@@ -323,6 +380,14 @@ def compile_active_probe_discovery_memory(
             if status == "active" else 0.0,
             0.0, 0.35,
         ))
+        evidence_rows = _match_means(matches)
+        cumulative_log_likelihood_ratio = float(sum(
+            _bernoulli_log_likelihood_ratio(row) for row in evidence_rows
+        ))
+        mean_log_likelihood_ratio = (
+            cumulative_log_likelihood_ratio / len(evidence_rows)
+            if evidence_rows else 0.0
+        )
         profiles[key] = ActiveProbeDiscoveryProfile(
             action=key[0],
             null_action=key[1],
@@ -341,6 +406,13 @@ def compile_active_probe_discovery_memory(
             observed_rate_shift=shift,
             status=status,
             authority=authority,
+            cumulative_log_likelihood_ratio=(
+                cumulative_log_likelihood_ratio
+            ),
+            mean_log_likelihood_ratio=mean_log_likelihood_ratio,
+            sequential_status=_sequential_status(
+                len(matches), cumulative_log_likelihood_ratio,
+            ),
         )
     return ActiveProbeDiscoveryMemory(
         checkpoint_signature=str(checkpoint_signature),

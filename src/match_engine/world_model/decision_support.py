@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 30
+DECISION_PACKET_VERSION = 31
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -674,6 +674,23 @@ def build_coach_decision_packet(
             "decision_context": learning_context,
             "active_probe_design": active_probe_design,
         })
+        from src.match_engine.world_model.active_probe_sequential_policy import (
+            build_active_probe_sequential_policy_design,
+        )
+
+        active_probe_sequential_policy_design = (
+            build_active_probe_sequential_policy_design({
+                "team_id": str(team_id),
+                "checkpoint_signature": str(getattr(
+                    runtime, "checkpoint_signature", "runtime_unspecified",
+                )),
+                "environment_signature": str(environment_signature),
+                "active_probe_design": active_probe_design,
+                "active_probe_portfolio_design": (
+                    active_probe_portfolio_design
+                ),
+            })
+        )
         memory_summary_builder = getattr(
             active_probe_memory, "summary", None,
         )
@@ -748,6 +765,9 @@ def build_coach_decision_packet(
             "active_learning": active_learning,
             "active_probe_design": active_probe_design,
             "active_probe_portfolio_design": active_probe_portfolio_design,
+            "active_probe_sequential_policy_design": (
+                active_probe_sequential_policy_design
+            ),
             "active_probe_discovery_memory": active_probe_memory_summary,
             "opponent_information_feedback": opponent_information_feedback,
             "deliberation_compute_value_memory": (

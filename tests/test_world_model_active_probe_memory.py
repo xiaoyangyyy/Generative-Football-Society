@@ -1,6 +1,9 @@
 """Held-out probe discoveries calibrate only future probe forecasts."""
 
 import copy
+import math
+
+import pytest
 
 from src.match_engine.world_model.active_probe import (
     active_probe_design_is_valid,
@@ -100,6 +103,10 @@ def test_held_out_discovery_memory_calibrates_without_mutating_raw_forecast():
     assert profile.validation_matches == 4
     assert profile.validation_skill >= 0.02
     assert 0.0 < profile.authority <= 0.35
+    assert profile.cumulative_log_likelihood_ratio == pytest.approx(
+        8.0 * math.log(0.30 / 0.10)
+    )
+    assert profile.sequential_status == "stop_supported"
 
     packet = _packet()
     design = build_active_probe_design(packet, discovery_memory=memory)
@@ -162,7 +169,7 @@ def test_discovery_memory_has_an_independent_strict_online_gate():
         min_transitions=0,
         require_active_probe_discovery_memory=True,
     )
-    assert report["version"] == 41
+    assert report["version"] == 42
     assert report["active_probe_discovery_memory_ready"]
     assert report["gates"]["active_probe_discovery_memory"]
 
@@ -173,3 +180,20 @@ def test_discovery_memory_has_an_independent_strict_online_gate():
     evaluation["raw_alternative_probability"] = 0.99
     rejected = active_probe_discovery_memory_diagnostics(tampered)
     assert rejected["malformed_source_rows"] == 1
+
+
+def test_sequential_memory_stops_inconclusive_at_twenty_matches():
+    logs = [
+        _log(index < 4, index) for index in range(20)
+    ]
+    memory = compile_active_probe_discovery_memory(
+        logs, checkpoint_signature="checkpoint-a",
+        environment_signature="env-a",
+    )
+    profile = memory.profile(
+        action="pass", null_action="shot", horizon="transition",
+        endpoint="retained_possession",
+    )
+    assert profile is not None
+    assert abs(profile.cumulative_log_likelihood_ratio) < math.log(20.0)
+    assert profile.sequential_status == "stop_inconclusive_maximum_matches"

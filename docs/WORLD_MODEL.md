@@ -1063,6 +1063,31 @@ six scored child probes, at least 80 percent observation completion, and zero
 malformed or controlling claims. Portfolio information value remains a
 redundancy-adjusted planning objective, not a causal estimate.
 
+The engine now owns the cross-match stopping decision as well. For every
+action/null/horizon/endpoint profile it accumulates one Bernoulli log-likelihood
+ratio per match using the immutable raw alternative forecast against the
+pre-registered exploit null. The calibrated discovery probability is excluded
+from this statistic, so learned calibration cannot recursively manufacture
+evidence for itself. Evidence boundaries are fixed at `+/-log(20)`: the positive
+boundary stops as supported, the negative boundary stops as falsified, and an
+experiment that reaches 20 matches without crossing either boundary stops as
+inconclusive.
+
+`active_probe_sequential_policy_design` removes stopped probe families from
+every continue portfolio. If valid horizons cross opposite boundaries, it
+offers only a conflict-review stop; the LLM cannot select the favorable horizon
+and continue. Otherwise the LLM may select only an exact engine-authorized
+`policy_option_id`, which either expands to its exact bounded portfolio or
+records a stop explanation. It cannot change the current action, tactics,
+future schedule, evidence boundary, or match budget.
+
+Enable `--require-active-probe-sequential-policy` to require at least four
+accepted decisions across four matches, including two continues and two
+machine stops, with zero malformed records, boundary violations, or controlling
+claims. These likelihood ratios compare predictive forecasts under the logged
+protocol. They are not causal evidence, and optional-stopping interpretations
+still depend on the previsible-forecast and data-generation assumptions.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same
