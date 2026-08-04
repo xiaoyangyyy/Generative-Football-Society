@@ -90,6 +90,12 @@ from src.match_engine.world_model.predictive_mechanism_evaluation import (
 from src.match_engine.world_model.predictive_mechanism_memory import (
     predictive_mechanism_memory_diagnostics,
 )
+from src.match_engine.world_model.predictive_mechanism_chain_evaluation import (
+    predictive_mechanism_chain_diagnostics,
+)
+from src.match_engine.world_model.predictive_mechanism_chain_memory import (
+    predictive_mechanism_chain_memory_diagnostics,
+)
 from src.match_engine.world_model.mechanism_stress_evaluation import (
     mechanism_stress_test_diagnostics,
 )
@@ -155,6 +161,8 @@ def aggregate_online_calibration(
     require_active_probe_sequential_policy: bool = False,
     require_predictive_mechanisms: bool = False,
     require_predictive_mechanism_memory: bool = False,
+    require_predictive_mechanism_chains: bool = False,
+    require_predictive_mechanism_chain_memory: bool = False,
     require_mechanism_stress_tests: bool = False,
     require_mechanism_stress_memory: bool = False,
     require_opponent_information_adaptation: bool = False,
@@ -319,6 +327,12 @@ def aggregate_online_calibration(
         policy_record_clusters
     )
     predictive_mechanism_memory = predictive_mechanism_memory_diagnostics(logs)
+    predictive_mechanism_chains = predictive_mechanism_chain_diagnostics(
+        policy_record_clusters
+    )
+    predictive_mechanism_chain_memory = (
+        predictive_mechanism_chain_memory_diagnostics(logs)
+    )
     mechanism_stress_tests = mechanism_stress_test_diagnostics(
         policy_record_clusters
     )
@@ -906,6 +920,49 @@ def aggregate_online_calibration(
         predictive_mechanism_memory_ready
         if require_predictive_mechanism_memory else True
     )
+    predictive_mechanism_chains_ready = bool(
+        predictive_mechanism_chains["accepted_chain_audits"] >= 4
+        and predictive_mechanism_chains["executed_chain_actions"] >= 4
+        and predictive_mechanism_chains["scored_joint_outcomes"] >= 4
+        and predictive_mechanism_chains["distinct_mechanism_paths"] >= 2
+        and predictive_mechanism_chains["matches"] >= 4
+        and predictive_mechanism_chains["malformed_chain_audits"] == 0
+        and predictive_mechanism_chains["malformed_chain_scores"] == 0
+        and predictive_mechanism_chains[
+            "unsafe_action_tactical_or_learning_authority_claims"
+        ] == 0
+        and predictive_mechanism_chains[
+            "mean_log_likelihood_ratio_vs_pairwise_markov_null"
+        ] >= 0.0
+        and predictive_mechanism_chains[
+            "mean_brier_skill_vs_pairwise_markov_null"
+        ] >= 0.0
+        and predictive_mechanism_chains[
+            "positive_likelihood_evidence_rate"
+        ] >= 0.50
+        and predictive_mechanism_chains["all_chains_post_action_noncausal"]
+    )
+    gates["predictive_mechanism_chains"] = (
+        predictive_mechanism_chains_ready
+        if require_predictive_mechanism_chains else True
+    )
+    predictive_mechanism_chain_memory_ready = bool(
+        predictive_mechanism_chain_memory["resolved_profiles"] >= 1
+        and predictive_mechanism_chain_memory["resolved_profile_matches"] >= 2
+        and predictive_mechanism_chain_memory[
+            "all_checkpoint_environment_scoped"
+        ]
+        and predictive_mechanism_chain_memory["all_match_clustered"]
+        and predictive_mechanism_chain_memory[
+            "all_stopping_rules_machine_owned"
+        ]
+        and predictive_mechanism_chain_memory["can_update_world_model"] is False
+        and predictive_mechanism_chain_memory["causal_interpretation"] is False
+    )
+    gates["predictive_mechanism_chain_memory"] = (
+        predictive_mechanism_chain_memory_ready
+        if require_predictive_mechanism_chain_memory else True
+    )
     mechanism_stress_tests_ready = bool(
         mechanism_stress_tests["accepted_stress_audits"] >= 4
         and mechanism_stress_tests["executed_stress_actions"] >= 4
@@ -1047,7 +1104,7 @@ def aggregate_online_calibration(
         if require_llm_task_encouragement else True
     )
     return {
-        "version": 45,
+        "version": 46,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -1100,6 +1157,10 @@ def aggregate_online_calibration(
             ),
             "predictive_mechanisms": predictive_mechanisms,
             "predictive_mechanism_memory": predictive_mechanism_memory,
+            "predictive_mechanism_chains": predictive_mechanism_chains,
+            "predictive_mechanism_chain_memory": (
+                predictive_mechanism_chain_memory
+            ),
             "mechanism_stress_tests": mechanism_stress_tests,
             "mechanism_stress_memory": mechanism_stress_memory,
             "llm_decision_briefs": llm_decision_briefs,
@@ -1154,6 +1215,12 @@ def aggregate_online_calibration(
         "predictive_mechanisms_ready": predictive_mechanisms_ready,
         "predictive_mechanism_memory_ready": (
             predictive_mechanism_memory_ready
+        ),
+        "predictive_mechanism_chains_ready": (
+            predictive_mechanism_chains_ready
+        ),
+        "predictive_mechanism_chain_memory_ready": (
+            predictive_mechanism_chain_memory_ready
         ),
         "mechanism_stress_tests_ready": mechanism_stress_tests_ready,
         "mechanism_stress_memory_ready": mechanism_stress_memory_ready,

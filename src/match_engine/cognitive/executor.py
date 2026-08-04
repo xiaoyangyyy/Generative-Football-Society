@@ -176,6 +176,7 @@ class CognitiveExecutor:
         llm_critic_memory=None,
         active_probe_memory=None,
         predictive_mechanism_memory=None,
+        predictive_mechanism_chain_memory=None,
         mechanism_stress_memory=None,
         policy_environment_signature: str = "environment_unspecified",
     ) -> None:
@@ -189,6 +190,9 @@ class CognitiveExecutor:
         self.llm_critic_memory = llm_critic_memory
         self.active_probe_memory = active_probe_memory
         self.predictive_mechanism_memory = predictive_mechanism_memory
+        self.predictive_mechanism_chain_memory = (
+            predictive_mechanism_chain_memory
+        )
         self.mechanism_stress_memory = mechanism_stress_memory
         from src.match_engine.world_model.llm_critic import llm_critic_signature
 
@@ -552,6 +556,9 @@ class CognitiveExecutor:
                     active_probe_memory=self.active_probe_memory,
                     predictive_mechanism_memory=(
                         self.predictive_mechanism_memory
+                    ),
+                    predictive_mechanism_chain_memory=(
+                        self.predictive_mechanism_chain_memory
                     ),
                     trajectory_branch_budget=(
                         self.cfg.world_model_trajectory_branch_budget
@@ -1054,6 +1061,16 @@ class CognitiveExecutor:
                         evidence_memory=self.predictive_mechanism_memory,
                     )
                 )
+                from src.match_engine.world_model.predictive_mechanism_chain import (
+                    build_predictive_mechanism_chain_design,
+                )
+
+                packet["predictive_mechanism_chain_design"] = (
+                    build_predictive_mechanism_chain_design(
+                        packet,
+                        evidence_memory=self.predictive_mechanism_chain_memory,
+                    )
+                )
                 from src.match_engine.world_model.active_probe import (
                     evaluate_llm_active_probe,
                 )
@@ -1136,6 +1153,25 @@ class CognitiveExecutor:
                 )
                 plan["world_model_predictive_mechanism_audit"] = (
                     predictive_mechanism_audit
+                )
+                from src.match_engine.world_model.predictive_mechanism_chain import (
+                    evaluate_llm_predictive_mechanism_chain,
+                )
+
+                predictive_chain_audit = (
+                    evaluate_llm_predictive_mechanism_chain(
+                        packet,
+                        plan.get("world_model_predictive_mechanism_chain"),
+                        selected_action=str(plan.get(
+                            "world_model_action", "none",
+                        )),
+                        selected_after_action_freeze=after_action_freeze,
+                    )
+                    if task_enabled("predictive_mechanism_chain")
+                    else task_skipped("predictive_mechanism_chain")
+                )
+                plan["world_model_predictive_mechanism_chain_audit"] = (
+                    predictive_chain_audit
                 )
                 from src.match_engine.world_model.mechanism_stress_test import (
                     evaluate_llm_mechanism_stress_test,
@@ -1539,6 +1575,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "world_model_predictive_mechanism_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_predictive_mechanism_chain_context=(
+                        dict(rec.plan.get(
+                            "world_model_predictive_mechanism_chain_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_predictive_mechanism_chain_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

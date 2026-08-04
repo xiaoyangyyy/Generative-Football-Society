@@ -230,6 +230,6 @@ def test_cross_decision_route_fidelity_and_strict_gate():
         min_transitions=0,
         require_belief_space_meta_planning=True,
     )
-    assert report["version"] == 45
+    assert report["version"] == 46
     assert report["belief_space_meta_planning_ready"]
     assert report["gates"]["belief_space_meta_planning"]

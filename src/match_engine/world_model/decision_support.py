@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 34
+DECISION_PACKET_VERSION = 35
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -499,6 +499,7 @@ def build_coach_decision_packet(
     active_learning_config: dict[str, Any] | None = None,
     active_probe_memory=None,
     predictive_mechanism_memory=None,
+    predictive_mechanism_chain_memory=None,
     opponent_belief: dict[str, Any] | None = None,
     trajectory_branch_budget: int = 48,
 ) -> dict[str, Any]:
@@ -718,6 +719,34 @@ def build_coach_decision_packet(
                 "causal_interpretation": False,
             }
         )
+        from src.match_engine.world_model.predictive_mechanism_chain import (
+            build_predictive_mechanism_chain_design,
+        )
+
+        predictive_mechanism_chain_design = (
+            build_predictive_mechanism_chain_design({
+                "team_id": str(team_id),
+                "checkpoint_signature": str(getattr(
+                    runtime, "checkpoint_signature", "runtime_unspecified",
+                )),
+                "environment_signature": str(environment_signature),
+                "candidates": candidates,
+            }, evidence_memory=predictive_mechanism_chain_memory)
+        )
+        chain_memory_summary_builder = getattr(
+            predictive_mechanism_chain_memory, "summary", None,
+        )
+        predictive_mechanism_chain_memory_summary = (
+            chain_memory_summary_builder()
+            if callable(chain_memory_summary_builder) else {
+                "version": 1, "continuing_profiles": 0,
+                "retained_profiles": 0, "eliminated_profiles": 0,
+                "retired_inconclusive_profiles": 0,
+                "reason": "no_cross_match_predictive_chain_memory",
+                "can_update_world_model": False,
+                "causal_interpretation": False,
+            }
+        )
         memory_summary_builder = getattr(
             active_probe_memory, "summary", None,
         )
@@ -798,6 +827,12 @@ def build_coach_decision_packet(
             "predictive_mechanism_design": predictive_mechanism_design,
             "predictive_mechanism_memory": (
                 predictive_mechanism_memory_summary
+            ),
+            "predictive_mechanism_chain_design": (
+                predictive_mechanism_chain_design
+            ),
+            "predictive_mechanism_chain_memory": (
+                predictive_mechanism_chain_memory_summary
             ),
             "active_probe_discovery_memory": active_probe_memory_summary,
             "opponent_information_feedback": opponent_information_feedback,

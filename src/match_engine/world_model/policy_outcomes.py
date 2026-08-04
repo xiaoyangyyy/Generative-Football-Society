@@ -762,6 +762,39 @@ def observe_policy_intervention_outcomes(
                     outcome["llm_predictive_mechanism_evaluation"] = (
                         mechanism_score
                     )
+            chain_context = record.get(
+                "llm_predictive_mechanism_chain_context"
+            ) or {}
+            chain = chain_context.get("chain") or {}
+            if (
+                chain_context.get("accepted")
+                and str(chain.get("horizon", "")) == key
+                and str(chain.get("action", "")).lower()
+                == str(record.get(
+                    "intervention_actual_action", "",
+                )).lower()
+            ):
+                from src.match_engine.world_model.predictive_mechanism_chain_evaluation import (
+                    score_predictive_mechanism_chain,
+                )
+
+                chain_score = score_predictive_mechanism_chain(
+                    chain_context, outcome, baseline,
+                    attacking_home=attacking_home, horizon=key,
+                    realized_action=str(record.get(
+                        "intervention_actual_action", "",
+                    )),
+                    checkpoint_signature=str(record.get(
+                        "checkpoint_signature", "runtime_unspecified",
+                    )),
+                    environment_signature=str(record.get(
+                        "environment_signature", "environment_unspecified",
+                    )),
+                )
+                if chain_score is not None:
+                    outcome["llm_predictive_mechanism_chain_evaluation"] = (
+                        chain_score
+                    )
             stress_context = record.get(
                 "llm_mechanism_stress_test_context"
             ) or {}

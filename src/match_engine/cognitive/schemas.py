@@ -225,6 +225,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if predictive_mechanism is not None:
         out["world_model_predictive_mechanism"] = predictive_mechanism
+    from src.match_engine.world_model.predictive_mechanism_chain import (
+        validate_llm_predictive_mechanism_chain,
+    )
+
+    predictive_chain = validate_llm_predictive_mechanism_chain(
+        plan.get("world_model_predictive_mechanism_chain")
+    )
+    if predictive_chain is not None:
+        out["world_model_predictive_mechanism_chain"] = predictive_chain
     from src.match_engine.world_model.mechanism_stress_test import (
         validate_llm_mechanism_stress_test,
     )

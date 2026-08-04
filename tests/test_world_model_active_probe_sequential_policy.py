@@ -180,6 +180,6 @@ def test_sequential_policy_has_an_independent_strict_online_gate():
         logs, min_transitions=0,
         require_active_probe_sequential_policy=True,
     )
-    assert report["version"] == 45
+    assert report["version"] == 46
     assert report["active_probe_sequential_policy_ready"]
     assert report["gates"]["active_probe_sequential_policy"]

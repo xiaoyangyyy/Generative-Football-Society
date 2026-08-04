@@ -14,6 +14,7 @@ from src.match_engine.world_model.semantic_event_training import (
 from src.match_engine.world_model.state_scales import (
     FALSIFIABLE_SEMANTIC_EVENTS,
     predictive_mechanism_edges,
+    predictive_mechanism_paths,
     semantic_event_targets,
 )
 
@@ -63,6 +64,35 @@ def test_member_aligned_mechanism_projection_is_a_coherent_joint_not_marginals()
     assert edge["conditional_lift"] > 0.0
     assert edge["association_only"]
     assert not edge["causal_interpretation"]
+
+
+def test_three_event_path_preserves_dependence_beyond_pairwise_markov_edges():
+    current = np.zeros(OBS_DIM, dtype=np.float32)
+    current[200] = 0.50
+    current[-1] = 1.0
+    future = np.repeat(current[None, :], 8, axis=0)
+    future[2:4, 209] = 1.0
+    future[4:6, 200] = 0.60
+    future[6:8, 209] = 1.0
+    future[6:8, 200] = 0.70
+
+    path = predictive_mechanism_paths(
+        current, future, ensemble_trained=True,
+    )[
+        "retain_possession->positive_territorial_shift->enter_final_third"
+    ]
+
+    assert path["available"]
+    assert sum(path["joint_probabilities"].values()) == pytest.approx(1.0)
+    assert sum(path["pairwise_markov_null_probabilities"].values()) == (
+        pytest.approx(1.0)
+    )
+    assert path["conditional_mutual_information_bits"] > 0.0
+    assert path["joint_probabilities"] != (
+        path["pairwise_markov_null_probabilities"]
+    )
+    assert path["higher_order_dependence_only"]
+    assert not path["causal_interpretation"]
 
 
 def test_semantic_event_bce_keeps_member_bootstrap_routing():

@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 15
+LLM_DECISION_BRIEF_VERSION = 16
 
 
 TASK_REASONING_DOMAINS = {
@@ -23,6 +23,7 @@ TASK_REASONING_DOMAINS = {
     "active_probe_portfolio": "experimental_design",
     "active_probe_sequential_policy": "experimental_design",
     "predictive_mechanism": "mechanism_reasoning",
+    "predictive_mechanism_chain": "mechanism_reasoning",
     "mechanism_stress_test": "mechanism_reasoning",
     "opponent_response_hypothesis": "opponent_game",
     "opponent_hypothesis": "opponent_belief",
@@ -300,6 +301,7 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
         "active_probe_sequential_policy_design"
     ) or {}
     predictive_mechanism = packet.get("predictive_mechanism_design") or {}
+    predictive_chain = packet.get("predictive_mechanism_chain_design") or {}
     mechanism_stress = packet.get("mechanism_stress_test_design") or {}
     active_probe_priority = max((
         _finite(option.get("experiment_priority"))
@@ -365,6 +367,13 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
              if isinstance(row, dict)
          ), default=0.0),
          "member_grounded_joint_event_mechanism"),
+        ("predictive_mechanism_chain", bool(predictive_chain.get("available")),
+         0.50 + 0.40 * max((
+             _finite(row.get("chain_priority"))
+             for row in predictive_chain.get("options") or []
+             if isinstance(row, dict)
+         ), default=0.0),
+         "three_event_joint_vs_pairwise_markov_null"),
         ("mechanism_stress_test", bool(mechanism_stress.get("available")),
          0.52 + 0.35 * max((
              _finite(row.get("stress_priority"))
@@ -708,6 +717,56 @@ def _mechanism_stress_test_brief(design: Any) -> dict[str, Any]:
     }
 
 
+def _predictive_mechanism_chain_brief(design: Any) -> dict[str, Any]:
+    if not isinstance(design, dict):
+        return {}
+    fields = (
+        "chain_id", "action", "horizon", "first_event", "mediator_event",
+        "outcome_event", "joint_probabilities",
+        "pairwise_markov_null_probabilities",
+        "conditional_mutual_information_bits", "chain_completion_probability",
+        "null_chain_completion_probability", "ensemble_members",
+        "chain_priority", "higher_order_dependence_only",
+    )
+    def option_brief(option: dict[str, Any]) -> dict[str, Any]:
+        return {
+            **_pick(option, fields),
+            "cross_match_evidence": _pick(
+                option.get("cross_match_evidence", {}),
+                (
+                    "status", "profile_matches",
+                    "cumulative_log_likelihood_ratio",
+                    "mean_log_likelihood_ratio",
+                    "positive_log_evidence_boundary",
+                    "negative_log_evidence_boundary", "maximum_matches",
+                ),
+            ),
+        }
+    return {
+        **_pick(design, (
+            "available", "reason", "recommended_chain_id", "maximum_options",
+            "selection_scope", "null_model",
+        )),
+        "options": [
+            option_brief(option) for option in design.get("options") or []
+            if isinstance(option, dict)
+        ],
+        "resolved_chains": [
+            option_brief(option)
+            for option in design.get("resolved_chains") or []
+            if isinstance(option, dict)
+        ],
+        "chain_memory_summary": _pick(
+            design.get("chain_memory_summary", {}),
+            (
+                "version", "compatible_matches", "continuing_profiles",
+                "retained_profiles", "eliminated_profiles",
+                "retired_inconclusive_profiles", "memory_digest", "reason",
+            ),
+        ),
+    }
+
+
 def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
     """Project a full packet into compact exact evidence for language reasoning."""
     source_packet = {
@@ -754,6 +813,19 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
         ),
         "predictive_mechanism_memory": _pick(
             source_packet.get("predictive_mechanism_memory", {}),
+            (
+                "version", "compatible_matches", "continuing_profiles",
+                "retained_profiles", "eliminated_profiles",
+                "retired_inconclusive_profiles", "memory_digest", "reason",
+            ),
+        ),
+        "predictive_mechanism_chain_design": (
+            _predictive_mechanism_chain_brief(source_packet.get(
+                "predictive_mechanism_chain_design", {}
+            ))
+        ),
+        "predictive_mechanism_chain_memory": _pick(
+            source_packet.get("predictive_mechanism_chain_memory", {}),
             (
                 "version", "compatible_matches", "continuing_profiles",
                 "retained_profiles", "eliminated_profiles",

@@ -58,6 +58,7 @@ def register_coach_action_decision(
     llm_active_probe_portfolio_context: dict[str, Any] | None = None,
     llm_active_probe_sequential_policy_context: dict[str, Any] | None = None,
     llm_predictive_mechanism_context: dict[str, Any] | None = None,
+    llm_predictive_mechanism_chain_context: dict[str, Any] | None = None,
     llm_mechanism_stress_test_context: dict[str, Any] | None = None,
     opponent_information_feedback_context: dict[str, Any] | None = None,
     llm_opponent_information_adaptation_context: dict[str, Any] | None = None,
@@ -244,6 +245,27 @@ def register_coach_action_decision(
             or str(hypothesis.get("action")) != selected
         ):
             predictive_mechanism_context = {}
+    predictive_chain_context = dict(
+        llm_predictive_mechanism_chain_context or {}
+    )
+    if predictive_chain_context:
+        from src.match_engine.world_model.predictive_mechanism_chain import (
+            predictive_mechanism_chain_audit_is_valid,
+        )
+
+        chain = predictive_chain_context.get("chain") or {}
+        if (
+            not predictive_mechanism_chain_audit_is_valid(
+                predictive_chain_context
+            )
+            or str(predictive_chain_context.get("team_id")) != str(team_id)
+            or str(predictive_chain_context.get("checkpoint_signature"))
+            != str(checkpoint_signature)
+            or str(predictive_chain_context.get("environment_signature"))
+            != str(environment_signature)
+            or str(chain.get("action")) != selected
+        ):
+            predictive_chain_context = {}
     mechanism_stress_context = dict(llm_mechanism_stress_test_context or {})
     if mechanism_stress_context:
         from src.match_engine.world_model.mechanism_stress_test import (
@@ -348,6 +370,7 @@ def register_coach_action_decision(
             sequential_policy_context
         ),
         "llm_predictive_mechanism_context": predictive_mechanism_context,
+        "llm_predictive_mechanism_chain_context": predictive_chain_context,
         "llm_mechanism_stress_test_context": mechanism_stress_context,
         "opponent_information_feedback_context": feedback_context,
         "llm_opponent_information_adaptation_context": adaptation_context,
@@ -648,6 +671,12 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.predictive_mechanism_memory import (
         predictive_mechanism_memory_diagnostics,
     )
+    from src.match_engine.world_model.predictive_mechanism_chain_evaluation import (
+        predictive_mechanism_chain_diagnostics,
+    )
+    from src.match_engine.world_model.predictive_mechanism_chain_memory import (
+        predictive_mechanism_chain_memory_diagnostics,
+    )
     from src.match_engine.world_model.mechanism_stress_evaluation import (
         mechanism_stress_test_diagnostics,
     )
@@ -686,7 +715,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 45,
+        "version": 46,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -737,6 +766,14 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         "predictive_mechanisms": predictive_mechanism_diagnostics([records]),
         "predictive_mechanism_memory": (
             predictive_mechanism_memory_diagnostics([{
+                "world_model_decision_adoption": {"records": records},
+            }])
+        ),
+        "predictive_mechanism_chains": (
+            predictive_mechanism_chain_diagnostics([records])
+        ),
+        "predictive_mechanism_chain_memory": (
+            predictive_mechanism_chain_memory_diagnostics([{
                 "world_model_decision_adoption": {"records": records},
             }])
         ),

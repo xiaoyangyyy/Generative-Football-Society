@@ -16,7 +16,7 @@ from src.match_engine.world_model.llm_decision_brief import (
 )
 
 
-LLM_DELIBERATION_FOCUS_VERSION = 13
+LLM_DELIBERATION_FOCUS_VERSION = 14
 TASK_CONTRACTS = {
     "opponent_hypothesis": (
         "opponent_hypothesis", "opponent_belief_audit",
@@ -72,6 +72,10 @@ TASK_CONTRACTS = {
     "predictive_mechanism": (
         "world_model_predictive_mechanism",
         "world_model_predictive_mechanism_audit",
+    ),
+    "predictive_mechanism_chain": (
+        "world_model_predictive_mechanism_chain",
+        "world_model_predictive_mechanism_chain_audit",
     ),
     "mechanism_stress_test": (
         "world_model_mechanism_stress_test",

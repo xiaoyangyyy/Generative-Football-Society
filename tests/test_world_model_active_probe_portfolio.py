@@ -229,7 +229,7 @@ def test_portfolio_gate_and_discovery_memory_use_all_valid_subprobes():
         require_active_probe_design=True,
         require_active_probe_portfolios=True,
     )
-    assert report["version"] == 45
+    assert report["version"] == 46
     assert report["active_probe_portfolios_ready"]
     assert report["active_probe_design_ready"]
     assert report["gates"]["active_probe_design"]

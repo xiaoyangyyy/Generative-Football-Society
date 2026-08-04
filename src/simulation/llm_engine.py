@@ -549,6 +549,12 @@ Return JSON:
     "mechanism_statement": "plain-language articulation of the exact driver, consequence, direction, and horizon; association only",
     "rationale": "why this member-aligned joint forecast is more informative than its independence null"
   }},
+  "world_model_predictive_mechanism_chain": {{
+    "chain_id": "one exact id from predictive_mechanism_chain_design.options for the frozen action",
+    "confidence": 0.5-1.0,
+    "mediator_statement": "describe the exact first-middle-third predictive dependence without claiming causality",
+    "rationale": "why the full joint may outperform the adjacent-pair Markov null"
+  }},
   "world_model_mechanism_stress_test": {{
     "stress_test_id": "one exact id from the post-action mechanism_stress_test_design.options",
     "confidence": 0.5-1.0,

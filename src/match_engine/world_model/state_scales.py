@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import numpy as np
@@ -9,7 +10,7 @@ import numpy as np
 from src.match_engine.world_model.observation import OBS_DIM
 
 
-STATE_SCALE_VERSION = 4
+STATE_SCALE_VERSION = 5
 FALSIFIABLE_SEMANTIC_EVENTS = (
     "retain_possession",
     "enter_final_third",
@@ -27,6 +28,17 @@ PREDICTIVE_MECHANISM_EDGES = (
     ("retain_possession", "enter_final_third"),
     ("positive_territorial_shift", "enter_final_third"),
     ("enter_final_third", "improve_scoreline"),
+)
+PREDICTIVE_MECHANISM_PATHS = (
+    (
+        "retain_possession", "positive_territorial_shift",
+        "enter_final_third",
+    ),
+    (
+        "positive_territorial_shift", "enter_final_third",
+        "improve_scoreline",
+    ),
+    ("retain_possession", "enter_final_third", "improve_scoreline"),
 )
 
 
@@ -195,6 +207,86 @@ def predictive_mechanism_edges(
                 outcome_given_driver - outcome_without_driver
             ),
             "association_only": True,
+            "causal_interpretation": False,
+        }
+    return rows
+
+
+def predictive_mechanism_paths(
+    current_observations: Any,
+    future_member_observations: Any,
+    *,
+    ensemble_trained: bool,
+) -> dict[str, dict[str, Any]]:
+    """Project three-event joints against their pairwise Markov factorization."""
+    indicators = semantic_event_member_indicators(
+        current_observations, future_member_observations,
+    )
+    if indicators.shape[1] != 1:
+        raise ValueError("mechanism-path projection requires one current state")
+    events = indicators[:, 0, :] >= 0.5
+    indices = {
+        event: index for index, event in enumerate(FALSIFIABLE_SEMANTIC_EVENTS)
+    }
+    rows = {}
+    for first, mediator, outcome in PREDICTIVE_MECHANISM_PATHS:
+        values = [
+            events[:, indices[event]] for event in (first, mediator, outcome)
+        ]
+        counts = {
+            f"a{a}_b{b}_c{c}": int(np.sum(
+                (values[0] == bool(a))
+                & (values[1] == bool(b))
+                & (values[2] == bool(c))
+            ))
+            for a in (0, 1) for b in (0, 1) for c in (0, 1)
+        }
+        denominator = len(events) + 4.0
+        joint = {
+            key: float((count + 0.5) / denominator)
+            for key, count in counts.items()
+        }
+        ab = {
+            (a, b): sum(joint[f"a{a}_b{b}_c{c}"] for c in (0, 1))
+            for a in (0, 1) for b in (0, 1)
+        }
+        bc = {
+            (b, c): sum(joint[f"a{a}_b{b}_c{c}"] for a in (0, 1))
+            for b in (0, 1) for c in (0, 1)
+        }
+        b_probability = {
+            b: sum(ab[(a, b)] for a in (0, 1)) for b in (0, 1)
+        }
+        markov = {
+            f"a{a}_b{b}_c{c}": float(
+                ab[(a, b)] * bc[(b, c)] / b_probability[b]
+            )
+            for a in (0, 1) for b in (0, 1) for c in (0, 1)
+        }
+        conditional_information = sum(
+            joint[key] * math.log(joint[key] / markov[key])
+            for key in joint
+        ) / math.log(2.0)
+        chain_completion = joint["a1_b1_c1"]
+        rows[f"{first}->{mediator}->{outcome}"] = {
+            "first_event": first,
+            "mediator_event": mediator,
+            "outcome_event": outcome,
+            "available": bool(ensemble_trained and len(events) >= 2),
+            "reason": (
+                "member_aligned_three_event_projection" if ensemble_trained
+                and len(events) >= 2 else "trained_transition_ensemble_required"
+            ),
+            "ensemble_members": int(len(events)),
+            "cell_counts": counts,
+            "joint_probabilities": joint,
+            "pairwise_markov_null_probabilities": markov,
+            "conditional_mutual_information_bits": float(
+                max(0.0, conditional_information)
+            ),
+            "chain_completion_probability": float(chain_completion),
+            "null_chain_completion_probability": float(markov["a1_b1_c1"]),
+            "higher_order_dependence_only": True,
             "causal_interpretation": False,
         }
     return rows
@@ -469,6 +561,10 @@ def multiscale_state_forecast(
         current.reshape(1, -1), samples[:, None, :],
         ensemble_trained=ensemble_trained,
     )
+    mechanism_paths = predictive_mechanism_paths(
+        current.reshape(1, -1), samples[:, None, :],
+        ensemble_trained=ensemble_trained,
+    )
     events["relieve_ball_pressure"] = (
         _smoothed_probability(future_pressure <= current_pressure - 0.05)
         if ensemble_trained else 0.5
@@ -513,6 +609,7 @@ def multiscale_state_forecast(
         },
         "semantic_event_probabilities": events,
         "predictive_mechanism_edges": mechanism_edges,
+        "predictive_mechanism_paths": mechanism_paths,
         "trajectory_modes": trajectory_modes,
         "claims": {
             "observed": False,

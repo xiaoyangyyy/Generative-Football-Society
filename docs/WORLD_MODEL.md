@@ -1176,6 +1176,48 @@ Use `--require-mechanism-stress-memory` to require at least one machine-resolved
 profile with checkpoint/environment isolation, match clustering, exact stopping
 rules, and zero action, learning, or causal authority.
 
+### Compositional predictive mechanism chains
+
+The transition ensemble also emits three-event paths from the same member
+trajectory, such as retention -> territorial gain -> final-third entry. For
+each declared path it preserves the complete eight-cell distribution over the
+three event truth values. Its comparison distribution is a first-order Markov
+factorization constructed from the path's adjacent `A,B` and `B,C` marginals:
+`P(A,B) P(C|B)`. The null therefore keeps both adjacent predictive edges while
+removing only residual dependence between the first and third event conditional
+on the middle event.
+
+Conditional mutual information `I(A;C|B)` ranks paths whose full joint contains
+useful higher-order structure. This is deliberately stronger than joining three
+separate marginal forecasts and more specific than the existing two-event
+independence tournament. It is still a predictive comparison: the middle event
+is a semantic mediator in the chain description, not an identified causal
+mediator.
+
+The engine owns the exact event order, joint and Markov-null distributions,
+horizon, frozen action, and immutable digest. After action freeze the LLM may
+select one exact `chain_id` and articulate why the middle event matters. It
+cannot invent or reorder events, modify probabilities, control the current or a
+future action, update model weights, or make a causal claim. A natural future
+outcome resolves all three semantic events and scores the observed one of eight
+cells with categorical log likelihood and Brier skill against the Markov null.
+
+`PredictiveMechanismChainMemory` clusters repeated observations by match and
+profile, so multiple rows from one match contribute only their mean. Profiles
+are isolated by checkpoint, environment, action, horizon, and all three ordered
+events. Fixed `+/-log(20)` sequential boundaries retain higher-order dependence
+or eliminate the path as Markov-sufficient; unresolved paths retire after 20
+matches. Resolved paths leave the active LLM menu while their original
+preregistered forecasts remain unchanged.
+
+Use `--require-predictive-mechanism-chains` to require four executed and scored
+chains across four matches, two distinct paths, non-negative mean likelihood
+and Brier gain, at least 50 percent positive likelihood evidence, and no
+malformed or controlling claims. Add
+`--require-predictive-mechanism-chain-memory` to require at least one
+machine-resolved, checkpoint/environment-scoped, match-clustered profile with
+the exact stopping rule.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same
@@ -1451,5 +1493,7 @@ python scripts/evaluate_online_world_model.py \
   --require-llm-contrastive-repair \
   --require-llm-risk-certificates \
   --require-llm-distributional-decisions \
-  --require-llm-risk-preferences
+  --require-llm-risk-preferences \
+  --require-predictive-mechanism-chains \
+  --require-predictive-mechanism-chain-memory
 ```

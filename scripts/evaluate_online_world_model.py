@@ -274,6 +274,22 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-predictive-mechanism-chains",
+        action="store_true",
+        help=(
+            "Require three-event joint paths to outperform their adjacent-"
+            "pair first-order Markov null across matches."
+        ),
+    )
+    parser.add_argument(
+        "--require-predictive-mechanism-chain-memory",
+        action="store_true",
+        help=(
+            "Require a machine-resolved, match-clustered higher-order chain "
+            "profile under checkpoint/environment isolation."
+        ),
+    )
+    parser.add_argument(
         "--require-mechanism-stress-tests",
         action="store_true",
         help=(
@@ -408,6 +424,12 @@ def main() -> int:
         ),
         require_predictive_mechanism_memory=(
             args.require_predictive_mechanism_memory
+        ),
+        require_predictive_mechanism_chains=(
+            args.require_predictive_mechanism_chains
+        ),
+        require_predictive_mechanism_chain_memory=(
+            args.require_predictive_mechanism_chain_memory
         ),
         require_mechanism_stress_tests=(
             args.require_mechanism_stress_tests
