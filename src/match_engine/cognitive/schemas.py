@@ -180,6 +180,15 @@ def validate_coach_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     )
     if information_policy is not None:
         out["opponent_information_policy"] = information_policy
+    from src.match_engine.world_model.belief_space_meta_planner import (
+        validate_llm_belief_space_meta_plan,
+    )
+
+    meta_plan = validate_llm_belief_space_meta_plan(
+        plan.get("world_model_belief_space_meta_plan")
+    )
+    if meta_plan is not None:
+        out["world_model_belief_space_meta_plan"] = meta_plan
     from src.match_engine.world_model.opponent_information_adaptation import (
         validate_llm_opponent_information_adaptation,
     )

@@ -286,6 +286,11 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   threshold. When this policy is available, omit the legacy
   opponent_information_query contract. A stop is an explicit audited decision,
   not a missing answer;
+- belief_space_meta_plan unifies information use with future model computation.
+  Select one exact option_id through world_model_belief_space_meta_plan. The
+  choice affects only the next decision's bounded shadow rollout allocation:
+  answer-conditioned routing, broad coverage, or minimum safe coverage. It can
+  never change the frozen action, tactics, total cap, or schedule a future action;
 - opponent_information_query selects one observable tactical control to monitor.
   The engine owns the 0.5 threshold, observation noise, posterior branches,
   information gain, adaptive value and ranking. A later observed answer produces
@@ -499,6 +504,11 @@ Return JSON:
     "proposal_id": "required for ask and empty for stop; follow opponent_information_cognitive_policy for the frozen action",
     "confidence": 0.5-1.0,
     "rationale": "why marginal information value justifies asking or stopping"
+  }},
+  "world_model_belief_space_meta_plan": {{
+    "option_id": "one exact id from belief_space_meta_plan.options",
+    "confidence": 0.5-1.0,
+    "rationale": "why the next decision should focus, broaden, or stop extra shadow compute"
   }},
   "opponent_information_adaptation": {{
     "prior_decision_id": "one decision_id from opponent_information_feedback.recent_resolutions",

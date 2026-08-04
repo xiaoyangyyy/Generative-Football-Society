@@ -330,7 +330,7 @@ def test_randomized_prior_learns_value_without_current_record_leakage():
         logs, min_transitions=0,
         require_llm_deliberation_compute_value=True,
     )
-    assert report["version"] == 37
+    assert report["version"] == 38
     assert report["llm_deliberation_compute_value_ready"]
     assert report["gates"]["llm_deliberation_compute_value"]
 

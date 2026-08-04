@@ -166,10 +166,32 @@ def build_predicted_state_continuations(
     horizon_s: float,
     uncertainty_penalty: float,
     max_branch_evaluations: int = 48,
+    belief_space_route: dict[str, Any] | None = None,
 ) -> tuple[dict[str, dict[str, dict[str, float]]], dict[str, Any]]:
     """Return first-action/continuation/hypothesis values and an audit."""
     validation_gate = _gate(runtime)
     budget = max(0, min(112, int(max_branch_evaluations)))
+    route = dict(belief_space_route or {})
+    target_first = {
+        str(action) for action in route.get("target_first_actions") or []
+    }
+    target_continuations = {
+        str(action)
+        for action in route.get("target_continuation_actions") or []
+    }
+    hypothesis_priority = [
+        str(name) for name in route.get("hypothesis_priority") or []
+        if str(name) in OPPONENT_HYPOTHESES
+    ]
+    route_valid = bool(
+        route
+        and target_first
+        and target_continuations
+        and hypothesis_priority
+        and target_first <= {str(row.get("action")) for row in candidates}
+        and target_continuations
+        <= {str(row.get("action")) for row in candidates}
+    )
     base_audit = {
         "version": TRAJECTORY_GAME_VERSION,
         "validation_gate": validation_gate,
@@ -178,6 +200,8 @@ def build_predicted_state_continuations(
         "model_calls": 0,
         "evaluated_hypotheses_per_branch": 0,
         "fallback_values": 0,
+        "belief_space_route_applied": route_valid,
+        "belief_space_route": route if route_valid else {},
         "causal_interpretation": False,
     }
     if runtime is None or not validation_gate["active"]:
@@ -198,10 +222,33 @@ def build_predicted_state_continuations(
             "active": False,
             "reason": "insufficient_compute_budget",
         }
-    hypothesis_count = min(
-        len(OPPONENT_HYPOTHESES),
-        max(1, budget // (len(eligible) * len(eligible))),
+    pair_count = len(eligible) * len(eligible)
+    default_hypothesis_count = min(
+        len(OPPONENT_HYPOTHESES), max(1, budget // pair_count),
     )
+    pair_allocations = {
+        (str(first["action"]), str(continuation["action"])): (
+            1 if route_valid else default_hypothesis_count
+        )
+        for first in eligible for continuation in eligible
+    }
+    if route_valid:
+        remaining = budget - pair_count
+        ordered_pairs = sorted(pair_allocations, key=lambda pair: (
+            -(int(pair[0] in target_first) + int(
+                pair[1] in target_continuations
+            )),
+            pair[0], pair[1],
+        ))
+        for pair in ordered_pairs:
+            if remaining <= 0:
+                break
+            addition = min(
+                remaining,
+                len(OPPONENT_HYPOTHESES) - pair_allocations[pair],
+            )
+            pair_allocations[pair] += addition
+            remaining -= addition
     matrices: dict[str, dict[str, dict[str, float]]] = {}
     evaluations = successful_evaluations = successful_pairs = 0
     model_calls = fallback_values = 0
@@ -235,15 +282,21 @@ def build_predicted_state_continuations(
             1.0,
         ), 0.0, 1.0))
         response = first["opponent_response_prediction"]["response_posterior"]
-        hypotheses = sorted(
+        default_hypotheses = sorted(
             OPPONENT_HYPOTHESES,
             key=lambda name: float(response.get(name, 0.0)),
             reverse=True,
-        )[:hypothesis_count]
+        )
         branch_matrix: dict[str, dict[str, float]] = {}
         branch_value_shifts: list[float] = []
         for continuation in eligible:
             continuation_action = str(continuation["action"])
+            hypothesis_count = pair_allocations[
+                (first_action, continuation_action)
+            ]
+            hypotheses = list(dict.fromkeys(
+                hypothesis_priority + default_hypotheses
+            ))[:hypothesis_count]
             proxy = dict(continuation["opponent_hypothesis_values"])
             values = dict(proxy)
             successes_before = successful_evaluations
@@ -328,6 +381,19 @@ def build_predicted_state_continuations(
         "model_calls": model_calls,
         "first_state_rollouts": first_rollout_calls,
         "evaluated_hypotheses_per_branch": hypothesis_count,
+        "minimum_evaluated_hypotheses_per_branch": min(
+            pair_allocations.values(), default=0,
+        ),
+        "maximum_evaluated_hypotheses_per_branch": max(
+            pair_allocations.values(), default=0,
+        ),
+        "routed_branch_evaluations": sum(
+            count for (first_action, continuation_action), count
+            in pair_allocations.items()
+            if first_action in target_first
+            or continuation_action in target_continuations
+        ) if route_valid else 0,
+        "broad_coverage_pairs": len(pair_allocations),
         "fallback_values": fallback_values,
         "value_blend_authority_cap": float(validation_gate["authority"]),
         "state_source": "world_model_predicted_next_observation",

@@ -36,6 +36,9 @@ from src.match_engine.world_model.opponent_information_query import (
 from src.match_engine.world_model.opponent_information_policy import (
     opponent_information_cognitive_policy_is_valid,
 )
+from src.match_engine.world_model.belief_space_meta_planner import (
+    belief_space_meta_plan_is_valid,
+)
 from src.match_engine.world_model.llm_deliberation_encouragement import (
     task_selection_value_memory_is_valid,
 )
@@ -166,6 +169,18 @@ def test_trained_runtime_builds_member_utility_frontiers_end_to_end():
 
     brief = build_llm_decision_brief(packet)
     assert llm_decision_brief_is_valid(brief, packet)
+    assert belief_space_meta_plan_is_valid(packet["belief_space_meta_plan"])
+    compact_meta_plan = brief["belief_space_meta_plan"]
+    assert compact_meta_plan["recommended_option_id"] in {
+        option["option_id"] for option in compact_meta_plan["options"]
+    }
+    assert compact_meta_plan["applied_option_id"] == (
+        packet["belief_space_meta_plan"]["applied_option"]["option_id"]
+    )
+    assert all(
+        "action_values" not in (option.get("route") or {})
+        for option in compact_meta_plan["options"]
+    )
     assert len(json.dumps(brief)) < 0.70 * len(json.dumps(packet))
     assert [row["action"] for row in brief["candidates"]] == [
         row["action"] for row in packet["candidates"]

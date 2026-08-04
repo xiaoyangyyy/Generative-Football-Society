@@ -916,6 +916,34 @@ class CognitiveExecutor:
                 plan["opponent_information_query_audit"] = (
                     information_query_audit
                 )
+                from src.match_engine.world_model.belief_space_meta_planner import (
+                    evaluate_llm_belief_space_meta_plan,
+                )
+
+                belief_space_meta_audit = (
+                    evaluate_llm_belief_space_meta_plan(
+                        packet,
+                        plan.get("world_model_belief_space_meta_plan"),
+                        selected_after_action_freeze=after_action_freeze,
+                    )
+                    if task_enabled("belief_space_meta_planning")
+                    else task_skipped("belief_space_meta_planning")
+                )
+                plan["world_model_belief_space_meta_plan_audit"] = (
+                    belief_space_meta_audit
+                )
+                if belief_space_meta_audit.get("accepted") and trig.team_id:
+                    preference_store = getattr(
+                        state, "_wm_belief_space_compute_preferences", None,
+                    )
+                    if preference_store is None:
+                        preference_store = {}
+                        state._wm_belief_space_compute_preferences = (
+                            preference_store
+                        )
+                    preference_store[str(trig.team_id)] = dict(
+                        belief_space_meta_audit["compute_preference"]
+                    )
                 from src.match_engine.world_model.opponent_information_adaptation import (
                     evaluate_llm_opponent_information_adaptation,
                 )
@@ -1281,6 +1309,15 @@ class CognitiveExecutor:
                         ) or {})
                         if (rec.plan.get(
                             "opponent_information_policy_audit"
+                        ) or {}).get("accepted")
+                        else {}
+                    ),
+                    llm_belief_space_meta_plan_context=(
+                        dict(rec.plan.get(
+                            "world_model_belief_space_meta_plan_audit"
+                        ) or {})
+                        if (rec.plan.get(
+                            "world_model_belief_space_meta_plan_audit"
                         ) or {}).get("accepted")
                         else {}
                     ),

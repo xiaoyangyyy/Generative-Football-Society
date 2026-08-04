@@ -16,7 +16,7 @@ from src.match_engine.world_model.llm_decision_brief import (
 )
 
 
-LLM_DELIBERATION_FOCUS_VERSION = 7
+LLM_DELIBERATION_FOCUS_VERSION = 8
 TASK_CONTRACTS = {
     "opponent_hypothesis": (
         "opponent_hypothesis", "opponent_belief_audit",
@@ -53,6 +53,10 @@ TASK_CONTRACTS = {
     "opponent_information_policy": (
         "opponent_information_policy",
         "opponent_information_policy_audit",
+    ),
+    "belief_space_meta_planning": (
+        "world_model_belief_space_meta_plan",
+        "world_model_belief_space_meta_plan_audit",
     ),
     "opponent_information_adaptation": (
         "opponent_information_adaptation",

@@ -69,6 +69,9 @@ from src.match_engine.world_model.opponent_information_adaptation_evaluation imp
 from src.match_engine.world_model.opponent_information_policy import (
     opponent_information_policy_diagnostics,
 )
+from src.match_engine.world_model.belief_space_meta_planner_evaluation import (
+    belief_space_meta_planner_diagnostics,
+)
 from src.match_engine.world_model.llm_decision_brief import (
     llm_decision_brief_diagnostics,
 )
@@ -121,6 +124,7 @@ def aggregate_online_calibration(
     require_opponent_information_queries: bool = False,
     require_world_model_question_loop: bool = False,
     require_multi_round_question_policy: bool = False,
+    require_belief_space_meta_planning: bool = False,
     require_opponent_information_adaptation: bool = False,
     require_llm_deliberation_focus: bool = False,
     require_llm_deliberation_compute_value: bool = False,
@@ -266,6 +270,9 @@ def aggregate_online_calibration(
         opponent_information_adaptation_diagnostics(logs)
     )
     opponent_information_policy = opponent_information_policy_diagnostics(
+        policy_record_clusters
+    )
+    belief_space_meta_planning = belief_space_meta_planner_diagnostics(
         policy_record_clusters
     )
     llm_decision_briefs = llm_decision_brief_diagnostics(
@@ -702,6 +709,32 @@ def aggregate_online_calibration(
         multi_round_question_policy_ready
         if require_multi_round_question_policy else True
     )
+    belief_space_meta_planning_ready = bool(
+        belief_space_meta_planning["accepted_meta_plan_audits"] >= 4
+        and belief_space_meta_planning[
+            "applied_next_decision_preferences"
+        ] >= 4
+        and belief_space_meta_planning["matches"] >= 4
+        and belief_space_meta_planning[
+            "answer_conditioned_routes_applied"
+        ] >= 2
+        and belief_space_meta_planning["malformed_meta_plan_audits"] == 0
+        and belief_space_meta_planning["compute_budget_violations"] == 0
+        and belief_space_meta_planning["broad_coverage_failures"] == 0
+        and belief_space_meta_planning[
+            "unsafe_action_or_tactical_authority_claims"
+        ] == 0
+        and belief_space_meta_planning[
+            "match_clustered_route_application_rate"
+        ] >= 0.80
+        and belief_space_meta_planning[
+            "all_compute_preferences_post_action_non_controlling"
+        ]
+    )
+    gates["belief_space_meta_planning"] = (
+        belief_space_meta_planning_ready
+        if require_belief_space_meta_planning else True
+    )
     opponent_information_adaptation_ready = bool(
         opponent_information_adaptation["realized_adaptation_scores"] >= 4
         and opponent_information_adaptation["matches"] >= 4
@@ -804,7 +837,7 @@ def aggregate_online_calibration(
         if require_llm_task_encouragement else True
     )
     return {
-        "version": 37,
+        "version": 38,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -848,6 +881,7 @@ def aggregate_online_calibration(
                 opponent_information_adaptation
             ),
             "opponent_information_policy": opponent_information_policy,
+            "belief_space_meta_planning": belief_space_meta_planning,
             "llm_decision_briefs": llm_decision_briefs,
             "llm_deliberation_focus": llm_deliberation_focus,
             "llm_deliberation_compute_value": (
@@ -888,6 +922,7 @@ def aggregate_online_calibration(
         ),
         "world_model_question_loop_ready": world_model_question_loop_ready,
         "multi_round_question_policy_ready": multi_round_question_policy_ready,
+        "belief_space_meta_planning_ready": belief_space_meta_planning_ready,
         "opponent_information_adaptation_ready": (
             opponent_information_adaptation_ready
         ),
@@ -908,6 +943,7 @@ def aggregate_online_calibration(
             "Task encouragement is post-action intention-to-treat over two shadow tasks; it cannot establish match-outcome value.",
             "Question answers update future query calibration and reasoning, while live opponent belief uses the underlying observation exactly once.",
             "Multi-round question policies optimize bounded shadow information acquisition; stop/continue value is not a match-outcome causal effect.",
+            "Belief-space meta-planning routes only future bounded shadow rollouts; route fidelity does not establish real-world decision value.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",

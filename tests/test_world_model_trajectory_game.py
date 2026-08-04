@@ -109,6 +109,37 @@ def test_validated_search_reencodes_and_scores_from_predicted_state_with_budget(
     )
 
 
+def test_answer_conditioned_route_preserves_broad_coverage_and_focuses_budget():
+    runtime = _ValidatedRuntime()
+    observation = np.zeros(307, dtype=np.float32)
+    observation[200:202] = [0.50, 0.50]
+    route = {
+        "target_first_actions": ["shot", "pass"],
+        "target_continuation_actions": ["shot", "pass"],
+        "hypothesis_priority": list(reversed(OPPONENT_HYPOTHESES)),
+        "route_digest": "belief-space-compute-route:test",
+    }
+    matrices, audit = build_predicted_state_continuations(
+        runtime,
+        observation,
+        _candidates(),
+        attacking_home=True,
+        horizon_s=10.0,
+        uncertainty_penalty=0.25,
+        max_branch_evaluations=32,
+        belief_space_route=route,
+    )
+
+    assert audit["active"]
+    assert audit["belief_space_route_applied"]
+    assert audit["branch_evaluations"] == 32
+    assert audit["broad_coverage_pairs"] == 16
+    assert audit["minimum_evaluated_hypotheses_per_branch"] == 1
+    assert audit["maximum_evaluated_hypotheses_per_branch"] > 1
+    assert audit["routed_branch_evaluations"] > 16
+    assert set(matrices) == {"hold", "pass", "cross", "shot"}
+
+
 def test_closed_two_step_gate_performs_no_rollout_and_keeps_proxy():
     class Closed(_ValidatedRuntime):
         def two_step_planning_gate(self):

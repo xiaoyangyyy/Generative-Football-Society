@@ -39,6 +39,9 @@ from tests.test_world_model_llm_fusion import _Runtime, _state
 
 def _experimental_packet(nonce=0):
     packet = build_coach_decision_packet(_Runtime(), _state(), "Home")
+    # Isolate the event-option/contrastive encouragement experiment from the
+    # independent belief-space meta-planning task introduced later.
+    packet.pop("belief_space_meta_plan", None)
     packet["second_order_game"]["trajectory_rollout"]["active"] = True
     for index, candidate in enumerate(packet["candidates"]):
         candidate["risk_adjusted_value"] = [1.0, 0.92, 0.5, 0.4][index]
@@ -117,7 +120,10 @@ def test_executor_freezes_action_and_preserves_two_stage_audit_in_cache(
                 "controls_delta": {"risk_budget": 0.15},
                 "world_model_action": "shot",
                 "world_model_deliberation_focus": {
-                    "tasks": ["opponent_information_policy"],
+                    "tasks": [
+                        "opponent_information_policy",
+                        "belief_space_meta_planning",
+                    ],
                     "confidence": 0.8,
                     "rationale": "Resolve opponent uncertainty.",
                 },
@@ -126,6 +132,13 @@ def test_executor_freezes_action_and_preserves_two_stage_audit_in_cache(
                     "proposal_id": proposal["proposal_id"],
                     "confidence": 0.8,
                     "rationale": "Select the model-proposed information query.",
+                },
+                "world_model_belief_space_meta_plan": {
+                    "option_id": facts[
+                        "world_model_shadow_deliberation_brief"
+                    ]["belief_space_meta_plan"]["recommended_option_id"],
+                    "confidence": 0.8,
+                    "rationale": "Route only the next decision's shadow compute.",
                 },
             })
 
@@ -138,13 +151,14 @@ def test_executor_freezes_action_and_preserves_two_stage_audit_in_cache(
         executor = CognitiveExecutor(
             config, llm, world_model_runtime=_Runtime(),
         )
+        state = _state()
         result = executor.process_trigger(CognitiveTriggerEvent(
             60.0, "xg_swing", ENTITY_TIER_COACH,
             "coach:Home", team_id="Home", salience=1.0,
-        ), _state())
-        return result
+        ), state)
+        return result, state
 
-    first = run_once()
+    first, first_state = run_once()
     assert first.plan["world_model_action"] == "pass"
     assert first.plan["controls_delta"] == {"risk_budget": 0.02}
     audit = first.plan["world_model_deliberation_encouragement_audit"]
@@ -162,10 +176,22 @@ def test_executor_freezes_action_and_preserves_two_stage_audit_in_cache(
     assert query_audit["question_selection"][
         "llm_selected_after_action_freeze"
     ]
+    meta_audit = first.plan["world_model_belief_space_meta_plan_audit"]
+    assert meta_audit["accepted"]
+    assert first_state._wm_belief_space_compute_preferences["Home"] == (
+        meta_audit["compute_preference"]
+    )
+    first_state.clock_seconds = 70.0
+    next_packet = build_coach_decision_packet(
+        _Runtime(), first_state, "Home",
+    )
+    assert next_packet["belief_space_meta_plan"]["preference_status"] == (
+        "prior_llm_compute_preference_applied"
+    )
     assert llm.main_calls == 1
     assert llm.shadow_calls == 1
 
-    cached = run_once()
+    cached, _cached_state = run_once()
     assert cached.cached
     assert cached.plan["world_model_action"] == "pass"
     assert cached.plan[
@@ -289,7 +315,7 @@ def test_randomized_task_encouragement_learns_itt_value_and_strict_gate():
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_llm_task_encouragement=True,
     )
-    assert report["version"] == 37
+    assert report["version"] == 38
     assert report["llm_task_encouragement_ready"]
     assert report["gates"]["llm_task_encouragement"]
 

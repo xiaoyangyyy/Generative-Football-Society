@@ -11,13 +11,14 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 7
+LLM_DECISION_BRIEF_VERSION = 8
 
 
 TASK_REASONING_DOMAINS = {
     "opponent_information_adaptation": "opponent_information",
     "opponent_information_policy": "opponent_information",
     "opponent_information_query": "opponent_information",
+    "belief_space_meta_planning": "compute_planning",
     "opponent_response_hypothesis": "opponent_game",
     "opponent_hypothesis": "opponent_belief",
     "opponent_change_claim": "opponent_belief",
@@ -285,6 +286,7 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
         "opponent_information_cognitive_policy"
     ) or {}
     policy_available = bool(question_policy.get("available"))
+    meta_plan = packet.get("belief_space_meta_plan") or {}
     reversal = _max_temporal(
         candidates, "positive_to_negative_reversal_scenario_rate",
     )
@@ -318,6 +320,11 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
         ("opponent_information_query", not policy_available and entropy >= 0.25,
          0.35 + 0.40 * entropy + 0.20 * ambiguity,
          "legacy_opponent_belief_uncertainty"),
+        ("belief_space_meta_planning", bool(meta_plan.get("available")),
+         0.50 + 0.25 * ambiguity + (
+             0.20 if meta_plan.get("answer_conditioned_route_available")
+             else 0.0
+         ), "answer_conditioned_world_model_compute_routing"),
         ("world_model_risk_preference", reversal >= 0.10 or drawdown >= 0.08,
          0.30 + 0.35 * reversal + 0.35 * min(1.0, drawdown),
          "temporal_reversal_or_drawdown"),
@@ -469,6 +476,39 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _belief_space_meta_plan_brief(plan: Any) -> dict[str, Any]:
+    """Keep exact selectable options without duplicating audit-only estimates."""
+    if not isinstance(plan, dict):
+        return {}
+
+    def compact_option(option: Any) -> dict[str, Any]:
+        if not isinstance(option, dict):
+            return {}
+        route = option.get("route") or {}
+        compact_route = (
+            {key: value for key, value in route.items() if key != "action_values"}
+            if isinstance(route, dict) else {}
+        )
+        return {
+            **{key: value for key, value in option.items() if key != "route"},
+            "route": compact_route,
+        }
+
+    return {
+        **_pick(plan, (
+            "version", "available", "answer_conditioned_route_available",
+            "answer_evidence_digest", "answer_metrics",
+            "recommended_option_id", "preference_status", "selection_scope",
+        )),
+        "options": [
+            compact_option(option) for option in plan.get("options") or []
+        ],
+        "applied_option_id": str(
+            (plan.get("applied_option") or {}).get("option_id", "")
+        ),
+    }
+
+
 def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
     """Project a full packet into compact exact evidence for language reasoning."""
     source_packet = {
@@ -507,6 +547,9 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
         ),
         "opponent_information_cognitive_policy": source_packet.get(
             "opponent_information_cognitive_policy", {}
+        ),
+        "belief_space_meta_plan": _belief_space_meta_plan_brief(
+            source_packet.get("belief_space_meta_plan", {})
         ),
         "deliberation_compute_value_memory": source_packet.get(
             "deliberation_compute_value_memory", {}

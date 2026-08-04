@@ -53,6 +53,7 @@ def register_coach_action_decision(
     llm_risk_preference_context: dict[str, Any] | None = None,
     llm_opponent_information_query_context: dict[str, Any] | None = None,
     llm_opponent_information_policy_context: dict[str, Any] | None = None,
+    llm_belief_space_meta_plan_context: dict[str, Any] | None = None,
     opponent_information_feedback_context: dict[str, Any] | None = None,
     llm_opponent_information_adaptation_context: dict[str, Any] | None = None,
     llm_decision_brief_context: dict[str, Any] | None = None,
@@ -133,6 +134,18 @@ def register_coach_action_decision(
             == "stop" and information_query_context
         ):
             information_policy_context = {}
+    belief_space_meta_context = dict(
+        llm_belief_space_meta_plan_context or {}
+    )
+    if belief_space_meta_context:
+        from src.match_engine.world_model.belief_space_meta_planner import (
+            belief_space_meta_plan_audit_is_valid,
+        )
+
+        if not belief_space_meta_plan_audit_is_valid(
+            belief_space_meta_context
+        ):
+            belief_space_meta_context = {}
     adaptation_context = dict(
         llm_opponent_information_adaptation_context or {}
     )
@@ -209,6 +222,7 @@ def register_coach_action_decision(
         ),
         "llm_opponent_information_query_context": information_query_context,
         "llm_opponent_information_policy_context": information_policy_context,
+        "llm_belief_space_meta_plan_context": belief_space_meta_context,
         "opponent_information_feedback_context": feedback_context,
         "llm_opponent_information_adaptation_context": adaptation_context,
         "llm_decision_brief_context": decision_brief_context,
@@ -490,6 +504,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.opponent_information_policy import (
         opponent_information_policy_diagnostics,
     )
+    from src.match_engine.world_model.belief_space_meta_planner_evaluation import (
+        belief_space_meta_planner_diagnostics,
+    )
     from src.match_engine.world_model.llm_decision_brief import (
         llm_decision_brief_diagnostics,
     )
@@ -522,7 +539,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 37,
+        "version": 38,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -559,6 +576,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         ),
         "opponent_information_policy": (
             opponent_information_policy_diagnostics([records])
+        ),
+        "belief_space_meta_planning": (
+            belief_space_meta_planner_diagnostics([records])
         ),
         "llm_decision_briefs": llm_decision_brief_diagnostics([records]),
         "llm_deliberation_focus": llm_deliberation_focus_diagnostics([

@@ -472,7 +472,7 @@ def test_resolved_answers_drive_second_question_then_budgeted_stop():
         min_transitions=0,
         require_multi_round_question_policy=True,
     )
-    assert report["version"] == 37
+    assert report["version"] == 38
     assert report["multi_round_question_policy_ready"]
     assert report["gates"]["multi_round_question_policy"]
 
@@ -581,7 +581,7 @@ def test_cross_match_query_diagnostics_and_strict_readiness_gate():
         require_opponent_information_queries=True,
         require_world_model_question_loop=True,
     )
-    assert report["version"] == 37
+    assert report["version"] == 38
     assert report["opponent_information_queries_ready"]
     assert report["gates"]["opponent_information_queries"]
     assert report["world_model_question_loop_ready"]

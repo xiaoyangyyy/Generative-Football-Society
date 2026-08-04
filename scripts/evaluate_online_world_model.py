@@ -218,6 +218,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-belief-space-meta-planning",
+        action="store_true",
+        help=(
+            "Require answer-conditioned LLM compute preferences to be applied "
+            "on the next decision with exact route, budget, and broad coverage."
+        ),
+    )
+    parser.add_argument(
         "--require-opponent-information-adaptation",
         action="store_true",
         help=(
@@ -317,6 +325,9 @@ def main() -> int:
         ),
         require_multi_round_question_policy=(
             args.require_multi_round_question_policy
+        ),
+        require_belief_space_meta_planning=(
+            args.require_belief_space_meta_planning
         ),
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation

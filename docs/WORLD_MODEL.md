@@ -956,6 +956,36 @@ Enable `--require-multi-round-question-policy` to make those properties a strict
 readiness gate. Information value remains a shadow epistemic objective, not a
 causal estimate of match outcomes.
 
+### Answer-conditioned belief-space compute routing
+
+Resolved answers can now determine which counterfactual futures receive the
+next decision's fixed world-model rollout budget. The
+`belief_space_meta_plan` projects the answer posterior through every action's
+opponent-hypothesis values, ranks robust actions, and constructs three exact
+compute options: answer-conditioned routing, broad routing, or minimum safe
+coverage. Focused routing always preserves at least one hypothesis evaluation
+for every first-action/continuation pair; only the remaining budget is
+concentrated on the two most decision-relevant actions and the most probable
+answer-conditioned hypotheses.
+
+The post-action LLM selects one exact option through
+`world_model_belief_space_meta_plan`. Its digest-bound preference is scoped to
+the same team, checkpoint, and policy environment, expires after 300 simulated
+seconds, and is applied only when constructing the following decision packet.
+It cannot retroactively change the frozen action, alter tactics, enlarge the
+trajectory cap, or schedule a future football action. A stale answer route is
+rejected if the next packet's validated answer-conditioned route has changed.
+
+Trajectory audits expose the applied route, fixed budget, minimum and maximum
+hypotheses per branch, routed evaluation count, and broad-coverage pair count.
+Cross-decision diagnostics then match each LLM preference to the next naturally
+created coach decision and verify exact route and budget fidelity. Enable
+`--require-belief-space-meta-planning` to require at least four applied
+preferences across four matches, answer-conditioned routing evidence, complete
+16-pair coverage, no budget violation, and no action or tactical authority.
+This evaluates compute-routing fidelity, not real-world action value or causal
+match improvement.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same

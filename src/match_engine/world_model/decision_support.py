@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 26
+DECISION_PACKET_VERSION = 27
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -567,6 +567,50 @@ def build_coach_decision_packet(
             horizon_s=horizon_s,
             uncertainty_penalty=uncertainty_penalty,
         )
+        from src.match_engine.world_model.policy_outcomes import (
+            capture_policy_outcome_baseline,
+        )
+        from src.match_engine.world_model.opponent_information_feedback import (
+            build_opponent_information_feedback,
+        )
+
+        learning_context = capture_policy_outcome_baseline(
+            state, team_id=team_id,
+        )
+        learning_context["team_id"] = str(team_id)
+        opponent_information_feedback = build_opponent_information_feedback(
+            getattr(state, "_wm_coach_decision_adoption", None) or [],
+            team_id=str(team_id),
+            checkpoint_signature=str(getattr(
+                runtime, "checkpoint_signature", "runtime_unspecified",
+            )),
+            environment_signature=str(environment_signature),
+            as_of_t_sec=float(getattr(state, "clock_seconds", 0.0)),
+        )
+        from src.match_engine.world_model.belief_space_meta_planner import (
+            build_belief_space_meta_plan,
+        )
+
+        preference_store = getattr(
+            state, "_wm_belief_space_compute_preferences", None,
+        ) or {}
+        meta_plan = build_belief_space_meta_plan(
+            {
+                "team_id": str(team_id),
+                "checkpoint_signature": str(getattr(
+                    runtime, "checkpoint_signature", "runtime_unspecified",
+                )),
+                "environment_signature": str(environment_signature),
+                "candidates": candidates,
+                "opponent_information_feedback": (
+                    opponent_information_feedback
+                ),
+                "decision_context": learning_context,
+            },
+            default_branch_budget=trajectory_branch_budget,
+            stored_preference=preference_store.get(str(team_id)),
+        )
+        applied_compute = meta_plan["applied_option"]
         second_order_game = attach_second_order_game(
             candidates,
             opponent_belief,
@@ -579,7 +623,12 @@ def build_coach_decision_packet(
             attacking_home=(team_id == state.home.team_id),
             horizon_s=horizon_s,
             uncertainty_penalty=uncertainty_penalty,
-            max_branch_evaluations=trajectory_branch_budget,
+            max_branch_evaluations=int(
+                applied_compute["branch_evaluation_budget"]
+            ),
+            belief_space_route=(
+                applied_compute.get("route") or None
+            ),
         )
         second_order_game = attach_second_order_game(
             candidates,
@@ -591,32 +640,11 @@ def build_coach_decision_packet(
         from src.match_engine.world_model.active_learning import (
             build_active_learning_advice,
         )
-        from src.match_engine.world_model.policy_outcomes import (
-            capture_policy_outcome_baseline,
-        )
-
-        learning_context = capture_policy_outcome_baseline(
-            state, team_id=team_id,
-        )
-        learning_context["team_id"] = str(team_id)
         active_learning = build_active_learning_advice(
             candidates,
             getattr(state, "_wm_coach_decision_adoption", None) or [],
             context=learning_context,
             config=active_learning_config,
-        )
-        from src.match_engine.world_model.opponent_information_feedback import (
-            build_opponent_information_feedback,
-        )
-
-        opponent_information_feedback = build_opponent_information_feedback(
-            getattr(state, "_wm_coach_decision_adoption", None) or [],
-            team_id=str(team_id),
-            checkpoint_signature=str(getattr(
-                runtime, "checkpoint_signature", "runtime_unspecified",
-            )),
-            environment_signature=str(environment_signature),
-            as_of_t_sec=float(getattr(state, "clock_seconds", 0.0)),
         )
         from src.match_engine.world_model.llm_deliberation_compute_value import (
             build_deliberation_compute_value_memory,
@@ -674,6 +702,7 @@ def build_coach_decision_packet(
             "distributional_action_frontiers": distributional_frontiers,
             "opponent_belief": opponent_belief,
             "second_order_game": second_order_game,
+            "belief_space_meta_plan": meta_plan,
             "active_learning": active_learning,
             "opponent_information_feedback": opponent_information_feedback,
             "deliberation_compute_value_memory": (
