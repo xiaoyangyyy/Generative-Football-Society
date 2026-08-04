@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 28
+DECISION_PACKET_VERSION = 29
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -497,6 +497,7 @@ def build_coach_decision_packet(
     residual_memory=None,
     environment_signature: str = "environment_unspecified",
     active_learning_config: dict[str, Any] | None = None,
+    active_probe_memory=None,
     opponent_belief: dict[str, Any] | None = None,
     trajectory_branch_budget: int = 48,
 ) -> dict[str, Any]:
@@ -659,7 +660,21 @@ def build_coach_decision_packet(
             "candidates": candidates,
             "active_learning": active_learning,
             "decision_context": learning_context,
-        })
+        }, discovery_memory=active_probe_memory)
+        memory_summary_builder = getattr(
+            active_probe_memory, "summary", None,
+        )
+        active_probe_memory_summary = (
+            memory_summary_builder()
+            if callable(memory_summary_builder) else {
+                "version": 1,
+                "active_profiles": 0,
+                "quarantined_profiles": 0,
+                "reason": "no_cross_match_discovery_memory",
+                "can_update_world_model": False,
+                "causal_interpretation": False,
+            }
+        )
         from src.match_engine.world_model.llm_deliberation_compute_value import (
             build_deliberation_compute_value_memory,
         )
@@ -719,6 +734,7 @@ def build_coach_decision_packet(
             "belief_space_meta_plan": meta_plan,
             "active_learning": active_learning,
             "active_probe_design": active_probe_design,
+            "active_probe_discovery_memory": active_probe_memory_summary,
             "opponent_information_feedback": opponent_information_feedback,
             "deliberation_compute_value_memory": (
                 deliberation_compute_value_memory

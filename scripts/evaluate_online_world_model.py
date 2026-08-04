@@ -234,6 +234,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-active-probe-discovery-memory",
+        action="store_true",
+        help=(
+            "Require chronologically held-out active-probe calibration gain "
+            "with bounded authority and checkpoint/environment isolation."
+        ),
+    )
+    parser.add_argument(
         "--require-opponent-information-adaptation",
         action="store_true",
         help=(
@@ -338,6 +346,9 @@ def main() -> int:
             args.require_belief_space_meta_planning
         ),
         require_active_probe_design=args.require_active_probe_design,
+        require_active_probe_discovery_memory=(
+            args.require_active_probe_discovery_memory
+        ),
         require_opponent_information_adaptation=(
             args.require_opponent_information_adaptation
         ),

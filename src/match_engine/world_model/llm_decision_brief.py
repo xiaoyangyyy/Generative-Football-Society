@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 9
+LLM_DECISION_BRIEF_VERSION = 10
 
 
 TASK_REASONING_DOMAINS = {
@@ -289,6 +289,11 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
     policy_available = bool(question_policy.get("available"))
     meta_plan = packet.get("belief_space_meta_plan") or {}
     active_probe = packet.get("active_probe_design") or {}
+    active_probe_priority = max((
+        _finite(option.get("experiment_priority"))
+        for option in active_probe.get("options") or []
+        if isinstance(option, dict)
+    ), default=0.0)
     reversal = _max_temporal(
         candidates, "positive_to_negative_reversal_scenario_rate",
     )
@@ -328,8 +333,8 @@ def _deliberation_agenda(packet: dict[str, Any]) -> dict[str, Any]:
              else 0.0
          ), "answer_conditioned_world_model_compute_routing"),
         ("active_probe_design", bool(active_probe.get("available")),
-         0.88 + 0.10 * float(bool(active_probe.get("available"))),
-         "pre_registered_falsifiable_safe_exploration"),
+         0.55 + 0.40 * active_probe_priority,
+         "pre_registered_discovery_memory_frontier"),
         ("world_model_risk_preference", reversal >= 0.10 or drawdown >= 0.08,
          0.30 + 0.35 * reversal + 0.35 * min(1.0, drawdown),
          "temporal_reversal_or_drawdown"),
@@ -525,17 +530,26 @@ def _belief_space_meta_plan_brief(plan: Any) -> dict[str, Any]:
 def _active_probe_design_brief(design: Any) -> dict[str, Any]:
     if not isinstance(design, dict):
         return {}
-    option_fields = (
-        "probe_id", "action", "horizon", "endpoint",
-        "alternative_probability", "null_probability",
-        "expected_discrimination",
-    )
+    def compact_option(option: dict[str, Any]) -> dict[str, Any]:
+        memory = option.get("discovery_memory") or {}
+        return {
+            **_pick(option, (
+                "probe_id", "action", "horizon", "endpoint",
+                "raw_alternative_probability", "alternative_probability",
+                "null_probability", "expected_discrimination",
+                "experiment_priority",
+            )),
+            "discovery_memory": _pick(memory, (
+                "active", "status", "calibration_adjustment", "authority",
+                "validation_skill", "profile_matches", "profile_key",
+            )),
+        }
     return {
         **_pick(design, (
             "available", "recommended_probe_id",
         )),
         "options": [
-            _pick(option, option_fields)
+            compact_option(option)
             for option in design.get("options") or []
             if isinstance(option, dict)
         ],
@@ -574,6 +588,14 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
         "active_learning": source_packet.get("active_learning", {}),
         "active_probe_design": _active_probe_design_brief(
             source_packet.get("active_probe_design", {})
+        ),
+        "active_probe_discovery_memory": _pick(
+            source_packet.get("active_probe_discovery_memory", {}),
+            (
+                "version", "active_profiles", "quarantined_profiles",
+                "maximum_authority", "compatible_matches", "memory_digest",
+                "reason",
+            ),
         ),
         "opponent_information_feedback": source_packet.get(
             "opponent_information_feedback", {}

@@ -75,6 +75,9 @@ from src.match_engine.world_model.belief_space_meta_planner_evaluation import (
 from src.match_engine.world_model.active_probe_evaluation import (
     active_probe_diagnostics,
 )
+from src.match_engine.world_model.active_probe_memory import (
+    active_probe_discovery_memory_diagnostics,
+)
 from src.match_engine.world_model.llm_decision_brief import (
     llm_decision_brief_diagnostics,
 )
@@ -129,6 +132,7 @@ def aggregate_online_calibration(
     require_multi_round_question_policy: bool = False,
     require_belief_space_meta_planning: bool = False,
     require_active_probe_design: bool = False,
+    require_active_probe_discovery_memory: bool = False,
     require_opponent_information_adaptation: bool = False,
     require_llm_deliberation_focus: bool = False,
     require_llm_deliberation_compute_value: bool = False,
@@ -280,6 +284,7 @@ def aggregate_online_calibration(
         policy_record_clusters
     )
     active_probes = active_probe_diagnostics(policy_record_clusters)
+    active_probe_memory = active_probe_discovery_memory_diagnostics(logs)
     llm_decision_briefs = llm_decision_brief_diagnostics(
         policy_record_clusters
     )
@@ -760,6 +765,22 @@ def aggregate_online_calibration(
     gates["active_probe_design"] = (
         active_probe_design_ready if require_active_probe_design else True
     )
+    active_probe_discovery_memory_ready = bool(
+        active_probe_memory["active_profiles"] >= 1
+        and active_probe_memory["active_profile_matches"] >= 8
+        and active_probe_memory["minimum_active_validation_skill"] >= 0.02
+        and active_probe_memory["maximum_authority"] <= 0.35
+        and active_probe_memory["malformed_source_rows"] == 0
+        and active_probe_memory["all_checkpoint_environment_scoped"]
+        and active_probe_memory["all_authority_bounded"]
+        and active_probe_memory["all_raw_forecasts_immutable"]
+        and active_probe_memory["can_update_world_model"] is False
+        and active_probe_memory["causal_interpretation"] is False
+    )
+    gates["active_probe_discovery_memory"] = (
+        active_probe_discovery_memory_ready
+        if require_active_probe_discovery_memory else True
+    )
     opponent_information_adaptation_ready = bool(
         opponent_information_adaptation["realized_adaptation_scores"] >= 4
         and opponent_information_adaptation["matches"] >= 4
@@ -862,7 +883,7 @@ def aggregate_online_calibration(
         if require_llm_task_encouragement else True
     )
     return {
-        "version": 39,
+        "version": 40,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -908,6 +929,7 @@ def aggregate_online_calibration(
             "opponent_information_policy": opponent_information_policy,
             "belief_space_meta_planning": belief_space_meta_planning,
             "active_probe_design": active_probes,
+            "active_probe_discovery_memory": active_probe_memory,
             "llm_decision_briefs": llm_decision_briefs,
             "llm_deliberation_focus": llm_deliberation_focus,
             "llm_deliberation_compute_value": (
@@ -950,6 +972,9 @@ def aggregate_online_calibration(
         "multi_round_question_policy_ready": multi_round_question_policy_ready,
         "belief_space_meta_planning_ready": belief_space_meta_planning_ready,
         "active_probe_design_ready": active_probe_design_ready,
+        "active_probe_discovery_memory_ready": (
+            active_probe_discovery_memory_ready
+        ),
         "opponent_information_adaptation_ready": (
             opponent_information_adaptation_ready
         ),
@@ -972,6 +997,7 @@ def aggregate_online_calibration(
             "Multi-round question policies optimize bounded shadow information acquisition; stop/continue value is not a match-outcome causal effect.",
             "Belief-space meta-planning routes only future bounded shadow rollouts; route fidelity does not establish real-world decision value.",
             "Active probes pre-register predictive comparisons after action freeze; single outcomes are evidence updates, and even randomized bridge execution does not by itself identify real-football causal effects.",
+            "Active-probe discovery memory learns only a bounded probe-forecast calibration on chronological training matches, requires held-out gain, quarantines observed-rate drift, and never rewrites the neural world model.",
             "Opponent-belief diagnostics audit grounding and sensitivity; hidden tactical intent has no direct truth label.",
             "Opponent-response diagnostics are match-clustered and observational; held-out skill does not establish causality.",
             "Predicted-state continuation search has bounded authority only after grouped two-step holdout gain.",

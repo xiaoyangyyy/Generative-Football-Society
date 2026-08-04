@@ -561,7 +561,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 39,
+        "version": 40,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),

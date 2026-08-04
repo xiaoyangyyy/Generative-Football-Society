@@ -1015,6 +1015,30 @@ aggregate Brier skill and likelihood evidence, and at least 50 percent positive
 Brier skill. These diagnostics evaluate conditional predictive discrimination,
 not a real-football causal treatment effect.
 
+Active-probe results can additionally be compiled into an
+`ActiveProbeDiscoveryMemory`. Entries are isolated by checkpoint, complete
+policy environment, exploration action, exploit-null action, horizon, and
+endpoint. Every match contributes one equal-weight row. The chronological first
+half fits at most a `0.15` retention-probability offset; the second half must
+contain at least four matches and improve held-out Brier score by at least two
+percent. At least eight total matches are therefore required. A train/validation
+retention-rate shift above `0.30` quarantines the profile even if its in-sample
+correction looks useful.
+
+Validated profiles receive at most `0.35` authority, so their effective
+probability movement is bounded by `0.0525`. The raw neural probability remains
+beside the calibrated probe probability and is what future memory fitting uses,
+preventing the memory from training recursively on its own corrections. Probe
+priority discounts already validated regions slightly and retains a novelty
+bonus for under-validated experiments, giving the LLM a compact map of where
+additional evidence is valuable. Different checkpoints or environments receive
+an explicit incompatible contract with zero correction.
+
+Enable `--require-active-probe-discovery-memory` to demand an active profile
+with at least eight matches, held-out skill of at least `0.02`, correct scope,
+and authority no greater than `0.35`. This promotes a bounded probe calibration,
+not a neural weight update or causal football law.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same

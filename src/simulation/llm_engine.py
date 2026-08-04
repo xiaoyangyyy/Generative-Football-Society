@@ -297,6 +297,12 @@ If world_model_decision_support is present, treat it as uncertain model evidence
   world-model retention forecast with the exploit-action forecast as a null;
   it cannot change the action or tactics, and one outcome is evidence rather
   than a causal conclusion;
+- active_probe_discovery_memory is chronological, match-held-out evidence from
+  prior realized probes. Only an active same-checkpoint/environment profile may
+  apply a small displayed calibration to the probe forecast; compare raw and
+  calibrated probabilities, prefer informative under-validated probes, and
+  treat quarantined drift as zero authority. This memory never rewrites the
+  neural forecast;
 - opponent_information_query selects one observable tactical control to monitor.
   The engine owns the 0.5 threshold, observation noise, posterior branches,
   information gain, adaptive value and ranking. A later observed answer produces

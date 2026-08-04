@@ -8,7 +8,7 @@ import math
 from typing import Any
 
 
-ACTIVE_PROBE_VERSION = 1
+ACTIVE_PROBE_VERSION = 2
 
 
 def _digest(payload: dict[str, Any], prefix: str) -> str:
@@ -46,17 +46,107 @@ def _discrimination(alternative: float, null: float) -> float:
     ) / math.log(2.0)))
 
 
+def _memory_contract_is_valid(contract: Any) -> bool:
+    if not isinstance(contract, dict):
+        return False
+    payload = dict(contract)
+    digest = payload.pop("contract_digest", None)
+    raw = _probability(contract.get("raw_probability"))
+    calibrated = _probability(contract.get("calibrated_probability"))
+    try:
+        expected_digest = _digest(
+            payload, "active-probe-memory-contract:"
+        )
+        adjustment = float(contract["calibration_adjustment"])
+        authority = float(contract["authority"])
+        skill = float(contract["validation_skill"])
+        matches = int(contract["profile_matches"])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+    return bool(
+        digest == expected_digest
+        and contract.get("version") == 1
+        and raw is not None and calibrated is not None
+        and all(math.isfinite(value) for value in (
+            adjustment, authority, skill,
+        ))
+        and abs(calibrated - raw - adjustment) <= 1e-9
+        and 0.0 <= authority <= 0.35
+        and matches >= 0
+        and bool(contract.get("active")) == (authority > 0.0)
+        and (
+            contract.get("status") == "active"
+            and matches >= 8
+            and skill >= 0.02
+            and abs(adjustment) <= 0.15 * authority + 1e-9
+            if authority > 0.0 else (
+                contract.get("status") != "active"
+                and abs(adjustment) <= 1e-12
+            )
+        )
+        and bool(contract.get("checkpoint_signature"))
+        and bool(contract.get("environment_signature"))
+        and contract.get("can_update_world_model") is False
+        and contract.get("can_change_current_action") is False
+        and contract.get("causal_interpretation") is False
+    )
+
+
+def _inactive_memory_contract(
+    raw_probability: float,
+    *,
+    checkpoint_signature: str,
+    environment_signature: str,
+    profile_key: str,
+) -> dict[str, Any]:
+    payload = {
+        "version": 1,
+        "active": False,
+        "status": "no_discovery_memory",
+        "raw_probability": float(raw_probability),
+        "calibrated_probability": float(raw_probability),
+        "calibration_adjustment": 0.0,
+        "authority": 0.0,
+        "validation_skill": 0.0,
+        "profile_matches": 0,
+        "profile_key": profile_key,
+        "checkpoint_signature": str(checkpoint_signature),
+        "environment_signature": str(environment_signature),
+        "can_update_world_model": False,
+        "can_change_current_action": False,
+        "causal_interpretation": False,
+    }
+    return {
+        **payload,
+        "contract_digest": _digest(
+            payload, "active-probe-memory-contract:"
+        ),
+    }
+
+
+def _experiment_priority(discrimination: float, authority: float) -> float:
+    return min(1.0, max(0.0, (
+        discrimination * (1.0 - 0.25 * authority)
+        + 0.05 * (1.0 - authority)
+    )))
+
+
 def _option_is_valid(option: Any) -> bool:
     if not isinstance(option, dict):
         return False
     payload = dict(option)
     probe_id = payload.pop("probe_id", None)
     alternative = _probability(option.get("alternative_probability"))
+    raw_alternative = _probability(
+        option.get("raw_alternative_probability")
+    )
     null = _probability(option.get("null_probability"))
+    memory = option.get("discovery_memory") or {}
     try:
         regret = float(option["estimated_regret"])
         max_regret = float(option["maximum_allowed_regret"])
         information = float(option["expected_discrimination"])
+        priority = float(option["experiment_priority"])
         falsification_threshold = float(option["falsification_threshold"])
     except (KeyError, TypeError, ValueError, OverflowError):
         return False
@@ -68,12 +158,20 @@ def _option_is_valid(option: Any) -> bool:
         and option.get("endpoint") == "retained_possession"
         and isinstance(option.get("horizon"), str)
         and option.get("horizon")
-        and alternative is not None and null is not None
+        and alternative is not None and raw_alternative is not None
+        and null is not None
+        and _memory_contract_is_valid(memory)
+        and abs(float(memory["raw_probability"]) - raw_alternative) <= 1e-9
+        and abs(float(memory["calibrated_probability"]) - alternative) <= 1e-9
         and abs(alternative - null) >= 0.02 - 1e-9
         and math.isfinite(regret) and math.isfinite(max_regret)
         and 0.0 <= regret <= max_regret <= 0.30
         and math.isfinite(information) and 0.0 <= information <= 1.0
         and abs(information - _discrimination(alternative, null)) <= 1e-9
+        and math.isfinite(priority)
+        and abs(priority - _experiment_priority(
+            information, float(memory["authority"]),
+        )) <= 1e-9
         and option.get("falsification_statistic")
         == "bernoulli_log_likelihood_ratio_vs_exploit_forecast"
         and falsification_threshold == 0.0
@@ -84,7 +182,11 @@ def _option_is_valid(option: Any) -> bool:
     )
 
 
-def build_active_probe_design(packet: dict[str, Any]) -> dict[str, Any]:
+def build_active_probe_design(
+    packet: dict[str, Any],
+    *,
+    discovery_memory: Any = None,
+) -> dict[str, Any]:
     learning = packet.get("active_learning") or {}
     exploration_action = str(learning.get("exploration_action", "none"))
     exploit_action = str(learning.get("exploit_action", "none"))
@@ -109,7 +211,7 @@ def build_active_probe_design(packet: dict[str, Any]) -> dict[str, Any]:
                 if key != "transition" else 0.0,
             ),
         )[:3]:
-            alternative = _probability(
+            raw_alternative = _probability(
                 exploration_predictions[horizon].get(
                     "retention_probability"
                 )
@@ -117,17 +219,66 @@ def build_active_probe_design(packet: dict[str, Any]) -> dict[str, Any]:
             null = _probability(
                 exploit_predictions[horizon].get("retention_probability")
             )
-            if alternative is None or null is None or abs(alternative - null) < 0.02:
+            if (
+                raw_alternative is None or null is None
+                or abs(raw_alternative - null) < 0.02
+            ):
                 continue
+            profile_key = "|".join((
+                exploration_action, exploit_action, str(horizon),
+                "retained_possession",
+            ))
+            memory_contract = _inactive_memory_contract(
+                raw_alternative,
+                checkpoint_signature=str(packet.get(
+                    "checkpoint_signature", "",
+                )),
+                environment_signature=str(packet.get(
+                    "environment_signature", "",
+                )),
+                profile_key=profile_key,
+            )
+            calibrate = getattr(discovery_memory, "calibration", None)
+            if callable(calibrate):
+                try:
+                    candidate_contract = calibrate(
+                        action=exploration_action,
+                        null_action=exploit_action,
+                        horizon=str(horizon),
+                        endpoint="retained_possession",
+                        raw_probability=raw_alternative,
+                        checkpoint_signature=str(packet.get(
+                            "checkpoint_signature", "",
+                        )),
+                        environment_signature=str(packet.get(
+                            "environment_signature", "",
+                        )),
+                    )
+                except (
+                    AttributeError, KeyError, TypeError, ValueError,
+                    OverflowError,
+                ):
+                    candidate_contract = None
+                if _memory_contract_is_valid(candidate_contract):
+                    memory_contract = candidate_contract
+            alternative = float(memory_contract["calibrated_probability"])
+            if abs(alternative - null) < 0.02:
+                continue
+            information = _discrimination(alternative, null)
             option_payload = {
                 "version": ACTIVE_PROBE_VERSION,
                 "action": exploration_action,
                 "null_action": exploit_action,
                 "horizon": str(horizon),
                 "endpoint": "retained_possession",
+                "raw_alternative_probability": raw_alternative,
                 "alternative_probability": alternative,
                 "null_probability": null,
-                "expected_discrimination": _discrimination(alternative, null),
+                "expected_discrimination": information,
+                "experiment_priority": _experiment_priority(
+                    information, float(memory_contract["authority"]),
+                ),
+                "discovery_memory": memory_contract,
                 "estimated_regret": float(learning.get(
                     "estimated_regret", 0.0
                 )),
@@ -150,7 +301,7 @@ def build_active_probe_design(packet: dict[str, Any]) -> dict[str, Any]:
                 ),
             })
     options.sort(key=lambda row: (
-        -float(row["expected_discrimination"]), str(row["horizon"]),
+        -float(row["experiment_priority"]), str(row["horizon"]),
     ))
     reason = (
         "falsifiable_safe_exploration_available" if options
@@ -316,6 +467,7 @@ def score_active_probe(
         return None
     observed = 1.0 if outcome["retained_possession"] else 0.0
     alternative = float(probe["alternative_probability"])
+    raw_alternative = float(probe["raw_alternative_probability"])
     null = float(probe["null_probability"])
     epsilon = 1e-6
     alternative_likelihood = (
@@ -333,8 +485,12 @@ def score_active_probe(
         "horizon": probe["horizon"],
         "observed_value": bool(outcome["retained_possession"]),
         "alternative_probability": alternative,
+        "raw_alternative_probability": raw_alternative,
         "null_probability": null,
         "alternative_brier_score": (alternative - observed) ** 2,
+        "raw_alternative_brier_score": (
+            raw_alternative - observed
+        ) ** 2,
         "null_brier_score": (null - observed) ** 2,
         "brier_skill_vs_null": (
             (null - observed) ** 2 - (alternative - observed) ** 2
@@ -364,9 +520,15 @@ def active_probe_evaluation_is_valid(
     payload = dict(evaluation)
     digest = payload.pop("evaluation_digest", None)
     alternative = _probability(evaluation.get("alternative_probability"))
+    raw_alternative = _probability(
+        evaluation.get("raw_alternative_probability")
+    )
     null = _probability(evaluation.get("null_probability"))
     observed_raw = evaluation.get("observed_value")
-    if alternative is None or null is None or not isinstance(observed_raw, bool):
+    if (
+        alternative is None or raw_alternative is None or null is None
+        or not isinstance(observed_raw, bool)
+    ):
         return False
     observed = 1.0 if observed_raw else 0.0
     epsilon = 1e-6
@@ -376,13 +538,17 @@ def active_probe_evaluation_is_valid(
     )
     try:
         alternative_brier = float(evaluation["alternative_brier_score"])
+        raw_alternative_brier = float(
+            evaluation["raw_alternative_brier_score"]
+        )
         null_brier = float(evaluation["null_brier_score"])
         skill = float(evaluation["brier_skill_vs_null"])
         log_ratio = float(evaluation["log_likelihood_ratio_vs_null"])
     except (KeyError, TypeError, ValueError, OverflowError):
         return False
     if not all(math.isfinite(value) for value in (
-        alternative_brier, null_brier, skill, log_ratio,
+        alternative_brier, raw_alternative_brier,
+        null_brier, skill, log_ratio,
     )):
         return False
     probe = (audit or {}).get("probe") or {}
@@ -396,6 +562,9 @@ def active_probe_evaluation_is_valid(
             and abs(alternative - float(
                 probe.get("alternative_probability", -1.0)
             )) <= 1e-12
+            and abs(raw_alternative - float(
+                probe.get("raw_alternative_probability", -1.0)
+            )) <= 1e-12
             and abs(null - float(probe.get("null_probability", -1.0)))
             <= 1e-12
         )
@@ -404,6 +573,9 @@ def active_probe_evaluation_is_valid(
         digest == _digest(payload, "active-probe-evaluation:")
         and evaluation.get("version") == ACTIVE_PROBE_VERSION
         and abs(alternative_brier - (alternative - observed) ** 2) <= 1e-12
+        and abs(
+            raw_alternative_brier - (raw_alternative - observed) ** 2
+        ) <= 1e-12
         and abs(null_brier - (null - observed) ** 2) <= 1e-12
         and abs(skill - (null_brier - alternative_brier)) <= 1e-12
         and abs(log_ratio - expected_log_ratio) <= 1e-12

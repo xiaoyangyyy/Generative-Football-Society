@@ -174,6 +174,7 @@ class CognitiveExecutor:
         opponent_meta_belief_memory=None,
         opponent_response_memory=None,
         llm_critic_memory=None,
+        active_probe_memory=None,
         policy_environment_signature: str = "environment_unspecified",
     ) -> None:
         self.cfg = cfg
@@ -184,6 +185,7 @@ class CognitiveExecutor:
         self.opponent_meta_belief_memory = opponent_meta_belief_memory
         self.opponent_response_memory = opponent_response_memory
         self.llm_critic_memory = llm_critic_memory
+        self.active_probe_memory = active_probe_memory
         from src.match_engine.world_model.llm_critic import llm_critic_signature
 
         self.llm_critic_signature = llm_critic_signature(
@@ -513,6 +515,7 @@ class CognitiveExecutor:
                             self.cfg.world_model_exploration_strength_scale
                         ),
                     },
+                    active_probe_memory=self.active_probe_memory,
                     trajectory_branch_budget=(
                         self.cfg.world_model_trajectory_branch_budget
                     ),
@@ -986,7 +989,7 @@ class CognitiveExecutor:
                     "candidates": packet.get("candidates") or [],
                     "active_learning": packet["active_learning"],
                     "decision_context": learning_context,
-                })
+                }, discovery_memory=self.active_probe_memory)
                 from src.match_engine.world_model.active_probe import (
                     evaluate_llm_active_probe,
                 )

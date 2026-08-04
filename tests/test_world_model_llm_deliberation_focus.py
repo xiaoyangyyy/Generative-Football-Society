@@ -194,7 +194,7 @@ def test_focus_diagnostics_and_strict_online_gate_are_match_clustered():
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_llm_deliberation_focus=True,
     )
-    assert report["version"] == 39
+    assert report["version"] == 40
     assert report["llm_deliberation_focus_ready"]
     assert report["gates"]["llm_deliberation_focus"]
 

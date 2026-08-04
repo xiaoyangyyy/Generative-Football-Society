@@ -100,6 +100,14 @@ def _resolve_cognitive_layer(
             )
             if world_model_runtime is not None else None
         ),
+        active_probe_memory=(
+            _load_active_probe_discovery_memory(
+                base_dir,
+                world_model_runtime,
+                environment_signature,
+            )
+            if world_model_runtime is not None else None
+        ),
     )
     return bus, executor
 
@@ -178,6 +186,22 @@ def _load_llm_critic_memory(
         )),
         environment_signature=str(environment_signature),
         critic_signature=llm_critic_signature(str(llm_model)),
+    )
+
+
+def _load_active_probe_discovery_memory(
+    base_dir, world_model_runtime, environment_signature,
+):
+    from src.match_engine.world_model.active_probe_memory import (
+        load_active_probe_discovery_memory,
+    )
+
+    return load_active_probe_discovery_memory(
+        base_dir,
+        checkpoint_signature=str(getattr(
+            world_model_runtime, "checkpoint_signature", "runtime_unspecified",
+        )),
+        environment_signature=str(environment_signature),
     )
 
 
