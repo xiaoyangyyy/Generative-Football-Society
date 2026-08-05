@@ -6,7 +6,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from src.match_engine.calibration.ablation import (
     ADDITIVE_LAYERS,
@@ -18,7 +23,6 @@ from src.match_engine.calibration.benchmark_core import DEFAULT_FIXTURES, run_mi
 from src.match_engine.calibration.contract import evaluate_rows, load_contract, load_statsbomb_baselines
 from src.match_engine.calibration.objective import calibration_loss, calibration_score
 
-ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports" / "ablation"
 
 PRIMARY_METRICS = [
@@ -174,13 +178,13 @@ def main() -> int:
     out_path.write_text(json.dumps(matrix, indent=2), encoding="utf-8")
 
     md_lines = [
-        "# Ablation matrix (continuous z, Δ vs M0)",
+        "# Ablation matrix (continuous z, delta vs M0)",
         "",
         f"Baseline M0: score={matrix['baseline']['score']:.4f} loss={matrix['baseline']['loss']:.3f} pass={matrix['baseline']['all_pass']}",
         "",
         "## Subtractive (turn OFF vs M0)",
         "",
-        "| Ablation | score | Δloss | pass | top Δz |",
+        "| Ablation | score | delta loss | pass | top delta z |",
         "|----------|-------|-------|------|--------|",
     ]
     for key, data in matrix["subtractive"].items():
@@ -195,7 +199,7 @@ def main() -> int:
         "",
         "## Additive (turn ON vs M0)",
         "",
-        "| Layer | score | Δloss | pass | top Δz |",
+        "| Layer | score | delta loss | pass | top delta z |",
         "|-------|-------|-------|------|--------|",
     ])
     for key, data in matrix["additive"].items():

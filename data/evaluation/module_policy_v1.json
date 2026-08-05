@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "policy_id": "evidence-first-module-policy-v1",
+  "stable_runtime": {
+    "release": "7.0.0",
+    "world_model_default": "off",
+    "llm_cognition_default": "off"
+  },
+  "modules": {
+    "spatial_intelligence": {
+      "status": "retain_core",
+      "reason": "removal worsened diagnostic external-calibration loss"
+    },
+    "tick_discipline": {
+      "status": "retain_core",
+      "reason": "removal worsened diagnostic external-calibration loss and card/foul fit"
+    },
+    "affective_coupling": {
+      "status": "watch_no_promotion",
+      "reason": "diagnostic removal improved loss; full matched-seed evidence is required before promotion or deletion"
+    },
+    "statsbomb_pass_logit_blend": {
+      "status": "provider_gated_physics_anchor",
+      "reason": "strict LODO gain is inconsistent and one provider lacks negative labels"
+    },
+    "shot_model_v7": {
+      "status": "retain_validated",
+      "reason": "held-out Brier improves over the non-leaking baseline with sufficient shots, goals, matches and providers"
+    },
+    "advanced_world_model": {
+      "status": "research_only_default_off",
+      "reason": "diagnostic additive run had zero authority and no external simulation gain"
+    },
+    "llm_cognition": {
+      "status": "research_only_default_off",
+      "reason": "diagnostic additive run had no measurable external simulation gain"
+    },
+    "narrative_memory_meta_learning": {
+      "status": "research_only_no_real_world_claim",
+      "reason": "causal evidence is simulator-internal and external longitudinal evidence is absent"
+    }
+  }
+}

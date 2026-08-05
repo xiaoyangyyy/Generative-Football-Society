@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "generative-football-society"
 version = "0.1.0"
-description = "Modular World Cup-scale football society simulator"
+description = "Football world-model research platform with a stable World Cup simulator"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "freeze_id": "gfs-research-freeze-v1",
+  "primary_identity": "football-world-model-research-platform",
+  "stable_simulator_release": "7.0.0",
+  "rollback_release": "6.0.0",
+  "rules": {
+    "new_world_model_concepts": "frozen_until_external_gate_passes",
+    "production_pointer": "data/releases/current.json",
+    "external_benchmark": "statsbomb-world-cup-2022-team-match-v1",
+    "promotion_requires": [
+      "frozen_external_benchmark",
+      "provider_isolated_data_evidence",
+      "matched_seed_ablation",
+      "full_test_suite",
+      "explicit_release_manifest"
+    ],
+    "simulation_claim_scope": "simulator_internal_only",
+    "real_world_causal_claims": "forbidden"
+  },
+  "frozen_external_metrics": [
+    "pass_completion",
+    "interceptions_per_pass",
+    "passes_per_team_match",
+    "through_share",
+    "long_pass_share",
+    "shots_per_team_match",
+    "shots_on_target_rate",
+    "goals_per_team_match",
+    "fouls_committed_per_team_match",
+    "yellow_cards_per_team_match",
+    "red_cards_per_team_match",
+    "possession_share",
+    "crosses_per_team_match",
+    "headers_per_team_match",
+    "tackles_per_team_match"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "evidence_grade": "diagnostic_only",
+  "design": {
+    "fixtures": 1,
+    "samples_per_variant": 1,
+    "match_seconds": 1200,
+    "matched_seed": 42,
+    "external_reference": "StatsBomb World Cup 2022 observable contract"
+  },
+  "baseline": {
+    "pipeline": "M0",
+    "score": 0.27157165314887866,
+    "loss": 194.31999479219587,
+    "gate_pass": false,
+    "failed_metric_count": 6
+  },
+  "variants": {
+    "no_affective": {"delta_loss": -36.15625616512256, "decision": "watch_no_promotion"},
+    "no_spatial": {"delta_loss": 2.6407903851546166, "decision": "retain_core"},
+    "no_pass_blend": {"delta_loss": -9.575668918447832, "decision": "provider_gated_physics_anchor"},
+    "no_tick_discipline": {"delta_loss": 7.364550747251371, "decision": "retain_core"},
+    "no_tactical_bias": {"delta_loss": 0.017301010275815543, "decision": "retain_core_unproven_lift"},
+    "world_model_additive": {"delta_loss": 0.0, "decision": "research_only_default_off"},
+    "cognitive_additive": {"delta_loss": 0.000005878280944671133, "decision": "research_only_default_off"}
+  },
+  "limitations": [
+    "one fixture and one seed cannot authorize deletion or promotion",
+    "the M0 baseline failed the external observable contract",
+    "world-model authority was closed by its quality gate",
+    "no live LLM provider was used"
+  ]
+}

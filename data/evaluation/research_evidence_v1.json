@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "freeze_id": "gfs-research-freeze-v1",
+  "project_identity": "football-world-model-research-platform",
+  "release_boundary": {
+    "active": "7.0.0",
+    "expected": "7.0.0",
+    "artifact_count": 16,
+    "normalized_text_artifact_count": 16,
+    "artifact_failures": [],
+    "valid": true
+  },
+  "external_benchmark": {
+    "source": "StatsBomb Open Data — FIFA World Cup 2022 (International)",
+    "team_matches": 128,
+    "metric_count": 17,
+    "frozen_metric_count": 15,
+    "gate_pass": true
+  },
+  "data_coverage": {
+    "skillcorner": {
+      "matches": 10,
+      "passes": 8585,
+      "shots": 3314,
+      "sampled_tracking_frames": 64275
+    },
+    "statsbomb360": {
+      "matches": 425,
+      "passes": 373070,
+      "shots": 10483
+    },
+    "sportec": {
+      "matches": 7,
+      "passes": 6062,
+      "shots": 171,
+      "tracking_frames": 1002644
+    },
+    "pass_completion_lodo": {
+      "skillcorner": {
+        "samples": 8585,
+        "matches": 10,
+        "balanced_accuracy": 0.7944117647058824,
+        "auc": 0.8814217745921898,
+        "brier": 0.10978741741730806,
+        "ece": 0.01890117524595163,
+        "physics_prior_auc": 0.8827440682155215,
+        "physics_prior_brier": 0.10999540409202097,
+        "worst_match_auc": 0.8485794814429309,
+        "auc_delta_vs_physics": -0.001322293623331694,
+        "positives": 6800,
+        "negatives": 1785,
+        "evidence_sufficient": true
+      },
+      "sportec": {
+        "samples": 4751,
+        "matches": 7,
+        "balanced_accuracy": 0.5152728038761323,
+        "auc": 0.39251105961659993,
+        "brier": 0.09026397078896177,
+        "ece": 0.273357509532142,
+        "physics_prior_auc": 0.3872445755213819,
+        "physics_prior_brier": 0.03939541503878776,
+        "worst_match_auc": 0.2959804327570142,
+        "auc_delta_vs_physics": 0.005266484095218016,
+        "positives": 4747,
+        "negatives": 4,
+        "evidence_sufficient": false
+      },
+      "statsbomb360": {
+        "samples": 373070,
+        "matches": 418,
+        "balanced_accuracy": 0.5145664760644526,
+        "auc": 0.7763800064803624,
+        "brier": 0.1476253611933953,
+        "ece": 0.11178351890916277,
+        "physics_prior_auc": 0.7678879915288702,
+        "physics_prior_brier": 0.14577616821758277,
+        "worst_match_auc": 0.7117903230334338,
+        "auc_delta_vs_physics": 0.00849201495149221,
+        "positives": 306755,
+        "negatives": 66315,
+        "evidence_sufficient": true
+      }
+    },
+    "sufficient_pass_providers": [
+      "skillcorner",
+      "statsbomb360"
+    ],
+    "shot_holdout": {
+      "shots": 1590,
+      "goals": 194,
+      "matches": 64,
+      "auc": 0.7483974832363454,
+      "brier": 0.09217408822588334,
+      "baseline_brier": 0.10718509613316261
+    },
+    "continuous_state": {
+      "skillcorner": {
+        "matches": 10,
+        "events": 5451,
+        "observed": 5208
+      },
+      "statsbomb360": {
+        "matches": 417,
+        "events": 306584,
+        "observed": 294804
+      },
+      "metrica": {
+        "matches": 3,
+        "events": 2879,
+        "observed": 2808
+      }
+    },
+    "qualified_continuous_state_providers": [
+      "skillcorner",
+      "statsbomb360"
+    ]
+  },
+  "gates": {
+    "external_benchmark_frozen": true,
+    "failed_pass_labels_cross_provider": true,
+    "shot_and_goal_holdout": true,
+    "continuous_state_cross_provider": true,
+    "stable_release_pointer": true
+  },
+  "module_policy": {
+    "spatial_intelligence": {
+      "status": "retain_core",
+      "reason": "removal worsened diagnostic external-calibration loss"
+    },
+    "tick_discipline": {
+      "status": "retain_core",
+      "reason": "removal worsened diagnostic external-calibration loss and card/foul fit"
+    },
+    "affective_coupling": {
+      "status": "watch_no_promotion",
+      "reason": "diagnostic removal improved loss; full matched-seed evidence is required before promotion or deletion"
+    },
+    "statsbomb_pass_logit_blend": {
+      "status": "provider_gated_physics_anchor",
+      "reason": "strict LODO gain is inconsistent and one provider lacks negative labels"
+    },
+    "shot_model_v7": {
+      "status": "retain_validated",
+      "reason": "held-out Brier improves over the non-leaking baseline with sufficient shots, goals, matches and providers"
+    },
+    "advanced_world_model": {
+      "status": "research_only_default_off",
+      "reason": "diagnostic additive run had zero authority and no external simulation gain"
+    },
+    "llm_cognition": {
+      "status": "research_only_default_off",
+      "reason": "diagnostic additive run had no measurable external simulation gain"
+    },
+    "narrative_memory_meta_learning": {
+      "status": "research_only_no_real_world_claim",
+      "reason": "causal evidence is simulator-internal and external longitudinal evidence is absent"
+    }
+  },
+  "ablation": {
+    "schema_version": 1,
+    "evidence_grade": "diagnostic_only",
+    "design": {
+      "fixtures": 1,
+      "samples_per_variant": 1,
+      "match_seconds": 1200,
+      "matched_seed": 42,
+      "external_reference": "StatsBomb World Cup 2022 observable contract"
+    },
+    "baseline": {
+      "pipeline": "M0",
+      "score": 0.27157165314887866,
+      "loss": 194.31999479219587,
+      "gate_pass": false,
+      "failed_metric_count": 6
+    },
+    "variants": {
+      "no_affective": {
+        "delta_loss": -36.15625616512256,
+        "decision": "watch_no_promotion"
+      },
+      "no_spatial": {
+        "delta_loss": 2.6407903851546166,
+        "decision": "retain_core"
+      },
+      "no_pass_blend": {
+        "delta_loss": -9.575668918447832,
+        "decision": "provider_gated_physics_anchor"
+      },
+      "no_tick_discipline": {
+        "delta_loss": 7.364550747251371,
+        "decision": "retain_core"
+      },
+      "no_tactical_bias": {
+        "delta_loss": 0.017301010275815543,
+        "decision": "retain_core_unproven_lift"
+      },
+      "world_model_additive": {
+        "delta_loss": 0.0,
+        "decision": "research_only_default_off"
+      },
+      "cognitive_additive": {
+        "delta_loss": 5.878280944671133e-06,
+        "decision": "research_only_default_off"
+      }
+    },
+    "limitations": [
+      "one fixture and one seed cannot authorize deletion or promotion",
+      "the M0 baseline failed the external observable contract",
+      "world-model authority was closed by its quality gate",
+      "no live LLM provider was used"
+    ]
+  },
+  "research_data_ready": true,
+  "production_promotion_ready": false,
+  "production_blockers": [
+    "full matched-seed external-calibration ablation is not frozen",
+    "M0 pure micro baseline does not yet pass the external observable contract",
+    "advanced world-model and LLM layers have no demonstrated external simulation lift",
+    "diagnostic ablation is not a full multi-fixture promotion experiment"
+  ]
+}

@@ -1,9 +1,15 @@
 ﻿# Generative Football Society
 
-Clean modular entrypoint for a World Cup-scale football society simulator.
+Football world-model research platform with a stable World Cup-scale simulator.
 
-Current frozen baseline: **v6.0.0**. See `docs/ACCEPTANCE_REPORT.md` and
-`data/releases/v6.0.0.json` for sealed metrics and artifact fingerprints.
+The project is research-first: learned world models and LLM cognition are
+evidence-gated, default-off advisory layers. The deployed simulator remains
+v7.0.0 until an explicit release manifest changes the production pointer. See
+`docs/RESEARCH_DIRECTION.md` and
+`data/evaluation/research_evidence_v1.json` for the frozen evidence boundary.
+
+Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
+`data/releases/current.json` for the only authoritative deployment pointer.
 
 GFS combines:
 

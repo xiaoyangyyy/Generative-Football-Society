@@ -43,7 +43,7 @@ def env_float(values: Mapping[str, str], key: str, default: float) -> float:
 class SimulationConfig:
     seed: int = 42
     micro_enabled: bool = True
-    cognitive_enabled: bool = True
+    cognitive_enabled: bool = False
     world_model_enabled: bool = False
     world_model_planning: bool = False
     score_path: str = "physics_official"
