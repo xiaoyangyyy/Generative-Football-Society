@@ -7,6 +7,9 @@ evidence-gated, default-off advisory layers. The deployed simulator remains
 v7.0.0 until an explicit release manifest changes the production pointer. See
 `docs/RESEARCH_DIRECTION.md` and
 `data/evaluation/research_evidence_v1.json` for the frozen evidence boundary.
+The completed formal baseline, seven-variant ablation, retrained-candidate
+decision, and final verification are summarized in
+`docs/FORMAL_RESEARCH_VALIDATION_2026-08.md`.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

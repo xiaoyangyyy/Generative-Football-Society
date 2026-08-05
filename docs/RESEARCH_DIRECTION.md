@@ -6,10 +6,10 @@ GFS is primarily a **football world-model research platform**. The deployed
 v7 simulator remains a stable reference environment and public integration
 surface; it is not automatically replaced by later research candidates.
 
-The next milestone is external validity, not another world-model concept.
-New model heads, LLM roles, routers, action classes, and mechanism protocols are
-frozen until the external evidence gate and a full matched-seed ablation are
-both frozen and passing.
+The formal external-validity baseline and full matched-seed ablation are now
+complete. New model heads, LLM roles, routers, action classes, and mechanism
+protocols remain evidence-gated: completion of an experiment does not promote
+a layer whose validation gate failed or whose benefit is unresolved.
 
 ## Frozen evidence boundary
 
@@ -33,17 +33,21 @@ python scripts/audit_research_evidence.py --check
 
 ## Current module decisions
 
-- Retain spatial intelligence and tick discipline in the core simulator.
+- Retain spatial intelligence, affective coupling, tick discipline, and
+  tactical bias in the core simulator; removing each broke a formal gate.
 - Retain the validated v7 shot model.
-- Keep pass learning behind provider evidence and a physics anchor.
-- Put affective coupling on watch: the diagnostic ablation improved when it was
-  removed, but one fixture is not sufficient evidence for deletion.
+- Keep pass learning behind provider evidence and a physics anchor. The current
+  pass-logit blend is optional and default-off because its removal passed all
+  formal gates without a resolved loss difference.
 - Keep advanced world-model, LLM cognition, narrative, memory, and meta-learning
-  research-only. They remain default-off and cannot claim real-world effects.
+  research-only. M1 had no measurable formal effect; the retrained v9 candidate
+  failed its two-step planning gate. C1 had no statistically resolved gain and
+  has no live-provider evidence. These layers remain default-off.
 
-The quick ablation is diagnostic only. It found that M0 itself fails the frozen
-observable contract, so no additive module can be promoted from that run. A
-full multi-fixture matched-seed report is the next promotion gate.
+The earlier quick ablation remains diagnostic only. The authoritative report is
+the six-fixture, three-seed, full-90-minute matched protocol in
+`data/evaluation/formal_ablation_summary_v1.json`. See
+`docs/FORMAL_RESEARCH_VALIDATION_2026-08.md` for the completed plan.
 
 ## Six-step completion contract
 
@@ -55,5 +59,7 @@ full multi-fixture matched-seed report is the next promotion gate.
    implicit authority.
 6. The project identity is research-first; v7 remains the stable simulator.
 
-This contract does not claim that GFS is externally calibrated. It makes the
-remaining failure visible and prevents research complexity from hiding it.
+This contract now has machine-checked completion evidence in
+`data/evaluation/staged_completion_v1.json`. It establishes bounded external
+observable validity for the declared benchmark; it does not claim universal
+football realism or live-provider LLM benefit.

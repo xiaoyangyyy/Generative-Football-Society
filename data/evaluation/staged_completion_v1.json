@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "objective": "complete_the_frozen_research_plan_in_stages",
+  "all_stages_complete": true,
+  "production_promotion_ready": false,
+  "promotion_decision": "keep_deployed_v7_and_research_layers_default_off",
+  "stages": {
+    "1_formal_m0": {
+      "complete": true,
+      "evidence": "data/evaluation/m0_formal_baseline_v1.json"
+    },
+    "2_calibration_non_regression": {
+      "complete": true,
+      "evidence": "data/evaluation/m0_calibration_plan_v1.json"
+    },
+    "3_calibration": {
+      "complete": true,
+      "outcome": "no parameter change required because formal M0 passed"
+    },
+    "4_formal_ablation": {
+      "complete": true,
+      "evidence": "data/evaluation/formal_ablation_summary_v1.json",
+      "policy": "formal-evidence-first-module-policy-v2"
+    },
+    "5_research_layers": {
+      "complete": true,
+      "candidate_accepted": false,
+      "contracts_passed": true,
+      "live_llm_evaluable": false,
+      "evidence": "data/evaluation/phase5_research_layer_validation_v1.json"
+    },
+    "6_release_candidate_validation": {
+      "complete": true,
+      "commands": {
+        "v7_artifacts": {
+          "command": "C:\\Users\\K\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts/verify_v7_release.py --artifacts-only",
+          "exit_code": 0,
+          "passed": true,
+          "tail": [
+            "}"
+          ]
+        },
+        "release_boundary": {
+          "command": "C:\\Users\\K\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts/audit_release_boundary.py",
+          "exit_code": 0,
+          "passed": true,
+          "tail": [
+            "candidate_files=1336 failures=0"
+          ]
+        },
+        "research_evidence": {
+          "command": "C:\\Users\\K\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts/audit_research_evidence.py --check",
+          "exit_code": 0,
+          "passed": true,
+          "tail": [
+            "}"
+          ]
+        },
+        "pytest": {
+          "command": "C:\\Users\\K\\AppData\\Local\\Programs\\Python\\Python313\\python.exe -m pytest -q",
+          "exit_code": 0,
+          "passed": true,
+          "tail": [
+            "539 passed, 2 skipped, 8 warnings in 228.48s (0:03:48)"
+          ]
+        }
+      }
+    }
+  }
+}
