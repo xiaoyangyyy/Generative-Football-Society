@@ -10,12 +10,45 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from src.match_engine.calibration.ablation import PIPELINE_PRESETS, ablation_context
 from src.match_engine.calibration.benchmark_core import DEFAULT_FIXTURES, run_micro_benchmark_rows
 from src.match_engine.calibration.contract import evaluate_rows, load_contract, load_statsbomb_baselines
 
-ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports"
+
+
+def _bootstrap_mean_intervals(
+    rows: list[dict], *, seed: int, draws: int = 2000,
+) -> dict[str, dict[str, float | int]]:
+    """Deterministic match-level bootstrap intervals for scalar observables."""
+    if not rows:
+        return {}
+    excluded = {"fixture"}
+    keys = sorted(set.intersection(*(
+        {key for key, value in row.items()
+         if key not in excluded and isinstance(value, (int, float))}
+        for row in rows
+    )))
+    rng = np.random.default_rng(seed)
+    indices = rng.integers(0, len(rows), size=(draws, len(rows)))
+    report = {}
+    for key in keys:
+        values = np.asarray([float(row[key]) for row in rows], dtype=np.float64)
+        means = values[indices].mean(axis=1)
+        lo, hi = np.quantile(means, [0.025, 0.975])
+        report[key] = {
+            "samples": len(values),
+            "mean": float(values.mean()),
+            "ci95_low": float(lo),
+            "ci95_high": float(hi),
+        }
+    return report
 
 
 def _parse_fixtures(tokens: list[str] | None) -> list[tuple[str, str]]:
@@ -72,6 +105,15 @@ def main() -> int:
         "pipeline": args.pipeline,
         "fixtures": [f"{h}_vs_{a}" for h, a in fixtures],
         "samples_total": len(rows),
+        "raw_rows": rows,
+        "uncertainty": {
+            "method": "deterministic_match_bootstrap",
+            "draws": 2000,
+            "seed": args.seed_start,
+            "metrics": _bootstrap_mean_intervals(
+                rows, seed=args.seed_start, draws=2000,
+            ),
+        },
         "report": evaluation["hard_metrics"],
         "soft_constraints": evaluation["soft_constraints"],
         "failed_metrics": evaluation["failed_hard"],
@@ -83,8 +125,8 @@ def main() -> int:
     print(json.dumps(out, indent=2))
 
     report_path = Path(args.report) if args.report else REPORTS / f"calibration_{args.pipeline.lower()}.json"
-    if not args.report and not args.quick:
-        REPORTS.mkdir(parents=True, exist_ok=True)
+    if args.report or not args.quick:
+        report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(json.dumps(out, indent=2), encoding="utf-8")
 
     if args.with_style_contrast:

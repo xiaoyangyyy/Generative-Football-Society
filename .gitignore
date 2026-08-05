@@ -22,6 +22,7 @@ env/
 outputs/
 logs/
 reports/*
+data/evaluation/shards/
 !reports/acceptance/
 reports/acceptance/*
 !reports/acceptance/*.json

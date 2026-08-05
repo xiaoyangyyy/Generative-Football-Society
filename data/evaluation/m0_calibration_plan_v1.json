@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "source_protocol": "six_fixtures_three_seeds_full_90min",
+  "source_samples": 18,
+  "baseline_pass": true,
+  "action": "no_op_freeze_parameters",
+  "failed_metrics": [],
+  "failed_soft": [],
+  "parameter_families": [],
+  "guardrails": {
+    "matched_seeds_required": true,
+    "already_passing_metrics_may_not_regress": true,
+    "formal_gate_required_before_persist": true,
+    "single_fixture_results_cannot_persist": true
+  }
+}

@@ -121,7 +121,8 @@
     "failed_pass_labels_cross_provider": true,
     "shot_and_goal_holdout": true,
     "continuous_state_cross_provider": true,
-    "stable_release_pointer": true
+    "stable_release_pointer": true,
+    "formal_m0_external_calibration": true
   },
   "module_policy": {
     "spatial_intelligence": {
@@ -211,11 +212,33 @@
       "no live LLM provider was used"
     ]
   },
+  "formal_m0": {
+    "protocol": "six_fixtures_three_seeds_full_90min",
+    "samples_total": 18,
+    "all_pass": true,
+    "failed_metrics": [],
+    "failed_soft": []
+  },
+  "calibration_plan": {
+    "schema_version": 1,
+    "source_protocol": "six_fixtures_three_seeds_full_90min",
+    "source_samples": 18,
+    "baseline_pass": true,
+    "action": "no_op_freeze_parameters",
+    "failed_metrics": [],
+    "failed_soft": [],
+    "parameter_families": [],
+    "guardrails": {
+      "matched_seeds_required": true,
+      "already_passing_metrics_may_not_regress": true,
+      "formal_gate_required_before_persist": true,
+      "single_fixture_results_cannot_persist": true
+    }
+  },
   "research_data_ready": true,
   "production_promotion_ready": false,
   "production_blockers": [
     "full matched-seed external-calibration ablation is not frozen",
-    "M0 pure micro baseline does not yet pass the external observable contract",
     "advanced world-model and LLM layers have no demonstrated external simulation lift",
     "diagnostic ablation is not a full multi-fixture promotion experiment"
   ]

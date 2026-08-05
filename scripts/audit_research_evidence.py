@@ -38,6 +38,8 @@ def build_report() -> dict[str, Any]:
     sportec = _read("data/external/sportec/derived/manifest.json")
     temporal = _read("data/frame_world/v94_temporal_providers/manifest.json")
     ablation = _read("data/evaluation/ablation_diagnostic_v1.json")
+    formal_m0 = _read("data/evaluation/m0_formal_baseline_v1.json")
+    calibration_plan = _read("data/evaluation/m0_calibration_plan_v1.json")
 
     metric_names = set(baseline.get("metrics", {}))
     frozen_metrics = set(freeze["frozen_external_metrics"])
@@ -136,15 +138,28 @@ def build_report() -> dict[str, Any]:
                 current["active"] == freeze["stable_simulator_release"]
                 and not release_failures
             ),
+            "formal_m0_external_calibration": bool(
+                formal_m0.get("all_pass")
+                and formal_m0.get("samples_total") == 18
+                and formal_m0.get("protocol")
+                == "six_fixtures_three_seeds_full_90min"
+            ),
         },
         "module_policy": policy["modules"],
         "ablation": ablation,
+        "formal_m0": {
+            "protocol": formal_m0.get("protocol"),
+            "samples_total": formal_m0.get("samples_total"),
+            "all_pass": formal_m0.get("all_pass"),
+            "failed_metrics": formal_m0.get("failed_metrics"),
+            "failed_soft": formal_m0.get("failed_soft"),
+        },
+        "calibration_plan": calibration_plan,
     }
     report["research_data_ready"] = all(report["gates"].values())
     report["production_promotion_ready"] = False
     report["production_blockers"] = [
         "full matched-seed external-calibration ablation is not frozen",
-        "M0 pure micro baseline does not yet pass the external observable contract",
         "advanced world-model and LLM layers have no demonstrated external simulation lift",
         "diagnostic ablation is not a full multi-fixture promotion experiment",
     ]
