@@ -12,6 +12,7 @@ from src.match_engine.world_model.config import WorldModelConfig
 from src.match_engine.world_model.observation import OBS_DIM
 from src.match_engine.world_model.state_scales import (
     FALSIFIABLE_SEMANTIC_EVENTS,
+    PREDICTIVE_MECHANISM_PATHS,
 )
 from src.match_engine.world_model.uncertainty import (
     ensemble_uncertainty_decomposition,
@@ -54,9 +55,10 @@ if _TORCH:
         def __init__(self, cfg: WorldModelConfig):
             super().__init__()
             self.cfg = cfg
-            self.checkpoint_version = 8
+            self.checkpoint_version = 9
             self.transition_ensemble_trained = True
             self.semantic_event_heads_trained = True
+            self.semantic_path_heads_trained = True
             d = cfg.latent_dim
             h = cfg.hidden_dim
             self.encoder = nn.Sequential(
@@ -170,6 +172,16 @@ if _TORCH:
                 for _ in range(cfg.transition_ensemble_size)
             )
             for head in self.semantic_event_heads:
+                nn.init.zeros_(head.weight)
+                nn.init.zeros_(head.bias)
+            self.semantic_path_heads = nn.ModuleList(
+                nn.Linear(
+                    semantic_input_dim,
+                    len(PREDICTIVE_MECHANISM_PATHS) * 7,
+                )
+                for _ in range(cfg.transition_ensemble_size)
+            )
+            for head in self.semantic_path_heads:
                 nn.init.zeros_(head.weight)
                 nn.init.zeros_(head.bias)
 
@@ -386,11 +398,65 @@ if _TORCH:
                 logits.append(head(features))
             return torch.stack(logits, dim=0)
 
+        def semantic_path_logits(
+            self,
+            current_obs: torch.Tensor,
+            future_obs_members: torch.Tensor,
+            action_context: torch.Tensor,
+        ) -> torch.Tensor:
+            """Return P(A), P(B|A), P(C|A,B) logits for each path/member."""
+            expected = (
+                self.transition_member_count, current_obs.shape[0], OBS_DIM,
+            )
+            if tuple(future_obs_members.shape) != expected:
+                raise ValueError(
+                    "future observations must have shape "
+                    "[members, batch, observation_dim]"
+                )
+            if (
+                action_context.ndim != 2
+                or action_context.shape != (current_obs.shape[0], ACTION_DIM)
+            ):
+                raise ValueError("action context must have shape [batch, action_dim]")
+            current_z = self.encode(current_obs)
+            logits = []
+            for member_index, head in enumerate(self.semantic_path_heads):
+                future_z = self.encode(future_obs_members[member_index])
+                features = torch.cat([current_z, future_z, action_context], dim=-1)
+                logits.append(head(features).reshape(
+                    current_obs.shape[0], len(PREDICTIVE_MECHANISM_PATHS), 7,
+                ))
+            return torch.stack(logits, dim=0)
+
+        @staticmethod
+        def semantic_path_joint_probabilities(logits: torch.Tensor) -> torch.Tensor:
+            """Expand seven autoregressive Bernoulli logits into eight cells."""
+            if logits.ndim != 4 or logits.shape[-1] != 7:
+                raise ValueError("semantic path logits must end with seven conditionals")
+            probabilities = torch.sigmoid(logits)
+            cells = []
+            for a in (0, 1):
+                pa = probabilities[..., 0] if a else 1.0 - probabilities[..., 0]
+                pb1 = probabilities[..., 1 + a]
+                for b in (0, 1):
+                    pb = pb1 if b else 1.0 - pb1
+                    pc1 = probabilities[..., 3 + 2 * a + b]
+                    for c in (0, 1):
+                        pc = pc1 if c else 1.0 - pc1
+                        cells.append(pa * pb * pc)
+            return torch.stack(cells, dim=-1)
+
         def initialize_semantic_event_heads_neutral(self) -> None:
             for head in self.semantic_event_heads:
                 nn.init.zeros_(head.weight)
                 nn.init.zeros_(head.bias)
             self.semantic_event_heads_trained = False
+
+        def initialize_semantic_path_heads_neutral(self) -> None:
+            for head in self.semantic_path_heads:
+                nn.init.zeros_(head.weight)
+                nn.init.zeros_(head.bias)
+            self.semantic_path_heads_trained = False
 
         def initialize_transition_ensemble_from_primary(self) -> None:
             """Make legacy checkpoint expansion exact rather than random."""
@@ -563,12 +629,15 @@ def save_checkpoint(
         "obs_dim": OBS_DIM,
         "action_dim": ACTION_DIM,
         "meta": meta or {},
-        "version": 8,
+        "version": 9,
         "transition_ensemble_trained": bool(
             getattr(model, "transition_ensemble_trained", False)
         ),
         "semantic_event_heads_trained": bool(
             getattr(model, "semantic_event_heads_trained", False)
+        ),
+        "semantic_path_heads_trained": bool(
+            getattr(model, "semantic_path_heads_trained", False)
         ),
     }
     torch.save(payload, path)
@@ -584,7 +653,7 @@ def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Di
     if model.checkpoint_version < 4:
         cfg.imagination_steps = 1
     try:
-        if model.checkpoint_version >= 8:
+        if model.checkpoint_version >= 9:
             model.load_state_dict(payload["state_dict"], strict=True)
             model.transition_ensemble_trained = bool(
                 payload.get("transition_ensemble_trained", False)
@@ -592,13 +661,39 @@ def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Di
             model.semantic_event_heads_trained = bool(
                 payload.get("semantic_event_heads_trained", False)
             )
+            model.semantic_path_heads_trained = bool(
+                payload.get("semantic_path_heads_trained", False)
+            )
+        elif model.checkpoint_version == 8:
+            incompatible = model.load_state_dict(
+                payload["state_dict"], strict=False,
+            )
+            unexpected_missing = [
+                key for key in incompatible.missing_keys
+                if not key.startswith("semantic_path_heads.")
+            ]
+            if unexpected_missing or incompatible.unexpected_keys:
+                raise RuntimeError(
+                    "unexpected v8 state mismatch: "
+                    f"missing={unexpected_missing}, "
+                    f"unexpected={incompatible.unexpected_keys}"
+                )
+            model.transition_ensemble_trained = bool(
+                payload.get("transition_ensemble_trained", False)
+            )
+            model.semantic_event_heads_trained = bool(
+                payload.get("semantic_event_heads_trained", False)
+            )
+            model.initialize_semantic_path_heads_neutral()
         elif model.checkpoint_version == 7:
             incompatible = model.load_state_dict(
                 payload["state_dict"], strict=False,
             )
             unexpected_missing = [
                 key for key in incompatible.missing_keys
-                if not key.startswith("semantic_event_heads.")
+                if not key.startswith((
+                    "semantic_event_heads.", "semantic_path_heads.",
+                ))
             ]
             if unexpected_missing or incompatible.unexpected_keys:
                 raise RuntimeError(
@@ -608,6 +703,7 @@ def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Di
                 )
             model.transition_ensemble_trained = True
             model.initialize_semantic_event_heads_neutral()
+            model.initialize_semantic_path_heads_neutral()
         else:
             incompatible = model.load_state_dict(
                 payload["state_dict"], strict=False,
@@ -615,7 +711,7 @@ def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Di
             if model.checkpoint_version >= 5:
                 allowed_prefixes = (
                     "extra_grus.", "extra_sequence_encoders.",
-                    "semantic_event_heads.",
+                    "semantic_event_heads.", "semantic_path_heads.",
                 )
                 unexpected_missing = [
                     key for key in incompatible.missing_keys
@@ -629,6 +725,7 @@ def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Di
                     )
             model.initialize_transition_ensemble_from_primary()
             model.initialize_semantic_event_heads_neutral()
+            model.initialize_semantic_path_heads_neutral()
     except RuntimeError as exc:
         raise RuntimeError(
             f"Checkpoint incompatible ({exc}). Retrain: python scripts/ensure_world_model.py"

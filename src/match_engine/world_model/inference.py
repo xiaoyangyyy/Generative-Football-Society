@@ -29,7 +29,9 @@ from src.match_engine.world_model.uncertainty import (
 )
 from src.match_engine.world_model.state_scales import (
     FALSIFIABLE_SEMANTIC_EVENTS,
+    PREDICTIVE_MECHANISM_PATHS,
     multiscale_state_forecast,
+    semantic_path_statistics,
 )
 
 try:
@@ -645,6 +647,62 @@ class WorldModelRuntime:
             state_scales["claims"]["probability_source"] = (
                 "per_event_grouped_validation_gated_blend"
             )
+        with torch.no_grad():
+            learned_path_probabilities = (
+                self.model.semantic_path_joint_probabilities(
+                    self.model.semantic_path_logits(
+                        torch.from_numpy(
+                            current.astype(np.float32)
+                        ).unsqueeze(0),
+                        torch.from_numpy(future_members),
+                        torch.from_numpy(conditioned_action).unsqueeze(0),
+                    )
+                ).mean(dim=0).squeeze(0).numpy()
+            )
+        path_fusion = {}
+        projected_paths = state_scales.get("predictive_mechanism_paths") or {}
+        for path_index, path in enumerate(PREDICTIVE_MECHANISM_PATHS):
+            path_key = "->".join(path)
+            projection = projected_paths.get(path_key) or {}
+            raw_joint = projection.get("joint_probabilities") or {}
+            if len(raw_joint) != 8:
+                continue
+            projected_joint = np.asarray(
+                list(raw_joint.values()), dtype=np.float64,
+            )
+            learned_joint = np.asarray(
+                learned_path_probabilities[path_index], dtype=np.float64,
+            )
+            gate = self.semantic_path_head_gate(
+                path_key, rollout_steps=rollout_steps,
+            )
+            authority = float(gate["authority"])
+            fused_joint = projected_joint + authority * (
+                learned_joint - projected_joint
+            )
+            fused_joint = np.clip(fused_joint, 1e-9, None)
+            fused_joint /= fused_joint.sum()
+            statistics = semantic_path_statistics(fused_joint)
+            projection.update(statistics)
+            projection["probability_source"] = (
+                "grouped_validated_autoregressive_path_blend"
+                if gate["active"] else "member_aligned_three_event_projection"
+            )
+            path_fusion[path_key] = {
+                "projection_joint_probabilities": dict(raw_joint),
+                "learned_joint_probabilities": dict(zip(
+                    raw_joint, map(float, learned_joint),
+                )),
+                "fused_joint_probabilities": dict(
+                    statistics["joint_probabilities"]
+                ),
+                "gate": gate,
+            }
+        state_scales["semantic_path_fusion"] = path_fusion
+        state_scales["claims"]["learned_path_heads_active"] = [
+            key for key, audit in path_fusion.items()
+            if audit["gate"]["active"]
+        ]
         from src.match_engine.world_model.distributional_utility import (
             member_policy_utility_distribution,
         )
@@ -794,6 +852,94 @@ class WorldModelRuntime:
             "skill_vs_best_baseline": skill,
             "calibration_error": calibration_error,
             "disagreement_error_correlation": disagreement_correlation,
+            "optimization_steps": optimization_steps,
+            "heads_trained": trained,
+        }
+
+    def semantic_path_head_gate(
+        self, path: str, *, rollout_steps: int,
+    ) -> dict[str, object]:
+        """Authorize learned joint blending only for exact path and depth."""
+        validation = self.meta.get("validation", {}) if isinstance(
+            self.meta, dict
+        ) else {}
+        contract = validation.get("semantic_path_heads") or {}
+        steps = max(1, int(rollout_steps))
+        scope = "one_step" if steps == 1 else (
+            "two_step" if steps == 2 else "unsupported_depth"
+        )
+        profile = ((contract.get(scope) or {}).get("paths") or {}).get(
+            str(path),
+        ) or {}
+        def safe_int(name: str) -> int:
+            try:
+                return int(profile.get(name, 0))
+            except (TypeError, ValueError):
+                return 0
+
+        def safe_float(name: str, default: float) -> float:
+            try:
+                return finite_float(float(profile.get(name, default)), default)
+            except (TypeError, ValueError):
+                return float(default)
+
+        samples = safe_int("samples")
+        groups = safe_int("groups")
+        occupied = safe_int("occupied_cells")
+        positives = safe_int("completion_positives")
+        negatives = safe_int("completion_negatives")
+        learned_brier = safe_float("learned_brier", 2.0)
+        baseline_brier = safe_float("best_baseline_brier", 0.0)
+        skill = safe_float("skill_vs_best_baseline", -1.0)
+        ensemble_gain = safe_float("ensemble_gain_vs_member_mean", -1.0)
+        optimization_key = (
+            "one_step_optimization_steps" if steps == 1
+            else "two_step_optimization_steps"
+        )
+        try:
+            optimization_steps = int(contract.get(optimization_key, 0))
+        except (TypeError, ValueError):
+            optimization_steps = 0
+        trained = bool(
+            getattr(self.model, "semantic_path_heads_trained", False)
+            and contract.get("trained")
+        )
+        known_paths = {"->".join(value) for value in PREDICTIVE_MECHANISM_PATHS}
+        active = bool(
+            path in known_paths and scope != "unsupported_depth" and trained
+            and optimization_steps > 0 and samples >= 48 and groups >= 4
+            and occupied >= 4 and positives >= 4 and negatives >= 4
+            and baseline_brier > 1e-10 and learned_brier < baseline_brier
+            and skill >= 0.01 and ensemble_gain >= -1e-8
+        )
+        sample_factor = samples / (samples + 192.0)
+        group_factor = groups / (groups + 8.0)
+        support_factor = min(positives, negatives) / (
+            min(positives, negatives) + 16.0
+        )
+        cell_factor = occupied / 8.0
+        skill_factor = float(np.clip(skill / 0.20, 0.0, 1.0))
+        authority = float(np.clip(
+            0.50 * sample_factor * group_factor * support_factor
+            * cell_factor * skill_factor if active else 0.0,
+            0.0, 0.50,
+        ))
+        return {
+            "version": 1, "active": active, "authority": authority,
+            "reason": (
+                "grouped_autoregressive_path_head_gain" if active
+                else "rollout_depth_not_validated"
+                if scope == "unsupported_depth" else "semantic_path_head_gate_closed"
+            ),
+            "path": str(path), "rollout_steps": steps,
+            "validation_scope": scope, "samples": samples,
+            "groups": groups, "occupied_cells": occupied,
+            "completion_positives": positives,
+            "completion_negatives": negatives,
+            "learned_brier": learned_brier,
+            "best_baseline_brier": baseline_brier,
+            "skill_vs_best_baseline": skill,
+            "ensemble_gain_vs_member_mean": ensemble_gain,
             "optimization_steps": optimization_steps,
             "heads_trained": trained,
         }

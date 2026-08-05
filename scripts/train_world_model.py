@@ -15,11 +15,16 @@ import numpy as np
 
 from src.match_engine.world_model.semantic_event_training import (
     bootstrap_semantic_event_loss,
+    bootstrap_semantic_path_loss,
     semantic_event_validation,
+    semantic_path_cell_rates,
+    semantic_path_validation,
 )
 from src.match_engine.world_model.state_scales import (
     FALSIFIABLE_SEMANTIC_EVENTS,
+    PREDICTIVE_MECHANISM_PATHS,
     projected_semantic_event_probabilities,
+    projected_semantic_path_probabilities,
     semantic_event_targets,
 )
 
@@ -297,6 +302,9 @@ def main() -> None:
     train_event_base_rates = (
         event_targets[train_idx].sum(axis=0) + 0.5
     ) / (len(train_idx) + 1.0)
+    train_path_cell_rates = semantic_path_cell_rates(
+        event_targets[train_idx]
+    )
     if len(train_pair_left):
         train_pair_actions = np.stack([
             act[train_pair_left], act[train_pair_left + 1],
@@ -307,6 +315,9 @@ def main() -> None:
         train_pair_event_base_rates = (
             train_pair_event_targets.sum(axis=0) + 0.5
         ) / (len(train_pair_event_targets) + 1.0)
+        train_pair_path_cell_rates = semantic_path_cell_rates(
+            train_pair_event_targets
+        )
         sequence_ds = TensorDataset(
             torch.from_numpy(obs[train_pair_left]),
             torch.from_numpy(train_pair_actions),
@@ -325,12 +336,17 @@ def main() -> None:
         train_pair_event_base_rates = np.full(
             len(FALSIFIABLE_SEMANTIC_EVENTS), 0.5, dtype=np.float32,
         )
+        train_pair_path_cell_rates = np.full(
+            (3, 8), 1.0 / 8.0, dtype=np.float32,
+        )
 
     model.train()
     total_sequence_optimization_steps = 0
     max_sequence_weight_applied = 0.0
     semantic_event_one_step_optimization_steps = 0
     semantic_event_two_step_optimization_steps = 0
+    semantic_path_one_step_optimization_steps = 0
+    semantic_path_two_step_optimization_steps = 0
     max_semantic_event_weight_applied = 0.0
     for epoch in range(args.epochs):
         loss_sum = 0.0
@@ -431,7 +447,18 @@ def main() -> None:
                     )
                 )
                 loss = loss + semantic_event_weight * event_loss
+                path_loss, _path_member_losses = (
+                    bootstrap_semantic_path_loss(
+                        model.semantic_path_logits(
+                            o, pred_obs_members, a,
+                        ),
+                        event_target,
+                        transition_bootstrap,
+                    )
+                )
+                loss = loss + 0.5 * semantic_event_weight * path_loss
                 semantic_event_one_step_optimization_steps += 1
+                semantic_path_one_step_optimization_steps += 1
                 max_semantic_event_weight_applied = max(
                     max_semantic_event_weight_applied,
                     semantic_event_weight,
@@ -490,7 +517,20 @@ def main() -> None:
                     loss = loss + (
                         semantic_event_weight * sequence_event_loss
                     )
+                    sequence_path_loss, _ = bootstrap_semantic_path_loss(
+                        model.semantic_path_logits(
+                            sequence_obs,
+                            sequence_predictions,
+                            sequence_actions.mean(dim=1),
+                        ),
+                        sequence_event_target,
+                        sequence_bootstrap,
+                    )
+                    loss = loss + (
+                        0.5 * semantic_event_weight * sequence_path_loss
+                    )
                     semantic_event_two_step_optimization_steps += 1
+                    semantic_path_two_step_optimization_steps += 1
             opt.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -509,6 +549,9 @@ def main() -> None:
 
     model.semantic_event_heads_trained = bool(
         semantic_event_one_step_optimization_steps > 0
+    )
+    model.semantic_path_heads_trained = bool(
+        semantic_path_one_step_optimization_steps > 0
     )
 
     model.eval()
@@ -566,6 +609,18 @@ def main() -> None:
             event_targets[val_idx],
             one_step_projection,
             train_event_base_rates,
+            groups[val_idx],
+        )
+        one_step_path_members = model.semantic_path_joint_probabilities(
+            model.semantic_path_logits(vo, vp_members, va)
+        ).numpy()
+        one_step_path_projection = projected_semantic_path_probabilities(
+            obs[val_idx], vp_members.numpy(),
+            ensemble_trained=model.transition_ensemble_trained,
+        )
+        one_step_path_validation = semantic_path_validation(
+            one_step_path_members, event_targets[val_idx],
+            one_step_path_projection, train_path_cell_rates,
             groups[val_idx],
         )
         pair_left = _sequential_transition_pairs(
@@ -635,12 +690,28 @@ def main() -> None:
                 train_pair_event_base_rates,
                 groups[pair_left],
             )
+            two_step_path_members = model.semantic_path_joint_probabilities(
+                model.semantic_path_logits(
+                    torch.from_numpy(obs[pair_left]), rollout_members,
+                    torch.from_numpy(pair_actions).mean(dim=1),
+                )
+            ).numpy()
+            two_step_path_projection = projected_semantic_path_probabilities(
+                obs[pair_left], rollout_members.numpy(),
+                ensemble_trained=model.transition_ensemble_trained,
+            )
+            two_step_path_validation = semantic_path_validation(
+                two_step_path_members, two_step_event_targets,
+                two_step_path_projection, train_pair_path_cell_rates,
+                groups[pair_left],
+            )
         else:
             two_step_mse = two_step_persistence_mse = two_step_skill = 0.0
             two_step_member_mean_mse = two_step_ensemble_gain = 0.0
             two_step_disagreement_error_correlation = 0.0
             two_step_groups = 0
             two_step_event_validation = {"version": 1, "events": {}}
+            two_step_path_validation = {"version": 1, "paths": {}}
         progress_target = torch.from_numpy(xg_delta[val_idx]).float().view(-1)
         progress_rmse = float(torch.sqrt(torch.mean(
             (vxp.view(-1) - progress_target) ** 2
@@ -753,6 +824,26 @@ def main() -> None:
                 semantic_event_two_step_optimization_steps
             ),
             "max_loss_weight_applied": max_semantic_event_weight_applied,
+            "proper_scoring": True,
+            "outcome_reweighting": False,
+        },
+        "semantic_path_heads": {
+            "version": 1,
+            "trained": model.semantic_path_heads_trained,
+            "path_order": [
+                "->".join(path) for path in PREDICTIVE_MECHANISM_PATHS
+            ],
+            "conditional_factorization": "P(A)*P(B|A)*P(C|A,B)",
+            "max_validated_rollout_steps": 2,
+            "one_step": one_step_path_validation,
+            "two_step": two_step_path_validation,
+            "one_step_optimization_steps": (
+                semantic_path_one_step_optimization_steps
+            ),
+            "two_step_optimization_steps": (
+                semantic_path_two_step_optimization_steps
+            ),
+            "loss_weight_relative_to_semantic_events": 0.5,
             "proper_scoring": True,
             "outcome_reweighting": False,
         },

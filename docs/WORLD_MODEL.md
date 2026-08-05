@@ -1178,6 +1178,25 @@ rules, and zero action, learning, or causal authority.
 
 ### Compositional predictive mechanism chains
 
+The learned world model also carries member-aligned autoregressive heads for
+each declared three-event mechanism path. Every head predicts seven Bernoulli
+conditionals, factorized as `P(A) * P(B|A) * P(C|A,B)`, which expands to a
+normalized eight-cell joint distribution. Training uses the same transition
+member bootstrap mask as the dynamics ensemble and validates one- and two-step
+forecasts separately with group-equal categorical Brier scores and joint log
+loss. The two non-leaking baselines are the member-projected semantic joint and
+Dirichlet-smoothed training cell rates.
+
+At inference, a learned joint can blend with the member projection only for the
+exact path and rollout depth whose held-out contract passes. The gate requires
+at least 48 samples, four groups, four occupied cells, four completed and four
+non-completed chains, positive skill over the best baseline, and no degradation
+relative to the mean member Brier score. Authority is bounded at `0.50` and
+shrinks continuously with support, coverage, and validation skill. Unsupported
+depths and legacy checkpoints remain projection-only. Checkpoint v9 stores the
+new heads and their trained flag; v8 and older checkpoints initialize them to a
+neutral, explicitly untrained state.
+
 The transition ensemble also emits three-event paths from the same member
 trajectory, such as retention -> territorial gain -> final-third entry. For
 each declared path it preserves the complete eight-cell distribution over the

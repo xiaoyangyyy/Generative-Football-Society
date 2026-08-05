@@ -154,7 +154,7 @@ def test_transition_ensemble_config_is_explicit_and_bounded():
         WorldModelConfig(transition_ensemble_size=1)
 
 
-def test_v8_transition_and_semantic_ensemble_checkpoint_round_trip(tmp_path):
+def test_v9_transition_and_semantic_ensemble_checkpoint_round_trip(tmp_path):
     pytest.importorskip("torch")
     from src.match_engine.world_model.config import WorldModelConfig
     from src.match_engine.world_model.model import build_model, load_checkpoint, save_checkpoint
@@ -164,10 +164,11 @@ def test_v8_transition_and_semantic_ensemble_checkpoint_round_trip(tmp_path):
     path = tmp_path / "wm.pt"
     save_checkpoint(str(path), model, cfg, {"quality": 0.0})
     loaded, _, meta = load_checkpoint(str(path))
-    assert loaded.checkpoint_version == 8
+    assert loaded.checkpoint_version == 9
     assert loaded.transition_member_count == cfg.transition_ensemble_size
     assert loaded.transition_ensemble_trained
     assert loaded.semantic_event_heads_trained
+    assert loaded.semantic_path_heads_trained
     assert meta["quality"] == 0.0
     from src.match_engine.world_model.inference import WorldModelRuntime
 
@@ -217,7 +218,7 @@ def test_v7_checkpoint_loads_with_neutral_untrained_semantic_heads(tmp_path):
     model = build_model(cfg)
     v7_state = {
         key: value for key, value in model.state_dict().items()
-        if not key.startswith("semantic_event_heads.")
+        if not key.startswith(("semantic_event_heads.", "semantic_path_heads."))
     }
     path = tmp_path / "legacy-v7.pt"
     torch.save({
@@ -239,10 +240,46 @@ def test_v7_checkpoint_loads_with_neutral_untrained_semantic_heads(tmp_path):
 
     assert loaded.transition_ensemble_trained
     assert not loaded.semantic_event_heads_trained
+    assert not loaded.semantic_path_heads_trained
     assert torch.count_nonzero(logits) == 0
 
 
-def test_v8_checkpoint_preserves_disabled_semantic_training_flag(tmp_path):
+def test_v8_checkpoint_loads_with_neutral_untrained_path_heads(tmp_path):
+    torch = pytest.importorskip("torch")
+    from src.match_engine.world_model.config import WorldModelConfig
+    from src.match_engine.world_model.model import build_model, load_checkpoint
+
+    cfg = WorldModelConfig(latent_dim=16, hidden_dim=32, ensemble_size=2)
+    model = build_model(cfg)
+    v8_state = {
+        key: value for key, value in model.state_dict().items()
+        if not key.startswith("semantic_path_heads.")
+    }
+    path = tmp_path / "legacy-v8.pt"
+    torch.save({
+        "state_dict": v8_state,
+        "cfg": cfg.__dict__,
+        "obs_dim": OBS_DIM,
+        "action_dim": ACTION_DIM,
+        "meta": {},
+        "version": 8,
+        "transition_ensemble_trained": True,
+        "semantic_event_heads_trained": True,
+    }, path)
+
+    loaded, _, _ = load_checkpoint(str(path))
+    observation = torch.full((2, OBS_DIM), 0.5)
+    action = torch.zeros((2, ACTION_DIM))
+    _, future_members = loaded.transition_predictions(observation, action)
+    logits = loaded.semantic_path_logits(observation, future_members, action)
+
+    assert loaded.checkpoint_version == 8
+    assert loaded.semantic_event_heads_trained
+    assert not loaded.semantic_path_heads_trained
+    assert torch.count_nonzero(logits) == 0
+
+
+def test_v9_checkpoint_preserves_disabled_semantic_training_flags(tmp_path):
     pytest.importorskip("torch")
     from src.match_engine.world_model.config import WorldModelConfig
     from src.match_engine.world_model.model import build_model, load_checkpoint, save_checkpoint
@@ -250,13 +287,15 @@ def test_v8_checkpoint_preserves_disabled_semantic_training_flag(tmp_path):
     cfg = WorldModelConfig(latent_dim=16, hidden_dim=32, ensemble_size=2)
     model = build_model(cfg)
     model.semantic_event_heads_trained = False
-    path = tmp_path / "v8-untrained-events.pt"
+    model.semantic_path_heads_trained = False
+    path = tmp_path / "v9-untrained-semantics.pt"
     save_checkpoint(str(path), model, cfg)
 
     loaded, _, _ = load_checkpoint(str(path))
 
-    assert loaded.checkpoint_version == 8
+    assert loaded.checkpoint_version == 9
     assert not loaded.semantic_event_heads_trained
+    assert not loaded.semantic_path_heads_trained
 
 
 @pytest.mark.parametrize("transition_type", ["gru", "transformer"])
@@ -280,6 +319,7 @@ def test_v6_checkpoint_expands_dynamics_without_fake_disagreement(
         if not key.startswith((
             "extra_grus.", "extra_sequence_encoders.",
             "semantic_event_heads.",
+            "semantic_path_heads.",
         ))
     }
     legacy_cfg = dict(cfg.__dict__)
@@ -303,6 +343,7 @@ def test_v6_checkpoint_expands_dynamics_without_fake_disagreement(
     assert loaded_cfg.transition_ensemble_size == 3
     assert not loaded.transition_ensemble_trained
     assert not loaded.semantic_event_heads_trained
+    assert not loaded.semantic_path_heads_trained
     assert torch.allclose(predictions[0], predictions[1])
     imagined = loaded.imagine(
         observation[0].numpy(), action[0].numpy(),
@@ -314,9 +355,10 @@ def test_v6_checkpoint_expands_dynamics_without_fake_disagreement(
 
     save_checkpoint(str(migrated_path), loaded, loaded_cfg)
     migrated, _, _ = load_checkpoint(str(migrated_path))
-    assert migrated.checkpoint_version == 8
+    assert migrated.checkpoint_version == 9
     assert not migrated.transition_ensemble_trained
     assert not migrated.semantic_event_heads_trained
+    assert not migrated.semantic_path_heads_trained
 
 
 def test_v6_zero_pass_residual_preserves_physics_prior():

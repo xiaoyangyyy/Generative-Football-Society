@@ -123,6 +123,79 @@ def projected_semantic_event_probabilities(
     ).astype(np.float32)
 
 
+def projected_semantic_path_probabilities(
+    current_observations: Any,
+    future_member_observations: Any,
+    *,
+    ensemble_trained: bool,
+) -> np.ndarray:
+    """Jeffreys-smoothed eight-cell path joints: [samples, paths, cells]."""
+    indicators = semantic_event_member_indicators(
+        current_observations, future_member_observations,
+    ) >= 0.5
+    samples = indicators.shape[1]
+    if not ensemble_trained:
+        return np.full(
+            (samples, len(PREDICTIVE_MECHANISM_PATHS), 8),
+            1.0 / 8.0, dtype=np.float32,
+        )
+    indices = {
+        event: index for index, event in enumerate(FALSIFIABLE_SEMANTIC_EVENTS)
+    }
+    distributions = []
+    for first, mediator, outcome in PREDICTIVE_MECHANISM_PATHS:
+        event_indices = [indices[name] for name in (first, mediator, outcome)]
+        path = []
+        for a in (0, 1):
+            for b in (0, 1):
+                for c in (0, 1):
+                    target = np.asarray([a, b, c], dtype=bool)
+                    counts = np.sum(
+                        np.all(indicators[:, :, event_indices] == target, axis=2),
+                        axis=0,
+                    )
+                    path.append((counts + 0.5) / (indicators.shape[0] + 4.0))
+        distributions.append(np.stack(path, axis=1))
+    return np.stack(distributions, axis=1).astype(np.float32)
+
+
+def semantic_path_statistics(joint_values: Any) -> dict[str, Any]:
+    """Derive the adjacent-edge Markov null and higher-order information."""
+    joint_array = np.asarray(joint_values, dtype=np.float64).reshape(2, 2, 2)
+    if (
+        not np.isfinite(joint_array).all()
+        or np.any(joint_array <= 0.0)
+        or abs(float(joint_array.sum()) - 1.0) > 1e-6
+    ):
+        raise ValueError("semantic path joint must be positive and normalized")
+    ab = joint_array.sum(axis=2)
+    bc = joint_array.sum(axis=0)
+    b = ab.sum(axis=0)
+    markov_array = np.empty_like(joint_array)
+    for a in (0, 1):
+        for middle in (0, 1):
+            for c in (0, 1):
+                markov_array[a, middle, c] = (
+                    ab[a, middle] * bc[middle, c] / b[middle]
+                )
+    cells = [
+        f"a{a}_b{middle}_c{c}"
+        for a in (0, 1) for middle in (0, 1) for c in (0, 1)
+    ]
+    joint = dict(zip(cells, map(float, joint_array.reshape(-1))))
+    markov = dict(zip(cells, map(float, markov_array.reshape(-1))))
+    information = float(np.sum(
+        joint_array * np.log(joint_array / markov_array)
+    ) / math.log(2.0))
+    return {
+        "joint_probabilities": joint,
+        "pairwise_markov_null_probabilities": markov,
+        "conditional_mutual_information_bits": max(0.0, information),
+        "chain_completion_probability": joint["a1_b1_c1"],
+        "null_chain_completion_probability": markov["a1_b1_c1"],
+    }
+
+
 def predictive_mechanism_edges(
     current_observations: Any,
     future_member_observations: Any,
