@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "phase": "world_model_mechanism_chain_and_llm_active_probe_revalidation",
+  "dataset": {
+    "manifest": "data/world_model/dataset_manifest_formal_v8_candidate.json",
+    "summary": {
+      "dev": {
+        "goals": 6,
+        "groups": 10,
+        "passes": 1723,
+        "rows": 1793,
+        "shots": 61
+      },
+      "sealed_test": {
+        "goals": 8,
+        "groups": 9,
+        "passes": 1545,
+        "rows": 1610,
+        "shots": 49
+      },
+      "train": {
+        "goals": 30,
+        "groups": 53,
+        "passes": 9166,
+        "rows": 9497,
+        "shots": 272
+      }
+    },
+    "group_safe_split": true
+  },
+  "world_model_candidate": {
+    "checkpoint": "data/world_model/latent_wm_formal_v8_candidate.pt",
+    "strict_command": "scripts/validate_world_model.py --trace-dir data/world_model/traces --checkpoint data/world_model/latent_wm_formal_v8_candidate.pt --require-two-step-planning --require-semantic-event-heads",
+    "strict_exit_code": 1,
+    "accepted": false,
+    "checkpoint_version": 9,
+    "transition_quality": 0.7954664042116536,
+    "transition_ensemble_trained": true,
+    "transition_ensemble_size": 3,
+    "two_step_planning_gate": {
+      "version": 2,
+      "active": false,
+      "authority": 0.0,
+      "reason": "two_step_evidence_gate_closed",
+      "samples": 1783,
+      "groups": 10,
+      "weighted_mse": 0.009170327335596085,
+      "persistence_weighted_mse": 0.008327516727149487,
+      "skill_vs_persistence": -0.10120791540398288,
+      "transition_ensemble_trained": true,
+      "training_pairs": 9444,
+      "training_groups": 53,
+      "max_curriculum_weight_applied": 0.25,
+      "optimization_steps": 2960,
+      "trained_multi_step": true,
+      "ensemble_gain_vs_member_mean": 0.0002072332426905632,
+      "disagreement_error_correlation": 0.13093336086889187,
+      "calibration_reported": true,
+      "action_sequence": "observed_changing_actions"
+    },
+    "semantic_event_heads_ready": true,
+    "active_semantic_events": {
+      "1_step": [
+        "enter_final_third",
+        "positive_territorial_shift",
+        "retain_possession"
+      ],
+      "2_step": [
+        "enter_final_third",
+        "positive_territorial_shift",
+        "retain_possession"
+      ]
+    },
+    "pass_planner_active": true,
+    "shot_planner_active": false,
+    "decision": "reject_keep_stable_checkpoint"
+  },
+  "mechanism_and_active_probe_contracts": {
+    "command": "-m pytest tests/test_world_model_active_probe.py tests/test_world_model_active_probe_memory.py tests/test_world_model_active_probe_portfolio.py tests/test_world_model_active_probe_sequential_policy.py tests/test_world_model_predictive_mechanism.py tests/test_world_model_predictive_mechanism_chain.py tests/test_world_model_mechanism_stress_test.py tests/test_world_model_llm_fusion.py tests/test_world_model_online_calibration.py tests/test_fusion_audit.py tests/test_fusion_reliability.py -q",
+    "exit_code": 0,
+    "passed": true,
+    "summary": "79 passed in 5.18s",
+    "test_files": [
+      "tests/test_world_model_active_probe.py",
+      "tests/test_world_model_active_probe_memory.py",
+      "tests/test_world_model_active_probe_portfolio.py",
+      "tests/test_world_model_active_probe_sequential_policy.py",
+      "tests/test_world_model_predictive_mechanism.py",
+      "tests/test_world_model_predictive_mechanism_chain.py",
+      "tests/test_world_model_mechanism_stress_test.py",
+      "tests/test_world_model_llm_fusion.py",
+      "tests/test_world_model_online_calibration.py",
+      "tests/test_fusion_audit.py",
+      "tests/test_fusion_reliability.py"
+    ]
+  },
+  "live_llm_evidence": {
+    "cognitive_log_files": 0,
+    "fusion_records": 0,
+    "evaluable": false,
+    "status": "not_evaluable_no_real_provider_logs",
+    "claim_boundary": "contract correctness only; no live-provider benefit claim without prospective logs"
+  },
+  "phase_complete": true,
+  "production_promotion_ready": false
+}

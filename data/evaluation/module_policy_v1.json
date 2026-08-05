@@ -43,13 +43,15 @@
     },
     "advanced_world_model": {
       "status": "research_only_default_off",
-      "reason": "no statistically resolved formal external-loss improvement",
-      "evidence": "data\\evaluation\\formal_ablation\\M1.json"
+      "reason": "no statistically resolved formal external-loss improvement; the retrained v9 candidate also failed the strict two-step planning gate",
+      "evidence": "data\\evaluation\\formal_ablation\\M1.json",
+      "phase5_evidence": "data/evaluation/phase5_research_layer_validation_v1.json"
     },
     "llm_cognition": {
       "status": "research_only_default_off",
-      "reason": "no statistically resolved formal external-loss improvement",
-      "evidence": "data\\evaluation\\formal_ablation\\C1.json"
+      "reason": "no statistically resolved formal external-loss improvement; contracts pass but no live-provider logs exist for a benefit claim",
+      "evidence": "data\\evaluation\\formal_ablation\\C1.json",
+      "phase5_evidence": "data/evaluation/phase5_research_layer_validation_v1.json"
     }
   }
 }
