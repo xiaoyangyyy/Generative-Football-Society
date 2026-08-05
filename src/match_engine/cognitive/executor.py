@@ -177,6 +177,7 @@ class CognitiveExecutor:
         active_probe_memory=None,
         predictive_mechanism_memory=None,
         predictive_mechanism_chain_memory=None,
+        predictive_mechanism_chain_fusion_memory=None,
         mechanism_stress_memory=None,
         policy_environment_signature: str = "environment_unspecified",
     ) -> None:
@@ -193,6 +194,9 @@ class CognitiveExecutor:
         self.predictive_mechanism_chain_memory = (
             predictive_mechanism_chain_memory
         )
+        self.predictive_mechanism_chain_fusion_memory = (
+            predictive_mechanism_chain_fusion_memory
+        )
         self.mechanism_stress_memory = mechanism_stress_memory
         from src.match_engine.world_model.llm_critic import llm_critic_signature
 
@@ -205,6 +209,15 @@ class CognitiveExecutor:
 
         self.llm_event_signature = llm_event_signature(
             str(getattr(llm, "model", "rule_fallback"))
+        )
+        from src.match_engine.world_model.predictive_mechanism_chain import (
+            predictive_mechanism_chain_llm_signature,
+        )
+
+        self.predictive_mechanism_chain_llm_signature = (
+            predictive_mechanism_chain_llm_signature(
+                str(getattr(llm, "model", "rule_fallback"))
+            )
         )
         from src.match_engine.world_model.event_option import (
             llm_event_option_signature,
@@ -559,6 +572,9 @@ class CognitiveExecutor:
                     ),
                     predictive_mechanism_chain_memory=(
                         self.predictive_mechanism_chain_memory
+                    ),
+                    predictive_mechanism_chain_fusion_memory=(
+                        self.predictive_mechanism_chain_fusion_memory
                     ),
                     trajectory_branch_budget=(
                         self.cfg.world_model_trajectory_branch_budget
@@ -1166,6 +1182,12 @@ class CognitiveExecutor:
                             "world_model_action", "none",
                         )),
                         selected_after_action_freeze=after_action_freeze,
+                        forecast_memory=(
+                            self.predictive_mechanism_chain_fusion_memory
+                        ),
+                        llm_signature=(
+                            self.predictive_mechanism_chain_llm_signature
+                        ),
                     )
                     if task_enabled("predictive_mechanism_chain")
                     else task_skipped("predictive_mechanism_chain")

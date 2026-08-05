@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 
-LLM_DECISION_BRIEF_VERSION = 16
+LLM_DECISION_BRIEF_VERSION = 17
 
 
 TASK_REASONING_DOMAINS = {
@@ -830,6 +830,15 @@ def build_llm_decision_brief(packet: dict[str, Any]) -> dict[str, Any]:
                 "version", "compatible_matches", "continuing_profiles",
                 "retained_profiles", "eliminated_profiles",
                 "retired_inconclusive_profiles", "memory_digest", "reason",
+            ),
+        ),
+        "predictive_mechanism_chain_fusion_memory": _pick(
+            source_packet.get(
+                "predictive_mechanism_chain_fusion_memory", {}
+            ),
+            (
+                "version", "compatible_matches", "active_profiles",
+                "maximum_llm_weight", "memory_digest", "reason",
             ),
         ),
         "mechanism_stress_test_design": _mechanism_stress_test_brief(

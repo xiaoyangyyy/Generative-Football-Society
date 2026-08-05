@@ -1218,6 +1218,32 @@ malformed or controlling claims. Add
 machine-resolved, checkpoint/environment-scoped, match-clustered profile with
 the exact stopping rule.
 
+The chain contract also makes the LLM commit to a calibrated probability for
+the complete `A=1,B=1,C=1` path. This creates four prospective forecasts for the
+same naturally observed binary outcome: the full world-model joint, the LLM,
+their bounded fusion, and the adjacent-pair Markov null. All four receive paired
+Brier and log-loss scores. The categorical eight-cell tournament remains
+unchanged, so a good completion forecast cannot rewrite or conceal errors in
+the rest of the joint distribution.
+
+`PredictiveMechanismChainFusionMemory` determines whether the language model
+adds repeatable residual information. It gives every match equal weight, fits a
+convex LLM residual weight on the chronological first half of compatible
+matches, and measures its improvement over the untouched world-model forecast
+on the second half. Activation requires at least two training and two validation
+matches plus at least two percent held-out Brier improvement. After validation,
+the weight may be refit on all prior evidence but is hard-capped at `0.35`.
+Harmful, redundant, undersampled, or out-of-scope LLM forecasts receive exactly
+zero weight.
+
+Fusion authority is isolated by world-model checkpoint, full policy environment,
+LLM model and prompt-contract signature, action, horizon, and the exact ordered
+three-event path. It changes only the shadow chain-completion probability: it
+cannot mutate the original eight-cell world-model distribution, change current
+or future actions, alter tactical controls, update weights, or establish causal
+mediation. Use `--require-predictive-mechanism-chain-fusion` to demand at least
+one chronologically held-out, scoped, bounded profile with verified improvement.
+
 Resolved queries now close the cognitive loop as an
 `opponent_information_feedback` ledger in the next coach decision packet. The
 ledger revalidates the original query audit and realized score, requires the same
@@ -1495,5 +1521,6 @@ python scripts/evaluate_online_world_model.py \
   --require-llm-distributional-decisions \
   --require-llm-risk-preferences \
   --require-predictive-mechanism-chains \
-  --require-predictive-mechanism-chain-memory
+  --require-predictive-mechanism-chain-memory \
+  --require-predictive-mechanism-chain-fusion
 ```

@@ -32,7 +32,7 @@ from src.match_engine.world_model.temporal_utility import (
 )
 
 
-DECISION_PACKET_VERSION = 35
+DECISION_PACKET_VERSION = 36
 COACH_ACTIONS = ("hold", "pass", "cross", "shot")
 PREMATCH_TACTICAL_CANDIDATES = (
     "balanced",
@@ -500,6 +500,7 @@ def build_coach_decision_packet(
     active_probe_memory=None,
     predictive_mechanism_memory=None,
     predictive_mechanism_chain_memory=None,
+    predictive_mechanism_chain_fusion_memory=None,
     opponent_belief: dict[str, Any] | None = None,
     trajectory_branch_budget: int = 48,
 ) -> dict[str, Any]:
@@ -747,6 +748,21 @@ def build_coach_decision_packet(
                 "causal_interpretation": False,
             }
         )
+        chain_fusion_summary_builder = getattr(
+            predictive_mechanism_chain_fusion_memory, "summary", None,
+        )
+        predictive_mechanism_chain_fusion_summary = (
+            chain_fusion_summary_builder()
+            if callable(chain_fusion_summary_builder) else {
+                "version": 1, "active_profiles": 0,
+                "compatible_matches": 0,
+                "reason": "no_validated_chain_forecast_fusion_memory",
+                "maximum_llm_weight": 0.35,
+                "can_change_current_action": False,
+                "can_update_world_model": False,
+                "causal_interpretation": False,
+            }
+        )
         memory_summary_builder = getattr(
             active_probe_memory, "summary", None,
         )
@@ -833,6 +849,9 @@ def build_coach_decision_packet(
             ),
             "predictive_mechanism_chain_memory": (
                 predictive_mechanism_chain_memory_summary
+            ),
+            "predictive_mechanism_chain_fusion_memory": (
+                predictive_mechanism_chain_fusion_summary
             ),
             "active_probe_discovery_memory": active_probe_memory_summary,
             "opponent_information_feedback": opponent_information_feedback,

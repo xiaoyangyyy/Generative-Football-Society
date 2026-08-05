@@ -677,6 +677,9 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
     from src.match_engine.world_model.predictive_mechanism_chain_memory import (
         predictive_mechanism_chain_memory_diagnostics,
     )
+    from src.match_engine.world_model.predictive_mechanism_chain_fusion_memory import (
+        predictive_mechanism_chain_fusion_diagnostics,
+    )
     from src.match_engine.world_model.mechanism_stress_evaluation import (
         mechanism_stress_test_diagnostics,
     )
@@ -715,7 +718,7 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         records, outcome_family="regime",
     )
     return {
-        "version": 46,
+        "version": 47,
         "registered": len(records),
         "resolved": len(resolved),
         "adopted": len(adopted),
@@ -774,6 +777,11 @@ def decision_adoption_diagnostics(state) -> dict[str, Any]:
         ),
         "predictive_mechanism_chain_memory": (
             predictive_mechanism_chain_memory_diagnostics([{
+                "world_model_decision_adoption": {"records": records},
+            }])
+        ),
+        "predictive_mechanism_chain_fusion": (
+            predictive_mechanism_chain_fusion_diagnostics([{
                 "world_model_decision_adoption": {"records": records},
             }])
         ),

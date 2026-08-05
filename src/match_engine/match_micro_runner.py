@@ -124,6 +124,13 @@ def _resolve_cognitive_layer(
             )
             if world_model_runtime is not None else None
         ),
+        predictive_mechanism_chain_fusion_memory=(
+            _load_predictive_mechanism_chain_fusion_memory(
+                base_dir, world_model_runtime, environment_signature,
+                str(getattr(llm, "model", "rule_fallback")),
+            )
+            if world_model_runtime is not None else None
+        ),
         mechanism_stress_memory=(
             _load_mechanism_stress_memory(
                 base_dir,
@@ -274,6 +281,26 @@ def _load_predictive_mechanism_chain_memory(
             world_model_runtime, "checkpoint_signature", "runtime_unspecified",
         )),
         environment_signature=str(environment_signature),
+    )
+
+
+def _load_predictive_mechanism_chain_fusion_memory(
+    base_dir, world_model_runtime, environment_signature, model_name,
+):
+    from src.match_engine.world_model.predictive_mechanism_chain import (
+        predictive_mechanism_chain_llm_signature,
+    )
+    from src.match_engine.world_model.predictive_mechanism_chain_fusion_memory import (
+        load_predictive_mechanism_chain_fusion_memory,
+    )
+
+    return load_predictive_mechanism_chain_fusion_memory(
+        base_dir,
+        checkpoint_signature=str(getattr(
+            world_model_runtime, "checkpoint_signature", "runtime_unspecified",
+        )),
+        environment_signature=str(environment_signature),
+        llm_signature=predictive_mechanism_chain_llm_signature(model_name),
     )
 
 

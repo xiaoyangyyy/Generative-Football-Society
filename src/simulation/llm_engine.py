@@ -552,6 +552,7 @@ Return JSON:
   "world_model_predictive_mechanism_chain": {{
     "chain_id": "one exact id from predictive_mechanism_chain_design.options for the frozen action",
     "confidence": 0.5-1.0,
+    "chain_completion_probability": 0.01-0.99,
     "mediator_statement": "describe the exact first-middle-third predictive dependence without claiming causality",
     "rationale": "why the full joint may outperform the adjacent-pair Markov null"
   }},

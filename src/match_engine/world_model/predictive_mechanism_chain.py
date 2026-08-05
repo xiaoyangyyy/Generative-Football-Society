@@ -19,6 +19,17 @@ _CELLS = tuple(
 )
 
 
+def predictive_mechanism_chain_llm_signature(model_name: str) -> str:
+    payload = json.dumps({
+        "contract_version": PREDICTIVE_MECHANISM_CHAIN_VERSION,
+        "model": str(model_name or "rule_fallback"),
+        "task": "bounded_three_event_chain_completion_forecast",
+    }, sort_keys=True, separators=(",", ":"))
+    return "llm-predictive-chain:" + hashlib.sha256(
+        payload.encode("utf-8")
+    ).hexdigest()[:20]
+
+
 def _digest(payload: dict[str, Any], prefix: str) -> str:
     encoded = json.dumps(
         payload, sort_keys=True, separators=(",", ":"), allow_nan=False,
@@ -369,20 +380,95 @@ def validate_llm_predictive_mechanism_chain(raw: Any) -> dict[str, Any] | None:
     chain_id = str(raw.get("chain_id", ""))[:96]
     try:
         confidence = float(raw.get("confidence", 0.0))
+        completion_probability = float(raw.get(
+            "chain_completion_probability", raw.get(
+                "completion_probability", float("nan"),
+            ),
+        ))
     except (TypeError, ValueError, OverflowError):
         return None
-    if not chain_id or not math.isfinite(confidence) or not 0.5 <= confidence <= 1.0:
+    if (
+        not chain_id or not math.isfinite(confidence)
+        or not 0.5 <= confidence <= 1.0
+        or not math.isfinite(completion_probability)
+        or not 0.01 <= completion_probability <= 0.99
+    ):
         return None
     return {
         "chain_id": chain_id, "confidence": confidence,
+        "chain_completion_probability": completion_probability,
         "mediator_statement": str(raw.get("mediator_statement", ""))[:280],
         "rationale": str(raw.get("rationale", ""))[:240],
     }
 
 
+def _inactive_fusion(
+    *, chain: dict[str, Any], llm_signature: str,
+    checkpoint_signature: str, environment_signature: str,
+) -> dict[str, Any]:
+    payload = {
+        "version": 1, "active": False, "llm_weight": 0.0,
+        "reason": "no_match_held_out_chain_forecast_gain",
+        "profile_matches": 0, "training_matches": 0,
+        "validation_matches": 0, "validation_skill": 0.0,
+        "authority_cap": 0.35,
+        "profile_key": "|".join(str(chain[key]) for key in (
+            "action", "horizon", "first_event", "mediator_event",
+            "outcome_event",
+        )),
+        "checkpoint_signature": str(checkpoint_signature),
+        "environment_signature": str(environment_signature),
+        "llm_signature": str(llm_signature),
+        "can_change_current_action": False,
+        "can_update_world_model": False,
+        "causal_interpretation": False,
+    }
+    return {
+        **payload,
+        "contract_digest": _digest(payload, "predictive-chain-fusion-contract:"),
+    }
+
+
+def _fusion_is_valid(contract: Any) -> bool:
+    if not isinstance(contract, dict):
+        return False
+    payload = dict(contract)
+    digest = payload.pop("contract_digest", None)
+    try:
+        weight = float(contract["llm_weight"])
+        matches = int(contract["profile_matches"])
+        training = int(contract["training_matches"])
+        validation = int(contract["validation_matches"])
+        skill = float(contract["validation_skill"])
+        cap = float(contract["authority_cap"])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+    active = bool(contract.get("active"))
+    return bool(
+        digest == _digest(payload, "predictive-chain-fusion-contract:")
+        and contract.get("version") == 1
+        and all(math.isfinite(value) for value in (weight, skill, cap))
+        and matches >= 0 and training >= 0 and validation >= 0
+        and 0.0 <= weight <= cap <= 0.35
+        and (not active or (
+            training >= 2 and validation >= 2 and skill >= 0.02
+            and weight > 0.0
+        ))
+        and (active or weight == 0.0)
+        and bool(contract.get("profile_key"))
+        and bool(contract.get("checkpoint_signature"))
+        and bool(contract.get("environment_signature"))
+        and bool(contract.get("llm_signature"))
+        and contract.get("can_change_current_action") is False
+        and contract.get("can_update_world_model") is False
+        and contract.get("causal_interpretation") is False
+    )
+
+
 def evaluate_llm_predictive_mechanism_chain(
     packet: dict[str, Any], raw: Any, *, selected_action: str,
-    selected_after_action_freeze: bool,
+    selected_after_action_freeze: bool, forecast_memory: Any = None,
+    llm_signature: str = "llm-predictive-chain-unspecified",
 ) -> dict[str, Any]:
     selection = validate_llm_predictive_mechanism_chain(raw)
     design = packet.get("predictive_mechanism_chain_design") or {}
@@ -404,6 +490,33 @@ def evaluate_llm_predictive_mechanism_chain(
         return {**base, "reason": "unknown_predictive_mechanism_chain"}
     if str(option["action"]) != str(selected_action).lower():
         return {**base, "reason": "frozen_action_chain_mismatch"}
+    fusion = _inactive_fusion(
+        chain=option, llm_signature=str(llm_signature),
+        checkpoint_signature=str(design["checkpoint_signature"]),
+        environment_signature=str(design["environment_signature"]),
+    )
+    provider = getattr(forecast_memory, "authority", None)
+    if callable(provider):
+        try:
+            candidate_fusion = provider(
+                action=str(option["action"]), horizon=str(option["horizon"]),
+                first_event=str(option["first_event"]),
+                mediator_event=str(option["mediator_event"]),
+                outcome_event=str(option["outcome_event"]),
+                checkpoint_signature=str(design["checkpoint_signature"]),
+                environment_signature=str(design["environment_signature"]),
+                llm_signature=str(llm_signature),
+            )
+        except (AttributeError, KeyError, TypeError, ValueError, OverflowError):
+            candidate_fusion = None
+        if _fusion_is_valid(candidate_fusion):
+            fusion = candidate_fusion
+    world_probability = float(option["chain_completion_probability"])
+    llm_probability = float(selection["chain_completion_probability"])
+    llm_weight = float(fusion["llm_weight"])
+    fused_probability = float(
+        world_probability + llm_weight * (llm_probability - world_probability)
+    )
     payload = {
         **base, "accepted": True,
         "reason": "engine_grounded_higher_order_chain_articulated",
@@ -414,6 +527,12 @@ def evaluate_llm_predictive_mechanism_chain(
         "environment_signature": design["environment_signature"],
         "selected_after_action_freeze": True,
         "higher_order_dependence_only": True,
+        "llm_signature": str(llm_signature),
+        "world_model_chain_completion_probability": world_probability,
+        "llm_chain_completion_probability": llm_probability,
+        "fused_chain_completion_probability": fused_probability,
+        "chain_forecast_fusion": fusion,
+        "world_model_prediction_mutated": False,
     }
     return {
         **payload,
@@ -435,6 +554,23 @@ def predictive_mechanism_chain_audit_is_valid(audit: Any) -> bool:
         and _option_is_valid(chain)
         and audit.get("selected_after_action_freeze") is True
         and audit.get("higher_order_dependence_only") is True
+        and _fusion_is_valid(audit.get("chain_forecast_fusion"))
+        and bool(audit.get("llm_signature"))
+        and abs(float(audit.get(
+            "world_model_chain_completion_probability", -1.0,
+        )) - float(chain["chain_completion_probability"])) <= 1e-12
+        and abs(float(audit.get(
+            "llm_chain_completion_probability", -1.0,
+        )) - float(selection["chain_completion_probability"])) <= 1e-12
+        and abs(float(audit.get(
+            "fused_chain_completion_probability", -1.0,
+        )) - (
+            float(chain["chain_completion_probability"])
+            + float(audit["chain_forecast_fusion"]["llm_weight"])
+            * (float(selection["chain_completion_probability"])
+               - float(chain["chain_completion_probability"]))
+        )) <= 1e-12
+        and audit.get("world_model_prediction_mutated") is False
         and audit.get("can_change_current_action") is False
         and audit.get("can_change_tactical_controls") is False
         and audit.get("can_schedule_future_action") is False

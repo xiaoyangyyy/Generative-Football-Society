@@ -32,6 +32,10 @@ from src.match_engine.world_model.predictive_mechanism_chain_memory import (
     compile_predictive_mechanism_chain_memory,
     predictive_mechanism_chain_memory_diagnostics,
 )
+from src.match_engine.world_model.predictive_mechanism_chain_fusion_memory import (
+    compile_predictive_mechanism_chain_fusion_memory,
+    predictive_mechanism_chain_fusion_diagnostics,
+)
 from src.match_engine.world_model.state_scales import (
     predictive_mechanism_paths,
 )
@@ -61,7 +65,10 @@ def _packet():
     }
 
 
-def _audit(index=0):
+def _audit(
+    index=0, *, forecast_memory=None, llm_probability=0.80,
+    llm_signature="llm-predictive-chain-test",
+):
     packet = _packet()
     design = build_predictive_mechanism_chain_design(packet)
     packet["predictive_mechanism_chain_design"] = design
@@ -69,8 +76,10 @@ def _audit(index=0):
     audit = evaluate_llm_predictive_mechanism_chain(
         packet,
         {"chain_id": chain["chain_id"], "confidence": 0.82,
+         "chain_completion_probability": llm_probability,
          "mediator_statement": "the middle event conditions the endpoint"},
         selected_action="pass", selected_after_action_freeze=True,
+        forecast_memory=forecast_memory, llm_signature=llm_signature,
     )
     return packet, design, audit
 
@@ -107,7 +116,8 @@ def test_llm_can_only_articulate_an_exact_machine_generated_chain():
 
     rejected = evaluate_llm_predictive_mechanism_chain(
         packet,
-        {"chain_id": audit["chain"]["chain_id"], "confidence": 0.8},
+        {"chain_id": audit["chain"]["chain_id"], "confidence": 0.8,
+         "chain_completion_probability": 0.80},
         selected_action="shot", selected_after_action_freeze=True,
     )
     assert rejected["reason"] == "frozen_action_chain_mismatch"
@@ -147,7 +157,7 @@ def test_chain_tournament_and_memory_use_separate_strict_gates():
     report = aggregate_online_calibration(
         rows, min_transitions=0, require_predictive_mechanism_chains=True,
     )
-    assert report["version"] == 46
+    assert report["version"] == 47
     assert report["predictive_mechanism_chains_ready"]
     assert report["gates"]["predictive_mechanism_chains"]
 
@@ -214,3 +224,81 @@ def test_registered_chain_is_scored_from_the_natural_future_window():
     assert evaluation["first_event_observed"]
     assert evaluation["mediator_event_observed"]
     assert evaluation["outcome_event_observed"]
+
+
+def test_llm_chain_probability_earns_only_held_out_bounded_fusion_weight():
+    logs = []
+    for _ in range(6):
+        _, _, audit = _audit()
+        logs.append(_log(audit, _score(audit)))
+    memory = compile_predictive_mechanism_chain_fusion_memory(
+        logs, checkpoint_signature="checkpoint-a",
+        environment_signature="env-a",
+        llm_signature="llm-predictive-chain-test",
+    )
+    profile = next(iter(memory.profiles.values()))
+    assert profile.training_matches == 3
+    assert profile.validation_matches == 3
+    assert profile.validation_skill >= 0.02
+    assert profile.active
+    assert 0.0 < profile.fitted_llm_weight <= 0.35
+
+    _, _, fused_audit = _audit(forecast_memory=memory)
+    fusion = fused_audit["chain_forecast_fusion"]
+    assert fusion["active"]
+    assert fusion["reason"] == "match_held_out_chain_forecast_gain"
+    assert fused_audit["world_model_prediction_mutated"] is False
+    assert (
+        fused_audit["world_model_chain_completion_probability"]
+        < fused_audit["fused_chain_completion_probability"]
+        < fused_audit["llm_chain_completion_probability"]
+    )
+    evaluation = _score(fused_audit)
+    assert evaluation["fused_brier_skill_vs_world_model"] > 0.0
+
+    diagnostics = predictive_mechanism_chain_fusion_diagnostics(logs)
+    assert diagnostics["active_profiles"] == 1
+    assert diagnostics["all_chronological_match_held_out"]
+    assert diagnostics["all_active_improve_world_model"]
+    assert diagnostics["all_authority_bounded"]
+    report = aggregate_online_calibration(
+        logs, min_transitions=0,
+        require_predictive_mechanism_chain_fusion=True,
+    )
+    assert report["version"] == 47
+    assert report["predictive_mechanism_chain_fusion_ready"]
+    assert report["gates"]["predictive_mechanism_chain_fusion"]
+
+    _, _, incompatible = _audit(
+        forecast_memory=memory, llm_signature="different-llm-contract",
+    )
+    assert not incompatible["chain_forecast_fusion"]["active"]
+    assert incompatible["chain_forecast_fusion"]["llm_weight"] == 0.0
+
+
+def test_harmful_llm_chain_forecasts_keep_zero_fusion_authority():
+    logs = []
+    for _ in range(6):
+        _, _, audit = _audit(llm_probability=0.01)
+        logs.append(_log(audit, _score(audit)))
+    memory = compile_predictive_mechanism_chain_fusion_memory(
+        logs, checkpoint_signature="checkpoint-a",
+        environment_signature="env-a",
+        llm_signature="llm-predictive-chain-test",
+    )
+    profile = next(iter(memory.profiles.values()))
+    assert not profile.active
+    assert profile.fitted_llm_weight == 0.0
+    _, _, audit = _audit(
+        forecast_memory=memory, llm_probability=0.01,
+    )
+    assert not audit["chain_forecast_fusion"]["active"]
+    assert audit["fused_chain_completion_probability"] == (
+        audit["world_model_chain_completion_probability"]
+    )
+    report = aggregate_online_calibration(
+        logs, min_transitions=0,
+        require_predictive_mechanism_chain_fusion=True,
+    )
+    assert not report["predictive_mechanism_chain_fusion_ready"]
+    assert not report["gates"]["predictive_mechanism_chain_fusion"]

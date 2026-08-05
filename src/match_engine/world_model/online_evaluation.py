@@ -96,6 +96,9 @@ from src.match_engine.world_model.predictive_mechanism_chain_evaluation import (
 from src.match_engine.world_model.predictive_mechanism_chain_memory import (
     predictive_mechanism_chain_memory_diagnostics,
 )
+from src.match_engine.world_model.predictive_mechanism_chain_fusion_memory import (
+    predictive_mechanism_chain_fusion_diagnostics,
+)
 from src.match_engine.world_model.mechanism_stress_evaluation import (
     mechanism_stress_test_diagnostics,
 )
@@ -163,6 +166,7 @@ def aggregate_online_calibration(
     require_predictive_mechanism_memory: bool = False,
     require_predictive_mechanism_chains: bool = False,
     require_predictive_mechanism_chain_memory: bool = False,
+    require_predictive_mechanism_chain_fusion: bool = False,
     require_mechanism_stress_tests: bool = False,
     require_mechanism_stress_memory: bool = False,
     require_opponent_information_adaptation: bool = False,
@@ -332,6 +336,9 @@ def aggregate_online_calibration(
     )
     predictive_mechanism_chain_memory = (
         predictive_mechanism_chain_memory_diagnostics(logs)
+    )
+    predictive_mechanism_chain_fusion = (
+        predictive_mechanism_chain_fusion_diagnostics(logs)
     )
     mechanism_stress_tests = mechanism_stress_test_diagnostics(
         policy_record_clusters
@@ -963,6 +970,35 @@ def aggregate_online_calibration(
         predictive_mechanism_chain_memory_ready
         if require_predictive_mechanism_chain_memory else True
     )
+    predictive_mechanism_chain_fusion_ready = bool(
+        predictive_mechanism_chain_fusion["active_profiles"] >= 1
+        and predictive_mechanism_chain_fusion["compatible_matches"] >= 4
+        and predictive_mechanism_chain_fusion["active_profile_matches"] >= 4
+        and predictive_mechanism_chain_fusion["active_validation_matches"] >= 2
+        and predictive_mechanism_chain_fusion[
+            "mean_active_validation_skill"
+        ] >= 0.02
+        and predictive_mechanism_chain_fusion[
+            "all_chronological_match_held_out"
+        ]
+        and predictive_mechanism_chain_fusion[
+            "all_active_improve_world_model"
+        ]
+        and predictive_mechanism_chain_fusion["llm_comparator_reported"]
+        and predictive_mechanism_chain_fusion["all_authority_bounded"]
+        and predictive_mechanism_chain_fusion[
+            "all_checkpoint_environment_llm_scoped"
+        ]
+        and predictive_mechanism_chain_fusion[
+            "can_change_current_action"
+        ] is False
+        and predictive_mechanism_chain_fusion["can_update_world_model"] is False
+        and predictive_mechanism_chain_fusion["causal_interpretation"] is False
+    )
+    gates["predictive_mechanism_chain_fusion"] = (
+        predictive_mechanism_chain_fusion_ready
+        if require_predictive_mechanism_chain_fusion else True
+    )
     mechanism_stress_tests_ready = bool(
         mechanism_stress_tests["accepted_stress_audits"] >= 4
         and mechanism_stress_tests["executed_stress_actions"] >= 4
@@ -1104,7 +1140,7 @@ def aggregate_online_calibration(
         if require_llm_task_encouragement else True
     )
     return {
-        "version": 46,
+        "version": 47,
         "evaluation_kind": (
             "online_world_model_calibration_and_randomized_policy_bridge"
         ),
@@ -1160,6 +1196,9 @@ def aggregate_online_calibration(
             "predictive_mechanism_chains": predictive_mechanism_chains,
             "predictive_mechanism_chain_memory": (
                 predictive_mechanism_chain_memory
+            ),
+            "predictive_mechanism_chain_fusion": (
+                predictive_mechanism_chain_fusion
             ),
             "mechanism_stress_tests": mechanism_stress_tests,
             "mechanism_stress_memory": mechanism_stress_memory,
@@ -1221,6 +1260,9 @@ def aggregate_online_calibration(
         ),
         "predictive_mechanism_chain_memory_ready": (
             predictive_mechanism_chain_memory_ready
+        ),
+        "predictive_mechanism_chain_fusion_ready": (
+            predictive_mechanism_chain_fusion_ready
         ),
         "mechanism_stress_tests_ready": mechanism_stress_tests_ready,
         "mechanism_stress_memory_ready": mechanism_stress_memory_ready,

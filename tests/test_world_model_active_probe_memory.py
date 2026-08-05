@@ -169,7 +169,7 @@ def test_discovery_memory_has_an_independent_strict_online_gate():
         min_transitions=0,
         require_active_probe_discovery_memory=True,
     )
-    assert report["version"] == 46
+    assert report["version"] == 47
     assert report["active_probe_discovery_memory_ready"]
     assert report["gates"]["active_probe_discovery_memory"]
 

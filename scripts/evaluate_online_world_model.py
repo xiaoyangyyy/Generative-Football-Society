@@ -290,6 +290,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--require-predictive-mechanism-chain-fusion",
+        action="store_true",
+        help=(
+            "Require chronologically held-out evidence that a bounded LLM "
+            "residual improves world-model chain completion forecasts."
+        ),
+    )
+    parser.add_argument(
         "--require-mechanism-stress-tests",
         action="store_true",
         help=(
@@ -430,6 +438,9 @@ def main() -> int:
         ),
         require_predictive_mechanism_chain_memory=(
             args.require_predictive_mechanism_chain_memory
+        ),
+        require_predictive_mechanism_chain_fusion=(
+            args.require_predictive_mechanism_chain_fusion
         ),
         require_mechanism_stress_tests=(
             args.require_mechanism_stress_tests

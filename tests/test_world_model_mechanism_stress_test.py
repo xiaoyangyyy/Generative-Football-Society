@@ -223,7 +223,7 @@ def test_mechanism_stress_tests_have_an_independent_strict_online_gate():
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_mechanism_stress_tests=True,
     )
-    assert report["version"] == 46
+    assert report["version"] == 47
     assert report["mechanism_stress_tests_ready"]
     assert report["gates"]["mechanism_stress_tests"]
 
@@ -350,7 +350,7 @@ def test_cross_match_stress_memory_validates_and_skips_resolved_rollout():
     report = aggregate_online_calibration(
         logs, min_transitions=0, require_mechanism_stress_memory=True,
     )
-    assert report["version"] == 46
+    assert report["version"] == 47
     assert report["mechanism_stress_memory_ready"]
     assert report["gates"]["mechanism_stress_memory"]
 
