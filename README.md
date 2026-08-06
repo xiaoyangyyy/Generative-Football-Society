@@ -57,6 +57,19 @@ Recommended Python: 3.10+.
 
 ## Unified CLI
 
+For the cohesive product workflow, create a persistent GFS Studio first:
+
+```bash
+python gfs.py studio init --name "My World Cup" --mode stable --seed 42
+python gfs.py studio status
+python gfs.py studio match --home Brazil --away Argentina --fast
+```
+
+Studio modes make the product boundary explicit: `stable` uses the deployed
+simulator, `research` adds the accepted calibrated world-model candidate, and
+`cognitive` additionally requires real LLM credentials. Each match produces a
+single JSON audit and HTML dashboard. See `docs/PRODUCT_STUDIO.md`.
+
 Show top team status rankings:
 
 ```bash

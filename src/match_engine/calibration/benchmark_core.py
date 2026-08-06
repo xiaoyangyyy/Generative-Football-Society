@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from src.match_engine.calibration.ablation import (
     AblationSpec,
@@ -95,6 +95,8 @@ def run_micro_benchmark_rows(
     cfg: MicroMatchConfig | None = None,
     tactical_override_home: dict[str, float] | None = None,
     tactical_override_away: dict[str, float] | None = None,
+    completed_keys: set[tuple[str, int]] | None = None,
+    row_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> list[dict[str, Any]]:
     fixtures = fixtures or DEFAULT_FIXTURES
     engine, _, _ = build_world_and_tournament(root, require_tactics=False)
@@ -115,10 +117,14 @@ def run_micro_benchmark_rows(
         assert_isolated_env(spec.name)
 
     rows: list[dict[str, Any]] = []
+    completed = completed_keys or set()
     for home, away in fixtures:
         if home not in engine.agents or away not in engine.agents:
             continue
         for i in range(samples):
+            fixture_key = f"{home}_vs_{away}"
+            if (fixture_key, i) in completed:
+                continue
             from src.simulation.random_control import derive_seed
 
             seed = derive_seed(seed_start, "calibration", home, away, i)
@@ -144,6 +150,9 @@ def run_micro_benchmark_rows(
                 tactical_override_away=tac_a,
             )
             row = row_from_summary(summary)
-            row["fixture"] = f"{home}_vs_{away}"
+            row["fixture"] = fixture_key
+            row["sample_index"] = i
             rows.append(row)
+            if row_callback is not None:
+                row_callback(dict(row))
     return rows

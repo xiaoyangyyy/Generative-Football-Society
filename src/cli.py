@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from src import app
+from src.product import ProductWorkspace, StudioConfig
 
 
 def _set_flag(name: str, enabled: bool) -> None:
@@ -83,6 +84,32 @@ def cmd_monte_carlo(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_studio_init(args: argparse.Namespace) -> int:
+    workspace = ProductWorkspace.create(
+        args.base_dir, StudioConfig(name=args.name, mode=args.mode, seed=args.seed),
+    )
+    print(f"Studio initialized: {workspace.config.name} ({workspace.config.mode})")
+    print(f"Session: {workspace.session_path}")
+    return 0
+
+
+def cmd_studio_status(args: argparse.Namespace) -> int:
+    import json
+    print(json.dumps(ProductWorkspace.load(args.base_dir).status(), ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_studio_match(args: argparse.Namespace) -> int:
+    workspace = ProductWorkspace.load(args.base_dir)
+    report = workspace.run_match(args.home, args.away, fast=args.fast)
+    result = report["result"]
+    print(f"{args.home} {result['score']['home']}-{result['score']['away']} {args.away}")
+    print(f"xG {result['xg']['home']:.2f}-{result['xg']['away']:.2f}")
+    print(f"Report: {report['report_path']}")
+    print(f"Dashboard: {report['dashboard_path']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="gfs", description="Generative Football Society")
     parser.add_argument("--base-dir", default=str(app.project_root()), help="Project root directory")
@@ -117,6 +144,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_mc.add_argument("--top", type=int, default=10)
     p_mc.add_argument("--seed", type=int, default=None)
     p_mc.set_defaults(func=cmd_monte_carlo)
+
+    p_studio = sub.add_parser("studio", help="Run the cohesive GFS product workspace")
+    studio_sub = p_studio.add_subparsers(dest="studio_command", required=True)
+    p_studio_init = studio_sub.add_parser("init", help="Create or replace a studio session")
+    p_studio_init.add_argument("--name", default="My GFS Studio")
+    p_studio_init.add_argument("--mode", choices=("stable", "research", "cognitive"), default="stable")
+    p_studio_init.add_argument("--seed", type=int, default=42)
+    p_studio_init.set_defaults(func=cmd_studio_init)
+    p_studio_status = studio_sub.add_parser("status", help="Show mode readiness and evidence")
+    p_studio_status.set_defaults(func=cmd_studio_status)
+    p_studio_match = studio_sub.add_parser("match", help="Run a match inside the current studio")
+    p_studio_match.add_argument("--home", default="Brazil")
+    p_studio_match.add_argument("--away", default="Argentina")
+    p_studio_match.add_argument("--fast", action="store_true")
+    p_studio_match.set_defaults(func=cmd_studio_match)
     return parser
 
 

@@ -61,7 +61,7 @@
           "exit_code": 0,
           "passed": true,
           "tail": [
-            "543 passed, 2 skipped, 8 warnings in 247.72s (0:04:07)"
+            "547 passed, 2 skipped, 8 warnings in 266.65s (0:04:26)"
           ]
         }
       }

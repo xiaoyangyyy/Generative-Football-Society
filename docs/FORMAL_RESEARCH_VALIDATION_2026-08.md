@@ -29,16 +29,24 @@ Seven variants used the same 18-match protocol and a paired match bootstrap:
 M1 and C1 did not have paired 95% intervals wholly below zero, so neither has
 a statistically resolved external-loss improvement.
 
-## Retrained world-model candidate
+## Retrained and calibrated world-model candidates
 
 A new group-safe dataset contains 72 simulated matches: 48 regular and 24
 shot-rich. The candidate used a three-member GRU ensemble, 50 epochs, a
 two-step curriculum, and learned semantic event/path heads.
 
-The v9 candidate was rejected by strict validation. Transition quality was
-0.795 and the semantic heads were useful for three events at one and two
-steps, but two-step state prediction was 10.1% worse than persistence and the
-shot planner quality was only 0.0054. The stable checkpoint was not replaced.
+The original v9 candidate was rejected by strict validation. Transition quality
+was 0.795, but two-step state prediction was 10.1% worse than persistence and
+shot planner quality was only 0.0054.
+
+A later dev-only bounded residual calibration selected a 0.41 multi-step blend
+under the joint state-and-semantic constraint. It improved over persistence by
+7.61% on grouped development data and 7.57% on the untouched sealed test
+(1,601 pairs across nine match groups). Three one-step and two two-step semantic
+events passed their gates. The learned shot head remained closed because its
+sealed Brier score was slightly worse than the physics xG prior, so shot planning
+falls back to that prior. This calibrated candidate is eligible for a separate
+formal M1 review; it has not replaced the stable checkpoint.
 
 ## Mechanisms and LLM boundary
 
@@ -49,7 +57,7 @@ support a live-provider LLM benefit claim.
 
 ## Final verification
 
-- Full suite: 539 passed, 2 skipped.
+- Full suite after product and resumable-M1 integration: 547 passed, 2 skipped.
 - Frozen v7: 16 artifacts verified; reversible Git LF/CRLF conversion accepted,
   any other byte change rejected.
 - Release boundary: no private raw data, checkpoint residue, or oversized file.

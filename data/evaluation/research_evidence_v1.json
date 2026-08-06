@@ -160,7 +160,7 @@
     },
     "advanced_world_model": {
       "status": "research_only_default_off",
-      "reason": "no statistically resolved formal external-loss improvement; the retrained v9 candidate also failed the strict two-step planning gate",
+      "reason": "no statistically resolved formal external-loss improvement; the original v9 candidate failed, while its dev-calibrated successor passed sealed prediction gates but still awaits a full formal M1 rerun",
       "evidence": "data\\evaluation\\formal_ablation\\M1.json",
       "phase5_evidence": "data/evaluation/phase5_research_layer_validation_v1.json"
     },
@@ -251,8 +251,8 @@
   "research_data_ready": true,
   "production_promotion_ready": false,
   "production_blockers": [
-    "full matched-seed external-calibration ablation is not frozen",
+    "the sealed-accepted calibrated world-model candidate has not completed a full matched-seed M1 rerun",
     "advanced world-model and LLM layers have no demonstrated external simulation lift",
-    "diagnostic ablation is not a full multi-fixture promotion experiment"
+    "LLM cognition has no prospective live-provider treatment/control evidence"
   ]
 }

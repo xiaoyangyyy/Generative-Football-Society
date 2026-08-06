@@ -159,9 +159,9 @@ def build_report() -> dict[str, Any]:
     report["research_data_ready"] = all(report["gates"].values())
     report["production_promotion_ready"] = False
     report["production_blockers"] = [
-        "full matched-seed external-calibration ablation is not frozen",
+        "the sealed-accepted calibrated world-model candidate has not completed a full matched-seed M1 rerun",
         "advanced world-model and LLM layers have no demonstrated external simulation lift",
-        "diagnostic ablation is not a full multi-fixture promotion experiment",
+        "LLM cognition has no prospective live-provider treatment/control evidence",
     ]
     return report
 

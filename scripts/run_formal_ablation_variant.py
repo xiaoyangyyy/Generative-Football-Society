@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,13 +47,58 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("variant", choices=sorted(VARIANTS))
     parser.add_argument("--out", required=True)
+    parser.add_argument("--checkpoint", help="Explicit checkpoint for the M1 candidate.")
+    parser.add_argument("--resume", action="store_true", help="Resume from atomic per-match progress.")
     args = parser.parse_args()
+    if args.checkpoint and args.variant != "M1":
+        raise SystemExit("--checkpoint is only valid for M1")
+    checkpoint = None
+    if args.checkpoint:
+        checkpoint = Path(args.checkpoint)
+        checkpoint = (checkpoint if checkpoint.is_absolute() else ROOT / checkpoint).resolve()
+        if not checkpoint.is_file():
+            raise SystemExit(f"missing M1 checkpoint: {checkpoint}")
     spec = VARIANTS[args.variant]
+    output = ROOT / args.out
+    progress_path = output.with_suffix(output.suffix + ".progress.json")
+    progress_rows = []
+    if args.resume and progress_path.is_file():
+        progress_rows = json.loads(progress_path.read_text(encoding="utf-8")).get("rows", [])
+    completed = {
+        (str(row["fixture"]), int(row["sample_index"]))
+        for row in progress_rows
+    }
+
+    def save_progress(row: dict) -> None:
+        progress_rows.append(row)
+        progress_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = progress_path.with_suffix(progress_path.suffix + ".tmp")
+        temporary.write_text(json.dumps({
+            "schema_version": 1, "variant": args.variant,
+            "checkpoint": str(checkpoint) if checkpoint else None,
+            "rows": progress_rows,
+        }, indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, progress_path)
+        print(f"[formal] completed {len(progress_rows)}/18", flush=True)
+
+    started = time.perf_counter()
     with ablation_context(spec) as cfg:
-        rows = run_micro_benchmark_rows(
-            root=str(ROOT), fixtures=DEFAULT_FIXTURES, samples=3,
-            seed_start=42, match_seconds=5400.0, spec=spec, cfg=cfg,
-        )
+        previous_checkpoint = os.environ.get("MATCH_WM_CHECKPOINT")
+        if checkpoint is not None:
+            os.environ["MATCH_WM_CHECKPOINT"] = str(checkpoint)
+        try:
+            new_rows = run_micro_benchmark_rows(
+                root=str(ROOT), fixtures=DEFAULT_FIXTURES, samples=3,
+                seed_start=42, match_seconds=5400.0, spec=spec, cfg=cfg,
+                completed_keys=completed, row_callback=save_progress,
+            )
+        finally:
+            if checkpoint is not None:
+                if previous_checkpoint is None:
+                    os.environ.pop("MATCH_WM_CHECKPOINT", None)
+                else:
+                    os.environ["MATCH_WM_CHECKPOINT"] = previous_checkpoint
+    rows = progress_rows if progress_rows else new_rows
     evaluation = evaluate_rows(
         rows, contract=load_contract(), baselines=load_statsbomb_baselines(),
     )
@@ -85,10 +132,20 @@ def main() -> int:
         "report": evaluation["hard_metrics"],
         "soft_constraints": evaluation["soft_constraints"],
         "raw_rows": rows,
+        "candidate": {
+            "checkpoint": (
+                checkpoint.relative_to(ROOT).as_posix()
+                if checkpoint is not None else None
+            ),
+            "explicit_checkpoint": checkpoint is not None,
+        },
+        "runtime": {"elapsed_seconds": time.perf_counter() - started},
     }
     output = ROOT / args.out
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    if progress_path.exists():
+        progress_path.unlink()
     print(json.dumps({
         "variant": args.variant,
         "samples_total": len(rows),
