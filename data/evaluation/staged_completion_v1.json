@@ -24,7 +24,7 @@
     },
     "5_research_layers": {
       "complete": true,
-      "candidate_accepted": false,
+      "candidate_accepted": true,
       "contracts_passed": true,
       "live_llm_evaluable": false,
       "evidence": "data/evaluation/phase5_research_layer_validation_v1.json"
@@ -61,7 +61,7 @@
           "exit_code": 0,
           "passed": true,
           "tail": [
-            "539 passed, 2 skipped, 8 warnings in 228.48s (0:03:48)"
+            "543 passed, 2 skipped, 8 warnings in 247.72s (0:04:07)"
           ]
         }
       }

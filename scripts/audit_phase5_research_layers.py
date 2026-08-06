@@ -37,7 +37,7 @@ def _last_json(text: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--checkpoint", default="data/world_model/latent_wm_formal_v8_candidate.pt"
+        "--checkpoint", default="data/world_model/latent_wm_rollout_calibrated_candidate.pt"
     )
     parser.add_argument(
         "--manifest", default="data/world_model/dataset_manifest_formal_v8_candidate.json"
@@ -51,6 +51,7 @@ def main() -> int:
         sys.executable, "scripts/validate_world_model.py",
         "--trace-dir", "data/world_model/traces",
         "--checkpoint", args.checkpoint,
+        "--manifest", args.manifest,
         "--require-two-step-planning", "--require-semantic-event-heads",
     ]
     validation = subprocess.run(
@@ -93,10 +94,12 @@ def main() -> int:
             "transition_ensemble_trained": validation_payload.get("transition_ensemble_trained"),
             "transition_ensemble_size": validation_payload.get("transition_ensemble_size"),
             "two_step_planning_gate": validation_payload.get("two_step_planning_gate"),
+            "sealed_test": validation_payload.get("sealed_test"),
             "semantic_event_heads_ready": validation_payload.get("semantic_event_heads_ready"),
             "active_semantic_events": active_semantic,
             "pass_planner_active": validation_payload.get("pass_planner_active"),
             "shot_planner_active": validation_payload.get("shot_planner_active"),
+            "shot_fallback": validation_payload.get("shot_fallback"),
             "decision": "reject_keep_stable_checkpoint" if validation.returncode else "eligible_for_separate_promotion_review",
         },
         "mechanism_and_active_probe_contracts": {

@@ -363,7 +363,11 @@ if _TORCH:
                     member_observations[member_index] = decoded
                     member_latents[member_index] = self.encode(decoded)
                     member_hidden[member_index] = hidden
-            return torch.stack(member_observations, dim=0)
+            predictions = torch.stack(member_observations, dim=0)
+            blend = float(np.clip(
+                getattr(self.cfg, "rollout_residual_blend", 1.0), 0.0, 1.0,
+            )) if actions.shape[1] > 1 else 1.0
+            return obs.unsqueeze(0) + blend * (predictions - obs.unsqueeze(0))
 
         def semantic_event_logits(
             self,
@@ -533,6 +537,18 @@ if _TORCH:
                     member_z = next_z
                     member_hidden = next_hidden
                     trajectory_states.append(torch.stack(member_obs, dim=0))
+                if steps > 1:
+                    blend = float(np.clip(
+                        getattr(self.cfg, "rollout_residual_blend", 1.0),
+                        0.0,
+                        1.0,
+                    ))
+                    member_obs = [
+                        initial_obs + blend * (value - initial_obs)
+                        for value in member_obs
+                    ]
+                    member_z = [self.encode(value) for value in member_obs]
+                    trajectory_states[-1] = torch.stack(member_obs, dim=0)
                 next_obs_members = torch.stack(member_obs, dim=0)
                 next_obs_t = next_obs_members.mean(dim=0)
                 outcome_members = [

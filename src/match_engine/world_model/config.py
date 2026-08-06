@@ -17,6 +17,7 @@ class WorldModelConfig:
     planner_blend: float = 0.30
     shot_planner_blend: float = 0.25
     residual_scale: float = 0.25
+    rollout_residual_blend: float = 1.0
     legacy_quality: float = 0.10
     min_planner_quality: float = 0.15
     ensemble_size: int = 3
@@ -49,6 +50,9 @@ class WorldModelConfig:
             planner_blend=env_float(values, "MATCH_WM_PLANNER_BLEND", 0.30),
             shot_planner_blend=env_float(values, "MATCH_WM_SHOT_BLEND", 0.25),
             residual_scale=env_float(values, "MATCH_WM_RESIDUAL_SCALE", 0.25),
+            rollout_residual_blend=env_float(
+                values, "MATCH_WM_ROLLOUT_RESIDUAL_BLEND", 1.0,
+            ),
             legacy_quality=env_float(values, "MATCH_WM_LEGACY_QUALITY", 0.10),
             min_planner_quality=env_float(values, "MATCH_WM_MIN_QUALITY", 0.15),
             ensemble_size=env_int(values, "MATCH_WM_ENSEMBLE_SIZE", 3),
