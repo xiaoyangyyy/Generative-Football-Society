@@ -16,7 +16,6 @@ from src.match_engine.cognitive.config import CognitiveMatchConfig
 from src.match_engine.cognitive.events import (
     ENTITY_TIER_ASSISTANT,
     ENTITY_TIER_COACH,
-    ENTITY_TIER_CROWD,
     ENTITY_TIER_PLAYER,
     ENTITY_TIER_REFEREE,
     CognitivePlanRecord,
@@ -339,7 +338,9 @@ class CognitiveExecutor:
         facts = trig.facts
         kind = trig.kind
         if not self.use_llm:
-            return _rule_fallback_plan(trig)
+            fallback = _rule_fallback_plan(trig)
+            fallback["cognitive_source"] = "rule_fallback"
+            return fallback
 
         # Provider retries belong to LLMGateway; this layer only retries malformed plans.
         from src.simulation.runtime import environment_snapshot, env_int
@@ -360,7 +361,9 @@ class CognitiveExecutor:
                 else:
                     raw = self.llm.crowd_collective_reaction(facts, kind)
                 data = json.loads(raw) if isinstance(raw, str) else raw
-                return self._validate_plan(trig, data)
+                plan = self._validate_plan(trig, data)
+                plan["cognitive_source"] = "llm_provider"
+                return plan
             except Exception as exc:
                 last_exc = exc
                 if attempt < attempts - 1:
@@ -369,7 +372,13 @@ class CognitiveExecutor:
         print(
             f"  [COGNITIVE] LLM exhausted {attempts} retries ({last_exc}); using rule fallback."
         )
-        return _rule_fallback_plan(trig)
+        if self.cfg.require_llm:
+            raise RuntimeError(
+                f"strict cognitive provider failed after {attempts} attempts"
+            ) from last_exc
+        fallback = _rule_fallback_plan(trig)
+        fallback["cognitive_source"] = "rule_fallback"
+        return fallback
 
     def _attach_mechanism_stress_design(
         self, trig: CognitiveTriggerEvent, frozen_plan: Dict[str, Any], state,
@@ -599,6 +608,9 @@ class CognitiveExecutor:
         if cached is not None:
             try:
                 plan = self._validate_plan(trig, cached)
+                plan["cognitive_source"] = str(
+                    cached.get("cognitive_source") or "validated_cache"
+                )
                 if trig.entity_tier == ENTITY_TIER_COACH:
                     self._attach_mechanism_stress_design(trig, plan, state)
                     from src.match_engine.world_model.llm_deliberation_encouragement import (

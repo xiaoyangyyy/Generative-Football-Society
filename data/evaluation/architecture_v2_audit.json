@@ -1,0 +1,52 @@
+{
+  "all_pass": true,
+  "architecture": "gfs-layered-product-v2.1",
+  "checks": {
+    "all_training_entrypoints_are_classified": true,
+    "domain_does_not_depend_on_product_or_training": true,
+    "formal_experiment_fails_closed_on_identity_or_partial_evidence": true,
+    "formal_experiment_is_preregistered_and_compute_bounded": true,
+    "infrastructure_has_no_upward_dependencies": true,
+    "llm_pool_is_config_scoped_and_locked": true,
+    "llm_success_count_requires_accepted_content": true,
+    "product_does_not_import_training_implementation": true,
+    "research_checkpoint_identity_chain_verified": true,
+    "shot_head_decision_binds_promoted_artifact": true,
+    "stable_release_artifact_chain_verified": true,
+    "stable_release_pointer_identity_verified": true,
+    "studio_exposes_one_guided_end_to_end_workflow": true,
+    "studio_has_transactional_run_journal": true,
+    "studio_uses_context_local_configuration": true,
+    "training_attempts_are_distinguishable": true,
+    "training_has_exclusive_process_lease": true,
+    "training_lifecycle_has_no_domain_or_product_dependencies": true,
+    "training_requires_explicit_authority": true,
+    "training_resume_binds_data_and_code_identity": true,
+    "training_stop_forces_exact_checkpoint": true,
+    "wheel_preserves_src_console_namespace": true,
+    "world_model_required_mode_fails_closed": true
+  },
+  "deployment_note": "This mutable development worktree is not itself a newly promoted release; the active frozen release remains the current.json authority.",
+  "integrity": {
+    "active_release": "7.0.0",
+    "formal_m1_decision": "research_only_default_off",
+    "release_artifacts": {
+      "artifacts": 16,
+      "failures": [],
+      "ok": true
+    },
+    "release_pointer_verified": true,
+    "world_model_checkpoint": "data/world_model/latent_wm_rollout_calibrated_candidate.pt",
+    "world_model_checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28",
+    "world_model_identity_chain_verified": true
+  },
+  "schema_version": 2,
+  "violations": {
+    "domain_product_or_training_imports": [],
+    "infrastructure_upward_imports": [],
+    "product_training_imports": [],
+    "stale_training_registry_entries": [],
+    "training_upward_imports": [],
+    "unclassified_training_entrypoints": []
+  }
+}

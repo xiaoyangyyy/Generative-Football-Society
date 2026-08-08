@@ -7,7 +7,9 @@ import os
 from pathlib import Path
 
 from src import app
-from src.product import ProductWorkspace, StudioConfig
+from src.product import (
+    ProductControlPlane, ProductWorkspace, ProspectivePilot, StudioConfig,
+)
 
 
 def _set_flag(name: str, enabled: bool) -> None:
@@ -87,6 +89,7 @@ def cmd_monte_carlo(args: argparse.Namespace) -> int:
 def cmd_studio_init(args: argparse.Namespace) -> int:
     workspace = ProductWorkspace.create(
         args.base_dir, StudioConfig(name=args.name, mode=args.mode, seed=args.seed),
+        replace=args.replace,
     )
     print(f"Studio initialized: {workspace.config.name} ({workspace.config.mode})")
     print(f"Session: {workspace.session_path}")
@@ -107,6 +110,82 @@ def cmd_studio_match(args: argparse.Namespace) -> int:
     print(f"xG {result['xg']['home']:.2f}-{result['xg']['away']:.2f}")
     print(f"Report: {report['report_path']}")
     print(f"Dashboard: {report['dashboard_path']}")
+    if not report["integrity"]["accepted"]:
+        print("Integrity: degraded (" + ", ".join(report["integrity"]["blockers"]) + ")")
+    return 0
+
+
+def cmd_studio_run(args: argparse.Namespace) -> int:
+    """Complete the normal product journey through one safe entry point."""
+    session_path = Path(args.base_dir) / "data/persistence/product_session.json"
+    if session_path.is_file() and not args.replace:
+        workspace = ProductWorkspace.load(args.base_dir)
+        requested = {
+            "name": args.name, "mode": args.mode, "seed": args.seed,
+        }
+        actual = {
+            "name": workspace.config.name,
+            "mode": workspace.config.mode,
+            "seed": workspace.config.seed,
+        }
+        mismatches = [
+            key for key, value in requested.items()
+            if value is not None and value != actual[key]
+        ]
+        if mismatches:
+            raise ValueError(
+                "existing Studio configuration differs for "
+                + ", ".join(mismatches)
+                + "; use --replace to reset explicitly"
+            )
+    else:
+        workspace = ProductWorkspace.create(
+            args.base_dir,
+            StudioConfig(
+                name=args.name or "My GFS Studio",
+                mode=args.mode or "stable",
+                seed=42 if args.seed is None else args.seed,
+            ),
+            replace=args.replace,
+        )
+    readiness = workspace.readiness()
+    if not readiness["ready"]:
+        raise RuntimeError(
+            "Studio is blocked before simulation: "
+            + ", ".join(readiness["blockers"])
+        )
+    report = workspace.run_match(args.home, args.away, fast=args.fast)
+    result = report["result"]
+    print(f"{args.home} {result['score']['home']}-{result['score']['away']} {args.away}")
+    print(f"Report: {report['report_path']}")
+    print(f"Dashboard: {report['dashboard_path']}")
+    print("Workflow: review")
+    return 0
+
+
+def cmd_studio_pilot(args: argparse.Namespace) -> int:
+    import json
+    pilot = ProspectivePilot(ProductWorkspace.load(args.base_dir))
+    result = pilot.execute() if args.execute else pilot.preflight()
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    if not args.execute:
+        print("Preflight only: no external provider calls were made.")
+    else:
+        print(f"Pilot report: {pilot.report_path}")
+    return 0
+
+
+def cmd_studio_jobs(args: argparse.Namespace) -> int:
+    import json
+    print(json.dumps(
+        ProductControlPlane(args.base_dir).snapshot(), ensure_ascii=False, indent=2,
+    ))
+    return 0
+
+
+def cmd_studio_stop_job(args: argparse.Namespace) -> int:
+    path = ProductControlPlane(args.base_dir).request_stop(args.run_id)
+    print(f"Cooperative stop requested: {path}")
     return 0
 
 
@@ -151,6 +230,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_studio_init.add_argument("--name", default="My GFS Studio")
     p_studio_init.add_argument("--mode", choices=("stable", "research", "cognitive"), default="stable")
     p_studio_init.add_argument("--seed", type=int, default=42)
+    p_studio_init.add_argument(
+        "--replace", action="store_true",
+        help="Explicitly replace the existing persisted Studio session",
+    )
     p_studio_init.set_defaults(func=cmd_studio_init)
     p_studio_status = studio_sub.add_parser("status", help="Show mode readiness and evidence")
     p_studio_status.set_defaults(func=cmd_studio_status)
@@ -159,6 +242,39 @@ def build_parser() -> argparse.ArgumentParser:
     p_studio_match.add_argument("--away", default="Argentina")
     p_studio_match.add_argument("--fast", action="store_true")
     p_studio_match.set_defaults(func=cmd_studio_match)
+    p_studio_run = studio_sub.add_parser(
+        "run", help="Create/load Studio, verify readiness, run, and report one match",
+    )
+    p_studio_run.add_argument("--name", default=None)
+    p_studio_run.add_argument(
+        "--mode", choices=("stable", "research", "cognitive"), default=None,
+    )
+    p_studio_run.add_argument("--seed", type=int, default=None)
+    p_studio_run.add_argument("--home", default="Brazil")
+    p_studio_run.add_argument("--away", default="Argentina")
+    p_studio_run.add_argument("--fast", action="store_true")
+    p_studio_run.add_argument(
+        "--replace", action="store_true",
+        help="Explicitly replace an existing Studio before running",
+    )
+    p_studio_run.set_defaults(func=cmd_studio_run)
+    p_studio_pilot = studio_sub.add_parser(
+        "pilot", help="Preflight or execute the frozen live-provider pilot",
+    )
+    p_studio_pilot.add_argument(
+        "--execute", action="store_true",
+        help="Make real provider calls; without this flag the command is read-only",
+    )
+    p_studio_pilot.set_defaults(func=cmd_studio_pilot)
+    p_studio_jobs = studio_sub.add_parser(
+        "jobs", help="Show training jobs and model/LLM decision artifacts",
+    )
+    p_studio_jobs.set_defaults(func=cmd_studio_jobs)
+    p_studio_stop = studio_sub.add_parser(
+        "stop-job", help="Request a safe stop at the next epoch boundary",
+    )
+    p_studio_stop.add_argument("run_id")
+    p_studio_stop.set_defaults(func=cmd_studio_stop_job)
     return parser
 
 

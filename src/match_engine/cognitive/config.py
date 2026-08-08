@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Mapping, Tuple
 
 from src.simulation.runtime import environment_snapshot, env_bool, env_float
@@ -40,6 +40,7 @@ def _parse_outcome_horizons(
 class CognitiveMatchConfig:
     enabled: bool = False
     sync_llm: bool = False
+    require_llm: bool = False
     cache_dir: str = ""
     salience_center: float = 0.55
     cooldown_sec: float = 180.0
@@ -73,6 +74,7 @@ class CognitiveMatchConfig:
         return cls(
             enabled=env_bool(values, "MATCH_COGNITIVE", False),
             sync_llm=env_bool(values, "MATCH_COGNITIVE_SYNC", False),
+            require_llm=env_bool(values, "MATCH_COGNITIVE_REQUIRE_LLM", False),
             cache_dir=cache,
             salience_center=env_float(values, "MATCH_COGNITIVE_S0", 0.55),
             cooldown_sec=env_float(values, "MATCH_COGNITIVE_COOLDOWN", 180.0),

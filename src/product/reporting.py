@@ -20,11 +20,13 @@ def render_match_html(report: Mapping[str, Any]) -> str:
     psychology = layers.get("psychology") or {}
     world_model = layers.get("world_model") or {}
     cognition = layers.get("cognition") or {}
-    evidence = report.get("evidence_snapshot") or {}
+    integrity = report.get("integrity") or {}
     timeline = "".join(
         f"<li>{html.escape(str(item))}</li>" for item in report.get("timeline") or []
     ) or "<li>No major timeline events recorded.</li>"
     raw_json = html.escape(json.dumps(report, ensure_ascii=False, indent=2, default=str))
+    integrity_state = str(integrity.get("state", "unknown"))
+    shot_source = str(world_model.get("shot_probability_source", "not reported"))
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(fixture['home'])} vs {html.escape(fixture['away'])} · GFS Studio</title>
@@ -46,7 +48,7 @@ h1{{font-size:clamp(28px,6vw,58px);margin:0;letter-spacing:-.04em}}h2{{margin:0 
 <article class="card"><div class="label">Shots</div><div class="metric">{_value(result['shots']['home'],0)} – {_value(result['shots']['away'],0)}</div></article>
 </section>
 <section class="split">
-<article class="card"><h2>System layers</h2><p>World model: <b class="{'ok' if world_model.get('enabled') else 'off'}">{'active' if world_model.get('enabled') else 'stable fallback'}</b><br>Cognition: <b class="{'ok' if cognition.get('enabled') else 'off'}">{'active' if cognition.get('enabled') else 'off'}</b><br>Shot planning: <b class="off">{html.escape(str(evidence.get('shot_fallback') or 'learned head'))}</b></p></article>
+<article class="card"><h2>System layers</h2><p>Integrity: <b class="{'ok' if integrity.get('accepted') else 'off'}">{html.escape(integrity_state)}</b><br>World model: <b class="{'ok' if world_model.get('enabled') else 'off'}">{'active' if world_model.get('enabled') else 'stable fallback'}</b><br>Shot probability: <b>{html.escape(shot_source)}</b><br>Cognition: <b class="{'ok' if cognition.get('enabled') else 'off'}">{'active' if cognition.get('enabled') else 'off'}</b></p></article>
 <article class="card"><h2>Match psychology</h2><p>Crowd field: <b>{_value(psychology.get('crowd_field'))}</b><br>Coach stress: <b>{_value((psychology.get('coach_stress') or {{}}).get('home'))} / {_value((psychology.get('coach_stress') or {{}}).get('away'))}</b><br>Tactical drift: <b>{_value((psychology.get('tactical_drift') or {{}}).get('home'))} / {_value((psychology.get('tactical_drift') or {{}}).get('away'))}</b></p></article>
 </section>
 <section class="card" style="margin-top:14px"><h2>Timeline</h2><ul>{timeline}</ul></section>

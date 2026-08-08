@@ -48,6 +48,14 @@ sealed Brier score was slightly worse than the physics xG prior, so shot plannin
 falls back to that prior. This calibrated candidate is eligible for a separate
 formal M1 review; it has not replaced the stable checkpoint.
 
+That review subsequently ran the complete six-fixture, three-seed, 5,400-second
+protocol with the calibrated checkpoint explicitly bound. All base gates passed,
+but the observed external-loss delta was only -1.07e-9 and the paired 95%
+interval crossed zero. At a 1e-7 behavior tolerance, none of the 15 formal
+observables changed in any paired match. Runtime was 8,550.7 seconds. The
+candidate therefore remains research-only: predictive skill alone did not
+produce product-level behavior or external-validity gain.
+
 ## Mechanisms and LLM boundary
 
 The mechanism-chain, stress-test, active-probe, sequential-policy, fusion, and

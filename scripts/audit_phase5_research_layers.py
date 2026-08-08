@@ -10,6 +10,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.data_engine.dataset_registry import file_sha256
 
 TEST_FILES = (
     "tests/test_world_model_active_probe.py",
@@ -70,6 +74,18 @@ def main() -> int:
     fusion_records = 0
     if fusion_path.exists():
         fusion_records = sum(1 for line in fusion_path.read_text(encoding="utf-8").splitlines() if line.strip())
+    formal_review_path = ROOT / "data/evaluation/formal_ablation/M1_calibrated_decision.json"
+    formal_review = (
+        json.loads(formal_review_path.read_text(encoding="utf-8"))
+        if formal_review_path.exists() else None
+    )
+    checkpoint_digest = file_sha256(ROOT / args.checkpoint)
+    formal_digest = str(
+        ((formal_review or {}).get("candidate") or {}).get("checkpoint_sha256") or ""
+    )
+    checkpoint_identity_verified = bool(
+        formal_review and formal_digest == checkpoint_digest
+    )
 
     semantic = validation_payload.get("semantic_event_head_gates", {})
     active_semantic = {
@@ -86,9 +102,13 @@ def main() -> int:
         },
         "world_model_candidate": {
             "checkpoint": args.checkpoint,
+            "checkpoint_sha256": checkpoint_digest,
+            "checkpoint_identity_verified": checkpoint_identity_verified,
             "strict_command": " ".join(validate_cmd[1:]),
             "strict_exit_code": validation.returncode,
-            "accepted": bool(validation_payload.get("ok")),
+            "accepted": bool(
+                validation_payload.get("ok") and checkpoint_identity_verified
+            ),
             "checkpoint_version": validation_payload.get("checkpoint_version"),
             "transition_quality": validation_payload.get("transition_quality"),
             "transition_ensemble_trained": validation_payload.get("transition_ensemble_trained"),
@@ -100,7 +120,13 @@ def main() -> int:
             "pass_planner_active": validation_payload.get("pass_planner_active"),
             "shot_planner_active": validation_payload.get("shot_planner_active"),
             "shot_fallback": validation_payload.get("shot_fallback"),
-            "decision": "reject_keep_stable_checkpoint" if validation.returncode else "eligible_for_separate_promotion_review",
+            "formal_m1_review": formal_review,
+            "decision": (
+                "reject_keep_stable_checkpoint" if validation.returncode else
+                "research_only_after_formal_m1_review"
+                if formal_review and not formal_review.get("promotion_supported") else
+                "eligible_for_separate_promotion_review"
+            ),
         },
         "mechanism_and_active_probe_contracts": {
             "command": " ".join(test_cmd[1:]),
@@ -118,7 +144,9 @@ def main() -> int:
         },
         "phase_complete": tests.returncode == 0,
         "production_promotion_ready": bool(
-            validation.returncode == 0 and tests.returncode == 0 and cognitive_logs and fusion_records
+            validation.returncode == 0 and tests.returncode == 0
+            and formal_review and formal_review.get("promotion_supported")
+            and cognitive_logs and fusion_records
         ),
     }
     out = ROOT / args.out

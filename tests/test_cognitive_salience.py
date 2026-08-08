@@ -60,6 +60,7 @@ def test_bus_queues_goal_trigger():
     assert any(t.entity_tier == "coach" for t in pending)
 def test_policy_bridge_experiment_config_is_safely_bounded():
     cfg = CognitiveMatchConfig.from_mapping({
+        "MATCH_COGNITIVE_REQUIRE_LLM": "1",
         "MATCH_WM_LLM_ACTION_BRIDGE": "1",
         "MATCH_WM_LLM_ACTION_BIAS_MAX": "9",
         "MATCH_WM_LLM_ACTION_CONTROL_RATE": "0.8",
@@ -76,6 +77,7 @@ def test_policy_bridge_experiment_config_is_safely_bounded():
         "MATCH_WM_LLM_CONTRASTIVE_REPAIR_PATH_BUDGET": "999",
         "MATCH_WM_LLM_TWO_STAGE_DELIBERATION": "0",
     })
+    assert cfg.require_llm
     assert cfg.world_model_action_bridge
     assert cfg.world_model_action_bias_max == 0.5
     assert cfg.world_model_action_control_rate == 0.5

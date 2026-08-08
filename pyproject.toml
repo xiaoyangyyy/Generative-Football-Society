@@ -22,6 +22,10 @@ dependencies = [
 [project.scripts]
 gfs = "src.cli:main"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src", "src.*"]
+
 [tool.pytest.ini_options]
 markers = [
   "slow: slow calibration or benchmark tests",

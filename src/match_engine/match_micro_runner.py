@@ -13,7 +13,7 @@ import numpy as np
 from src.match_engine.action_engine import ActionEngine
 from src.match_engine.affective_coupling import AffectiveSpatialCoupling
 from src.match_engine.event_schedule import build_event_schedule
-from src.match_engine.goal_generator import lambdas_from_micro, simulate_match_score_from_micro
+from src.match_engine.goal_generator import lambdas_from_micro
 from src.match_engine.kinematic_position import KinematicPositionLayer
 from src.match_engine.macro_bridge import apply_affective_endstate_to_agents, build_match_affective_state
 from src.match_engine.meso_aggregator import MesoAggregator, icon_emotion_shock
@@ -23,7 +23,7 @@ from src.match_engine.possession_helpers import (
     turnover_to_defence_after_shot,
 )
 from src.match_engine.micro_config import MicroMatchConfig
-from src.match_engine.micro_events import MicroEvent, MicroEventType, apply_micro_event
+from src.match_engine.micro_events import MicroEventType, apply_micro_event
 from src.match_engine.passing_engine import PassingEngine
 from src.match_engine.aerial_duel import AerialDuelEngine
 from src.match_engine.shot_engine import ShotEngine
@@ -62,7 +62,11 @@ def _resolve_cognitive_layer(
         from src.simulation.llm_engine import SimulationLLM
 
         llm = SimulationLLM()
-    except Exception:
+    except Exception as exc:
+        if cog_cfg.require_llm:
+            raise RuntimeError(
+                "cognitive strict mode requires a live LLM provider"
+            ) from exc
         llm = None
     environment_signature = _policy_environment_signature(cfg, cog_cfg)
     executor = CognitiveExecutor(
@@ -618,17 +622,40 @@ def _build_micro_match_summary(
             if wm_runtime is not None else {"available": False}
         ),
         world_model_decision_adoption=decision_adoption_diagnostics(state),
+        world_model_runtime={
+            "loaded": wm_runtime is not None,
+            "checkpoint_signature": (
+                getattr(wm_runtime, "checkpoint_signature", None)
+                if wm_runtime is not None else None
+            ),
+            "shot_probability_source": (
+                getattr(wm_runtime, "shot_probability_source", None)
+                if wm_runtime is not None else None
+            ),
+            "pass_quality": (
+                getattr(wm_runtime, "pass_quality", None)
+                if wm_runtime is not None else None
+            ),
+            "shot_quality": (
+                getattr(wm_runtime, "shot_quality", None)
+                if wm_runtime is not None else None
+            ),
+        },
     )
 
 
 def _load_world_model_runtime(base_dir):
-    from src.match_engine.world_model.config import world_model_enabled
+    from src.match_engine.world_model.config import (
+        world_model_enabled, world_model_required,
+    )
 
     if not world_model_enabled():
         return None
     from src.match_engine.world_model.inference import WorldModelRuntime
 
-    return WorldModelRuntime.load_default(base_dir)
+    return WorldModelRuntime.load_default(
+        base_dir, required=world_model_required(),
+    )
 
 
 def _build_temporal_adapters(cfg, base_dir):

@@ -8,16 +8,41 @@ import os
 import platform
 import subprocess
 import tempfile
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 from types import MappingProxyType
+from typing import Iterator
+
+
+_ENVIRONMENT_OVERRIDES: ContextVar[Mapping[str, str] | None] = ContextVar(
+    "gfs_environment_overrides", default=None,
+)
 
 
 def environment_snapshot(source: Mapping[str, str] | None = None) -> Mapping[str, str]:
     """Capture process configuration once as an immutable boundary object."""
-    return MappingProxyType(dict(os.environ if source is None else source))
+    values = dict(os.environ if source is None else source)
+    if source is None:
+        overrides = _ENVIRONMENT_OVERRIDES.get()
+        if overrides:
+            values.update(overrides)
+    return MappingProxyType(values)
+
+
+@contextmanager
+def environment_override(values: Mapping[str, str]) -> Iterator[None]:
+    """Apply call-context configuration without mutating process environment."""
+    merged = dict(_ENVIRONMENT_OVERRIDES.get() or {})
+    merged.update({str(key): str(value) for key, value in values.items()})
+    token = _ENVIRONMENT_OVERRIDES.set(MappingProxyType(merged))
+    try:
+        yield
+    finally:
+        _ENVIRONMENT_OVERRIDES.reset(token)
 
 
 def env_bool(values: Mapping[str, str], key: str, default: bool = False) -> bool:

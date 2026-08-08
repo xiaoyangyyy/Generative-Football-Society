@@ -43,8 +43,9 @@
     },
     "advanced_world_model": {
       "status": "research_only_default_off",
-      "reason": "no statistically resolved formal external-loss improvement; the original v9 candidate failed, while its dev-calibrated successor passed sealed prediction gates but still awaits a full formal M1 rerun",
-      "evidence": "data\\evaluation\\formal_ablation\\M1.json",
+      "reason": "the calibrated v9 successor passed sealed prediction gates, but its full 18-match M1 rerun produced no measurable behavior or external-loss improvement in 8550.7 seconds",
+      "evidence": "data/evaluation/formal_ablation/M1_calibrated_decision.json",
+      "original_evidence": "data\\evaluation\\formal_ablation\\M1.json",
       "phase5_evidence": "data/evaluation/phase5_research_layer_validation_v1.json"
     },
     "llm_cognition": {

@@ -15,10 +15,20 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--train", action="store_true",
+        help="Explicitly authorize trace collection and model training when needed",
+    )
     parser.add_argument("--force", action="store_true", help="Retrain even if checkpoint exists")
+    parser.add_argument("--resume", action="store_true", help="Resume the managed training run")
+    parser.add_argument("--run-dir", default="", help="Managed TrainingJob directory")
     parser.add_argument("--collect-pairs", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=45)
     args = parser.parse_args()
+    if args.force and not args.train:
+        parser.error("--force requires explicit --train authorization")
+    if args.resume and not args.train:
+        parser.error("--resume requires explicit --train authorization")
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ckpt = os.path.join(base_dir, "data", "world_model", "latent_wm.pt")
@@ -68,56 +78,64 @@ def main() -> None:
             print(f"[ensure_world_model] OK: {ckpt}")
             return
         except Exception as exc:
-            print(f"[ensure_world_model] Checkpoint invalid ({exc}); retraining.")
+            print(f"[ensure_world_model] Checkpoint invalid ({exc}).")
             need_train = True
 
     if need_train:
+        if not args.train:
+            raise SystemExit(
+                "World model is missing or invalid. Verification made no changes. "
+                "Re-run with --train to explicitly authorize collection/training."
+            )
         import subprocess
 
-        print("[ensure_world_model] Collecting micro traces...")
-        subprocess.check_call(
-            [
-                sys.executable,
-                os.path.join(base_dir, "scripts", "collect_world_model_traces.py"),
-                "--pairs",
-                str(args.collect_pairs),
-            ],
-            cwd=base_dir,
-        )
-        print("[ensure_world_model] Collecting shot-rich traces...")
-        subprocess.check_call(
-            [
-                sys.executable,
-                os.path.join(base_dir, "scripts", "collect_world_model_traces.py"),
-                "--pairs",
-                str(max(16, args.collect_pairs // 2)),
-                "--seed",
-                "71000",
-                "--run-tag",
-                "shot_rich",
-                "--shot-boost",
-                "1.2",
-            ],
-            cwd=base_dir,
-        )
-        ball_dir = os.path.join(base_dir, "outputs", "ball_log")
-        if os.path.isdir(ball_dir) and any(os.scandir(ball_dir)):
-            print("[ensure_world_model] Backfilling from ball_log...")
+        if not args.resume:
+            print("[ensure_world_model] Collecting micro traces...")
             subprocess.check_call(
-                [sys.executable, os.path.join(base_dir, "scripts", "backfill_wm_from_ball_log.py")],
+                [
+                    sys.executable,
+                    os.path.join(base_dir, "scripts", "collect_world_model_traces.py"),
+                    "--pairs",
+                    str(args.collect_pairs),
+                ],
                 cwd=base_dir,
             )
+            print("[ensure_world_model] Collecting shot-rich traces...")
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    os.path.join(base_dir, "scripts", "collect_world_model_traces.py"),
+                    "--pairs",
+                    str(max(16, args.collect_pairs // 2)),
+                    "--seed",
+                    "71000",
+                    "--run-tag",
+                    "shot_rich",
+                    "--shot-boost",
+                    "1.2",
+                ],
+                cwd=base_dir,
+            )
+            ball_dir = os.path.join(base_dir, "outputs", "ball_log")
+            if os.path.isdir(ball_dir) and any(os.scandir(ball_dir)):
+                print("[ensure_world_model] Backfilling from ball_log...")
+                subprocess.check_call(
+                    [sys.executable, os.path.join(base_dir, "scripts", "backfill_wm_from_ball_log.py")],
+                    cwd=base_dir,
+                )
         print("[ensure_world_model] Training GRU world model...")
-        subprocess.check_call(
-            [
+        training_command = [
                 sys.executable,
                 os.path.join(base_dir, "scripts", "train_world_model.py"),
                 "--epochs",
                 str(args.epochs),
                 "--use-ball-log",
-            ],
-            cwd=base_dir,
-        )
+        ]
+        if args.run_dir:
+            training_command.extend(("--run-dir", args.run_dir))
+        if args.resume:
+            training_command.append("--resume")
+        subprocess.check_call(training_command, cwd=base_dir)
         print(f"[ensure_world_model] Ready: {ckpt}")
 
 

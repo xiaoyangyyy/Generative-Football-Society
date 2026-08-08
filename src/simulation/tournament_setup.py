@@ -157,10 +157,11 @@ class TournamentSetupMixin:
             return {home_micro: dict(unavailable), away_micro: dict(unavailable)}
 
         if not hasattr(self, "_prematch_world_model_runtime"):
+            from src.match_engine.world_model.config import world_model_required
             from src.match_engine.world_model.inference import WorldModelRuntime
 
             self._prematch_world_model_runtime = WorldModelRuntime.load_default(
-                self.base_dir,
+                self.base_dir, required=world_model_required(),
             )
         runtime = self._prematch_world_model_runtime
         if runtime is None:

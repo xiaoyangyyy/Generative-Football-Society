@@ -110,6 +110,7 @@ def main() -> int:
     p.add_argument("--trace-dir", default=str(DEFAULT_TRACE_DIR))
     p.add_argument("--checkpoint", default=str(DEFAULT_MODEL_PATH))
     p.add_argument("--manifest", help="Frozen grouped manifest; defaults to checkpoint metadata.")
+    p.add_argument("--out", help="Optional atomic JSON report path.")
     p.add_argument(
         "--require-two-step-planning",
         action="store_true",
@@ -137,7 +138,7 @@ def main() -> int:
         return 2
 
     try:
-        import torch
+        __import__("torch")
 
         from src.match_engine.world_model.inference import WorldModelRuntime
         from src.match_engine.world_model.evaluation import TransitionMetricAccumulator
@@ -234,10 +235,10 @@ def main() -> int:
             if args.require_semantic_event_heads else True
         )
     )
-    print(
-        json.dumps(
-            {
+    payload = {
                 "ok": ok,
+                "checkpoint": str(model_path),
+                "checkpoint_sha256": rt.checkpoint_signature.removeprefix("sha256:"),
                 "checkpoint_version": version,
                 "mse_mean": mse,
                 "n_pairs": metrics.samples,
@@ -258,8 +259,10 @@ def main() -> int:
                 "shot_fallback": "physics_xg_prior" if not effective_shot_active else None,
                 "min_planner_quality": rt.cfg.min_planner_quality,
             }
-        )
-    )
+    if args.out:
+        from src.data_engine.dataset_registry import write_json_atomic
+        write_json_atomic(args.out, payload)
+    print(json.dumps(payload))
     return 0 if ok else 1
 
 

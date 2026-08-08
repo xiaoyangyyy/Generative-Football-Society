@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "policy": "Only managed active entrypoints belong to the product lifecycle. Historical trainers reproduce frozen research releases and are never invoked by Studio.",
+  "entrypoints": {
+    "ensure_world_model.py": {"class": "managed_orchestrator", "training_requires_explicit_flag": "--train", "managed_target": "train_world_model.py"},
+    "train_world_model.py": {"class": "managed_active", "lifecycle": "TrainingJob", "resume": true, "cooperative_stop": true},
+    "train_frozen_shot_head.py": {"class": "atomic_candidate_builder", "resume": false, "sealed_data_used": false},
+    "train_continuous_operational_v93.py": {"class": "historical_release_reproduction"},
+    "train_continuous_time_v90_lopo.py": {"class": "historical_release_reproduction"},
+    "train_continuous_time_v91_lopo.py": {"class": "historical_release_reproduction"},
+    "train_continuous_time_v92_lopo.py": {"class": "historical_release_reproduction"},
+    "train_continuous_time_v94_lopo.py": {"class": "historical_release_reproduction"},
+    "train_controlled_frame_world_v81.py": {"class": "historical_release_reproduction"},
+    "train_frame_world_v8.py": {"class": "historical_release_reproduction"},
+    "train_joint_pass_v7.py": {"class": "historical_release_reproduction"},
+    "train_pass_triplet_v85.py": {"class": "historical_release_reproduction"},
+    "train_pressure_pair_v84.py": {"class": "historical_release_reproduction"},
+    "train_probabilistic_world_v7.py": {"class": "historical_release_reproduction"},
+    "train_reception_chain_v87.py": {"class": "historical_release_reproduction"},
+    "train_semantic_frame_world_v82.py": {"class": "historical_release_reproduction"},
+    "train_semantic_frame_world_v83.py": {"class": "historical_release_reproduction"},
+    "train_shot_v7.py": {"class": "historical_release_reproduction"},
+    "train_temporal_mark_v88.py": {"class": "historical_release_reproduction"},
+    "train_temporal_mark_v89_lopo.py": {"class": "historical_release_reproduction"}
+  }
+}

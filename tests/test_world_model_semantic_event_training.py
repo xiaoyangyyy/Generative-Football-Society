@@ -344,6 +344,7 @@ def test_trainer_persists_real_one_and_two_step_event_evidence(
         "--batch-size", "64",
         "--trace-dir", str(tmp_path / "unused"),
         "--out", str(checkpoint),
+        "--run-dir", str(tmp_path / "training-run"),
         "--multi-step-warmup-fraction", "0",
     ])
 

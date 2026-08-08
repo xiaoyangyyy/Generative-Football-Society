@@ -42,9 +42,11 @@ python scripts/audit_research_evidence.py --check
 - Keep advanced world-model, LLM cognition, narrative, memory, and meta-learning
   research-only. The first M1 run had no measurable formal effect. The original
   v9 candidate failed its two-step planning gate; a later dev-only residual
-  calibration passed both development and sealed prediction gates, but has not
-  yet completed a full formal M1 rerun. C1 had no statistically resolved gain
-  and has no live-provider evidence. These layers remain default-off.
+  calibration passed both development and sealed prediction gates. Its later
+  full 18-match M1 rerun passed the base contract but produced no measurable
+  behavior or external-loss improvement and required 8,550.7 seconds. C1 had
+  no statistically resolved gain and has no live-provider evidence. These
+  layers remain default-off.
 
 The earlier quick ablation remains diagnostic only. The authoritative report is
 the six-fixture, three-seed, full-90-minute matched protocol in

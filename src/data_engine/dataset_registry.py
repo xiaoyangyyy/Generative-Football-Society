@@ -11,18 +11,11 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable, Mapping
 
+from src.infrastructure import file_sha256
 from src.match_engine.world_model.schema import SHOT_GOAL_INDEX
 
 
 SCHEMA_VERSION = 1
-
-
-def file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def stable_partition(group: str, seed: int = 42) -> str:
@@ -108,6 +101,79 @@ def build_trace_manifest(trace_dir: str | Path, *, seed: int = 42) -> dict:
                 "goals": sum(e.goals for e in entries if e.split == split),
             }
             for split in ("train", "dev", "sealed_test")
+        },
+    }
+
+
+def augment_training_manifest(
+    base_manifest: Mapping,
+    trace_dir: str | Path,
+    *,
+    include_token: str,
+) -> dict:
+    """Add matching train/dev groups while preserving the frozen sealed split.
+
+    Candidate files whose stable partition would be sealed_test are excluded,
+    so an existing sealed evaluation remains untouched by targeted collection.
+    """
+    root = Path(trace_dir).resolve()
+    seed = int(base_manifest.get("seed", 42))
+    entries = [dict(entry) for entry in base_manifest["files"]]
+    existing_paths = {str(entry["path"]) for entry in entries}
+    existing_groups = {str(entry["group"]) for entry in entries}
+    existing_hashes = {str(entry["sha256"]) for entry in entries}
+    excluded: list[str] = []
+    added: list[str] = []
+
+    for path in sorted(root.glob(f"*{include_token}*.jsonl")):
+        if path.name in existing_paths:
+            continue
+        group = path.stem
+        split = stable_partition(group, seed)
+        if split == "sealed_test":
+            excluded.append(path.name)
+            continue
+        digest = file_sha256(path)
+        if group in existing_groups or digest in existing_hashes:
+            raise ValueError(f"Duplicate augmented trace: {path.name}")
+        rows, passes, shots, goals = _inspect_trace(path)
+        if rows <= 0:
+            raise ValueError(f"Empty or incomplete augmented trace: {path.name}")
+        entries.append(asdict(DatasetFile(
+            path=path.name,
+            group=group,
+            split=split,
+            sha256=digest,
+            bytes=path.stat().st_size,
+            rows=rows,
+            passes=passes,
+            shots=shots,
+            goals=goals,
+        )))
+        existing_groups.add(group)
+        existing_hashes.add(digest)
+        added.append(path.name)
+
+    summary = {
+        split: {
+            "groups": sum(entry["split"] == split for entry in entries),
+            "rows": sum(int(entry["rows"]) for entry in entries if entry["split"] == split),
+            "passes": sum(int(entry["passes"]) for entry in entries if entry["split"] == split),
+            "shots": sum(int(entry["shots"]) for entry in entries if entry["split"] == split),
+            "goals": sum(int(entry["goals"]) for entry in entries if entry["split"] == split),
+        }
+        for split in ("train", "dev", "sealed_test")
+    }
+    return {
+        **dict(base_manifest),
+        "files": entries,
+        "summary": summary,
+        "augmentation": {
+            "policy": "targeted groups may enter train/dev only; frozen sealed_test preserved",
+            "include_token": include_token,
+            "added_files": added,
+            "excluded_sealed_candidates": excluded,
+            "base_sealed_groups": int(base_manifest["summary"]["sealed_test"]["groups"]),
         },
     }
 

@@ -1,0 +1,28 @@
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_architecture_v2_machine_audit_passes():
+    result = subprocess.run(
+        [sys.executable, "scripts/audit_architecture_v2.py"],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    report = json.loads(
+        (ROOT / "data/evaluation/architecture_v2_audit.json").read_text(encoding="utf-8")
+    )
+    assert report["all_pass"]
+    assert report["schema_version"] == 2
+    assert not report["violations"]["domain_product_or_training_imports"]
+    assert not report["violations"]["infrastructure_upward_imports"]
+    assert not report["violations"]["unclassified_training_entrypoints"]
+    assert report["integrity"]["release_artifacts"]["ok"]
+    assert report["integrity"]["world_model_identity_chain_verified"]
+    assert report["checks"]["studio_exposes_one_guided_end_to_end_workflow"]
+    assert report["checks"]["formal_experiment_is_preregistered_and_compute_bounded"]
+    assert report["checks"]["formal_experiment_fails_closed_on_identity_or_partial_evidence"]

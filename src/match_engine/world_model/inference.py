@@ -10,10 +10,14 @@ from typing import Optional
 import numpy as np
 
 from src.match_engine.math_utils import finite_float
-from src.match_engine.world_model.config import WorldModelConfig, default_checkpoint_path
+from src.match_engine.world_model.config import (
+    WorldModelConfig,
+    default_checkpoint_path,
+    default_shot_head_path,
+)
 from src.match_engine.world_model.action_codec import decode_action_kind
 from src.match_engine.world_model.model import LatentWorldModel, WorldModelOutput, load_checkpoint
-from src.match_engine.world_model.observation import OBS_DIM, encode_observation
+from src.match_engine.world_model.observation import encode_observation
 from src.match_engine.world_model.schema import (
     HORIZON_INDEX,
     HORIZON_SCALE_SECONDS,
@@ -80,6 +84,8 @@ class WorldModelRuntime:
         self.shot_quality = float(
             np.clip(validation.get("shot_planner_quality", self.base_quality), 0.0, 1.0)
         )
+        self.frozen_shot_head = None
+        self.shot_probability_source = "joint_world_model_head"
         calibration = validation.get("pass_calibration", {})
         self.pass_calibration_scale = float(calibration.get("scale", 1.0))
         self.pass_calibration_bias = float(calibration.get("bias", 0.0))
@@ -99,7 +105,9 @@ class WorldModelRuntime:
         )
 
     @classmethod
-    def load(cls, path: str) -> "WorldModelRuntime":
+    def load(
+        cls, path: str, *, shot_head_path: str | None = None,
+    ) -> "WorldModelRuntime":
         if not _TORCH:
             raise RuntimeError("PyTorch required for MATCH_WORLD_MODEL=1")
         if not os.path.isfile(path):
@@ -111,32 +119,53 @@ class WorldModelRuntime:
             for chunk in iter(lambda: checkpoint_file.read(1024 * 1024), b""):
                 digest.update(chunk)
         rt.checkpoint_signature = "sha256:" + digest.hexdigest()
+        if shot_head_path:
+            rt.attach_shot_head(shot_head_path)
         kind = getattr(model, "transition_kind", cfg.transition_type)
         print(f"  [WORLD_MODEL] transition={kind} latent={cfg.latent_dim} (meta rows={meta.get('rows', '?')})")
         print(
             f"  [WORLD_MODEL] checkpoint=v{getattr(model, 'checkpoint_version', 2)} "
             f"quality pass={rt.pass_quality:.3f} shot={rt.shot_quality:.3f} "
+            f"shot_source={rt.shot_probability_source} "
             f"dynamics_members={model.transition_member_count} "
             f"trained={model.transition_ensemble_trained}"
         )
         return rt
 
     @classmethod
-    def load_default(cls, base_dir: str) -> Optional["WorldModelRuntime"]:
+    def load_default(
+        cls, base_dir: str, *, required: bool = False,
+    ) -> Optional["WorldModelRuntime"]:
         path = default_checkpoint_path(base_dir)
         if not os.path.isfile(path):
-            print(f"  [WORLD_MODEL] No checkpoint at {path} 鈥?run scripts/ensure_world_model.py")
+            message = f"world-model checkpoint not found: {path}"
+            if required:
+                raise FileNotFoundError(message)
+            print(f"  [WORLD_MODEL] {message}")
             return None
         try:
-            rt = cls.load(path)
+            rt = cls.load(path, shot_head_path=default_shot_head_path(base_dir))
             print(f"  [WORLD_MODEL] Loaded from {path}")
             return rt
         except Exception as exc:
+            if required:
+                raise RuntimeError(
+                    f"required world model failed to load: {path}"
+                ) from exc
             print(f"  [WORLD_MODEL] Failed to load: {exc}")
             return None
 
     def reset_hidden(self) -> None:
         self._hidden = None
+
+    def attach_shot_head(self, path: str) -> None:
+        from src.match_engine.world_model.shot_head import FrozenShotHead
+
+        head = FrozenShotHead.load(path)
+        head.assert_compatible(self.checkpoint_signature)
+        self.frozen_shot_head = head
+        self.shot_quality = head.quality
+        self.shot_probability_source = "frozen_backbone_shot_head"
 
     def imagine(
         self,
@@ -977,7 +1006,14 @@ class WorldModelRuntime:
         out = self.imagine(obs, action, quality_kind="shot")
         progress = float(np.clip(finite_float(out.progress_delta, 0.0), -0.5, 0.5))
         xg_prior = float(np.clip(action[13], 0.0, 1.0))
-        goal_term = finite_float(float(out.shot_goal_prob), 0.1)
+        if self.frozen_shot_head is not None:
+            with torch.no_grad():
+                latent = self.model.encode(
+                    torch.from_numpy(obs.astype(np.float32)).unsqueeze(0)
+                ).squeeze(0).numpy()
+            goal_term = self.frozen_shot_head.predict(latent, action)
+        else:
+            goal_term = finite_float(float(out.shot_goal_prob), 0.1)
         return finite_float(0.10 * progress + 0.25 * xg_prior + 0.65 * goal_term, 0.0)
 
     def encode_state(self, state, *, attacking_home: bool | None = None) -> np.ndarray:

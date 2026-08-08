@@ -15,7 +15,6 @@ from src.match_engine.macro_bridge import build_match_affective_state
 from src.match_engine.world_model.action_codec import (
     ACTION_DIM,
     encode_from_ball_log_event,
-    encode_pass_candidate,
     zero_action,
 )
 from src.match_engine.world_model.observation import OBS_DIM, encode_observation
@@ -609,7 +608,7 @@ def test_runtime_recomputes_member_uncertainty_after_probability_calibration():
     reason="checkpoint not trained",
 )
 def test_checkpoint_load_and_imagine():
-    torch = pytest.importorskip("torch")
+    pytest.importorskip("torch")
     base = os.path.join(os.path.dirname(__file__), "..")
     from src.match_engine.world_model.inference import WorldModelRuntime
 
@@ -623,3 +622,15 @@ def test_checkpoint_load_and_imagine():
     out = rt.imagine_pass(obs, zero_action(), steps=2)
     assert out.next_obs.shape[0] == OBS_DIM
     assert np.isfinite(out.pass_success)
+
+
+def test_required_default_world_model_fails_closed_when_checkpoint_is_missing(
+    tmp_path, monkeypatch,
+):
+    from src.match_engine.world_model.inference import WorldModelRuntime
+
+    missing = tmp_path / "missing.pt"
+    monkeypatch.setenv("MATCH_WM_CHECKPOINT", str(missing))
+    with pytest.raises(FileNotFoundError, match="checkpoint not found"):
+        WorldModelRuntime.load_default(str(tmp_path), required=True)
+    assert WorldModelRuntime.load_default(str(tmp_path), required=False) is None

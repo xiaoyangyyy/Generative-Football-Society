@@ -7,6 +7,7 @@ match_engine, memory_engine, and data_engine.
 
 from __future__ import annotations
 
+import os
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,17 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 def project_root() -> Path:
+    """Locate the external GFS workspace used by an installed code package."""
+    configured = os.environ.get("GFS_PROJECT_ROOT", "").strip()
+    if configured:
+        return Path(configured).expanduser().resolve()
+    current = Path.cwd().resolve()
+    for candidate in (current, *current.parents):
+        if (
+            (candidate / "data/releases/current.json").is_file()
+            or (candidate / "data/raw").is_dir()
+        ):
+            return candidate
     return PROJECT_ROOT
 
 
@@ -107,7 +119,7 @@ def run_micro_match(
     from src.match_engine.micro_config import MicroMatchConfig
     from src.memory_engine.poisson_simulator import simulate_match_score
 
-    actual_seed = set_global_seed(seed)
+    set_global_seed(seed)
     root = Path(base_dir) if base_dir is not None else project_root()
     world, _, _ = build_simulation(root)
     home_agent = world.agents[home]

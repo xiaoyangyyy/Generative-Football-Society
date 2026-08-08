@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.benchmark_sim_vs_open_data import _bootstrap_mean_intervals
+from src.data_engine.dataset_registry import file_sha256
 from src.match_engine.calibration.ablation import (
     ADDITIVE_LAYERS,
     SUBTRACTIVE_ABLATIONS,
@@ -138,6 +139,9 @@ def main() -> int:
                 if checkpoint is not None else None
             ),
             "explicit_checkpoint": checkpoint is not None,
+            "checkpoint_sha256": (
+                file_sha256(checkpoint) if checkpoint is not None else None
+            ),
         },
         "runtime": {"elapsed_seconds": time.perf_counter() - started},
     }

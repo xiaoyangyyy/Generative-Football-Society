@@ -55,20 +55,38 @@ pip install -r requirements.txt
 
 Recommended Python: 3.10+.
 
+The Python wheel contains code, while datasets, release manifests, checkpoints,
+and generated reports remain in a GFS workspace. When using the installed
+`gfs` console command outside the repository, set `GFS_PROJECT_ROOT` or pass
+`--base-dir` explicitly. Running inside the workspace is discovered
+automatically.
+
 ## Unified CLI
 
-For the cohesive product workflow, create a persistent GFS Studio first:
+For the cohesive product workflow, the normal path is one command:
 
 ```bash
-python gfs.py studio init --name "My World Cup" --mode stable --seed 42
-python gfs.py studio status
-python gfs.py studio match --home Brazil --away Argentina --fast
+python gfs.py studio run --name "My World Cup" --mode stable --seed 42 --home Brazil --away Argentina --fast
 ```
 
 Studio modes make the product boundary explicit: `stable` uses the deployed
 simulator, `research` adds the accepted calibrated world-model candidate, and
 `cognitive` additionally requires real LLM credentials. Each match produces a
-single JSON audit and HTML dashboard. See `docs/PRODUCT_STUDIO.md`.
+single JSON audit and HTML dashboard. The persisted workflow exposes one of
+`blocked`, `ready_to_run`, `running`, or `review`, including the next
+valid action. The lower-level `init`, `status`, and `match` commands remain
+available for operators. See `docs/PRODUCT_STUDIO.md`.
+
+The next confirmatory paper experiment is frozen separately from exploratory
+work. Its default command is read-only:
+
+```bash
+python scripts/run_formal_experiment.py
+```
+
+It compares only sealed M0 and M1, caps compute at 30 matched pairs / 60 runs,
+and requires explicit `--execute`. See
+`docs/FORMAL_EXPERIMENT_PROTOCOL_V2.md`.
 
 Show top team status rankings:
 

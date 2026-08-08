@@ -75,6 +75,11 @@ def world_model_enabled() -> bool:
     return env_bool(environment_snapshot(), "MATCH_WORLD_MODEL", False)
 
 
+def world_model_required() -> bool:
+    """Whether an enabled world model must load instead of degrading to fallback."""
+    return env_bool(environment_snapshot(), "MATCH_WORLD_MODEL_REQUIRED", False)
+
+
 def world_model_plan_enabled() -> bool:
     if not world_model_enabled():
         return False
@@ -93,6 +98,13 @@ def default_checkpoint_path(base_dir: str) -> str:
     if custom:
         return custom
     return os.path.join(base_dir, "data", "world_model", "latent_wm.pt")
+
+
+def default_shot_head_path(base_dir: str) -> str:
+    custom = environment_snapshot().get("MATCH_WM_SHOT_HEAD", "").strip()
+    if custom:
+        return custom
+    return ""
 
 
 def default_trace_dir(base_dir: str) -> str:

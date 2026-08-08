@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import re
 import sys
@@ -43,6 +44,28 @@ def _merge(*arrays):
 def _match_group(name: str) -> str:
     value = re.sub(r"_trace_\d+$", "", str(name))
     return re.sub(r"_wm_collect$", "", value)
+
+
+def _training_contract_sha256(root: Path) -> str:
+    digest = hashlib.sha256()
+    sources = [Path(__file__).resolve()]
+    sources.extend(sorted((root / "src/match_engine/world_model").rglob("*.py")))
+    sources.extend(sorted((root / "src/training").rglob("*.py")))
+    for path in sources:
+        digest.update(path.relative_to(root).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes().replace(b"\r\n", b"\n"))
+    return digest.hexdigest()
+
+
+def _dataset_identity(*arrays: np.ndarray) -> str:
+    digest = hashlib.sha256()
+    for value in arrays:
+        array = np.ascontiguousarray(value)
+        digest.update(str(array.shape).encode("ascii"))
+        digest.update(str(array.dtype).encode("ascii"))
+        digest.update(array.tobytes())
+    return digest.hexdigest()
 
 
 def _bootstrap_transition_loss(
@@ -144,6 +167,18 @@ def main() -> None:
         help="Final proper-BCE weight for member-specific semantic event heads.",
     )
     parser.add_argument("--dataset-manifest", type=str, default="")
+    parser.add_argument(
+        "--run-dir", type=str, default="",
+        help="Isolated directory for status.json, epochs.jsonl, and latest.pt.",
+    )
+    parser.add_argument(
+        "--resume", action="store_true",
+        help="Resume exactly from --run-dir/latest.pt after validating config.",
+    )
+    parser.add_argument(
+        "--checkpoint-every", type=int, default=1,
+        help="Atomically save resumable progress every N completed epochs.",
+    )
     args = parser.parse_args()
     if args.epochs < 1:
         parser.error("--epochs must be at least 1")
@@ -153,6 +188,8 @@ def main() -> None:
         parser.error("--multi-step-warmup-fraction must be in [0, 1)")
     if not 0.0 <= args.semantic_event_loss_weight <= 1.0:
         parser.error("--semantic-event-loss-weight must be in [0, 1]")
+    if args.checkpoint_every < 1:
+        parser.error("--checkpoint-every must be at least 1")
 
     try:
         import torch
@@ -182,7 +219,12 @@ def main() -> None:
     trace_dir = args.trace_dir or default_trace_dir(base_dir)
     ball_dir = args.ball_log_dir or os.path.join(base_dir, "outputs", "ball_log")
     out_path = args.out or default_checkpoint_path(base_dir)
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    Path(out_path).resolve().parent.mkdir(parents=True, exist_ok=True)
+    run_dir = (
+        Path(args.run_dir)
+        if args.run_dir
+        else Path(base_dir) / "data/training/runs" / Path(out_path).stem
+    )
 
     allowed_files = None
     manifest = None
@@ -264,11 +306,8 @@ def main() -> None:
     if len(val_idx) < 32 or len(train_idx) < 128:
         raise SystemExit("Grouped holdout is too small; collect more independent matches.")
 
-    train_shots = shot_goal[train_idx][shot_mask[train_idx] > 0.5]
     train_passes = pass_success[train_idx][pass_mask[train_idx] > 0.5]
     pass_pos_rate = float(train_passes.mean()) if len(train_passes) else 0.5
-    shot_pos = float(train_shots.sum())
-    shot_neg = float(len(train_shots) - shot_pos)
     # Goal probability is consumed directly as a calibrated probability. Keep
     # the proper scoring objective unweighted; class weights alter its meaning.
     shot_pos_weight = 1.0
@@ -324,15 +363,17 @@ def main() -> None:
             torch.from_numpy(nxt[train_pair_left + 1]),
             torch.from_numpy(train_pair_event_targets),
         )
+        sequence_loader_generator = torch.Generator().manual_seed(4242)
         sequence_loader = DataLoader(
             sequence_ds,
             batch_size=args.batch_size,
             shuffle=True,
             drop_last=False,
-            generator=torch.Generator().manual_seed(4242),
+            generator=sequence_loader_generator,
         )
     else:
         sequence_loader = None
+        sequence_loader_generator = None
         train_pair_event_base_rates = np.full(
             len(FALSIFIABLE_SEMANTIC_EVENTS), 0.5, dtype=np.float32,
         )
@@ -348,7 +389,69 @@ def main() -> None:
     semantic_path_one_step_optimization_steps = 0
     semantic_path_two_step_optimization_steps = 0
     max_semantic_event_weight_applied = 0.0
-    for epoch in range(args.epochs):
+    from src.training import TrainingJob
+
+    job_config = {
+        "trainer": "world_model_v9",
+        "training_contract_sha256": _training_contract_sha256(Path(base_dir)),
+        "dataset_identity_sha256": _dataset_identity(
+            obs, act, nxt, groups.astype("U"),
+        ),
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "learning_rate": min(args.lr, 3e-4),
+        "transition": args.transition,
+        "transition_ensemble_size": model.transition_member_count,
+        "multi_step_loss_weight": args.multi_step_loss_weight,
+        "multi_step_warmup_fraction": args.multi_step_warmup_fraction,
+        "semantic_event_loss_weight": args.semantic_event_loss_weight,
+        "dataset_manifest": (
+            str(Path(args.dataset_manifest).resolve())
+            if args.dataset_manifest else ""
+        ),
+        "output": str(Path(out_path).resolve()),
+    }
+    job = TrainingJob(run_dir, job_config)
+    job.start(total_epochs=args.epochs, resume=args.resume)
+    start_epoch = 0
+    if args.resume:
+        progress = job.load_progress()
+        model.load_state_dict(progress["model_state_dict"], strict=True)
+        opt.load_state_dict(progress["optimizer_state_dict"])
+        torch.set_rng_state(progress["torch_rng_state"])
+        loader_generator.set_state(progress["loader_generator_state"])
+        if (
+            sequence_loader_generator is not None
+            and progress.get("sequence_loader_generator_state") is not None
+        ):
+            sequence_loader_generator.set_state(
+                progress["sequence_loader_generator_state"]
+            )
+        start_epoch = int(progress["epoch"])
+        counters = progress.get("counters", {})
+        total_sequence_optimization_steps = int(
+            counters.get("total_sequence_optimization_steps", 0)
+        )
+        max_sequence_weight_applied = float(
+            counters.get("max_sequence_weight_applied", 0.0)
+        )
+        semantic_event_one_step_optimization_steps = int(
+            counters.get("semantic_event_one_step_optimization_steps", 0)
+        )
+        semantic_event_two_step_optimization_steps = int(
+            counters.get("semantic_event_two_step_optimization_steps", 0)
+        )
+        semantic_path_one_step_optimization_steps = int(
+            counters.get("semantic_path_one_step_optimization_steps", 0)
+        )
+        semantic_path_two_step_optimization_steps = int(
+            counters.get("semantic_path_two_step_optimization_steps", 0)
+        )
+        max_semantic_event_weight_applied = float(
+            counters.get("max_semantic_event_weight_applied", 0.0)
+        )
+
+    for epoch in range(start_epoch, args.epochs):
         loss_sum = 0.0
         sequence_loss_sum = 0.0
         sequence_batches = 0
@@ -546,6 +649,53 @@ def main() -> None:
             f"two_step_loss={sequence_loss_sum/max(1,sequence_batches):.4f} "
             f"semantic_event_weight={semantic_event_weight:.4f}"
         )
+        epoch_number = epoch + 1
+        epoch_metrics = {
+            "loss": loss_sum / max(1, n),
+            "batches": n,
+            "train_rows": int(len(train_idx)),
+            "validation_rows": int(len(val_idx)),
+            "two_step_pairs": int(len(train_pair_left)),
+            "two_step_weight": sequence_weight,
+            "two_step_loss": sequence_loss_sum / max(1, sequence_batches),
+            "semantic_event_weight": semantic_event_weight,
+        }
+        stop_requested = job.stop_requested()
+        if (
+            epoch_number % args.checkpoint_every == 0
+            or epoch_number == args.epochs
+            or stop_requested
+        ):
+            job.save_progress({
+                "schema_version": 1,
+                "config_fingerprint": job.config_fingerprint,
+                "epoch": epoch_number,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": opt.state_dict(),
+                "torch_rng_state": torch.get_rng_state(),
+                "loader_generator_state": loader_generator.get_state(),
+                "sequence_loader_generator_state": (
+                    sequence_loader_generator.get_state()
+                    if sequence_loader_generator is not None else None
+                ),
+                "counters": {
+                    "total_sequence_optimization_steps": total_sequence_optimization_steps,
+                    "max_sequence_weight_applied": max_sequence_weight_applied,
+                    "semantic_event_one_step_optimization_steps": semantic_event_one_step_optimization_steps,
+                    "semantic_event_two_step_optimization_steps": semantic_event_two_step_optimization_steps,
+                    "semantic_path_one_step_optimization_steps": semantic_path_one_step_optimization_steps,
+                    "semantic_path_two_step_optimization_steps": semantic_path_two_step_optimization_steps,
+                    "max_semantic_event_weight_applied": max_semantic_event_weight_applied,
+                },
+            })
+        job.record_epoch(epoch_number, epoch_metrics)
+        if stop_requested:
+            job.mark_stopped(epoch=epoch_number)
+            print(
+                f"Cooperative stop after epoch {epoch_number}; "
+                "resume with --resume"
+            )
+            return
 
     model.semantic_event_heads_trained = bool(
         semantic_event_one_step_optimization_steps > 0
@@ -906,6 +1056,7 @@ def main() -> None:
             },
         },
     )
+    job.complete(artifact=str(Path(out_path).resolve()), epoch=args.epochs)
     print(f"Saved → {out_path}")
 
 

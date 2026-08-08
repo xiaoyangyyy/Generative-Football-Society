@@ -3,33 +3,53 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
-from src.config import API_KEY, BASE_URL, MODEL_NAME
 from src.simulation.runtime import environment_snapshot, env_int
 
-_ENV = environment_snapshot()
+DEFAULT_BASE_URL = "https://api.openai.com/v1"
+DEFAULT_MODEL = "gpt-4-turbo-preview"
 
 
 @dataclass(frozen=True)
 class LLMGatewayConfig:
-    api_key: str = API_KEY or ""
-    base_url: str = BASE_URL
-    model: str = MODEL_NAME
-    timeout_s: int = env_int(_ENV, "LLM_TIMEOUT_S", 90)
-    max_retries: int = env_int(_ENV, "LLM_MAX_RETRIES", 6)
+    api_key: str = field(default="", repr=False)
+    base_url: str = DEFAULT_BASE_URL
+    model: str = DEFAULT_MODEL
+    timeout_s: int = 90
+    max_retries: int = 6
+
+    def __post_init__(self) -> None:
+        if not self.base_url.strip():
+            raise ValueError("LLM base URL must not be empty")
+        if not self.model.strip():
+            raise ValueError("LLM model must not be empty")
+        if self.timeout_s < 1:
+            raise ValueError("LLM timeout must be at least one second")
+        if self.max_retries < 1:
+            raise ValueError("LLM max retries must be at least one")
+
+    @classmethod
+    def from_env(cls) -> "LLMGatewayConfig":
+        values = environment_snapshot()
+        return cls(
+            api_key=values.get("API_KEY") or values.get("OPENAI_API_KEY", ""),
+            base_url=values.get("BASE_URL", DEFAULT_BASE_URL),
+            model=values.get("MODEL_NAME", DEFAULT_MODEL),
+            timeout_s=env_int(values, "LLM_TIMEOUT_S", 90),
+            max_retries=env_int(values, "LLM_MAX_RETRIES", 6),
+        )
 
 
 class LLMGateway:
     """One provider client shared by independent role agents."""
 
     def __init__(self, config: LLMGatewayConfig | None = None):
-        self.config = config or LLMGatewayConfig()
+        self.config = config or LLMGatewayConfig.from_env()
         if self.config.api_key.strip() in {"", "your_default_key", "your_api_key_here"}:
             raise ValueError(
                 "Missing valid API_KEY/OPENAI_API_KEY. "
@@ -86,12 +106,16 @@ class LLMGateway:
                 if json_mode:
                     kwargs["response_format"] = {"type": "json_object"}
                 response = self.client.chat.completions.create(**kwargs)
-                self.call_count += 1
                 content = response.choices[0].message.content
                 if json_mode:
-                    return json.dumps(self.extract_json_object(content), ensure_ascii=False)
+                    accepted = json.dumps(
+                        self.extract_json_object(content), ensure_ascii=False,
+                    )
+                    self.call_count += 1
+                    return accepted
                 if content is None:
                     raise RuntimeError("Empty LLM response content.")
+                self.call_count += 1
                 return str(content)
             except Exception as exc:
                 if attempt == self.config.max_retries - 1:
@@ -102,14 +126,24 @@ class LLMGateway:
         raise RuntimeError("LLM call failed unexpectedly.")
 
 
-_GATEWAY: LLMGateway | None = None
+_GATEWAYS: dict[LLMGatewayConfig, LLMGateway] = {}
 _GATEWAY_LOCK = threading.Lock()
 
 
-def get_shared_llm_gateway() -> LLMGateway:
-    global _GATEWAY
-    if _GATEWAY is None:
+def get_shared_llm_gateway(config: LLMGatewayConfig | None = None) -> LLMGateway:
+    """Share transport only between callers with exactly the same config."""
+    resolved = config or LLMGatewayConfig.from_env()
+    gateway = _GATEWAYS.get(resolved)
+    if gateway is None:
         with _GATEWAY_LOCK:
-            if _GATEWAY is None:
-                _GATEWAY = LLMGateway()
-    return _GATEWAY
+            gateway = _GATEWAYS.get(resolved)
+            if gateway is None:
+                gateway = LLMGateway(resolved)
+                _GATEWAYS[resolved] = gateway
+    return gateway
+
+
+def clear_shared_llm_gateways() -> None:
+    """Drop process-local transports between isolated product/test sessions."""
+    with _GATEWAY_LOCK:
+        _GATEWAYS.clear()

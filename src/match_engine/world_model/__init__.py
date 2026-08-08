@@ -9,10 +9,7 @@ from src.match_engine.world_model.config import (
 from src.match_engine.world_model.observation import OBS_DIM, encode_observation
 from src.match_engine.world_model.action_codec import ACTION_DIM, encode_pass_candidate, zero_action
 
-try:
-    from src.match_engine.world_model.inference import WorldModelRuntime
-except Exception:
-    WorldModelRuntime = None  # type: ignore
+from src.match_engine.world_model.inference import WorldModelRuntime
 
 __all__ = [
     "WorldModelConfig",
