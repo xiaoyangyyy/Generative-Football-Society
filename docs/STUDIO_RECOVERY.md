@@ -63,3 +63,12 @@ python scripts\verify_product_recovery.py --out data\evaluation\product_recovery
 Current objectives are manual: take a backup before each product study or
 release-candidate change, and verify it immediately. Production RPO/RTO remain
 unclaimed until timed restore drills run against the deployment storage.
+
+The Studio Web recovery center manages `backups/studio/` with generated backup
+IDs and a 50-entry capacity. Its API never accepts or returns an absolute path.
+Restore requires CSRF, `replace=true`, and an exact typed backup ID, and remains
+blocked while match tasks are queued or running. Run its local socket verifier:
+
+```powershell
+python scripts\verify_web_recovery.py --out data\evaluation\web_recovery_verification_v1.json
+```

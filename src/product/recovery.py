@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import secrets
 import tempfile
 import zipfile
 from datetime import datetime, timezone
@@ -30,6 +32,8 @@ ALLOWED_PREFIXES = (
 )
 TASK_QUEUE_RELATIVE = "data/persistence/product_tasks.json"
 ACTIVE_TASK_STATES = {"queued", "running"}
+MANAGED_BACKUP_ID = re.compile(r"^backup-[0-9]{8}t[0-9]{6}z-[a-f0-9]{8}$")
+MAX_MANAGED_BACKUPS = 50
 
 
 def _now() -> str:
@@ -61,6 +65,125 @@ class ProductRecovery:
         self.lease_path = self.root / "data/persistence/product_session.lock"
         self.task_lease_path = self.root / "data/persistence/product_tasks.lock"
         self.telemetry = ProductTelemetry(self.root)
+        self._managed_dir_input = self.root / "backups/studio"
+        self.managed_dir = self._managed_dir_input.resolve()
+        try:
+            self.managed_dir.relative_to(self.root)
+        except ValueError as exc:
+            raise ValueError("managed backup directory escapes the workspace") from exc
+        self.managed_lease_path = self.managed_dir / ".managed-backups.lock"
+
+    def _assert_managed_dir(self) -> None:
+        observed = self._managed_dir_input.resolve()
+        try:
+            observed.relative_to(self.root)
+        except ValueError as exc:
+            raise ValueError("managed backup directory escapes the workspace") from exc
+        if observed != self.managed_dir:
+            raise ValueError("managed backup directory identity changed")
+
+    def _managed_path(self, backup_id: str, *, must_exist: bool) -> Path:
+        if not isinstance(backup_id, str) or not MANAGED_BACKUP_ID.fullmatch(backup_id):
+            raise ValueError("invalid managed backup id")
+        candidate = self.managed_dir / f"{backup_id}.zip"
+        if must_exist:
+            if candidate.is_symlink() or not candidate.is_file():
+                raise FileNotFoundError("managed backup not found")
+            try:
+                candidate.resolve().relative_to(self.managed_dir)
+            except ValueError as exc:
+                raise ValueError("managed backup escapes its directory") from exc
+        return candidate
+
+    @staticmethod
+    def _managed_entry(path: Path) -> dict[str, Any]:
+        stat = path.stat()
+        return {
+            "backup_id": path.stem,
+            "size_bytes": stat.st_size,
+            "modified_at": datetime.fromtimestamp(
+                stat.st_mtime, timezone.utc,
+            ).isoformat(),
+        }
+
+    def _list_managed_unlocked(self) -> list[dict[str, Any]]:
+        if not self.managed_dir.is_dir():
+            return []
+        paths = [
+            path for path in self.managed_dir.glob("backup-*.zip")
+            if MANAGED_BACKUP_ID.fullmatch(path.stem)
+            and path.is_file() and not path.is_symlink()
+        ]
+        paths.sort(key=lambda path: (path.stat().st_mtime_ns, path.name), reverse=True)
+        return [self._managed_entry(path) for path in paths]
+
+    def list_managed_backups(self) -> dict[str, Any]:
+        self._assert_managed_dir()
+        with FileLease(self.managed_lease_path, timeout=2.0):
+            backups = self._list_managed_unlocked()
+        return {
+            "schema_version": RECOVERY_SCHEMA_VERSION,
+            "backups": backups,
+            "count": len(backups),
+            "capacity": MAX_MANAGED_BACKUPS,
+        }
+
+    @staticmethod
+    def _public_managed_result(
+        backup_id: str, result: dict[str, Any], *, operation: str,
+    ) -> dict[str, Any]:
+        public = {
+            "schema_version": RECOVERY_SCHEMA_VERSION,
+            "operation": operation,
+            "backup_id": backup_id,
+            "valid": bool(result.get("valid")),
+            "file_count": int(result.get("file_count", 0)),
+            "expanded_size": int(result.get("expanded_size", 0)),
+            "studio": result.get("studio"),
+        }
+        if operation == "create":
+            public["size_bytes"] = int(result.get("size", 0))
+        if operation == "restore":
+            public.update({
+                "restored": bool(result.get("restored")),
+                "replace": bool(result.get("replace")),
+                "task_history_reset": bool(result.get("task_history_reset")),
+                "restored_at": result.get("restored_at"),
+            })
+        return public
+
+    def create_managed_backup(self) -> dict[str, Any]:
+        self.managed_dir.mkdir(parents=True, exist_ok=True)
+        self._assert_managed_dir()
+        with FileLease(self.managed_lease_path, timeout=2.0):
+            if len(self._list_managed_unlocked()) >= MAX_MANAGED_BACKUPS:
+                raise RuntimeError("managed backup capacity reached")
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%dt%H%M%Sz")
+            for _attempt in range(10):
+                backup_id = f"backup-{timestamp}-{secrets.token_hex(4)}"
+                output = self._managed_path(backup_id, must_exist=False)
+                if not output.exists():
+                    break
+            else:
+                raise RuntimeError("unable to allocate a managed backup id")
+            result = self.create_backup(output)
+        return self._public_managed_result(backup_id, result, operation="create")
+
+    def verify_managed_backup(self, backup_id: str) -> dict[str, Any]:
+        self._assert_managed_dir()
+        with FileLease(self.managed_lease_path, timeout=2.0):
+            result = self.verify_backup(self._managed_path(backup_id, must_exist=True))
+        return self._public_managed_result(backup_id, result, operation="verify")
+
+    def restore_managed_backup(
+        self, backup_id: str, *, replace: bool,
+    ) -> dict[str, Any]:
+        self._assert_managed_dir()
+        with FileLease(self.managed_lease_path, timeout=2.0):
+            result = self.restore_backup(
+                self._managed_path(backup_id, must_exist=True), replace=replace,
+            )
+        return self._public_managed_result(backup_id, result, operation="restore")
 
     def _relative_file(self, value: Any, *, required: bool) -> str | None:
         if value is None or not str(value).strip():

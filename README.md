@@ -211,6 +211,11 @@ absolute/idle expiry, bounded capacity, selective logout, and client plus global
 login limits. These controls are process-local and currently support the
 single-application deployment contract, not horizontal replicas.
 
+Backup creation, verification, and explicitly confirmed transactional restore
+are integrated into the same Studio Web surface. The browser works only with
+server-generated backup IDs and never supplies a filesystem path. Validate the
+no-match recovery workflow with `python scripts/verify_web_recovery.py`.
+
 ### LLM Architecture
 
 LLM roles remain independent, but share one provider gateway for connection reuse,

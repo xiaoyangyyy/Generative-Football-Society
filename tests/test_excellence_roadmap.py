@@ -51,7 +51,7 @@ def test_excellence_phase_graph_is_ordered_and_not_falsely_complete():
 
 def test_control_plane_exposes_scores_and_security_action():
     snapshot = ProductControlPlane(ROOT).snapshot()["excellence"]
-    assert snapshot["tracks"]["product"]["score"] == 76
+    assert snapshot["tracks"]["product"]["score"] == 78
     assert snapshot["tracks"]["product"]["baseline_score"] == 58
     assert snapshot["tracks"]["academic"]["score"] == 62
     assert snapshot["security_action"] == "revocation_required_by_user"

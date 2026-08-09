@@ -61,6 +61,12 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'aria-live="polite"' in document
     assert "prefers-reduced-motion" in document
     assert 'id="logout-button" type="button" hidden' in document
+    assert 'aria-labelledby="recovery-title"' in document
+    assert 'id="backup-list"' in document and 'role="list"' in document
+    assert 'id="restore-form" hidden' in document
+    assert 'name="confirmation"' in document and 'name="replace"' in document
+    assert 'type="file"' not in document
+    assert "innerHTML" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
@@ -209,6 +215,88 @@ def test_mutations_fail_fast_when_another_operation_is_running(tmp_path):
         app._mutation_lock.release()
     assert response["status"].startswith("409")
     assert response["json"]["error"]["code"] == "operation_in_progress"
+
+
+def test_web_recovery_center_creates_verifies_and_explicitly_restores(tmp_path):
+    app = ProductWebApp(tmp_path)
+    created_studio = _request(
+        app, "POST", "/api/v1/studio",
+        {"name": "Recovery Center", "mode": "stable", "seed": 42},
+        csrf=app.csrf_token,
+    )
+    assert created_studio["status"].startswith("201")
+    empty = _request(app, path="/api/v1/recovery")
+    assert empty["json"]["backups"] == []
+
+    no_csrf = _request(app, "POST", "/api/v1/backups", {})
+    assert no_csrf["status"].startswith("403")
+    created = _request(
+        app, "POST", "/api/v1/backups", {}, csrf=app.csrf_token,
+    )
+    assert created["status"].startswith("201")
+    backup_id = created["json"]["backup_id"]
+    assert created["json"]["valid"] is True
+    assert str(tmp_path) not in json.dumps(created["json"])
+    catalog = _request(app, path="/api/v1/recovery")["json"]
+    assert catalog["count"] == 1
+    assert catalog["backups"][0]["backup_id"] == backup_id
+
+    verified = _request(
+        app, "POST", f"/api/v1/backups/{backup_id}/verify", {},
+        csrf=app.csrf_token,
+    )
+    assert verified["status"].startswith("200") and verified["json"]["valid"]
+    session = tmp_path / "data/persistence/product_session.json"
+    session.write_text(session.read_text(encoding="utf-8").replace(
+        "Recovery Center", "Changed After Backup",
+    ), encoding="utf-8")
+
+    wrong_confirmation = _request(
+        app, "POST", f"/api/v1/backups/{backup_id}/restore",
+        {"confirmation": "错误确认", "replace": True}, csrf=app.csrf_token,
+    )
+    assert wrong_confirmation["status"].startswith("422")
+    assert "Changed After Backup" in session.read_text(encoding="utf-8")
+
+    app._mutation_lock.acquire()
+    try:
+        admission_blocked = _request(
+            app, "POST", "/api/v1/matches",
+            {"home": "Brazil", "away": "Argentina", "fast": True},
+            csrf=app.csrf_token,
+        )
+    finally:
+        app._mutation_lock.release()
+    assert admission_blocked["status"].startswith("409")
+    assert admission_blocked["json"]["error"]["code"] == "operation_in_progress"
+
+    task, _ = app.task_queue.submit_match("Brazil", "Argentina", fast=True)
+    blocked = _request(
+        app, "POST", f"/api/v1/backups/{backup_id}/restore",
+        {"confirmation": backup_id, "replace": True}, csrf=app.csrf_token,
+    )
+    assert blocked["status"].startswith("409")
+    assert blocked["json"]["error"]["code"] == "restore_blocked"
+    claimed = app.task_queue.claim_next("test-worker")
+    app.task_queue.complete(claimed["task_id"], "test-worker", {"ok": True})
+
+    restored = _request(
+        app, "POST", f"/api/v1/backups/{backup_id}/restore",
+        {"confirmation": backup_id, "replace": True}, csrf=app.csrf_token,
+    )
+    assert restored["status"].startswith("200")
+    assert restored["json"]["restored"] is True
+    assert restored["json"]["task_history_reset"] is True
+    assert "Recovery Center" in session.read_text(encoding="utf-8")
+    assert app.task_queue.list_tasks() == []
+    assert task["task_id"] not in json.dumps(app.task_queue.list_tasks())
+
+    invalid_path = _request(
+        app, "POST", "/api/v1/backups/../escape/verify", {}, csrf=app.csrf_token,
+    )
+    assert invalid_path["status"].startswith("404")
+    wrong_method = _request(app, "GET", "/api/v1/backups")
+    assert wrong_method["status"].startswith("405")
 
 
 @pytest.mark.parametrize("host", ["127.0.0.1", "::1", "localhost"])

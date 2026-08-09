@@ -87,6 +87,57 @@ def test_restore_requires_explicit_replace_for_existing_session(tmp_path):
     assert json.loads(session.read_text(encoding="utf-8"))["name"] == "Backup Studio"
 
 
+def test_managed_backup_catalog_never_accepts_or_exposes_arbitrary_paths(tmp_path):
+    session, *_ = _write_workspace(tmp_path)
+    recovery = ProductRecovery(tmp_path)
+    created = recovery.create_managed_backup()
+    backup_id = created["backup_id"]
+    assert created["operation"] == "create" and created["valid"]
+    assert str(tmp_path) not in json.dumps(created)
+    catalog = recovery.list_managed_backups()
+    assert catalog["count"] == 1 and catalog["capacity"] == 50
+    assert catalog["backups"][0]["backup_id"] == backup_id
+    assert str(tmp_path) not in json.dumps(catalog)
+    verified = recovery.verify_managed_backup(backup_id)
+    assert verified["operation"] == "verify" and verified["valid"]
+
+    session.write_text(session.read_text(encoding="utf-8").replace(
+        "Backup Studio", "Changed Studio",
+    ), encoding="utf-8")
+    restored = recovery.restore_managed_backup(backup_id, replace=True)
+    assert restored["restored"] and restored["task_history_reset"]
+    assert json.loads(session.read_text(encoding="utf-8"))["name"] == "Backup Studio"
+    for value in ("../escape", "backup.zip", "backup-20260809t000000z-deadbeeg"):
+        with pytest.raises((ValueError, FileNotFoundError)):
+            recovery.verify_managed_backup(value)
+
+
+def test_managed_backup_capacity_is_bounded(tmp_path, monkeypatch):
+    _write_workspace(tmp_path)
+    monkeypatch.setattr("src.product.recovery.MAX_MANAGED_BACKUPS", 2)
+    recovery = ProductRecovery(tmp_path)
+    recovery.create_managed_backup()
+    recovery.create_managed_backup()
+    with pytest.raises(RuntimeError, match="capacity"):
+        recovery.create_managed_backup()
+
+
+def test_managed_backup_directory_identity_cannot_change(tmp_path, monkeypatch):
+    _write_workspace(tmp_path)
+    recovery = ProductRecovery(tmp_path)
+    outside = tmp_path.parent / "outside-managed-backups"
+    real_resolve = Path.resolve
+
+    def redirected_resolve(path, *args, **kwargs):
+        if path == recovery._managed_dir_input:
+            return outside
+        return real_resolve(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "resolve", redirected_resolve)
+    with pytest.raises(ValueError, match="escapes"):
+        recovery.list_managed_backups()
+
+
 def test_restore_rolls_back_all_files_when_final_session_switch_fails(
     tmp_path, monkeypatch,
 ):

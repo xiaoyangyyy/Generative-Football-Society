@@ -39,6 +39,10 @@ and login-rate state are bounded and process-local; do not scale the `gfs`
 service horizontally until a shared session/rate store with equivalent expiry,
 revocation, privacy, and failure semantics is implemented and tested.
 
+The Web recovery center writes its bounded managed catalog to the `gfs_backups`
+volume. Copying bundles off-host, retention beyond 50 entries, encryption, and
+timed RPO/RTO drills remain deployment-operator responsibilities.
+
 ## Stop and recover
 
 ```bash

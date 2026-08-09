@@ -21,6 +21,9 @@ readiness, evidence, transaction, or reporting rules into a second system.
   history, single-server ownership, and visible interrupted state after restart.
 - persistent privacy-bounded operational telemetry, aggregate authenticated
   operations metrics, bounded rotation, and readiness-visible telemetry damage.
+- one integrated recovery center with a bounded managed catalog, create and
+  verify controls, exact-ID destructive confirmation, active-task blocking,
+  transactional restore, and task-history reset.
 
 Run the machine-readable verification without a match, training, or network
 provider:
@@ -47,8 +50,8 @@ and individually revocable. Client/global login limits return 429 with
 
 Match requests execute in a persistent
 single-worker queue while the threaded server keeps health endpoints
-responsive. Web backup/restore controls, container deployment, telemetry
-export to an external monitoring backend, the deterministic 100-match soak,
+responsive. Backup download/export, container deployment, telemetry export to
+an external monitoring backend, the deterministic 100-match soak,
 external accessibility review, and target-user validation remain Stage 1/3
 work. The local `/api/v1/operations` endpoint exposes aggregates only, never raw
 events.

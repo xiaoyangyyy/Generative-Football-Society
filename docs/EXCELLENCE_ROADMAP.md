@@ -91,6 +91,16 @@ security point still requires an independent review/penetration test against a
 real deployed TLS edge; process-local sessions and rate limits are not claimed
 to support horizontal replicas.
 
+The recovery center is now part of the same authenticated Studio surface. It
+uses a locked, 50-entry managed catalog with server-generated IDs; Web clients
+cannot supply filesystem paths. Create performs verification, verify is
+explicit, and restore requires CSRF, `replace=true`, an exact typed ID, no
+active match tasks, and the existing transactional rollback implementation. A
+real local socket verifier passes all 13 gates without running a match. This
+closes the final functional-completeness point and adds one usability point,
+bringing the product score to 78. Deployment-volume RPO/RTO, process-kill
+recovery, Web export, and target-user evidence remain unclaimed.
+
 ## Stage 2 — confirmatory academic experiment
 
 Freeze the commit and run only

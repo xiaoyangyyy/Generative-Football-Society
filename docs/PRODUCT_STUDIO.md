@@ -233,3 +233,17 @@ Studio “安全退出” control. At most 64 sessions are retained; creating an
 evicts the oldest. Login failures are limited per salted in-memory client
 identity and by a global fallback window. A limited request receives HTTP 429
 and `Retry-After`; client addresses and salts never enter telemetry.
+
+## Integrated recovery center
+
+The Web surface lists only server-managed backups under `backups/studio/`.
+Users can create an integrity-checked backup, verify it again, and prepare a
+restore without entering a filesystem path. Restore requires the exact backup
+ID to be typed, an explicit replacement checkbox, CSRF, and an idle match task
+queue. The existing staged, fsynced, session-last transaction performs the
+restore and resets cross-session task history.
+
+The managed catalog is capped at 50 entries. Archive older bundles through the
+deployment storage workflow before creating more. The Web API deliberately
+does not stream backup archives; exporting them remains an authenticated
+deployment/storage operation.

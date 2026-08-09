@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_integrated_web_recovery",
+  "generated_at": "2026-08-09T15:32:33.100020+00:00",
+  "status": "passed_integrated_local_web_recovery",
+  "passed": true,
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false,
+  "checks": {
+    "accessible_recovery_ui_present": true,
+    "studio_created": true,
+    "empty_catalog_available": true,
+    "backup_requires_csrf": true,
+    "backup_created_and_verified": true,
+    "server_path_not_exposed": true,
+    "catalog_contains_managed_id": true,
+    "explicit_verify_passed": true,
+    "wrong_confirmation_is_non_mutating": true,
+    "active_task_blocks_restore": true,
+    "transactional_restore_completed": true,
+    "cross_session_task_history_reset": true,
+    "server_shutdown_cleanly": true
+  },
+  "limitations": [
+    "the verifier uses a temporary local socket and filesystem",
+    "backup and restore run synchronously in a threaded Web request",
+    "no deployment-volume RPO/RTO drill or process-kill fault was performed",
+    "managed backups remain on deployment storage and are not downloaded by the Web API"
+  ]
+}

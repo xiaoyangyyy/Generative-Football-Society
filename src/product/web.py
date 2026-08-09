@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import json
 import logging
+import re
 import secrets
 import threading
 import time
@@ -14,8 +15,9 @@ from typing import Any, Callable, Iterable
 from urllib.parse import unquote
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
-from src.infrastructure import FileLease
+from src.infrastructure import FileLease, LeaseUnavailable
 from src.product.control_plane import ProductControlPlane
+from src.product.recovery import ProductRecovery
 from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue, TaskConflict
 from src.product.telemetry import ProductTelemetry, route_template
 from src.product.web_security import WebAccessPolicy, is_loopback_host
@@ -204,12 +206,28 @@ class ProductWebApp:
             return self._json_response(200, self._studio_status(), csrf=True)
         if method == "GET" and path == "/api/v1/operations":
             return self._json_response(200, self.telemetry.snapshot())
+        if method == "GET" and path == "/api/v1/recovery":
+            return self._recovery_status()
         if method == "POST" and path == "/api/v1/studio":
             self._require_csrf(environ)
             return self._create_studio(self._read_json(environ))
         if method == "POST" and path == "/api/v1/matches":
             self._require_csrf(environ)
             return self._queue_match(environ, self._read_json(environ))
+        if method == "POST" and path == "/api/v1/backups":
+            self._require_csrf(environ)
+            return self._create_managed_backup()
+        backup_action = re.fullmatch(
+            r"/api/v1/backups/([^/]+)/(verify|restore)", path,
+        )
+        if method == "POST" and backup_action:
+            self._require_csrf(environ)
+            backup_id, action = backup_action.groups()
+            if action == "verify":
+                return self._verify_managed_backup(backup_id)
+            return self._restore_managed_backup(
+                backup_id, self._read_json(environ),
+            )
         if method == "GET" and path == "/api/v1/tasks":
             return self._json_response(200, {
                 "schema_version": 1,
@@ -226,7 +244,10 @@ class ProductWebApp:
             return self._json_response(200, {"task": self._task_for_web(task)})
         if method == "GET" and path.startswith("/artifacts/"):
             return self._artifact_response(path.removeprefix("/artifacts/"))
-        if path in {"/api/v1/studio", "/api/v1/matches", "/api/v1/tasks"}:
+        if path in {
+            "/api/v1/studio", "/api/v1/matches", "/api/v1/tasks",
+            "/api/v1/recovery", "/api/v1/backups",
+        } or backup_action:
             raise WebRequestError(405, "method_not_allowed", "Method not allowed")
         raise WebRequestError(404, "not_found", "Resource not found")
 
@@ -397,6 +418,101 @@ class ProductWebApp:
         finally:
             self._mutation_lock.release()
 
+    def _recovery_status(self) -> tuple[int, list[tuple[str, str]], bytes]:
+        try:
+            catalog = ProductRecovery(self.root).list_managed_backups()
+        except LeaseUnavailable as exc:
+            raise WebRequestError(
+                409, "operation_in_progress", "Another recovery operation is running",
+            ) from exc
+        return self._json_response(200, catalog)
+
+    def _create_managed_backup(self) -> tuple[int, list[tuple[str, str]], bytes]:
+        if not self._mutation_lock.acquire(blocking=False):
+            raise WebRequestError(409, "operation_in_progress", "Another mutation is running")
+        try:
+            try:
+                result = ProductRecovery(self.root).create_managed_backup()
+            except FileNotFoundError as exc:
+                raise WebRequestError(
+                    409, "studio_missing", "Create a Studio before making a backup",
+                ) from exc
+            except LeaseUnavailable as exc:
+                raise WebRequestError(
+                    409, "operation_in_progress", "Another product operation is running",
+                ) from exc
+            except RuntimeError as exc:
+                raise WebRequestError(
+                    409, "backup_capacity_reached",
+                    "Managed backup capacity is full; archive older backups using deployment storage",
+                ) from exc
+            except ValueError as exc:
+                raise WebRequestError(
+                    409, "backup_source_invalid", "Studio state is not backup-ready",
+                ) from exc
+            return self._json_response(201, result)
+        finally:
+            self._mutation_lock.release()
+
+    def _verify_managed_backup(
+        self, backup_id: str,
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        try:
+            result = ProductRecovery(self.root).verify_managed_backup(backup_id)
+        except FileNotFoundError as exc:
+            raise WebRequestError(404, "backup_not_found", "Backup not found") from exc
+        except ValueError as exc:
+            raise WebRequestError(
+                409, "backup_invalid", "Backup failed integrity or semantic verification",
+            ) from exc
+        except LeaseUnavailable as exc:
+            raise WebRequestError(
+                409, "operation_in_progress", "Another recovery operation is running",
+            ) from exc
+        return self._json_response(200, result)
+
+    def _restore_managed_backup(
+        self, backup_id: str, payload: dict[str, Any],
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        confirmation = payload.get("confirmation")
+        confirmed = isinstance(confirmation, str) and secrets.compare_digest(
+            confirmation.encode("utf-8"), backup_id.encode("ascii"),
+        )
+        if not confirmed:
+            raise WebRequestError(
+                422, "restore_confirmation_required",
+                "Type the exact backup ID to confirm restore",
+            )
+        if payload.get("replace") is not True:
+            raise WebRequestError(
+                422, "explicit_replace_required", "Restore requires replace=true",
+            )
+        if not self._mutation_lock.acquire(blocking=False):
+            raise WebRequestError(409, "operation_in_progress", "Another mutation is running")
+        try:
+            try:
+                result = ProductRecovery(self.root).restore_managed_backup(
+                    backup_id, replace=True,
+                )
+            except FileNotFoundError as exc:
+                raise WebRequestError(404, "backup_not_found", "Backup not found") from exc
+            except LeaseUnavailable as exc:
+                raise WebRequestError(
+                    409, "operation_in_progress", "Another product operation is running",
+                ) from exc
+            except RuntimeError as exc:
+                raise WebRequestError(
+                    409, "restore_blocked",
+                    "Restore is blocked while match tasks are queued or running",
+                ) from exc
+            except ValueError as exc:
+                raise WebRequestError(
+                    409, "backup_invalid", "Backup failed integrity or semantic verification",
+                ) from exc
+            return self._json_response(200, result)
+        finally:
+            self._mutation_lock.release()
+
     def _queue_match(
         self, environ: dict[str, Any], payload: dict[str, Any],
     ) -> tuple[int, list[tuple[str, str]], bytes]:
@@ -407,31 +523,40 @@ class ProductWebApp:
         fast = payload.get("fast", False)
         if not isinstance(fast, bool):
             raise WebRequestError(422, "invalid_fast", "fast must be boolean")
-        try:
-            workspace = ProductWorkspace.load(self.root)
-        except FileNotFoundError as exc:
-            raise WebRequestError(404, "studio_missing", "Create a Studio first") from exc
-        readiness = workspace.readiness()
-        if not readiness["ready"]:
+        if not self._mutation_lock.acquire(blocking=False):
             raise WebRequestError(
-                409, "match_blocked", "Match blocked by readiness gates",
+                409, "operation_in_progress", "Another mutation is running",
             )
         try:
-            task, created = self.task_queue.submit_match(
-                home, away, fast=fast,
-                idempotency_key=str(environ.get("HTTP_IDEMPOTENCY_KEY", "")),
-            )
-        except TaskConflict as exc:
-            raise WebRequestError(409, "idempotency_conflict", str(exc)) from exc
-        except ValueError as exc:
-            raise WebRequestError(422, "invalid_idempotency_key", str(exc)) from exc
-        except RuntimeError as exc:
-            raise WebRequestError(409, "task_queue_full", "Task queue is full") from exc
-        return self._json_response(202 if created else 200, {
-            "schema_version": 1,
-            "created": created,
-            "task": self._task_for_web(task),
-        })
+            try:
+                workspace = ProductWorkspace.load(self.root)
+            except FileNotFoundError as exc:
+                raise WebRequestError(
+                    404, "studio_missing", "Create a Studio first",
+                ) from exc
+            readiness = workspace.readiness()
+            if not readiness["ready"]:
+                raise WebRequestError(
+                    409, "match_blocked", "Match blocked by readiness gates",
+                )
+            try:
+                task, created = self.task_queue.submit_match(
+                    home, away, fast=fast,
+                    idempotency_key=str(environ.get("HTTP_IDEMPOTENCY_KEY", "")),
+                )
+            except TaskConflict as exc:
+                raise WebRequestError(409, "idempotency_conflict", str(exc)) from exc
+            except ValueError as exc:
+                raise WebRequestError(422, "invalid_idempotency_key", str(exc)) from exc
+            except RuntimeError as exc:
+                raise WebRequestError(409, "task_queue_full", "Task queue is full") from exc
+            return self._json_response(202 if created else 200, {
+                "schema_version": 1,
+                "created": created,
+                "task": self._task_for_web(task),
+            })
+        finally:
+            self._mutation_lock.release()
 
     @staticmethod
     def _task_for_web(task: dict[str, Any]) -> dict[str, Any]:
@@ -560,6 +685,10 @@ _INDEX_HTML = """<!doctype html>
     .row { display:grid; grid-template-columns:1fr 1fr; gap:.7rem } .check { display:flex; align-items:center; gap:.6rem }
     .check input { width:1.1rem; height:1.1rem } .status { min-height:1.6rem; color:var(--muted) }
     .error { color:var(--danger) } .ok { color:var(--accent) } a { color:var(--accent) }
+    .toolbar { display:flex; flex-wrap:wrap; gap:.7rem; align-items:center }
+    .backup-list { display:grid; gap:.7rem; margin:1rem 0 }
+    .danger-button { background:var(--danger) }
+    code { overflow-wrap:anywhere }
     pre { max-height:340px; overflow:auto; padding:1rem; border-radius:10px; background:#070a09;
       color:#cbd5d0; white-space:pre-wrap; overflow-wrap:anywhere }
     [hidden] { display:none!important }
@@ -584,24 +713,41 @@ _INDEX_HTML = """<!doctype html>
       <label class="check"><input name="fast" type="checkbox" checked>快速模式</label><button type="submit">运行比赛</button></form>
     <button id="logout-button" type="button"__REMOTE_LOGOUT_HIDDEN__>安全退出</button>
     <p id="message" class="status" role="status" aria-live="polite"></p><p id="report-link" hidden></p></section>
+  <section class="wide" aria-labelledby="recovery-title"><h2 id="recovery-title">恢复中心</h2>
+    <p>备份保存在受控部署存储中。恢复前必须校验，并输入完整备份 ID 确认替换当前工作区。</p>
+    <div class="toolbar"><button id="create-backup" type="button">创建完整备份</button><span id="recovery-message" class="status" role="status" aria-live="polite"></span></div>
+    <div id="backup-list" class="backup-list" role="list" aria-label="托管备份"></div>
+    <form id="restore-form" hidden><p>准备恢复：<code id="selected-backup"></code></p>
+      <label>输入完整备份 ID<input name="confirmation" maxlength="64" autocomplete="off" required></label>
+      <label class="check"><input name="replace" type="checkbox" required>我确认使用该备份替换当前工作区并重置任务历史</label>
+      <div class="toolbar"><button class="danger-button" type="submit">确认恢复</button><button id="cancel-restore" type="button">取消</button></div>
+    </form></section>
   <section class="wide" aria-labelledby="evidence-title"><h2 id="evidence-title">证据与运行详情</h2><pre id="details">正在读取……</pre></section>
 </main>
 <script nonce="__NONCE__">
 const csrf=document.querySelector('meta[name="gfs-csrf"]').content;
 const cards=document.querySelector('#cards'),setup=document.querySelector('#setup-form'),match=document.querySelector('#match-form');let activePoll='';
 const message=document.querySelector('#message'),details=document.querySelector('#details'),workflow=document.querySelector('#workflow'),report=document.querySelector('#report-link'),logoutButton=document.querySelector('#logout-button');
+const createBackupButton=document.querySelector('#create-backup'),backupList=document.querySelector('#backup-list'),recoveryMessage=document.querySelector('#recovery-message'),restoreForm=document.querySelector('#restore-form'),selectedBackup=document.querySelector('#selected-backup'),cancelRestore=document.querySelector('#cancel-restore');
 const esc=v=>String(v??'—');
 function card(label,value){const el=document.createElement('div');el.className='card';const a=document.createElement('span');a.className='label';a.textContent=label;const b=document.createElement('strong');b.className='value';b.textContent=esc(value);el.append(a,b);return el}
 function showReport(url){if(!url)return;report.replaceChildren();const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.textContent='打开比赛仪表板';report.append(a);report.hidden=false}
-function render(data){cards.replaceChildren();const s=data.studio,tasks=data.tasks||[],latest=tasks[0];if(!data.configured){cards.append(card('工作区','未配置'),card('API 调用','0'),card('任务',tasks.length));setup.hidden=false;match.hidden=true;workflow.textContent='创建工作区后，系统会先执行证据就绪检查。'}else{const r=s.readiness||{},w=s.workflow||{};cards.append(card('模式',s.mode),card('就绪',r.ready?'是':'否'),card('已完成比赛',s.matches_played),card('最近任务',latest?.state||'无'));setup.hidden=true;match.hidden=false;workflow.textContent=r.ready?'证据门禁通过，可以提交后台比赛任务。':'阻塞项：'+(r.blockers||[]).join(', ')}if(latest?.state==='completed')showReport(latest.result?.dashboard_url);if(['queued','running'].includes(latest?.state)&&activePoll!==latest.task_id){activePoll=latest.task_id;void pollTask(latest.task_id)}details.textContent=JSON.stringify(data,null,2)}
+function render(data){createBackupButton.disabled=!data.configured;cards.replaceChildren();const s=data.studio,tasks=data.tasks||[],latest=tasks[0];if(!data.configured){cards.append(card('工作区','未配置'),card('API 调用','0'),card('任务',tasks.length));setup.hidden=false;match.hidden=true;workflow.textContent='创建工作区后，系统会先执行证据就绪检查。'}else{const r=s.readiness||{},w=s.workflow||{};cards.append(card('模式',s.mode),card('就绪',r.ready?'是':'否'),card('已完成比赛',s.matches_played),card('最近任务',latest?.state||'无'));setup.hidden=true;match.hidden=false;workflow.textContent=r.ready?'证据门禁通过，可以提交后台比赛任务。':'阻塞项：'+(r.blockers||[]).join(', ')}if(latest?.state==='completed')showReport(latest.result?.dashboard_url);if(['queued','running'].includes(latest?.state)&&activePoll!==latest.task_id){activePoll=latest.task_id;void pollTask(latest.task_id)}details.textContent=JSON.stringify(data,null,2)}
+function setRecoveryMessage(text,isError=false){recoveryMessage.className='status '+(isError?'error':'ok');recoveryMessage.textContent=text}
+function prepareRestore(id){selectedBackup.textContent=id;restoreForm.dataset.backupId=id;restoreForm.reset();restoreForm.hidden=false;restoreForm.querySelector('input[name="confirmation"]').focus()}
+function renderBackups(data){backupList.replaceChildren();if(!data.backups.length){const empty=document.createElement('p');empty.className='status';empty.textContent='尚无托管备份。';backupList.append(empty);return}for(const backup of data.backups){const item=document.createElement('div');item.className='card';item.setAttribute('role','listitem');const title=document.createElement('strong');title.textContent=backup.backup_id;const meta=document.createElement('p');meta.className='status';meta.textContent=new Date(backup.modified_at).toLocaleString()+' · '+backup.size_bytes+' bytes';const actions=document.createElement('div');actions.className='toolbar';const verify=document.createElement('button');verify.type='button';verify.textContent='校验';verify.setAttribute('aria-label','校验备份 '+backup.backup_id);verify.addEventListener('click',async()=>{verify.disabled=true;try{await api('/api/v1/backups/'+encodeURIComponent(backup.backup_id)+'/verify',{method:'POST'});setRecoveryMessage('备份完整性与语义校验通过。')}catch(e){setRecoveryMessage(e.message,true)}finally{verify.disabled=false}});const restore=document.createElement('button');restore.type='button';restore.className='danger-button';restore.textContent='准备恢复';restore.setAttribute('aria-label','准备恢复备份 '+backup.backup_id);restore.addEventListener('click',()=>prepareRestore(backup.backup_id));actions.append(verify,restore);item.append(title,meta,actions);backupList.append(item)}}
+async function refreshRecovery(){try{renderBackups(await api('/api/v1/recovery'))}catch(e){setRecoveryMessage(e.message,true)}}
 async function api(path,options={}){const response=await fetch(path,{...options,headers:{'Content-Type':'application/json','X-GFS-CSRF':csrf,...options.headers}});const data=await response.json();if(!response.ok)throw new Error(data.error?.message||'请求失败');return data}
 async function refresh(){try{render(await api('/api/v1/studio'))}catch(e){message.className='status error';message.textContent=e.message}}
 async function pollTask(id){try{while(true){const data=await api('/api/v1/tasks/'+encodeURIComponent(id)),task=data.task;details.textContent=JSON.stringify(data,null,2);message.className='status';message.textContent=task.state==='queued'?'比赛任务已排队……':'比赛正在后台运行……';if(task.state==='completed'){message.className='status ok';message.textContent='比赛完成。';showReport(task.result?.dashboard_url);await refresh();return}if(['failed','interrupted'].includes(task.state)){message.className='status error';message.textContent=task.error?.message||'任务中断，可检查状态后重新提交。';await refresh();return}await new Promise(resolve=>setTimeout(resolve,750))}}catch(e){message.className='status error';message.textContent=e.message}finally{activePoll=''}}
 async function submit(form,path,payload,headers={}){const button=form.querySelector('button');button.disabled=true;message.className='status';message.textContent='正在提交……';report.hidden=true;try{const data=await api(path,{method:'POST',body:JSON.stringify(payload),headers});if(data.task){message.textContent=data.created?'任务已持久化排队。':'已返回同一幂等任务。';activePoll=data.task.task_id;await pollTask(data.task.task_id)}else{message.className='status ok';message.textContent='操作成功。';await refresh()}}catch(e){message.className='status error';message.textContent=e.message}finally{button.disabled=false}}
 setup.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(setup);submit(setup,'/api/v1/studio',{name:f.get('name'),mode:f.get('mode'),seed:Number(f.get('seed'))})});
 match.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(match),key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random();submit(match,'/api/v1/matches',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on'},{'Idempotency-Key':key})});
+createBackupButton.addEventListener('click',async()=>{createBackupButton.disabled=true;setRecoveryMessage('正在创建并校验备份……');try{await api('/api/v1/backups',{method:'POST'});setRecoveryMessage('备份已创建并通过校验。');await refreshRecovery()}catch(e){setRecoveryMessage(e.message,true)}finally{createBackupButton.disabled=false}});
+restoreForm.addEventListener('submit',async e=>{e.preventDefault();const id=restoreForm.dataset.backupId,f=new FormData(restoreForm),button=restoreForm.querySelector('button[type="submit"]');button.disabled=true;setRecoveryMessage('正在执行事务恢复……');try{await api('/api/v1/backups/'+encodeURIComponent(id)+'/restore',{method:'POST',body:JSON.stringify({confirmation:f.get('confirmation'),replace:f.get('replace')==='on'})});restoreForm.hidden=true;setRecoveryMessage('恢复完成，任务历史已安全重置。');await Promise.all([refresh(),refreshRecovery()])}catch(error){setRecoveryMessage(error.message,true)}finally{button.disabled=false}});
+cancelRestore.addEventListener('click',()=>{restoreForm.reset();restoreForm.hidden=true;createBackupButton.focus()});
 logoutButton.addEventListener('click',async()=>{logoutButton.disabled=true;try{await api('/api/v1/logout',{method:'POST',body:'{}'});location.replace('/login')}catch(e){message.className='status error';message.textContent=e.message;logoutButton.disabled=false}});
-refresh();
+void Promise.all([refresh(),refreshRecovery()]);
 </script>
 </body></html>"""
 

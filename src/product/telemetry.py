@@ -26,6 +26,9 @@ ROUTES = {
     "/", "/healthz", "/login", "/readyz", "/api/v1/login",
     "/api/v1/logout",
     "/api/v1/studio", "/api/v1/matches", "/api/v1/tasks",
+    "/api/v1/recovery", "/api/v1/backups",
+    "/api/v1/backups/{backup_id}/verify",
+    "/api/v1/backups/{backup_id}/restore",
     "/api/v1/tasks/{task_id}", "/api/v1/operations",
     "/artifacts/{artifact}", "unmatched",
 }
@@ -67,6 +70,10 @@ def route_template(path: str) -> str:
         return path
     if path.startswith("/api/v1/tasks/"):
         return "/api/v1/tasks/{task_id}"
+    if re.fullmatch(r"/api/v1/backups/[^/]+/verify", path):
+        return "/api/v1/backups/{backup_id}/verify"
+    if re.fullmatch(r"/api/v1/backups/[^/]+/restore", path):
+        return "/api/v1/backups/{backup_id}/restore"
     if path.startswith("/artifacts/"):
         return "/artifacts/{artifact}"
     return "unmatched"
