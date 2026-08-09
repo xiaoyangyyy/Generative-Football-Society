@@ -68,6 +68,12 @@ reconciliation add three more product points, bringing the current score to
 70. The isolated verifier executes no real match; multi-host execution and a
 real process-kill drill remain unclaimed.
 
+The authenticated socket boundary and static container/TLS deployment
+contract add one security point and two operations points, bringing the
+product score to 73. Docker is unavailable in the current environment: no
+image was built, no Compose service started, and no public certificate,
+firewall, penetration test, or production volume drill is claimed.
+
 ## Stage 2 — confirmatory academic experiment
 
 Freeze the commit and run only

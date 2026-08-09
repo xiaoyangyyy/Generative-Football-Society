@@ -90,6 +90,30 @@ Task history is available from `/api/v1/tasks` and individual status from
 key are never returned. The queue retains at most 1,000 records and prunes only
 the oldest terminal history.
 
+## Authenticated remote deployment
+
+Local loopback remains the safe default. Non-loopback binding fails unless the
+operator explicitly enables remote mode, supplies an exact public Host, and
+sets an independent product access token of at least 32 random characters:
+
+```bash
+export GFS_WEB_ACCESS_TOKEN="<independent-random-product-token>"
+python gfs.py studio web --host 0.0.0.0 --allow-remote --allowed-host studio.example.com
+```
+
+Do not expose that command directly to the Internet. Remote mode requires an
+internal trusted reverse proxy that terminates HTTPS and sets
+`X-Forwarded-Proto=https`. All non-health routes enforce the Host allowlist,
+HTTPS proxy marker, product-token login, HttpOnly Secure SameSite Cookie, and
+the existing CSRF/CSP boundaries. The product access token must never be an
+LLM/provider key.
+
+`deploy/compose.yaml` provides the intended Caddy topology: only Caddy exposes
+80/443, while GFS stays on an internal network with a non-root user, read-only
+root filesystem, dropped capabilities, persistent product volumes, and health
+checks. See `deploy/README.md`. The contract is statically verified but remains
+unbuilt because Docker is unavailable in the current environment.
+
 ## Backup and recovery
 
 Back up the persisted Studio and every artifact referenced by its match

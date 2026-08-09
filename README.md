@@ -93,6 +93,18 @@ tasks. Refreshing the page recovers task observation instead of duplicating a
 match; interrupted process state remains visible and is not automatically
 replayed.
 
+Authenticated remote deployment is explicit and separate from provider
+credentials. The supplied Compose contract exposes only a Caddy TLS edge and
+keeps GFS on an internal network:
+
+```bash
+docker compose --env-file deploy/.env.deploy -f deploy/compose.yaml up -d --build
+```
+
+Docker is not available in the current verification environment, so this is a
+statically verified deployment contract rather than a claimed running service.
+See `deploy/README.md`.
+
 Create and verify an integrity-checked Studio recovery bundle:
 
 ```bash

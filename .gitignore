@@ -17,10 +17,12 @@ env/
 .env
 .env.*
 !.env.example
+!deploy/.env.deploy.example
 
 # Runtime outputs
 outputs/
 backups/
+deploy/secrets/
 logs/
 reports/*
 data/evaluation/shards/

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import html
-import ipaddress
 import json
 import logging
 import secrets
@@ -11,12 +10,13 @@ import threading
 from pathlib import Path
 from socketserver import ThreadingMixIn
 from typing import Any, Callable, Iterable
-from urllib.parse import unquote, urlsplit
+from urllib.parse import unquote
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from src.infrastructure import FileLease
 from src.product.control_plane import ProductControlPlane
 from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue, TaskConflict
+from src.product.web_security import WebAccessPolicy, is_loopback_host
 from src.product.workspace import ProductWorkspace, StudioConfig
 from src.simulation.llm_gateway import provider_preflight
 
@@ -25,11 +25,12 @@ LOGGER = logging.getLogger(__name__)
 MAX_REQUEST_BYTES = 64 * 1024
 JSON_HEADERS = [("Content-Type", "application/json; charset=utf-8")]
 STATUS_TEXT = {
-    200: "OK", 201: "Created", 202: "Accepted", 400: "Bad Request", 403: "Forbidden",
+    200: "OK", 201: "Created", 202: "Accepted", 302: "Found",
+    400: "Bad Request", 401: "Unauthorized", 403: "Forbidden",
     404: "Not Found", 405: "Method Not Allowed", 409: "Conflict",
     413: "Payload Too Large", 415: "Unsupported Media Type",
     422: "Unprocessable Entity", 500: "Internal Server Error",
-    503: "Service Unavailable",
+    426: "Upgrade Required", 503: "Service Unavailable",
 }
 
 
@@ -46,12 +47,7 @@ def _json_bytes(payload: Any) -> bytes:
 
 
 def _is_loopback_host(host: str) -> bool:
-    if host.lower() == "localhost":
-        return True
-    try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
+    return is_loopback_host(host)
 
 
 class ProductWebApp:
@@ -60,12 +56,14 @@ class ProductWebApp:
     def __init__(
         self, root: str | Path, *, task_queue: ProductTaskQueue | None = None,
         task_worker: BackgroundMatchWorker | None = None,
+        access_policy: WebAccessPolicy | None = None,
     ) -> None:
         self.root = Path(root).resolve()
         self.csrf_token = secrets.token_urlsafe(32)
         self._mutation_lock = threading.Lock()
         self.task_queue = task_queue or ProductTaskQueue(self.root)
         self.task_worker = task_worker
+        self.access_policy = access_policy or WebAccessPolicy()
 
     def __call__(
         self, environ: dict[str, Any],
@@ -106,11 +104,8 @@ class ProductWebApp:
     def _dispatch(
         self, environ: dict[str, Any],
     ) -> tuple[int, list[tuple[str, str]], bytes]:
-        self._require_loopback_host(environ)
         method = str(environ.get("REQUEST_METHOD", "GET")).upper()
         path = str(environ.get("PATH_INFO", "/"))
-        if method == "GET" and path == "/":
-            return self._html_response()
         if method == "GET" and path == "/healthz":
             return self._json_response(200, {
                 "schema_version": 1,
@@ -121,6 +116,27 @@ class ProductWebApp:
                     self.task_worker.is_alive if self.task_worker is not None else None
                 ),
             })
+        if not self.access_policy.host_allowed(environ):
+            raise WebRequestError(400, "invalid_host", "Host is not allowed")
+        if not self.access_policy.secure_transport(environ):
+            raise WebRequestError(
+                426, "https_required", "Remote Web access requires the trusted HTTPS proxy",
+            )
+        if method == "GET" and path == "/login":
+            if not self.access_policy.remote:
+                return self._redirect_response("/")
+            return self._login_html_response()
+        if method == "POST" and path == "/api/v1/login":
+            if not self.access_policy.remote:
+                raise WebRequestError(404, "not_found", "Resource not found")
+            self._require_csrf(environ)
+            return self._login(self._read_json(environ))
+        if not self.access_policy.authenticated(environ):
+            if method == "GET" and path == "/":
+                return self._redirect_response("/login")
+            raise WebRequestError(401, "authentication_required", "Authentication required")
+        if method == "GET" and path == "/":
+            return self._html_response()
         if method == "GET" and path == "/readyz":
             payload = self._studio_status()
             ready = bool(payload.get("configured") and (
@@ -191,6 +207,38 @@ class ProductWebApp:
         ]
         return 200, headers, document.encode("utf-8")
 
+    def _login_html_response(self) -> tuple[int, list[tuple[str, str]], bytes]:
+        nonce = secrets.token_urlsafe(18)
+        document = _LOGIN_HTML.replace("__NONCE__", html.escape(nonce, quote=True))
+        document = document.replace(
+            "__CSRF__", html.escape(self.csrf_token, quote=True),
+        )
+        return 200, [
+            ("Content-Type", "text/html; charset=utf-8"),
+            ("Content-Security-Policy", (
+                "default-src 'none'; connect-src 'self'; "
+                f"script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; "
+                "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+            )),
+            ("X-GFS-CSRF-Token", self.csrf_token),
+        ], document.encode("utf-8")
+
+    @staticmethod
+    def _redirect_response(location: str):
+        return 302, [("Location", location), ("Content-Type", "text/plain; charset=utf-8")], b"Redirecting"
+
+    def _login(
+        self, payload: dict[str, Any],
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        candidate = payload.get("access_token")
+        if not isinstance(candidate, str) or not self.access_policy.authenticate_token(candidate):
+            raise WebRequestError(401, "invalid_credentials", "Invalid credentials")
+        headers = list(JSON_HEADERS)
+        headers.append(("Set-Cookie", self.access_policy.session_cookie_header()))
+        return 200, headers, _json_bytes({
+            "schema_version": 1, "authenticated": True,
+        })
+
     def _read_json(self, environ: dict[str, Any]) -> dict[str, Any]:
         media_type = str(environ.get("CONTENT_TYPE", "")).split(";", 1)[0].strip()
         if media_type != "application/json":
@@ -220,18 +268,6 @@ class ProductWebApp:
             raise WebRequestError(403, "csrf_rejected", "Missing or invalid CSRF token")
 
     @staticmethod
-    def _require_loopback_host(environ: dict[str, Any]) -> None:
-        authority = str(
-            environ.get("HTTP_HOST") or environ.get("SERVER_NAME") or "",
-        ).strip()
-        try:
-            hostname = urlsplit("//" + authority).hostname or ""
-        except ValueError as exc:
-            raise WebRequestError(400, "invalid_host", "Invalid Host header") from exc
-        if not _is_loopback_host(hostname):
-            raise WebRequestError(400, "invalid_host", "Host must resolve to loopback")
-
-    @staticmethod
     def _text_field(payload: dict[str, Any], key: str, *, maximum: int) -> str:
         value = payload.get(key)
         if not isinstance(value, str) or not value.strip():
@@ -250,6 +286,7 @@ class ProductWebApp:
                 "studio": None,
                 "control_plane": ProductControlPlane(self.root).snapshot(),
                 "provider": provider,
+                "access": self.access_policy.public_summary(),
                 "tasks": [
                     self._task_for_web(task)
                     for task in self.task_queue.list_tasks(limit=20)
@@ -264,6 +301,7 @@ class ProductWebApp:
         return {
             "schema_version": 1, "configured": True,
             "studio": status, "provider": provider,
+            "access": self.access_policy.public_summary(),
             "tasks": [
                 self._task_for_web(task)
                 for task in self.task_queue.list_tasks(limit=20)
@@ -388,13 +426,19 @@ class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
 
 def create_product_web_server(
     root: str | Path, *, host: str = "127.0.0.1", port: int = 8765,
+    allow_remote: bool = False, access_token: str = "",
+    allowed_hosts: tuple[str, ...] = (),
 ):
-    """Create a loopback-only server; remote deployment needs an auth layer."""
-    if not _is_loopback_host(host):
-        raise ValueError("Web Beta is loopback-only; put an authenticated gateway in front")
+    """Create a local server or an authenticated trusted-proxy boundary."""
+    if not _is_loopback_host(host) and not allow_remote:
+        raise ValueError("non-loopback Web binding requires --allow-remote")
     if isinstance(port, bool) or not isinstance(port, int) or not 0 <= port <= 65535:
         raise ValueError("port must be 0 (automatic) or between 1 and 65535")
     resolved_root = Path(root).resolve()
+    access_policy = WebAccessPolicy(
+        remote=allow_remote, access_token=access_token,
+        allowed_hosts=allowed_hosts,
+    )
     server_lease = FileLease(
         resolved_root / "data/persistence/product_web.lock", timeout=0.0,
     ).acquire()
@@ -405,6 +449,7 @@ def create_product_web_server(
         server = make_server(
             host, port, ProductWebApp(
                 resolved_root, task_queue=queue, task_worker=worker,
+                access_policy=access_policy,
             ),
             server_class=ThreadingWSGIServer,
             handler_class=WSGIRequestHandler,
@@ -496,3 +541,12 @@ match.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(matc
 refresh();
 </script>
 </body></html>"""
+
+
+_LOGIN_HTML = """<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="gfs-csrf" content="__CSRF__"><title>GFS Studio 登录</title><style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090d0c;color:#f7f6f0;font:16px/1.5 system-ui,sans-serif}.panel{width:min(440px,calc(100% - 2rem));padding:2rem;border:1px solid #31413a;border-radius:18px;background:#151b19}h1{margin:.2rem 0}.muted{color:#aab2ad}form{display:grid;gap:.8rem;margin-top:1.4rem}label{display:grid;gap:.35rem}input,button{font:inherit;padding:.75rem;border-radius:9px}input{color:inherit;background:#0b100f;border:1px solid #455b52}button{font-weight:750;background:#7ee2a8;border:0;color:#07100c}input:focus-visible,button:focus-visible{outline:3px solid #ffd166;outline-offset:3px}.error{color:#ff7b72;min-height:1.5rem}
+</style></head><body><main class="panel"><p class="muted">Authenticated deployment</p><h1>进入 GFS Studio</h1><p class="muted">请输入独立的产品访问令牌。它不是模型提供商 API Key。</p><form id="login"><label>产品访问令牌<input name="token" type="password" autocomplete="current-password" required></label><button>安全登录</button></form><p id="message" class="error" role="alert" aria-live="polite"></p></main><script nonce="__NONCE__">
+const form=document.querySelector('#login'),message=document.querySelector('#message'),csrf=document.querySelector('meta[name="gfs-csrf"]').content;form.addEventListener('submit',async e=>{e.preventDefault();const button=form.querySelector('button'),token=new FormData(form).get('token');button.disabled=true;message.textContent='';try{const response=await fetch('/api/v1/login',{method:'POST',headers:{'Content-Type':'application/json','X-GFS-CSRF':csrf},body:JSON.stringify({access_token:token})});const data=await response.json();if(!response.ok)throw new Error(data.error?.message||'登录失败');location.replace('/')}catch(error){message.textContent=error.message}finally{button.disabled=false;form.reset()}});
+</script></body></html>"""

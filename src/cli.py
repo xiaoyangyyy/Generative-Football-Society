@@ -187,14 +187,27 @@ def cmd_studio_provider(args: argparse.Namespace) -> int:
 
 
 def cmd_studio_web(args: argparse.Namespace) -> int:
-    """Serve the loopback-only Studio Web Beta."""
+    """Serve the local Studio Web Beta or its authenticated proxy boundary."""
     from src.product import create_product_web_server
+    from src.product.web_security import resolve_web_access_token
 
+    configured_hosts = tuple(args.allowed_host or ()) or tuple(
+        value.strip() for value in os.environ.get("GFS_WEB_ALLOWED_HOSTS", "").split(",")
+        if value.strip()
+    )
+    access_token = resolve_web_access_token(os.environ) if args.allow_remote else ""
     server = create_product_web_server(
         args.base_dir, host=args.host, port=args.port,
+        allow_remote=args.allow_remote,
+        access_token=access_token,
+        allowed_hosts=configured_hosts,
     )
-    print(f"GFS Studio Web Beta: http://{args.host}:{server.server_port}")
-    print("Local access only. Press Ctrl+C to stop.")
+    if args.allow_remote:
+        print(f"GFS Studio authenticated Web: https://{configured_hosts[0]}")
+        print("TLS must terminate at the trusted reverse proxy. Press Ctrl+C to stop.")
+    else:
+        print(f"GFS Studio Web Beta: http://{args.host}:{server.server_port}")
+        print("Local access only. Press Ctrl+C to stop.")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -337,6 +350,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_studio_web.add_argument("--host", default="127.0.0.1")
     p_studio_web.add_argument("--port", type=int, default=8765)
+    p_studio_web.add_argument(
+        "--allow-remote", action="store_true",
+        help="Require HTTPS proxy, Host allowlist, and GFS_WEB_ACCESS_TOKEN",
+    )
+    p_studio_web.add_argument(
+        "--allowed-host", action="append", default=[],
+        help="Exact public Host accepted in remote mode; may be repeated",
+    )
     p_studio_web.set_defaults(func=cmd_studio_web)
     p_studio_backup = studio_sub.add_parser(
         "backup", help="Create an integrity-checked Studio backup",

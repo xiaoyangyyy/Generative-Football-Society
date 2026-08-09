@@ -1,0 +1,103 @@
+name: gfs-studio
+
+services:
+  gfs:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command:
+      - --base-dir
+      - /app
+      - studio
+      - web
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8765"
+      - --allow-remote
+      - --allowed-host
+      - ${GFS_WEB_HOST:?set GFS_WEB_HOST}
+    environment:
+      GFS_WEB_ACCESS_TOKEN_FILE: /run/secrets/gfs_web_access_token
+    secrets:
+      - gfs_web_access_token
+    expose:
+      - "8765"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    volumes:
+      - gfs_outputs:/app/outputs
+      - gfs_persistence:/app/data/persistence
+      - gfs_backups:/app/backups
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/healthz', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    init: true
+    pids_limit: 512
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  gateway:
+    image: caddy:2.8.4-alpine
+    depends_on:
+      gfs:
+        condition: service_healthy
+    environment:
+      GFS_WEB_HOST: ${GFS_WEB_HOST:?set GFS_WEB_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - frontend
+      - backend
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    restart: unless-stopped
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  frontend: {}
+  backend:
+    internal: true
+
+volumes:
+  gfs_outputs: {}
+  gfs_persistence: {}
+  gfs_backups: {}
+  caddy_data: {}
+  caddy_config: {}
+
+secrets:
+  gfs_web_access_token:
+    file: ${GFS_WEB_ACCESS_TOKEN_FILE:?set GFS_WEB_ACCESS_TOKEN_FILE}

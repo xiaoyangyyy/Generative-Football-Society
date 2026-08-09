@@ -32,11 +32,16 @@ The authoritative result is
 the HTTP adapter and its safety boundaries; it does not prove production
 deployment, match soak reliability, external WCAG conformance, or user value.
 
+## Authenticated boundary
+
+The default Beta is loopback-only. Explicit remote mode additionally requires
+an exact Host allowlist, a separate high-entropy product token, an HTTPS proxy
+marker, and a secure session Cookie. A real socket verifier covers login and
+authorization, while the Caddy/Compose topology is only statically verified.
+
 ## Deliberately unclaimed
 
-The Beta is loopback-only. Binding to `0.0.0.0` or another non-loopback address
-is rejected because remote use needs an authenticated TLS gateway and an
-explicit deployment threat model. Match requests execute in a persistent
+Match requests execute in a persistent
 single-worker queue while the threaded server keeps health endpoints
 responsive. Web backup/restore controls, container deployment, telemetry
 export, the deterministic 100-match soak, external accessibility review, and

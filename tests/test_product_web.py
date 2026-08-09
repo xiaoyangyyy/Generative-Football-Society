@@ -6,13 +6,15 @@ from wsgiref.util import setup_testing_defaults
 
 import pytest
 
+from src.cli import build_parser, cmd_studio_web
 from src.product.web import ProductWebApp, _is_loopback_host, create_product_web_server
+from src.product.web_security import WebAccessPolicy
 from src.product.tasks import BackgroundMatchWorker
 
 
 def _request(
     app, method="GET", path="/", payload=None, *, csrf=None, host=None,
-    idempotency_key=None,
+    idempotency_key=None, forwarded_proto=None, cookie=None,
 ):
     body = b"" if payload is None else json.dumps(payload).encode("utf-8")
     environ = {}
@@ -31,6 +33,10 @@ def _request(
         environ["HTTP_HOST"] = host
     if idempotency_key is not None:
         environ["HTTP_IDEMPOTENCY_KEY"] = idempotency_key
+    if forwarded_proto is not None:
+        environ["HTTP_X_FORWARDED_PROTO"] = forwarded_proto
+    if cookie is not None:
+        environ["HTTP_COOKIE"] = cookie
     observed = {}
 
     def start_response(status, headers):
@@ -191,7 +197,7 @@ def test_loopback_hosts_are_allowed(host):
 
 def test_remote_binding_is_rejected_before_socket_creation(tmp_path):
     assert not _is_loopback_host("0.0.0.0")
-    with pytest.raises(ValueError, match="loopback-only"):
+    with pytest.raises(ValueError, match="non-loopback Web binding"):
         create_product_web_server(tmp_path, host="0.0.0.0")
 
 
@@ -222,3 +228,98 @@ def test_server_lease_rejects_a_second_web_process_for_same_workspace(tmp_path):
             create_product_web_server(tmp_path, port=0)
     finally:
         first.server_close()
+
+
+def test_remote_login_requires_allowed_host_https_and_secure_session(tmp_path):
+    access_token = "deployment-test-token-" + "x" * 32
+    policy = WebAccessPolicy(
+        remote=True, access_token=access_token,
+        allowed_hosts=("studio.example",),
+    )
+    app = ProductWebApp(tmp_path, access_policy=policy)
+
+    wrong_host = _request(
+        app, path="/login", host="attacker.example", forwarded_proto="https",
+    )
+    assert wrong_host["status"].startswith("400")
+    insecure = _request(
+        app, path="/login", host="studio.example", forwarded_proto="http",
+    )
+    assert insecure["status"].startswith("426")
+
+    redirected = _request(
+        app, path="/", host="studio.example", forwarded_proto="https",
+    )
+    assert redirected["status"].startswith("302")
+    assert redirected["headers"]["Location"] == "/login"
+    login_page = _request(
+        app, path="/login", host="studio.example", forwarded_proto="https",
+    )
+    assert login_page["status"].startswith("200")
+    assert b"access_token" in login_page["body"]
+
+    rejected = _request(
+        app, "POST", "/api/v1/login", {"access_token": "wrong"},
+        csrf=app.csrf_token, host="studio.example", forwarded_proto="https",
+    )
+    assert rejected["status"].startswith("401")
+    accepted = _request(
+        app, "POST", "/api/v1/login", {"access_token": access_token},
+        csrf=app.csrf_token, host="studio.example", forwarded_proto="https",
+    )
+    assert accepted["status"].startswith("200")
+    assert access_token.encode() not in accepted["body"]
+    cookie_header = accepted["headers"]["Set-Cookie"]
+    assert all(value in cookie_header for value in (
+        "HttpOnly", "Secure", "SameSite=Strict",
+    ))
+    cookie = cookie_header.split(";", 1)[0]
+
+    unauthorized = _request(
+        app, path="/api/v1/studio",
+        host="studio.example", forwarded_proto="https",
+    )
+    assert unauthorized["status"].startswith("401")
+    authenticated = _request(
+        app, path="/api/v1/studio", cookie=cookie,
+        host="studio.example", forwarded_proto="https",
+    )
+    assert authenticated["status"].startswith("200")
+    assert authenticated["json"]["access"]["mode"] == "remote_authenticated"
+    assert access_token not in json.dumps(authenticated["json"])
+
+
+def test_web_cli_parses_explicit_remote_security_boundary():
+    args = build_parser().parse_args([
+        "studio", "web", "--host", "0.0.0.0", "--allow-remote",
+        "--allowed-host", "studio.example", "--allowed-host", "backup.example",
+    ])
+    assert args.allow_remote
+    assert args.host == "0.0.0.0"
+    assert args.allowed_host == ["studio.example", "backup.example"]
+
+
+def test_local_web_cli_ignores_unrelated_remote_secret_file(monkeypatch, tmp_path):
+    captured = {}
+
+    class FakeServer:
+        server_port = 8765
+
+        @staticmethod
+        def serve_forever():
+            raise KeyboardInterrupt
+
+        @staticmethod
+        def server_close():
+            return None
+
+    def fake_create_server(*args, **kwargs):
+        captured.update(kwargs)
+        return FakeServer()
+
+    monkeypatch.setenv("GFS_WEB_ACCESS_TOKEN_FILE", str(tmp_path / "missing"))
+    monkeypatch.setattr("src.product.create_product_web_server", fake_create_server)
+    args = build_parser().parse_args(["--base-dir", str(tmp_path), "studio", "web"])
+    assert cmd_studio_web(args) == 0
+    assert captured["allow_remote"] is False
+    assert captured["access_token"] == ""

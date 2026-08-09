@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_deployment_contract",
+  "generated_at": "2026-08-09T14:50:52.394024+00:00",
+  "status": "passed_static_contract_unbuilt",
+  "passed": true,
+  "docker_available": false,
+  "docker_compose_validation": "docker_unavailable",
+  "image_built": false,
+  "deployment_started": false,
+  "external_calls_made": false,
+  "checks": {
+    "non_root_application": true,
+    "container_healthcheck": true,
+    "release_evidence_copied": true,
+    "generated_state_excluded": true,
+    "provider_credentials_not_wired": true,
+    "independent_product_secret_file_required": true,
+    "product_token_value_not_in_container_environment": true,
+    "remote_policy_explicit": true,
+    "application_not_host_published": true,
+    "gateway_is_only_public_edge": true,
+    "backend_network_internal": true,
+    "read_only_and_capability_reduced": true,
+    "persistent_product_volumes": true,
+    "trusted_tls_proxy_contract": true
+  },
+  "limitations": [
+    "the image has not been built in this environment",
+    "the Compose services and Caddy TLS edge have not been started",
+    "base-image and Python dependency digests are not yet locked",
+    "external DNS, certificates, firewall, volume recovery, and penetration tests remain open"
+  ]
+}

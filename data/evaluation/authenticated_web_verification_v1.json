@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_authenticated_web",
+  "generated_at": "2026-08-09T14:50:52.145520+00:00",
+  "status": "passed_authenticated_socket_boundary",
+  "passed": true,
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "checks": {
+    "public_liveness_is_minimal": true,
+    "plaintext_proxy_rejected": true,
+    "host_allowlist_enforced": true,
+    "login_page_hardened": true,
+    "unauthenticated_root_redirects": true,
+    "invalid_token_rejected": true,
+    "secure_session_issued": true,
+    "authenticated_api_available": true,
+    "server_shutdown_cleanly": true
+  },
+  "limitations": [
+    "the socket verifier uses loopback while exercising remote policy headers",
+    "TLS is asserted at the trusted-proxy boundary and is not terminated by this WSGI server",
+    "Docker/Compose is unavailable in the current environment, so no container was built",
+    "no public DNS, certificate issuance, firewall, or penetration test was performed"
+  ]
+}
