@@ -21,6 +21,9 @@ def test_route_template_removes_user_controlled_components():
     assert route_template("/artifacts/outputs/private/team.html") == "/artifacts/{artifact}"
     assert route_template("/unknown/private") == "unmatched"
     assert route_template("/api/v1/studio") == "/api/v1/studio"
+    assert route_template("/api/v1/excellence/evidence-kit.zip") == (
+        "/api/v1/excellence/evidence-kit.zip"
+    )
 
 
 def test_telemetry_rejects_non_allowlisted_or_unbounded_data(tmp_path):

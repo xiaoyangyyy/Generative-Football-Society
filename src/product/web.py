@@ -206,6 +206,8 @@ class ProductWebApp:
             return self._json_response(200, self._studio_status(), csrf=True)
         if method == "GET" and path == "/api/v1/operations":
             return self._json_response(200, self.telemetry.snapshot())
+        if method == "GET" and path == "/api/v1/excellence/evidence-kit.zip":
+            return self._evidence_kit_response()
         if method == "GET" and path == "/api/v1/recovery":
             return self._recovery_status()
         if method == "POST" and path == "/api/v1/studio":
@@ -247,6 +249,7 @@ class ProductWebApp:
         if path in {
             "/api/v1/studio", "/api/v1/matches", "/api/v1/tasks",
             "/api/v1/recovery", "/api/v1/backups",
+            "/api/v1/excellence/evidence-kit.zip",
         } or backup_action:
             raise WebRequestError(405, "method_not_allowed", "Method not allowed")
         raise WebRequestError(404, "not_found", "Resource not found")
@@ -259,6 +262,36 @@ class ProductWebApp:
         if csrf:
             response_headers.append(("X-GFS-CSRF-Token", self.csrf_token))
         return status, response_headers, _json_bytes(payload)
+
+    def _evidence_kit_response(
+        self,
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        import hashlib
+
+        from scripts.build_excellence_evidence_kit import build_archive, verify_kit
+
+        report = verify_kit(self.root)
+        if report.get("passed") is not True:
+            raise WebRequestError(
+                503, "evidence_kit_unavailable",
+                "The template-only evidence kit failed its current audit",
+            )
+        archive, _ = build_archive(self.root)
+        digest = hashlib.sha256(archive).hexdigest()
+        if digest != report.get("archive_sha256"):
+            raise WebRequestError(
+                503, "evidence_kit_identity_mismatch",
+                "The evidence kit changed after verification",
+            )
+        return 200, [
+            ("Content-Type", "application/zip"),
+            (
+                "Content-Disposition",
+                'attachment; filename="gfs-excellence-evidence-kit-v1.zip"',
+            ),
+            ("X-GFS-Artifact-SHA256", digest),
+            ("X-GFS-Template-Only", "true"),
+        ], archive
 
     def _html_response(self) -> tuple[int, list[tuple[str, str]], bytes]:
         nonce = secrets.token_urlsafe(18)
@@ -736,6 +769,7 @@ _INDEX_HTML = """<!doctype html>
 const csrf=document.querySelector('meta[name="gfs-csrf"]').content;
 const cards=document.querySelector('#cards'),setup=document.querySelector('#setup-form'),match=document.querySelector('#match-form');let activePoll='',restoreTrigger=null;
 const releaseSummary=document.querySelector('#release-summary'),releaseGates=document.querySelector('#release-gates');
+const evidenceKitDownload=document.createElement('a'),evidenceKitRow=document.createElement('p');evidenceKitDownload.id='evidence-kit-download';evidenceKitDownload.href='/api/v1/excellence/evidence-kit.zip';evidenceKitDownload.download='gfs-excellence-evidence-kit-v1.zip';evidenceKitDownload.setAttribute('aria-describedby','release-summary');evidenceKitDownload.textContent='Download template-only evidence kit';evidenceKitRow.append(evidenceKitDownload);releaseSummary.insertAdjacentElement('afterend',evidenceKitRow);
 const message=document.querySelector('#message'),details=document.querySelector('#details'),workflow=document.querySelector('#workflow'),report=document.querySelector('#report-link'),logoutButton=document.querySelector('#logout-button');
 const createBackupButton=document.querySelector('#create-backup'),backupList=document.querySelector('#backup-list'),recoveryMessage=document.querySelector('#recovery-message'),restoreForm=document.querySelector('#restore-form'),selectedBackup=document.querySelector('#selected-backup'),cancelRestore=document.querySelector('#cancel-restore');
 const esc=v=>String(v??'—');

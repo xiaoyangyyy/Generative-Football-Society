@@ -65,6 +65,7 @@
     "product_control_plane": "src/product/control_plane.py",
     "product_cli": "src/cli.py",
     "product_web": "src/product/web.py",
+    "product_telemetry": "src/product/telemetry.py",
     "security_closure_protocol": "data/evaluation/security_closure_protocol_v1.json",
     "security_closure_protocol_verification": "data/evaluation/security_closure_protocol_verification_v1.json",
     "security_closure_guide": "docs/SECURITY_CREDENTIAL_CLOSURE.md",

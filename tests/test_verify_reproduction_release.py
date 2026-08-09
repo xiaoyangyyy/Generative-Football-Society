@@ -48,6 +48,7 @@ def test_code_only_release_contract_is_honest_and_zero_compute():
     assert "src/product/control_plane.py" in report["artifact_sha256"]
     assert "src/cli.py" in report["artifact_sha256"]
     assert "src/product/web.py" in report["artifact_sha256"]
+    assert "src/product/telemetry.py" in report["artifact_sha256"]
     assert report["external_calls_made"] is False
     assert report["matches_executed"] == 0
     assert report["training_executed"] is False

@@ -147,6 +147,9 @@ def verify_excellence_score(root: Path = ROOT) -> dict:
             ),
             "src/cli.py": file_sha256(root / "src/cli.py"),
             "src/product/web.py": file_sha256(root / "src/product/web.py"),
+            "src/product/telemetry.py": file_sha256(
+                root / "src/product/telemetry.py"
+            ),
             "scripts/build_excellence_evidence_kit.py": file_sha256(
                 root / "scripts/build_excellence_evidence_kit.py"
             ),

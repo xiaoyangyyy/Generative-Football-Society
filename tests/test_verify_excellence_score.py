@@ -25,6 +25,7 @@ def test_dynamic_score_report_matches_current_control_plane():
     assert "src/product/completion_plan.py" in report["artifact_sha256"]
     assert "src/product/web.py" in report["artifact_sha256"]
     assert "scripts/build_excellence_evidence_kit.py" in report["artifact_sha256"]
+    assert "src/product/telemetry.py" in report["artifact_sha256"]
     assert report["matches_executed"] == 0
 
 

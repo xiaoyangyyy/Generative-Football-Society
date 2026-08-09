@@ -25,6 +25,7 @@ IDENTIFIER = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 ROUTES = {
     "/", "/healthz", "/login", "/readyz", "/api/v1/login",
     "/api/v1/logout",
+    "/api/v1/excellence/evidence-kit.zip",
     "/api/v1/studio", "/api/v1/matches", "/api/v1/tasks",
     "/api/v1/recovery", "/api/v1/backups",
     "/api/v1/backups/{backup_id}/verify",

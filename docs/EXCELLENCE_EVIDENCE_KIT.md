@@ -20,6 +20,13 @@ Materialization is confined to `build/evidence-kits/`, refuses replacement
 unless `--overwrite` is supplied, and never writes into the authoritative
 `data/evaluation/` evidence tree.
 
+The authenticated Studio Web release center also exposes
+`GET /api/v1/excellence/evidence-kit.zip`. It builds the same deterministic ZIP
+in memory, verifies its digest before responding, writes no server-side file,
+and returns `X-GFS-Artifact-SHA256` plus `X-GFS-Template-Only: true`. Remote
+access reaches this route only after the existing allowed-Host, trusted HTTPS,
+and secure-session checks.
+
 Every JSON template contains `template_only: true`, invalid placeholders, and
 an extra template notice. The strict study and review validators therefore
 reject it by default. Operators must copy a template, replace every

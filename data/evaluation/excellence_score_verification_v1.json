@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_evidence_derived_excellence_score",
-  "generated_at": "2026-08-09T20:49:13.339209+00:00",
+  "generated_at": "2026-08-09T21:01:13.604493+00:00",
   "status": "passed_dynamic_scoring",
   "passed": true,
   "scores": {
@@ -239,10 +239,11 @@
     "src/product/control_plane.py": "78dc77299abb15266fc6f1bbeba4af8a07f9a1a1ab3fd8696189d684e912e4cb",
     "src/product/completion_plan.py": "a31d42c16b8a4b4be9e848e6d3fb2fc436447deb0f2de390f2214a3dc04881a4",
     "src/cli.py": "d8d4381ef94daa459fc3b2af2c7737947f95beb9a15a4e08150879ce6db68529",
-    "src/product/web.py": "ed21e5cfd6297ce91012d73715525e7d2782941ad52b614cf7143703eb243dcc",
+    "src/product/web.py": "13c96428d8e38d759a9ba77f5942cbfd10aa6e5123f28dc4329ff97f47a12a3f",
+    "src/product/telemetry.py": "4e4dfbce58065d550314518250958cd694365431fa227849bf9f863026299a77",
     "scripts/build_excellence_evidence_kit.py": "0964b6f9319d22f8628877d30ed30dad3d497b50b9330c263887c87d46f63a3d",
-    "data/evaluation/excellence_evidence_kit_verification_v1.json": "ea9e43e6c79474e0680eabbb8d616275e03fadf4dd2ac8aba75632a2fc798404",
-    "scripts/verify_excellence_score.py": "36085dc49e90e0112e6ae77b49cbe80d90070500bcde97b8381fb9b8af6c9afa"
+    "data/evaluation/excellence_evidence_kit_verification_v1.json": "5fbc2bcee63b44598e06793287f999e6af4bcb4a67469ef0839ddf5975372a52",
+    "scripts/verify_excellence_score.py": "6310d79bce04964bb41b1d4fae3a20c5ed330c8d9c3b0efadd2f583d966ae173"
   },
   "external_calls_made": false,
   "matches_executed": 0,

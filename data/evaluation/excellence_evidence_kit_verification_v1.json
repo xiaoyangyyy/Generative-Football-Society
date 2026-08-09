@@ -22,7 +22,7 @@
     "data/evaluation/independent_reproduction_protocol_v1.json": "0330c1c2b71fa445f368f7b0d2f0967d7021aff026800b746f3d9eb162e5ebae",
     "data/evaluation/paper_finalization_protocol_v1.json": "a6f0b3923623d0c954ed3056571e46a65af28d480934bfbf138f42906bdad3be",
     "scripts/build_excellence_evidence_kit.py": "0964b6f9319d22f8628877d30ed30dad3d497b50b9330c263887c87d46f63a3d",
-    "docs/EXCELLENCE_EVIDENCE_KIT.md": "511092290c6851b86352de91fe49fc9cecd46521940ea0833ca9773cf3e6bd20"
+    "docs/EXCELLENCE_EVIDENCE_KIT.md": "f0d3022f19c6a0c358d996da592e99b3984c1816861400b0537ebbd9d43c56a1"
   },
   "external_calls_made": false,
   "matches_executed": 0,

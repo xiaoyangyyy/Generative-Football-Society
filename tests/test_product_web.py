@@ -1,6 +1,9 @@
+import hashlib
 import io
 import json
 import threading
+import zipfile
+from pathlib import Path
 from urllib.request import urlopen
 from wsgiref.util import setup_testing_defaults
 
@@ -10,6 +13,20 @@ from src.cli import build_parser, cmd_studio_web
 from src.product.web import ProductWebApp, _is_loopback_host, create_product_web_server
 from src.product.web_security import WebAccessPolicy
 from src.product.tasks import BackgroundMatchWorker
+from scripts.build_excellence_evidence_kit import PROTOCOLS, SECRET_PATTERN
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _copy_evidence_kit_inputs(target):
+    for relative in PROTOCOLS.values():
+        destination = target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((ROOT / relative).read_bytes())
+    guide = target / "docs/EXCELLENCE_EVIDENCE_KIT.md"
+    guide.parent.mkdir(parents=True, exist_ok=True)
+    guide.write_bytes((ROOT / "docs/EXCELLENCE_EVIDENCE_KIT.md").read_bytes())
 
 
 def _request(
@@ -70,6 +87,8 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "renderRelease(data)" in document
     assert "recommended_gate_id" in document
     assert "dataset.actionState" in document
+    assert "evidence-kit-download" in document
+    assert "/api/v1/excellence/evidence-kit.zip" in document
     assert "证据包" in document
     assert 'name="confirmation"' in document and 'name="replace"' in document
     assert 'type="file"' not in document
@@ -97,6 +116,60 @@ def test_operations_are_aggregated_and_paths_are_privacy_normalized(tmp_path):
     assert metrics["privacy"]["raw_events_exposed"] is False
     assert "private-user-component" not in json.dumps(metrics)
     assert "events" not in metrics
+
+
+def test_evidence_kit_download_is_deterministic_secret_free_and_memory_only(tmp_path):
+    _copy_evidence_kit_inputs(tmp_path)
+    app = ProductWebApp(tmp_path)
+    first = _request(app, path="/api/v1/excellence/evidence-kit.zip")
+    second = _request(app, path="/api/v1/excellence/evidence-kit.zip")
+    assert first["status"].startswith("200")
+    assert first["headers"]["Content-Type"] == "application/zip"
+    assert first["headers"]["X-GFS-Template-Only"] == "true"
+    assert first["headers"]["Content-Disposition"] == (
+        'attachment; filename="gfs-excellence-evidence-kit-v1.zip"'
+    )
+    assert first["body"] == second["body"]
+    assert first["headers"]["X-GFS-Artifact-SHA256"] == hashlib.sha256(
+        first["body"]
+    ).hexdigest()
+    with zipfile.ZipFile(io.BytesIO(first["body"])) as archive:
+        contents = b"".join(archive.read(name) for name in archive.namelist())
+        assert "manifest.json" in archive.namelist()
+    assert SECRET_PATTERN.search(contents) is None
+    assert not (tmp_path / "build/evidence-kits").exists()
+    metrics = _request(app, path="/api/v1/operations")["json"]
+    assert metrics["requests"]["routes"][
+        "/api/v1/excellence/evidence-kit.zip"
+    ] == 2
+    wrong_method = _request(
+        app, method="POST", path="/api/v1/excellence/evidence-kit.zip",
+    )
+    assert wrong_method["status"].startswith("405")
+
+
+def test_remote_evidence_kit_download_requires_authenticated_https_session(tmp_path):
+    _copy_evidence_kit_inputs(tmp_path)
+    token = "evidence-kit-test-token-" + "x" * 32
+    app = ProductWebApp(tmp_path, access_policy=WebAccessPolicy(
+        remote=True, access_token=token, allowed_hosts=("studio.example",),
+    ))
+    unauthorized = _request(
+        app, path="/api/v1/excellence/evidence-kit.zip",
+        host="studio.example", forwarded_proto="https",
+    )
+    assert unauthorized["status"].startswith("401")
+    login = _request(
+        app, "POST", "/api/v1/login", {"access_token": token},
+        csrf=app.csrf_token, host="studio.example", forwarded_proto="https",
+    )
+    cookie = login["headers"]["Set-Cookie"].split(";", 1)[0]
+    downloaded = _request(
+        app, path="/api/v1/excellence/evidence-kit.zip", cookie=cookie,
+        host="studio.example", forwarded_proto="https",
+    )
+    assert downloaded["status"].startswith("200")
+    assert token.encode() not in downloaded["body"]
 
 
 def test_telemetry_failure_does_not_break_liveness(tmp_path, monkeypatch):
