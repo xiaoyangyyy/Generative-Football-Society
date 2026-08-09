@@ -17,6 +17,8 @@ readiness, evidence, transaction, or reporting rules into a second system.
 - keyboard focus styles, semantic labels and landmarks, live status regions,
   responsive layout, and reduced-motion support;
 - no external provider call during status, health, readiness, or acceptance.
+- persistent idempotent match tasks, refresh-safe polling, bounded terminal
+  history, single-server ownership, and visible interrupted state after restart.
 
 Run the machine-readable verification without a match, training, or network
 provider:
@@ -34,8 +36,8 @@ deployment, match soak reliability, external WCAG conformance, or user value.
 
 The Beta is loopback-only. Binding to `0.0.0.0` or another non-loopback address
 is rejected because remote use needs an authenticated TLS gateway and an
-explicit deployment threat model. The current request executes a match
-synchronously while the threaded server keeps health endpoints responsive.
-Background job UX, complete history/recovery controls, container deployment,
-telemetry export, Web recovery controls, the deterministic 100-match soak, external
-accessibility review, and target-user validation remain Stage 1/3 work.
+explicit deployment threat model. Match requests execute in a persistent
+single-worker queue while the threaded server keeps health endpoints
+responsive. Web backup/restore controls, container deployment, telemetry
+export, the deterministic 100-match soak, external accessibility review, and
+target-user validation remain Stage 1/3 work.

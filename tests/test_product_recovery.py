@@ -10,6 +10,7 @@ import pytest
 from src.cli import cmd_studio_backup, cmd_studio_restore, cmd_studio_verify_backup
 from src.infrastructure import FileLease, LeaseUnavailable
 from src.product.recovery import MANIFEST_NAME, ProductRecovery
+from src.product.tasks import ProductTaskQueue
 
 
 def _write_workspace(root, *, name="Backup Studio"):
@@ -88,6 +89,11 @@ def test_restore_rolls_back_all_files_when_final_session_switch_fails(
     for path in paths:
         path.write_text("current-" + path.name, encoding="utf-8")
     before = {path: path.read_bytes() for path in paths}
+    queue = ProductTaskQueue(tmp_path)
+    task, _ = queue.submit_match("France", "Spain", fast=True)
+    claimed = queue.claim_next("finished-worker")
+    queue.complete(claimed["task_id"], "finished-worker", {"match_id": "old"})
+    task_queue_before = queue.path.read_bytes()
     real_replace = os.replace
 
     def fail_session_switch(source, target):
@@ -101,6 +107,8 @@ def test_restore_rolls_back_all_files_when_final_session_switch_fails(
     with pytest.raises(OSError, match="injected"):
         ProductRecovery(tmp_path).restore_backup(bundle, replace=True)
     assert {path: path.read_bytes() for path in paths} == before
+    assert queue.path.read_bytes() == task_queue_before
+    assert queue.get_task(task["task_id"])["state"] == "completed"
 
 
 def test_verifier_rejects_untracked_and_traversal_members(tmp_path):
@@ -159,6 +167,23 @@ def test_backup_refuses_to_race_an_active_studio_transaction(tmp_path):
     with FileLease(recovery.lease_path):
         with pytest.raises(LeaseUnavailable):
             recovery.create_backup(tmp_path / "busy.zip")
+
+
+def test_restore_rejects_active_tasks_and_resets_terminal_history(tmp_path):
+    _write_workspace(tmp_path)
+    recovery = ProductRecovery(tmp_path)
+    bundle = tmp_path / "backup.zip"
+    recovery.create_backup(bundle)
+    queue = ProductTaskQueue(tmp_path)
+    queued, _ = queue.submit_match("Brazil", "Argentina", fast=True)
+    with pytest.raises(RuntimeError, match="queued or running"):
+        recovery.restore_backup(bundle, replace=True)
+    claimed = queue.claim_next("worker")
+    assert claimed["task_id"] == queued["task_id"]
+    queue.complete(claimed["task_id"], "worker", {"match_id": "old"})
+    result = recovery.restore_backup(bundle, replace=True)
+    assert result["task_history_reset"]
+    assert queue.list_tasks() == []
 
 
 def test_recovery_cli_roundtrip(tmp_path, capsys):

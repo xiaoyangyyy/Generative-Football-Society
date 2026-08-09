@@ -7,9 +7,13 @@ from wsgiref.util import setup_testing_defaults
 import pytest
 
 from src.product.web import ProductWebApp, _is_loopback_host, create_product_web_server
+from src.product.tasks import BackgroundMatchWorker
 
 
-def _request(app, method="GET", path="/", payload=None, *, csrf=None, host=None):
+def _request(
+    app, method="GET", path="/", payload=None, *, csrf=None, host=None,
+    idempotency_key=None,
+):
     body = b"" if payload is None else json.dumps(payload).encode("utf-8")
     environ = {}
     setup_testing_defaults(environ)
@@ -25,6 +29,8 @@ def _request(app, method="GET", path="/", payload=None, *, csrf=None, host=None)
         environ["HTTP_X_GFS_CSRF"] = csrf
     if host is not None:
         environ["HTTP_HOST"] = host
+    if idempotency_key is not None:
+        environ["HTTP_IDEMPOTENCY_KEY"] = idempotency_key
     observed = {}
 
     def start_response(status, headers):
@@ -57,6 +63,7 @@ def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
         "status": "ok",
         "service": "gfs-product-web",
         "external_calls_made": False,
+        "background_worker_alive": None,
     }
 
 
@@ -101,18 +108,22 @@ def test_match_route_validates_input_before_domain_execution(tmp_path):
     assert response["json"]["error"]["code"] == "same_team"
 
 
-def test_match_route_returns_compact_report_and_artifact_url(tmp_path, monkeypatch):
+def test_match_route_queues_idempotently_then_returns_report_url(tmp_path, monkeypatch):
     dashboard = tmp_path / "outputs/studio/demo/matches/0001.html"
     dashboard.parent.mkdir(parents=True)
     dashboard.write_text("<html><body>report</body></html>", encoding="utf-8")
 
     class FakeWorkspace:
+        def readiness(self):
+            return {"ready": True, "blockers": []}
+
         def run_match(self, home, away, *, fast):
             return {
                 "match_id": "0001-brazil-vs-argentina",
                 "fixture": {"home": home, "away": away, "fast": fast},
                 "result": {"score": {"home": 1, "away": 0}},
                 "integrity": {"accepted": True, "state": "accepted", "blockers": []},
+                "report_path": str(dashboard.with_suffix(".json")),
                 "dashboard_path": str(dashboard),
                 "raw_summary": {"large": "must-not-cross-api-boundary"},
             }
@@ -123,12 +134,29 @@ def test_match_route_returns_compact_report_and_artifact_url(tmp_path, monkeypat
     app = ProductWebApp(tmp_path)
     response = _request(app, "POST", "/api/v1/matches", {
         "home": "Brazil", "away": "Argentina", "fast": True,
-    }, csrf=app.csrf_token)
-    assert response["status"].startswith("201")
-    assert response["json"]["dashboard_url"].endswith("/0001.html")
-    assert "raw_summary" not in response["json"]
+    }, csrf=app.csrf_token, idempotency_key="browser-request-1")
+    assert response["status"].startswith("202")
+    task_id = response["json"]["task"]["task_id"]
+    duplicate = _request(app, "POST", "/api/v1/matches", {
+        "home": "Brazil", "away": "Argentina", "fast": True,
+    }, csrf=app.csrf_token, idempotency_key="browser-request-1")
+    assert duplicate["status"].startswith("200")
+    assert duplicate["json"]["created"] is False
+    assert duplicate["json"]["task"]["task_id"] == task_id
+    conflict = _request(app, "POST", "/api/v1/matches", {
+        "home": "France", "away": "Spain", "fast": True,
+    }, csrf=app.csrf_token, idempotency_key="browser-request-1")
+    assert conflict["status"].startswith("409")
+    assert conflict["json"]["error"]["code"] == "idempotency_conflict"
 
-    artifact = _request(app, path=response["json"]["dashboard_url"])
+    assert BackgroundMatchWorker(app.task_queue).run_once()
+    observed = _request(app, path=f"/api/v1/tasks/{task_id}")
+    assert observed["json"]["task"]["state"] == "completed"
+    dashboard_url = observed["json"]["task"]["result"]["dashboard_url"]
+    assert dashboard_url.endswith("/0001.html")
+    assert "raw_summary" not in observed["json"]
+
+    artifact = _request(app, path=dashboard_url)
     assert artifact["status"].startswith("200")
     assert artifact["body"].startswith(b"<html>")
 
@@ -185,3 +213,12 @@ def test_server_serves_real_http_on_ephemeral_loopback_port(tmp_path):
         server.server_close()
         thread.join(timeout=3)
     assert not thread.is_alive()
+
+
+def test_server_lease_rejects_a_second_web_process_for_same_workspace(tmp_path):
+    first = create_product_web_server(tmp_path, port=0)
+    try:
+        with pytest.raises(RuntimeError, match="lease is already owned"):
+            create_product_web_server(tmp_path, port=0)
+    finally:
+        first.server_close()

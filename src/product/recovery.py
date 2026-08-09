@@ -12,6 +12,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, BinaryIO
 
 from src.infrastructure import FileLease, file_sha256
+from src.product.tasks import TASK_SCHEMA_VERSION, TASK_STATES
 from src.product.workspace import StudioConfig
 
 
@@ -26,6 +27,8 @@ ALLOWED_PREFIXES = (
     "outputs/studio/",
     "outputs/ball_log/",
 )
+TASK_QUEUE_RELATIVE = "data/persistence/product_tasks.json"
+ACTIVE_TASK_STATES = {"queued", "running"}
 
 
 def _now() -> str:
@@ -55,6 +58,7 @@ class ProductRecovery:
         self.root = Path(root).resolve()
         self.session_path = self.root / ALLOWED_PATHS[0]
         self.lease_path = self.root / "data/persistence/product_session.lock"
+        self.task_lease_path = self.root / "data/persistence/product_tasks.lock"
 
     def _relative_file(self, value: Any, *, required: bool) -> str | None:
         if value is None or not str(value).strip():
@@ -258,7 +262,10 @@ class ProductRecovery:
     ) -> dict[str, Any]:
         verification = self.verify_backup(bundle)
         bundle_path = Path(bundle).resolve()
-        with FileLease(self.lease_path, timeout=0.0):
+        with (
+            FileLease(self.lease_path, timeout=0.0),
+            FileLease(self.task_lease_path, timeout=0.0),
+        ):
             if self.session_path.exists() and not replace:
                 raise FileExistsError(
                     "a Studio session already exists; pass --replace for explicit restore",
@@ -269,6 +276,27 @@ class ProductRecovery:
                 temporary = Path(temporary_name)
                 staged_root = temporary / "staged"
                 rollback_root = temporary / "rollback"
+                task_path = self.root / TASK_QUEUE_RELATIVE
+                if task_path.is_file():
+                    try:
+                        task_payload = json.loads(task_path.read_text(encoding="utf-8"))
+                    except (OSError, json.JSONDecodeError) as exc:
+                        raise ValueError("existing product task queue is invalid") from exc
+                    tasks = task_payload.get("tasks")
+                    if (
+                        task_payload.get("schema_version") != TASK_SCHEMA_VERSION
+                        or not isinstance(tasks, list)
+                        or any(
+                            not isinstance(task, dict)
+                            or task.get("state") not in TASK_STATES
+                            for task in tasks
+                        )
+                    ):
+                        raise ValueError("existing product task queue is invalid")
+                    if any(task.get("state") in ACTIVE_TASK_STATES for task in tasks):
+                        raise RuntimeError(
+                            "cannot restore while product tasks are queued or running",
+                        )
                 with zipfile.ZipFile(bundle_path, "r") as archive:
                     manifest = json.loads(archive.read(MANIFEST_NAME))
                     records = manifest["files"]
@@ -282,10 +310,25 @@ class ProductRecovery:
                             target.flush()
                             os.fsync(target.fileno())
 
-                ordered = sorted(
+                staged_tasks = staged_root / TASK_QUEUE_RELATIVE
+                staged_tasks.parent.mkdir(parents=True, exist_ok=True)
+                with staged_tasks.open("w", encoding="utf-8") as handle:
+                    json.dump({
+                        "schema_version": TASK_SCHEMA_VERSION,
+                        "updated_at": _now(), "tasks": [],
+                    }, handle, ensure_ascii=False, indent=2)
+                    handle.write("\n")
+                    handle.flush()
+                    os.fsync(handle.fileno())
+
+                ordered_artifacts = sorted(
                     (str(record["path"]) for record in records),
                     key=lambda value: value == ALLOWED_PATHS[0],
                 )
+                ordered = [
+                    value for value in ordered_artifacts
+                    if value != ALLOWED_PATHS[0]
+                ] + [TASK_QUEUE_RELATIVE, ALLOWED_PATHS[0]]
                 applied: list[tuple[Path, Path | None]] = []
                 try:
                     for relative in ordered:
@@ -296,7 +339,7 @@ class ProductRecovery:
                             raise ValueError("restore target escapes the workspace") from exc
                         rollback = None
                         if target.exists():
-                            if not replace:
+                            if not replace and relative != TASK_QUEUE_RELATIVE:
                                 raise FileExistsError(f"restore target exists: {relative}")
                             rollback = rollback_root / Path(relative)
                             rollback.parent.mkdir(parents=True, exist_ok=True)
@@ -315,5 +358,6 @@ class ProductRecovery:
             **verification,
             "restored": True,
             "replace": bool(replace),
+            "task_history_reset": True,
             "restored_at": _now(),
         }

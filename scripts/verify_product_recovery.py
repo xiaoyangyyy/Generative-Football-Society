@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.product.recovery import ProductRecovery  # noqa: E402
+from src.product.tasks import ProductTaskQueue  # noqa: E402
 
 
 def _fixture(root: Path) -> tuple[Path, ...]:
@@ -83,9 +84,20 @@ def verify_product_recovery() -> dict:
         else:
             checks["implicit_replacement_rejected"] = False
 
-        recovery.restore_backup(bundle, replace=True)
+        queue = ProductTaskQueue(root)
+        old_task, _ = queue.submit_match("France", "Spain", fast=True)
+        claimed = queue.claim_next("completed-before-restore")
+        queue.complete(claimed["task_id"], "completed-before-restore", {
+            "match_id": "old-session-match",
+        })
+        restored = recovery.restore_backup(bundle, replace=True)
         checks["explicit_restore_roundtrip"] = (
             {path: path.read_bytes() for path in paths} == original
+        )
+        checks["cross_session_task_history_reset"] = (
+            restored.get("task_history_reset") is True
+            and queue.list_tasks() == []
+            and old_task["task_id"] not in json.dumps(queue.list_tasks())
         )
 
         tampered = root / "backups/tampered.zip"

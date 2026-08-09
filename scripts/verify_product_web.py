@@ -53,11 +53,15 @@ def verify_web_beta() -> dict:
                 'class="skip"', 'id="main"', 'aria-live="polite"',
                 "prefers-reduced-motion",
             ))
+            checks["background_task_ui_contract"] = all(marker in text for marker in (
+                "Idempotency-Key", "/api/v1/tasks/", "queued", "interrupted",
+            ))
 
             status, _, body = _request(base + "/healthz")
             health = json.loads(body)
             checks["liveness_http_200"] = status == 200 and health.get("status") == "ok"
             checks["zero_external_calls"] = health.get("external_calls_made") is False
+            checks["background_worker_alive"] = health.get("background_worker_alive") is True
 
             request = Request(base + "/api/v1/studio", headers={"Host": "attacker.example"})
             try:
@@ -66,6 +70,20 @@ def verify_web_beta() -> dict:
                 response = exc
             checks["dns_rebinding_host_rejected"] = response.status == 400
             response.read()
+
+            status, _, body = _request(base + "/api/v1/tasks")
+            task_payload = json.loads(body)
+            checks["persistent_task_api_available"] = (
+                status == 200 and task_payload.get("tasks") == []
+            )
+
+            try:
+                duplicate_server = create_product_web_server(temporary, port=0)
+            except RuntimeError:
+                checks["single_server_lease_enforced"] = True
+            else:
+                checks["single_server_lease_enforced"] = False
+                duplicate_server.server_close()
 
             status, _, _ = _request(base + "/api/v1/studio", payload={
                 "name": "Verification Studio", "mode": "stable", "seed": 42,

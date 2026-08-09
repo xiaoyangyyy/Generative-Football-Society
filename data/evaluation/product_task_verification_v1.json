@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_product_background_tasks",
+  "generated_at": "2026-08-09T14:27:52.901781+00:00",
+  "status": "passed_isolated_task_lifecycle",
+  "passed": true,
+  "external_calls_made": false,
+  "real_matches_executed": 0,
+  "training_executed": false,
+  "checks": {
+    "concurrent_idempotency": true,
+    "idempotency_payload_conflict_rejected": true,
+    "worker_claimed_task": true,
+    "terminal_result_persisted": true,
+    "public_state_redacts_internal_identity": true,
+    "startup_recovery_visible": true,
+    "queue_persisted_on_disk": true
+  },
+  "limitations": [
+    "the worker lifecycle uses an injected deterministic workspace, not a real match",
+    "process-kill recovery is modeled by persisted running-state reconciliation",
+    "multi-host task execution is out of scope for the loopback Beta"
+  ]
+}

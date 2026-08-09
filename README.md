@@ -88,6 +88,11 @@ uses the persisted Studio state machine and evidence gates directly. See
 `docs/WEB_BETA_ACCEPTANCE.md` for its verified security/accessibility scope and
 the production capabilities that are still deliberately unclaimed.
 
+Matches submitted from the Web page run as persistent, idempotent background
+tasks. Refreshing the page recovers task observation instead of duplicating a
+match; interrupted process state remains visible and is not automatically
+replayed.
+
 Create and verify an integrity-checked Studio recovery bundle:
 
 ```bash

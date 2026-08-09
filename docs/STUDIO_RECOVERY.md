@@ -45,6 +45,10 @@ SHA-256 makes corruption and accidental modification observable; it does not
 authenticate a bundle supplied by an attacker. Store backups in access-
 controlled storage and add a signed/encrypted storage layer before production.
 API keys and environment configuration are deliberately excluded.
+The operational Web task queue is also excluded from the portable bundle.
+Restore refuses to proceed while any task is queued or running, then resets
+terminal task history inside the same rollback transaction so tasks from one
+Studio can never appear in another restored Studio.
 
 Run the isolated recovery acceptance without a match, training, or external
 call:

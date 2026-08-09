@@ -75,6 +75,21 @@ python scripts/verify_product_web.py --out data/evaluation/web_beta_verification
 See `docs/WEB_BETA_ACCEPTANCE.md` for accepted scope and remaining Stage 1
 limits.
 
+Web match submissions are persistent background tasks, not long synchronous
+HTTP requests. Each browser submission carries an idempotency key and receives
+a task ID immediately. The page polls `queued`, `running`, `completed`,
+`failed`, or `interrupted`, resumes observation after refresh, and opens the
+dashboard only from a completed task. A workspace-level server lease prevents
+two local Web workers from consuming the same queue. On process restart, a
+previously running task becomes visible as `interrupted`; it is never silently
+requeued because the underlying match transaction may already have spent
+compute or provider calls.
+
+Task history is available from `/api/v1/tasks` and individual status from
+`/api/v1/tasks/<task_id>`. Internal worker identity and the hashed idempotency
+key are never returned. The queue retains at most 1,000 records and prunes only
+the oldest terminal history.
+
 ## Backup and recovery
 
 Back up the persisted Studio and every artifact referenced by its match

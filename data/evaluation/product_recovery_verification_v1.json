@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_recovery",
-  "generated_at": "2026-08-09T14:15:35.085276+00:00",
+  "generated_at": "2026-08-09T14:27:53.337265+00:00",
   "status": "passed_local_recovery",
   "passed": true,
   "external_calls_made": false,
@@ -14,6 +14,7 @@
     "integrity_verification_passed": true,
     "implicit_replacement_rejected": true,
     "explicit_restore_roundtrip": true,
+    "cross_session_task_history_reset": true,
     "untracked_member_rejected": true
   },
   "limitations": [

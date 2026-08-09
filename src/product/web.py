@@ -14,7 +14,9 @@ from typing import Any, Callable, Iterable
 from urllib.parse import unquote, urlsplit
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
+from src.infrastructure import FileLease
 from src.product.control_plane import ProductControlPlane
+from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue, TaskConflict
 from src.product.workspace import ProductWorkspace, StudioConfig
 from src.simulation.llm_gateway import provider_preflight
 
@@ -23,7 +25,7 @@ LOGGER = logging.getLogger(__name__)
 MAX_REQUEST_BYTES = 64 * 1024
 JSON_HEADERS = [("Content-Type", "application/json; charset=utf-8")]
 STATUS_TEXT = {
-    200: "OK", 201: "Created", 400: "Bad Request", 403: "Forbidden",
+    200: "OK", 201: "Created", 202: "Accepted", 400: "Bad Request", 403: "Forbidden",
     404: "Not Found", 405: "Method Not Allowed", 409: "Conflict",
     413: "Payload Too Large", 415: "Unsupported Media Type",
     422: "Unprocessable Entity", 500: "Internal Server Error",
@@ -55,10 +57,15 @@ def _is_loopback_host(host: str) -> bool:
 class ProductWebApp:
     """Small WSGI adapter; all domain decisions stay in ProductWorkspace."""
 
-    def __init__(self, root: str | Path) -> None:
+    def __init__(
+        self, root: str | Path, *, task_queue: ProductTaskQueue | None = None,
+        task_worker: BackgroundMatchWorker | None = None,
+    ) -> None:
         self.root = Path(root).resolve()
         self.csrf_token = secrets.token_urlsafe(32)
         self._mutation_lock = threading.Lock()
+        self.task_queue = task_queue or ProductTaskQueue(self.root)
+        self.task_worker = task_worker
 
     def __call__(
         self, environ: dict[str, Any],
@@ -110,18 +117,26 @@ class ProductWebApp:
                 "status": "ok",
                 "service": "gfs-product-web",
                 "external_calls_made": False,
+                "background_worker_alive": (
+                    self.task_worker.is_alive if self.task_worker is not None else None
+                ),
             })
         if method == "GET" and path == "/readyz":
             payload = self._studio_status()
             ready = bool(payload.get("configured") and (
                 payload.get("studio", {}).get("readiness", {}).get("ready")
             ))
+            worker_ready = self.task_worker is None or self.task_worker.is_alive
+            ready = ready and worker_ready
+            blockers = list(
+                payload.get("studio", {}).get("readiness", {}).get("blockers", []),
+            )
+            if not worker_ready:
+                blockers.append("background_worker_not_alive")
             return self._json_response(200 if ready else 503, {
                 "schema_version": 1, "ready": ready,
                 "configured": payload["configured"],
-                "blockers": (
-                    payload.get("studio", {}).get("readiness", {}).get("blockers", [])
-                ),
+                "blockers": blockers,
             })
         if method == "GET" and path == "/api/v1/studio":
             return self._json_response(200, self._studio_status(), csrf=True)
@@ -130,10 +145,24 @@ class ProductWebApp:
             return self._create_studio(self._read_json(environ))
         if method == "POST" and path == "/api/v1/matches":
             self._require_csrf(environ)
-            return self._run_match(self._read_json(environ))
+            return self._queue_match(environ, self._read_json(environ))
+        if method == "GET" and path == "/api/v1/tasks":
+            return self._json_response(200, {
+                "schema_version": 1,
+                "tasks": [self._task_for_web(task) for task in self.task_queue.list_tasks()],
+            })
+        if method == "GET" and path.startswith("/api/v1/tasks/"):
+            task_id = path.removeprefix("/api/v1/tasks/")
+            if "/" in task_id:
+                raise WebRequestError(404, "task_not_found", "Task not found")
+            try:
+                task = self.task_queue.get_task(task_id)
+            except (FileNotFoundError, ValueError) as exc:
+                raise WebRequestError(404, "task_not_found", "Task not found") from exc
+            return self._json_response(200, {"task": self._task_for_web(task)})
         if method == "GET" and path.startswith("/artifacts/"):
             return self._artifact_response(path.removeprefix("/artifacts/"))
-        if path in {"/api/v1/studio", "/api/v1/matches"}:
+        if path in {"/api/v1/studio", "/api/v1/matches", "/api/v1/tasks"}:
             raise WebRequestError(405, "method_not_allowed", "Method not allowed")
         raise WebRequestError(404, "not_found", "Resource not found")
 
@@ -221,6 +250,10 @@ class ProductWebApp:
                 "studio": None,
                 "control_plane": ProductControlPlane(self.root).snapshot(),
                 "provider": provider,
+                "tasks": [
+                    self._task_for_web(task)
+                    for task in self.task_queue.list_tasks(limit=20)
+                ],
             }
         try:
             status = ProductWorkspace.load(self.root).status()
@@ -231,6 +264,10 @@ class ProductWebApp:
         return {
             "schema_version": 1, "configured": True,
             "studio": status, "provider": provider,
+            "tasks": [
+                self._task_for_web(task)
+                for task in self.task_queue.list_tasks(limit=20)
+            ],
         }
 
     def _create_studio(
@@ -261,8 +298,8 @@ class ProductWebApp:
         finally:
             self._mutation_lock.release()
 
-    def _run_match(
-        self, payload: dict[str, Any],
+    def _queue_match(
+        self, environ: dict[str, Any], payload: dict[str, Any],
     ) -> tuple[int, list[tuple[str, str]], bytes]:
         home = self._text_field(payload, "home", maximum=80)
         away = self._text_field(payload, "away", maximum=80)
@@ -271,37 +308,44 @@ class ProductWebApp:
         fast = payload.get("fast", False)
         if not isinstance(fast, bool):
             raise WebRequestError(422, "invalid_fast", "fast must be boolean")
-        if not self._mutation_lock.acquire(blocking=False):
-            raise WebRequestError(409, "operation_in_progress", "Another mutation is running")
         try:
-            try:
-                report = ProductWorkspace.load(self.root).run_match(home, away, fast=fast)
-            except FileNotFoundError as exc:
-                raise WebRequestError(404, "studio_missing", "Create a Studio first") from exc
-            except TimeoutError as exc:
-                raise WebRequestError(
-                    409, "studio_busy", "The Studio is busy; retry after the active operation",
-                ) from exc
-            except RuntimeError as exc:
-                raise WebRequestError(
-                    409, "match_blocked", "Match blocked by readiness or transaction gates",
-                ) from exc
-            dashboard = Path(str(report["dashboard_path"])).resolve()
-            try:
-                dashboard_relative = dashboard.relative_to(self.root).as_posix()
-            except ValueError as exc:
-                raise WebRequestError(500, "artifact_outside_workspace", "Invalid report path") from exc
-            response = {
-                "schema_version": 1,
-                "match_id": report["match_id"],
-                "fixture": report["fixture"],
-                "result": report["result"],
-                "integrity": report["integrity"],
-                "dashboard_url": "/artifacts/" + dashboard_relative,
-            }
-            return self._json_response(201, response)
-        finally:
-            self._mutation_lock.release()
+            workspace = ProductWorkspace.load(self.root)
+        except FileNotFoundError as exc:
+            raise WebRequestError(404, "studio_missing", "Create a Studio first") from exc
+        readiness = workspace.readiness()
+        if not readiness["ready"]:
+            raise WebRequestError(
+                409, "match_blocked", "Match blocked by readiness gates",
+            )
+        try:
+            task, created = self.task_queue.submit_match(
+                home, away, fast=fast,
+                idempotency_key=str(environ.get("HTTP_IDEMPOTENCY_KEY", "")),
+            )
+        except TaskConflict as exc:
+            raise WebRequestError(409, "idempotency_conflict", str(exc)) from exc
+        except ValueError as exc:
+            raise WebRequestError(422, "invalid_idempotency_key", str(exc)) from exc
+        except RuntimeError as exc:
+            raise WebRequestError(409, "task_queue_full", "Task queue is full") from exc
+        return self._json_response(202 if created else 200, {
+            "schema_version": 1,
+            "created": created,
+            "task": self._task_for_web(task),
+        })
+
+    @staticmethod
+    def _task_for_web(task: dict[str, Any]) -> dict[str, Any]:
+        payload = json.loads(json.dumps(task, ensure_ascii=False, default=str))
+        result = payload.get("result") or {}
+        dashboard = str(result.get("dashboard") or "")
+        if (
+            dashboard.startswith("outputs/studio/")
+            and chr(92) not in dashboard
+            and ".." not in Path(dashboard).parts
+        ):
+            result["dashboard_url"] = "/artifacts/" + dashboard
+        return payload
 
     def _artifact_response(
         self, raw_relative: str,
@@ -329,6 +373,18 @@ class ProductWebApp:
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
     daemon_threads = True
 
+    def server_close(self) -> None:
+        worker = getattr(self, "product_worker", None)
+        stopped = worker.stop(timeout=30.0) if worker is not None else True
+        try:
+            super().server_close()
+        finally:
+            lease = getattr(self, "product_server_lease", None)
+            if lease is not None and stopped:
+                lease.release()
+        if not stopped:
+            raise RuntimeError("background match worker did not stop; server lease remains held")
+
 
 def create_product_web_server(
     root: str | Path, *, host: str = "127.0.0.1", port: int = 8765,
@@ -338,11 +394,28 @@ def create_product_web_server(
         raise ValueError("Web Beta is loopback-only; put an authenticated gateway in front")
     if isinstance(port, bool) or not isinstance(port, int) or not 0 <= port <= 65535:
         raise ValueError("port must be 0 (automatic) or between 1 and 65535")
-    return make_server(
-        host, port, ProductWebApp(root),
-        server_class=ThreadingWSGIServer,
-        handler_class=WSGIRequestHandler,
-    )
+    resolved_root = Path(root).resolve()
+    server_lease = FileLease(
+        resolved_root / "data/persistence/product_web.lock", timeout=0.0,
+    ).acquire()
+    queue = ProductTaskQueue(resolved_root)
+    try:
+        queue.recover_running()
+        worker = BackgroundMatchWorker(queue)
+        server = make_server(
+            host, port, ProductWebApp(
+                resolved_root, task_queue=queue, task_worker=worker,
+            ),
+            server_class=ThreadingWSGIServer,
+            handler_class=WSGIRequestHandler,
+        )
+        server.product_server_lease = server_lease
+        server.product_worker = worker
+        worker.start()
+        return server
+    except BaseException:
+        server_lease.release()
+        raise
 
 
 _INDEX_HTML = """<!doctype html>
@@ -408,16 +481,18 @@ _INDEX_HTML = """<!doctype html>
 </main>
 <script nonce="__NONCE__">
 const csrf=document.querySelector('meta[name="gfs-csrf"]').content;
-const cards=document.querySelector('#cards'),setup=document.querySelector('#setup-form'),match=document.querySelector('#match-form');
+const cards=document.querySelector('#cards'),setup=document.querySelector('#setup-form'),match=document.querySelector('#match-form');let activePoll='';
 const message=document.querySelector('#message'),details=document.querySelector('#details'),workflow=document.querySelector('#workflow'),report=document.querySelector('#report-link');
 const esc=v=>String(v??'—');
 function card(label,value){const el=document.createElement('div');el.className='card';const a=document.createElement('span');a.className='label';a.textContent=label;const b=document.createElement('strong');b.className='value';b.textContent=esc(value);el.append(a,b);return el}
-function render(data){cards.replaceChildren();const s=data.studio;if(!data.configured){cards.append(card('工作区','未配置'),card('API 调用','0'));setup.hidden=false;match.hidden=true;workflow.textContent='创建工作区后，系统会先执行证据就绪检查。'}else{const r=s.readiness||{},w=s.workflow||{};cards.append(card('模式',s.mode),card('就绪',r.ready?'是':'否'),card('已完成比赛',s.matches_played),card('工作流',w.state));setup.hidden=true;match.hidden=false;workflow.textContent=r.ready?'证据门禁通过，可以运行比赛。':'阻塞项：'+(r.blockers||[]).join(', ')}details.textContent=JSON.stringify(data,null,2)}
+function showReport(url){if(!url)return;report.replaceChildren();const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.textContent='打开比赛仪表板';report.append(a);report.hidden=false}
+function render(data){cards.replaceChildren();const s=data.studio,tasks=data.tasks||[],latest=tasks[0];if(!data.configured){cards.append(card('工作区','未配置'),card('API 调用','0'),card('任务',tasks.length));setup.hidden=false;match.hidden=true;workflow.textContent='创建工作区后，系统会先执行证据就绪检查。'}else{const r=s.readiness||{},w=s.workflow||{};cards.append(card('模式',s.mode),card('就绪',r.ready?'是':'否'),card('已完成比赛',s.matches_played),card('最近任务',latest?.state||'无'));setup.hidden=true;match.hidden=false;workflow.textContent=r.ready?'证据门禁通过，可以提交后台比赛任务。':'阻塞项：'+(r.blockers||[]).join(', ')}if(latest?.state==='completed')showReport(latest.result?.dashboard_url);if(['queued','running'].includes(latest?.state)&&activePoll!==latest.task_id){activePoll=latest.task_id;void pollTask(latest.task_id)}details.textContent=JSON.stringify(data,null,2)}
 async function api(path,options={}){const response=await fetch(path,{...options,headers:{'Content-Type':'application/json','X-GFS-CSRF':csrf,...options.headers}});const data=await response.json();if(!response.ok)throw new Error(data.error?.message||'请求失败');return data}
 async function refresh(){try{render(await api('/api/v1/studio'))}catch(e){message.className='status error';message.textContent=e.message}}
-async function submit(form,path,payload){const button=form.querySelector('button');button.disabled=true;message.className='status';message.textContent='正在处理，请勿关闭页面……';report.hidden=true;try{const data=await api(path,{method:'POST',body:JSON.stringify(payload)});message.className='status ok';message.textContent='操作成功。';if(data.dashboard_url){report.replaceChildren();const a=document.createElement('a');a.href=data.dashboard_url;a.target='_blank';a.rel='noopener';a.textContent='打开比赛仪表板';report.append(a);report.hidden=false;details.textContent=JSON.stringify(data,null,2)}else await refresh()}catch(e){message.className='status error';message.textContent=e.message}finally{button.disabled=false}}
+async function pollTask(id){try{while(true){const data=await api('/api/v1/tasks/'+encodeURIComponent(id)),task=data.task;details.textContent=JSON.stringify(data,null,2);message.className='status';message.textContent=task.state==='queued'?'比赛任务已排队……':'比赛正在后台运行……';if(task.state==='completed'){message.className='status ok';message.textContent='比赛完成。';showReport(task.result?.dashboard_url);await refresh();return}if(['failed','interrupted'].includes(task.state)){message.className='status error';message.textContent=task.error?.message||'任务中断，可检查状态后重新提交。';await refresh();return}await new Promise(resolve=>setTimeout(resolve,750))}}catch(e){message.className='status error';message.textContent=e.message}finally{activePoll=''}}
+async function submit(form,path,payload,headers={}){const button=form.querySelector('button');button.disabled=true;message.className='status';message.textContent='正在提交……';report.hidden=true;try{const data=await api(path,{method:'POST',body:JSON.stringify(payload),headers});if(data.task){message.textContent=data.created?'任务已持久化排队。':'已返回同一幂等任务。';activePoll=data.task.task_id;await pollTask(data.task.task_id)}else{message.className='status ok';message.textContent='操作成功。';await refresh()}}catch(e){message.className='status error';message.textContent=e.message}finally{button.disabled=false}}
 setup.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(setup);submit(setup,'/api/v1/studio',{name:f.get('name'),mode:f.get('mode'),seed:Number(f.get('seed'))})});
-match.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(match);submit(match,'/api/v1/matches',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on'})});
+match.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(match),key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random();submit(match,'/api/v1/matches',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on'},{'Idempotency-Key':key})});
 refresh();
 </script>
 </body></html>"""

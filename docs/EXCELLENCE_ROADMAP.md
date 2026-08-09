@@ -62,6 +62,12 @@ three reliability points, bringing the current product score to 67. This is a
 local recovery proof, not the timed deployment-storage drill required to close
 Stage 1/3.
 
+The persistent idempotent background-match queue, single-server lease, task
+history, refresh-safe polling, bounded retention, and interrupted-task
+reconciliation add three more product points, bringing the current score to
+70. The isolated verifier executes no real match; multi-host execution and a
+real process-kill drill remain unclaimed.
+
 ## Stage 2 — confirmatory academic experiment
 
 Freeze the commit and run only
