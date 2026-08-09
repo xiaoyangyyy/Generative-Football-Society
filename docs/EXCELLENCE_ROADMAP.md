@@ -229,6 +229,15 @@ gates. Scores remain dynamically derived at product 83 and academic 70 because
 credential closure, participants, external reviewers, production soak, value
 comparison, confirmatory runs, and independent reproduction remain absent.
 
+The Studio now exposes those remaining obligations as one dependency-aware,
+zero-execution workflow through `python gfs.py studio excellence`, the product
+control plane, and the Web release center. It prioritizes credential closure,
+shows work that can proceed in parallel, blocks downstream claims until their
+named prerequisites pass, and marks match/training workloads as requiring
+explicit authorization. Commands are guidance only: rendering the plan never
+executes a study, container, match, provider call, or training job, and it never
+changes an evidence score.
+
 ## Stage 3 — product validation
 
 Run a preregistered usability study with at least ten target users completing

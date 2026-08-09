@@ -71,7 +71,9 @@ def test_control_plane_unifies_product_and_paper_release_gates():
     assert release["release_ready"] is False
     assert release["passed_gate_count"] == 11
     assert release["open_gate_count"] == 10
-    assert release["next_action"] == "container_build"
+    assert release["next_action"] == "credential_security_closure"
+    assert release["completion_plan"]["zero_execution_plan"] is True
+    assert release["completion_plan"]["open_step_count"] == 10
     assert release["scores"] == {"product": 83, "academic": 70}
     gates = {gate["id"]: gate for gate in release["gates"]}
     assert gates["paper_package"]["passed"] is True

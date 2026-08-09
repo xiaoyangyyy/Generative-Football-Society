@@ -258,6 +258,23 @@ def cmd_studio_jobs(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_studio_excellence(args: argparse.Namespace) -> int:
+    """Show the evidence-derived score and zero-execution completion plan."""
+    import json
+
+    release = ProductControlPlane(args.base_dir).release_readiness()
+    print(json.dumps({
+        "schema_version": 1,
+        "scores": release["scores"],
+        "release_ready": release["release_ready"],
+        "passed_gate_count": release["passed_gate_count"],
+        "open_gate_count": release["open_gate_count"],
+        "completion_plan": release["completion_plan"],
+        "external_calls_made": False,
+    }, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_studio_stop_job(args: argparse.Namespace) -> int:
     path = ProductControlPlane(args.base_dir).request_stop(args.run_id)
     print(f"Cooperative stop requested: {path}")
@@ -383,6 +400,11 @@ def build_parser() -> argparse.ArgumentParser:
         "jobs", help="Show training jobs and model/LLM decision artifacts",
     )
     p_studio_jobs.set_defaults(func=cmd_studio_jobs)
+    p_studio_excellence = studio_sub.add_parser(
+        "excellence",
+        help="Show evidence-derived scores and the dependency-aware completion plan",
+    )
+    p_studio_excellence.set_defaults(func=cmd_studio_excellence)
     p_studio_stop = studio_sub.add_parser(
         "stop-job", help="Request a safe stop at the next epoch boundary",
     )

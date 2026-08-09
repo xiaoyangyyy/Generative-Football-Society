@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_evidence_derived_excellence_score",
-  "generated_at": "2026-08-09T20:19:38.065871+00:00",
+  "generated_at": "2026-08-09T20:34:29.401784+00:00",
   "status": "passed_dynamic_scoring",
   "passed": true,
   "scores": {
@@ -229,14 +229,18 @@
     "scores_are_bounded_and_have_100_maximum": true,
     "full_maturity_equivalence_is_exact": true,
     "release_ready_cannot_precede_full_maturity": true,
-    "current_scores_are_not_read_from_roadmap_points": true
+    "current_scores_are_not_read_from_roadmap_points": true,
+    "completion_plan_is_dependency_aware_and_zero_execution": true
   },
   "artifact_sha256": {
     "data/evaluation/excellence_scoring_contract_v1.json": "650bf8d0140545d32447253b2d9e27f39f5f130e74fca02aa676b588b75cc13b",
     "data/evaluation/excellence_roadmap_v1.json": "894dfc88bb04431339c7d74183141366c66a618a57cf4552e6aef31458187c66",
     "src/product/excellence.py": "1cf02fae25a9a72659abfcd621e9ba0a68d707fe74bfaf3b3db7cd5ea5c7a6fc",
-    "src/product/control_plane.py": "5e3000360c3fc98c1908a654298989182a082187d8e4c17ff875a3b34e973928",
-    "scripts/verify_excellence_score.py": "00dc52d1a444b07a812b5ef036d49c4458cb3ef43ea28c70a972db869bf0b4dd"
+    "src/product/control_plane.py": "c121d8b514c0d42b3d4ccfc5de5f464c72bca9c07ba2f6b07974c938eaca792d",
+    "src/product/completion_plan.py": "b2de18c74263d31855cbdd8a03ec57255c19b01efb186b852c59ddc5f8ff07d1",
+    "src/cli.py": "e8f834c0de8bdfd3930750ae0340e122d749730d5edbc5e28de9b0a1a0c4b5ee",
+    "src/product/web.py": "6ffbf3343598e64cbdf8638dc241c895a628a2088c4214e5c14c7b4bc9211bee",
+    "scripts/verify_excellence_score.py": "908e85f5b1b41b6a5f940f6c76049fbd6c94c1235d4b2d981c2f1451b6e7bb7f"
   },
   "external_calls_made": false,
   "matches_executed": 0,

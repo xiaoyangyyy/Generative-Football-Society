@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 
 from src.infrastructure import file_sha256  # noqa: E402
 from src.product.control_plane import ProductControlPlane  # noqa: E402
+from src.product.completion_plan import STEPS  # noqa: E402
 from src.product.excellence import validate_scoring_contract  # noqa: E402
 
 CONTRACT_PATH = ROOT / "data/evaluation/excellence_scoring_contract_v1.json"
@@ -55,6 +56,8 @@ def verify_excellence_score(root: Path = ROOT) -> dict:
     }
     scores = {name: row.get("score") for name, row in tracks.items()}
     all_full = excellence.get("all_tracks_full_maturity") is True
+    completion_plan = release.get("completion_plan") or {}
+    plan_steps = completion_plan.get("steps") or []
     checks = {
         "scoring_contract_is_valid": all(contract_checks.values()),
         "all_required_gate_ids_exist": referenced <= set(gates),
@@ -94,6 +97,21 @@ def verify_excellence_score(root: Path = ROOT) -> dict:
         "current_scores_are_not_read_from_roadmap_points": (
             excellence.get("contract_checks") == contract_checks
         ),
+        "completion_plan_is_dependency_aware_and_zero_execution": (
+            completion_plan.get("zero_execution_plan") is True
+            and {row.get("gate_id") for row in plan_steps}
+            == {step.gate_id for step in STEPS}
+            and completion_plan.get("open_step_count")
+            == sum(row.get("passed") is not True for row in plan_steps)
+            and all(
+                isinstance(row.get("commands"), list)
+                and row.get("commands")
+                and isinstance(row.get("required_inputs"), list)
+                and row.get("required_inputs")
+                and isinstance(row.get("blocking_gate_ids"), list)
+                for row in plan_steps
+            )
+        ),
     }
     passed = all(checks.values())
     return {
@@ -120,6 +138,11 @@ def verify_excellence_score(root: Path = ROOT) -> dict:
             "src/product/control_plane.py": file_sha256(
                 root / "src/product/control_plane.py"
             ),
+            "src/product/completion_plan.py": file_sha256(
+                root / "src/product/completion_plan.py"
+            ),
+            "src/cli.py": file_sha256(root / "src/cli.py"),
+            "src/product/web.py": file_sha256(root / "src/product/web.py"),
             "scripts/verify_excellence_score.py": file_sha256(Path(__file__)),
         },
         "external_calls_made": False,

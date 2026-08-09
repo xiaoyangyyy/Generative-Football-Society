@@ -19,6 +19,11 @@ def test_dynamic_score_report_matches_current_control_plane():
     assert report["passed_gate_count"] == 11
     assert report["open_gate_count"] == 10
     assert all(report["checks"].values())
+    assert report["checks"][
+        "completion_plan_is_dependency_aware_and_zero_execution"
+    ] is True
+    assert "src/product/completion_plan.py" in report["artifact_sha256"]
+    assert "src/product/web.py" in report["artifact_sha256"]
     assert report["matches_executed"] == 0
 
 

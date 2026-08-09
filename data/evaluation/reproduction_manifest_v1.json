@@ -58,6 +58,10 @@
     "excellence_score_verification": "data/evaluation/excellence_score_verification_v1.json",
     "excellence_score_module": "src/product/excellence.py",
     "excellence_score_verifier": "scripts/verify_excellence_score.py",
+    "excellence_completion_plan": "src/product/completion_plan.py",
+    "product_control_plane": "src/product/control_plane.py",
+    "product_cli": "src/cli.py",
+    "product_web": "src/product/web.py",
     "security_closure_protocol": "data/evaluation/security_closure_protocol_v1.json",
     "security_closure_protocol_verification": "data/evaluation/security_closure_protocol_verification_v1.json",
     "security_closure_guide": "docs/SECURITY_CREDENTIAL_CLOSURE.md",
@@ -248,6 +252,13 @@
       "id": "excellence_score_audit",
       "command": "python scripts/verify_excellence_score.py",
       "effect": "read_only_evidence_derived_product_and_academic_scoring",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "excellence_completion_plan",
+      "command": "python gfs.py studio excellence",
+      "effect": "read_only_dependency_aware_completion_plan",
       "runs_simulation": false,
       "explicit_authority_required": false
     },

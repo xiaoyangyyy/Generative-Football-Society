@@ -10,6 +10,7 @@ from typing import Any
 
 from src.infrastructure import FileLease, file_sha256
 from src.product.excellence import derive_excellence
+from src.product.completion_plan import build_completion_plan
 
 
 DECISION_ARTIFACTS = {
@@ -543,6 +544,7 @@ class ProductControlPlane:
         excellence = self.excellence(
             {gate["id"]: gate["passed"] for gate in gates}
         )
+        completion_plan = build_completion_plan(gates)
         scores = {
             name: row.get("score")
             for name, row in (excellence.get("tracks") or {}).items()
@@ -580,8 +582,9 @@ class ProductControlPlane:
             "excellence": excellence,
             "passed_gate_count": len(gates) - len(open_gates),
             "open_gate_count": len(open_gates),
-            "next_action": open_gates[0]["id"] if open_gates else None,
+            "next_action": completion_plan["recommended_gate_id"],
             "gates": gates,
+            "completion_plan": completion_plan,
             "external_calls_made": False,
         }
 
