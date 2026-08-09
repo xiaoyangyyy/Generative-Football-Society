@@ -541,6 +541,11 @@ class ProductWorkspace:
         else:
             shot_source = evidence_snapshot.get("shot_fallback") or "joint_world_model_head"
         shot_source = observed_world_model.get("shot_probability_source") or shot_source
+        ball_log_path = _artifact_path(self.root, raw.get("ball_log_path"))
+        ball_log_reference = (
+            ball_log_path.relative_to(self.root).as_posix()
+            if ball_log_path is not None else ""
+        )
         report = {
             "schema_version": PRODUCT_SCHEMA_VERSION,
             "match_id": match_id,
@@ -583,7 +588,7 @@ class ProductWorkspace:
                 },
             },
             "timeline": raw.get("timeline_snippet") or [],
-            "artifacts": {"ball_log": raw.get("ball_log_path") or ""},
+            "artifacts": {"ball_log": ball_log_reference},
             "evidence_snapshot": evidence_snapshot,
             "raw_summary": raw,
         }

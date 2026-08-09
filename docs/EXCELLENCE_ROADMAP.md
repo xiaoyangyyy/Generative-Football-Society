@@ -57,6 +57,11 @@ not close Stage 1: authenticated deployment, background/recovery UX,
 cross-platform packaging, production telemetry, the 100-match soak, and an
 external accessibility audit remain open.
 
+The integrity-checked Studio backup and transactional restore verifier adds
+three reliability points, bringing the current product score to 67. This is a
+local recovery proof, not the timed deployment-storage drill required to close
+Stage 1/3.
+
 ## Stage 2 — confirmatory academic experiment
 
 Freeze the commit and run only

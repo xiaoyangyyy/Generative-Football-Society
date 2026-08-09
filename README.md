@@ -88,6 +88,17 @@ uses the persisted Studio state machine and evidence gates directly. See
 `docs/WEB_BETA_ACCEPTANCE.md` for its verified security/accessibility scope and
 the production capabilities that are still deliberately unclaimed.
 
+Create and verify an integrity-checked Studio recovery bundle:
+
+```bash
+python gfs.py studio backup --out backups/studio.zip
+python gfs.py studio verify-backup backups/studio.zip
+```
+
+Restore refuses to replace an existing session unless `--replace` is explicit.
+See `docs/STUDIO_RECOVERY.md` for scope, trust boundaries, and the still-
+unmeasured production RPO/RTO.
+
 The next confirmatory paper experiment is frozen separately from exploratory
 work. Its default command is read-only:
 

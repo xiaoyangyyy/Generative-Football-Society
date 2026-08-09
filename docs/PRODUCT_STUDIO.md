@@ -75,6 +75,24 @@ python scripts/verify_product_web.py --out data/evaluation/web_beta_verification
 See `docs/WEB_BETA_ACCEPTANCE.md` for accepted scope and remaining Stage 1
 limits.
 
+## Backup and recovery
+
+Back up the persisted Studio and every artifact referenced by its match
+journal, verify the archive independently, and restore only through an
+explicit replacement boundary:
+
+```bash
+python gfs.py studio backup --out backups/studio.zip
+python gfs.py studio verify-backup backups/studio.zip
+python gfs.py studio restore backups/studio.zip
+python gfs.py studio restore backups/studio.zip --replace
+```
+
+The archive uses relative paths, size and SHA-256 checks, strict member
+whitelists, semantic session validation, staging, session-last switching, and
+rollback on failure. It excludes provider credentials, frozen releases,
+research checkpoints, and training state. See `docs/STUDIO_RECOVERY.md`.
+
 Every match is reserved in the session before simulation starts. Match IDs and
 seeds are monotonic even after a failure. The run journal distinguishes
 `running`, `finalizing`, `completed`, `failed`, and recovered `interrupted`

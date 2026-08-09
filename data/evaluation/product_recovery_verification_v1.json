@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_product_recovery",
+  "generated_at": "2026-08-09T14:15:35.085276+00:00",
+  "status": "passed_local_recovery",
+  "passed": true,
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "checks": {
+    "backup_created": true,
+    "all_referenced_files_included": true,
+    "final_bundle_path_reported": true,
+    "integrity_verification_passed": true,
+    "implicit_replacement_rejected": true,
+    "explicit_restore_roundtrip": true,
+    "untracked_member_rejected": true
+  },
+  "limitations": [
+    "local temporary-workspace verification is not an operational deployment drill",
+    "backup integrity hashes detect corruption but do not authenticate an untrusted bundle",
+    "recovery time and recovery point objectives are not yet measured on production storage"
+  ]
+}

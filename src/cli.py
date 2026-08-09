@@ -204,6 +204,39 @@ def cmd_studio_web(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_studio_backup(args: argparse.Namespace) -> int:
+    """Create an integrity-checked archive of the current Studio."""
+    import json
+    from src.product import ProductRecovery
+
+    result = ProductRecovery(args.base_dir).create_backup(
+        args.out, overwrite=args.overwrite,
+    )
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_studio_verify_backup(args: argparse.Namespace) -> int:
+    import json
+    from src.product import ProductRecovery
+
+    result = ProductRecovery.verify_backup(args.bundle)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_studio_restore(args: argparse.Namespace) -> int:
+    """Restore a verified archive behind an explicit replacement boundary."""
+    import json
+    from src.product import ProductRecovery
+
+    result = ProductRecovery(args.base_dir).restore_backup(
+        args.bundle, replace=args.replace,
+    )
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_studio_jobs(args: argparse.Namespace) -> int:
     import json
     print(json.dumps(
@@ -305,6 +338,26 @@ def build_parser() -> argparse.ArgumentParser:
     p_studio_web.add_argument("--host", default="127.0.0.1")
     p_studio_web.add_argument("--port", type=int, default=8765)
     p_studio_web.set_defaults(func=cmd_studio_web)
+    p_studio_backup = studio_sub.add_parser(
+        "backup", help="Create an integrity-checked Studio backup",
+    )
+    p_studio_backup.add_argument("--out", required=True)
+    p_studio_backup.add_argument("--overwrite", action="store_true")
+    p_studio_backup.set_defaults(func=cmd_studio_backup)
+    p_studio_verify_backup = studio_sub.add_parser(
+        "verify-backup", help="Verify a Studio backup without restoring it",
+    )
+    p_studio_verify_backup.add_argument("bundle")
+    p_studio_verify_backup.set_defaults(func=cmd_studio_verify_backup)
+    p_studio_restore = studio_sub.add_parser(
+        "restore", help="Restore a verified Studio backup",
+    )
+    p_studio_restore.add_argument("bundle")
+    p_studio_restore.add_argument(
+        "--replace", action="store_true",
+        help="Explicitly replace existing files referenced by the backup",
+    )
+    p_studio_restore.set_defaults(func=cmd_studio_restore)
     p_studio_jobs = studio_sub.add_parser(
         "jobs", help="Show training jobs and model/LLM decision artifacts",
     )

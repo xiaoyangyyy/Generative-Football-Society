@@ -220,13 +220,18 @@ def test_studio_match_writes_one_composed_product_report(tmp_path, monkeypatch):
         tmp_path, StudioConfig(name="Demo", mode="research", seed=11),
     )
     from src import app
-    monkeypatch.setattr(app, "run_micro_match", lambda *args, **kwargs: _Summary())
+    absolute_ball_log = tmp_path / "outputs/ball_log/demo.jsonl"
+    monkeypatch.setattr(app, "run_micro_match", lambda *args, **kwargs: _Summary(
+        ball_log_path=str(absolute_ball_log),
+    ))
     report = workspace.run_match("Brazil", "Argentina", fast=True)
     assert report["result"]["score"] == {"home": 2, "away": 1}
     assert report["layers"]["world_model"]["enabled"]
     assert report["layers"]["world_model"]["shot_probability_source"] == "physics_xg_prior"
     assert not report["layers"]["cognition"]["enabled"]
     assert report["evidence_snapshot"]["world_model_candidate_accepted"]
+    assert report["artifacts"]["ball_log"] == "outputs/ball_log/demo.jsonl"
+    assert str(tmp_path) not in json.dumps(report["artifacts"])
     assert report["integrity"] == {
         "accepted": True, "state": "accepted", "blockers": [],
     }

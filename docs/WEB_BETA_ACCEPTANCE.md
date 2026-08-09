@@ -37,5 +37,5 @@ is rejected because remote use needs an authenticated TLS gateway and an
 explicit deployment threat model. The current request executes a match
 synchronously while the threaded server keeps health endpoints responsive.
 Background job UX, complete history/recovery controls, container deployment,
-telemetry export, backup/restore, the deterministic 100-match soak, external
+telemetry export, Web recovery controls, the deterministic 100-match soak, external
 accessibility review, and target-user validation remain Stage 1/3 work.
