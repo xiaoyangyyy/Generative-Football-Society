@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "snapshot_id": "gfs-reproduction-environment-observed-2026-08-10",
+  "purpose": "Record the directly observed development environment without claiming a complete cross-platform lock.",
+  "python": {
+    "project_constraint": ">=3.10",
+    "container_base": "3.12.11",
+    "observed_verifier": "3.13.12"
+  },
+  "direct_packages": {
+    "numpy": "2.4.3",
+    "pandas": "3.0.2",
+    "openai": "2.32.0",
+    "python-dotenv": "1.2.2",
+    "matplotlib": "3.10.9",
+    "torch": "2.12.1",
+    "statsbombpy": "1.18.0",
+    "kloppy": null
+  },
+  "declared_special_constraint": {
+    "kloppy": "3.19.0"
+  },
+  "status": "partial_not_a_lock",
+  "limitations": [
+    "Transitive packages and artifact hashes are not frozen.",
+    "The observed verifier environment does not currently contain kloppy even though the project declares kloppy 3.19.0.",
+    "Docker image construction has not been executed in this environment.",
+    "This snapshot supports diagnosis and review but not bitwise reproduction."
+  ]
+}

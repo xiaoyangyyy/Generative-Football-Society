@@ -138,6 +138,18 @@ The result may support promotion, equivalence, or an inconclusive
 research-only decision. A negative result is valid evidence and must not be
 reframed as success.
 
+Before executing Stage 2, the project now has a registered-report draft,
+eight-claim evidence registry, model and data cards, references, a
+side-effect-classified reproduction manifest, an observed environment
+snapshot, and an independent-review guide. A zero-simulation verifier passes
+all 26 gates, including protocol/checkpoint identity, absence of confirmatory
+outputs, freshness of existing evidence, unique claim markers, resolved
+citations, and explicit non-claims. This adds two reproducibility points and
+three manuscript/readiness points, bringing the academic score from 62 to 67.
+It does not complete Stage 2 or Stage 5: the environment is not transitively
+hash-locked, provider license review is incomplete, the results manuscript is
+pending, and no independent reproduction exists.
+
 ## Stage 3 — product validation
 
 Run a preregistered usability study with at least ten target users completing

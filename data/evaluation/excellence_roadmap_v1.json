@@ -32,10 +32,10 @@
       "missing": ["production_deployment", "100_match_soak", "external_accessibility_audit", "usability_study", "value_validation"]
     },
     "academic": {
-      "score": 62,
-      "level": "research_prototype",
-      "strengths": ["frozen_question", "paired_protocol", "reproducibility_controls"],
-      "missing": ["confirmatory_results", "mechanism_replication", "manuscript", "independent_reproduction"]
+      "score": 67,
+      "level": "auditable_registered_report_prototype",
+      "strengths": ["frozen_question", "paired_protocol", "reproducibility_controls", "claim_evidence_registry", "preexecution_reproduction_manifest", "registered_report_draft"],
+      "missing": ["confirmatory_results", "mechanism_replication", "completed_manuscript", "full_environment_lock", "independent_reproduction"]
     }
   },
   "tracks": {
@@ -53,9 +53,9 @@
       {"id": "A2", "name": "method_implementation", "weight": 15, "current_points": 13, "critical": true, "status": "partial", "evidence": ["docs/ARCHITECTURE_V2.md", "src/match_engine/world_model/inference.py"]},
       {"id": "A3", "name": "confirmatory_statistics_and_results", "weight": 20, "current_points": 12, "critical": true, "status": "partial", "evidence": ["scripts/run_formal_experiment.py"]},
       {"id": "A4", "name": "external_validity", "weight": 15, "current_points": 10, "critical": true, "status": "partial", "evidence": ["data/evaluation/research_evidence_v1.json"]},
-      {"id": "A5", "name": "reproducibility", "weight": 15, "current_points": 10, "critical": true, "status": "partial", "evidence": ["data/evaluation/architecture_v2_audit.json", "data/training/entrypoints.json"]},
+      {"id": "A5", "name": "reproducibility", "weight": 15, "current_points": 12, "critical": true, "status": "partial", "evidence": ["data/evaluation/architecture_v2_audit.json", "data/training/entrypoints.json", "data/evaluation/reproduction_manifest_v1.json", "data/evaluation/reproduction_environment_v1.json", "docs/REPRODUCTION_GUIDE.md", "scripts/verify_paper_package.py", "tests/test_verify_paper_package.py", "data/evaluation/paper_package_verification_v1.json"]},
       {"id": "A6", "name": "mechanism_and_replication", "weight": 10, "current_points": 2, "critical": true, "status": "partial", "evidence": ["src/match_engine/world_model/mechanism_stress_test.py", "tests/test_world_model_mechanism_stress_test.py"]},
-      {"id": "A7", "name": "manuscript_and_independent_review", "weight": 10, "current_points": 0, "critical": true, "status": "missing", "evidence": []}
+      {"id": "A7", "name": "manuscript_and_independent_review", "weight": 10, "current_points": 3, "critical": true, "status": "partial", "evidence": ["docs/PAPER_DRAFT.md", "docs/PAPER_REFERENCES.bib", "docs/RESEARCH_MODEL_CARD.md", "docs/RESEARCH_DATA_CARD.md", "data/evaluation/paper_claims_v1.json", "data/evaluation/paper_package_verification_v1.json"]}
     ]
   },
   "phases": [

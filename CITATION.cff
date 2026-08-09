@@ -5,10 +5,8 @@ type: software
 authors:
   - family-names: "Contributors"
     given-names: "GFS"
-version: "1.3.0"
-date-released: 2026-05-08
+version: "0.1.0"
 license: "MIT"
-repository-code: "https://github.com/<your-org-or-user>/Generative_Football_Society"
 abstract: >
   Neuro-symbolic multi-agent football society simulation with continuous
   dynamics, layered memory, tactical controls, and social dialogue emergence.

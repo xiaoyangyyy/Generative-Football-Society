@@ -72,3 +72,17 @@ python scripts/run_formal_experiment.py --analyze
 
 Neither status nor analysis can start simulation. Analysis refuses partial,
 unpaired, or identity-mismatched evidence.
+
+## Paper package
+
+The registered-report draft, claim registry, model/data cards, environment
+limitations, and independent review instructions are audited without running
+the experiment:
+
+```bash
+python scripts/verify_paper_package.py --out data/evaluation/paper_package_verification_v1.json
+```
+
+The audit must report `confirmatory_result_available: false` until the fixed
+experiment and complete-only analysis have actually produced the registered
+decision artifact.

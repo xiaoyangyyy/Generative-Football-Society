@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "package_id": "gfs-registered-report-reproduction-v1",
+  "stage": "preexecution_auditable_package",
+  "scope": "Existing evidence, manuscript claims, and the preregistered confirmatory workflow; no new simulation is part of package verification.",
+  "artifacts": {
+    "manuscript": "docs/PAPER_DRAFT.md",
+    "claims": "data/evaluation/paper_claims_v1.json",
+    "protocol": "data/evaluation/formal_experiment_protocol_v2.json",
+    "protocol_documentation": "docs/FORMAL_EXPERIMENT_PROTOCOL_V2.md",
+    "reproduction_guide": "docs/REPRODUCTION_GUIDE.md",
+    "model_card": "docs/RESEARCH_MODEL_CARD.md",
+    "data_card": "docs/RESEARCH_DATA_CARD.md",
+    "references": "docs/PAPER_REFERENCES.bib",
+    "environment_snapshot": "data/evaluation/reproduction_environment_v1.json",
+    "existing_evidence": "data/evaluation/research_evidence_v1.json",
+    "prior_m1_decision": "data/evaluation/formal_ablation/M1_calibrated_decision.json",
+    "runner": "scripts/run_formal_experiment.py",
+    "package_verifier": "scripts/verify_paper_package.py"
+  },
+  "commands": [
+    {
+      "id": "package_audit",
+      "command": "python scripts/verify_paper_package.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "evidence_audit",
+      "command": "python scripts/audit_research_evidence.py --check",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "experiment_status",
+      "command": "python scripts/run_formal_experiment.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "confirmatory_execution",
+      "command": "python scripts/run_formal_experiment.py --execute",
+      "effect": "fixed_60_run_simulation",
+      "runs_simulation": true,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "complete_only_analysis",
+      "command": "python scripts/run_formal_experiment.py --analyze",
+      "effect": "analysis_only_after_complete_identity_matched_evidence",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    }
+  ],
+  "expected_confirmatory_outputs": {
+    "progress": "data/evaluation/formal_confirmatory_v2/progress.json",
+    "decision": "data/evaluation/formal_confirmatory_v2/decision.json",
+    "current_status": "absent_not_executed"
+  },
+  "data_distribution": {
+    "status": "partial_source_specific_terms_apply",
+    "redistribution_blanket_claim": false,
+    "license_review_complete": false,
+    "note": "Repository manifests preserve source names and many hashes, but not every provider manifest records a license or canonical source URL."
+  },
+  "environment": {
+    "status": "partial_top_level_snapshot_not_hash_locked",
+    "container_base_pinned": "python:3.12.11-slim-bookworm",
+    "full_transitive_hash_lock": false
+  },
+  "independent_reproduction": {
+    "status": "not_performed",
+    "reviewer_independent_of_implementation": null,
+    "report": null
+  },
+  "archive": {
+    "status": "not_built",
+    "reason": "A verified manifest is provided first; no archive is claimed until licensing and independent reproduction gates are complete."
+  }
+}

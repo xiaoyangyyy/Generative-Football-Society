@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "registry_id": "gfs-paper-claims-v1",
+  "manuscript": "docs/PAPER_DRAFT.md",
+  "policy": "Every substantive manuscript claim must have one explicit marker and a bounded evidence class. Existing evidence cannot be relabeled as the unexecuted confirmatory study.",
+  "prohibited_phrases": [
+    "M1 significantly outperforms M0",
+    "confirmatory evidence demonstrates that M1",
+    "independent reproduction passed",
+    "production-ready scientific model"
+  ],
+  "claims": [
+    {
+      "claim_id": "CLM-001",
+      "manuscript_section": "System boundary",
+      "evidence_class": "implementation_and_integrity",
+      "status": "verified_existing",
+      "statement": "GFS separates a frozen stable simulator from default-off research world-model and cognition layers and verifies the active release artifact chain.",
+      "evidence": [
+        "docs/ARCHITECTURE_V2.md",
+        "data/evaluation/architecture_v2_audit.json",
+        "data/releases/current.json"
+      ],
+      "allowed_scope": "software architecture and repository integrity only",
+      "forbidden_inference": "scientific benefit, production deployment, or real-world causal validity"
+    },
+    {
+      "claim_id": "CLM-002",
+      "manuscript_section": "Existing external evidence",
+      "evidence_class": "retrospective_multi_provider_evaluation",
+      "status": "verified_existing",
+      "statement": "The frozen evidence report covers a 128 team-match StatsBomb benchmark and derived observations from SkillCorner, StatsBomb 360, Sportec IDSSE, and Metrica sources with provider-specific limitations.",
+      "evidence": [
+        "data/evaluation/research_evidence_v1.json",
+        "docs/RESEARCH_DATA_CARD.md"
+      ],
+      "allowed_scope": "coverage and repository evaluation records",
+      "forbidden_inference": "representativeness of all football or causal transport to deployed decisions"
+    },
+    {
+      "claim_id": "CLM-003",
+      "manuscript_section": "Existing M0 evidence",
+      "evidence_class": "prior_frozen_evaluation",
+      "status": "verified_existing",
+      "statement": "Frozen M0 passed the repository external calibration contract on 18 full-length simulations across six fixtures and three seeds.",
+      "evidence": [
+        "data/evaluation/m0_formal_baseline_v1.json",
+        "data/evaluation/research_evidence_v1.json"
+      ],
+      "allowed_scope": "the frozen simulator-internal evaluation protocol",
+      "forbidden_inference": "comparison with the new 30-pair confirmatory M1 protocol"
+    },
+    {
+      "claim_id": "CLM-004",
+      "manuscript_section": "Existing M1 negative evidence",
+      "evidence_class": "prior_sealed_candidate_evaluation",
+      "status": "verified_existing",
+      "statement": "A prior sealed 18-match M1 review found no behavior change above tolerance and no resolved external-loss improvement, so M1 remains research-only and default-off.",
+      "evidence": [
+        "data/evaluation/formal_ablation/M1_calibrated_decision.json",
+        "data/evaluation/module_policy_v1.json"
+      ],
+      "allowed_scope": "the prior six-fixture, three-seed review",
+      "forbidden_inference": "a result from the new preregistered 30-pair confirmatory experiment"
+    },
+    {
+      "claim_id": "CLM-005",
+      "manuscript_section": "Confirmatory protocol and pending results",
+      "evidence_class": "preregistered_protocol",
+      "status": "preregistered_not_executed",
+      "statement": "The next M0-versus-sealed-M1 comparison is preregistered for 30 matched pairs and 60 total runs; no confirmatory estimate, interval, decision, or promotion claim exists.",
+      "evidence": [
+        "data/evaluation/formal_experiment_protocol_v2.json",
+        "docs/FORMAL_EXPERIMENT_PROTOCOL_V2.md"
+      ],
+      "allowed_scope": "design, estimand, budget, identity, and decision rules",
+      "forbidden_inference": "any numerical or directional confirmatory result"
+    },
+    {
+      "claim_id": "CLM-006",
+      "manuscript_section": "Release interpretation",
+      "evidence_class": "release_policy",
+      "status": "verified_existing",
+      "statement": "The active stable release remains 7.0.0 and neither existing M1 evidence nor the preregistration changes the production pointer.",
+      "evidence": [
+        "data/releases/current.json",
+        "data/evaluation/module_policy_v1.json"
+      ],
+      "allowed_scope": "repository release authority",
+      "forbidden_inference": "external production readiness or signed release promotion"
+    },
+    {
+      "claim_id": "CLM-007",
+      "manuscript_section": "Causal and deployment limits",
+      "evidence_class": "frozen_scope_policy",
+      "status": "verified_existing",
+      "statement": "All reported effects are simulator-internal; real-world causal claims are forbidden by the frozen research scope.",
+      "evidence": [
+        "data/evaluation/research_freeze_v1.json",
+        "docs/RESEARCH_MODEL_CARD.md"
+      ],
+      "allowed_scope": "claim restriction",
+      "forbidden_inference": "real-team, player, coaching, or societal causal effects"
+    },
+    {
+      "claim_id": "CLM-008",
+      "manuscript_section": "Independent reproduction status",
+      "evidence_class": "external_review",
+      "status": "not_available",
+      "statement": "No reproduction by a person independent of the implementer has been completed.",
+      "evidence": [],
+      "allowed_scope": "current absence of external evidence",
+      "forbidden_inference": "independent reproducibility"
+    }
+  ]
+}

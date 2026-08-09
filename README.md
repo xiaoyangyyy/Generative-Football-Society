@@ -143,6 +143,17 @@ It compares only sealed M0 and M1, caps compute at 30 matched pairs / 60 runs,
 and requires explicit `--execute`. See
 `docs/FORMAL_EXPERIMENT_PROTOCOL_V2.md`.
 
+The pre-execution paper package is independently auditable without training or
+simulation:
+
+```bash
+python scripts/verify_paper_package.py --out data/evaluation/paper_package_verification_v1.json
+```
+
+See `docs/PAPER_DRAFT.md` and `docs/REPRODUCTION_GUIDE.md`. The draft keeps
+all confirmatory result cells unavailable and does not claim independent
+reproduction or a complete environment lock.
+
 Show top team status rankings:
 
 ```bash
