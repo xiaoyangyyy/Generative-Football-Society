@@ -194,6 +194,18 @@ Product and academic maturity are governed by the evidence-gated roadmap in
 `docs/EXCELLENCE_ROADMAP.md`. Architecture quality alone does not count as a
 finished product or completed paper.
 
+Product operations use a bounded, privacy-allowlisted telemetry stream shared
+by Web requests, persistent tasks, and recovery. Aggregate metrics are visible
+inside Studio; raw events and credentials are never exposed through the Web
+API. Run the zero-match control-plane soak with:
+
+```bash
+python scripts/verify_product_operations.py --tasks 100
+```
+
+This verifies task operations only and does not count as the required
+100-match product soak. See `docs/PRODUCT_OPERATIONS.md`.
+
 ### LLM Architecture
 
 LLM roles remain independent, but share one provider gateway for connection reuse,

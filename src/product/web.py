@@ -7,6 +7,7 @@ import json
 import logging
 import secrets
 import threading
+import time
 from pathlib import Path
 from socketserver import ThreadingMixIn
 from typing import Any, Callable, Iterable
@@ -16,6 +17,7 @@ from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 from src.infrastructure import FileLease
 from src.product.control_plane import ProductControlPlane
 from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue, TaskConflict
+from src.product.telemetry import ProductTelemetry, route_template
 from src.product.web_security import WebAccessPolicy, is_loopback_host
 from src.product.workspace import ProductWorkspace, StudioConfig
 from src.simulation.llm_gateway import provider_preflight
@@ -57,11 +59,18 @@ class ProductWebApp:
         self, root: str | Path, *, task_queue: ProductTaskQueue | None = None,
         task_worker: BackgroundMatchWorker | None = None,
         access_policy: WebAccessPolicy | None = None,
+        telemetry: ProductTelemetry | None = None,
     ) -> None:
         self.root = Path(root).resolve()
         self.csrf_token = secrets.token_urlsafe(32)
         self._mutation_lock = threading.Lock()
-        self.task_queue = task_queue or ProductTaskQueue(self.root)
+        self.telemetry = telemetry or (
+            task_queue.telemetry if task_queue is not None else ProductTelemetry(self.root)
+        )
+        self.task_queue = task_queue or ProductTaskQueue(
+            self.root, telemetry=self.telemetry,
+        )
+        self.task_queue.telemetry = self.telemetry
         self.task_worker = task_worker
         self.access_policy = access_policy or WebAccessPolicy()
 
@@ -70,10 +79,13 @@ class ProductWebApp:
         start_response: Callable[[str, list[tuple[str, str]]], Any],
     ) -> Iterable[bytes]:
         request_id = secrets.token_hex(8)
+        started = time.perf_counter()
+        error_code: str | None = None
         try:
             status, headers, body = self._dispatch(environ)
         except WebRequestError as exc:
             status = exc.status
+            error_code = exc.code
             headers = list(JSON_HEADERS)
             body = _json_bytes({
                 "error": {"code": exc.code, "message": exc.message},
@@ -82,6 +94,7 @@ class ProductWebApp:
         except Exception:
             LOGGER.exception("Unhandled Web Beta request error request_id=%s", request_id)
             status = 500
+            error_code = "internal_error"
             headers = list(JSON_HEADERS)
             body = _json_bytes({
                 "error": {
@@ -99,6 +112,17 @@ class ProductWebApp:
             ("Content-Length", str(len(body))),
         ]
         start_response(f"{status} {STATUS_TEXT[status]}", headers + common)
+        observed_method = str(environ.get("REQUEST_METHOD", "GET")).upper()
+        if observed_method not in {
+            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD",
+        }:
+            observed_method = "OTHER"
+        self.telemetry.try_record(
+            "web_request", request_id=request_id, method=observed_method,
+            route=route_template(str(environ.get("PATH_INFO", "/"))),
+            status=status, duration_ms=(time.perf_counter() - started) * 1000,
+            error_code=error_code,
+        )
         return [body]
 
     def _dispatch(
@@ -143,19 +167,28 @@ class ProductWebApp:
                 payload.get("studio", {}).get("readiness", {}).get("ready")
             ))
             worker_ready = self.task_worker is None or self.task_worker.is_alive
-            ready = ready and worker_ready
+            operations = payload["operations"]
+            telemetry_ready = (
+                operations["retention"]["corrupt_records"] == 0
+                and operations["retention"]["write_failures_since_start"] == 0
+            )
+            ready = ready and worker_ready and telemetry_ready
             blockers = list(
                 payload.get("studio", {}).get("readiness", {}).get("blockers", []),
             )
             if not worker_ready:
                 blockers.append("background_worker_not_alive")
+            if not telemetry_ready:
+                blockers.append("product_telemetry_degraded")
             return self._json_response(200 if ready else 503, {
                 "schema_version": 1, "ready": ready,
                 "configured": payload["configured"],
-                "blockers": blockers,
+                "blockers": blockers, "telemetry_ready": telemetry_ready,
             })
         if method == "GET" and path == "/api/v1/studio":
             return self._json_response(200, self._studio_status(), csrf=True)
+        if method == "GET" and path == "/api/v1/operations":
+            return self._json_response(200, self.telemetry.snapshot())
         if method == "POST" and path == "/api/v1/studio":
             self._require_csrf(environ)
             return self._create_studio(self._read_json(environ))
@@ -287,6 +320,7 @@ class ProductWebApp:
                 "control_plane": ProductControlPlane(self.root).snapshot(),
                 "provider": provider,
                 "access": self.access_policy.public_summary(),
+                "operations": self.telemetry.snapshot(),
                 "tasks": [
                     self._task_for_web(task)
                     for task in self.task_queue.list_tasks(limit=20)
@@ -302,6 +336,7 @@ class ProductWebApp:
             "schema_version": 1, "configured": True,
             "studio": status, "provider": provider,
             "access": self.access_policy.public_summary(),
+            "operations": self.telemetry.snapshot(),
             "tasks": [
                 self._task_for_web(task)
                 for task in self.task_queue.list_tasks(limit=20)

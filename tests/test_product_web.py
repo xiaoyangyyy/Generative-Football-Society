@@ -73,6 +73,26 @@ def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
     }
 
 
+def test_operations_are_aggregated_and_paths_are_privacy_normalized(tmp_path):
+    app = ProductWebApp(tmp_path)
+    _request(app, path="/api/v1/tasks/private-user-component")
+    operations = _request(app, path="/api/v1/operations")
+    assert operations["status"].startswith("200")
+    metrics = operations["json"]
+    assert metrics["requests"]["routes"]["/api/v1/tasks/{task_id}"] == 1
+    assert metrics["privacy"]["raw_events_exposed"] is False
+    assert "private-user-component" not in json.dumps(metrics)
+    assert "events" not in metrics
+
+
+def test_telemetry_failure_does_not_break_liveness(tmp_path, monkeypatch):
+    app = ProductWebApp(tmp_path)
+    monkeypatch.setattr(app.telemetry, "record", lambda *args, **kwargs: (_ for _ in ()).throw(OSError()))
+    response = _request(app, path="/healthz")
+    assert response["status"].startswith("200")
+    assert app.telemetry.write_failures == 1
+
+
 def test_non_loopback_host_header_is_rejected_against_dns_rebinding(tmp_path):
     response = _request(ProductWebApp(tmp_path), path="/api/v1/studio", host="attacker.example")
     assert response["status"].startswith("400")
@@ -287,6 +307,12 @@ def test_remote_login_requires_allowed_host_https_and_secure_session(tmp_path):
     assert authenticated["status"].startswith("200")
     assert authenticated["json"]["access"]["mode"] == "remote_authenticated"
     assert access_token not in json.dumps(authenticated["json"])
+    operations = _request(
+        app, path="/api/v1/operations", cookie=cookie,
+        host="studio.example", forwarded_proto="https",
+    )
+    assert operations["json"]["authentication"] == {"accepted": 1, "rejected": 1}
+    assert access_token not in app.telemetry.path.read_text(encoding="utf-8")
 
 
 def test_web_cli_parses_explicit_remote_security_boundary():

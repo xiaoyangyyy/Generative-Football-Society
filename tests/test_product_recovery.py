@@ -65,6 +65,13 @@ def test_backup_verifies_and_restores_every_referenced_product_artifact(tmp_path
     restored = ProductRecovery(tmp_path).restore_backup(bundle)
     assert restored["restored"]
     assert {path: path.read_bytes() for path in paths} == expected
+    telemetry = ProductRecovery(tmp_path).telemetry
+    operations = telemetry.snapshot()["recovery"]
+    assert operations["backup_created"] == 1
+    assert operations["restore_completed"] == 1
+    raw = telemetry.path.read_text(encoding="utf-8")
+    assert "Backup Studio" not in raw
+    assert str(bundle) not in raw
 
 
 def test_restore_requires_explicit_replace_for_existing_session(tmp_path):
@@ -109,6 +116,9 @@ def test_restore_rolls_back_all_files_when_final_session_switch_fails(
     assert {path: path.read_bytes() for path in paths} == before
     assert queue.path.read_bytes() == task_queue_before
     assert queue.get_task(task["task_id"])["state"] == "completed"
+    assert ProductRecovery(tmp_path).telemetry.snapshot()["recovery"][
+        "restore_completed"
+    ] == 0
 
 
 def test_verifier_rejects_untracked_and_traversal_members(tmp_path):

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_product_operations_control_plane",
+  "status": "passed_control_plane_soak_no_match_execution",
+  "passed": true,
+  "task_count": 100,
+  "submission_attempts": 200,
+  "state_counts": {
+    "completed": 95,
+    "failed": 3,
+    "interrupted": 2
+  },
+  "elapsed_seconds": 4.349,
+  "checks": {
+    "all_submission_threads_stopped": true,
+    "no_submission_exceptions": true,
+    "exactly_one_task_per_idempotency_key": true,
+    "all_duplicates_resolved_to_same_task": true,
+    "terminal_state_distribution_exact": true,
+    "restart_recovered_exactly_two_running_tasks": true,
+    "no_queued_or_running_tasks_remain": true,
+    "telemetry_has_no_corrupt_records": true,
+    "telemetry_has_no_write_failures": true,
+    "telemetry_task_counts_exact": true,
+    "fixture_names_and_idempotency_keys_absent_from_telemetry": true
+  },
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false,
+  "claim_boundary": {
+    "closes_100_match_soak_gate": false,
+    "proves": [
+      "concurrent idempotent queue submission",
+      "persistent terminal task transitions",
+      "restart interruption recovery",
+      "privacy-bounded telemetry consistency"
+    ],
+    "does_not_prove": [
+      "100 match-engine executions",
+      "long-duration deployment stability",
+      "container, TLS, or external network behavior",
+      "scientific model quality or paper claims"
+    ]
+  }
+}

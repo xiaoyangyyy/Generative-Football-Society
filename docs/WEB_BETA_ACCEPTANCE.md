@@ -19,6 +19,8 @@ readiness, evidence, transaction, or reporting rules into a second system.
 - no external provider call during status, health, readiness, or acceptance.
 - persistent idempotent match tasks, refresh-safe polling, bounded terminal
   history, single-server ownership, and visible interrupted state after restart.
+- persistent privacy-bounded operational telemetry, aggregate authenticated
+  operations metrics, bounded rotation, and readiness-visible telemetry damage.
 
 Run the machine-readable verification without a match, training, or network
 provider:
@@ -44,5 +46,7 @@ authorization, while the Caddy/Compose topology is only statically verified.
 Match requests execute in a persistent
 single-worker queue while the threaded server keeps health endpoints
 responsive. Web backup/restore controls, container deployment, telemetry
-export, the deterministic 100-match soak, external accessibility review, and
-target-user validation remain Stage 1/3 work.
+export to an external monitoring backend, the deterministic 100-match soak,
+external accessibility review, and target-user validation remain Stage 1/3
+work. The local `/api/v1/operations` endpoint exposes aggregates only, never raw
+events.

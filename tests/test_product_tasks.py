@@ -89,6 +89,34 @@ def test_worker_failure_is_terminal_and_does_not_persist_exception_text(
     assert failed["state"] == "failed"
     assert failed["error"]["type"] == "RuntimeError"
     assert "private" not in str(failed)
+    telemetry_text = queue.telemetry.path.read_text(encoding="utf-8")
+    assert "secret local path" not in telemetry_text
+    assert "task_failed" in telemetry_text
+
+
+def test_task_lifecycle_is_aggregated_without_fixture_names(tmp_path):
+    queue = ProductTaskQueue(tmp_path)
+    task, created = queue.submit_match(
+        "Private Home Name", "Private Away Name", fast=True,
+        idempotency_key="private-browser-key",
+    )
+    duplicate, duplicate_created = queue.submit_match(
+        "Private Home Name", "Private Away Name", fast=True,
+        idempotency_key="private-browser-key",
+    )
+    assert created and not duplicate_created and duplicate["task_id"] == task["task_id"]
+    claimed = queue.claim_next("worker-a")
+    queue.complete(claimed["task_id"], "worker-a", {"score": "1-0"})
+
+    metrics = queue.telemetry.snapshot()["tasks"]
+    assert metrics["new_submissions"] == 1
+    assert metrics["idempotent_replays"] == 1
+    assert metrics["task_claimed"] == 1
+    assert metrics["task_completed"] == 1
+    raw = queue.telemetry.path.read_text(encoding="utf-8")
+    assert "Private Home Name" not in raw
+    assert "Private Away Name" not in raw
+    assert "private-browser-key" not in raw
 
 
 def test_startup_recovery_marks_running_tasks_interrupted_without_requeue(tmp_path):

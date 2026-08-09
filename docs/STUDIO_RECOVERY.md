@@ -46,6 +46,9 @@ authenticate a bundle supplied by an attacker. Store backups in access-
 controlled storage and add a signed/encrypted storage layer before production.
 API keys and environment configuration are deliberately excluded.
 The operational Web task queue is also excluded from the portable bundle.
+Operational telemetry is likewise excluded: it remains append-only deployment
+evidence on the persistence volume, and records only aggregate-safe backup and
+successful restore events without bundle paths or Studio names.
 Restore refuses to proceed while any task is queued or running, then resets
 terminal task history inside the same rollback transaction so tasks from one
 Studio can never appear in another restored Studio.

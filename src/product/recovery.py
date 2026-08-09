@@ -13,6 +13,7 @@ from typing import Any, BinaryIO
 
 from src.infrastructure import FileLease, file_sha256
 from src.product.tasks import TASK_SCHEMA_VERSION, TASK_STATES
+from src.product.telemetry import ProductTelemetry
 from src.product.workspace import StudioConfig
 
 
@@ -59,6 +60,7 @@ class ProductRecovery:
         self.session_path = self.root / ALLOWED_PATHS[0]
         self.lease_path = self.root / "data/persistence/product_session.lock"
         self.task_lease_path = self.root / "data/persistence/product_tasks.lock"
+        self.telemetry = ProductTelemetry(self.root)
 
     def _relative_file(self, value: Any, *, required: bool) -> str | None:
         if value is None or not str(value).strip():
@@ -148,11 +150,16 @@ class ProductRecovery:
                 os.replace(temporary, output_path)
             finally:
                 temporary.unlink(missing_ok=True)
-        return {
+        result = {
             **verification,
             "bundle": str(output_path),
             "size": output_path.stat().st_size,
         }
+        self.telemetry.try_record(
+            "backup_created", file_count=int(result["file_count"]),
+            size_bytes=int(result["size"]),
+        )
+        return result
 
     @staticmethod
     def verify_backup(bundle: str | Path) -> dict[str, Any]:
@@ -354,10 +361,15 @@ class ProductRecovery:
                             target.parent.mkdir(parents=True, exist_ok=True)
                             os.replace(rollback, target)
                     raise
-        return {
+        result = {
             **verification,
             "restored": True,
             "replace": bool(replace),
             "task_history_reset": True,
             "restored_at": _now(),
         }
+        self.telemetry.try_record(
+            "restore_completed", file_count=int(result["file_count"]),
+            replace=bool(replace), task_history_reset=True,
+        )
+        return result

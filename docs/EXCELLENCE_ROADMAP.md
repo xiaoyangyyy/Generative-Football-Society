@@ -74,6 +74,14 @@ product score to 73. Docker is unavailable in the current environment: no
 image was built, no Compose service started, and no public certificate,
 firewall, penetration test, or production volume drill is claimed.
 
+Privacy-bounded persistent telemetry now covers normalized Web requests,
+authentication outcomes, task transitions, worker lifecycle, and successful
+backup/restore operations. A 100-task control-plane soak executes 200
+concurrent submission attempts, exact idempotency checks, terminal failures,
+and restart recovery. This adds one reliability point and one operations point,
+bringing the product score to 75. It executes zero matches and therefore does
+not close the deterministic 100-match or long-duration deployment soak gates.
+
 ## Stage 2 — confirmatory academic experiment
 
 Freeze the commit and run only

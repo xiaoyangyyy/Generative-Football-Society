@@ -210,3 +210,19 @@ The world model, frozen-backbone shot head, and live-LLM pilot are optional
 adapters authorized by decision artifacts. Their existence never changes the
 stable product automatically. See `docs/ARCHITECTURE_V2.md` for the complete
 system boundary and lifecycle.
+
+## Integrated operations view
+
+Studio status and the authenticated `GET /api/v1/operations` route expose
+aggregate request latency/status, authentication outcomes, task lifecycle,
+recovery activity, telemetry corruption, and write degradation. The underlying
+bounded JSONL schema cannot accept credentials, request content, network
+identifiers, fixture names, idempotency keys, local paths, or exception text.
+
+Run the no-match control-plane verifier with:
+
+```bash
+python scripts/verify_product_operations.py --tasks 100
+```
+
+See `docs/PRODUCT_OPERATIONS.md` for retention, privacy, and claim boundaries.

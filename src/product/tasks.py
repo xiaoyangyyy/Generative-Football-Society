@@ -8,10 +8,12 @@ import logging
 import socket
 import threading
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 from src.infrastructure import FileLease
+from src.product.telemetry import ProductTelemetry
 from src.product.workspace import ProductWorkspace, _atomic_json, _now
 
 
@@ -35,10 +37,23 @@ def _public_task(task: dict[str, Any]) -> dict[str, Any]:
 
 
 class ProductTaskQueue:
-    def __init__(self, root: str | Path) -> None:
+    def __init__(
+        self, root: str | Path, *, telemetry: ProductTelemetry | None = None,
+    ) -> None:
         self.root = Path(root).resolve()
         self.path = self.root / "data/persistence/product_tasks.json"
         self.lease_path = self.root / "data/persistence/product_tasks.lock"
+        self.telemetry = telemetry or ProductTelemetry(self.root)
+
+    @staticmethod
+    def _duration_ms(started_at: Any) -> float:
+        try:
+            started = datetime.fromisoformat(str(started_at))
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            return max(0.0, (datetime.now(timezone.utc) - started).total_seconds() * 1000)
+        except (TypeError, ValueError):
+            return 0.0
 
     @staticmethod
     def _empty() -> dict[str, Any]:
@@ -108,7 +123,12 @@ class ProductTaskQueue:
                             raise TaskConflict(
                                 "idempotency key was already used for a different match",
                             )
-                        return _public_task(task), False
+                        public = _public_task(task)
+                        self.telemetry.try_record(
+                            "task_submitted", task_id=public["task_id"],
+                            created=False, fast=fast,
+                        )
+                        return public, False
             if len(payload["tasks"]) >= MAX_RETAINED_TASKS:
                 removable = sum(
                     task.get("state") in TERMINAL_TASK_STATES
@@ -138,7 +158,11 @@ class ProductTaskQueue:
             }
             payload["tasks"].append(task)
             self._write(payload)
-            return _public_task(task), True
+            public = _public_task(task)
+            self.telemetry.try_record(
+                "task_submitted", task_id=public["task_id"], created=True, fast=fast,
+            )
+            return public, True
 
     def list_tasks(self, *, limit: int = 50) -> list[dict[str, Any]]:
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
@@ -169,6 +193,10 @@ class ProductTaskQueue:
                     recovered += 1
             if recovered:
                 self._write(payload)
+        if recovered:
+            self.telemetry.try_record(
+                "task_recovered", count=recovered, reason=reason,
+            )
         return recovered
 
     def claim_next(self, worker_id: str) -> dict[str, Any] | None:
@@ -185,6 +213,9 @@ class ProductTaskQueue:
                     "attempt": int(task.get("attempt", 0)) + 1,
                 })
                 self._write(payload)
+                self.telemetry.try_record(
+                    "task_claimed", task_id=task["task_id"], attempt=task["attempt"],
+                )
                 return dict(task)
         return None
 
@@ -206,6 +237,18 @@ class ProductTaskQueue:
                     **values,
                 })
                 self._write(payload)
+                telemetry_fields = {
+                    "task_id": task["task_id"],
+                    "attempt": int(task.get("attempt", 0)),
+                    "duration_ms": self._duration_ms(task.get("started_at")),
+                }
+                if state == "failed":
+                    telemetry_fields["error_type"] = str(
+                        (values.get("error") or {}).get("type") or "UnknownError"
+                    )[:100]
+                self.telemetry.try_record(
+                    f"task_{state}", **telemetry_fields,
+                )
                 return _public_task(task)
         raise FileNotFoundError(f"product task not found: {task_id}")
 
@@ -291,6 +334,7 @@ class BackgroundMatchWorker:
             target=self._run, name="gfs-match-worker", daemon=True,
         )
         self._thread.start()
+        self.queue.telemetry.try_record("worker_lifecycle", state="started")
 
     def stop(self, *, timeout: float = 5.0) -> bool:
         self._stop.set()
@@ -298,4 +342,8 @@ class BackgroundMatchWorker:
         if thread is None:
             return True
         thread.join(timeout=max(0.0, timeout))
-        return not thread.is_alive()
+        stopped = not thread.is_alive()
+        self.queue.telemetry.try_record(
+            "worker_lifecycle", state="stopped" if stopped else "stop_timeout",
+        )
+        return stopped
