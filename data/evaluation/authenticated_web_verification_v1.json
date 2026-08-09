@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_authenticated_web",
-  "generated_at": "2026-08-09T14:50:52.145520+00:00",
+  "generated_at": "2026-08-09T15:16:22.630923+00:00",
   "status": "passed_authenticated_socket_boundary",
   "passed": true,
   "external_calls_made": false,
@@ -15,7 +15,10 @@
     "unauthenticated_root_redirects": true,
     "invalid_token_rejected": true,
     "secure_session_issued": true,
+    "independent_sessions_issued": true,
     "authenticated_api_available": true,
+    "login_rate_limit_enforced": true,
+    "single_session_logout_enforced": true,
     "server_shutdown_cleanly": true
   },
   "limitations": [

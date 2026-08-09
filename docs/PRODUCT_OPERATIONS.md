@@ -14,6 +14,10 @@ counts, and exception class names. It never accepts request bodies, headers,
 Cookies, tokens, IP addresses, Host values, query strings, fixture/team names,
 idempotency keys, artifact paths, backup paths, or exception messages.
 
+Authentication aggregates distinguish accepted, rejected, rate-limited, and
+logged-out requests. They contain counts only. Client identities used by the
+login limiter are salted, process-local digests and never become events.
+
 The current log is limited to 2 MiB with one rotated segment. Writes are
 process-safe, flushed and fsynced. A telemetry I/O failure increments an
 in-memory degradation counter and never rolls back a successful product

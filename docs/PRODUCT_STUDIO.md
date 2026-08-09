@@ -226,3 +226,10 @@ python scripts/verify_product_operations.py --tasks 100
 ```
 
 See `docs/PRODUCT_OPERATIONS.md` for retention, privacy, and claim boundaries.
+
+Remote sessions are independent and process-local. Each has an eight-hour
+absolute lifetime, a thirty-minute idle lifetime, and can be revoked with the
+Studio “安全退出” control. At most 64 sessions are retained; creating another
+evicts the oldest. Login failures are limited per salted in-memory client
+identity and by a global fallback window. A limited request receives HTTP 429
+and `Retry-After`; client addresses and salts never enter telemetry.

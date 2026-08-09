@@ -206,6 +206,11 @@ python scripts/verify_product_operations.py --tasks 100
 This verifies task operations only and does not count as the required
 100-match product soak. See `docs/PRODUCT_OPERATIONS.md`.
 
+Authenticated remote Studio sessions use the `__Host-` Cookie contract,
+absolute/idle expiry, bounded capacity, selective logout, and client plus global
+login limits. These controls are process-local and currently support the
+single-application deployment contract, not horizontal replicas.
+
 ### LLM Architecture
 
 LLM roles remain independent, but share one provider gateway for connection reuse,

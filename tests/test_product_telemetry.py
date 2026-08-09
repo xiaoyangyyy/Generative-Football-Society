@@ -62,7 +62,9 @@ def test_snapshot_aggregates_without_exposing_raw_events(tmp_path):
     assert snapshot["requests"]["latency_ms"] == {
         "p50": 8.0, "p95": 12.0, "p99": 12.0, "max": 12.0,
     }
-    assert snapshot["authentication"] == {"accepted": 1, "rejected": 1}
+    assert snapshot["authentication"] == {
+        "accepted": 1, "rejected": 1, "rate_limited": 0, "logged_out": 0,
+    }
     assert snapshot["tasks"]["task_failed"] == 1
     assert snapshot["privacy"]["raw_events_exposed"] is False
     assert "events" not in snapshot

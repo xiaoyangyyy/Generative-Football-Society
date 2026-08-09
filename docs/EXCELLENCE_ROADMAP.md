@@ -82,6 +82,15 @@ and restart recovery. This adds one reliability point and one operations point,
 bringing the product score to 75. It executes zero matches and therefore does
 not close the deterministic 100-match or long-duration deployment soak gates.
 
+Remote authentication now issues independent `__Host-` sessions with absolute
+and idle expiry, bounded session capacity, current-session logout, per-client
+in-memory salted rate limits, and a global anti-bypass limit with standard 429
+and `Retry-After` responses. The real socket verifier proves these boundaries,
+adding one security point and bringing the product score to 76. The remaining
+security point still requires an independent review/penetration test against a
+real deployed TLS edge; process-local sessions and rate limits are not claimed
+to support horizontal replicas.
+
 ## Stage 2 — confirmatory academic experiment
 
 Freeze the commit and run only

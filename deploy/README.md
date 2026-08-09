@@ -34,6 +34,11 @@ docker compose --env-file deploy/.env.deploy -f deploy/compose.yaml logs --no-lo
 Never print or commit the environment file. Application logs do not need the
 access token or provider credentials.
 
+The current deployment intentionally runs one application process. Sessions
+and login-rate state are bounded and process-local; do not scale the `gfs`
+service horizontally until a shared session/rate store with equivalent expiry,
+revocation, privacy, and failure semantics is implemented and tested.
+
 ## Stop and recover
 
 ```bash

@@ -39,7 +39,9 @@ deployment, match soak reliability, external WCAG conformance, or user value.
 The default Beta is loopback-only. Explicit remote mode additionally requires
 an exact Host allowlist, a separate high-entropy product token, an HTTPS proxy
 marker, and a secure session Cookie. A real socket verifier covers login and
-authorization, while the Caddy/Compose topology is only statically verified.
+authorization. Sessions are independent, bounded, absolutely and idly expiring,
+and individually revocable. Client/global login limits return 429 with
+`Retry-After`. The Caddy/Compose topology is only statically verified.
 
 ## Deliberately unclaimed
 

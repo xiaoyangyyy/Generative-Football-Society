@@ -28,9 +28,12 @@ class _NoRedirect(HTTPRedirectHandler):
 def _request(
     opener, url: str, *, host: str, proto: str = "https",
     payload=None, csrf: str = "", cookie: str = "",
+    forwarded_for: str = "198.51.100.20",
 ):
     body = None if payload is None else json.dumps(payload).encode("utf-8")
     headers = {"Host": host, "X-Forwarded-Proto": proto}
+    if forwarded_for:
+        headers["X-Forwarded-For"] = forwarded_for
     if body is not None:
         headers["Content-Type"] = "application/json"
     if csrf:
@@ -108,9 +111,17 @@ def verify_authenticated_web() -> dict:
             checks["secure_session_issued"] = (
                 status == 200
                 and all(value in cookie_header for value in (
-                    "HttpOnly", "Secure", "SameSite=Strict",
+                    "__Host-", "HttpOnly", "Secure", "SameSite=Strict", "Max-Age=",
                 ))
                 and access_token.encode("utf-8") not in body
+            )
+            status, second_headers, _ = _request(
+                opener, base + "/api/v1/login", host="studio.example",
+                payload={"access_token": access_token}, csrf=csrf,
+            )
+            second_cookie = second_headers.get("Set-Cookie", "").split(";", 1)[0]
+            checks["independent_sessions_issued"] = (
+                status == 200 and bool(second_cookie) and second_cookie != cookie
             )
             status, _, body = _request(
                 opener, base + "/api/v1/studio", host="studio.example", cookie=cookie,
@@ -120,6 +131,35 @@ def verify_authenticated_web() -> dict:
                 status == 200
                 and payload.get("access", {}).get("mode") == "remote_authenticated"
                 and access_token not in json.dumps(payload)
+            )
+            attempts = []
+            for _ in range(6):
+                attempts.append(_request(
+                    opener, base + "/api/v1/login", host="studio.example",
+                    payload={"access_token": "wrong-token"}, csrf=csrf,
+                ))
+            limited_status, limited_headers, limited_body = attempts[-1]
+            checks["login_rate_limit_enforced"] = (
+                all(item[0] == 401 for item in attempts[:5])
+                and limited_status == 429
+                and int(limited_headers.get("Retry-After", "0")) >= 1
+                and access_token.encode("utf-8") not in limited_body
+            )
+            logout_status, logout_headers, _ = _request(
+                opener, base + "/api/v1/logout", host="studio.example",
+                payload={}, csrf=csrf, cookie=cookie,
+            )
+            old_status, _, _ = _request(
+                opener, base + "/api/v1/studio", host="studio.example", cookie=cookie,
+            )
+            other_status, _, _ = _request(
+                opener, base + "/api/v1/studio", host="studio.example",
+                cookie=second_cookie,
+            )
+            checks["single_session_logout_enforced"] = (
+                logout_status == 200
+                and "Max-Age=0" in logout_headers.get("Set-Cookie", "")
+                and old_status == 401 and other_status == 200
             )
         finally:
             server.shutdown()

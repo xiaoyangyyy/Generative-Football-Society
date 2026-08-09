@@ -24,6 +24,7 @@ MAX_READ_EVENTS = 10_000
 IDENTIFIER = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 ROUTES = {
     "/", "/healthz", "/login", "/readyz", "/api/v1/login",
+    "/api/v1/logout",
     "/api/v1/studio", "/api/v1/matches", "/api/v1/tasks",
     "/api/v1/tasks/{task_id}", "/api/v1/operations",
     "/artifacts/{artifact}", "unmatched",
@@ -273,6 +274,7 @@ class ProductTelemetry:
             for event in ("backup_created", "restore_completed")
         }
         login_rows = [row for row in requests if row.get("route") == "/api/v1/login"]
+        logout_rows = [row for row in requests if row.get("route") == "/api/v1/logout"]
         return {
             "schema_version": TELEMETRY_SCHEMA_VERSION,
             "privacy": {
@@ -306,6 +308,12 @@ class ProductTelemetry:
             "authentication": {
                 "accepted": sum(int(row.get("status", 0)) == 200 for row in login_rows),
                 "rejected": sum(int(row.get("status", 0)) == 401 for row in login_rows),
+                "rate_limited": sum(
+                    int(row.get("status", 0)) == 429 for row in login_rows
+                ),
+                "logged_out": sum(
+                    int(row.get("status", 0)) == 200 for row in logout_rows
+                ),
             },
             "tasks": task_counts,
             "recovery": recovery_counts,

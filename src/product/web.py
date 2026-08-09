@@ -32,16 +32,21 @@ STATUS_TEXT = {
     404: "Not Found", 405: "Method Not Allowed", 409: "Conflict",
     413: "Payload Too Large", 415: "Unsupported Media Type",
     422: "Unprocessable Entity", 500: "Internal Server Error",
-    426: "Upgrade Required", 503: "Service Unavailable",
+    426: "Upgrade Required", 429: "Too Many Requests",
+    503: "Service Unavailable",
 }
 
 
 class WebRequestError(Exception):
-    def __init__(self, status: int, code: str, message: str) -> None:
+    def __init__(
+        self, status: int, code: str, message: str,
+        *, headers: tuple[tuple[str, str], ...] = (),
+    ) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
+        self.headers = headers
 
 
 def _json_bytes(payload: Any) -> bytes:
@@ -86,7 +91,7 @@ class ProductWebApp:
         except WebRequestError as exc:
             status = exc.status
             error_code = exc.code
-            headers = list(JSON_HEADERS)
+            headers = list(JSON_HEADERS) + list(exc.headers)
             body = _json_bytes({
                 "error": {"code": exc.code, "message": exc.message},
                 "request_id": request_id,
@@ -154,7 +159,17 @@ class ProductWebApp:
             if not self.access_policy.remote:
                 raise WebRequestError(404, "not_found", "Resource not found")
             self._require_csrf(environ)
-            return self._login(self._read_json(environ))
+            return self._login(environ, self._read_json(environ))
+        if method == "POST" and path == "/api/v1/logout":
+            if not self.access_policy.remote:
+                raise WebRequestError(404, "not_found", "Resource not found")
+            self._require_csrf(environ)
+            revoked = self.access_policy.revoke_session(environ)
+            return self._json_response(200, {
+                "schema_version": 1, "authenticated": False, "revoked": revoked,
+            }, headers=[
+                ("Set-Cookie", self.access_policy.clear_session_cookie_header()),
+            ])
         if not self.access_policy.authenticated(environ):
             if method == "GET" and path == "/":
                 return self._redirect_response("/login")
@@ -217,17 +232,21 @@ class ProductWebApp:
 
     def _json_response(
         self, status: int, payload: Any, *, csrf: bool = False,
+        headers: list[tuple[str, str]] | None = None,
     ) -> tuple[int, list[tuple[str, str]], bytes]:
-        headers = list(JSON_HEADERS)
+        response_headers = list(JSON_HEADERS) + list(headers or ())
         if csrf:
-            headers.append(("X-GFS-CSRF-Token", self.csrf_token))
-        return status, headers, _json_bytes(payload)
+            response_headers.append(("X-GFS-CSRF-Token", self.csrf_token))
+        return status, response_headers, _json_bytes(payload)
 
     def _html_response(self) -> tuple[int, list[tuple[str, str]], bytes]:
         nonce = secrets.token_urlsafe(18)
         document = _INDEX_HTML.replace("__NONCE__", html.escape(nonce, quote=True))
         document = document.replace(
             "__CSRF__", html.escape(self.csrf_token, quote=True),
+        )
+        document = document.replace(
+            "__REMOTE_LOGOUT_HIDDEN__", "" if self.access_policy.remote else " hidden",
         )
         headers = [
             ("Content-Type", "text/html; charset=utf-8"),
@@ -261,10 +280,17 @@ class ProductWebApp:
         return 302, [("Location", location), ("Content-Type", "text/plain; charset=utf-8")], b"Redirecting"
 
     def _login(
-        self, payload: dict[str, Any],
+        self, environ: dict[str, Any], payload: dict[str, Any],
     ) -> tuple[int, list[tuple[str, str]], bytes]:
         candidate = payload.get("access_token")
-        if not isinstance(candidate, str) or not self.access_policy.authenticate_token(candidate):
+        observed = candidate if isinstance(candidate, str) else ""
+        decision, retry_after = self.access_policy.authenticate_login(environ, observed)
+        if decision == "rate_limited":
+            raise WebRequestError(
+                429, "login_rate_limited", "Too many login attempts; try again later",
+                headers=(("Retry-After", str(retry_after)),),
+            )
+        if decision != "accepted":
             raise WebRequestError(401, "invalid_credentials", "Invalid credentials")
         headers = list(JSON_HEADERS)
         headers.append(("Set-Cookie", self.access_policy.session_cookie_header()))
@@ -556,13 +582,14 @@ _INDEX_HTML = """<!doctype html>
     <form id="match-form" hidden><div class="row"><label>主队<input name="home" maxlength="80" value="Brazil" required></label>
       <label>客队<input name="away" maxlength="80" value="Argentina" required></label></div>
       <label class="check"><input name="fast" type="checkbox" checked>快速模式</label><button type="submit">运行比赛</button></form>
+    <button id="logout-button" type="button"__REMOTE_LOGOUT_HIDDEN__>安全退出</button>
     <p id="message" class="status" role="status" aria-live="polite"></p><p id="report-link" hidden></p></section>
   <section class="wide" aria-labelledby="evidence-title"><h2 id="evidence-title">证据与运行详情</h2><pre id="details">正在读取……</pre></section>
 </main>
 <script nonce="__NONCE__">
 const csrf=document.querySelector('meta[name="gfs-csrf"]').content;
 const cards=document.querySelector('#cards'),setup=document.querySelector('#setup-form'),match=document.querySelector('#match-form');let activePoll='';
-const message=document.querySelector('#message'),details=document.querySelector('#details'),workflow=document.querySelector('#workflow'),report=document.querySelector('#report-link');
+const message=document.querySelector('#message'),details=document.querySelector('#details'),workflow=document.querySelector('#workflow'),report=document.querySelector('#report-link'),logoutButton=document.querySelector('#logout-button');
 const esc=v=>String(v??'—');
 function card(label,value){const el=document.createElement('div');el.className='card';const a=document.createElement('span');a.className='label';a.textContent=label;const b=document.createElement('strong');b.className='value';b.textContent=esc(value);el.append(a,b);return el}
 function showReport(url){if(!url)return;report.replaceChildren();const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.textContent='打开比赛仪表板';report.append(a);report.hidden=false}
@@ -573,6 +600,7 @@ async function pollTask(id){try{while(true){const data=await api('/api/v1/tasks/
 async function submit(form,path,payload,headers={}){const button=form.querySelector('button');button.disabled=true;message.className='status';message.textContent='正在提交……';report.hidden=true;try{const data=await api(path,{method:'POST',body:JSON.stringify(payload),headers});if(data.task){message.textContent=data.created?'任务已持久化排队。':'已返回同一幂等任务。';activePoll=data.task.task_id;await pollTask(data.task.task_id)}else{message.className='status ok';message.textContent='操作成功。';await refresh()}}catch(e){message.className='status error';message.textContent=e.message}finally{button.disabled=false}}
 setup.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(setup);submit(setup,'/api/v1/studio',{name:f.get('name'),mode:f.get('mode'),seed:Number(f.get('seed'))})});
 match.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(match),key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random();submit(match,'/api/v1/matches',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on'},{'Idempotency-Key':key})});
+logoutButton.addEventListener('click',async()=>{logoutButton.disabled=true;try{await api('/api/v1/logout',{method:'POST',body:'{}'});location.replace('/login')}catch(e){message.className='status error';message.textContent=e.message;logoutButton.disabled=false}});
 refresh();
 </script>
 </body></html>"""

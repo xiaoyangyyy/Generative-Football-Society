@@ -60,6 +60,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="main"' in document
     assert 'aria-live="polite"' in document
     assert "prefers-reduced-motion" in document
+    assert 'id="logout-button" type="button" hidden' in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
@@ -307,12 +308,56 @@ def test_remote_login_requires_allowed_host_https_and_secure_session(tmp_path):
     assert authenticated["status"].startswith("200")
     assert authenticated["json"]["access"]["mode"] == "remote_authenticated"
     assert access_token not in json.dumps(authenticated["json"])
+    remote_document = _request(
+        app, path="/", cookie=cookie,
+        host="studio.example", forwarded_proto="https",
+    )["body"].decode("utf-8")
+    assert 'id="logout-button" type="button">' in remote_document
+
+    malformed = _request(
+        app, "POST", "/api/v1/login", {"access_token": 42},
+        csrf=app.csrf_token, host="studio.example", forwarded_proto="https",
+    )
+    assert malformed["status"].startswith("401")
+    for _ in range(4):
+        attempt = _request(
+            app, "POST", "/api/v1/login", {"access_token": "wrong"},
+            csrf=app.csrf_token, host="studio.example", forwarded_proto="https",
+        )
+        assert attempt["status"].startswith("401")
+    limited = _request(
+        app, "POST", "/api/v1/login", {"access_token": access_token},
+        csrf=app.csrf_token, host="studio.example", forwarded_proto="https",
+    )
+    assert limited["status"].startswith("429")
+    assert int(limited["headers"]["Retry-After"]) >= 1
     operations = _request(
         app, path="/api/v1/operations", cookie=cookie,
         host="studio.example", forwarded_proto="https",
     )
-    assert operations["json"]["authentication"] == {"accepted": 1, "rejected": 1}
+    assert operations["json"]["authentication"] == {
+        "accepted": 1, "rejected": 6, "rate_limited": 1, "logged_out": 0,
+    }
     assert access_token not in app.telemetry.path.read_text(encoding="utf-8")
+
+    missing_csrf = _request(
+        app, "POST", "/api/v1/logout", {}, cookie=cookie,
+        host="studio.example", forwarded_proto="https",
+    )
+    assert missing_csrf["status"].startswith("403")
+    logout = _request(
+        app, "POST", "/api/v1/logout", {}, csrf=app.csrf_token, cookie=cookie,
+        host="studio.example", forwarded_proto="https",
+    )
+    assert logout["status"].startswith("200")
+    assert logout["json"]["revoked"] is True
+    assert "Max-Age=0" in logout["headers"]["Set-Cookie"]
+    expired = _request(
+        app, path="/api/v1/studio", cookie=cookie,
+        host="studio.example", forwarded_proto="https",
+    )
+    assert expired["status"].startswith("401")
+    assert app.telemetry.snapshot()["authentication"]["logged_out"] == 1
 
 
 def test_web_cli_parses_explicit_remote_security_boundary():
