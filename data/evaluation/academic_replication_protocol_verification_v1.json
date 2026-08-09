@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_result_contingent_academic_replication_preregistration",
+  "generated_at": "2026-08-09T19:29:04.392605+00:00",
+  "status": "registered_waiting_for_confirmatory_decision",
+  "passed": true,
+  "ready_to_start": false,
+  "confirmatory_decision_available": false,
+  "runs_executed": 0,
+  "checks": {
+    "schema_state_and_prerequisite_are_frozen": true,
+    "result_contingent_branches_are_exact": true,
+    "arms_are_existing_baseline_prediction_ablation_and_candidate": true,
+    "fixed_disjoint_72_run_design": true,
+    "execution_is_explicit_and_offline": true,
+    "analysis_thresholds_and_multiplicity_are_frozen": true,
+    "licensed_idsse_targets_match_manifest_exactly": true,
+    "identity_negative_results_and_deviations_are_fail_closed": true,
+    "outputs_are_confined_and_execution_remains_zero": true
+  },
+  "artifact_sha256": {
+    "data/evaluation/academic_replication_protocol_v1.json": "6787a66bb3dad072413ba9f5174e309cdf88da668f8695edd7a3c54383cf6621",
+    "docs/ACADEMIC_REPLICATION_STUDY.md": "a46a2a02cdc0ad7edfee841d5807c44f74a8eccace8cae10baa46675e6b13dcb",
+    "scripts/academic_replication_study.py": "2eae6de9f537f92c25044e11ae481f945daa9cd305f32599c76129ae8894eea3",
+    "data/external/sportec/derived/manifest.json": "3f5fa17f1b863949f934bf49f4d761b579008f61515eef96ae412d9d817bb24e"
+  },
+  "matches_executed": 0,
+  "training_executed": false,
+  "provider_calls_made": false
+}

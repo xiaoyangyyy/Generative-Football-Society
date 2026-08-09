@@ -157,6 +157,28 @@ class ProductControlPlane:
                 return False
         return True
 
+    def _execution_identity_current(
+        self,
+        identity: dict[str, Any],
+        *,
+        protocol: str,
+        checkpoint: str,
+        prerequisite_decision: str | None = None,
+    ) -> bool:
+        if not isinstance(identity, dict):
+            return False
+        expected = {
+            protocol: identity.get("protocol_sha256"),
+            checkpoint: identity.get("checkpoint_sha256"),
+            **(identity.get("code_sha256") or {}),
+            **(identity.get("data_sha256") or {}),
+        }
+        if prerequisite_decision is not None:
+            expected[prerequisite_decision] = identity.get(
+                "confirmatory_decision_sha256"
+            )
+        return self._artifact_hashes_current(expected)
+
     def release_readiness(self) -> dict[str, Any]:
         paper = self._report("data/evaluation/paper_package_verification_v1.json")
         release = self._report(
@@ -178,6 +200,9 @@ class ProductControlPlane:
         independent_protocol = self._report(
             "data/evaluation/independent_reproduction_protocol_verification_v1.json"
         )
+        academic_protocol = self._report(
+            "data/evaluation/academic_replication_protocol_verification_v1.json"
+        )
         product_validation = self._report(
             "data/evaluation/product_validation_v1/decision.json"
         )
@@ -189,6 +214,12 @@ class ProductControlPlane:
         )
         user_value = self._report(
             "data/evaluation/product_value_validation_v1/decision.json"
+        )
+        confirmatory = self._report(
+            "data/evaluation/formal_confirmatory_v2/decision.json"
+        )
+        academic_replication = self._report(
+            "data/evaluation/academic_replication_v1/decision.json"
         )
         readiness = release.get("readiness") or {}
         checks = release.get("checks") or {}
@@ -223,6 +254,9 @@ class ProductControlPlane:
         )
         independent_protocol_current = self._artifact_hashes_current(
             independent_protocol.get("artifact_sha256") or {}
+        )
+        academic_protocol_current = self._artifact_hashes_current(
+            academic_protocol.get("artifact_sha256") or {}
         )
         product_validation_current = self._artifact_hashes_current(
             product_validation.get("artifact_sha256") or {}
@@ -381,9 +415,29 @@ class ProductControlPlane:
             ),
             (
                 "confirmatory_results",
-                "Complete confirmatory experiment result",
-                readiness.get("confirmatory_results_available") is True,
-                "data/evaluation/formal_confirmatory_v2/decision.json",
+                "Confirmatory result plus mechanism and external replication",
+                academic_protocol.get("passed") is True
+                and academic_protocol_current
+                and confirmatory.get("decision") in {
+                    "promotion_candidate_pending_release_review",
+                    "no_meaningful_difference_keep_research_only",
+                    "inconclusive_keep_research_only",
+                }
+                and confirmatory.get("pairs_total") == 30
+                and self._execution_identity_current(
+                    confirmatory.get("execution_identity") or {},
+                    protocol="data/evaluation/formal_experiment_protocol_v2.json",
+                    checkpoint="data/world_model/latent_wm_rollout_calibrated_candidate.pt",
+                )
+                and academic_replication.get("passed") is True
+                and academic_replication.get("runs_executed") == 72
+                and self._execution_identity_current(
+                    academic_replication.get("execution_identity") or {},
+                    protocol="data/evaluation/academic_replication_protocol_v1.json",
+                    checkpoint="data/world_model/latent_wm_rollout_calibrated_candidate.pt",
+                    prerequisite_decision="data/evaluation/formal_confirmatory_v2/decision.json",
+                ),
+                "data/evaluation/academic_replication_v1/decision.json",
             ),
             (
                 "independent_reproduction",

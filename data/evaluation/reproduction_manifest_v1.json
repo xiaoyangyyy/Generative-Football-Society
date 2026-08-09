@@ -46,6 +46,10 @@
     "independent_reproduction_protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
     "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
     "independent_reproduction_verifier": "scripts/verify_independent_reproduction.py",
+    "academic_replication_protocol": "data/evaluation/academic_replication_protocol_v1.json",
+    "academic_replication_protocol_verification": "data/evaluation/academic_replication_protocol_verification_v1.json",
+    "academic_replication_guide": "docs/ACADEMIC_REPLICATION_STUDY.md",
+    "academic_replication_runner": "scripts/academic_replication_study.py",
     "sbom_builder": "scripts/build_supply_chain_sbom.py",
     "data_license_registry": "data/evaluation/data_license_registry_v1.json",
     "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
@@ -187,6 +191,27 @@
       "explicit_authority_required": true
     },
     {
+      "id": "academic_replication_protocol_audit",
+      "command": "python scripts/academic_replication_study.py --protocol-audit",
+      "effect": "read_only_result_contingent_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "academic_replication_execution",
+      "command": "python scripts/academic_replication_study.py --execute --authorization I_AUTHORIZE_GFS_ACADEMIC_REPLICATION_V1",
+      "effect": "fixed_72_run_disjoint_fixture_mechanism_replication",
+      "runs_simulation": true,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "academic_replication_analysis",
+      "command": "python scripts/academic_replication_study.py --analyze",
+      "effect": "analyze_completed_identity_matched_replication_only",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
       "id": "experiment_status",
       "command": "python scripts/run_formal_experiment.py",
       "effect": "read_only",
@@ -243,6 +268,15 @@
     "protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
     "reviewer_independent_of_implementation": null,
     "report": null
+  },
+  "academic_replication": {
+    "status": "registered_waiting_for_confirmatory_decision",
+    "protocol": "data/evaluation/academic_replication_protocol_v1.json",
+    "protocol_verification": "data/evaluation/academic_replication_protocol_verification_v1.json",
+    "confirmatory_decision_available": false,
+    "branch": null,
+    "runs_executed": 0,
+    "decision": null
   },
   "product_validation": {
     "status": "preregistered_not_executed",

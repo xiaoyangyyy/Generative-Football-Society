@@ -193,13 +193,14 @@ def verify_paper_package() -> dict:
         len(commands) == len(set(command_ids))
         and all(row.get("effect") and row.get("command") for row in commands)
     )
-    checks["simulation_requires_one_explicit_execute_command"] = (
-        len(simulation_commands) == 2
+    checks["simulation_commands_are_exact_and_explicit"] = (
+        len(simulation_commands) == 3
         and {
             row.get("command") for row in simulation_commands
         } == {
             "python scripts/run_formal_experiment.py --execute",
             "python scripts/run_production_validation.py --execute --workspace . --authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION --deployment-instance-id instance-replace",
+            "python scripts/academic_replication_study.py --execute --authorization I_AUTHORIZE_GFS_ACADEMIC_REPLICATION_V1",
         }
         and all(
             row.get("explicit_authority_required") is True

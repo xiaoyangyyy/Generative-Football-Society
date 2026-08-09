@@ -23,6 +23,9 @@ from scripts.product_validation_study import (  # noqa: E402
 from scripts.product_value_study import (  # noqa: E402
     protocol_report as product_value_protocol_report,
 )
+from scripts.academic_replication_study import (  # noqa: E402
+    protocol_report as academic_replication_protocol_report,
+)
 from scripts.run_production_validation import (  # noqa: E402
     protocol_report as production_validation_protocol_report,
 )
@@ -65,6 +68,9 @@ PRODUCTION_PROTOCOL_REPORT = (
 )
 PRODUCT_VALUE_PROTOCOL_REPORT = (
     ROOT / "data/evaluation/product_value_validation_protocol_verification_v1.json"
+)
+ACADEMIC_REPLICATION_PROTOCOL_REPORT = (
+    ROOT / "data/evaluation/academic_replication_protocol_verification_v1.json"
 )
 INDEPENDENT_PROTOCOL_REPORT = (
     ROOT / "data/evaluation/independent_reproduction_protocol_verification_v1.json"
@@ -241,6 +247,9 @@ def verify_reproduction_release() -> dict:
     stored_product_protocol = _read_json(PRODUCT_PROTOCOL_REPORT)
     stored_production_protocol = _read_json(PRODUCTION_PROTOCOL_REPORT)
     stored_product_value_protocol = _read_json(PRODUCT_VALUE_PROTOCOL_REPORT)
+    stored_academic_replication_protocol = _read_json(
+        ACADEMIC_REPLICATION_PROTOCOL_REPORT
+    )
     stored_independent_protocol = _read_json(INDEPENDENT_PROTOCOL_REPORT)
     pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
     requirements = _parse_exact_requirements(REQUIREMENTS.read_text(encoding="utf-8"))
@@ -272,6 +281,7 @@ def verify_reproduction_release() -> dict:
     product_protocol = product_validation_protocol_report()
     production_protocol = production_validation_protocol_report()
     product_value_protocol = product_value_protocol_report()
+    academic_replication_protocol = academic_replication_protocol_report()
     independent_protocol = independent_reproduction_protocol_report()
 
     checks: dict[str, bool] = {
@@ -397,6 +407,13 @@ def verify_reproduction_release() -> dict:
             == product_value_protocol.get("checks")
             and stored_product_value_protocol.get("artifact_sha256")
             == product_value_protocol.get("artifact_sha256")
+            and academic_replication_protocol.get("passed") is True
+            and academic_replication_protocol.get("ready_to_start") is False
+            and academic_replication_protocol.get("runs_executed") == 0
+            and stored_academic_replication_protocol.get("checks")
+            == academic_replication_protocol.get("checks")
+            and stored_academic_replication_protocol.get("artifact_sha256")
+            == academic_replication_protocol.get("artifact_sha256")
             and independent_protocol.get("passed") is True
             and independent_protocol.get("ready_to_start") is False
             and independent_protocol.get("runs_executed") == 0
@@ -463,6 +480,10 @@ def verify_reproduction_release() -> dict:
                 "product_value_validation_protocol_verification": "data/evaluation/product_value_validation_protocol_verification_v1.json",
                 "product_value_validation_guide": "docs/PRODUCT_VALUE_STUDY.md",
                 "product_value_validation_analyzer": "scripts/product_value_study.py",
+                "academic_replication_protocol": "data/evaluation/academic_replication_protocol_v1.json",
+                "academic_replication_protocol_verification": "data/evaluation/academic_replication_protocol_verification_v1.json",
+                "academic_replication_guide": "docs/ACADEMIC_REPLICATION_STUDY.md",
+                "academic_replication_runner": "scripts/academic_replication_study.py",
                 "independent_reproduction_protocol": "data/evaluation/independent_reproduction_protocol_v1.json",
                 "independent_reproduction_protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
                 "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
@@ -524,6 +545,9 @@ def verify_reproduction_release() -> dict:
         "data/evaluation/product_value_validation_protocol_v1.json",
         "docs/PRODUCT_VALUE_STUDY.md",
         "scripts/product_value_study.py",
+        "data/evaluation/academic_replication_protocol_v1.json",
+        "docs/ACADEMIC_REPLICATION_STUDY.md",
+        "scripts/academic_replication_study.py",
         "data/evaluation/independent_reproduction_protocol_v1.json",
         "docs/INDEPENDENT_REPRODUCTION.md",
         "scripts/verify_independent_reproduction.py",
@@ -552,6 +576,9 @@ def verify_reproduction_release() -> dict:
         ),
         "product_value_validation_protocol_ready": (
             product_value_protocol.get("passed") is True
+        ),
+        "academic_replication_protocol_ready": (
+            academic_replication_protocol.get("passed") is True
         ),
         "independent_reproduction_protocol_ready": (
             independent_protocol.get("passed") is True

@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-result-contingent-mechanism-replication-v1",
+  "state": "preregistered_waiting_for_confirmatory_decision",
+  "objective": "Replicate the confirmatory conclusion on disjoint fixtures and independent seeds, isolate the contribution of M1 planning from prediction-only execution, and test external scale against the licensed IDSSE sample without selecting a branch after seeing replication results.",
+  "prerequisite": {
+    "confirmatory_protocol": "data/evaluation/formal_experiment_protocol_v2.json",
+    "confirmatory_decision": "data/evaluation/formal_confirmatory_v2/decision.json",
+    "accepted_decisions": [
+      "promotion_candidate_pending_release_review",
+      "no_meaningful_difference_keep_research_only",
+      "inconclusive_keep_research_only"
+    ],
+    "branch_is_selected_only_from_confirmatory_decision": true
+  },
+  "branches": {
+    "promotion_candidate_pending_release_review": {
+      "branch_id": "mechanism_confirmation",
+      "required_conclusion": "replicated_improvement_and_planning_contribution"
+    },
+    "no_meaningful_difference_keep_research_only": {
+      "branch_id": "adoption_path_diagnosis",
+      "required_conclusion": "replicated_equivalence_and_planning_nonadoption"
+    },
+    "inconclusive_keep_research_only": {
+      "branch_id": "variance_diagnosis",
+      "required_conclusion": "bounded_inconclusive_replication"
+    }
+  },
+  "arms": [
+    {
+      "arm_id": "M0",
+      "role": "physics_competitive_baseline",
+      "world_model": false,
+      "planning": false
+    },
+    {
+      "arm_id": "M1_predict_only",
+      "role": "mechanism_ablation_same_checkpoint_without_planning",
+      "world_model": true,
+      "planning": false
+    },
+    {
+      "arm_id": "M1",
+      "role": "full_candidate",
+      "world_model": true,
+      "planning": true
+    }
+  ],
+  "design": {
+    "experimental_unit": "matched_fixture_seed_triplet",
+    "fixtures": [
+      ["Austria", "Switzerland"],
+      ["Canada", "United States"],
+      ["Algeria", "Ghana"],
+      ["Australia", "Japan"],
+      ["Norway", "Sweden"],
+      ["Ecuador", "Colombia"]
+    ],
+    "fixtures_disjoint_from_confirmatory_teams": true,
+    "sample_indices": [0, 1, 2, 3],
+    "seed_start": 361000,
+    "match_seconds": 5400.0,
+    "units_per_arm": 24,
+    "runs_total": 72,
+    "arm_order": ["M0", "M1_predict_only", "M1"],
+    "provider_calls_authorized": false,
+    "training_authorized": false,
+    "explicit_execution_token": "I_AUTHORIZE_GFS_ACADEMIC_REPLICATION_V1"
+  },
+  "analysis": {
+    "method": "fixture_stratified_paired_bootstrap",
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 361000,
+    "confidence_level": 0.95,
+    "confirmatory_meaningful_delta_loss": 0.1,
+    "planning_contribution_delta_loss": 0.05,
+    "planning_nonadoption_equivalence_margin": 0.02,
+    "inconclusive_maximum_interval_width": 0.2,
+    "behavior_change_tolerance": 1e-7,
+    "minimum_changed_pair_fraction": 0.1,
+    "secondary_metrics_role": "descriptive_only",
+    "multiplicity": "Branch and two ordered comparisons are frozen before replication; no branch or metric may be selected from replication outcomes."
+  },
+  "external_validity": {
+    "source": "sportec_idsse",
+    "manifest": "data/external/sportec/derived/manifest.json",
+    "license": "CC-BY-4.0",
+    "matches": 7,
+    "normalization": "source_match_totals_divided_by_two_teams",
+    "passes_per_team_match_observed_range": [364.0, 492.0],
+    "shots_per_team_match_observed_range": [10.5, 13.5],
+    "both_full_candidate_means_must_be_inside_observed_ranges": true,
+    "no_provider_pooling": true
+  },
+  "integrity": {
+    "interim_analysis": false,
+    "optional_stopping": false,
+    "post_hoc_branch_selection": false,
+    "post_hoc_fixture_or_metric_selection": false,
+    "resume_requires_identical_protocol_decision_checkpoint_and_code_identity": true,
+    "failed_and_negative_results_are_preserved": true,
+    "material_deviations_force_inconclusive": true,
+    "code_identity_files": [
+      "src/match_engine/calibration/ablation.py",
+      "src/match_engine/calibration/benchmark_core.py",
+      "src/match_engine/calibration/contract.py",
+      "src/match_engine/calibration/objective.py",
+      "scripts/run_formal_experiment.py",
+      "scripts/academic_replication_study.py"
+    ],
+    "data_identity_files": [
+      "data/rosters/Austria.json",
+      "data/rosters/Switzerland.json",
+      "data/rosters/Canada.json",
+      "data/rosters/United_States.json",
+      "data/rosters/Algeria.json",
+      "data/rosters/Ghana.json",
+      "data/rosters/Australia.json",
+      "data/rosters/Japan.json",
+      "data/rosters/Norway.json",
+      "data/rosters/Sweden.json",
+      "data/rosters/Ecuador.json",
+      "data/rosters/Colombia.json",
+      "data/coaches/wc2026_coaches.json",
+      "data/tactics_master.json",
+      "data/calibration/observable_contract.json",
+      "data/calibration/statsbomb_match_baselines.json",
+      "data/calibration/joint_baselines.json",
+      "data/calibration/param_registry.json",
+      "data/external/sportec/derived/manifest.json"
+    ]
+  },
+  "outputs": {
+    "progress": "data/evaluation/academic_replication_v1/progress.json",
+    "decision": "data/evaluation/academic_replication_v1/decision.json"
+  },
+  "current_execution": {
+    "confirmatory_decision_available": false,
+    "branch_selected": null,
+    "runs_executed": 0,
+    "training_executed": false,
+    "provider_calls_made": false,
+    "results_available": false
+  }
+}

@@ -254,6 +254,19 @@ claiming benefit. If inconclusive, diagnose variance before registering any
 new sample. Add an external provider/dataset replication and competitive
 baselines.
 
+The Stage 4 code contract is now frozen in
+`data/evaluation/academic_replication_protocol_v1.json`. The confirmatory
+decision deterministically selects one of three branches before any replication
+result exists. Every branch uses the same 72-run, three-arm design on six
+fixtures whose twelve teams do not occur in the confirmatory fixtures. The
+mechanism ablation loads the same sealed M1 checkpoint while disabling planning,
+which separates prediction from downstream adoption without training another
+model. Literal pass and shot ranges are derived from the seven-match licensed
+IDSSE manifest and can fail independently of the internal calibration gates.
+The protocol audit passes, but Stage 4 remains pending with zero runs because
+the confirmatory decision does not yet exist. No academic score is awarded for
+the protocol alone.
+
 ## Stage 5 — paper and release candidate
 
 Freeze a containerized, one-command reproduction package with manifests,
