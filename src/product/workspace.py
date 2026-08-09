@@ -238,6 +238,18 @@ class ProductWorkspace:
                 == shot_decision.get("promotion_artifact_sha256")
             )
         )
+        from src.simulation.llm_gateway import (
+            LLMGatewayConfig, llm_credentials_available,
+        )
+
+        llm_values = environment_snapshot()
+        llm_config_error = None
+        try:
+            llm_config = LLMGatewayConfig.from_env()
+            llm_provider = llm_config.public_summary()
+        except (TypeError, ValueError) as exc:
+            llm_config_error = str(exc)
+            llm_provider = None
         checks = {
             "stable_release_available": bool(evidence.get("stable_release")),
             "stable_release_identity_verified": release_identity_verified,
@@ -253,10 +265,8 @@ class ProductWorkspace:
                 and actual_checkpoint_sha256 == expected_checkpoint_sha256
             ),
             "shot_head_identity_verified": shot_identity_verified,
-            "llm_credentials_available": bool(
-                environment_snapshot().get("API_KEY")
-                or environment_snapshot().get("OPENAI_API_KEY")
-            ),
+            "llm_credentials_available": llm_credentials_available(llm_values),
+            "llm_config_valid": llm_config_error is None,
         }
         if self.config.mode == "stable":
             ready = all(checks[name] for name in (
@@ -291,17 +301,21 @@ class ProductWorkspace:
                 "research_checkpoint_identity_verified",
                 "shot_head_identity_verified",
                 "llm_credentials_available",
+                "llm_config_valid",
             ))
             blockers = [name for name in (
                 "research_checkpoint_available", "research_checkpoint_accepted",
                 "research_checkpoint_identity_verified",
                 "shot_head_identity_verified",
                 "llm_credentials_available",
+                "llm_config_valid",
             ) if not checks[name]]
         return {
             "mode": self.config.mode, "ready": ready,
             "checks": checks, "blockers": blockers,
             "release_artifact_verification": release_artifact_verification,
+            "llm_provider": llm_provider,
+            "llm_config_error": llm_config_error,
         }
 
     def status(self) -> dict[str, Any]:

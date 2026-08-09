@@ -8,16 +8,58 @@ import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 from src.simulation.runtime import environment_snapshot, env_int
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_MODEL = "gpt-4-turbo-preview"
+RETIRED_DEEPSEEK_MODELS = {"deepseek-chat", "deepseek-reasoner"}
+PLACEHOLDER_KEYS = {
+    "", "your_default_key", "your_api_key", "your_api_key_here",
+    "replace_with_rotated_key",
+}
+
+
+def resolve_llm_credential(values: dict[str, str]) -> tuple[str, str]:
+    """Resolve a provider credential without persisting or exposing its value."""
+    for name in ("DEEPSEEK_API_KEY", "API_KEY", "OPENAI_API_KEY"):
+        value = str(values.get(name) or "").strip()
+        if value and value not in PLACEHOLDER_KEYS:
+            return value, name
+    return "", ""
+
+
+def llm_credentials_available(values: dict[str, str]) -> bool:
+    return bool(resolve_llm_credential(values)[0])
+
+
+def provider_preflight() -> dict[str, Any]:
+    """Validate provider configuration without constructing a client or calling it."""
+    try:
+        config = LLMGatewayConfig.from_env()
+    except (TypeError, ValueError) as exc:
+        return {
+            "ready": False,
+            "external_calls_made": False,
+            "provider": None,
+            "error": str(exc),
+        }
+    summary = config.public_summary()
+    return {
+        "ready": bool(summary["credentials_available"]),
+        "external_calls_made": False,
+        "provider": summary,
+        "error": None if summary["credentials_available"] else (
+            "missing valid DEEPSEEK_API_KEY/API_KEY/OPENAI_API_KEY"
+        ),
+    }
 
 
 @dataclass(frozen=True)
 class LLMGatewayConfig:
     api_key: str = field(default="", repr=False)
+    api_key_source: str = ""
     base_url: str = DEFAULT_BASE_URL
     model: str = DEFAULT_MODEL
     timeout_s: int = 90
@@ -32,12 +74,35 @@ class LLMGatewayConfig:
             raise ValueError("LLM timeout must be at least one second")
         if self.max_retries < 1:
             raise ValueError("LLM max retries must be at least one")
+        host = (urlparse(self.base_url).hostname or "").lower()
+        if host == "api.deepseek.com" and self.model in RETIRED_DEEPSEEK_MODELS:
+            raise ValueError(
+                "retired DeepSeek model name; use deepseek-v4-flash or deepseek-v4-pro"
+            )
+
+    @property
+    def provider(self) -> str:
+        host = (urlparse(self.base_url).hostname or "").lower()
+        return "deepseek" if host == "api.deepseek.com" else "openai_compatible"
+
+    def public_summary(self) -> dict[str, Any]:
+        return {
+            "provider": self.provider,
+            "base_url": self.base_url,
+            "model": self.model,
+            "credential_source": self.api_key_source or None,
+            "credentials_available": bool(self.api_key),
+            "timeout_s": self.timeout_s,
+            "max_retries": self.max_retries,
+        }
 
     @classmethod
     def from_env(cls) -> "LLMGatewayConfig":
         values = environment_snapshot()
+        api_key, api_key_source = resolve_llm_credential(values)
         return cls(
-            api_key=values.get("API_KEY") or values.get("OPENAI_API_KEY", ""),
+            api_key=api_key,
+            api_key_source=api_key_source,
             base_url=values.get("BASE_URL", DEFAULT_BASE_URL),
             model=values.get("MODEL_NAME", DEFAULT_MODEL),
             timeout_s=env_int(values, "LLM_TIMEOUT_S", 90),
@@ -50,9 +115,9 @@ class LLMGateway:
 
     def __init__(self, config: LLMGatewayConfig | None = None):
         self.config = config or LLMGatewayConfig.from_env()
-        if self.config.api_key.strip() in {"", "your_default_key", "your_api_key_here"}:
+        if self.config.api_key.strip() in PLACEHOLDER_KEYS:
             raise ValueError(
-                "Missing valid API_KEY/OPENAI_API_KEY. "
+                "Missing valid DEEPSEEK_API_KEY/API_KEY/OPENAI_API_KEY. "
                 "LLM simulation runs in strict mode and will not fallback."
             )
         try:

@@ -26,7 +26,7 @@ Phase 3 adds **continuous ball trajectory** (drag, Magnus curve, knuckle flutter
 ## Quick demo
 
 ```bash
-cd c:\Users\K\Desktop\Xiao_project\sim
+cd D:\path\to\GFS-sparse
 python run_match_micro.py
 ```
 

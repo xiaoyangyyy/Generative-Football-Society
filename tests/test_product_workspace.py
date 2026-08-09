@@ -184,6 +184,36 @@ def test_cognitive_readiness_accepts_standard_openai_key_name(tmp_path, monkeypa
     assert workspace.readiness()["ready"]
 
 
+def test_cognitive_readiness_accepts_deepseek_key_and_reports_safe_provider(
+    tmp_path, monkeypatch,
+):
+    _evidence(tmp_path)
+    monkeypatch.delenv("API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-deepseek-key")
+    monkeypatch.setenv("BASE_URL", "https://api.deepseek.com")
+    monkeypatch.setenv("MODEL_NAME", "deepseek-v4-flash")
+    workspace = ProductWorkspace.create(tmp_path, StudioConfig(mode="cognitive"))
+    readiness = workspace.readiness()
+    assert readiness["ready"]
+    assert readiness["llm_provider"]["provider"] == "deepseek"
+    assert readiness["llm_provider"]["credential_source"] == "DEEPSEEK_API_KEY"
+    assert "test-deepseek-key" not in json.dumps(readiness)
+
+
+def test_cognitive_readiness_rejects_retired_deepseek_model(tmp_path, monkeypatch):
+    _evidence(tmp_path)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-deepseek-key")
+    monkeypatch.setenv("BASE_URL", "https://api.deepseek.com")
+    monkeypatch.setenv("MODEL_NAME", "deepseek-chat")
+    readiness = ProductWorkspace.create(
+        tmp_path, StudioConfig(mode="cognitive"),
+    ).readiness()
+    assert not readiness["ready"]
+    assert "llm_config_valid" in readiness["blockers"]
+    assert "retired DeepSeek" in readiness["llm_config_error"]
+
+
 def test_studio_match_writes_one_composed_product_report(tmp_path, monkeypatch):
     _evidence(tmp_path)
     workspace = ProductWorkspace.create(

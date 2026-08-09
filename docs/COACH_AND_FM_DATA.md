@@ -15,7 +15,7 @@ AI / 本仓库**均不包含** Football Manager 官方 CA/PA/隐藏属性库，�
 ## 一键拉取基线数据（教练 + TM 元数据）
 
 ```powershell
-cd c:\Users\K\Desktop\Xiao_project\sim
+cd D:\path\to\GFS-sparse
 python scripts\fetch_football_baseline.py
 ```
 
@@ -66,7 +66,7 @@ $env:MATCH_BALL_LOG_MAX="800"    # 单场最多记录条数（传球+射门）
 一键重启全量（会先尝试结束旧的 `run_world_cup_2026_full.py`）：
 
 ```powershell
-cd c:\Users\K\Desktop\Xiao_project\sim
+cd D:\path\to\GFS-sparse
 .\scripts\restart_full_run.ps1
 ```
 
@@ -91,7 +91,7 @@ python scripts\build_rosters_from_transfermarkt.py
 3. 运行：
 
 ```powershell
-python scripts\import_fm_export.py "C:\Users\K\Documents\Sports Interactive\player_export.csv" --nation Brazil
+python scripts\import_fm_export.py "D:\path\to\player_export.csv" --nation Brazil
 ```
 
 按**姓名匹配**覆盖 TM roster 中的 `abilities`（`source: transfermarkt+fm`）。无 TM 文件时加 `--fm-only` 可从 FM 单独建队。

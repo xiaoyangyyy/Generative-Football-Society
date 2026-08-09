@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "objective": "Reach evidence-backed 100/100 maturity on both product and academic tracks without adding unsupported modules.",
+  "scoring_rule": "A track reaches 100 only when every critical gate has direct evidence; plans and file presence alone do not count.",
+  "baseline_commit": "6252e8b0158e0b1c8db8d355e4613b88fdf32726",
+  "current_phase": "S0",
+  "security": {
+    "exposed_key_status": "revocation_required_by_user",
+    "repository_storage_authorized": false,
+    "provider_calls_authorized": false,
+    "replacement_key_location": "local_environment_only"
+  },
+  "baseline_assessment": {
+    "product": {
+      "score": 58,
+      "level": "engineering_alpha",
+      "strengths": ["architecture", "transactional_workflow", "integrity_chain"],
+      "missing": ["web_beta", "deployment_operations", "usability_study", "value_validation"]
+    },
+    "academic": {
+      "score": 62,
+      "level": "research_prototype",
+      "strengths": ["frozen_question", "paired_protocol", "reproducibility_controls"],
+      "missing": ["confirmatory_results", "mechanism_replication", "manuscript", "independent_reproduction"]
+    }
+  },
+  "tracks": {
+    "product": [
+      {"id": "P1", "name": "architecture_and_workflow", "weight": 20, "current_points": 20, "critical": true, "status": "verified", "evidence": ["data/evaluation/architecture_v2_audit.json", "data/evaluation/workflow_and_experiment_completion_v1.json"]},
+      {"id": "P2", "name": "security_and_trust", "weight": 15, "current_points": 12, "critical": true, "status": "partial", "evidence": ["src/infrastructure/integrity.py", "src/simulation/llm_gateway.py"]},
+      {"id": "P3", "name": "functional_completeness", "weight": 15, "current_points": 10, "critical": true, "status": "partial", "evidence": ["src/product/workspace.py", "src/product/control_plane.py"]},
+      {"id": "P4", "name": "reliability_and_recovery", "weight": 15, "current_points": 8, "critical": true, "status": "partial", "evidence": ["src/infrastructure/locking.py", "src/training/job.py"]},
+      {"id": "P5", "name": "usability_and_accessibility", "weight": 15, "current_points": 4, "critical": true, "status": "missing", "evidence": []},
+      {"id": "P6", "name": "deployment_and_operations", "weight": 10, "current_points": 2, "critical": true, "status": "missing", "evidence": []},
+      {"id": "P7", "name": "user_value_validation", "weight": 10, "current_points": 2, "critical": true, "status": "missing", "evidence": []}
+    ],
+    "academic": [
+      {"id": "A1", "name": "question_and_protocol", "weight": 15, "current_points": 15, "critical": true, "status": "verified", "evidence": ["data/evaluation/formal_experiment_protocol_v2.json"]},
+      {"id": "A2", "name": "method_implementation", "weight": 15, "current_points": 13, "critical": true, "status": "partial", "evidence": ["docs/ARCHITECTURE_V2.md", "src/match_engine/world_model/inference.py"]},
+      {"id": "A3", "name": "confirmatory_statistics_and_results", "weight": 20, "current_points": 12, "critical": true, "status": "partial", "evidence": ["scripts/run_formal_experiment.py"]},
+      {"id": "A4", "name": "external_validity", "weight": 15, "current_points": 10, "critical": true, "status": "partial", "evidence": ["data/evaluation/research_evidence_v1.json"]},
+      {"id": "A5", "name": "reproducibility", "weight": 15, "current_points": 10, "critical": true, "status": "partial", "evidence": ["data/evaluation/architecture_v2_audit.json", "data/training/entrypoints.json"]},
+      {"id": "A6", "name": "mechanism_and_replication", "weight": 10, "current_points": 2, "critical": true, "status": "missing", "evidence": []},
+      {"id": "A7", "name": "manuscript_and_independent_review", "weight": 10, "current_points": 0, "critical": true, "status": "missing", "evidence": []}
+    ]
+  },
+  "phases": [
+    {"id": "S0", "name": "secure_and_freeze", "status": "in_progress", "depends_on": [], "exit_evidence": ["rotated_provider_credential", "remote_backup_and_tag", "zero_call_provider_preflight"]},
+    {"id": "S1", "name": "product_beta", "status": "pending", "depends_on": ["S0"], "exit_evidence": ["web_workflow", "deployment_verification", "100_match_soak", "accessibility_audit"]},
+    {"id": "S2", "name": "confirmatory_experiment", "status": "pending", "depends_on": ["S0"], "exit_evidence": ["formal_confirmatory_v2_decision"]},
+    {"id": "S3", "name": "product_validation", "status": "pending", "depends_on": ["S1"], "exit_evidence": ["usability_study", "recovery_drill", "security_review"]},
+    {"id": "S4", "name": "academic_replication", "status": "pending", "depends_on": ["S2"], "exit_evidence": ["mechanism_branch_protocol", "external_replication", "competitive_baselines"]},
+    {"id": "S5", "name": "paper_and_release_candidate", "status": "pending", "depends_on": ["S3", "S4"], "exit_evidence": ["manuscript", "reproduction_bundle", "independent_reproduction", "signed_release_review"]}
+  ]
+}

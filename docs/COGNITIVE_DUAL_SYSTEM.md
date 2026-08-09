@@ -14,9 +14,9 @@
 在项目根目录创建 `.env`（已在 `.gitignore`，勿提交）：
 
 ```env
-API_KEY=sk-xxx
-BASE_URL=https://ai.azya.top/v1
-MODEL_NAME=qwen3.5
+DEEPSEEK_API_KEY=replace_with_rotated_key
+BASE_URL=https://api.deepseek.com
+MODEL_NAME=deepseek-v4-flash
 ```
 
 `src/config.py` 通过 `python-dotenv` 加载；`SimulationLLM` 使用 `openai` SDK 的 `base_url` + `model`。
@@ -69,7 +69,7 @@ src/match_engine/cognitive/
 ## 单场脚本
 
 ```powershell
-cd c:\Users\K\Desktop\Xiao_project\sim
+cd D:\path\to\GFS-sparse
 $env:PYTHONPATH="."
 $env:MATCH_MICRO="1"
 $env:MATCH_COGNITIVE="1"

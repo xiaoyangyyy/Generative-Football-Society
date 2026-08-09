@@ -136,16 +136,24 @@ rankings = run_monte_carlo(1000, seed=42)
 
 ## LLM Configuration
 
-LLM features require a valid OpenAI-compatible endpoint.
+LLM features require a valid OpenAI-compatible endpoint. For current DeepSeek
+V4, use a newly rotated key only; never put a real credential in this file:
 
 ```env
-API_KEY=your_api_key
-BASE_URL=https://api.openai.com/v1
-MODEL_NAME=gpt-4-turbo-preview
+DEEPSEEK_API_KEY=replace_with_rotated_key
+BASE_URL=https://api.deepseek.com
+MODEL_NAME=deepseek-v4-flash
 GFS_SEED=42
 ```
 
-Without a real key, non-LLM commands and most deterministic smoke tests can still run.
+The gateway also accepts `API_KEY` or `OPENAI_API_KEY` for other compatible
+providers. Studio preflight never sends a provider request and reports only
+the credential variable name, never its value. Without a real key, non-LLM
+commands and deterministic tests still run.
+
+Product and academic maturity are governed by the evidence-gated roadmap in
+`docs/EXCELLENCE_ROADMAP.md`. Architecture quality alone does not count as a
+finished product or completed paper.
 
 ### LLM Architecture
 

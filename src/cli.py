@@ -175,6 +175,17 @@ def cmd_studio_pilot(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_studio_provider(args: argparse.Namespace) -> int:
+    """Validate local provider configuration without making a network call."""
+    import json
+    from src.simulation.llm_gateway import provider_preflight
+
+    result = provider_preflight()
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    print("Preflight only: no client was created and no external call was made.")
+    return 0 if result["ready"] else 2
+
+
 def cmd_studio_jobs(args: argparse.Namespace) -> int:
     import json
     print(json.dumps(
@@ -266,6 +277,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Make real provider calls; without this flag the command is read-only",
     )
     p_studio_pilot.set_defaults(func=cmd_studio_pilot)
+    p_studio_provider = studio_sub.add_parser(
+        "provider", help="Validate LLM provider configuration without any API call",
+    )
+    p_studio_provider.set_defaults(func=cmd_studio_provider)
     p_studio_jobs = studio_sub.add_parser(
         "jobs", help="Show training jobs and model/LLM decision artifacts",
     )

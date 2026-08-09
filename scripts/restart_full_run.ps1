@@ -62,8 +62,11 @@ $env:MATCH_WM_SNAPSHOT_IN_BALL_LOG = "0"
 $env:MATCH_DEBUG_NARRATIVE = "1"
 $env:MATCH_MICRO_STRICT = "1"
 
-$py = "C:\Users\K\AppData\Local\Programs\Python\Python313\python.exe"
-if (-not (Test-Path $py)) { $py = "python" }
+$py = if (Test-Path -LiteralPath ".venv\Scripts\python.exe") {
+    ".venv\Scripts\python.exe"
+} else {
+    "python"
+}
 
 Write-Host ""
 Write-Host "Ensuring world model checkpoint (collect+train if missing)..."

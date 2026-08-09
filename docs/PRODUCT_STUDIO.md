@@ -24,8 +24,9 @@ Three explicit modes prevent research flags from leaking into stable use:
 | `cognitive` | yes | yes | yes, credentials required |
 
 The stable mode is the default. Research mode requires the accepted candidate
-checkpoint. Cognitive mode additionally refuses to run without `API_KEY` or
-`OPENAI_API_KEY`.
+checkpoint. Cognitive mode additionally refuses to run without a valid
+`DEEPSEEK_API_KEY`, `API_KEY`, or `OPENAI_API_KEY`, and rejects an invalid
+provider/model configuration before simulation.
 
 ## Quick start
 
@@ -60,6 +61,15 @@ Stable mode verifies the active release pointer plus every artifact in the
 frozen release manifest.
 
 ## Prospective cognitive pilot
+
+Validate provider configuration before creating a cognitive Studio:
+
+```bash
+python gfs.py studio provider
+```
+
+This command creates no provider client and makes no network request. It emits
+only a redacted provider summary.
 
 The live-provider experiment is part of Studio rather than a detached research
 script. First create a clean cognitive session and run the zero-cost preflight:

@@ -93,6 +93,31 @@ class ProductControlPlane:
                 result[name] = {"available": False, "path": relative}
         return result
 
+    def excellence(self) -> dict[str, Any]:
+        path = self.root / "data/evaluation/excellence_roadmap_v1.json"
+        if not path.is_file():
+            return {"available": False}
+        roadmap = json.loads(path.read_text(encoding="utf-8"))
+        tracks = {}
+        for name, gates in (roadmap.get("tracks") or {}).items():
+            tracks[name] = {
+                "score": sum(int(gate.get("current_points", 0)) for gate in gates),
+                "maximum": sum(int(gate.get("weight", 0)) for gate in gates),
+                "critical_gates_remaining": [
+                    gate["id"] for gate in gates
+                    if gate.get("critical") and gate.get("status") != "verified"
+                ],
+            }
+        return {
+            "available": True,
+            "path": path.relative_to(self.root).as_posix(),
+            "current_phase": roadmap.get("current_phase"),
+            "tracks": tracks,
+            "security_action": (
+                roadmap.get("security") or {}
+            ).get("exposed_key_status"),
+        }
+
     def snapshot(self) -> dict[str, Any]:
         jobs = self.training_jobs()
         return {
@@ -115,6 +140,7 @@ class ProductControlPlane:
                 "completed": sum(job.get("state") == "completed" for job in jobs),
             },
             "decisions": self.decisions(),
+            "excellence": self.excellence(),
         }
 
     def request_stop(self, run_id: str) -> Path:

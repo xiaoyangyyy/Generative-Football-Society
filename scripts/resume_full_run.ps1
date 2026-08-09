@@ -41,8 +41,11 @@ $env:MATCH_WM_SHOT_BLEND = "0.40"
 $env:MATCH_WM_RECORD = "0"
 $env:MATCH_WM_SNAPSHOT_IN_BALL_LOG = "0"
 
-$py = "C:\Users\K\AppData\Local\Programs\Python\Python313\python.exe"
-if (-not (Test-Path $py)) { $py = "python" }
+$py = if (Test-Path -LiteralPath ".venv\Scripts\python.exe") {
+    ".venv\Scripts\python.exe"
+} else {
+    "python"
+}
 
 Write-Host "Resuming with --resume (log appends to outputs\full_run_latest.log)..."
 & $py run_world_cup_2026_full.py --resume

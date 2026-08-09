@@ -63,6 +63,7 @@ class ProspectivePilot:
             "research_checkpoint_available",
             "research_checkpoint_accepted",
             "llm_credentials_available",
+            "llm_config_valid",
         ):
             if not readiness["checks"][required] and required not in blockers:
                 blockers.append(required)
@@ -75,6 +76,7 @@ class ProspectivePilot:
             "external_calls_made": False,
             "protocol": self.protocol.as_dict(seed=self.workspace.config.seed),
             "readiness": readiness,
+            "provider": readiness.get("llm_provider"),
             "matches_played": matches_played,
             "blockers": blockers,
         }
