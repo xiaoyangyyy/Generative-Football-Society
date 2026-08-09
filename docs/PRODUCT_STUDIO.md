@@ -75,6 +75,17 @@ python scripts/verify_product_web.py --out data/evaluation/web_beta_verification
 See `docs/WEB_BETA_ACCEPTANCE.md` for accepted scope and remaining Stage 1
 limits.
 
+The Web surface has a repeatable code-level accessibility gate:
+
+```bash
+python scripts/verify_web_accessibility.py --out data/evaluation/web_accessibility_verification_v1.json
+```
+
+It verifies both Studio and login semantics, focus and asynchronous status
+contracts, mobile/forced-color styles, declared contrast, and the real local
+HTTP surface without running a match. External assistive-technology and
+target-user validation remain separate release gates.
+
 Web match submissions are persistent background tasks, not long synchronous
 HTTP requests. Each browser submission carries an idempotency key and receives
 a task ID immediately. The page polls `queued`, `running`, `completed`,

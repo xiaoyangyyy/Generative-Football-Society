@@ -15,7 +15,9 @@ readiness, evidence, transaction, or reporting rules into a second system.
   mutations, a 64 KiB request limit, fail-fast concurrent
   mutations, structured errors, path-confined HTML artifacts, CSP, and no CORS;
 - keyboard focus styles, semantic labels and landmarks, live status regions,
-  responsive layout, and reduced-motion support;
+  atomic error/status announcements, asynchronous busy state, terminal focus,
+  responsive single-column reflow, 44 px controls, forced-colors and
+  reduced-motion support;
 - no external provider call during status, health, readiness, or acceptance.
 - persistent idempotent match tasks, refresh-safe polling, bounded terminal
   history, single-server ownership, and visible interrupted state after restart.
@@ -36,6 +38,19 @@ The authoritative result is
 `data/evaluation/web_beta_verification_v1.json`. A passing local result proves
 the HTTP adapter and its safety boundaries; it does not prove production
 deployment, match soak reliability, external WCAG conformance, or user value.
+
+Run the focused code-level accessibility audit separately:
+
+```powershell
+python scripts\verify_web_accessibility.py --out data\evaluation\web_accessibility_verification_v1.json
+```
+
+Its 32 checks parse the Studio and login semantics, enforce labelled controls
+and named regions, inspect keyboard/focus and busy-state contracts, calculate
+six declared color-pair contrast ratios, and fetch the rendered Studio over a
+real local socket. It performs no match and no external call. This evidence
+does not expose a browser accessibility tree and therefore does not replace a
+screen-reader, zoom/reflow, assistive-technology, or independent WCAG audit.
 
 ## Authenticated boundary
 

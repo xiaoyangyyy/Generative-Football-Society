@@ -26,9 +26,9 @@
   },
   "current_assessment": {
     "product": {
-      "score": 78,
-      "level": "integrated_web_beta",
-      "strengths": ["architecture", "transactional_workflow", "integrity_chain", "local_web_workflow", "verified_local_recovery", "integrated_web_recovery_center", "persistent_background_tasks", "authenticated_deployment_contract", "expiring_revocable_rate_limited_sessions", "privacy_bounded_operational_telemetry", "100_task_control_plane_soak"],
+      "score": 80,
+      "level": "accessibility_hardened_web_beta",
+      "strengths": ["architecture", "transactional_workflow", "integrity_chain", "local_web_workflow", "verified_local_recovery", "integrated_web_recovery_center", "persistent_background_tasks", "authenticated_deployment_contract", "expiring_revocable_rate_limited_sessions", "privacy_bounded_operational_telemetry", "100_task_control_plane_soak", "automated_accessibility_contract"],
       "missing": ["production_deployment", "100_match_soak", "external_accessibility_audit", "usability_study", "value_validation"]
     },
     "academic": {
@@ -44,7 +44,7 @@
       {"id": "P2", "name": "security_and_trust", "weight": 15, "current_points": 14, "critical": true, "status": "partial", "evidence": ["src/infrastructure/integrity.py", "src/simulation/llm_gateway.py", "src/product/web_security.py", "tests/test_product_web_security.py", "data/evaluation/authenticated_web_verification_v1.json"]},
       {"id": "P3", "name": "functional_completeness", "weight": 15, "current_points": 15, "critical": true, "status": "verified", "evidence": ["src/product/workspace.py", "src/product/control_plane.py", "src/product/web.py", "src/product/tasks.py", "src/product/recovery.py", "data/evaluation/web_beta_verification_v1.json", "data/evaluation/product_task_verification_v1.json", "data/evaluation/web_recovery_verification_v1.json"]},
       {"id": "P4", "name": "reliability_and_recovery", "weight": 15, "current_points": 13, "critical": true, "status": "partial", "evidence": ["src/infrastructure/locking.py", "src/training/job.py", "src/product/recovery.py", "src/product/tasks.py", "src/product/telemetry.py", "tests/test_product_recovery.py", "tests/test_product_tasks.py", "tests/test_product_telemetry.py", "data/evaluation/product_recovery_verification_v1.json", "data/evaluation/product_task_verification_v1.json", "data/evaluation/product_operations_verification_v1.json"]},
-      {"id": "P5", "name": "usability_and_accessibility", "weight": 15, "current_points": 9, "critical": true, "status": "partial", "evidence": ["src/product/web.py", "docs/WEB_BETA_ACCEPTANCE.md", "data/evaluation/web_beta_verification_v1.json", "data/evaluation/product_task_verification_v1.json", "data/evaluation/web_recovery_verification_v1.json"]},
+      {"id": "P5", "name": "usability_and_accessibility", "weight": 15, "current_points": 11, "critical": true, "status": "partial", "evidence": ["src/product/web.py", "scripts/verify_web_accessibility.py", "tests/test_verify_web_accessibility.py", "docs/WEB_BETA_ACCEPTANCE.md", "data/evaluation/web_beta_verification_v1.json", "data/evaluation/product_task_verification_v1.json", "data/evaluation/web_recovery_verification_v1.json", "data/evaluation/web_accessibility_verification_v1.json"]},
       {"id": "P6", "name": "deployment_and_operations", "weight": 10, "current_points": 7, "critical": true, "status": "partial", "evidence": ["scripts/verify_product_web.py", "scripts/verify_authenticated_web.py", "scripts/verify_deployment_contract.py", "scripts/verify_product_operations.py", "src/product/telemetry.py", "data/evaluation/web_beta_verification_v1.json", "data/evaluation/authenticated_web_verification_v1.json", "data/evaluation/deployment_contract_verification_v1.json", "data/evaluation/product_operations_verification_v1.json", "deploy/compose.yaml", "deploy/Caddyfile"]},
       {"id": "P7", "name": "user_value_validation", "weight": 10, "current_points": 0, "critical": true, "status": "missing", "evidence": []}
     ],

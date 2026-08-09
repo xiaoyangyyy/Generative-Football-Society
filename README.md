@@ -88,6 +88,13 @@ uses the persisted Studio state machine and evidence gates directly. See
 `docs/WEB_BETA_ACCEPTANCE.md` for its verified security/accessibility scope and
 the production capabilities that are still deliberately unclaimed.
 
+The focused accessibility contract is reproducible without training, a match,
+or provider access:
+
+```bash
+python scripts/verify_web_accessibility.py --out data/evaluation/web_accessibility_verification_v1.json
+```
+
 Matches submitted from the Web page run as persistent, idempotent background
 tasks. Refreshing the page recovers task observation instead of duplicating a
 match; interrupted process state remains visible and is not automatically

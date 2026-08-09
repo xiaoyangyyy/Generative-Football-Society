@@ -101,6 +101,18 @@ closes the final functional-completeness point and adds one usability point,
 bringing the product score to 78. Deployment-volume RPO/RTO, process-kill
 recovery, Web export, and target-user evidence remain unclaimed.
 
+The Studio and login surfaces now expose atomic polite/assertive status
+regions, explicit asynchronous busy state, terminal-result focus, 44 px
+controls, narrow-screen single-column reflow, forced-colors support, and an
+Escape/correct-trigger focus return path for destructive recovery. The
+dependency-free verifier parses both templates, checks semantic relationships,
+tests six declared color pairs, and confirms the audited page over a real local
+socket. All 32 checks pass and the lowest measured declared contrast is
+6.92:1. This adds two usability/accessibility points, bringing the product
+score to 80. It remains a code-level contract: no browser accessibility tree,
+screen reader, zoom/reflow interoperability, external WCAG audit, or
+target-user study is claimed.
+
 ## Stage 2 — confirmatory academic experiment
 
 Freeze the commit and run only
