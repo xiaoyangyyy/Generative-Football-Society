@@ -14,6 +14,11 @@
     "references": "docs/PAPER_REFERENCES.bib",
     "environment_snapshot": "data/evaluation/reproduction_environment_v1.json",
     "dependency_lock_contract": "data/evaluation/dependency_lock_contract_v1.json",
+    "target_lock_input": "requirements-linux-py312.in",
+    "target_runtime_lock": "requirements-linux-py312.lock",
+    "target_lock_validation": "data/evaluation/target_lock_validation_v1.json",
+    "supply_chain_sbom": "data/evaluation/supply_chain_sbom_v1.cdx.json",
+    "sbom_builder": "scripts/build_supply_chain_sbom.py",
     "data_license_registry": "data/evaluation/data_license_registry_v1.json",
     "existing_evidence": "data/evaluation/research_evidence_v1.json",
     "prior_m1_decision": "data/evaluation/formal_ablation/M1_calibrated_decision.json",
@@ -39,6 +44,13 @@
     {
       "id": "reproduction_release_audit",
       "command": "python scripts/verify_reproduction_release.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "supply_chain_sbom_check",
+      "command": "python scripts/build_supply_chain_sbom.py --check",
       "effect": "read_only",
       "runs_simulation": false,
       "explicit_authority_required": false
@@ -79,10 +91,13 @@
     "note": "All five known external source families have a release decision, but unresolved license scope keeps every external artifact excluded from an archive."
   },
   "environment": {
-    "status": "exact_direct_dependencies_not_transitively_hash_locked",
+    "status": "target_platform_transitive_hash_locked",
     "container_base_pinned": "python:3.12.11-slim-bookworm",
     "direct_dependencies_pinned": true,
-    "full_transitive_hash_lock": false
+    "full_transitive_hash_lock": true,
+    "target_runtime_lock": "requirements-linux-py312.lock",
+    "cross_platform_lock_matrix": false,
+    "cyclonedx_sbom_current": true
   },
   "independent_reproduction": {
     "status": "not_performed",

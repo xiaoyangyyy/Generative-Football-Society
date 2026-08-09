@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "snapshot_id": "gfs-reproduction-environment-observed-2026-08-10",
-  "purpose": "Record the exact direct dependency contract and directly observed development environment without claiming a complete cross-platform lock.",
+  "purpose": "Record the Python 3.12 Linux target transitive hash lock and directly observed development environment without claiming a cross-platform lock matrix.",
   "python": {
     "project_constraint": ">=3.11,<3.14",
     "container_base": "3.12.11",
@@ -21,11 +21,13 @@
     "kloppy": "3.19.0"
   },
   "direct_dependency_lock": "data/evaluation/dependency_lock_contract_v1.json",
-  "status": "exact_direct_lock_partial_environment",
+  "target_runtime_lock": "requirements-linux-py312.lock",
+  "supply_chain_sbom": "data/evaluation/supply_chain_sbom_v1.cdx.json",
+  "status": "target_transitive_hash_lock_partial_runtime",
   "limitations": [
-    "All eight direct runtime dependencies and the build backend are exact, but transitive packages and artifact hashes are not frozen.",
+    "The deployment target has 64 exact hashed runtime packages, but no cross-platform lock matrix is claimed.",
     "The observed verifier environment does not currently contain kloppy even though the project declares kloppy 3.19.0.",
     "Docker image construction has not been executed in this environment.",
-    "This snapshot supports diagnosis and review but not bitwise reproduction."
+    "Container base and gateway image digests remain unlocked, so bitwise image reproduction is not claimed."
   ]
 }

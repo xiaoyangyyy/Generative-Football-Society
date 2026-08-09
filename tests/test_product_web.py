@@ -64,6 +64,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'aria-labelledby="recovery-title"' in document
     assert 'id="backup-list"' in document and 'role="list"' in document
     assert 'id="restore-form" hidden' in document
+    assert 'aria-labelledby="release-title"' in document
+    assert 'id="release-summary"' in document
+    assert 'id="release-gates"' in document and 'role="list"' in document
+    assert "renderRelease(data)" in document
     assert 'name="confirmation"' in document and 'name="replace"' in document
     assert 'type="file"' not in document
     assert "innerHTML" not in document

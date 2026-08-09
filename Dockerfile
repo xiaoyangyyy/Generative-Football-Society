@@ -10,10 +10,10 @@ RUN groupadd --system --gid 10001 gfs \
     && useradd --system --uid 10001 --gid gfs --home-dir /nonexistent --shell /usr/sbin/nologin gfs
 
 WORKDIR /app
-COPY pyproject.toml requirements.txt README.md ./
+COPY pyproject.toml requirements.txt requirements-linux-py312.lock README.md ./
 COPY src ./src
-RUN python -m pip install -r requirements.txt \
-    && python -m pip install --no-deps .
+RUN python -m pip install --require-hashes -r requirements-linux-py312.lock \
+    && python -m pip install --no-build-isolation --no-deps .
 
 COPY gfs.py ./
 COPY data ./data

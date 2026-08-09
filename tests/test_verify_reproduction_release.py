@@ -18,11 +18,13 @@ def test_code_only_release_contract_is_honest_and_zero_compute():
     assert report["passed"]
     assert report["status"] == "passed_code_contract"
     assert report["release_ready"] is False
-    assert report["dependency_lock_level"] == "exact_direct_dependencies_only"
+    assert report["dependency_lock_level"] == "target_platform_transitive_hash_lock"
     assert report["known_external_source_count"] == 5
     assert report["archive_eligible_external_source_count"] == 0
     assert all(report["checks"].values())
-    assert report["readiness"]["full_transitive_hash_lock"] is False
+    assert report["readiness"]["full_transitive_hash_lock"] is True
+    assert report["readiness"]["cross_platform_lock_matrix"] is False
+    assert report["readiness"]["cyclonedx_sbom_current"] is True
     assert report["readiness"]["container_build_verified"] is False
     assert report["readiness"]["external_data_archive_approved"] is False
     assert report["external_calls_made"] is False

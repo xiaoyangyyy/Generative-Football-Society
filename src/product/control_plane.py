@@ -8,7 +8,7 @@ import socket
 from pathlib import Path
 from typing import Any
 
-from src.infrastructure import FileLease
+from src.infrastructure import FileLease, file_sha256
 
 
 DECISION_ARTIFACTS = {
@@ -120,6 +120,176 @@ class ProductControlPlane:
             ).get("exposed_key_status"),
         }
 
+    def _report(self, relative: str) -> dict[str, Any]:
+        path = self.root / relative
+        if not path.is_file():
+            return {"available": False, "path": relative}
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {"available": False, "path": relative, "error": "invalid_json"}
+        if not isinstance(payload, dict):
+            return {"available": False, "path": relative, "error": "invalid_report"}
+        return {"available": True, "path": relative, **payload}
+
+    def _artifact_hashes_current(self, expected: dict[str, Any]) -> bool:
+        if not expected:
+            return False
+        for relative, digest in expected.items():
+            candidate = (self.root / str(relative)).resolve()
+            try:
+                candidate.relative_to(self.root)
+            except ValueError:
+                return False
+            if (
+                not isinstance(digest, str)
+                or len(digest) != 64
+                or not candidate.is_file()
+                or file_sha256(candidate) != digest
+            ):
+                return False
+        return True
+
+    def release_readiness(self) -> dict[str, Any]:
+        paper = self._report("data/evaluation/paper_package_verification_v1.json")
+        release = self._report(
+            "data/evaluation/reproduction_release_verification_v1.json"
+        )
+        target = self._report("data/evaluation/target_lock_validation_v1.json")
+        deployment = self._report(
+            "data/evaluation/deployment_contract_verification_v1.json"
+        )
+        readiness = release.get("readiness") or {}
+        checks = release.get("checks") or {}
+        release_identity_current = self._artifact_hashes_current(
+            release.get("artifact_sha256") or {}
+        )
+        paper_identity_current = self._artifact_hashes_current({
+            "data/evaluation/formal_experiment_protocol_v2.json": paper.get(
+                "protocol_sha256"
+            ),
+            "data/evaluation/paper_claims_v1.json": paper.get(
+                "claim_registry_sha256"
+            ),
+            "docs/PAPER_DRAFT.md": paper.get("manuscript_sha256"),
+            "data/evaluation/reproduction_manifest_v1.json": paper.get(
+                "reproduction_manifest_sha256"
+            ),
+            "data/evaluation/reproduction_environment_v1.json": paper.get(
+                "environment_snapshot_sha256"
+            ),
+        })
+        excellence = self.excellence()
+        scores = {
+            name: row.get("score")
+            for name, row in (excellence.get("tracks") or {}).items()
+        }
+        gate_values = [
+            (
+                "paper_package",
+                "Registered-report package audit",
+                paper.get("passed") is True and paper_identity_current,
+                paper.get("path"),
+            ),
+            (
+                "target_hash_lock",
+                "Python 3.12 Linux transitive hash lock",
+                release.get("passed") is True
+                and release_identity_current
+                and readiness.get("full_transitive_hash_lock") is True
+                and target.get("passed") is True,
+                target.get("path"),
+            ),
+            (
+                "cyclonedx_sbom",
+                "Current CycloneDX runtime SBOM",
+                readiness.get("cyclonedx_sbom_current") is True,
+                "data/evaluation/supply_chain_sbom_v1.cdx.json",
+            ),
+            (
+                "known_source_decisions",
+                "Known external-data release decisions",
+                checks.get("known_provider_coverage_is_exact") is True
+                and checks.get("license_policy_is_default_deny") is True,
+                "data/evaluation/data_license_registry_v1.json",
+            ),
+            (
+                "local_runtime",
+                "Local direct dependency environment",
+                readiness.get("runtime_direct_dependencies_match") is True,
+                "data/evaluation/reproduction_environment_v1.json",
+            ),
+            (
+                "cross_platform_lock_matrix",
+                "Cross-platform dependency lock matrix",
+                readiness.get("cross_platform_lock_matrix") is True,
+                "data/evaluation/dependency_lock_contract_v1.json",
+            ),
+            (
+                "container_image_digests",
+                "Container image digest pins",
+                readiness.get("container_images_digest_pinned") is True,
+                "Dockerfile",
+            ),
+            (
+                "container_build",
+                "Built and verified deployment container",
+                deployment.get("image_built") is True,
+                deployment.get("path"),
+            ),
+            (
+                "external_data_archive",
+                "External-data archive approval",
+                readiness.get("external_data_archive_approved") is True,
+                "data/evaluation/data_license_registry_v1.json",
+            ),
+            (
+                "confirmatory_results",
+                "Complete confirmatory experiment result",
+                readiness.get("confirmatory_results_available") is True,
+                "data/evaluation/formal_confirmatory_v2/decision.json",
+            ),
+            (
+                "independent_reproduction",
+                "Independent reproduction report",
+                readiness.get("independent_reproduction_available") is True,
+                "docs/REPRODUCTION_GUIDE.md",
+            ),
+        ]
+        gates = [
+            {"id": identifier, "label": label, "passed": passed, "evidence": evidence}
+            for identifier, label, passed, evidence in gate_values
+        ]
+        code_gate_ids = {
+            "paper_package",
+            "target_hash_lock",
+            "cyclonedx_sbom",
+            "known_source_decisions",
+        }
+        code_ready = all(
+            gate["passed"] for gate in gates if gate["id"] in code_gate_ids
+        )
+        release_ready = all(gate["passed"] for gate in gates)
+        open_gates = [gate for gate in gates if not gate["passed"]]
+        return {
+            "schema_version": 1,
+            "status": (
+                "release_ready"
+                if release_ready
+                else "code_contract_ready_external_gates_open"
+                if code_ready
+                else "code_contract_incomplete"
+            ),
+            "code_ready": code_ready,
+            "release_ready": release_ready,
+            "scores": scores,
+            "passed_gate_count": len(gates) - len(open_gates),
+            "open_gate_count": len(open_gates),
+            "next_action": open_gates[0]["id"] if open_gates else None,
+            "gates": gates,
+            "external_calls_made": False,
+        }
+
     def snapshot(self) -> dict[str, Any]:
         jobs = self.training_jobs()
         return {
@@ -143,6 +313,7 @@ class ProductControlPlane:
             },
             "decisions": self.decisions(),
             "excellence": self.excellence(),
+            "release": self.release_readiness(),
         }
 
     def request_stop(self, run_id: str) -> Path:

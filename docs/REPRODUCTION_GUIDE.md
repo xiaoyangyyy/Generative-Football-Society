@@ -11,7 +11,8 @@ match, train a model, or call an external provider.
 - Independent reproduction: not performed.
 - Stable release: 7.0.0.
 - Sealed M1: research-only and default-off.
-- Environment: exact direct pins, not a full transitive hash lock.
+- Environment: 64-package Python 3.12 Linux CPU transitive hash lock; no
+  cross-platform lock matrix or built container claim.
 
 The authoritative inventory is
 `data/evaluation/reproduction_manifest_v1.json`. Do not infer that an absent
@@ -24,6 +25,7 @@ From the repository root:
 ```bash
 python scripts/verify_paper_package.py
 python scripts/verify_reproduction_release.py
+python scripts/build_supply_chain_sbom.py --check
 python scripts/audit_research_evidence.py --check
 python scripts/run_formal_experiment.py
 ```
@@ -31,8 +33,10 @@ python scripts/run_formal_experiment.py
 Expected state:
 
 - every paper claim has exactly one manuscript marker and valid evidence;
-- all eight direct dependencies match `pyproject.toml`, `requirements.txt`,
-  and the Docker installation path;
+- all eight direct dependencies match the project contract and the 64-package
+  target lock, every locked package has SHA-256 evidence, and Docker enforces
+  `--require-hashes`;
+- the CycloneDX 1.6 SBOM exactly matches the locked runtime closure;
 - all five known external source families have a default-deny archive
   decision;
 - the frozen research evidence report is current;
@@ -56,12 +60,20 @@ python -m pip install --no-deps -e .
 python -m pytest -q
 ```
 
-The eight direct runtime dependencies and build backend are exact. The
-contract also records that compatible Python 3.12 Linux or universal
-distributions existed on PyPI on 2026-08-10. The repository still does not
-provide a fully transitive, wheel-hashed lock.
-Record the resolver output and platform before comparing results. The
-checked-in observed environment snapshot is diagnostic, not a portable lock.
+For the deployment target, install inside Python 3.12 x86_64 Linux with:
+
+```bash
+python -m pip install --require-hashes -r requirements-linux-py312.lock
+python -m pip install --no-build-isolation --no-deps -e .
+```
+
+The target lock contains 64 exact packages, includes the CPU Torch wheel,
+records all accepted distribution SHA-256 values, and has passed both uv and
+pip dry-run resolution. `tzdata` and `colorama` are deliberate shims so pip can
+also audit the Linux lock from a Windows host whose marker evaluation follows
+the host. The lock is not a cross-platform matrix, and the observed local
+environment snapshot remains diagnostic rather than evidence of a Linux
+runtime import test.
 
 ## 4. Data review
 

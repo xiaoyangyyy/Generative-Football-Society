@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "contract_id": "gfs-exact-direct-dependencies-v1",
-  "lock_level": "exact_direct_dependencies_only",
+  "contract_id": "gfs-linux-py312-transitive-hash-lock-v1",
+  "lock_level": "target_platform_transitive_hash_lock",
   "python_constraint": ">=3.11,<3.14",
   "container_python": "3.12.11",
   "build_system": {
@@ -21,13 +21,19 @@
   "identity_inputs": [
     "pyproject.toml",
     "requirements.txt",
+    "requirements-linux-py312.in",
+    "requirements-linux-py312.lock",
     "Dockerfile",
-    "deploy/compose.yaml"
+    "deploy/compose.yaml",
+    "data/evaluation/supply_chain_sbom_v1.cdx.json"
   ],
   "installation_contract": {
-    "direct_lock": "requirements.txt",
-    "project_install": "python -m pip install --no-deps .",
-    "container_uses_direct_lock": true
+    "direct_requirements": "requirements.txt",
+    "target_lock_input": "requirements-linux-py312.in",
+    "target_runtime_lock": "requirements-linux-py312.lock",
+    "runtime_install": "python -m pip install --require-hashes -r requirements-linux-py312.lock",
+    "project_install": "python -m pip install --no-build-isolation --no-deps .",
+    "container_uses_transitive_hash_lock": true
   },
   "index_observation": {
     "checked_on": "2026-08-10",
@@ -45,11 +51,35 @@
       "kloppy": true
     }
   },
-  "full_transitive_hash_lock": false,
+  "target_lock": {
+    "python": "3.12",
+    "platform": "x86_64-manylinux_2_28",
+    "runtime": "Debian bookworm / glibc compatible",
+    "torch_backend": "cpu",
+    "resolver": "uv 0.11.13",
+    "exclude_newer": "2026-08-10T00:00:00Z",
+    "package_count": 64,
+    "hash_algorithm": "sha256",
+    "all_packages_exact": true,
+    "all_packages_hashed": true,
+    "pip_require_hashes_dry_run": "passed",
+    "portability_shims": {
+      "tzdata": "2026.3",
+      "colorama": "0.4.6"
+    }
+  },
+  "sbom": {
+    "path": "data/evaluation/supply_chain_sbom_v1.cdx.json",
+    "format": "CycloneDX",
+    "spec_version": "1.6",
+    "component_count": 64
+  },
+  "full_transitive_hash_lock": true,
+  "cross_platform_lock_matrix": false,
   "container_images_digest_pinned": false,
   "limitations": [
-    "Transitive dependency versions and wheel hashes are not frozen.",
-    "Exact direct versions do not guarantee that the same wheels exist for every supported platform.",
+    "The transitive hash lock targets the Python 3.12 x86_64 Linux CPU container, not every supported development platform.",
+    "The lock records all published hashes per exact version; pip selects the compatible target wheel under --require-hashes.",
     "The Python and Caddy container images are version-tagged but not digest-pinned.",
     "The contract is statically verified; it does not claim that a container image was built."
   ]

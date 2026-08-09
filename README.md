@@ -153,9 +153,10 @@ python scripts/verify_reproduction_release.py --out data/evaluation/reproduction
 
 See `docs/PAPER_DRAFT.md` and `docs/REPRODUCTION_GUIDE.md`. The draft keeps
 all confirmatory result cells unavailable and does not claim independent
-reproduction or a complete environment lock. The release audit verifies exact
-direct dependency pins and a default-deny registry for all known external data
-sources while retaining explicit gates for transitive hashes and source terms.
+reproduction. The release audit verifies a 64-package Python 3.12 Linux CPU
+transitive hash lock, a deterministic CycloneDX 1.6 SBOM, and a default-deny
+registry for all known external data sources. Cross-platform locks, image
+digests, a real container build, and source-specific approvals remain open.
 
 Show top team status rankings:
 

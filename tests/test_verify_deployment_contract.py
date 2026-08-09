@@ -6,6 +6,7 @@ def test_deployment_contract_is_secure_and_honest_about_unbuilt_state():
     assert report["passed"]
     assert all(report["checks"].values())
     assert report["image_built"] is False
+    assert report["target_python_dependencies_hash_locked"] is True
     assert report["deployment_started"] is False
     assert report["external_calls_made"] is False
     if not report["docker_available"]:

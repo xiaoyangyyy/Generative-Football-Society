@@ -23,6 +23,10 @@ def verify_deployment_contract() -> dict:
     checks = {
         "non_root_application": "USER 10001:10001" in dockerfile,
         "container_healthcheck": "HEALTHCHECK" in dockerfile and "/healthz" in dockerfile,
+        "hashed_python_dependency_install": all(value in dockerfile for value in (
+            "requirements-linux-py312.lock", "--require-hashes",
+            "--no-build-isolation --no-deps .",
+        )),
         "release_evidence_copied": all(value in dockerfile for value in (
             "COPY data ./data", "COPY reports/acceptance ./reports/acceptance",
         )),
@@ -95,13 +99,16 @@ def verify_deployment_contract() -> dict:
         "docker_available": bool(docker),
         "docker_compose_validation": compose_output,
         "image_built": False,
+        "target_python_dependencies_hash_locked": checks[
+            "hashed_python_dependency_install"
+        ],
         "deployment_started": False,
         "external_calls_made": False,
         "checks": checks,
         "limitations": [
             "the image has not been built in this environment",
             "the Compose services and Caddy TLS edge have not been started",
-            "base-image and Python dependency digests are not yet locked",
+            "base-image and gateway-image digests are not yet locked",
             "external DNS, certificates, firewall, volume recovery, and penetration tests remain open",
         ],
     }

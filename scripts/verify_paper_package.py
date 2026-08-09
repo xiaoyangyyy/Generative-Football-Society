@@ -206,12 +206,16 @@ def verify_paper_package() -> dict:
     )
 
     checks["environment_snapshot_is_honestly_partial"] = (
-        environment.get("status") == "exact_direct_lock_partial_environment"
+        environment.get("status") == "target_transitive_hash_lock_partial_runtime"
         and environment.get("direct_dependency_lock")
         == "data/evaluation/dependency_lock_contract_v1.json"
+        and environment.get("target_runtime_lock")
+        == "requirements-linux-py312.lock"
         and environment.get("direct_packages", {}).get("kloppy") is None
         and len(environment.get("limitations") or []) >= 4
-        and manifest.get("environment", {}).get("full_transitive_hash_lock") is False
+        and manifest.get("environment", {}).get("full_transitive_hash_lock") is True
+        and manifest.get("environment", {}).get("cross_platform_lock_matrix")
+        is False
     )
     checks["data_distribution_limits_are_explicit"] = (
         manifest.get("data_distribution", {}).get("license_review_complete") is False
@@ -270,6 +274,9 @@ def verify_paper_package() -> dict:
         "artifact_count": len(artifacts),
         "protocol_sha256": file_sha256(DEFAULT_PROTOCOL),
         "claim_registry_sha256": file_sha256(CLAIMS),
+        "manuscript_sha256": file_sha256(MANUSCRIPT),
+        "reproduction_manifest_sha256": file_sha256(MANIFEST),
+        "environment_snapshot_sha256": file_sha256(ENVIRONMENT),
         "confirmatory_result_available": False,
         "independent_reproduction_available": False,
         "external_calls_made": False,
@@ -279,7 +286,7 @@ def verify_paper_package() -> dict:
         "checks": checks,
         "limitations": [
             "this verifies a registered-report-stage package, not a completed results manuscript",
-            "the environment snapshot is not a transitive hash lock and Docker was not built",
+            "the deployment target is transitively hash-locked, but the cross-platform matrix and Docker build remain incomplete",
             "cross-provider licensing review and an immutable archival bundle remain incomplete",
             "no independent reviewer has reproduced the confirmatory experiment",
         ],

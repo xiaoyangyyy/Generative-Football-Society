@@ -1,0 +1,7 @@
+-r requirements.txt
+
+# pip evaluates environment markers against the Windows audit host even when
+# --platform targets Linux. Pinning tzdata keeps cross-platform hash audits
+# closed while remaining harmless in the Debian container.
+tzdata==2026.3
+colorama==0.4.6

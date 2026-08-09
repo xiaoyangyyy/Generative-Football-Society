@@ -191,12 +191,14 @@ processes. Some provider manifests preserve hashes and source names without a
 complete license URL, so a blanket redistribution claim is not made.
 
 The environment contract pins the supported Python window, build backend,
-container base version, and all eight direct runtime dependencies. It does not
-hash-lock transitive wheels or container image digests. Docker has not been
-built in the present verification environment. The formal design has 30
-pairs; it is bounded rather than universally powered. The bootstrap
-quantifies paired simulation variability, not uncertainty over all football
-populations.
+container base version, and a 64-package transitive runtime closure for the
+Python 3.12 x86_64 Linux CPU target. Every exact package has SHA-256 evidence,
+Docker enforces `--require-hashes`, and a deterministic CycloneDX 1.6 SBOM
+covers the closure. This is not a cross-platform lock matrix, container image
+digests remain unlocked, and Docker has not been built in the present
+verification environment. The formal design has 30 pairs; it is bounded
+rather than universally powered. The bootstrap quantifies paired simulation
+variability, not uncertainty over all football populations.
 
 No live LLM benefit is claimed. Provider credentials are excluded from
 artifacts, and the manuscript package verifier makes no network call.
@@ -205,16 +207,17 @@ artifacts, and the manuscript package verifier makes no network call.
 
 The reproduction manifest classifies commands by side effect. Package,
 release-contract, evidence, and experiment-status audits are read-only. The
-release-contract audit also verifies exact direct pins and the default-deny
-license registry. Only an explicit `--execute` command can start the fixed
+release-contract audit also verifies the target transitive hash lock, current
+SBOM, and default-deny license registry. Only an explicit `--execute` command can start the fixed
 60-run experiment, and analysis fails closed until evidence is complete and
 identity-matched.
 
 <!-- claim:CLM-008 -->
 No reproduction by a person independent of the implementer has been
 completed. The independent-review checklist therefore remains an instruction,
-not evidence. A complete paper requires the result table, a full transitive
-environment lock, dataset license review, and an external reproduction report.
+not evidence. A complete paper requires the result table, a verified runtime
+or container reproduction, dataset license review, and an external
+reproduction report.
 
 ## 10. Artifact availability
 

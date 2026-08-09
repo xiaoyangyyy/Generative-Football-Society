@@ -18,6 +18,10 @@ if str(ROOT) not in sys.path:
 
 from scripts.verify_paper_package import verify_paper_package  # noqa: E402
 from src.infrastructure import file_sha256  # noqa: E402
+from src.infrastructure.supply_chain import (  # noqa: E402
+    build_cyclonedx_sbom,
+    parse_hashed_lock,
+)
 
 
 LOCK_CONTRACT = ROOT / "data/evaluation/dependency_lock_contract_v1.json"
@@ -27,6 +31,10 @@ ENVIRONMENT = ROOT / "data/evaluation/reproduction_environment_v1.json"
 PYPROJECT = ROOT / "pyproject.toml"
 REQUIREMENTS = ROOT / "requirements.txt"
 DOCKERFILE = ROOT / "Dockerfile"
+TARGET_LOCK_INPUT = ROOT / "requirements-linux-py312.in"
+TARGET_LOCK = ROOT / "requirements-linux-py312.lock"
+TARGET_VALIDATION = ROOT / "data/evaluation/target_lock_validation_v1.json"
+SBOM = ROOT / "data/evaluation/supply_chain_sbom_v1.cdx.json"
 
 EXPECTED_SOURCE_IDS = {
     "statsbomb_open_data",
@@ -127,6 +135,10 @@ def _observed_direct_packages(expected: dict[str, str]) -> dict[str, dict]:
     return observed
 
 
+def _base_version(version: str) -> str:
+    return version.split("+", 1)[0]
+
+
 def verify_reproduction_release() -> dict:
     contract = _read_json(LOCK_CONTRACT)
     registry = _read_json(LICENSE_REGISTRY)
@@ -144,14 +156,26 @@ def verify_reproduction_release() -> dict:
         for name, version in contract.get("direct_dependencies", {}).items()
     }
     dockerfile = DOCKERFILE.read_text(encoding="utf-8")
+    lock_text = TARGET_LOCK.read_text(encoding="utf-8")
+    locked_packages = parse_hashed_lock(lock_text)
+    locked = {row["name"]: row for row in locked_packages}
+    validation = _read_json(TARGET_VALIDATION)
+    sbom = _read_json(SBOM)
+    expected_sbom = build_cyclonedx_sbom(
+        TARGET_LOCK,
+        project_name=str(pyproject["project"]["name"]),
+        project_version=str(pyproject["project"]["version"]),
+    )
     artifacts = manifest.get("artifacts") or {}
     commands = manifest.get("commands") or []
 
     checks: dict[str, bool] = {
         "dependency_contract_schema_and_scope": (
             contract.get("schema_version") == 1
-            and contract.get("lock_level") == "exact_direct_dependencies_only"
-            and contract.get("full_transitive_hash_lock") is False
+            and contract.get("lock_level")
+            == "target_platform_transitive_hash_lock"
+            and contract.get("full_transitive_hash_lock") is True
+            and contract.get("cross_platform_lock_matrix") is False
             and len(expected) == 8
         ),
         "requirements_are_exact_and_match_contract": requirements == expected,
@@ -170,13 +194,61 @@ def verify_reproduction_release() -> dict:
         "identity_inputs_exist_and_are_confined": all(
             _confined_file(str(path)) for path in contract.get("identity_inputs") or []
         ),
-        "container_uses_exact_direct_lock": all(
+        "target_lock_is_complete_and_hashed": (
+            len(locked_packages) == contract.get("target_lock", {}).get("package_count")
+            == 64
+            and all(row["sha256"] for row in locked_packages)
+            and contract.get("target_lock", {}).get("all_packages_exact") is True
+            and contract.get("target_lock", {}).get("all_packages_hashed") is True
+        ),
+        "target_lock_contains_direct_contract": all(
+            name in locked and _base_version(str(locked[name]["version"])) == version
+            for name, version in expected.items()
+        ),
+        "target_lock_has_safe_index_and_portability_contract": (
+            "--index-url https://pypi.org/simple" in lock_text
+            and "--extra-index-url https://download.pytorch.org/whl/cpu" in lock_text
+            and locked.get("torch", {}).get("version") == "2.12.1+cpu"
+            and {
+                name: locked.get(name, {}).get("version")
+                for name in ("tzdata", "colorama")
+            }
+            == contract.get("target_lock", {}).get("portability_shims")
+        ),
+        "target_lock_validation_matches_artifacts": (
+            validation.get("passed") is True
+            and validation.get("status") == "passed_resolution_and_hash_dry_run"
+            and validation.get("target", {}).get("package_count") == 64
+            and validation.get("observations", {}).get(
+                "pip_require_hashes_target_plan_passed"
+            )
+            is True
+            and all(
+                _confined_file(path)
+                and validation.get("artifact_sha256", {}).get(path)
+                == file_sha256(ROOT / path)
+                for path in (
+                    "requirements-linux-py312.in",
+                    "requirements-linux-py312.lock",
+                    "data/evaluation/supply_chain_sbom_v1.cdx.json",
+                )
+            )
+        ),
+        "cyclonedx_sbom_is_current_and_complete": (
+            sbom == expected_sbom
+            and sbom.get("bomFormat") == "CycloneDX"
+            and sbom.get("specVersion") == "1.6"
+            and len(sbom.get("components") or []) == 64
+            and len((sbom.get("dependencies") or [])[0].get("dependsOn") or [])
+            == 64
+        ),
+        "container_uses_transitive_hash_lock": all(
             marker in dockerfile
             for marker in (
                 "ARG PYTHON_IMAGE=python:3.12.11-slim-bookworm",
-                "COPY pyproject.toml requirements.txt README.md ./",
-                "python -m pip install -r requirements.txt",
-                "python -m pip install --no-deps .",
+                "COPY pyproject.toml requirements.txt requirements-linux-py312.lock README.md ./",
+                "python -m pip install --require-hashes -r requirements-linux-py312.lock",
+                "python -m pip install --no-build-isolation --no-deps .",
             )
         ),
         "container_direct_distributions_were_observed": (
@@ -189,12 +261,14 @@ def verify_reproduction_release() -> dict:
             and contract.get("index_observation", {}).get("packages")
             == {name: True for name in expected}
         ),
-        "incomplete_lock_is_not_overclaimed": (
+        "target_scope_and_remaining_limits_are_honest": (
             contract.get("container_images_digest_pinned") is False
             and len(contract.get("limitations") or []) >= 4
             and environment.get("status")
-            == "exact_direct_lock_partial_environment"
+            == "target_transitive_hash_lock_partial_runtime"
             and manifest.get("environment", {}).get("full_transitive_hash_lock")
+            is True
+            and manifest.get("environment", {}).get("cross_platform_lock_matrix")
             is False
         ),
         "release_artifacts_are_registered": all(
@@ -203,6 +277,11 @@ def verify_reproduction_release() -> dict:
                 "dependency_lock_contract": "data/evaluation/dependency_lock_contract_v1.json",
                 "data_license_registry": "data/evaluation/data_license_registry_v1.json",
                 "release_verifier": "scripts/verify_reproduction_release.py",
+                "target_runtime_lock": "requirements-linux-py312.lock",
+                "target_lock_input": "requirements-linux-py312.in",
+                "target_lock_validation": "data/evaluation/target_lock_validation_v1.json",
+                "supply_chain_sbom": "data/evaluation/supply_chain_sbom_v1.cdx.json",
+                "sbom_builder": "scripts/build_supply_chain_sbom.py",
             }.items()
         ),
         "release_audit_is_read_only": any(
@@ -230,6 +309,7 @@ def verify_reproduction_release() -> dict:
         "data/evaluation/dependency_lock_contract_v1.json",
         "data/evaluation/data_license_registry_v1.json",
         "data/evaluation/reproduction_manifest_v1.json",
+        "data/evaluation/target_lock_validation_v1.json",
     ]
     identity = {
         path: file_sha256(ROOT / path)
@@ -240,7 +320,9 @@ def verify_reproduction_release() -> dict:
         "runtime_direct_dependencies_match": all(
             item["matches"] for item in observed.values()
         ),
-        "full_transitive_hash_lock": False,
+        "full_transitive_hash_lock": True,
+        "cross_platform_lock_matrix": False,
+        "cyclonedx_sbom_current": True,
         "container_images_digest_pinned": False,
         "container_build_verified": False,
         "external_data_archive_approved": False,
@@ -270,7 +352,7 @@ def verify_reproduction_release() -> dict:
         "training_executed": False,
         "formal_experiment_executed": False,
         "limitations": [
-            "exact direct versions are pinned, but transitive wheels and hashes are not",
+            "the full transitive hash lock covers the Python 3.12 x86_64 Linux CPU deployment target, not a cross-platform matrix",
             "container tags are fixed, but image digests and a successful build are unverified",
             "all known external data remains excluded from a release archive pending source-specific approval",
             "confirmatory execution and independent reproduction have not been performed",

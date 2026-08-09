@@ -161,6 +161,16 @@ environment lock: transitive wheel hashes, container digests, a successful
 container build, source-specific redistribution approval, and independent
 reproduction remain open gates.
 
+The supply-chain stage then resolves the Python 3.12 x86_64 Linux CPU runtime
+to 64 exact packages, verifies every package under `--require-hashes` with uv
+and pip target dry runs, switches Docker to the locked install path, and
+derives a deterministic CycloneDX 1.6 SBOM. Studio now presents paper,
+dependency, license, runtime, container, data, confirmatory, and independent
+review gates in one release-status center. This adds one deployment point and
+one academic reproducibility point, bringing product to 82 and academic to 69.
+Cross-platform locks, image digests, a real container build, source-specific
+data approval, confirmatory results, and independent reproduction remain open.
+
 ## Stage 3 — product validation
 
 Run a preregistered usability study with at least ten target users completing
