@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "contract_id": "gfs-exact-direct-dependencies-v1",
+  "lock_level": "exact_direct_dependencies_only",
+  "python_constraint": ">=3.11,<3.14",
+  "container_python": "3.12.11",
+  "build_system": {
+    "backend": "setuptools.build_meta",
+    "requirement": "setuptools==81.0.0"
+  },
+  "direct_dependencies": {
+    "numpy": "2.4.3",
+    "pandas": "3.0.2",
+    "openai": "2.32.0",
+    "python-dotenv": "1.2.2",
+    "matplotlib": "3.10.9",
+    "torch": "2.12.1",
+    "statsbombpy": "1.18.0",
+    "kloppy": "3.19.0"
+  },
+  "identity_inputs": [
+    "pyproject.toml",
+    "requirements.txt",
+    "Dockerfile",
+    "deploy/compose.yaml"
+  ],
+  "installation_contract": {
+    "direct_lock": "requirements.txt",
+    "project_install": "python -m pip install --no-deps .",
+    "container_uses_direct_lock": true
+  },
+  "index_observation": {
+    "checked_on": "2026-08-10",
+    "source_template": "https://pypi.org/pypi/{name}/{version}/json",
+    "target": "CPython 3.12 Linux wheel or universal wheel",
+    "all_direct_distributions_available": true,
+    "packages": {
+      "numpy": true,
+      "pandas": true,
+      "openai": true,
+      "python-dotenv": true,
+      "matplotlib": true,
+      "torch": true,
+      "statsbombpy": true,
+      "kloppy": true
+    }
+  },
+  "full_transitive_hash_lock": false,
+  "container_images_digest_pinned": false,
+  "limitations": [
+    "Transitive dependency versions and wheel hashes are not frozen.",
+    "Exact direct versions do not guarantee that the same wheels exist for every supported platform.",
+    "The Python and Caddy container images are version-tagged but not digest-pinned.",
+    "The contract is statically verified; it does not claim that a container image was built."
+  ]
+}

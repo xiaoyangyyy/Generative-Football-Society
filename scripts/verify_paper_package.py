@@ -206,13 +206,20 @@ def verify_paper_package() -> dict:
     )
 
     checks["environment_snapshot_is_honestly_partial"] = (
-        environment.get("status") == "partial_not_a_lock"
+        environment.get("status") == "exact_direct_lock_partial_environment"
+        and environment.get("direct_dependency_lock")
+        == "data/evaluation/dependency_lock_contract_v1.json"
         and environment.get("direct_packages", {}).get("kloppy") is None
         and len(environment.get("limitations") or []) >= 4
         and manifest.get("environment", {}).get("full_transitive_hash_lock") is False
     )
     checks["data_distribution_limits_are_explicit"] = (
         manifest.get("data_distribution", {}).get("license_review_complete") is False
+        and manifest.get("data_distribution", {}).get("known_source_registry_complete")
+        is True
+        and _confined_file(
+            str(manifest.get("data_distribution", {}).get("registry") or "")
+        )
         and "blanket archival-data claim"
         in " ".join(
             (ROOT / "docs/RESEARCH_DATA_CARD.md").read_text(

@@ -53,5 +53,5 @@ def test_control_plane_exposes_scores_and_security_action():
     snapshot = ProductControlPlane(ROOT).snapshot()["excellence"]
     assert snapshot["tracks"]["product"]["score"] == 81
     assert snapshot["tracks"]["product"]["baseline_score"] == 58
-    assert snapshot["tracks"]["academic"]["score"] == 67
+    assert snapshot["tracks"]["academic"]["score"] == 68
     assert snapshot["security_action"] == "revocation_required_by_user"

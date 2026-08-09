@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_code_only_reproduction_release_contract",
+  "generated_at": "2026-08-09T16:44:05.651180+00:00",
+  "status": "passed_code_contract",
+  "passed": true,
+  "release_ready": false,
+  "dependency_lock_level": "exact_direct_dependencies_only",
+  "known_external_source_count": 5,
+  "archive_eligible_external_source_count": 0,
+  "checks": {
+    "dependency_contract_schema_and_scope": true,
+    "requirements_are_exact_and_match_contract": true,
+    "pyproject_dependencies_match_direct_lock": true,
+    "python_support_window_is_bounded": true,
+    "build_backend_is_exactly_pinned": true,
+    "identity_inputs_exist_and_are_confined": true,
+    "container_uses_exact_direct_lock": true,
+    "container_direct_distributions_were_observed": true,
+    "incomplete_lock_is_not_overclaimed": true,
+    "release_artifacts_are_registered": true,
+    "release_audit_is_read_only": true,
+    "release_manifest_remains_preexecution": true,
+    "license_registry_schema": true,
+    "known_provider_coverage_is_exact": true,
+    "license_policy_is_default_deny": true,
+    "all_source_manifests_exist": true,
+    "every_source_has_review_evidence_and_reason": true,
+    "unapproved_external_data_is_excluded": true,
+    "paper_package_still_passes": true
+  },
+  "readiness": {
+    "runtime_direct_dependencies_match": false,
+    "full_transitive_hash_lock": false,
+    "container_images_digest_pinned": false,
+    "container_build_verified": false,
+    "external_data_archive_approved": false,
+    "confirmatory_results_available": false,
+    "independent_reproduction_available": false
+  },
+  "observed_direct_packages": {
+    "numpy": {
+      "expected": "2.4.3",
+      "observed": "2.4.3",
+      "matches": true
+    },
+    "pandas": {
+      "expected": "3.0.2",
+      "observed": "3.0.2",
+      "matches": true
+    },
+    "openai": {
+      "expected": "2.32.0",
+      "observed": "2.32.0",
+      "matches": true
+    },
+    "python-dotenv": {
+      "expected": "1.2.2",
+      "observed": "1.2.2",
+      "matches": true
+    },
+    "matplotlib": {
+      "expected": "3.10.9",
+      "observed": "3.10.9",
+      "matches": true
+    },
+    "torch": {
+      "expected": "2.12.1",
+      "observed": "2.12.1",
+      "matches": true
+    },
+    "statsbombpy": {
+      "expected": "1.18.0",
+      "observed": "1.18.0",
+      "matches": true
+    },
+    "kloppy": {
+      "expected": "3.19.0",
+      "observed": null,
+      "matches": false
+    }
+  },
+  "artifact_sha256": {
+    "pyproject.toml": "e5f2e4eec773787b553f3fd94fad402ae992198adc6592da5b00e0ce74888a5a",
+    "requirements.txt": "4c6bc02303ccef5cf08d7a0885f36bd6b6c63a6e5413a322a707cccf5f00bd8b",
+    "Dockerfile": "c90afefb9f143622288f0d7ba013acb0ff030c521b37bc02b176df3edbff234b",
+    "deploy/compose.yaml": "eee252be7893fe3e0ba1e963a2a010e087ee9c6e21340800dc754c5936ad80a3",
+    "data/evaluation/dependency_lock_contract_v1.json": "35b79c90fc9857a866719642903bbfbfc3c10e2e6537f1c3d01cba2e0313a76a",
+    "data/evaluation/data_license_registry_v1.json": "9fd5ea59ba572628fe4c872cb3b7987accd3ed0fb257f9d4f2eea8af80a70cf9",
+    "data/evaluation/reproduction_manifest_v1.json": "39921877579924a678486a0ca3d523f41c8d1f7224f3e7b56519a8241d7d93d2"
+  },
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false,
+  "limitations": [
+    "exact direct versions are pinned, but transitive wheels and hashes are not",
+    "container tags are fixed, but image digests and a successful build are unverified",
+    "all known external data remains excluded from a release archive pending source-specific approval",
+    "confirmatory execution and independent reproduction have not been performed"
+  ]
+}

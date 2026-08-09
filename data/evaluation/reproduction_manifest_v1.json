@@ -13,10 +13,13 @@
     "data_card": "docs/RESEARCH_DATA_CARD.md",
     "references": "docs/PAPER_REFERENCES.bib",
     "environment_snapshot": "data/evaluation/reproduction_environment_v1.json",
+    "dependency_lock_contract": "data/evaluation/dependency_lock_contract_v1.json",
+    "data_license_registry": "data/evaluation/data_license_registry_v1.json",
     "existing_evidence": "data/evaluation/research_evidence_v1.json",
     "prior_m1_decision": "data/evaluation/formal_ablation/M1_calibrated_decision.json",
     "runner": "scripts/run_formal_experiment.py",
-    "package_verifier": "scripts/verify_paper_package.py"
+    "package_verifier": "scripts/verify_paper_package.py",
+    "release_verifier": "scripts/verify_reproduction_release.py"
   },
   "commands": [
     {
@@ -29,6 +32,13 @@
     {
       "id": "evidence_audit",
       "command": "python scripts/audit_research_evidence.py --check",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "reproduction_release_audit",
+      "command": "python scripts/verify_reproduction_release.py",
       "effect": "read_only",
       "runs_simulation": false,
       "explicit_authority_required": false
@@ -61,14 +71,17 @@
     "current_status": "absent_not_executed"
   },
   "data_distribution": {
-    "status": "partial_source_specific_terms_apply",
+    "status": "known_sources_registered_default_deny",
     "redistribution_blanket_claim": false,
     "license_review_complete": false,
-    "note": "Repository manifests preserve source names and many hashes, but not every provider manifest records a license or canonical source URL."
+    "known_source_registry_complete": true,
+    "registry": "data/evaluation/data_license_registry_v1.json",
+    "note": "All five known external source families have a release decision, but unresolved license scope keeps every external artifact excluded from an archive."
   },
   "environment": {
-    "status": "partial_top_level_snapshot_not_hash_locked",
+    "status": "exact_direct_dependencies_not_transitively_hash_locked",
     "container_base_pinned": "python:3.12.11-slim-bookworm",
+    "direct_dependencies_pinned": true,
     "full_transitive_hash_lock": false
   },
   "independent_reproduction": {

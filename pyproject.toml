@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools==81.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,15 +7,15 @@ name = "generative-football-society"
 version = "0.1.0"
 description = "Football world-model research platform with a stable World Cup simulator"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11,<3.14"
 dependencies = [
-  "numpy",
-  "pandas",
-  "openai",
-  "python-dotenv",
-  "matplotlib",
-  "torch",
-  "statsbombpy",
+  "numpy==2.4.3",
+  "pandas==3.0.2",
+  "openai==2.32.0",
+  "python-dotenv==1.2.2",
+  "matplotlib==3.10.9",
+  "torch==2.12.1",
+  "statsbombpy==1.18.0",
   "kloppy==3.19.0",
 ]
 

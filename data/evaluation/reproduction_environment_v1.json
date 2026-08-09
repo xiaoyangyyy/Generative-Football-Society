@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "snapshot_id": "gfs-reproduction-environment-observed-2026-08-10",
-  "purpose": "Record the directly observed development environment without claiming a complete cross-platform lock.",
+  "purpose": "Record the exact direct dependency contract and directly observed development environment without claiming a complete cross-platform lock.",
   "python": {
-    "project_constraint": ">=3.10",
+    "project_constraint": ">=3.11,<3.14",
     "container_base": "3.12.11",
     "observed_verifier": "3.13.12"
   },
@@ -20,9 +20,10 @@
   "declared_special_constraint": {
     "kloppy": "3.19.0"
   },
-  "status": "partial_not_a_lock",
+  "direct_dependency_lock": "data/evaluation/dependency_lock_contract_v1.json",
+  "status": "exact_direct_lock_partial_environment",
   "limitations": [
-    "Transitive packages and artifact hashes are not frozen.",
+    "All eight direct runtime dependencies and the build backend are exact, but transitive packages and artifact hashes are not frozen.",
     "The observed verifier environment does not currently contain kloppy even though the project declares kloppy 3.19.0.",
     "Docker image construction has not been executed in this environment.",
     "This snapshot supports diagnosis and review but not bitwise reproduction."

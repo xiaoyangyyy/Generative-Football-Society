@@ -11,7 +11,7 @@ match, train a model, or call an external provider.
 - Independent reproduction: not performed.
 - Stable release: 7.0.0.
 - Sealed M1: research-only and default-off.
-- Environment: partial top-level snapshot, not a full hash lock.
+- Environment: exact direct pins, not a full transitive hash lock.
 
 The authoritative inventory is
 `data/evaluation/reproduction_manifest_v1.json`. Do not infer that an absent
@@ -23,6 +23,7 @@ From the repository root:
 
 ```bash
 python scripts/verify_paper_package.py
+python scripts/verify_reproduction_release.py
 python scripts/audit_research_evidence.py --check
 python scripts/run_formal_experiment.py
 ```
@@ -30,6 +31,10 @@ python scripts/run_formal_experiment.py
 Expected state:
 
 - every paper claim has exactly one manuscript marker and valid evidence;
+- all eight direct dependencies match `pyproject.toml`, `requirements.txt`,
+  and the Docker installation path;
+- all five known external source families have a default-deny archive
+  decision;
 - the frozen research evidence report is current;
 - protocol and sealed checkpoint identities pass;
 - confirmatory state is `not_started`, with 60 runs remaining;
@@ -41,24 +46,29 @@ reviewed before using the manuscript.
 ## 3. Code regression
 
 Install the project in an isolated environment. The project declares Python
-3.10 or newer; the deployment image currently uses Python 3.12.11.
+3.11 through 3.13; the deployment image currently uses Python 3.12.11.
 
 ```bash
 python -m venv .venv
 python -m pip install --upgrade pip
-python -m pip install -e .
+python -m pip install -r requirements.txt
+python -m pip install --no-deps -e .
 python -m pytest -q
 ```
 
-The repository does not yet provide a fully transitive, hash-locked
-requirements file. Record the resolver output and platform before comparing
-results. The checked-in observed environment snapshot is diagnostic, not a
-portable lock.
+The eight direct runtime dependencies and build backend are exact. The
+contract also records that compatible Python 3.12 Linux or universal
+distributions existed on PyPI on 2026-08-10. The repository still does not
+provide a fully transitive, wheel-hashed lock.
+Record the resolver output and platform before comparing results. The
+checked-in observed environment snapshot is diagnostic, not a portable lock.
 
 ## 4. Data review
 
-Read `docs/RESEARCH_DATA_CARD.md` and inspect each provider manifest. Verify
-source terms independently before downloading or redistributing data.
+Read `docs/RESEARCH_DATA_CARD.md` and
+`data/evaluation/data_license_registry_v1.json`, then inspect each provider
+manifest. Verify source terms independently before downloading or
+redistributing data.
 Repository-derived hashes establish file identity only when the referenced
 source files are lawfully available; they do not grant a license.
 

@@ -150,6 +150,17 @@ It does not complete Stage 2 or Stage 5: the environment is not transitively
 hash-locked, provider license review is incomplete, the results manuscript is
 pending, and no independent reproduction exists.
 
+The next code-only release-control gate pins the supported Python window, the
+build backend, and all eight direct runtime dependencies; the Docker build now
+installs through that exact direct lock. A five-source machine-readable data
+license registry applies default-deny archive decisions, and a standalone
+verifier checks dependency drift, Docker integration, provider coverage,
+paper-package consistency, and zero-compute boundaries. This adds one honest
+reproducibility point, bringing the academic score to 68. It is not a full
+environment lock: transitive wheel hashes, container digests, a successful
+container build, source-specific redistribution approval, and independent
+reproduction remain open gates.
+
 ## Stage 3 — product validation
 
 Run a preregistered usability study with at least ten target users completing

@@ -190,22 +190,25 @@ behavior. External datasets have different clocks, labels, and selection
 processes. Some provider manifests preserve hashes and source names without a
 complete license URL, so a blanket redistribution claim is not made.
 
-The environment snapshot pins the container base and records directly
-observed top-level versions, but it is not a hash-locked transitive
-environment. Docker has not been built in the present verification
-environment. The formal design has 30 pairs; it is bounded rather than
-universally powered. The bootstrap quantifies paired simulation variability,
-not uncertainty over all football populations.
+The environment contract pins the supported Python window, build backend,
+container base version, and all eight direct runtime dependencies. It does not
+hash-lock transitive wheels or container image digests. Docker has not been
+built in the present verification environment. The formal design has 30
+pairs; it is bounded rather than universally powered. The bootstrap
+quantifies paired simulation variability, not uncertainty over all football
+populations.
 
 No live LLM benefit is claimed. Provider credentials are excluded from
 artifacts, and the manuscript package verifier makes no network call.
 
 ## 9. Reproducibility and independent review
 
-The reproduction manifest classifies commands by side effect. Package audit,
-evidence audit, and experiment status are read-only. Only an explicit
-`--execute` command can start the fixed 60-run experiment, and analysis
-fails closed until evidence is complete and identity-matched.
+The reproduction manifest classifies commands by side effect. Package,
+release-contract, evidence, and experiment-status audits are read-only. The
+release-contract audit also verifies exact direct pins and the default-deny
+license registry. Only an explicit `--execute` command can start the fixed
+60-run experiment, and analysis fails closed until evidence is complete and
+identity-matched.
 
 <!-- claim:CLM-008 -->
 No reproduction by a person independent of the implementer has been
@@ -216,7 +219,8 @@ environment lock, dataset license review, and an external reproduction report.
 ## 10. Artifact availability
 
 The code, machine-readable protocol, claim registry, model card, data card,
-environment snapshot, and review commands are listed in
+direct dependency contract, source-license decision registry, environment
+snapshot, and review commands are listed in
 `data/evaluation/reproduction_manifest_v1.json`. Large or provider-governed
 source data remain subject to their original terms. No archival DOI or
 immutable reproduction archive is claimed at this stage.

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "registry_id": "gfs-known-external-data-license-decisions-v1",
+  "reviewed_on": "2026-08-10",
+  "scope": "Known external providers referenced by repository evidence and product data. This registry is a release-control record, not legal advice.",
+  "policy": {
+    "default": "exclude_from_distribution",
+    "unknown_or_ambiguous_terms": "exclude_from_distribution",
+    "source_access_is_not_redistribution_permission": true,
+    "repository_coverage_complete": true,
+    "blanket_redistribution_approved": false
+  },
+  "sources": [
+    {
+      "source_id": "statsbomb_open_data",
+      "aliases": ["StatsBomb", "StatsBomb 360", "Hudl StatsBomb Open Data"],
+      "local_manifests": ["data/external/statsbomb360/derived/manifest.json"],
+      "official_source_url": "https://github.com/hudl/open-data",
+      "terms_evidence_url": "https://github.com/hudl/open-data#terms--conditions",
+      "terms_observed": "Public use for research is described; publication, sharing, or distribution of analysis requires source attribution and the StatsBomb logo.",
+      "license_status": "custom_source_terms_no_spdx_expression",
+      "verification_status": "official_terms_observed_scope_review_required",
+      "archive_eligible": false,
+      "archive_decision": "exclude_external_data",
+      "reason": "The observed terms do not establish a blanket SPDX redistribution license for an immutable project archive."
+    },
+    {
+      "source_id": "metrica_sample_data",
+      "aliases": ["Metrica Sports sample data"],
+      "local_manifests": [
+        "data/external/metrica/pass_candidates_game1.manifest.json",
+        "data/external/metrica/pass_candidates_game2.manifest.json"
+      ],
+      "official_source_url": "https://github.com/metrica-sports/sample-data",
+      "terms_evidence_url": "https://github.com/metrica-sports/sample-data#legal-stuff",
+      "terms_observed": "The official README requests acknowledgement for public use, while the repository exposes no detected license identifier.",
+      "license_status": "no_machine_detected_license",
+      "verification_status": "official_acknowledgement_observed_license_unresolved",
+      "archive_eligible": false,
+      "archive_decision": "exclude_external_data",
+      "reason": "Acknowledgement guidance alone is not treated as redistribution permission."
+    },
+    {
+      "source_id": "skillcorner_open_data",
+      "aliases": ["SkillCorner Open Data"],
+      "local_manifests": ["data/external/skillcorner/derived/manifest.json"],
+      "official_source_url": "https://github.com/SkillCorner/opendata",
+      "terms_evidence_url": "https://github.com/SkillCorner/opendata/blob/master/LICENSE",
+      "terms_observed": "GitHub repository metadata identifies an MIT license.",
+      "license_status": "MIT_repository_metadata",
+      "verification_status": "license_observed_scope_review_required",
+      "archive_eligible": false,
+      "archive_decision": "exclude_external_data",
+      "reason": "The project conservatively requires a scope review before treating the repository license as permission for every upstream data artifact."
+    },
+    {
+      "source_id": "sportec_idsse",
+      "aliases": ["Sportec IDSSE", "IDSSE"],
+      "local_manifests": ["data/external/sportec/derived/manifest.json"],
+      "official_source_url": null,
+      "terms_evidence_url": null,
+      "terms_observed": "The local derived manifest declares CC BY 4.0, but it does not preserve an official source or license URL.",
+      "license_status": "CC-BY-4.0_local_assertion",
+      "verification_status": "official_evidence_missing",
+      "archive_eligible": false,
+      "archive_decision": "exclude_external_data",
+      "reason": "A local assertion is insufficient for release approval without authoritative source evidence."
+    },
+    {
+      "source_id": "transfermarkt_dataset_mirror",
+      "aliases": ["Transfermarkt", "dcaribou/transfermarkt-datasets"],
+      "local_manifests": ["data/external/transfermarkt/manifest.json"],
+      "official_source_url": "https://github.com/dcaribou/transfermarkt-datasets",
+      "terms_evidence_url": null,
+      "terms_observed": "The local manifest points to a third-party dataset mirror and records no license.",
+      "license_status": "unverified_third_party_mirror",
+      "verification_status": "redistribution_terms_missing",
+      "archive_eligible": false,
+      "archive_decision": "exclude_external_data",
+      "reason": "No external files from this source may be packaged without a separate rights review."
+    }
+  ]
+}

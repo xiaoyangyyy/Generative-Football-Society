@@ -148,11 +148,14 @@ simulation:
 
 ```bash
 python scripts/verify_paper_package.py --out data/evaluation/paper_package_verification_v1.json
+python scripts/verify_reproduction_release.py --out data/evaluation/reproduction_release_verification_v1.json
 ```
 
 See `docs/PAPER_DRAFT.md` and `docs/REPRODUCTION_GUIDE.md`. The draft keeps
 all confirmatory result cells unavailable and does not claim independent
-reproduction or a complete environment lock.
+reproduction or a complete environment lock. The release audit verifies exact
+direct dependency pins and a default-deny registry for all known external data
+sources while retaining explicit gates for transitive hashes and source terms.
 
 Show top team status rankings:
 
