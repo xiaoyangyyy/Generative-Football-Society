@@ -35,6 +35,9 @@ from scripts.verify_local_runtime import verify_local_runtime  # noqa: E402
 from scripts.verify_independent_reproduction import (  # noqa: E402
     protocol_report as independent_reproduction_protocol_report,
 )
+from scripts.finalize_paper import (  # noqa: E402
+    protocol_report as paper_finalization_protocol_report,
+)
 from scripts.verify_reproducibility_matrix import (  # noqa: E402
     verify_reproducibility_matrix,
 )
@@ -74,6 +77,9 @@ ACADEMIC_REPLICATION_PROTOCOL_REPORT = (
 )
 INDEPENDENT_PROTOCOL_REPORT = (
     ROOT / "data/evaluation/independent_reproduction_protocol_verification_v1.json"
+)
+PAPER_FINALIZATION_PROTOCOL_REPORT = (
+    ROOT / "data/evaluation/paper_finalization_protocol_verification_v1.json"
 )
 
 EXPECTED_SOURCE_IDS = {
@@ -251,6 +257,9 @@ def verify_reproduction_release() -> dict:
         ACADEMIC_REPLICATION_PROTOCOL_REPORT
     )
     stored_independent_protocol = _read_json(INDEPENDENT_PROTOCOL_REPORT)
+    stored_paper_finalization_protocol = _read_json(
+        PAPER_FINALIZATION_PROTOCOL_REPORT
+    )
     pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
     requirements = _parse_exact_requirements(REQUIREMENTS.read_text(encoding="utf-8"))
     project_requirements = _parse_exact_requirements(
@@ -283,6 +292,7 @@ def verify_reproduction_release() -> dict:
     product_value_protocol = product_value_protocol_report()
     academic_replication_protocol = academic_replication_protocol_report()
     independent_protocol = independent_reproduction_protocol_report()
+    paper_finalization_protocol = paper_finalization_protocol_report()
 
     checks: dict[str, bool] = {
         "dependency_contract_schema_and_scope": (
@@ -408,14 +418,12 @@ def verify_reproduction_release() -> dict:
             and stored_product_value_protocol.get("artifact_sha256")
             == product_value_protocol.get("artifact_sha256")
             and academic_replication_protocol.get("passed") is True
-            and academic_replication_protocol.get("ready_to_start") is False
             and academic_replication_protocol.get("runs_executed") == 0
             and stored_academic_replication_protocol.get("checks")
             == academic_replication_protocol.get("checks")
             and stored_academic_replication_protocol.get("artifact_sha256")
             == academic_replication_protocol.get("artifact_sha256")
             and independent_protocol.get("passed") is True
-            and independent_protocol.get("ready_to_start") is False
             and independent_protocol.get("runs_executed") == 0
             and stored_independent_protocol.get("status")
             in {
@@ -427,6 +435,11 @@ def verify_reproduction_release() -> dict:
             == independent_protocol.get("checks")
             and stored_independent_protocol.get("artifact_sha256")
             == independent_protocol.get("artifact_sha256")
+            and paper_finalization_protocol.get("passed") is True
+            and stored_paper_finalization_protocol.get("checks")
+            == paper_finalization_protocol.get("checks")
+            and stored_paper_finalization_protocol.get("artifact_sha256")
+            == paper_finalization_protocol.get("artifact_sha256")
         ),
         "container_direct_distributions_were_observed": (
             contract.get("index_observation", {}).get("target")
@@ -488,6 +501,10 @@ def verify_reproduction_release() -> dict:
                 "independent_reproduction_protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
                 "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
                 "independent_reproduction_verifier": "scripts/verify_independent_reproduction.py",
+                "paper_finalization_protocol": "data/evaluation/paper_finalization_protocol_v1.json",
+                "paper_finalization_protocol_verification": "data/evaluation/paper_finalization_protocol_verification_v1.json",
+                "paper_finalization_guide": "docs/PAPER_FINALIZATION.md",
+                "paper_finalization_verifier": "scripts/finalize_paper.py",
                 "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
                 "data_release_verification": "data/evaluation/data_release_verification_v1.json",
                 "data_release_builder": "scripts/build_data_release_archive.py",
@@ -551,6 +568,9 @@ def verify_reproduction_release() -> dict:
         "data/evaluation/independent_reproduction_protocol_v1.json",
         "docs/INDEPENDENT_REPRODUCTION.md",
         "scripts/verify_independent_reproduction.py",
+        "data/evaluation/paper_finalization_protocol_v1.json",
+        "docs/PAPER_FINALIZATION.md",
+        "scripts/finalize_paper.py",
         "scripts/verify_paper_package.py",
         "scripts/verify_reproduction_release.py",
     ]
@@ -582,6 +602,9 @@ def verify_reproduction_release() -> dict:
         ),
         "independent_reproduction_protocol_ready": (
             independent_protocol.get("passed") is True
+        ),
+        "paper_finalization_protocol_ready": (
+            paper_finalization_protocol.get("passed") is True
         ),
         "confirmatory_results_available": False,
         "independent_reproduction_available": False,

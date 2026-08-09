@@ -37,6 +37,7 @@ def test_code_only_release_contract_is_honest_and_zero_compute():
     assert report["readiness"]["container_images_digest_pinned"] is True
     assert report["readiness"]["container_build_verified"] is False
     assert report["readiness"]["external_data_archive_approved"] is True
+    assert report["readiness"]["paper_finalization_protocol_ready"] is True
     assert report["external_calls_made"] is False
     assert report["matches_executed"] == 0
     assert report["training_executed"] is False

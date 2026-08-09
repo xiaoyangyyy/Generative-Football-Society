@@ -203,6 +203,9 @@ class ProductControlPlane:
         academic_protocol = self._report(
             "data/evaluation/academic_replication_protocol_verification_v1.json"
         )
+        paper_finalization_protocol = self._report(
+            "data/evaluation/paper_finalization_protocol_verification_v1.json"
+        )
         product_validation = self._report(
             "data/evaluation/product_validation_v1/decision.json"
         )
@@ -220,6 +223,9 @@ class ProductControlPlane:
         )
         academic_replication = self._report(
             "data/evaluation/academic_replication_v1/decision.json"
+        )
+        completed_paper = self._report(
+            "data/evaluation/paper_finalization_v1/verification.json"
         )
         readiness = release.get("readiness") or {}
         checks = release.get("checks") or {}
@@ -258,11 +264,17 @@ class ProductControlPlane:
         academic_protocol_current = self._artifact_hashes_current(
             academic_protocol.get("artifact_sha256") or {}
         )
+        paper_finalization_protocol_current = self._artifact_hashes_current(
+            paper_finalization_protocol.get("artifact_sha256") or {}
+        )
         product_validation_current = self._artifact_hashes_current(
             product_validation.get("artifact_sha256") or {}
         )
         independent_review_current = self._artifact_hashes_current(
             independent_review.get("artifact_sha256") or {}
+        )
+        completed_paper_current = self._artifact_hashes_current(
+            completed_paper.get("artifact_sha256") or {}
         )
         product_gates = product_validation.get("gates") or {}
         external_review_checks = product_validation.get("external_review_checks") or {}
@@ -275,7 +287,10 @@ class ProductControlPlane:
             (
                 "paper_package",
                 "Registered-report package audit",
-                paper.get("passed") is True and paper_identity_current,
+                paper.get("passed") is True
+                and paper_identity_current
+                and paper_finalization_protocol.get("passed") is True
+                and paper_finalization_protocol_current,
                 paper.get("path"),
             ),
             (
@@ -444,8 +459,23 @@ class ProductControlPlane:
                 "Independent reproduction report",
                 independent_review.get("passed") is True
                 and independent_review.get("independent_review_available") is True
+                and independent_review.get("scope") == "full_study_132_runs"
+                and independent_review.get("stages_verified")
+                == ["confirmatory", "academic_replication"]
+                and set(independent_review.get("computed_comparison") or {})
+                == {"confirmatory", "academic_replication"}
                 and independent_review_current,
                 "data/evaluation/independent_reproduction_verification_v1.json",
+            ),
+            (
+                "completed_manuscript",
+                "Evidence-locked completed results manuscript",
+                completed_paper.get("passed") is True
+                and completed_paper.get("completed_manuscript_available") is True
+                and completed_paper.get("status")
+                == "verified_completed_manuscript"
+                and completed_paper_current,
+                "data/evaluation/paper_finalization_v1/verification.json",
             ),
         ]
         gates = [

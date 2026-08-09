@@ -2,7 +2,7 @@
   "schema_version": 1,
   "package_id": "gfs-registered-report-reproduction-v1",
   "stage": "preexecution_auditable_package",
-  "scope": "Existing evidence, manuscript claims, and the preregistered confirmatory workflow; no new simulation is part of package verification.",
+  "scope": "Existing evidence, manuscript claims, the preregistered confirmatory and mechanism-replication workflows, and their full-study independent reproduction; no new simulation is part of package verification.",
   "artifacts": {
     "manuscript": "docs/PAPER_DRAFT.md",
     "claims": "data/evaluation/paper_claims_v1.json",
@@ -50,6 +50,10 @@
     "academic_replication_protocol_verification": "data/evaluation/academic_replication_protocol_verification_v1.json",
     "academic_replication_guide": "docs/ACADEMIC_REPLICATION_STUDY.md",
     "academic_replication_runner": "scripts/academic_replication_study.py",
+    "paper_finalization_protocol": "data/evaluation/paper_finalization_protocol_v1.json",
+    "paper_finalization_protocol_verification": "data/evaluation/paper_finalization_protocol_verification_v1.json",
+    "paper_finalization_guide": "docs/PAPER_FINALIZATION.md",
+    "paper_finalization_verifier": "scripts/finalize_paper.py",
     "sbom_builder": "scripts/build_supply_chain_sbom.py",
     "data_license_registry": "data/evaluation/data_license_registry_v1.json",
     "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
@@ -212,6 +216,27 @@
       "explicit_authority_required": true
     },
     {
+      "id": "paper_finalization_protocol_audit",
+      "command": "python scripts/finalize_paper.py",
+      "effect": "read_only_evidence_locked_finalization_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "paper_result_ledger_build",
+      "command": "python scripts/finalize_paper.py --build-ledger --authorization I_AUTHORIZE_GFS_PAPER_RESULT_LEDGER_V1",
+      "effect": "build_deterministic_ledger_from_complete_existing_results",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "paper_final_manuscript_audit",
+      "command": "python scripts/finalize_paper.py --verify-final",
+      "effect": "read_only_completed_manuscript_evidence_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
       "id": "experiment_status",
       "command": "python scripts/run_formal_experiment.py",
       "effect": "read_only",
@@ -264,6 +289,12 @@
   },
   "independent_reproduction": {
     "status": "not_performed",
+    "scope": "confirmatory_and_result_contingent_mechanism_replication",
+    "runs_total": 132,
+    "stages": {
+      "confirmatory_runs": 60,
+      "academic_replication_runs": 72
+    },
     "protocol": "data/evaluation/independent_reproduction_protocol_v1.json",
     "protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
     "reviewer_independent_of_implementation": null,

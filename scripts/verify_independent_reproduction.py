@@ -39,6 +39,11 @@ CONTAINER_CHECKS = {
     "ephemeral_container_removed",
     "verification_image_removed",
 }
+BRANCH_BY_DECISION = {
+    "promotion_candidate_pending_release_review": "mechanism_confirmation",
+    "no_meaningful_difference_keep_research_only": "adoption_path_diagnosis",
+    "inconclusive_keep_research_only": "variance_diagnosis",
+}
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -84,14 +89,16 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
         "schema_and_state_are_registered": (
             protocol.get("schema_version") == 1
             and protocol.get("protocol_id")
-            == "gfs-independent-confirmatory-reproduction-v1"
-            and protocol.get("state") == "registered_waiting_for_confirmatory_result"
+            == "gfs-independent-full-study-reproduction-v1"
+            and protocol.get("state") == "registered_waiting_for_complete_study"
         ),
         "prerequisites_are_exact_and_fail_closed": (
             prerequisites
             == {
                 "confirmatory_protocol": "data/evaluation/formal_experiment_protocol_v2.json",
                 "confirmatory_decision": "data/evaluation/formal_confirmatory_v2/decision.json",
+                "academic_replication_protocol": "data/evaluation/academic_replication_protocol_v1.json",
+                "academic_replication_decision": "data/evaluation/academic_replication_v1/decision.json",
                 "container_runtime_evidence": "data/evaluation/container_runtime_verification_v1.json",
                 "reproduction_release_evidence": "data/evaluation/reproduction_release_verification_v1.json",
                 "all_must_pass_before_reproduction": True,
@@ -106,17 +113,29 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             and reviewer.get("signed_attestation_required") is True
         ),
         "execution_budget_is_exact_and_zero_training": (
-            execution.get("pairs_total") == 30
-            and execution.get("runs_total") == 60
-            and execution.get("arms") == ["M0", "M1"]
-            and execution.get("runs_per_arm") == 30
+            execution.get("runs_total") == 132
+            and execution.get("stages")
+            == {
+                "confirmatory": {
+                    "pairs_total": 30,
+                    "runs_total": 60,
+                    "arms": ["M0", "M1"],
+                    "runs_per_arm": 30,
+                },
+                "academic_replication": {
+                    "pairs_per_arm": 24,
+                    "runs_total": 72,
+                    "arms": ["M0", "M1_predict_only", "M1"],
+                    "runs_per_arm": 24,
+                },
+            }
             and execution.get("interim_analysis") is False
             and execution.get("optional_stopping") is False
             and execution.get("provider_calls_required") is False
             and execution.get("training_required") is False
         ),
         "comparison_contract_matches_formal_output": (
-            comparison.get("required_exact_fields")
+            comparison.get("confirmatory", {}).get("required_exact_fields")
             == [
                 "schema_version",
                 "protocol_id",
@@ -131,7 +150,7 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
                 "secondary_metrics",
                 "execution_identity",
             ]
-            and comparison.get("required_numeric_fields")
+            and comparison.get("confirmatory", {}).get("required_numeric_fields")
             == [
                 "primary.point_delta",
                 "primary.ci95_low",
@@ -142,15 +161,74 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             and comparison.get("numeric_absolute_tolerance") == 1e-12
             and comparison.get("all_validity_gates_must_match") is True
             and comparison.get("material_deviation_forces_inconclusive") is True
+            and comparison.get("negative_or_failed_results_must_not_be_relabelled")
+            is True
+            and comparison.get("academic_replication", {}).get(
+                "required_exact_fields"
+            )
+            == [
+                "schema_version",
+                "protocol_id",
+                "status",
+                "passed",
+                "branch",
+                "confirmatory_decision",
+                "conclusion",
+                "runs_executed",
+                "pairs_per_arm",
+                "comparisons.M1_minus_M0.method",
+                "comparisons.M1_minus_M0.draws",
+                "comparisons.M1_minus_M0.seed",
+                "comparisons.M1_minus_M0.candidate_all_external_gates",
+                "comparisons.M1_minus_M1_predict_only.method",
+                "comparisons.M1_minus_M1_predict_only.draws",
+                "comparisons.M1_minus_M1_predict_only.seed",
+                "comparisons.M1_minus_M1_predict_only.candidate_all_external_gates",
+                "mechanism.changed_pairs",
+                "mechanism.replicated_promotion",
+                "mechanism.replicated_equivalence",
+                "mechanism.replicated_harm",
+                "mechanism.planning_contribution",
+                "mechanism.planning_nonadoption",
+                "mechanism.bounded_inconclusive",
+                "external_validity.source",
+                "external_validity.checks",
+                "material_deviations",
+                "gates",
+                "execution_identity",
+                "training_executed",
+                "provider_calls_made",
+            ]
+            and comparison.get("academic_replication", {}).get(
+                "required_numeric_fields"
+            )
+            == [
+                "comparisons.M1_minus_M0.point_delta",
+                "comparisons.M1_minus_M0.ci95_low",
+                "comparisons.M1_minus_M0.ci95_high",
+                "comparisons.M1_minus_M1_predict_only.point_delta",
+                "comparisons.M1_minus_M1_predict_only.ci95_low",
+                "comparisons.M1_minus_M1_predict_only.ci95_high",
+                "mechanism.changed_pair_fraction",
+                "external_validity.full_candidate_mean_passes_per_team_match",
+                "external_validity.full_candidate_mean_shots_per_team_match",
+            ]
         ),
         "outputs_are_confined_and_exact": (
-            set(outputs) == {"review", "reproduced_decision", "execution_log"}
+            set(outputs)
+            == {
+                "review",
+                "reproduced_confirmatory_decision",
+                "reproduced_academic_replication_decision",
+                "execution_log",
+            }
             and all(_confined(ROOT, value) is not None for value in outputs.values())
         ),
         "execution_remains_not_performed": (
             state.get("reviewer_assigned") is False
             and state.get("runs_executed") == 0
-            and state.get("pairs_completed") == 0
+            and state.get("confirmatory_pairs_completed") == 0
+            and state.get("academic_replication_pairs_per_arm_completed") == 0
             and state.get("review_available") is False
             and state.get("reproduction_status") == "not_performed"
         ),
@@ -174,6 +252,8 @@ def _prerequisite_checks(root: Path, protocol: dict[str, Any]) -> dict[str, bool
     release = loaded.get("reproduction_release_evidence") or {}
     decision = loaded.get("confirmatory_decision") or {}
     formal = loaded.get("confirmatory_protocol") or {}
+    replication_protocol = loaded.get("academic_replication_protocol") or {}
+    replication = loaded.get("academic_replication_decision") or {}
     container_path = paths.get("container_runtime_evidence")
     release_path = paths.get("reproduction_release_evidence")
     container_checks = container.get("checks") or {}
@@ -187,6 +267,29 @@ def _prerequisite_checks(root: Path, protocol: dict[str, Any]) -> dict[str, bool
             decision.get("schema_version") == 2
             and decision.get("protocol_id") == formal.get("protocol_id")
             and decision.get("pairs_total") == 30
+            and decision.get("decision") in BRANCH_BY_DECISION
+        ),
+        "academic_replication_protocol_is_frozen": (
+            replication_protocol.get("schema_version") == 1
+            and replication_protocol.get("protocol_id")
+            == "gfs-result-contingent-mechanism-replication-v1"
+            and replication_protocol.get("state")
+            == "preregistered_waiting_for_confirmatory_decision"
+            and replication_protocol.get("design", {}).get("runs_total") == 72
+        ),
+        "academic_replication_decision_is_complete": (
+            replication.get("schema_version") == 1
+            and replication.get("protocol_id")
+            == replication_protocol.get("protocol_id")
+            and replication.get("runs_executed") == 72
+            and replication.get("pairs_per_arm") == 24
+            and replication.get("confirmatory_decision") == decision.get("decision")
+            and replication.get("branch")
+            == BRANCH_BY_DECISION.get(str(decision.get("decision") or ""))
+            and isinstance(replication.get("execution_identity"), dict)
+            and bool(replication.get("execution_identity"))
+            and replication.get("training_executed") is False
+            and replication.get("provider_calls_made") is False
         ),
         "container_runtime_gate_passed": (
             container.get("schema_version") == 2
@@ -272,10 +375,15 @@ def compare_decisions(
     reference: dict[str, Any],
     reproduced: dict[str, Any],
     protocol: dict[str, Any],
+    *,
+    stage: str = "confirmatory",
 ) -> dict[str, Any]:
     settings = protocol["comparison"]
+    if stage not in {"confirmatory", "academic_replication"}:
+        raise ValueError(f"unknown reproduction stage: {stage}")
+    fields = settings[stage]
     exact_mismatches: list[str] = []
-    for field in settings["required_exact_fields"]:
+    for field in fields["required_exact_fields"]:
         try:
             if _dotted(reference, field) != _dotted(reproduced, field):
                 exact_mismatches.append(field)
@@ -283,7 +391,7 @@ def compare_decisions(
             exact_mismatches.append(field)
     numeric_deltas: dict[str, float | None] = {}
     tolerance = float(settings["numeric_absolute_tolerance"])
-    for field in settings["required_numeric_fields"]:
+    for field in fields["required_numeric_fields"]:
         try:
             left = float(_dotted(reference, field))
             right = float(_dotted(reproduced, field))
@@ -295,6 +403,7 @@ def compare_decisions(
         value is not None and value <= tolerance for value in numeric_deltas.values()
     )
     return {
+        "stage": stage,
         "exact_fields_match": not exact_mismatches,
         "exact_field_mismatches": exact_mismatches,
         "numeric_fields_match": numeric_match,
@@ -329,21 +438,37 @@ def verify_review(
     protocol_checks = validate_protocol(protocol)
     prerequisite_checks = _prerequisite_checks(root, protocol)
     review = _read_json(review_path)
-    reference_path = _confined(
-        root,
-        protocol["prerequisites"]["confirmatory_decision"],
-    )
-    reproduced_path = _confined(
-        root,
-        protocol["outputs"]["reproduced_decision"],
-    )
-    if reference_path is None or not reference_path.is_file():
-        raise FileNotFoundError("confirmatory decision prerequisite is unavailable")
-    if reproduced_path is None or not reproduced_path.is_file():
-        raise FileNotFoundError("reproduced decision is unavailable")
-    reference = _read_json(reference_path)
-    reproduced = _read_json(reproduced_path)
-    comparison = compare_decisions(reference, reproduced, protocol)
+    reference_paths = {
+        "confirmatory": _confined(
+            root, protocol["prerequisites"]["confirmatory_decision"]
+        ),
+        "academic_replication": _confined(
+            root, protocol["prerequisites"]["academic_replication_decision"]
+        ),
+    }
+    reproduced_paths = {
+        "confirmatory": _confined(
+            root, protocol["outputs"]["reproduced_confirmatory_decision"]
+        ),
+        "academic_replication": _confined(
+            root,
+            protocol["outputs"]["reproduced_academic_replication_decision"],
+        ),
+    }
+    for stage, path in reference_paths.items():
+        if path is None or not path.is_file():
+            raise FileNotFoundError(f"{stage} reference decision is unavailable")
+    for stage, path in reproduced_paths.items():
+        if path is None or not path.is_file():
+            raise FileNotFoundError(f"{stage} reproduced decision is unavailable")
+    references = {stage: _read_json(path) for stage, path in reference_paths.items()}
+    reproduced = {stage: _read_json(path) for stage, path in reproduced_paths.items()}
+    comparisons = {
+        stage: compare_decisions(
+            references[stage], reproduced[stage], protocol, stage=stage
+        )
+        for stage in ("confirmatory", "academic_replication")
+    }
     reviewer = review.get("reviewer") or {}
     source = review.get("source") or {}
     execution = review.get("execution") or {}
@@ -364,16 +489,24 @@ def verify_review(
         for row in deviations
         if isinstance(row, dict)
     )
+    stage_conclusions = {
+        stage: "reproduced" if result["reproduction_matches"] else "not_reproduced"
+        for stage, result in comparisons.items()
+    }
     derived_conclusion = (
         "inconclusive"
         if material_deviation
         else "reproduced"
-        if comparison["reproduction_matches"]
+        if all(result["reproduction_matches"] for result in comparisons.values())
         else "not_reproduced"
     )
     formal_path = _confined(
         root,
         protocol["prerequisites"]["confirmatory_protocol"],
+    )
+    replication_protocol_path = _confined(
+        root,
+        protocol["prerequisites"]["academic_replication_protocol"],
     )
     container_path = _confined(
         root,
@@ -384,11 +517,36 @@ def verify_review(
         protocol["prerequisites"]["reproduction_release_evidence"],
     )
     formal = _read_json(formal_path) if formal_path and formal_path.is_file() else {}
+    replication_protocol = (
+        _read_json(replication_protocol_path)
+        if replication_protocol_path and replication_protocol_path.is_file()
+        else {}
+    )
     checkpoint_path = _confined(root, formal.get("candidate", {}).get("checkpoint"))
-    code_paths = formal.get("integrity", {}).get("code_identity_files") or []
+    code_paths = list(
+        dict.fromkeys(
+            [
+                *(formal.get("integrity", {}).get("code_identity_files") or []),
+                *(
+                    replication_protocol.get("integrity", {}).get(
+                        "code_identity_files"
+                    )
+                    or []
+                ),
+            ]
+        )
+    )
+    data_paths = (
+        replication_protocol.get("integrity", {}).get("data_identity_files") or []
+    )
     expected_code = {
         relative: _sha256(path)
         for relative in code_paths
+        if (path := _confined(root, relative)) is not None and path.is_file()
+    }
+    expected_data = {
+        relative: _sha256(path)
+        for relative in data_paths
         if (path := _confined(root, relative)) is not None and path.is_file()
     }
     checks = {
@@ -440,9 +598,24 @@ def verify_review(
             and bool(source["python_version"].strip())
         ),
         "execution_budget_and_boundaries_match": (
-            execution.get("pairs_completed") == 30
-            and execution.get("runs_total") == 60
-            and execution.get("runs_by_arm") == {"M0": 30, "M1": 30}
+            execution.get("runs_total") == 132
+            and execution.get("stages")
+            == {
+                "confirmatory": {
+                    "pairs_completed": 30,
+                    "runs_total": 60,
+                    "runs_by_arm": {"M0": 30, "M1": 30},
+                },
+                "academic_replication": {
+                    "pairs_per_arm_completed": 24,
+                    "runs_total": 72,
+                    "runs_by_arm": {
+                        "M0": 24,
+                        "M1_predict_only": 24,
+                        "M1": 24,
+                    },
+                },
+            }
             and execution.get("interim_analysis_performed") is False
             and execution.get("optional_stopping_performed") is False
             and execution.get("training_executed") is False
@@ -452,6 +625,10 @@ def verify_review(
             formal_path is not None
             and formal_path.is_file()
             and identities.get("formal_protocol_sha256") == _sha256(formal_path)
+            and replication_protocol_path is not None
+            and replication_protocol_path.is_file()
+            and identities.get("academic_replication_protocol_sha256")
+            == _sha256(replication_protocol_path)
             and checkpoint_path is not None
             and checkpoint_path.is_file()
             and identities.get("checkpoint_sha256") == _sha256(checkpoint_path)
@@ -459,6 +636,8 @@ def verify_review(
             == _sha256(checkpoint_path)
             and len(expected_code) == len(code_paths)
             and identities.get("critical_code_sha256") == expected_code
+            and len(expected_data) == len(data_paths)
+            and identities.get("replication_data_sha256") == expected_data
             and container_path is not None
             and container_path.is_file()
             and identities.get("container_runtime_report_sha256")
@@ -470,14 +649,21 @@ def verify_review(
         ),
         "decisions_are_content_addressed": (
             review.get("comparison", {}).get("reference_decision_sha256")
-            == _sha256(reference_path)
+            == {
+                stage: _sha256(path) for stage, path in reference_paths.items()
+            }
             and review.get("comparison", {}).get("reproduced_decision_sha256")
-            == _sha256(reproduced_path)
+            == {
+                stage: _sha256(path) for stage, path in reproduced_paths.items()
+            }
         ),
         "deviations_are_complete_and_classified": (
             deviation_shape and bool(deviations)
         ),
         "reviewer_conclusion_matches_computed_result": (
+            review.get("comparison", {}).get("stage_conclusions")
+            == stage_conclusions
+            and
             review.get("comparison", {}).get("reviewer_conclusion")
             == derived_conclusion
         ),
@@ -487,6 +673,21 @@ def verify_review(
         ),
     }
     valid = all(checks.values())
+    evidence_paths = {
+        "review": review_path,
+        "reference_confirmatory": reference_paths["confirmatory"],
+        "reference_academic_replication": reference_paths[
+            "academic_replication"
+        ],
+        "reproduced_confirmatory": reproduced_paths["confirmatory"],
+        "reproduced_academic_replication": reproduced_paths[
+            "academic_replication"
+        ],
+    }
+    artifact_sha256 = {
+        path.resolve().relative_to(root.resolve()).as_posix(): _sha256(path)
+        for path in evidence_paths.values()
+    }
     return {
         "schema_version": 1,
         "verification": "gfs_independent_reproduction_review",
@@ -494,7 +695,10 @@ def verify_review(
         "status": (f"verified_{derived_conclusion}" if valid else "invalid_review"),
         "passed": valid,
         "independent_review_available": valid,
-        "reproduction_matches": valid and comparison["reproduction_matches"],
+        "scope": "full_study_132_runs",
+        "stages_verified": ["confirmatory", "academic_replication"],
+        "reproduction_matches": valid
+        and all(result["reproduction_matches"] for result in comparisons.values()),
         "reviewer_conclusion": (
             derived_conclusion
             if valid
@@ -502,9 +706,10 @@ def verify_review(
         ),
         "checks": checks,
         "prerequisite_checks": prerequisite_checks,
-        "computed_comparison": comparison,
+        "computed_comparison": comparisons,
         "material_deviation": material_deviation,
         "review_sha256": _sha256(review_path),
+        "artifact_sha256": artifact_sha256,
         "external_calls_made": False,
         "runs_executed_by_verifier": 0,
         "matches_executed_by_verifier": 0,

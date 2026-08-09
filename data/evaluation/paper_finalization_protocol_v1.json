@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-evidence-locked-paper-finalization-v1",
+  "state": "registered_waiting_for_complete_evidence",
+  "objective": "Require the completed manuscript to embed a deterministic ledger derived from the confirmatory decision, mechanism replication, and signed independent review without rewriting negative results.",
+  "inputs": {
+    "confirmatory_decision": "data/evaluation/formal_confirmatory_v2/decision.json",
+    "academic_replication_decision": "data/evaluation/academic_replication_v1/decision.json",
+    "independent_reproduction_verification": "data/evaluation/independent_reproduction_verification_v1.json",
+    "preexecution_paper_package": "data/evaluation/paper_package_verification_v1.json"
+  },
+  "outputs": {
+    "result_ledger": "data/evaluation/paper_finalization_v1/result_ledger.json",
+    "final_manuscript": "docs/PAPER_FINAL.md",
+    "verification": "data/evaluation/paper_finalization_v1/verification.json"
+  },
+  "authorization": {
+    "ledger_build_requires_explicit_token": true,
+    "token": "I_AUTHORIZE_GFS_PAPER_RESULT_LEDGER_V1",
+    "simulation_authorized": false,
+    "training_authorized": false,
+    "provider_calls_authorized": false
+  },
+  "manuscript_contract": {
+    "stage_marker": "MANUSCRIPT_STAGE: COMPLETED_RESULTS_MANUSCRIPT",
+    "confirmatory_marker": "CONFIRMATORY_RESULT_STATUS: COMPLETE",
+    "replication_marker": "ACADEMIC_REPLICATION_STATUS: COMPLETE",
+    "independent_marker": "INDEPENDENT_REPRODUCTION_STATUS: COMPLETE",
+    "ledger_begin_marker": "<!-- GFS_RESULT_LEDGER_BEGIN -->",
+    "ledger_end_marker": "<!-- GFS_RESULT_LEDGER_END -->",
+    "ledger_sha_marker_prefix": "GFS_RESULT_LEDGER_SHA256: ",
+    "required_sections": [
+      "## Abstract",
+      "## 5. Confirmatory results",
+      "## 7. Discussion",
+      "## 8. Limitations, validity, and ethics",
+      "## 9. Reproducibility and independent review",
+      "## References"
+    ],
+    "forbidden_pending_phrases": [
+      "**Status: NOT EXECUTED.**",
+      "At this stage no confirmatory estimate",
+      "No such review has yet been performed.",
+      "No reproduction by a person independent of the implementer has been completed."
+    ]
+  },
+  "integrity": {
+    "all_source_hashes_must_match": true,
+    "embedded_ledger_must_equal_generated_ledger": true,
+    "negative_failed_or_inconclusive_results_must_be_preserved": true,
+    "manual_numeric_overrides_allowed": false
+  },
+  "execution": {
+    "ledger_built": false,
+    "final_manuscript_available": false,
+    "verification_available": false,
+    "matches_executed": 0,
+    "training_executed": false,
+    "provider_calls_made": false
+  }
+}

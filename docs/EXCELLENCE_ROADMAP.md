@@ -207,9 +207,10 @@ The next validation-control stage freezes a ten-or-more-participant target-user
 study with role quotas, five evidence-addressed tasks, a 90% complete-workflow
 threshold, mean SUS of at least 80, zero critical task errors, privacy
 allowlists, and separate independent WCAG 2.2 AA and application-security
-reviews. A second protocol freezes the independent confirmatory reproduction
-handoff, exact decision-field comparison, negative-result preservation, and
-material-deviation handling. Both zero-execution protocol audits pass. The
+reviews. A second protocol freezes a full-study independent reproduction
+handoff covering the 60-run confirmation and the result-selected 72-run
+mechanism replication, with exact decision-field comparison, negative-result
+preservation, and material-deviation handling. Both zero-execution protocol audits pass. The
 unified control plane now exposes the product gates that were previously only
 described in prose, yielding 10 passed of 18 total gates. Scores remain product
 83 and academic 70 because no participant, external reviewer, production soak,
@@ -268,6 +269,14 @@ the confirmatory decision does not yet exist. No academic score is awarded for
 the protocol alone.
 
 ## Stage 5 — paper and release candidate
+
+The code-only finalization contract now requires a deterministic result ledger
+derived from the 60-run confirmatory decision, the selected 72-run mechanism
+replication, and the signed full-study independent review. A completed
+manuscript must embed that exact ledger and its digest, remove all pending-
+execution language, and preserve negative, failed, or inconclusive outcomes.
+The protocol audit passes with zero runs, but the completed-manuscript gate
+remains open because none of those result artifacts exists yet.
 
 Freeze a containerized, one-command reproduction package with manifests,
 licenses, environment lock, data provenance, expected hashes, and an artifact

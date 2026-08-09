@@ -221,11 +221,13 @@ identity-matched.
 
 The independent-reproduction handoff is also registered before results exist.
 It requires a reviewer independent of implementation, a clean source commit,
-the complete 60-run budget, current container and release evidence, exact
-categorical decision agreement, scalar agreement within `1e-12`, disclosure
-of every deviation, and a signed public identity or ORCID. A valid negative or
-inconclusive reproduction remains reportable evidence and is not relabeled as
-success. No such review has yet been performed.
+the complete 60-run confirmatory budget followed by the selected 72-run
+mechanism-replication budget, current container and release evidence, exact
+agreement for both categorical decisions, scalar agreement within `1e-12`,
+disclosure of every deviation, and a signed public identity or ORCID. The
+total independent budget is 132 simulations. A valid negative, failed, or
+inconclusive result at either stage remains reportable evidence and is not
+relabelled as success. No such review has yet been performed.
 
 <!-- claim:CLM-008 -->
 No reproduction by a person independent of the implementer has been

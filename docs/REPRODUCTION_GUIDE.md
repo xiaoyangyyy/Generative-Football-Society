@@ -178,11 +178,14 @@ An independent reviewer should record:
 3. protocol, checkpoint, and critical-code hashes;
 4. data sources, versions, licenses, and manifest verification;
 5. commands executed and whether any deviation occurred;
-6. progress completeness and exact M0/M1 pairing;
-7. regenerated point estimate, interval, changed-pair fraction, and decision;
-8. differences from the checked-in decision and their diagnosis;
-9. reviewer relationship to the implementation team; and
-10. a signed conclusion of reproduced, not reproduced, or inconclusive.
+6. completeness and exact M0/M1 pairing for all 60 confirmatory runs;
+7. result-selected branch and exact M0/M1-predict-only/M1 pairing for all 72
+   mechanism-replication runs;
+8. both regenerated point estimates, intervals, mechanism quantities, validity
+   gates, and decisions;
+9. differences from either checked-in decision and their diagnosis;
+10. reviewer relationship to the implementation team; and
+11. a signed conclusion of reproduced, not reproduced, or inconclusive.
 
 Until such a report exists, the project must retain
 `INDEPENDENT_REPRODUCTION_STATUS: NOT_PERFORMED`.

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_independent_reproduction_preregistration",
-  "generated_at": "2026-08-09T18:37:22.113910+00:00",
+  "generated_at": "2026-08-09T19:42:58.714506+00:00",
   "status": "registered_waiting_for_prerequisites",
   "passed": true,
   "ready_to_start": false,
@@ -18,14 +18,16 @@
   "prerequisite_checks": {
     "confirmatory_protocol_is_frozen": true,
     "confirmatory_decision_is_complete": false,
+    "academic_replication_protocol_is_frozen": true,
+    "academic_replication_decision_is_complete": false,
     "container_runtime_gate_passed": false,
-    "reproduction_release_contract_passed": true
+    "reproduction_release_contract_passed": false
   },
-  "protocol_sha256": "ebefca7769b94aa93e21e2c86b63f1ca7bfe43d7d5e0f481fffbe4b6f23d4b15",
+  "protocol_sha256": "0330c1c2b71fa445f368f7b0d2f0967d7021aff026800b746f3d9eb162e5ebae",
   "artifact_sha256": {
-    "data/evaluation/independent_reproduction_protocol_v1.json": "ebefca7769b94aa93e21e2c86b63f1ca7bfe43d7d5e0f481fffbe4b6f23d4b15",
-    "docs/INDEPENDENT_REPRODUCTION.md": "07c71191c444442f3bf084e0695cc16b9a612a2ba28c95f1c0aa710ab0a58f28",
-    "scripts/verify_independent_reproduction.py": "9a183a343be1ee5134b5aa4a9d01fda16e14a1177d2b697cad77bf12e9ed0fc1"
+    "data/evaluation/independent_reproduction_protocol_v1.json": "0330c1c2b71fa445f368f7b0d2f0967d7021aff026800b746f3d9eb162e5ebae",
+    "docs/INDEPENDENT_REPRODUCTION.md": "5743c19a38e82ba6818c3fa58795eb40687a8eeba5be5532fa048e9b261e6cd8",
+    "scripts/verify_independent_reproduction.py": "b9ee6869e33c264134b5dd6b40d5a77781587fa0bd77ad8afbfa1bb2f3fa2b05"
   },
   "external_calls_made": false,
   "runs_executed": 0,
