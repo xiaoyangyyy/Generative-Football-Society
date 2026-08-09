@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_production_validation_preregistration",
+  "generated_at": "2026-08-09T19:10:28.103025+00:00",
+  "status": "passed_preregistered_not_executed",
+  "passed": true,
+  "execution_authorized": false,
+  "study_executed": false,
+  "matches_executed": 0,
+  "checks": {
+    "schema_and_state_are_frozen": true,
+    "schedule_is_exactly_100_unique_matches": true,
+    "execution_requires_explicit_authority_and_is_offline": true,
+    "real_restart_is_required": true,
+    "backup_restore_is_integrity_checked": true,
+    "acceptance_is_zero_loss_zero_duplicate": true,
+    "audit_trail_and_negative_results_are_preserved": true,
+    "outputs_are_confined": true,
+    "execution_remains_zero": true
+  },
+  "artifact_sha256": {
+    "data/evaluation/production_validation_protocol_v1.json": "33d57def38df799e3cd6847434e0eef66144981734a4435993919dd6303ae7e3",
+    "scripts/run_production_validation.py": "48192b3b136f195800865cb71235389b34433fa2ff5940b95c65c5754a6c88ca",
+    "docs/PRODUCTION_VALIDATION.md": "0ffaaf09e27faf766fd5d44c823945de2d07c996652be2121ae191db9f17c4b5"
+  },
+  "external_calls_made": false,
+  "training_executed": false,
+  "provider_calls_made": false
+}

@@ -169,6 +169,12 @@ class ProductControlPlane:
         product_protocol = self._report(
             "data/evaluation/product_validation_protocol_verification_v1.json"
         )
+        production_protocol = self._report(
+            "data/evaluation/production_validation_protocol_verification_v1.json"
+        )
+        value_protocol = self._report(
+            "data/evaluation/product_value_validation_protocol_verification_v1.json"
+        )
         independent_protocol = self._report(
             "data/evaluation/independent_reproduction_protocol_verification_v1.json"
         )
@@ -208,6 +214,12 @@ class ProductControlPlane:
         )
         product_protocol_current = self._artifact_hashes_current(
             product_protocol.get("artifact_sha256") or {}
+        )
+        production_protocol_current = self._artifact_hashes_current(
+            production_protocol.get("artifact_sha256") or {}
+        )
+        value_protocol_current = self._artifact_hashes_current(
+            value_protocol.get("artifact_sha256") or {}
         )
         independent_protocol_current = self._artifact_hashes_current(
             independent_protocol.get("artifact_sha256") or {}
@@ -286,11 +298,19 @@ class ProductControlPlane:
             ),
             (
                 "product_validation_protocol",
-                "Frozen target-user validation protocol",
+                "Frozen target-user, production, and product-value protocols",
                 product_protocol.get("passed") is True
                 and product_protocol.get("study_executed") is False
-                and product_protocol_current,
-                product_protocol.get("path"),
+                and product_protocol_current
+                and production_protocol.get("passed") is True
+                and production_protocol.get("study_executed") is False
+                and production_protocol.get("matches_executed") == 0
+                and production_protocol_current
+                and value_protocol.get("passed") is True
+                and value_protocol.get("study_executed") is False
+                and value_protocol.get("participants_observed") == 0
+                and value_protocol_current,
+                "data/evaluation/reproduction_release_verification_v1.json",
             ),
             (
                 "independent_reproduction_protocol",

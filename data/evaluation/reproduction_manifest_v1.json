@@ -34,6 +34,14 @@
     "product_validation_protocol_verification": "data/evaluation/product_validation_protocol_verification_v1.json",
     "product_validation_guide": "docs/PRODUCT_VALIDATION_STUDY.md",
     "product_validation_analyzer": "scripts/product_validation_study.py",
+    "production_validation_protocol": "data/evaluation/production_validation_protocol_v1.json",
+    "production_validation_protocol_verification": "data/evaluation/production_validation_protocol_verification_v1.json",
+    "production_validation_guide": "docs/PRODUCTION_VALIDATION.md",
+    "production_validation_runner": "scripts/run_production_validation.py",
+    "product_value_validation_protocol": "data/evaluation/product_value_validation_protocol_v1.json",
+    "product_value_validation_protocol_verification": "data/evaluation/product_value_validation_protocol_verification_v1.json",
+    "product_value_validation_guide": "docs/PRODUCT_VALUE_STUDY.md",
+    "product_value_validation_analyzer": "scripts/product_value_study.py",
     "independent_reproduction_protocol": "data/evaluation/independent_reproduction_protocol_v1.json",
     "independent_reproduction_protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
     "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
@@ -137,6 +145,34 @@
       "explicit_authority_required": true
     },
     {
+      "id": "production_validation_protocol_audit",
+      "command": "python scripts/run_production_validation.py",
+      "effect": "read_only_preregistered_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "production_validation_execution",
+      "command": "python scripts/run_production_validation.py --execute --workspace . --authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION --deployment-instance-id instance-replace",
+      "effect": "fixed_100_match_resumable_deployment_volume_validation",
+      "runs_simulation": true,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "product_value_protocol_audit",
+      "command": "python scripts/product_value_study.py",
+      "effect": "read_only_preregistered_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "product_value_analysis",
+      "command": "python scripts/product_value_study.py --analyze --records data/evaluation/product_value_validation_v1/participant_records.jsonl --out data/evaluation/product_value_validation_v1/decision.json",
+      "effect": "analyze_existing_pseudonymous_comparative_user_evidence",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
       "id": "independent_reproduction_protocol_audit",
       "command": "python scripts/verify_independent_reproduction.py",
       "effect": "read_only_preregistered_protocol_audit",
@@ -213,7 +249,13 @@
     "protocol": "data/evaluation/product_validation_protocol_v1.json",
     "protocol_verification": "data/evaluation/product_validation_protocol_verification_v1.json",
     "participants_observed": 0,
-    "decision": null
+    "decision": null,
+    "production_protocol": "data/evaluation/production_validation_protocol_v1.json",
+    "production_status": "preregistered_not_executed",
+    "production_matches_executed": 0,
+    "product_value_protocol": "data/evaluation/product_value_validation_protocol_v1.json",
+    "product_value_status": "preregistered_not_executed",
+    "product_value_participants_observed": 0
   },
   "archive": {
     "status": "manifest_addressed_subset_ready",

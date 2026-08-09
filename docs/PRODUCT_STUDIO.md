@@ -266,6 +266,24 @@ python scripts/verify_product_operations.py --tasks 100
 
 See `docs/PRODUCT_OPERATIONS.md` for retention, privacy, and claim boundaries.
 
+The real production gate is separately frozen in
+`data/evaluation/production_validation_protocol_v1.json`. Its runner executes
+only with an exact authorization token and requires 100 fixed stable matches,
+an observed ungraceful restart on the same named deployment volume, preserved
+task identity, zero lost or duplicate logical transactions, zero provider
+calls, and an integrity-equivalent staged restore. A normal invocation of
+`python scripts/run_production_validation.py` is a zero-match protocol audit.
+See `docs/PRODUCTION_VALIDATION.md`; the gate remains open until real deployment
+evidence exists.
+
+Comparative product value is separately preregistered instead of being inferred
+from SUS. `scripts/product_value_study.py` audits or analyzes a 24-participant,
+role-balanced and sequence-balanced crossover against the manual baseline. The
+primary bound requires at least a 20% penalized-time improvement with accuracy
+noninferiority and zero GFS critical errors. See
+`docs/PRODUCT_VALUE_STUDY.md`. No participants have yet been observed, so this
+gate also remains open.
+
 Remote sessions are independent and process-local. Each has an eight-hour
 absolute lifetime, a thirty-minute idle lifetime, and can be revoked with the
 Studio “安全退出” control. At most 64 sessions are retained; creating another

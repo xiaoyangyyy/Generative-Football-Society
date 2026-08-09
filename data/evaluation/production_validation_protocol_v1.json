@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-studio-production-validation-v1",
+  "state": "preregistered_not_executed",
+  "objective": "Demonstrate that the deployed stable-mode product completes exactly 100 fixed matches across an ungraceful restart without lost or duplicate logical transactions and can restore its persistent volume from an integrity-checked backup.",
+  "execution": {
+    "mode": "stable",
+    "fast": true,
+    "match_count": 100,
+    "base_seed": 91000,
+    "rounds": 10,
+    "fixtures": [
+      {"home": "Brazil", "away": "Argentina"},
+      {"home": "France", "away": "Germany"},
+      {"home": "Spain", "away": "Italy"},
+      {"home": "England", "away": "Portugal"},
+      {"home": "Netherlands", "away": "Belgium"},
+      {"home": "Argentina", "away": "France"},
+      {"home": "Germany", "away": "Spain"},
+      {"home": "Italy", "away": "England"},
+      {"home": "Portugal", "away": "Netherlands"},
+      {"home": "Belgium", "away": "Brazil"}
+    ],
+    "schedule_rule": "round_major_then_fixture_order; seed=base_seed+zero_based_match_index",
+    "provider_calls_authorized": false,
+    "training_authorized": false,
+    "formal_experiment_authorized": false,
+    "explicit_execution_token": "I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION"
+  },
+  "restart_drill": {
+    "ungraceful_termination_required": true,
+    "minimum_distinct_deployment_instances": 2,
+    "same_named_volume_required": true,
+    "at_least_one_running_task_recovered": true,
+    "interrupted_task_keeps_task_id_and_idempotency_key": true,
+    "failed_tasks_are_not_silently_retried": true
+  },
+  "recovery_drill": {
+    "integrity_checked_backup_required": true,
+    "restore_to_clean_staging_root": true,
+    "restored_session_sha256_must_match": true,
+    "restored_match_inventory_must_match": true,
+    "deployment_operator_attestation_required": true
+  },
+  "acceptance": {
+    "matches_executed": 100,
+    "completed_logical_tasks": 100,
+    "failed_logical_tasks": 0,
+    "unique_task_ids": 100,
+    "unique_match_ids": 100,
+    "successful_provider_calls": 0,
+    "zero_lost_transactions": true,
+    "zero_duplicate_transactions": true,
+    "deployment_volume_recovery_drill_passed": true,
+    "all_report_integrity_accepted": true
+  },
+  "integrity": {
+    "fresh_dedicated_workspace_required": true,
+    "protocol_and_runner_hashes_bound_at_first_invocation": true,
+    "atomic_progress_journal": true,
+    "idempotency_key_rule": "protocol_id:zero_based_match_index",
+    "all_attempts_retained": true,
+    "negative_or_incomplete_result_preserved": true,
+    "optional_stopping": false,
+    "unknown_attestation_fields_forbidden": true,
+    "operator_ids_are_pseudonymous": true,
+    "raw_host_identifiers_forbidden": true
+  },
+  "outputs": {
+    "progress": "data/evaluation/production_validation_v1/progress.json",
+    "deployment_attestation": "data/evaluation/production_validation_v1/deployment_attestation.json",
+    "backup": "data/evaluation/production_validation_v1/studio-backup.zip",
+    "decision": "data/evaluation/production_validation_v1/decision.json"
+  },
+  "current_execution": {
+    "invocations": 0,
+    "matches_executed": 0,
+    "restart_observed": false,
+    "training_executed": false,
+    "provider_calls_made": false,
+    "results_available": false
+  }
+}

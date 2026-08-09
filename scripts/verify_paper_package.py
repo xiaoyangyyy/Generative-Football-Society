@@ -194,10 +194,17 @@ def verify_paper_package() -> dict:
         and all(row.get("effect") and row.get("command") for row in commands)
     )
     checks["simulation_requires_one_explicit_execute_command"] = (
-        len(simulation_commands) == 1
-        and simulation_commands[0].get("command")
-        == "python scripts/run_formal_experiment.py --execute"
-        and simulation_commands[0].get("explicit_authority_required") is True
+        len(simulation_commands) == 2
+        and {
+            row.get("command") for row in simulation_commands
+        } == {
+            "python scripts/run_formal_experiment.py --execute",
+            "python scripts/run_production_validation.py --execute --workspace . --authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION --deployment-instance-id instance-replace",
+        }
+        and all(
+            row.get("explicit_authority_required") is True
+            for row in simulation_commands
+        )
     )
     checks["read_only_commands_cannot_run_simulation"] = all(
         row.get("runs_simulation") is False

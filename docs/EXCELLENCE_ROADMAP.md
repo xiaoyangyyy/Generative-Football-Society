@@ -232,6 +232,19 @@ external-review schema are now implemented in
 Stage 3 remains pending until real target users and independent reviewers
 produce valid records.
 
+The production and value-validation code is now frozen as two additional
+pre-execution contracts without changing the 18-gate public model. The existing
+protocol gate requires all three product studies to be current. Production
+validation uses an explicitly authorized, resumable 100-match stable workload,
+preserves idempotent task identity across a real process/container interruption,
+and verifies a same-inventory backup restore. Comparative value validation uses
+a 24-participant counterbalanced crossover, penalizes incorrect work at the
+time cap, and requires the bootstrap upper bound of the GFS/manual time ratio to
+be at most 0.80 while accuracy is noninferior and critical errors remain zero.
+Both protocol audits pass with zero matches and zero participants. Product stays
+at 83 and the production/value outcome gates stay open until prospective
+evidence is collected.
+
 ## Stage 4 — academic replication and mechanism
 
 Choose the branch dictated by Stage 2 before changing code. If M1 improves,

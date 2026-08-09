@@ -130,6 +130,38 @@ def test_startup_recovery_marks_running_tasks_interrupted_without_requeue(tmp_pa
     assert queue.claim_next("new-worker") is None
 
 
+def test_interrupted_task_can_be_requeued_without_duplicate_identity(tmp_path):
+    queue = ProductTaskQueue(tmp_path)
+    task, created = queue.submit_match(
+        "Brazil", "Argentina", fast=True, idempotency_key="soak-001",
+    )
+    assert created is True
+    claimed = queue.claim_next("worker-a")
+    assert claimed["task_id"] == task["task_id"]
+    assert queue.recover_running(reason="process_restart") == 1
+
+    retried = queue.requeue_interrupted(
+        task["task_id"], reason="production_validation_resume",
+    )
+    assert retried["task_id"] == task["task_id"]
+    assert retried["state"] == "queued"
+    duplicate, created = queue.submit_match(
+        "Brazil", "Argentina", fast=True, idempotency_key="soak-001",
+    )
+    assert created is False
+    assert duplicate["task_id"] == task["task_id"]
+    assert len(queue.list_tasks()) == 1
+
+
+def test_requeue_rejects_non_interrupted_or_invalid_requests(tmp_path):
+    queue = ProductTaskQueue(tmp_path)
+    task, _ = queue.submit_match("Brazil", "Argentina", fast=True)
+    with pytest.raises(RuntimeError, match="only interrupted"):
+        queue.requeue_interrupted(task["task_id"], reason="not_interrupted")
+    with pytest.raises(ValueError, match="reason"):
+        queue.requeue_interrupted(task["task_id"], reason="")
+
+
 @pytest.mark.parametrize("home,away,fast", [
     ("", "Argentina", True),
     ("Brazil", "brazil", True),

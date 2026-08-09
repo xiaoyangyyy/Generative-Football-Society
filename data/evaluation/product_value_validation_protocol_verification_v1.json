@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_product_value_preregistration",
+  "generated_at": "2026-08-09T19:03:04.104814+00:00",
+  "status": "passed_preregistered_not_executed",
+  "passed": true,
+  "study_executed": false,
+  "participants_observed": 0,
+  "matches_executed": 0,
+  "checks": {
+    "schema_and_state_are_frozen": true,
+    "counterbalanced_crossover_is_exact": true,
+    "sample_and_role_coverage_are_fixed": true,
+    "primary_endpoint_is_strict_and_reproducible": true,
+    "accuracy_and_critical_error_guards_are_fixed": true,
+    "privacy_and_analysis_integrity_are_explicit": true,
+    "outputs_are_confined_and_exact": true,
+    "execution_remains_zero": true
+  },
+  "artifact_sha256": {
+    "data/evaluation/product_value_validation_protocol_v1.json": "416114c03ce821ba53ee125f87128ba14320dc03c02432007b26ba38792f6843",
+    "scripts/product_value_study.py": "777553daf92b84f0db7b2a9d1273eeec23f4b12906b370ad4298344c9592d4ef",
+    "docs/PRODUCT_VALUE_STUDY.md": "a41135053c5dde63efa17d7ca287b9e2054b34fdfdd255c9dd3dc55397f57bb8"
+  },
+  "external_calls_made": false,
+  "training_executed": false,
+  "provider_calls_made": false
+}

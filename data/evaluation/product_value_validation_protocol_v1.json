@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-studio-comparative-value-validation-v1",
+  "state": "preregistered_not_executed",
+  "objective": "Test whether the cohesive GFS Studio workflow improves evidence-correct football analysis decisions over the current manual baseline without reducing correctness or introducing critical errors.",
+  "design": {
+    "type": "randomized_within_participant_counterbalanced_crossover",
+    "conditions": ["gfs_studio", "manual_baseline"],
+    "sequences": ["AB", "BA"],
+    "case_packs": ["case_pack_alpha", "case_pack_beta"],
+    "maximum_seconds_per_condition": 900,
+    "incorrect_or_incomplete_penalty_seconds": 900,
+    "training_task_before_measurement": true,
+    "same_case_pack_in_both_conditions_forbidden": true,
+    "optional_stopping": false
+  },
+  "population": {
+    "target_roles": ["football_analyst", "research_engineer", "product_operator"],
+    "minimum_valid_participants": 24,
+    "minimum_per_role": 8,
+    "minimum_per_sequence": 12,
+    "inclusion": ["adult_with_relevant_role_experience", "recorded_informed_consent"],
+    "predeclared_exclusions": ["consent_withdrawn", "infrastructure_failure_before_first_measured_condition"],
+    "performance_based_exclusion": false
+  },
+  "primary_endpoint": {
+    "name": "paired_penalized_time_geometric_mean_ratio_gfs_over_baseline",
+    "threshold": 0.8,
+    "decision_rule": "upper_bound_of_deterministic_participant_bootstrap_95_percent_ci_must_be_lte_threshold",
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 20260810
+  },
+  "safety_and_quality": {
+    "accuracy_noninferiority_margin": -0.05,
+    "accuracy_rule": "lower_bound_of_deterministic_paired_bootstrap_95_percent_ci_for_gfs_minus_baseline_must_be_gte_margin",
+    "gfs_critical_error_threshold": 0,
+    "all_valid_records_analyzed": true
+  },
+  "integrity": {
+    "protocol_changes_after_first_participant": false,
+    "participant_ids_are_pseudonymous": true,
+    "moderator_ids_are_pseudonymous": true,
+    "raw_free_text_forbidden": true,
+    "unknown_record_fields_forbidden": true,
+    "completed_conditions_require_sha256_evidence": true,
+    "duplicate_participant_ids_forbidden": true,
+    "negative_results_are_valid_outputs": true,
+    "interim_release_decisions": false,
+    "provider_calls_authorized": false,
+    "training_authorized": false
+  },
+  "outputs": {
+    "raw_records": "data/evaluation/product_value_validation_v1/participant_records.jsonl",
+    "decision": "data/evaluation/product_value_validation_v1/decision.json"
+  },
+  "current_execution": {
+    "participants_observed": 0,
+    "sessions_executed": 0,
+    "matches_executed": 0,
+    "training_executed": false,
+    "provider_calls_made": false,
+    "results_available": false
+  }
+}

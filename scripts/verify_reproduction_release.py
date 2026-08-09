@@ -20,6 +20,12 @@ from scripts.verify_paper_package import verify_paper_package  # noqa: E402
 from scripts.product_validation_study import (  # noqa: E402
     protocol_report as product_validation_protocol_report,
 )
+from scripts.product_value_study import (  # noqa: E402
+    protocol_report as product_value_protocol_report,
+)
+from scripts.run_production_validation import (  # noqa: E402
+    protocol_report as production_validation_protocol_report,
+)
 from scripts.verify_container_images import verify_container_images  # noqa: E402
 from scripts.verify_data_release import verify_data_release  # noqa: E402
 from scripts.verify_local_runtime import verify_local_runtime  # noqa: E402
@@ -53,6 +59,12 @@ WINDOWS_SBOM = ROOT / "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.js
 CI_ACTION_LOCK = ROOT / "data/evaluation/ci_action_lock_v1.json"
 PRODUCT_PROTOCOL_REPORT = (
     ROOT / "data/evaluation/product_validation_protocol_verification_v1.json"
+)
+PRODUCTION_PROTOCOL_REPORT = (
+    ROOT / "data/evaluation/production_validation_protocol_verification_v1.json"
+)
+PRODUCT_VALUE_PROTOCOL_REPORT = (
+    ROOT / "data/evaluation/product_value_validation_protocol_verification_v1.json"
 )
 INDEPENDENT_PROTOCOL_REPORT = (
     ROOT / "data/evaluation/independent_reproduction_protocol_verification_v1.json"
@@ -227,6 +239,8 @@ def verify_reproduction_release() -> dict:
     environment = _read_json(ENVIRONMENT)
     action_lock = _read_json(CI_ACTION_LOCK)
     stored_product_protocol = _read_json(PRODUCT_PROTOCOL_REPORT)
+    stored_production_protocol = _read_json(PRODUCTION_PROTOCOL_REPORT)
+    stored_product_value_protocol = _read_json(PRODUCT_VALUE_PROTOCOL_REPORT)
     stored_independent_protocol = _read_json(INDEPENDENT_PROTOCOL_REPORT)
     pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
     requirements = _parse_exact_requirements(REQUIREMENTS.read_text(encoding="utf-8"))
@@ -256,6 +270,8 @@ def verify_reproduction_release() -> dict:
     image_report = verify_container_images()
     data_release_report = verify_data_release()
     product_protocol = product_validation_protocol_report()
+    production_protocol = production_validation_protocol_report()
+    product_value_protocol = product_value_protocol_report()
     independent_protocol = independent_reproduction_protocol_report()
 
     checks: dict[str, bool] = {
@@ -367,6 +383,20 @@ def verify_reproduction_release() -> dict:
             and stored_product_protocol.get("checks") == product_protocol.get("checks")
             and stored_product_protocol.get("artifact_sha256")
             == product_protocol.get("artifact_sha256")
+            and production_protocol.get("passed") is True
+            and production_protocol.get("study_executed") is False
+            and production_protocol.get("matches_executed") == 0
+            and stored_production_protocol.get("checks")
+            == production_protocol.get("checks")
+            and stored_production_protocol.get("artifact_sha256")
+            == production_protocol.get("artifact_sha256")
+            and product_value_protocol.get("passed") is True
+            and product_value_protocol.get("study_executed") is False
+            and product_value_protocol.get("participants_observed") == 0
+            and stored_product_value_protocol.get("checks")
+            == product_value_protocol.get("checks")
+            and stored_product_value_protocol.get("artifact_sha256")
+            == product_value_protocol.get("artifact_sha256")
             and independent_protocol.get("passed") is True
             and independent_protocol.get("ready_to_start") is False
             and independent_protocol.get("runs_executed") == 0
@@ -425,6 +455,14 @@ def verify_reproduction_release() -> dict:
                 "product_validation_protocol_verification": "data/evaluation/product_validation_protocol_verification_v1.json",
                 "product_validation_guide": "docs/PRODUCT_VALIDATION_STUDY.md",
                 "product_validation_analyzer": "scripts/product_validation_study.py",
+                "production_validation_protocol": "data/evaluation/production_validation_protocol_v1.json",
+                "production_validation_protocol_verification": "data/evaluation/production_validation_protocol_verification_v1.json",
+                "production_validation_guide": "docs/PRODUCTION_VALIDATION.md",
+                "production_validation_runner": "scripts/run_production_validation.py",
+                "product_value_validation_protocol": "data/evaluation/product_value_validation_protocol_v1.json",
+                "product_value_validation_protocol_verification": "data/evaluation/product_value_validation_protocol_verification_v1.json",
+                "product_value_validation_guide": "docs/PRODUCT_VALUE_STUDY.md",
+                "product_value_validation_analyzer": "scripts/product_value_study.py",
                 "independent_reproduction_protocol": "data/evaluation/independent_reproduction_protocol_v1.json",
                 "independent_reproduction_protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
                 "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
@@ -480,6 +518,12 @@ def verify_reproduction_release() -> dict:
         "data/evaluation/product_validation_protocol_v1.json",
         "docs/PRODUCT_VALIDATION_STUDY.md",
         "scripts/product_validation_study.py",
+        "data/evaluation/production_validation_protocol_v1.json",
+        "docs/PRODUCTION_VALIDATION.md",
+        "scripts/run_production_validation.py",
+        "data/evaluation/product_value_validation_protocol_v1.json",
+        "docs/PRODUCT_VALUE_STUDY.md",
+        "scripts/product_value_study.py",
         "data/evaluation/independent_reproduction_protocol_v1.json",
         "docs/INDEPENDENT_REPRODUCTION.md",
         "scripts/verify_independent_reproduction.py",
@@ -503,6 +547,12 @@ def verify_reproduction_release() -> dict:
         "container_build_verified": False,
         "external_data_archive_approved": data_release_report.get("passed") is True,
         "product_validation_protocol_ready": product_protocol.get("passed") is True,
+        "production_validation_protocol_ready": (
+            production_protocol.get("passed") is True
+        ),
+        "product_value_validation_protocol_ready": (
+            product_value_protocol.get("passed") is True
+        ),
         "independent_reproduction_protocol_ready": (
             independent_protocol.get("passed") is True
         ),

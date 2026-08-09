@@ -199,6 +199,44 @@ class ProductTaskQueue:
             )
         return recovered
 
+    def requeue_interrupted(self, task_id: str, *, reason: str) -> dict[str, Any]:
+        """Explicitly retry an interrupted task without changing its identity.
+
+        Failed tasks are intentionally not retryable through this method: an
+        operator must first resolve the failure and start a new validation run.
+        Retaining the task and idempotency hash lets recovery audits prove that
+        a restart did not create a second logical transaction.
+        """
+        if not task_id or len(task_id) > 64 or not task_id.isalnum():
+            raise ValueError("invalid product task id")
+        normalized_reason = str(reason).strip()
+        if not normalized_reason or len(normalized_reason) > 100:
+            raise ValueError("requeue reason must be between 1 and 100 characters")
+        with FileLease(self.lease_path, timeout=5.0):
+            payload = self._load()
+            for task in payload["tasks"]:
+                if task.get("task_id") != task_id:
+                    continue
+                if task.get("state") != "interrupted":
+                    raise RuntimeError("only interrupted product tasks may be requeued")
+                task.update({
+                    "state": "queued",
+                    "updated_at": _now(),
+                    "requeue_reason": normalized_reason,
+                })
+                for field in ("finished_at", "reason", "worker_id"):
+                    task.pop(field, None)
+                self._write(payload)
+                public = _public_task(task)
+                self.telemetry.try_record(
+                    "task_requeued",
+                    task_id=task["task_id"],
+                    attempt=int(task.get("attempt", 0)),
+                    reason=normalized_reason,
+                )
+                return public
+        raise FileNotFoundError(f"product task not found: {task_id}")
+
     def claim_next(self, worker_id: str) -> dict[str, Any] | None:
         if not worker_id.strip():
             raise ValueError("worker id must not be empty")
