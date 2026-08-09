@@ -171,6 +171,17 @@ one academic reproducibility point, bringing product to 82 and academic to 69.
 Cross-platform locks, image digests, a real container build, source-specific
 data approval, confirmatory results, and independent reproduction remain open.
 
+The next supply-chain stage adds a Python 3.13 Windows x86_64 development
+reference lock beside the Linux deployment lock. Both 64-package closures pass
+uv and pip `--require-hashes` dry runs and have deterministic CycloneDX 1.6
+SBOMs. The observed Windows runtime imports all eight exact direct dependencies.
+Official Docker Registry HEAD observations bind the Python and Caddy readable
+tags to immutable OCI index digests. These direct controls add one deployment
+point and complete the academic reproducibility gate, bringing product to 83
+and academic to 70. A real container build remains open because this verifier
+host has no Docker CLI; `scripts/verify_container_runtime.py --execute` is the
+fail-closed handoff for a Docker host.
+
 ## Stage 3 — product validation
 
 Run a preregistered usability study with at least ten target users completing

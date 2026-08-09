@@ -1,7 +1,5 @@
 import copy
 import json
-from pathlib import Path
-
 from scripts.verify_paper_package import (
     CLAIMS,
     MANUSCRIPT,
@@ -23,10 +21,7 @@ def test_preexecution_paper_package_is_honest_and_zero_execution():
     assert report["claim_count"] >= 8
     assert all(report["checks"].values())
     assert any("not a completed results manuscript" in row for row in report["limitations"])
-    assert any(
-        "cross-platform matrix" in row and "Docker build" in row
-        for row in report["limitations"]
-    )
+    assert any("actual Docker build" in row for row in report["limitations"])
 
 
 def test_claim_audit_rejects_duplicate_or_unmarked_claims():

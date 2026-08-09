@@ -11,8 +11,9 @@ match, train a model, or call an external provider.
 - Independent reproduction: not performed.
 - Stable release: 7.0.0.
 - Sealed M1: research-only and default-off.
-- Environment: 64-package Python 3.12 Linux CPU transitive hash lock; no
-  cross-platform lock matrix or built container claim.
+- Environment: two verified 64-package reference locks—Python 3.12 Linux CPU
+  deployment and Python 3.13 Windows CPU development—with current CycloneDX
+  SBOMs and immutable container-image digests; no built-container claim.
 
 The authoritative inventory is
 `data/evaluation/reproduction_manifest_v1.json`. Do not infer that an absent
@@ -26,6 +27,9 @@ From the repository root:
 python scripts/verify_paper_package.py
 python scripts/verify_reproduction_release.py
 python scripts/build_supply_chain_sbom.py --check
+python scripts/verify_reproducibility_matrix.py
+python scripts/verify_local_runtime.py
+python scripts/verify_container_images.py
 python scripts/audit_research_evidence.py --check
 python scripts/run_formal_experiment.py
 ```
@@ -33,10 +37,12 @@ python scripts/run_formal_experiment.py
 Expected state:
 
 - every paper claim has exactly one manuscript marker and valid evidence;
-- all eight direct dependencies match the project contract and the 64-package
-  target lock, every locked package has SHA-256 evidence, and Docker enforces
-  `--require-hashes`;
-- the CycloneDX 1.6 SBOM exactly matches the locked runtime closure;
+- all eight direct dependencies match both 64-package reference locks, every
+  locked package has SHA-256 evidence, and Docker enforces `--require-hashes`;
+- both CycloneDX 1.6 SBOMs exactly match their locked runtime closures;
+- all eight direct dependencies import in the observed Windows runtime;
+- Python and Caddy retain readable tags while resolving through recorded,
+  immutable OCI index digests;
 - all five known external source families have a default-deny archive
   decision;
 - the frozen research evidence report is current;
@@ -67,13 +73,33 @@ python -m pip install --require-hashes -r requirements-linux-py312.lock
 python -m pip install --no-build-isolation --no-deps -e .
 ```
 
+For the Windows development reference profile, use CPython 3.13 x86_64:
+
+```powershell
+python -m pip install --require-hashes -r requirements-windows-py313.lock
+python -m pip install --no-build-isolation --no-deps -e .
+```
+
 The target lock contains 64 exact packages, includes the CPU Torch wheel,
 records all accepted distribution SHA-256 values, and has passed both uv and
 pip dry-run resolution. `tzdata` and `colorama` are deliberate shims so pip can
 also audit the Linux lock from a Windows host whose marker evaluation follows
-the host. The lock is not a cross-platform matrix, and the observed local
-environment snapshot remains diagnostic rather than evidence of a Linux
-runtime import test.
+the host. The matrix intentionally defines two reference profiles; it does not
+claim every Python/OS combination permitted by `pyproject.toml`. The observed
+Windows import smoke is direct runtime evidence, but it is not a Linux import
+test or an independent clean-room reproduction.
+
+The image references are digest-pinned. On a Docker host, the remaining build
+gate can be executed explicitly with:
+
+```bash
+python scripts/verify_container_runtime.py --execute \
+  --out data/evaluation/container_runtime_verification_v1.json
+```
+
+That command builds and launches an ephemeral read-only container, verifies
+the declared non-root user, imports all direct dependencies, probes `/healthz`,
+and removes the temporary container. It does not run a match or train a model.
 
 ## 4. Data review
 

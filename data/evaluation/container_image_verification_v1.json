@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_immutable_container_image_contract",
+  "generated_at": "2026-08-09T17:41:39.268822+00:00",
+  "status": "passed",
+  "passed": true,
+  "images": {
+    "python_runtime": "python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7",
+    "caddy_gateway": "caddy:2.8.4-alpine@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17"
+  },
+  "checks": {
+    "contract_schema_and_registry": true,
+    "exact_image_set": true,
+    "all_digests_are_sha256": true,
+    "all_are_oci_index_observations": true,
+    "python_digest_is_pinned_in_dockerfile": true,
+    "caddy_digest_is_pinned_in_compose": true,
+    "human_readable_tags_are_retained": true
+  },
+  "artifact_sha256": {
+    "Dockerfile": "024b9f661aee7d4ca65e063da8ab76dd3034f39ded9a1d0f08a450cc456d6480",
+    "deploy/compose.yaml": "9858147e031850f7760b2259af0921787e9d63702788785d327b0a9dadd4d04d",
+    "data/evaluation/container_image_contract_v1.json": "e2bd5134e849ad38fb525a3fdb1a7f359cc4370f2096df8223e2a5bd99b703e9"
+  },
+  "verification_external_calls_made": false,
+  "registry_observation_external_calls_recorded": true,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false
+}

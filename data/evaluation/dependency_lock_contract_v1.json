@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "contract_id": "gfs-linux-py312-transitive-hash-lock-v1",
-  "lock_level": "target_platform_transitive_hash_lock",
+  "contract_id": "gfs-supported-profile-transitive-hash-lock-matrix-v2",
+  "lock_level": "supported_profile_transitive_hash_lock_matrix",
   "python_constraint": ">=3.11,<3.14",
   "container_python": "3.12.11",
   "build_system": {
@@ -23,15 +23,23 @@
     "requirements.txt",
     "requirements-linux-py312.in",
     "requirements-linux-py312.lock",
+    "requirements-windows-py313.in",
+    "requirements-windows-py313.lock",
     "Dockerfile",
     "deploy/compose.yaml",
-    "data/evaluation/supply_chain_sbom_v1.cdx.json"
+    "data/evaluation/supply_chain_sbom_v1.cdx.json",
+    "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json",
+    "data/evaluation/windows_lock_validation_v1.json",
+    "data/evaluation/container_image_contract_v1.json"
   ],
   "installation_contract": {
     "direct_requirements": "requirements.txt",
     "target_lock_input": "requirements-linux-py312.in",
     "target_runtime_lock": "requirements-linux-py312.lock",
     "runtime_install": "python -m pip install --require-hashes -r requirements-linux-py312.lock",
+    "windows_reference_lock_input": "requirements-windows-py313.in",
+    "windows_reference_runtime_lock": "requirements-windows-py313.lock",
+    "windows_reference_install": "python -m pip install --require-hashes -r requirements-windows-py313.lock",
     "project_install": "python -m pip install --no-build-isolation --no-deps .",
     "container_uses_transitive_hash_lock": true
   },
@@ -68,19 +76,35 @@
       "colorama": "0.4.6"
     }
   },
+  "windows_reference_lock": {
+    "python": "3.13",
+    "platform": "x86_64-pc-windows-msvc",
+    "torch_backend": "cpu",
+    "resolver": "uv 0.11.13",
+    "exclude_newer": "2026-08-10T00:00:00Z",
+    "package_count": 64,
+    "hash_algorithm": "sha256",
+    "all_packages_exact": true,
+    "all_packages_hashed": true,
+    "uv_require_hashes_dry_run": "passed",
+    "pip_require_hashes_dry_run": "passed"
+  },
   "sbom": {
     "path": "data/evaluation/supply_chain_sbom_v1.cdx.json",
     "format": "CycloneDX",
     "spec_version": "1.6",
-    "component_count": 64
+    "component_count": 64,
+    "windows_path": "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json",
+    "windows_component_count": 64,
+    "profile_count": 2
   },
   "full_transitive_hash_lock": true,
-  "cross_platform_lock_matrix": false,
-  "container_images_digest_pinned": false,
+  "cross_platform_lock_matrix": true,
+  "container_images_digest_pinned": true,
   "limitations": [
-    "The transitive hash lock targets the Python 3.12 x86_64 Linux CPU container, not every supported development platform.",
+    "The reproducibility matrix covers the declared Linux deployment and Windows development reference profiles, not every Python/OS combination permitted by pyproject.toml.",
     "The lock records all published hashes per exact version; pip selects the compatible target wheel under --require-hashes.",
-    "The Python and Caddy container images are version-tagged but not digest-pinned.",
-    "The contract is statically verified; it does not claim that a container image was built."
+    "The Python and Caddy OCI index digests are pinned and backed by recorded official Registry HEAD observations.",
+    "The contract is statically and resolver-plan verified; it does not claim that a container image was built."
   ]
 }

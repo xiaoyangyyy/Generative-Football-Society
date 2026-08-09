@@ -18,6 +18,15 @@
     "target_runtime_lock": "requirements-linux-py312.lock",
     "target_lock_validation": "data/evaluation/target_lock_validation_v1.json",
     "supply_chain_sbom": "data/evaluation/supply_chain_sbom_v1.cdx.json",
+    "windows_lock_input": "requirements-windows-py313.in",
+    "windows_runtime_lock": "requirements-windows-py313.lock",
+    "windows_lock_validation": "data/evaluation/windows_lock_validation_v1.json",
+    "windows_supply_chain_sbom": "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json",
+    "reproducibility_matrix_verification": "data/evaluation/reproducibility_matrix_verification_v1.json",
+    "local_runtime_verification": "data/evaluation/local_runtime_verification_v1.json",
+    "container_image_contract": "data/evaluation/container_image_contract_v1.json",
+    "container_image_verification": "data/evaluation/container_image_verification_v1.json",
+    "container_runtime_verifier": "scripts/verify_container_runtime.py",
     "sbom_builder": "scripts/build_supply_chain_sbom.py",
     "data_license_registry": "data/evaluation/data_license_registry_v1.json",
     "existing_evidence": "data/evaluation/research_evidence_v1.json",
@@ -56,6 +65,34 @@
       "explicit_authority_required": false
     },
     {
+      "id": "reproducibility_matrix_audit",
+      "command": "python scripts/verify_reproducibility_matrix.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "local_runtime_audit",
+      "command": "python scripts/verify_local_runtime.py",
+      "effect": "read_only_import_smoke",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "container_image_audit",
+      "command": "python scripts/verify_container_images.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "container_runtime_execution",
+      "command": "python scripts/verify_container_runtime.py --execute --out data/evaluation/container_runtime_verification_v1.json",
+      "effect": "build_and_launch_ephemeral_container",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
       "id": "experiment_status",
       "command": "python scripts/run_formal_experiment.py",
       "effect": "read_only",
@@ -91,13 +128,16 @@
     "note": "All five known external source families have a release decision, but unresolved license scope keeps every external artifact excluded from an archive."
   },
   "environment": {
-    "status": "target_platform_transitive_hash_locked",
-    "container_base_pinned": "python:3.12.11-slim-bookworm",
+    "status": "supported_profile_matrix_runtime_verified",
+    "container_base_pinned": "python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7",
     "direct_dependencies_pinned": true,
     "full_transitive_hash_lock": true,
     "target_runtime_lock": "requirements-linux-py312.lock",
-    "cross_platform_lock_matrix": false,
-    "cyclonedx_sbom_current": true
+    "windows_reference_runtime_lock": "requirements-windows-py313.lock",
+    "cross_platform_lock_matrix": true,
+    "cyclonedx_sbom_current": true,
+    "container_images_digest_pinned": true,
+    "container_build_verified": false
   },
   "independent_reproduction": {
     "status": "not_performed",

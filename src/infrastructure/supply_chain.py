@@ -50,6 +50,7 @@ def lock_sha256(path: Path) -> str:
 
 def build_cyclonedx_sbom(
     lock_path: Path, *, project_name: str, project_version: str,
+    resolution_target: str = "CPython 3.12 / x86_64 manylinux_2_28 / CPU",
 ) -> dict[str, Any]:
     """Build a stable CycloneDX 1.6 runtime-closure SBOM from a hashed lock."""
     lock_text = lock_path.read_text(encoding="utf-8")
@@ -74,7 +75,7 @@ def build_cyclonedx_sbom(
                 },
                 {
                     "name": "gfs:resolution-target",
-                    "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU",
+                    "value": resolution_target,
                 },
             ],
         }

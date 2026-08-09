@@ -191,12 +191,16 @@ processes. Some provider manifests preserve hashes and source names without a
 complete license URL, so a blanket redistribution claim is not made.
 
 The environment contract pins the supported Python window, build backend,
-container base version, and a 64-package transitive runtime closure for the
-Python 3.12 x86_64 Linux CPU target. Every exact package has SHA-256 evidence,
-Docker enforces `--require-hashes`, and a deterministic CycloneDX 1.6 SBOM
-covers the closure. This is not a cross-platform lock matrix, container image
-digests remain unlocked, and Docker has not been built in the present
-verification environment. The formal design has 30 pairs; it is bounded
+container base version, and two 64-package transitive runtime closures: a
+Python 3.12 x86_64 Linux CPU deployment profile and a Python 3.13 x86_64
+Windows CPU development profile. Every exact package has SHA-256 evidence,
+both uv and pip accept both install plans under `--require-hashes`, and two
+deterministic CycloneDX 1.6 SBOMs cover the closures. The observed Windows
+runtime imports all eight exact direct dependencies. Python and Caddy image
+tags are bound to recorded official OCI index digests. Docker has not been
+built in the present verification environment, and the two-profile matrix does
+not claim every Python/OS combination permitted by the package metadata. The
+formal design has 30 pairs; it is bounded
 rather than universally powered. The bootstrap quantifies paired simulation
 variability, not uncertainty over all football populations.
 
@@ -207,8 +211,9 @@ artifacts, and the manuscript package verifier makes no network call.
 
 The reproduction manifest classifies commands by side effect. Package,
 release-contract, evidence, and experiment-status audits are read-only. The
-release-contract audit also verifies the target transitive hash lock, current
-SBOM, and default-deny license registry. Only an explicit `--execute` command can start the fixed
+release-contract audit also verifies the two-profile transitive hash-lock
+matrix, current SBOMs, immutable image pins, imported local runtime, and
+default-deny license registry. Only an explicit `--execute` command can start the fixed
 60-run experiment, and analysis fails closed until evidence is complete and
 identity-matched.
 

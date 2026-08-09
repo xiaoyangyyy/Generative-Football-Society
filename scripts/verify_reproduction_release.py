@@ -17,6 +17,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.verify_paper_package import verify_paper_package  # noqa: E402
+from scripts.verify_container_images import verify_container_images  # noqa: E402
+from scripts.verify_local_runtime import verify_local_runtime  # noqa: E402
+from scripts.verify_reproducibility_matrix import (  # noqa: E402
+    verify_reproducibility_matrix,
+)
 from src.infrastructure import file_sha256  # noqa: E402
 from src.infrastructure.supply_chain import (  # noqa: E402
     build_cyclonedx_sbom,
@@ -35,6 +40,9 @@ TARGET_LOCK_INPUT = ROOT / "requirements-linux-py312.in"
 TARGET_LOCK = ROOT / "requirements-linux-py312.lock"
 TARGET_VALIDATION = ROOT / "data/evaluation/target_lock_validation_v1.json"
 SBOM = ROOT / "data/evaluation/supply_chain_sbom_v1.cdx.json"
+WINDOWS_LOCK = ROOT / "requirements-windows-py313.lock"
+WINDOWS_VALIDATION = ROOT / "data/evaluation/windows_lock_validation_v1.json"
+WINDOWS_SBOM = ROOT / "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json"
 
 EXPECTED_SOURCE_IDS = {
     "statsbomb_open_data",
@@ -168,14 +176,18 @@ def verify_reproduction_release() -> dict:
     )
     artifacts = manifest.get("artifacts") or {}
     commands = manifest.get("commands") or []
+    matrix_report = verify_reproducibility_matrix()
+    local_runtime_report = verify_local_runtime()
+    image_report = verify_container_images()
 
     checks: dict[str, bool] = {
         "dependency_contract_schema_and_scope": (
             contract.get("schema_version") == 1
             and contract.get("lock_level")
-            == "target_platform_transitive_hash_lock"
+            == "supported_profile_transitive_hash_lock_matrix"
             and contract.get("full_transitive_hash_lock") is True
-            and contract.get("cross_platform_lock_matrix") is False
+            and contract.get("cross_platform_lock_matrix") is True
+            and contract.get("container_images_digest_pinned") is True
             and len(expected) == 8
         ),
         "requirements_are_exact_and_match_contract": requirements == expected,
@@ -242,10 +254,25 @@ def verify_reproduction_release() -> dict:
             and len((sbom.get("dependencies") or [])[0].get("dependsOn") or [])
             == 64
         ),
+        "supported_profile_matrix_is_current": (
+            matrix_report.get("passed") is True
+            and matrix_report.get("profile_count") == 2
+            and WINDOWS_LOCK.is_file()
+            and WINDOWS_VALIDATION.is_file()
+            and WINDOWS_SBOM.is_file()
+        ),
+        "local_runtime_import_smoke_passes": (
+            local_runtime_report.get("passed") is True
+            and all(local_runtime_report.get("checks", {}).values())
+        ),
+        "container_image_digest_contract_is_current": (
+            image_report.get("passed") is True
+            and all(image_report.get("checks", {}).values())
+        ),
         "container_uses_transitive_hash_lock": all(
             marker in dockerfile
             for marker in (
-                "ARG PYTHON_IMAGE=python:3.12.11-slim-bookworm",
+                "ARG PYTHON_IMAGE=python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7",
                 "COPY pyproject.toml requirements.txt requirements-linux-py312.lock README.md ./",
                 "python -m pip install --require-hashes -r requirements-linux-py312.lock",
                 "python -m pip install --no-build-isolation --no-deps .",
@@ -262,13 +289,15 @@ def verify_reproduction_release() -> dict:
             == {name: True for name in expected}
         ),
         "target_scope_and_remaining_limits_are_honest": (
-            contract.get("container_images_digest_pinned") is False
+            contract.get("container_images_digest_pinned") is True
             and len(contract.get("limitations") or []) >= 4
             and environment.get("status")
-            == "target_transitive_hash_lock_partial_runtime"
+            == "supported_profile_matrix_runtime_verified"
             and manifest.get("environment", {}).get("full_transitive_hash_lock")
             is True
             and manifest.get("environment", {}).get("cross_platform_lock_matrix")
+            is True
+            and manifest.get("environment", {}).get("container_build_verified")
             is False
         ),
         "release_artifacts_are_registered": all(
@@ -281,6 +310,14 @@ def verify_reproduction_release() -> dict:
                 "target_lock_input": "requirements-linux-py312.in",
                 "target_lock_validation": "data/evaluation/target_lock_validation_v1.json",
                 "supply_chain_sbom": "data/evaluation/supply_chain_sbom_v1.cdx.json",
+                "windows_runtime_lock": "requirements-windows-py313.lock",
+                "windows_lock_validation": "data/evaluation/windows_lock_validation_v1.json",
+                "windows_supply_chain_sbom": "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json",
+                "reproducibility_matrix_verification": "data/evaluation/reproducibility_matrix_verification_v1.json",
+                "local_runtime_verification": "data/evaluation/local_runtime_verification_v1.json",
+                "container_image_contract": "data/evaluation/container_image_contract_v1.json",
+                "container_image_verification": "data/evaluation/container_image_verification_v1.json",
+                "container_runtime_verifier": "scripts/verify_container_runtime.py",
                 "sbom_builder": "scripts/build_supply_chain_sbom.py",
             }.items()
         ),
@@ -310,6 +347,10 @@ def verify_reproduction_release() -> dict:
         "data/evaluation/data_license_registry_v1.json",
         "data/evaluation/reproduction_manifest_v1.json",
         "data/evaluation/target_lock_validation_v1.json",
+        "data/evaluation/windows_lock_validation_v1.json",
+        "data/evaluation/local_runtime_verification_v1.json",
+        "data/evaluation/reproducibility_matrix_verification_v1.json",
+        "data/evaluation/container_image_verification_v1.json",
     ]
     identity = {
         path: file_sha256(ROOT / path)
@@ -317,13 +358,14 @@ def verify_reproduction_release() -> dict:
         if _confined_file(path)
     }
     readiness = {
-        "runtime_direct_dependencies_match": all(
-            item["matches"] for item in observed.values()
+        "runtime_direct_dependencies_match": (
+            all(item["matches"] for item in observed.values())
+            and local_runtime_report.get("passed") is True
         ),
         "full_transitive_hash_lock": True,
-        "cross_platform_lock_matrix": False,
+        "cross_platform_lock_matrix": matrix_report.get("passed") is True,
         "cyclonedx_sbom_current": True,
-        "container_images_digest_pinned": False,
+        "container_images_digest_pinned": image_report.get("passed") is True,
         "container_build_verified": False,
         "external_data_archive_approved": False,
         "confirmatory_results_available": False,
@@ -352,8 +394,8 @@ def verify_reproduction_release() -> dict:
         "training_executed": False,
         "formal_experiment_executed": False,
         "limitations": [
-            "the full transitive hash lock covers the Python 3.12 x86_64 Linux CPU deployment target, not a cross-platform matrix",
-            "container tags are fixed, but image digests and a successful build are unverified",
+            "the verified matrix covers named Linux deployment and Windows development reference profiles, not every permitted Python/OS combination",
+            "container image digests are fixed, but a successful build is unverified on this Docker-less host",
             "all known external data remains excluded from a release archive pending source-specific approval",
             "confirmatory execution and independent reproduction have not been performed",
         ],

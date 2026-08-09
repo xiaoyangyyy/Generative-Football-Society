@@ -205,16 +205,22 @@ def verify_paper_package() -> dict:
         if row.get("effect") == "read_only"
     )
 
-    checks["environment_snapshot_is_honestly_partial"] = (
-        environment.get("status") == "target_transitive_hash_lock_partial_runtime"
+    checks["environment_snapshot_has_verified_reference_matrix"] = (
+        environment.get("status") == "supported_profile_matrix_runtime_verified"
         and environment.get("direct_dependency_lock")
         == "data/evaluation/dependency_lock_contract_v1.json"
         and environment.get("target_runtime_lock")
         == "requirements-linux-py312.lock"
-        and environment.get("direct_packages", {}).get("kloppy") is None
+        and environment.get("windows_reference_runtime_lock")
+        == "requirements-windows-py313.lock"
+        and environment.get("direct_packages", {}).get("kloppy") == "3.19.0"
         and len(environment.get("limitations") or []) >= 4
         and manifest.get("environment", {}).get("full_transitive_hash_lock") is True
         and manifest.get("environment", {}).get("cross_platform_lock_matrix")
+        is True
+        and manifest.get("environment", {}).get("container_images_digest_pinned")
+        is True
+        and manifest.get("environment", {}).get("container_build_verified")
         is False
     )
     checks["data_distribution_limits_are_explicit"] = (
@@ -286,7 +292,7 @@ def verify_paper_package() -> dict:
         "checks": checks,
         "limitations": [
             "this verifies a registered-report-stage package, not a completed results manuscript",
-            "the deployment target is transitively hash-locked, but the cross-platform matrix and Docker build remain incomplete",
+            "the Linux/Windows reference matrix and image digests are verified, but an actual Docker build remains incomplete",
             "cross-provider licensing review and an immutable archival bundle remain incomplete",
             "no independent reviewer has reproduced the confirmatory experiment",
         ],

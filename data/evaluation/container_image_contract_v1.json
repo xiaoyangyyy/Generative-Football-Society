@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "contract_id": "gfs-immutable-container-images-v1",
+  "observed_at": "2026-08-10T01:30:00+08:00",
+  "registry": "https://registry-1.docker.io",
+  "authentication": "anonymous_pull_token",
+  "observation_method": "authenticated HTTP HEAD with OCI and Docker manifest-list Accept media types",
+  "images": [
+    {
+      "id": "python_runtime",
+      "repository": "library/python",
+      "tag": "3.12.11-slim-bookworm",
+      "digest": "sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7",
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "manifest_endpoint": "https://registry-1.docker.io/v2/library/python/manifests/3.12.11-slim-bookworm",
+      "registry_head_verified": true
+    },
+    {
+      "id": "caddy_gateway",
+      "repository": "library/caddy",
+      "tag": "2.8.4-alpine",
+      "digest": "sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17",
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "manifest_endpoint": "https://registry-1.docker.io/v2/library/caddy/manifests/2.8.4-alpine",
+      "registry_head_verified": true
+    }
+  ],
+  "external_registry_calls_made": true,
+  "provider_api_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false,
+  "scope": "The OCI index digests make tag resolution immutable while retaining readable version tags; a successful local container build is a separate gate."
+}

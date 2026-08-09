@@ -215,21 +215,21 @@ class ProductControlPlane:
             ),
             (
                 "local_runtime",
-                "Local direct dependency environment",
+                "Imported local direct dependency runtime",
                 readiness.get("runtime_direct_dependencies_match") is True,
-                "data/evaluation/reproduction_environment_v1.json",
+                "data/evaluation/local_runtime_verification_v1.json",
             ),
             (
                 "cross_platform_lock_matrix",
-                "Cross-platform dependency lock matrix",
+                "Linux/Windows reference lock matrix",
                 readiness.get("cross_platform_lock_matrix") is True,
-                "data/evaluation/dependency_lock_contract_v1.json",
+                "data/evaluation/reproducibility_matrix_verification_v1.json",
             ),
             (
                 "container_image_digests",
                 "Container image digest pins",
                 readiness.get("container_images_digest_pinned") is True,
-                "Dockerfile",
+                "data/evaluation/container_image_verification_v1.json",
             ),
             (
                 "container_build",
@@ -265,6 +265,9 @@ class ProductControlPlane:
             "target_hash_lock",
             "cyclonedx_sbom",
             "known_source_decisions",
+            "local_runtime",
+            "cross_platform_lock_matrix",
+            "container_image_digests",
         }
         code_ready = all(
             gate["passed"] for gate in gates if gate["id"] in code_gate_ids

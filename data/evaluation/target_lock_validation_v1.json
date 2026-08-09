@@ -29,13 +29,14 @@
     "environment_installed": false,
     "container_built": false
   },
-  "external_calls_made": false,
+  "external_package_index_calls_made": true,
+  "provider_api_calls_made": false,
   "matches_executed": 0,
   "training_executed": false,
   "formal_experiment_executed": false,
   "limitations": [
     "tzdata and colorama are explicit portability shims because pip evaluates markers against the Windows audit host during cross-platform dry runs",
     "the dry run verifies resolution and downloaded hashes but does not execute imports inside the Linux container",
-    "base-image and gateway-image digests remain unlocked"
+    "base-image and gateway-image digests are now pinned, but no container was built on this host"
   ]
 }

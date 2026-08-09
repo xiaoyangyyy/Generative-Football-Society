@@ -238,7 +238,7 @@ The same control plane now exposes a unified `release` object and a visible
 paper-package, transitive-lock, SBOM, data-license, local-runtime,
 cross-platform-lock, image-digest, container-build, external-data,
 confirmatory-result, and independent-reproduction gates. `code_ready` means
-the four code-controlled gates pass; it never aliases `release_ready`, which
+the seven code-controlled gates pass; it never aliases `release_ready`, which
 remains false while any real-world gate is open. Each gate carries an evidence
 path and the response identifies the next unresolved action.
 

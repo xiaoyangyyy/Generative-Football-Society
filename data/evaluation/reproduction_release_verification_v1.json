@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "verification": "gfs_code_only_reproduction_release_contract",
-  "generated_at": "2026-08-09T17:20:00.039117+00:00",
+  "generated_at": "2026-08-09T17:41:45.025744+00:00",
   "status": "passed_code_contract",
   "passed": true,
   "release_ready": false,
-  "dependency_lock_level": "target_platform_transitive_hash_lock",
+  "dependency_lock_level": "supported_profile_transitive_hash_lock_matrix",
   "known_external_source_count": 5,
   "archive_eligible_external_source_count": 0,
   "checks": {
@@ -20,6 +20,9 @@
     "target_lock_has_safe_index_and_portability_contract": true,
     "target_lock_validation_matches_artifacts": true,
     "cyclonedx_sbom_is_current_and_complete": true,
+    "supported_profile_matrix_is_current": true,
+    "local_runtime_import_smoke_passes": true,
+    "container_image_digest_contract_is_current": true,
     "container_uses_transitive_hash_lock": true,
     "container_direct_distributions_were_observed": true,
     "target_scope_and_remaining_limits_are_honest": true,
@@ -35,11 +38,11 @@
     "paper_package_still_passes": true
   },
   "readiness": {
-    "runtime_direct_dependencies_match": false,
+    "runtime_direct_dependencies_match": true,
     "full_transitive_hash_lock": true,
-    "cross_platform_lock_matrix": false,
+    "cross_platform_lock_matrix": true,
     "cyclonedx_sbom_current": true,
-    "container_images_digest_pinned": false,
+    "container_images_digest_pinned": true,
     "container_build_verified": false,
     "external_data_archive_approved": false,
     "confirmatory_results_available": false,
@@ -83,8 +86,8 @@
     },
     "kloppy": {
       "expected": "3.19.0",
-      "observed": null,
-      "matches": false
+      "observed": "3.19.0",
+      "matches": true
     }
   },
   "artifact_sha256": {
@@ -92,21 +95,29 @@
     "requirements.txt": "4c6bc02303ccef5cf08d7a0885f36bd6b6c63a6e5413a322a707cccf5f00bd8b",
     "requirements-linux-py312.in": "277f4281f1050cbf9df63e7455c08b95e10e2a4056ab5d3c4458de9a5c307b3f",
     "requirements-linux-py312.lock": "690cf8411748689ae98b179913d21149d34c8fa2d1174be8845280781bae8bf1",
-    "Dockerfile": "008432ef0d858a080d1f979a442bb3250256c69cfb7e4cbab8039381a216d277",
-    "deploy/compose.yaml": "eee252be7893fe3e0ba1e963a2a010e087ee9c6e21340800dc754c5936ad80a3",
+    "requirements-windows-py313.in": "a29ec616000be4152ddb122e75409922ae18b874294013dc9fb7baa82e2e207b",
+    "requirements-windows-py313.lock": "ee8b00e688ab1f11127feff03b323731ab0cfcf94ff959e5caca9ec54e59146c",
+    "Dockerfile": "024b9f661aee7d4ca65e063da8ab76dd3034f39ded9a1d0f08a450cc456d6480",
+    "deploy/compose.yaml": "9858147e031850f7760b2259af0921787e9d63702788785d327b0a9dadd4d04d",
     "data/evaluation/supply_chain_sbom_v1.cdx.json": "78db773e9fd36b1307ba371695b026598af0866558201eacaadc569174fa4aa1",
-    "data/evaluation/dependency_lock_contract_v1.json": "61bd8fbacdef44257292a3bc789671554b83a23b235fc0dca403540dd3f1aedc",
+    "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json": "9a93c841f80e129493dea9bf91d6ea0ee3ee47a0b1a2548070115c5bb4aaed8b",
+    "data/evaluation/windows_lock_validation_v1.json": "48b7c895a77a74685909a78bccec8d92a95471526c1f1a6f5e83ef6f5bd24655",
+    "data/evaluation/container_image_contract_v1.json": "e2bd5134e849ad38fb525a3fdb1a7f359cc4370f2096df8223e2a5bd99b703e9",
+    "data/evaluation/dependency_lock_contract_v1.json": "05db2ea11767b6ae246aa712a26a62a100633d817285e84b267c00e9a246dbb2",
     "data/evaluation/data_license_registry_v1.json": "9fd5ea59ba572628fe4c872cb3b7987accd3ed0fb257f9d4f2eea8af80a70cf9",
-    "data/evaluation/reproduction_manifest_v1.json": "8f6c9dff36f8a6af100d1a5cfd5f1fcafb305635f3ae1b25030b39a24bdb9109",
-    "data/evaluation/target_lock_validation_v1.json": "cfcc225d2b8c06ca906a39cd88095416b547027bafefbafb53431d673b004296"
+    "data/evaluation/reproduction_manifest_v1.json": "b7a6c5ef0a421fa27e8bc5660e908c64cad05164aa05a3976873ef2a3b2a5183",
+    "data/evaluation/target_lock_validation_v1.json": "9f91850dcf9cc1b3aeab53c23b78d4c158a581365ee2ca82f77384080e297315",
+    "data/evaluation/local_runtime_verification_v1.json": "6e2d63d3b0eea4b732efb98408356b45632d279cd777c22ff44b73d9c1c80939",
+    "data/evaluation/reproducibility_matrix_verification_v1.json": "277f2d3840102f1f838a67436690a0c51d25c542694c4fad04e9583bbc2d1bc0",
+    "data/evaluation/container_image_verification_v1.json": "ed6936fc82c033ac4a16c8703e790d1bbe39bc92e81f6a738c0c06b6d5852d50"
   },
   "external_calls_made": false,
   "matches_executed": 0,
   "training_executed": false,
   "formal_experiment_executed": false,
   "limitations": [
-    "the full transitive hash lock covers the Python 3.12 x86_64 Linux CPU deployment target, not a cross-platform matrix",
-    "container tags are fixed, but image digests and a successful build are unverified",
+    "the verified matrix covers named Linux deployment and Windows development reference profiles, not every permitted Python/OS combination",
+    "container image digests are fixed, but a successful build is unverified on this Docker-less host",
     "all known external data remains excluded from a release archive pending source-specific approval",
     "confirmatory execution and independent reproduction have not been performed"
   ]

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -13,6 +14,34 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _verified_container_runtime() -> tuple[bool, dict]:
+    path = ROOT / "data/evaluation/container_runtime_verification_v1.json"
+    if not path.is_file():
+        return False, {}
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False, {}
+    expected = report.get("artifact_sha256") or {}
+    current = bool(expected) and all(
+        (ROOT / relative).is_file()
+        and _sha256(ROOT / relative) == digest
+        for relative, digest in expected.items()
+    )
+    verified = (
+        report.get("passed") is True
+        and report.get("image_built") is True
+        and report.get("deployment_started") is True
+        and all((report.get("checks") or {}).values())
+        and current
+    )
+    return verified, report
 
 
 def verify_deployment_contract() -> dict:
@@ -26,6 +55,10 @@ def verify_deployment_contract() -> dict:
         "hashed_python_dependency_install": all(value in dockerfile for value in (
             "requirements-linux-py312.lock", "--require-hashes",
             "--no-build-isolation --no-deps .",
+        )),
+        "immutable_container_image_digests": all(value in text for text, value in (
+            (dockerfile, "python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7"),
+            (compose, "caddy:2.8.4-alpine@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17"),
         )),
         "release_evidence_copied": all(value in dockerfile for value in (
             "COPY data ./data", "COPY reports/acceptance ./reports/acceptance",
@@ -86,29 +119,35 @@ def verify_deployment_contract() -> dict:
         compose_validation = result.returncode == 0
         compose_output = "passed" if compose_validation else "failed"
         checks["docker_compose_config"] = compose_validation
+    container_verified, container_report = _verified_container_runtime()
     passed = all(checks.values())
     return {
         "schema_version": 1,
         "verification": "gfs_deployment_contract",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": (
-            "passed_docker_config" if passed and docker
+            "passed_built_runtime" if passed and container_verified
+            else "passed_docker_config" if passed and docker
             else "passed_static_contract_unbuilt" if passed else "failed"
         ),
         "passed": passed,
         "docker_available": bool(docker),
         "docker_compose_validation": compose_output,
-        "image_built": False,
+        "image_built": container_verified,
+        "container_runtime_report_available": bool(container_report),
         "target_python_dependencies_hash_locked": checks[
             "hashed_python_dependency_install"
         ],
-        "deployment_started": False,
+        "container_images_digest_pinned": checks[
+            "immutable_container_image_digests"
+        ],
+        "deployment_started": container_verified,
         "external_calls_made": False,
         "checks": checks,
         "limitations": [
-            "the image has not been built in this environment",
-            "the Compose services and Caddy TLS edge have not been started",
-            "base-image and gateway-image digests are not yet locked",
+            *([] if container_verified else ["the image has not been built and runtime-verified in this evidence set"]),
+            "the full Compose stack and Caddy TLS edge have not been started",
+            "image digests are locked, but their platform manifests have not been pulled and built on this host",
             "external DNS, certificates, firewall, volume recovery, and penetration tests remain open",
         ],
     }

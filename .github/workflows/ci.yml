@@ -30,6 +30,12 @@ jobs:
         run: |
           python scripts/audit_release_boundary.py
 
+      - name: Supply-chain and runtime audits
+        run: |
+          python scripts/verify_reproducibility_matrix.py
+          python scripts/verify_container_images.py
+          python scripts/verify_local_runtime.py
+
       - name: Test suite
         run: |
           python -m pytest -q
@@ -51,3 +57,25 @@ jobs:
           python scripts/verify_continuous_v97.py
           python scripts/verify_large_shadow_v98.py
           python scripts/verify_strict_mirror_v99.py
+
+  pinned-container-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build and verify pinned read-only container
+        run: |
+          python scripts/verify_container_runtime.py --execute --out data/evaluation/container_runtime_verification_v1.json
+
+      - name: Upload container evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-runtime-verification
+          path: data/evaluation/container_runtime_verification_v1.json

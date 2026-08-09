@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_local_runtime_import_and_control_plane_smoke",
+  "generated_at": "2026-08-09T17:41:38.635449+00:00",
+  "status": "passed",
+  "passed": true,
+  "runtime": {
+    "python": "3.13.12",
+    "implementation": "CPython",
+    "system": "Windows",
+    "machine": "AMD64"
+  },
+  "packages": {
+    "numpy": {
+      "expected": "2.4.3",
+      "observed": "2.4.3",
+      "version_matches": true,
+      "import_name": "numpy",
+      "imported": true,
+      "import_error": null
+    },
+    "pandas": {
+      "expected": "3.0.2",
+      "observed": "3.0.2",
+      "version_matches": true,
+      "import_name": "pandas",
+      "imported": true,
+      "import_error": null
+    },
+    "openai": {
+      "expected": "2.32.0",
+      "observed": "2.32.0",
+      "version_matches": true,
+      "import_name": "openai",
+      "imported": true,
+      "import_error": null
+    },
+    "python-dotenv": {
+      "expected": "1.2.2",
+      "observed": "1.2.2",
+      "version_matches": true,
+      "import_name": "dotenv",
+      "imported": true,
+      "import_error": null
+    },
+    "matplotlib": {
+      "expected": "3.10.9",
+      "observed": "3.10.9",
+      "version_matches": true,
+      "import_name": "matplotlib",
+      "imported": true,
+      "import_error": null
+    },
+    "torch": {
+      "expected": "2.12.1",
+      "observed": "2.12.1",
+      "version_matches": true,
+      "import_name": "torch",
+      "imported": true,
+      "import_error": null
+    },
+    "statsbombpy": {
+      "expected": "1.18.0",
+      "observed": "1.18.0",
+      "version_matches": true,
+      "import_name": "statsbombpy",
+      "imported": true,
+      "import_error": null
+    },
+    "kloppy": {
+      "expected": "3.19.0",
+      "observed": "3.19.0",
+      "version_matches": true,
+      "import_name": "kloppy",
+      "imported": true,
+      "import_error": null
+    }
+  },
+  "checks": {
+    "all_direct_versions_match": true,
+    "all_direct_imports_succeed": true,
+    "cli_studio_status_route_resolves": true,
+    "integrated_control_plane_loads": true
+  },
+  "artifact_sha256": {
+    "pyproject.toml": "e5f2e4eec773787b553f3fd94fad402ae992198adc6592da5b00e0ce74888a5a",
+    "requirements.txt": "4c6bc02303ccef5cf08d7a0885f36bd6b6c63a6e5413a322a707cccf5f00bd8b"
+  },
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false
+}
