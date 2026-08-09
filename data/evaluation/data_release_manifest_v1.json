@@ -1,0 +1,254 @@
+{
+  "schema_version": 1,
+  "archive_id": "gfs-idsse-licensed-data-supplement-v1",
+  "status": "manifest_addressed_subset_ready",
+  "format": "deterministic_zip_stored",
+  "source_id": "sportec_idsse",
+  "license": "CC-BY-4.0",
+  "official_dataset_doi": "https://doi.org/10.6084/m9.figshare.28196177",
+  "official_publication_doi": "https://doi.org/10.1038/s41597-025-04505-y",
+  "attribution": "docs/IDSSE_ATTRIBUTION.md",
+  "change_notice_included": true,
+  "file_count": 37,
+  "total_uncompressed_bytes": 57300266,
+  "entries": [
+    {
+      "path": "data/external/sportec/derived/manifest.json",
+      "bytes": 4317,
+      "sha256": "3f5fa17f1b863949f934bf49f4d761b579008f61515eef96ae412d9d817bb24e",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v8/sportec_J03WMX.npz",
+      "bytes": 7999099,
+      "sha256": "4ad635aa482ee1ff9d9ae5b6ddb180fc77f578a53766a67a0e9726e5f6e3c913",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v8/sportec_J03WN1.npz",
+      "bytes": 7280538,
+      "sha256": "1d75472a149938f266f0c06b02f304ed2a70b122310803e8c109139ab6583ffc",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v8/sportec_J03WOH.npz",
+      "bytes": 7408295,
+      "sha256": "aff03cbd62918a1702b7547f28b1f09b83c35932d77a976b5d7d7e5602671f9d",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v8/sportec_J03WOY.npz",
+      "bytes": 7888832,
+      "sha256": "ec5f99fed4b8cb0d4d7a1c77c23625cef42ffbcd67af0e46fe7075f8172285e8",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v8/sportec_J03WPY.npz",
+      "bytes": 7911104,
+      "sha256": "63d9d0b711e629ac4282d1042eb32a6fd08c5b743a5dcab05b4dd3d1b82e5dd7",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v8/sportec_J03WQQ.npz",
+      "bytes": 7756823,
+      "sha256": "7c6564c4ccf08b82ec0d8fc1872b6e69b31ba0608cf2c3dfe6e0f5bf14005f80",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v8/sportec_J03WR9.npz",
+      "bytes": 8012781,
+      "sha256": "36474b1a7954133cc1360a8e7b0cb4d289fa176c3c1c257d1fdc83aab2cc9e42",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WMX.jsonl",
+      "bytes": 471540,
+      "sha256": "bfd010b8a9d7133d6ae9f5580c57cabe9be9c31a0c6c78ae1f4c9d231952e4ff",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WMX.npz",
+      "bytes": 9849,
+      "sha256": "c07d274ec272aec3cd49e3b455e8ef0e7e4dc159886e14e8bfe55bece5d95382",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WN1.jsonl",
+      "bytes": 356667,
+      "sha256": "19aa8e3a1d7b6278cf999a97a183589ca03af1e2b8cb771b9e087e87fd6db3bb",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WN1.npz",
+      "bytes": 7989,
+      "sha256": "b0d00f16c9cc26bf130fa46ad2fa661a3ae150ae5f8462974d7af91ae4b381f4",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WOH.jsonl",
+      "bytes": 375370,
+      "sha256": "87ad1a9bb244b36f320cb0198c770d191f0a987d88b5a7df5e5b2a34a7b47947",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WOH.npz",
+      "bytes": 8250,
+      "sha256": "c512044ef19753f73465b106d60793bfb64c27ff04767d1c2da413211d5985a2",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WOY.jsonl",
+      "bytes": 415764,
+      "sha256": "ea6a5ace01660eb550ce0efa021e42f29305d3380c6cb872ec88178cebb2f393",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WOY.npz",
+      "bytes": 9051,
+      "sha256": "02eee13874c80dd6975befd39647a23f02dbfe6e2d744dd98cbae5b04e2e5189",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WPY.jsonl",
+      "bytes": 428146,
+      "sha256": "cd8407b5e0cc938264a72f9bd0f5c00b2361a5254d2c153391f3b6ad55a2a264",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WPY.npz",
+      "bytes": 9201,
+      "sha256": "2b8b3d53d819106713bb6e8d294d3d879973c9836e5d3904fecd752e69a8c01a",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WQQ.jsonl",
+      "bytes": 440265,
+      "sha256": "6c7ce8b5290390024550f596873f9e8da3f2faa477f081cf10006ff5e34344ad",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WQQ.npz",
+      "bytes": 9300,
+      "sha256": "ba3de28dca07adf5c8af1e230cde9c0a12f531534c7fc4d2a38717f9d22e0ca0",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WR9.jsonl",
+      "bytes": 420807,
+      "sha256": "db44e9f280f88433eed977bf37a231265a67a19093ad55478667e66f151cd150",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v82_actions/sportec_J03WR9.npz",
+      "bytes": 9389,
+      "sha256": "49cd61538a4b9bcab687d41693be809c3f4a73f6acb57a56f5f2afb281cbf900",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v84_pressure/sportec_J03WMX.npz",
+      "bytes": 2279,
+      "sha256": "b378d457504b11b35af1b3d79b15a7f146810038b2c6e5f8bacc62905a5e4ec3",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v84_pressure/sportec_J03WN1.npz",
+      "bytes": 2247,
+      "sha256": "5e7ea9596c5aec63c95fd4459f898c9ef46c1e80c2d7d29117fab5407f55db32",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v84_pressure/sportec_J03WOH.npz",
+      "bytes": 2215,
+      "sha256": "f9c2091ca532d4d75f2768762ae1ffb31e11694e2ccfc581d2126003eadbdb2f",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v84_pressure/sportec_J03WOY.npz",
+      "bytes": 2253,
+      "sha256": "bdc795e05fbbd87f893c2c06510a051d6ff602de83fbec014d70165235e669be",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v84_pressure/sportec_J03WPY.npz",
+      "bytes": 2283,
+      "sha256": "6cfd493ac95fd9215068068bb1531116d8567b7488cc36c8cc9f0ce74760f302",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v84_pressure/sportec_J03WQQ.npz",
+      "bytes": 2256,
+      "sha256": "891a65d99e3cbe585d561e99ee38bf732696d37cdc8e72378ab0cdf5f8d1f1a5",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v84_pressure/sportec_J03WR9.npz",
+      "bytes": 2287,
+      "sha256": "6946dc3851d9a402941d7f3919eff0ecd29c2b824836d561ca51d98401edf7aa",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v85_pass_triplets/sportec_J03WMX.npz",
+      "bytes": 7943,
+      "sha256": "9fa3f3ce00a5d1b229361df66226cd42373892f7678c66ee2cc906ce1503619e",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v85_pass_triplets/sportec_J03WN1.npz",
+      "bytes": 6121,
+      "sha256": "9b9f02aef8cd451eed96c65079dae50dda0209e4744a5d40a2359a4671ae8a14",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v85_pass_triplets/sportec_J03WOH.npz",
+      "bytes": 6445,
+      "sha256": "7fec18e21be54e07e870ebecfd5e62adaf6e0d747385464dfcbf0c8fc6b8b95d",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v85_pass_triplets/sportec_J03WOY.npz",
+      "bytes": 7135,
+      "sha256": "3256cd1b6deadcaffd331f2c85259a355f372e643f48235d13f7167a4bb5ac7a",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v85_pass_triplets/sportec_J03WPY.npz",
+      "bytes": 7314,
+      "sha256": "5acd1a1f0bdca4afc996b3773f6731474ee8c682fc6cac73f74bdfa09f188971",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v85_pass_triplets/sportec_J03WQQ.npz",
+      "bytes": 7467,
+      "sha256": "5949950ccf65bdaff666d033b7c66d00e51a2ceb8b659c65361e12263179f39a",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "data/frame_world/v85_pass_triplets/sportec_J03WR9.npz",
+      "bytes": 7427,
+      "sha256": "c490d3ca802cc34cc59a2e99da2f229ff9f75abbc014cf843f513b8de28c1ae8",
+      "role": "licensed_derived_data"
+    },
+    {
+      "path": "docs/IDSSE_ATTRIBUTION.md",
+      "bytes": 1217,
+      "sha256": "0d0613fec8f0ca886477e237b5f063981861a28ddef159bd1634549552c29f6b",
+      "role": "required_attribution"
+    }
+  ],
+  "deterministic_archive": {
+    "fixed_timestamp": "1980-01-01T00:00:00Z",
+    "compression": "stored",
+    "bytes": 57306526,
+    "sha256": "df25a33dea93902bca965ba725ee72c67901015b5ed8808585a2e639d8dc7d79"
+  },
+  "excluded_source_ids": [
+    "metrica_sample_data",
+    "skillcorner_open_data",
+    "statsbomb_open_data",
+    "transfermarkt_dataset_mirror"
+  ],
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false
+}

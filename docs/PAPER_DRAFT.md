@@ -187,8 +187,10 @@ complex component as successful merely because it executes.
 All effects in this paper are simulator-internal. The frozen research scope
 forbids causal claims about real teams, players, coaching decisions, or social
 behavior. External datasets have different clocks, labels, and selection
-processes. Some provider manifests preserve hashes and source names without a
-complete license URL, so a blanket redistribution claim is not made.
+processes. The source-specific release review approves only the DFL-authorized
+CC BY 4.0 IDSSE/Sportec-derived supplement, with attribution and a change
+notice. StatsBomb, Metrica, SkillCorner, and Transfermarkt-derived files remain
+excluded, so no blanket redistribution claim is made.
 
 The environment contract pins the supported Python window, build backend,
 container base version, and two 64-package transitive runtime closures: a
@@ -212,8 +214,8 @@ artifacts, and the manuscript package verifier makes no network call.
 The reproduction manifest classifies commands by side effect. Package,
 release-contract, evidence, and experiment-status audits are read-only. The
 release-contract audit also verifies the two-profile transitive hash-lock
-matrix, current SBOMs, immutable image pins, imported local runtime, and
-default-deny license registry. Only an explicit `--execute` command can start the fixed
+matrix, current SBOMs, immutable image pins, imported local runtime, and the
+source-bounded licensed data supplement. Only an explicit `--execute` command can start the fixed
 60-run experiment, and analysis fails closed until evidence is complete and
 identity-matched.
 

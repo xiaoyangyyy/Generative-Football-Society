@@ -157,8 +157,10 @@ reproduction. The release audit verifies two 64-package hashed reference
 profiles (Python 3.12 Linux deployment and Python 3.13 Windows development),
 deterministic CycloneDX 1.6 SBOMs, an imported local runtime, immutable Python
 and Caddy OCI digests, and a default-deny registry for all known external data
-sources. A real container build, source-specific approvals, confirmatory
-results, and independent reproduction remain open.
+sources. A deterministic, content-addressed supplement now approves only the
+CC BY 4.0 IDSSE/Sportec-derived subset and excludes the other four reviewed
+sources. A real container build, confirmatory results, and independent
+reproduction remain open.
 
 Show top team status rankings:
 

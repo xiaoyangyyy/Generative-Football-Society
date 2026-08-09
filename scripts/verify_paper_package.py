@@ -224,13 +224,18 @@ def verify_paper_package() -> dict:
         is False
     )
     checks["data_distribution_limits_are_explicit"] = (
-        manifest.get("data_distribution", {}).get("license_review_complete") is False
+        manifest.get("data_distribution", {}).get("license_review_complete") is True
         and manifest.get("data_distribution", {}).get("known_source_registry_complete")
         is True
+        and manifest.get("data_distribution", {}).get("approved_source_count") == 1
+        and manifest.get("data_distribution", {}).get("excluded_source_count") == 4
         and _confined_file(
             str(manifest.get("data_distribution", {}).get("registry") or "")
         )
-        and "blanket archival-data claim"
+        and _confined_file(
+            str(manifest.get("data_distribution", {}).get("archive_manifest") or "")
+        )
+        and "Only IDSSE/Sportec-derived artifacts"
         in " ".join(
             (ROOT / "docs/RESEARCH_DATA_CARD.md").read_text(
                 encoding="utf-8"
@@ -293,7 +298,8 @@ def verify_paper_package() -> dict:
         "limitations": [
             "this verifies a registered-report-stage package, not a completed results manuscript",
             "the Linux/Windows reference matrix and image digests are verified, but an actual Docker build remains incomplete",
-            "cross-provider licensing review and an immutable archival bundle remain incomplete",
+            "the licensed archive is limited to IDSSE/Sportec derivatives; four other providers remain excluded",
+            "the licensed supplement boundary does not audit or rewrite repository history",
             "no independent reviewer has reproduced the confirmatory experiment",
         ],
     }

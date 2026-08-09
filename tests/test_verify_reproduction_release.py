@@ -20,7 +20,7 @@ def test_code_only_release_contract_is_honest_and_zero_compute():
     assert report["release_ready"] is False
     assert report["dependency_lock_level"] == "supported_profile_transitive_hash_lock_matrix"
     assert report["known_external_source_count"] == 5
-    assert report["archive_eligible_external_source_count"] == 0
+    assert report["archive_eligible_external_source_count"] == 1
     assert all(report["checks"].values())
     assert report["readiness"]["full_transitive_hash_lock"] is True
     assert report["readiness"]["runtime_direct_dependencies_match"] is True
@@ -28,7 +28,7 @@ def test_code_only_release_contract_is_honest_and_zero_compute():
     assert report["readiness"]["cyclonedx_sbom_current"] is True
     assert report["readiness"]["container_images_digest_pinned"] is True
     assert report["readiness"]["container_build_verified"] is False
-    assert report["readiness"]["external_data_archive_approved"] is False
+    assert report["readiness"]["external_data_archive_approved"] is True
     assert report["external_calls_made"] is False
     assert report["matches_executed"] == 0
     assert report["training_executed"] is False
@@ -62,7 +62,9 @@ def test_license_gate_rejects_eligible_unapproved_source():
     assert all(_license_checks(registry).values())
     tampered = copy.deepcopy(registry)
     tampered["sources"][0]["archive_eligible"] = True
-    assert not _license_checks(tampered)["unapproved_external_data_is_excluded"]
+    assert not _license_checks(tampered)[
+        "source_specific_license_decisions_are_bounded"
+    ]
 
 
 def test_license_gate_rejects_missing_provider_coverage():

@@ -17,9 +17,10 @@ grant access or redistribution rights to any upstream dataset.
 
 Derived manifests record provider names, match identifiers, counts, and many
 source/derived SHA-256 values. Metrica receiver manifests include the canonical
-sample-data repository URL. Sportec records declare CC BY 4.0 locally.
-SkillCorner and StatsBomb derived manifests name their sources but do not
-contain a complete license decision in the same artifact.
+sample-data repository URL. The IDSSE publication records DFL authorization
+and releases the dataset under CC BY 4.0. SkillCorner and StatsBomb derived
+manifests name their sources but do not contain a redistribution decision in
+the same artifact.
 
 Hashes detect identity drift; they are not licenses and do not prove that a
 dataset is representative, unbiased, or suitable for a downstream decision.
@@ -38,14 +39,19 @@ observable contract. It does not retrain on the confirmatory outputs.
 
 `data/evaluation/data_license_registry_v1.json` covers the five known external
 source families with source evidence, verification status, and an archive
-decision. Its policy is default deny. StatsBomb has custom source terms,
-Metrica has acknowledgement guidance without a detected license, SkillCorner
-exposes MIT repository metadata but still needs a data-scope review, Sportec
-has only a local CC BY 4.0 assertion, and the Transfermarkt mirror has no
-recorded redistribution terms. Consequently every external source remains
-excluded from a release archive. This is a complete decision registry for
-known repository sources, not a completed legal review or a blanket
-archival-data claim.
+decision. Its policy is default deny. Only IDSSE/Sportec-derived artifacts are
+approved for the separately generated research-data supplement, under CC BY
+4.0 with the attribution and change notice in `docs/IDSSE_ATTRIBUTION.md`.
+StatsBomb, Metrica, SkillCorner, and the Transfermarkt-derived mirror remain
+excluded because their reviewed evidence does not establish an equally clear,
+source-scoped redistribution grant for this release.
+
+`data/evaluation/data_release_manifest_v1.json` identifies the exact approved
+files and the deterministic ZIP digest. The ZIP is materialized on demand and
+does not include the manifest itself, avoiding a circular hash. This decision
+governs the supplement only: it does not claim that excluded data is absent
+from the repository or its history, and it is an engineering review rather
+than legal advice.
 
 ## Bias and validity limits
 

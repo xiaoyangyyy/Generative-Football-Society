@@ -239,9 +239,9 @@ class ProductControlPlane:
             ),
             (
                 "external_data_archive",
-                "External-data archive approval",
+                "Licensed external-data release subset",
                 readiness.get("external_data_archive_approved") is True,
-                "data/evaluation/data_license_registry_v1.json",
+                "data/evaluation/data_release_verification_v1.json",
             ),
             (
                 "confirmatory_results",
@@ -268,6 +268,7 @@ class ProductControlPlane:
             "local_runtime",
             "cross_platform_lock_matrix",
             "container_image_digests",
+            "external_data_archive",
         }
         code_ready = all(
             gate["passed"] for gate in gates if gate["id"] in code_gate_ids

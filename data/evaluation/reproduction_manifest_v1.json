@@ -29,6 +29,11 @@
     "container_runtime_verifier": "scripts/verify_container_runtime.py",
     "sbom_builder": "scripts/build_supply_chain_sbom.py",
     "data_license_registry": "data/evaluation/data_license_registry_v1.json",
+    "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
+    "data_release_verification": "data/evaluation/data_release_verification_v1.json",
+    "data_release_builder": "scripts/build_data_release_archive.py",
+    "data_release_verifier": "scripts/verify_data_release.py",
+    "idsse_attribution": "docs/IDSSE_ATTRIBUTION.md",
     "existing_evidence": "data/evaluation/research_evidence_v1.json",
     "prior_m1_decision": "data/evaluation/formal_ablation/M1_calibrated_decision.json",
     "runner": "scripts/run_formal_experiment.py",
@@ -93,6 +98,20 @@
       "explicit_authority_required": true
     },
     {
+      "id": "data_release_audit",
+      "command": "python scripts/verify_data_release.py",
+      "effect": "read_only_hash_and_in_memory_archive_verification",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "data_release_materialization",
+      "command": "python scripts/build_data_release_archive.py --materialize build/gfs-idsse-data-supplement-v1.zip",
+      "effect": "write_deterministic_licensed_data_archive",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
       "id": "experiment_status",
       "command": "python scripts/run_formal_experiment.py",
       "effect": "read_only",
@@ -120,12 +139,16 @@
     "current_status": "absent_not_executed"
   },
   "data_distribution": {
-    "status": "known_sources_registered_default_deny",
+    "status": "source_specific_review_complete_idsse_subset_ready",
     "redistribution_blanket_claim": false,
-    "license_review_complete": false,
+    "license_review_complete": true,
     "known_source_registry_complete": true,
+    "approved_source_count": 1,
+    "excluded_source_count": 4,
     "registry": "data/evaluation/data_license_registry_v1.json",
-    "note": "All five known external source families have a release decision, but unresolved license scope keeps every external artifact excluded from an archive."
+    "archive_manifest": "data/evaluation/data_release_manifest_v1.json",
+    "attribution": "docs/IDSSE_ATTRIBUTION.md",
+    "note": "Only the DFL-authorized CC BY 4.0 IDSSE/Sportec derived subset is approved; StatsBomb, Metrica, SkillCorner, and Transfermarkt-derived files remain excluded."
   },
   "environment": {
     "status": "supported_profile_matrix_runtime_verified",
@@ -145,7 +168,10 @@
     "report": null
   },
   "archive": {
-    "status": "not_built",
-    "reason": "A verified manifest is provided first; no archive is claimed until licensing and independent reproduction gates are complete."
+    "status": "manifest_addressed_subset_ready",
+    "manifest": "data/evaluation/data_release_manifest_v1.json",
+    "format": "deterministic_zip_stored",
+    "physical_materialization": "optional_on_demand",
+    "scope": "licensed IDSSE/Sportec derived data supplement only"
   }
 }

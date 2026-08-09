@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
 
 from scripts.verify_paper_package import verify_paper_package  # noqa: E402
 from scripts.verify_container_images import verify_container_images  # noqa: E402
+from scripts.verify_data_release import verify_data_release  # noqa: E402
 from scripts.verify_local_runtime import verify_local_runtime  # noqa: E402
 from scripts.verify_reproducibility_matrix import (  # noqa: E402
     verify_reproducibility_matrix,
@@ -91,12 +92,16 @@ def _license_checks(registry: dict) -> dict[str, bool]:
     policy = registry.get("policy") or {}
     sources = registry.get("sources") or []
     identifiers = [str(item.get("source_id") or "") for item in sources]
-    decisions = {str(item.get("archive_decision") or "") for item in sources}
+    by_id = {str(item.get("source_id") or ""): item for item in sources}
+    sportec = by_id.get("sportec_idsse") or {}
+    excluded = [
+        item for identifier, item in by_id.items() if identifier != "sportec_idsse"
+    ]
     return {
         "license_registry_schema": (
             registry.get("schema_version") == 1
             and registry.get("registry_id")
-            == "gfs-known-external-data-license-decisions-v1"
+            == "gfs-source-specific-data-license-decisions-v2"
         ),
         "known_provider_coverage_is_exact": (
             set(identifiers) == EXPECTED_SOURCE_IDS
@@ -107,6 +112,7 @@ def _license_checks(registry: dict) -> dict[str, bool]:
             and policy.get("unknown_or_ambiguous_terms")
             == "exclude_from_distribution"
             and policy.get("source_access_is_not_redistribution_permission") is True
+            and policy.get("source_specific_review_complete") is True
             and policy.get("blanket_redistribution_approved") is False
         ),
         "all_source_manifests_exist": all(
@@ -121,9 +127,15 @@ def _license_checks(registry: dict) -> dict[str, bool]:
             and item.get("reason")
             for item in sources
         ),
-        "unapproved_external_data_is_excluded": (
-            decisions == {"exclude_external_data"}
-            and all(item.get("archive_eligible") is False for item in sources)
+        "source_specific_license_decisions_are_bounded": (
+            sportec.get("archive_eligible") is True
+            and sportec.get("archive_decision") == "include_derived_sportec_subset"
+            and sportec.get("license_status") == "CC-BY-4.0"
+            and all(item.get("archive_eligible") is False for item in excluded)
+            and all(
+                item.get("archive_decision") == "exclude_external_data"
+                for item in excluded
+            )
         ),
     }
 
@@ -179,6 +191,7 @@ def verify_reproduction_release() -> dict:
     matrix_report = verify_reproducibility_matrix()
     local_runtime_report = verify_local_runtime()
     image_report = verify_container_images()
+    data_release_report = verify_data_release()
 
     checks: dict[str, bool] = {
         "dependency_contract_schema_and_scope": (
@@ -318,6 +331,11 @@ def verify_reproduction_release() -> dict:
                 "container_image_contract": "data/evaluation/container_image_contract_v1.json",
                 "container_image_verification": "data/evaluation/container_image_verification_v1.json",
                 "container_runtime_verifier": "scripts/verify_container_runtime.py",
+                "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
+                "data_release_verification": "data/evaluation/data_release_verification_v1.json",
+                "data_release_builder": "scripts/build_data_release_archive.py",
+                "data_release_verifier": "scripts/verify_data_release.py",
+                "idsse_attribution": "docs/IDSSE_ATTRIBUTION.md",
                 "sbom_builder": "scripts/build_supply_chain_sbom.py",
             }.items()
         ),
@@ -333,8 +351,10 @@ def verify_reproduction_release() -> dict:
         "release_manifest_remains_preexecution": (
             manifest.get("stage") == "preexecution_auditable_package"
             and manifest.get("data_distribution", {}).get("license_review_complete")
-            is False
-            and manifest.get("archive", {}).get("status") == "not_built"
+            is True
+            and manifest.get("archive", {}).get("status")
+            == "manifest_addressed_subset_ready"
+            and data_release_report.get("passed") is True
         ),
     }
     checks.update(_license_checks(registry))
@@ -351,6 +371,11 @@ def verify_reproduction_release() -> dict:
         "data/evaluation/local_runtime_verification_v1.json",
         "data/evaluation/reproducibility_matrix_verification_v1.json",
         "data/evaluation/container_image_verification_v1.json",
+        "data/evaluation/data_release_manifest_v1.json",
+        "data/evaluation/data_release_verification_v1.json",
+        "docs/IDSSE_ATTRIBUTION.md",
+        "scripts/build_data_release_archive.py",
+        "scripts/verify_data_release.py",
     ]
     identity = {
         path: file_sha256(ROOT / path)
@@ -367,7 +392,7 @@ def verify_reproduction_release() -> dict:
         "cyclonedx_sbom_current": True,
         "container_images_digest_pinned": image_report.get("passed") is True,
         "container_build_verified": False,
-        "external_data_archive_approved": False,
+        "external_data_archive_approved": data_release_report.get("passed") is True,
         "confirmatory_results_available": False,
         "independent_reproduction_available": False,
     }
@@ -396,7 +421,8 @@ def verify_reproduction_release() -> dict:
         "limitations": [
             "the verified matrix covers named Linux deployment and Windows development reference profiles, not every permitted Python/OS combination",
             "container image digests are fixed, but a successful build is unverified on this Docker-less host",
-            "all known external data remains excluded from a release archive pending source-specific approval",
+            "only the DFL-authorized CC BY 4.0 IDSSE subset is approved; four other external sources remain excluded",
+            "the licensed supplement boundary does not audit or rewrite repository history",
             "confirmatory execution and independent reproduction have not been performed",
         ],
     }

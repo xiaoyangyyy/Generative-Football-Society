@@ -182,6 +182,18 @@ and academic to 70. A real container build remains open because this verifier
 host has no Docker CLI; `scripts/verify_container_runtime.py --execute` is the
 fail-closed handoff for a Docker host.
 
+The source-specific data stage verifies official evidence for all five known
+source families under a default-deny policy. Only the DFL-authorized CC BY 4.0
+IDSSE/Sportec-derived subset enters a deterministic 37-file supplement;
+StatsBomb, Metrica, SkillCorner, and Transfermarkt-derived files remain
+excluded. Attribution, change notice, exact file hashes, and the ZIP digest are
+checked without training, simulation, or provider calls. This closes the
+external-data release gate, raising the unified status to 8 of 11 gates while
+leaving the evidence-backed scores at product 83 and academic 70. A real
+container build, confirmatory results, and independent reproduction remain
+open. The supplement decision does not claim excluded data is absent from
+repository history and is not legal advice.
+
 ## Stage 3 — product validation
 
 Run a preregistered usability study with at least ten target users completing

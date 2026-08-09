@@ -30,6 +30,7 @@ python scripts/build_supply_chain_sbom.py --check
 python scripts/verify_reproducibility_matrix.py
 python scripts/verify_local_runtime.py
 python scripts/verify_container_images.py
+python scripts/verify_data_release.py
 python scripts/audit_research_evidence.py --check
 python scripts/run_formal_experiment.py
 ```
@@ -43,8 +44,10 @@ Expected state:
 - all eight direct dependencies import in the observed Windows runtime;
 - Python and Caddy retain readable tags while resolving through recorded,
   immutable OCI index digests;
-- all five known external source families have a default-deny archive
-  decision;
+- all five known external source families have a source-specific, default-deny
+  decision, with only the IDSSE/Sportec-derived supplement approved;
+- the 37-file deterministic data-supplement manifest resolves to archive
+  SHA-256 `df25a33dea93902bca965ba725ee72c67901015b5ed8808585a2e639d8dc7d79`;
 - the frozen research evidence report is current;
 - protocol and sealed checkpoint identities pass;
 - confirmatory state is `not_started`, with 60 runs remaining;
@@ -109,6 +112,21 @@ manifest. Verify source terms independently before downloading or
 redistributing data.
 Repository-derived hashes establish file identity only when the referenced
 source files are lawfully available; they do not grant a license.
+
+The approved IDSSE/Sportec-only supplement is content-addressed but not stored
+as a second 55 MiB repository blob. After the read-only verifier passes, an
+authorized release operator can materialize it deterministically with:
+
+```bash
+python scripts/build_data_release_archive.py --check
+python scripts/build_data_release_archive.py \
+  --materialize build/gfs-idsse-data-supplement-v1.zip
+```
+
+The builder admits only the exact path families in the checked-in manifest,
+uses fixed ZIP metadata, and includes `docs/IDSSE_ATTRIBUTION.md`. It excludes
+all four unapproved source families. This supplement boundary does not audit
+or rewrite repository history.
 
 ## 5. Compute-authorized confirmatory execution
 

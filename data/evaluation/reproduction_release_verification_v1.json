@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "verification": "gfs_code_only_reproduction_release_contract",
-  "generated_at": "2026-08-09T17:41:45.025744+00:00",
+  "generated_at": "2026-08-09T18:05:38.087113+00:00",
   "status": "passed_code_contract",
   "passed": true,
   "release_ready": false,
   "dependency_lock_level": "supported_profile_transitive_hash_lock_matrix",
   "known_external_source_count": 5,
-  "archive_eligible_external_source_count": 0,
+  "archive_eligible_external_source_count": 1,
   "checks": {
     "dependency_contract_schema_and_scope": true,
     "requirements_are_exact_and_match_contract": true,
@@ -34,7 +34,7 @@
     "license_policy_is_default_deny": true,
     "all_source_manifests_exist": true,
     "every_source_has_review_evidence_and_reason": true,
-    "unapproved_external_data_is_excluded": true,
+    "source_specific_license_decisions_are_bounded": true,
     "paper_package_still_passes": true
   },
   "readiness": {
@@ -44,7 +44,7 @@
     "cyclonedx_sbom_current": true,
     "container_images_digest_pinned": true,
     "container_build_verified": false,
-    "external_data_archive_approved": false,
+    "external_data_archive_approved": true,
     "confirmatory_results_available": false,
     "independent_reproduction_available": false
   },
@@ -104,12 +104,17 @@
     "data/evaluation/windows_lock_validation_v1.json": "48b7c895a77a74685909a78bccec8d92a95471526c1f1a6f5e83ef6f5bd24655",
     "data/evaluation/container_image_contract_v1.json": "e2bd5134e849ad38fb525a3fdb1a7f359cc4370f2096df8223e2a5bd99b703e9",
     "data/evaluation/dependency_lock_contract_v1.json": "05db2ea11767b6ae246aa712a26a62a100633d817285e84b267c00e9a246dbb2",
-    "data/evaluation/data_license_registry_v1.json": "9fd5ea59ba572628fe4c872cb3b7987accd3ed0fb257f9d4f2eea8af80a70cf9",
-    "data/evaluation/reproduction_manifest_v1.json": "b7a6c5ef0a421fa27e8bc5660e908c64cad05164aa05a3976873ef2a3b2a5183",
+    "data/evaluation/data_license_registry_v1.json": "c4c15186c1826ae530685e48695500d710dae57072d0301ec624e66bd1634edf",
+    "data/evaluation/reproduction_manifest_v1.json": "3af395b8b46e84882e9a25e9dd2ac1ae55b463156e4799983c5a038428184cb0",
     "data/evaluation/target_lock_validation_v1.json": "9f91850dcf9cc1b3aeab53c23b78d4c158a581365ee2ca82f77384080e297315",
     "data/evaluation/local_runtime_verification_v1.json": "6e2d63d3b0eea4b732efb98408356b45632d279cd777c22ff44b73d9c1c80939",
     "data/evaluation/reproducibility_matrix_verification_v1.json": "277f2d3840102f1f838a67436690a0c51d25c542694c4fad04e9583bbc2d1bc0",
-    "data/evaluation/container_image_verification_v1.json": "ed6936fc82c033ac4a16c8703e790d1bbe39bc92e81f6a738c0c06b6d5852d50"
+    "data/evaluation/container_image_verification_v1.json": "ed6936fc82c033ac4a16c8703e790d1bbe39bc92e81f6a738c0c06b6d5852d50",
+    "data/evaluation/data_release_manifest_v1.json": "1412b447f8332332d2c30b1d8d9d4d3c1519b245cfbe14ee9a8e36c94ec73d6f",
+    "data/evaluation/data_release_verification_v1.json": "8cabd4f6e6fdb89007a0ca69df2cc4d5b9b86da7fec02cbd420e519e87eb5983",
+    "docs/IDSSE_ATTRIBUTION.md": "0d0613fec8f0ca886477e237b5f063981861a28ddef159bd1634549552c29f6b",
+    "scripts/build_data_release_archive.py": "141cb726a91623741b9868539d52de1667d19050eed376538b631998a6cbcc49",
+    "scripts/verify_data_release.py": "1f29ee861e9b1fc09264de602fa3e9f1a30304b7ec02d12dd6f9e441edc1eefc"
   },
   "external_calls_made": false,
   "matches_executed": 0,
@@ -118,7 +123,8 @@
   "limitations": [
     "the verified matrix covers named Linux deployment and Windows development reference profiles, not every permitted Python/OS combination",
     "container image digests are fixed, but a successful build is unverified on this Docker-less host",
-    "all known external data remains excluded from a release archive pending source-specific approval",
+    "only the DFL-authorized CC BY 4.0 IDSSE subset is approved; four other external sources remain excluded",
+    "the licensed supplement boundary does not audit or rewrite repository history",
     "confirmatory execution and independent reproduction have not been performed"
   ]
 }
