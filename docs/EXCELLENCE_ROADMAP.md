@@ -196,11 +196,24 @@ IDSSE/Sportec-derived subset enters a deterministic 37-file supplement;
 StatsBomb, Metrica, SkillCorner, and Transfermarkt-derived files remain
 excluded. Attribution, change notice, exact file hashes, and the ZIP digest are
 checked without training, simulation, or provider calls. This closes the
-external-data release gate, raising the unified status to 8 of 11 gates while
+external-data release gate, raising the then-current unified status to 8 of 11
+gates while
 leaving the evidence-backed scores at product 83 and academic 70. A real
 container build, confirmatory results, and independent reproduction remain
 open. The supplement decision does not claim excluded data is absent from
 repository history and is not legal advice.
+
+The next validation-control stage freezes a ten-or-more-participant target-user
+study with role quotas, five evidence-addressed tasks, a 90% complete-workflow
+threshold, mean SUS of at least 80, zero critical task errors, privacy
+allowlists, and separate independent WCAG 2.2 AA and application-security
+reviews. A second protocol freezes the independent confirmatory reproduction
+handoff, exact decision-field comparison, negative-result preservation, and
+material-deviation handling. Both zero-execution protocol audits pass. The
+unified control plane now exposes the product gates that were previously only
+described in prose, yielding 10 passed of 18 total gates. Scores remain product
+83 and academic 70 because no participant, external reviewer, production soak,
+value comparison, confirmatory run, or independent reproduction has occurred.
 
 ## Stage 3 — product validation
 
@@ -211,6 +224,13 @@ operational soak and recovery drill on the deployment candidate.
 
 Exit gates: at least 90% core-task completion, SUS at least 80, no unresolved
 critical security/accessibility defects, and documented recovery objectives.
+
+The frozen protocol, privacy-safe record contract, fail-closed analyzer, and
+external-review schema are now implemented in
+`data/evaluation/product_validation_protocol_v1.json` and
+`scripts/product_validation_study.py`. This is preparation evidence only;
+Stage 3 remains pending until real target users and independent reviewers
+produce valid records.
 
 ## Stage 4 — academic replication and mechanism
 

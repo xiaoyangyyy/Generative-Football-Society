@@ -26,7 +26,8 @@ class ProductControlPlane:
 
     @staticmethod
     def _observed_state(
-        payload: dict[str, Any], run_dir: Path | None = None,
+        payload: dict[str, Any],
+        run_dir: Path | None = None,
     ) -> tuple[str, str | None]:
         state = str(payload.get("state", "unknown"))
         if state != "running":
@@ -58,14 +59,16 @@ class ProductControlPlane:
             except (OSError, ValueError):
                 payload = {"state": "invalid", "error": "unreadable_status"}
             observed_state, observation = self._observed_state(payload, path.parent)
-            jobs.append({
-                **payload,
-                "run_id": path.parent.name,
-                "status_path": path.relative_to(self.root).as_posix(),
-                "observed_state": observed_state,
-                "stop_requested": (path.parent / "STOP").is_file(),
-                **({"observation": observation} if observation else {}),
-            })
+            jobs.append(
+                {
+                    **payload,
+                    "run_id": path.parent.name,
+                    "status_path": path.relative_to(self.root).as_posix(),
+                    "observed_state": observed_state,
+                    "stop_requested": (path.parent / "STOP").is_file(),
+                    **({"observation": observation} if observation else {}),
+                }
+            )
         return jobs
 
     def decisions(self) -> dict[str, Any]:
@@ -82,11 +85,14 @@ class ProductControlPlane:
                         "accepted": report.get("accepted"),
                         "promotion_supported": report.get("promotion_supported"),
                         "samples_total": report.get("samples_total"),
-                        "successful_provider_calls": report.get("successful_provider_calls"),
+                        "successful_provider_calls": report.get(
+                            "successful_provider_calls"
+                        ),
                     }
                 except (OSError, ValueError):
                     result[name] = {
-                        "available": False, "path": relative,
+                        "available": False,
+                        "path": relative,
                         "error": "invalid_json",
                     }
             else:
@@ -106,7 +112,8 @@ class ProductControlPlane:
                 "baseline_score": int((baseline.get(name) or {}).get("score", 0)),
                 "maximum": sum(int(gate.get("weight", 0)) for gate in gates),
                 "critical_gates_remaining": [
-                    gate["id"] for gate in gates
+                    gate["id"]
+                    for gate in gates
                     if gate.get("critical") and gate.get("status") != "verified"
                 ],
             }
@@ -115,9 +122,9 @@ class ProductControlPlane:
             "path": path.relative_to(self.root).as_posix(),
             "current_phase": roadmap.get("current_phase"),
             "tracks": tracks,
-            "security_action": (
-                roadmap.get("security") or {}
-            ).get("exposed_key_status"),
+            "security_action": (roadmap.get("security") or {}).get(
+                "exposed_key_status"
+            ),
         }
 
     def _report(self, relative: str) -> dict[str, Any]:
@@ -159,26 +166,60 @@ class ProductControlPlane:
         deployment = self._report(
             "data/evaluation/deployment_contract_verification_v1.json"
         )
+        product_protocol = self._report(
+            "data/evaluation/product_validation_protocol_verification_v1.json"
+        )
+        independent_protocol = self._report(
+            "data/evaluation/independent_reproduction_protocol_verification_v1.json"
+        )
+        product_validation = self._report(
+            "data/evaluation/product_validation_v1/decision.json"
+        )
+        independent_review = self._report(
+            "data/evaluation/independent_reproduction_verification_v1.json"
+        )
+        production_operations = self._report(
+            "data/evaluation/production_validation_v1/decision.json"
+        )
+        user_value = self._report(
+            "data/evaluation/product_value_validation_v1/decision.json"
+        )
         readiness = release.get("readiness") or {}
         checks = release.get("checks") or {}
         release_identity_current = self._artifact_hashes_current(
             release.get("artifact_sha256") or {}
         )
-        paper_identity_current = self._artifact_hashes_current({
-            "data/evaluation/formal_experiment_protocol_v2.json": paper.get(
-                "protocol_sha256"
-            ),
-            "data/evaluation/paper_claims_v1.json": paper.get(
-                "claim_registry_sha256"
-            ),
-            "docs/PAPER_DRAFT.md": paper.get("manuscript_sha256"),
-            "data/evaluation/reproduction_manifest_v1.json": paper.get(
-                "reproduction_manifest_sha256"
-            ),
-            "data/evaluation/reproduction_environment_v1.json": paper.get(
-                "environment_snapshot_sha256"
-            ),
-        })
+        paper_identity_current = self._artifact_hashes_current(
+            {
+                "data/evaluation/formal_experiment_protocol_v2.json": paper.get(
+                    "protocol_sha256"
+                ),
+                "data/evaluation/paper_claims_v1.json": paper.get(
+                    "claim_registry_sha256"
+                ),
+                "docs/PAPER_DRAFT.md": paper.get("manuscript_sha256"),
+                "data/evaluation/reproduction_manifest_v1.json": paper.get(
+                    "reproduction_manifest_sha256"
+                ),
+                "data/evaluation/reproduction_environment_v1.json": paper.get(
+                    "environment_snapshot_sha256"
+                ),
+            }
+        )
+        product_protocol_current = self._artifact_hashes_current(
+            product_protocol.get("artifact_sha256") or {}
+        )
+        independent_protocol_current = self._artifact_hashes_current(
+            independent_protocol.get("artifact_sha256") or {}
+        )
+        product_validation_current = self._artifact_hashes_current(
+            product_validation.get("artifact_sha256") or {}
+        )
+        independent_review_current = self._artifact_hashes_current(
+            independent_review.get("artifact_sha256") or {}
+        )
+        product_gates = product_validation.get("gates") or {}
+        external_review_checks = product_validation.get("external_review_checks") or {}
         excellence = self.excellence()
         scores = {
             name: row.get("score")
@@ -244,6 +285,81 @@ class ProductControlPlane:
                 "data/evaluation/data_release_verification_v1.json",
             ),
             (
+                "product_validation_protocol",
+                "Frozen target-user validation protocol",
+                product_protocol.get("passed") is True
+                and product_protocol.get("study_executed") is False
+                and product_protocol_current,
+                product_protocol.get("path"),
+            ),
+            (
+                "independent_reproduction_protocol",
+                "Frozen independent-reproduction handoff",
+                independent_protocol.get("passed") is True
+                and independent_protocol_current,
+                independent_protocol.get("path"),
+            ),
+            (
+                "target_user_validation",
+                "Target-user workflow and SUS validation",
+                product_validation.get("passed") is True
+                and product_validation_current
+                and all(
+                    product_gates.get(key) is True
+                    for key in (
+                        "minimum_valid_sample",
+                        "minimum_role_coverage",
+                        "core_workflow_success_threshold",
+                        "mean_sus_threshold",
+                        "zero_critical_task_errors",
+                    )
+                ),
+                "data/evaluation/product_validation_v1/decision.json",
+            ),
+            (
+                "external_accessibility_review",
+                "Independent WCAG 2.2 AA review",
+                product_validation_current
+                and external_review_checks.get("accessibility_review_passes_wcag_22_aa")
+                is True
+                and external_review_checks.get("reviewers_are_distinct_and_independent")
+                is True,
+                "data/evaluation/product_validation_v1/external_review.json",
+            ),
+            (
+                "external_security_review",
+                "Independent application security review",
+                product_validation_current
+                and external_review_checks.get(
+                    "security_review_passes_without_critical_findings"
+                )
+                is True
+                and external_review_checks.get(
+                    "critical_issues_are_closed_not_accepted"
+                )
+                is True,
+                "data/evaluation/product_validation_v1/external_review.json",
+            ),
+            (
+                "production_operations_validation",
+                "100-match soak and deployment-volume recovery drill",
+                production_operations.get("passed") is True
+                and int(production_operations.get("matches_executed") or 0) >= 100
+                and production_operations.get("zero_lost_transactions") is True
+                and production_operations.get("zero_duplicate_transactions") is True
+                and production_operations.get("deployment_volume_recovery_drill_passed")
+                is True,
+                "data/evaluation/production_validation_v1/decision.json",
+            ),
+            (
+                "user_value_validation",
+                "Target-user comparative value validation",
+                user_value.get("passed") is True
+                and user_value.get("minimum_sample_met") is True
+                and user_value.get("primary_value_threshold_met") is True,
+                "data/evaluation/product_value_validation_v1/decision.json",
+            ),
+            (
                 "confirmatory_results",
                 "Complete confirmatory experiment result",
                 readiness.get("confirmatory_results_available") is True,
@@ -252,8 +368,10 @@ class ProductControlPlane:
             (
                 "independent_reproduction",
                 "Independent reproduction report",
-                readiness.get("independent_reproduction_available") is True,
-                "docs/REPRODUCTION_GUIDE.md",
+                independent_review.get("passed") is True
+                and independent_review.get("independent_review_available") is True
+                and independent_review_current,
+                "data/evaluation/independent_reproduction_verification_v1.json",
             ),
         ]
         gates = [
@@ -269,6 +387,8 @@ class ProductControlPlane:
             "cross_platform_lock_matrix",
             "container_image_digests",
             "external_data_archive",
+            "product_validation_protocol",
+            "independent_reproduction_protocol",
         }
         code_ready = all(
             gate["passed"] for gate in gates if gate["id"] in code_gate_ids
@@ -304,12 +424,16 @@ class ProductControlPlane:
                 "running": sum(job.get("observed_state") == "running" for job in jobs),
                 "stale": sum(job.get("observed_state") == "stale" for job in jobs),
                 "stopping": sum(
-                    job.get("observed_state") == "running"
-                    and job.get("stop_requested") for job in jobs
+                    job.get("observed_state") == "running" and job.get("stop_requested")
+                    for job in jobs
                 ),
                 "resumable": sum(
-                    job.get("observed_state") in {
-                        "stopped", "interrupted", "failed", "stale",
+                    job.get("observed_state")
+                    in {
+                        "stopped",
+                        "interrupted",
+                        "failed",
+                        "stale",
                     }
                     for job in jobs
                 ),

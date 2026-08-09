@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-independent-confirmatory-reproduction-v1",
+  "state": "registered_waiting_for_confirmatory_result",
+  "objective": "Have a reviewer independent of implementation reproduce the frozen M0-versus-M1 confirmatory decision from a clean checkout and record all deviations.",
+  "prerequisites": {
+    "confirmatory_protocol": "data/evaluation/formal_experiment_protocol_v2.json",
+    "confirmatory_decision": "data/evaluation/formal_confirmatory_v2/decision.json",
+    "container_runtime_evidence": "data/evaluation/container_runtime_verification_v1.json",
+    "reproduction_release_evidence": "data/evaluation/reproduction_release_verification_v1.json",
+    "all_must_pass_before_reproduction": true
+  },
+  "reviewer": {
+    "independent_of_implementation_required": true,
+    "prior_code_contribution_to_frozen_commit_allowed": false,
+    "conflict_disclosure_required": true,
+    "public_identity_or_orcid_required": true,
+    "signed_attestation_required": true
+  },
+  "procedure": [
+    "record_clean_checkout_commit_and_platform",
+    "verify_reproduction_release_and_container_runtime_evidence",
+    "verify_protocol_checkpoint_and_critical_code_hashes",
+    "execute_exact_frozen_60_run_confirmatory_protocol",
+    "analyze_only_after_all_30_pairs_are_complete",
+    "compare_frozen_decision_fields_and_all_validity_gates",
+    "record_every_deviation_and_sign_the_review"
+  ],
+  "execution_contract": {
+    "pairs_total": 30,
+    "runs_total": 60,
+    "arms": ["M0", "M1"],
+    "runs_per_arm": 30,
+    "interim_analysis": false,
+    "optional_stopping": false,
+    "provider_calls_required": false,
+    "training_required": false
+  },
+  "comparison": {
+    "required_exact_fields": [
+      "schema_version",
+      "protocol_id",
+      "decision",
+      "promotion_supported",
+      "pairs_total",
+      "primary.method",
+      "primary.draws",
+      "primary.seed",
+      "behavior.changed_pairs",
+      "promotion_gates",
+      "secondary_metrics",
+      "execution_identity"
+    ],
+    "required_numeric_fields": [
+      "primary.point_delta",
+      "primary.ci95_low",
+      "primary.ci95_high",
+      "behavior.changed_pair_fraction",
+      "minimum_meaningful_delta_loss"
+    ],
+    "numeric_absolute_tolerance": 1e-12,
+    "all_validity_gates_must_match": true,
+    "material_deviation_forces_inconclusive": true
+  },
+  "outputs": {
+    "review": "data/evaluation/independent_reproduction_v1/review.json",
+    "reproduced_decision": "data/evaluation/independent_reproduction_v1/decision.json",
+    "execution_log": "data/evaluation/independent_reproduction_v1/execution_log.jsonl"
+  },
+  "execution": {
+    "reviewer_assigned": false,
+    "runs_executed": 0,
+    "pairs_completed": 0,
+    "review_available": false,
+    "reproduction_status": "not_performed"
+  }
+}

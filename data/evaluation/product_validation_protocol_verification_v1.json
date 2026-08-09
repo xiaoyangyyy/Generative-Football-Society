@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_product_validation_preregistration",
+  "generated_at": "2026-08-09T18:37:21.873502+00:00",
+  "status": "passed_preregistered_not_executed",
+  "passed": true,
+  "study_executed": false,
+  "result_available": false,
+  "checks": {
+    "schema_and_state_are_preregistered": true,
+    "population_and_sample_are_frozen": true,
+    "task_order_and_success_contract_are_frozen": true,
+    "decision_thresholds_are_frozen": true,
+    "external_reviews_are_independent_and_fail_closed": true,
+    "privacy_and_analysis_integrity_are_explicit": true,
+    "outputs_are_confined_and_exact": true,
+    "execution_remains_zero": true
+  },
+  "protocol_sha256": "76b8848d0910d4c4fd60f9e13c183f8eb99d3a684c4afe73cabfa9305ffedd2e",
+  "artifact_sha256": {
+    "data/evaluation/product_validation_protocol_v1.json": "76b8848d0910d4c4fd60f9e13c183f8eb99d3a684c4afe73cabfa9305ffedd2e",
+    "docs/PRODUCT_VALIDATION_STUDY.md": "2969c803921576cfb2a21dc51a056c332ad908ed940879fb1eed16864ad18058",
+    "scripts/product_validation_study.py": "19a281f1ec7caa7d1e4eae2093d4fce40989f8a14043c3e263e6c90d783bc13a"
+  },
+  "external_calls_made": false,
+  "participants_observed": 0,
+  "matches_executed": 0,
+  "training_executed": false,
+  "provider_calls_made": false
+}

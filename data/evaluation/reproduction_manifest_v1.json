@@ -30,6 +30,14 @@
     "deployment_contract_verifier": "scripts/verify_deployment_contract.py",
     "container_ci_workflow": ".github/workflows/ci.yml",
     "ci_action_lock": "data/evaluation/ci_action_lock_v1.json",
+    "product_validation_protocol": "data/evaluation/product_validation_protocol_v1.json",
+    "product_validation_protocol_verification": "data/evaluation/product_validation_protocol_verification_v1.json",
+    "product_validation_guide": "docs/PRODUCT_VALIDATION_STUDY.md",
+    "product_validation_analyzer": "scripts/product_validation_study.py",
+    "independent_reproduction_protocol": "data/evaluation/independent_reproduction_protocol_v1.json",
+    "independent_reproduction_protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
+    "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
+    "independent_reproduction_verifier": "scripts/verify_independent_reproduction.py",
     "sbom_builder": "scripts/build_supply_chain_sbom.py",
     "data_license_registry": "data/evaluation/data_license_registry_v1.json",
     "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
@@ -115,6 +123,34 @@
       "explicit_authority_required": true
     },
     {
+      "id": "product_validation_protocol_audit",
+      "command": "python scripts/product_validation_study.py",
+      "effect": "read_only_preregistered_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "product_validation_analysis",
+      "command": "python scripts/product_validation_study.py --analyze --records data/evaluation/product_validation_v1/participant_records.jsonl --external-review data/evaluation/product_validation_v1/external_review.json --out data/evaluation/product_validation_v1/decision.json",
+      "effect": "analyze_existing_human_and_external_review_evidence",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "independent_reproduction_protocol_audit",
+      "command": "python scripts/verify_independent_reproduction.py",
+      "effect": "read_only_preregistered_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "independent_reproduction_review_audit",
+      "command": "python scripts/verify_independent_reproduction.py --review data/evaluation/independent_reproduction_v1/review.json",
+      "effect": "read_only_signed_external_review_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
       "id": "experiment_status",
       "command": "python scripts/run_formal_experiment.py",
       "effect": "read_only",
@@ -167,8 +203,17 @@
   },
   "independent_reproduction": {
     "status": "not_performed",
+    "protocol": "data/evaluation/independent_reproduction_protocol_v1.json",
+    "protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
     "reviewer_independent_of_implementation": null,
     "report": null
+  },
+  "product_validation": {
+    "status": "preregistered_not_executed",
+    "protocol": "data/evaluation/product_validation_protocol_v1.json",
+    "protocol_verification": "data/evaluation/product_validation_protocol_verification_v1.json",
+    "participants_observed": 0,
+    "decision": null
   },
   "archive": {
     "status": "manifest_addressed_subset_ready",

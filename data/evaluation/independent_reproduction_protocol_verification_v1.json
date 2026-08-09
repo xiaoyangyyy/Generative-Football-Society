@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_independent_reproduction_preregistration",
+  "generated_at": "2026-08-09T18:37:22.113910+00:00",
+  "status": "registered_waiting_for_prerequisites",
+  "passed": true,
+  "ready_to_start": false,
+  "review_available": false,
+  "checks": {
+    "schema_and_state_are_registered": true,
+    "prerequisites_are_exact_and_fail_closed": true,
+    "reviewer_independence_is_required": true,
+    "execution_budget_is_exact_and_zero_training": true,
+    "comparison_contract_matches_formal_output": true,
+    "outputs_are_confined_and_exact": true,
+    "execution_remains_not_performed": true
+  },
+  "prerequisite_checks": {
+    "confirmatory_protocol_is_frozen": true,
+    "confirmatory_decision_is_complete": false,
+    "container_runtime_gate_passed": false,
+    "reproduction_release_contract_passed": true
+  },
+  "protocol_sha256": "ebefca7769b94aa93e21e2c86b63f1ca7bfe43d7d5e0f481fffbe4b6f23d4b15",
+  "artifact_sha256": {
+    "data/evaluation/independent_reproduction_protocol_v1.json": "ebefca7769b94aa93e21e2c86b63f1ca7bfe43d7d5e0f481fffbe4b6f23d4b15",
+    "docs/INDEPENDENT_REPRODUCTION.md": "07c71191c444442f3bf084e0695cc16b9a612a2ba28c95f1c0aa710ab0a58f28",
+    "scripts/verify_independent_reproduction.py": "9a183a343be1ee5134b5aa4a9d01fda16e14a1177d2b697cad77bf12e9ed0fc1"
+  },
+  "external_calls_made": false,
+  "runs_executed": 0,
+  "matches_executed": 0,
+  "training_executed": false,
+  "provider_calls_made": false
+}

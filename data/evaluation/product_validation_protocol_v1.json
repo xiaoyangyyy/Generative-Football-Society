@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-studio-target-user-validation-v1",
+  "state": "preregistered_not_executed",
+  "objective": "Evaluate whether target users can complete the cohesive GFS Studio workflow safely, understand its evidence limits, and recover their work.",
+  "population": {
+    "target_roles": [
+      "football_analyst",
+      "research_engineer",
+      "product_operator"
+    ],
+    "minimum_valid_participants": 10,
+    "minimum_per_role": 2,
+    "inclusion": [
+      "adult_with_relevant_role_experience",
+      "able_to_use_a_desktop_web_application",
+      "provides_recorded_informed_consent"
+    ],
+    "predeclared_exclusions": [
+      "consent_withdrawn",
+      "infrastructure_failure_before_first_task"
+    ],
+    "performance_based_exclusion": false,
+    "optional_stopping": false
+  },
+  "tasks": [
+    {
+      "task_id": "create_or_load_studio",
+      "core": true,
+      "success_definition": "Participant creates or loads a stable-mode Studio without moderator control of the interface."
+    },
+    {
+      "task_id": "interpret_release_readiness",
+      "core": true,
+      "success_definition": "Participant correctly identifies code readiness, release readiness, the next gate, and that research layers are default-off."
+    },
+    {
+      "task_id": "run_stable_match",
+      "core": true,
+      "success_definition": "Participant submits one authorized stable fast match and reaches a completed task without duplicate submission."
+    },
+    {
+      "task_id": "review_auditable_report",
+      "core": true,
+      "success_definition": "Participant opens the report and locates score, xG, evidence status, and limitations."
+    },
+    {
+      "task_id": "backup_verify_and_recover",
+      "core": true,
+      "success_definition": "Participant creates and verifies a backup and can explain the explicit replacement boundary."
+    }
+  ],
+  "measurement": {
+    "primary_metric": "participant_core_workflow_success_rate",
+    "primary_threshold": 0.9,
+    "sus_threshold": 80.0,
+    "critical_error_threshold": 0,
+    "sus_items": 10,
+    "sus_scale_min": 1,
+    "sus_scale_max": 5,
+    "time_on_task_role": "descriptive_only",
+    "assistance_role": "descriptive_only",
+    "confidence_interval": "wilson_95_percent_for_success_proportions",
+    "qualitative_tags": [
+      "navigation",
+      "readiness_comprehension",
+      "terminology",
+      "match_submission",
+      "report_interpretation",
+      "backup_recovery",
+      "accessibility",
+      "trust",
+      "other"
+    ]
+  },
+  "external_review": {
+    "required": true,
+    "accessibility_standard": "WCAG-2.2-AA",
+    "independent_accessibility_reviewer": true,
+    "independent_security_reviewer": true,
+    "unresolved_critical_findings_allowed": 0,
+    "critical_findings_may_be_risk_accepted": false
+  },
+  "integrity": {
+    "protocol_changes_after_first_participant": false,
+    "participant_ids_are_pseudonymous": true,
+    "raw_free_text_in_analysis_records": false,
+    "unknown_record_fields_forbidden": true,
+    "completed_tasks_require_sha256_evidence": true,
+    "duplicate_participant_ids_forbidden": true,
+    "all_valid_records_analyzed": true,
+    "interim_release_decisions": false
+  },
+  "outputs": {
+    "raw_records": "data/evaluation/product_validation_v1/participant_records.jsonl",
+    "external_review": "data/evaluation/product_validation_v1/external_review.json",
+    "decision": "data/evaluation/product_validation_v1/decision.json"
+  },
+  "execution": {
+    "participants_observed": 0,
+    "sessions_executed": 0,
+    "matches_executed": 0,
+    "training_executed": false,
+    "provider_calls_authorized": false,
+    "results_available": false
+  }
+}

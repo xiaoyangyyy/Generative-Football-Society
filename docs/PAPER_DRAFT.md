@@ -219,6 +219,14 @@ source-bounded licensed data supplement. Only an explicit `--execute` command ca
 60-run experiment, and analysis fails closed until evidence is complete and
 identity-matched.
 
+The independent-reproduction handoff is also registered before results exist.
+It requires a reviewer independent of implementation, a clean source commit,
+the complete 60-run budget, current container and release evidence, exact
+categorical decision agreement, scalar agreement within `1e-12`, disclosure
+of every deviation, and a signed public identity or ORCID. A valid negative or
+inconclusive reproduction remains reportable evidence and is not relabeled as
+success. No such review has yet been performed.
+
 <!-- claim:CLM-008 -->
 No reproduction by a person independent of the implementer has been
 completed. The independent-review checklist therefore remains an instruction,

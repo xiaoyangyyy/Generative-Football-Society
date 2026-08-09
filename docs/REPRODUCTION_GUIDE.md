@@ -9,6 +9,9 @@ match, train a model, or call an external provider.
 - Manuscript stage: registered-report draft.
 - Confirmatory experiment: not executed.
 - Independent reproduction: not performed.
+- Target-user validation: preregistered, zero participants observed.
+- Independent-reproduction handoff: registered, waiting for container and
+  confirmatory-result prerequisites.
 - Stable release: 7.0.0.
 - Sealed M1: research-only and default-off.
 - Environment: two verified 64-package reference locks—Python 3.12 Linux CPU
@@ -31,6 +34,8 @@ python scripts/verify_reproducibility_matrix.py
 python scripts/verify_local_runtime.py
 python scripts/verify_container_images.py
 python scripts/verify_data_release.py
+python scripts/product_validation_study.py
+python scripts/verify_independent_reproduction.py
 python scripts/audit_research_evidence.py --check
 python scripts/run_formal_experiment.py
 ```
@@ -52,6 +57,8 @@ Expected state:
 - protocol and sealed checkpoint identities pass;
 - confirmatory state is `not_started`, with 60 runs remaining;
 - no progress or decision file exists.
+- product-validation and independent-reproduction protocol audits pass while
+  retaining zero-execution and not-performed states.
 
 Any different state means this pre-execution package is stale and must be
 reviewed before using the manuscript.

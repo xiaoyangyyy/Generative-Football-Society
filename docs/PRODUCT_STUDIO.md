@@ -242,10 +242,13 @@ The same control plane now exposes a unified `release` object and a visible
 "产品与论文发布门禁" panel. It combines the product and academic scores with
 paper-package, transitive-lock, SBOM, data-license, local-runtime,
 cross-platform-lock, image-digest, container-build, licensed external-data,
-confirmatory-result, and independent-reproduction gates. `code_ready` means
-the eight code-controlled gates pass; it never aliases `release_ready`, which
-remains false while any real-world gate is open. Each gate carries an evidence
-path and the response identifies the next unresolved action.
+frozen human-validation protocols, target-user outcomes, independent
+accessibility/security review, production soak/recovery, comparative user
+value, confirmatory results, and independent reproduction. `code_ready` means
+the ten code-controlled gates pass; it never aliases `release_ready`, which
+remains false while any real-world gate is open. The full status currently has
+18 gates. Each gate carries an evidence path and the response identifies the
+next unresolved action.
 
 ## Integrated operations view
 

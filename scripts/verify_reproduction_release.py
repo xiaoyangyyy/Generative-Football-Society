@@ -17,9 +17,15 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.verify_paper_package import verify_paper_package  # noqa: E402
+from scripts.product_validation_study import (  # noqa: E402
+    protocol_report as product_validation_protocol_report,
+)
 from scripts.verify_container_images import verify_container_images  # noqa: E402
 from scripts.verify_data_release import verify_data_release  # noqa: E402
 from scripts.verify_local_runtime import verify_local_runtime  # noqa: E402
+from scripts.verify_independent_reproduction import (  # noqa: E402
+    protocol_report as independent_reproduction_protocol_report,
+)
 from scripts.verify_reproducibility_matrix import (  # noqa: E402
     verify_reproducibility_matrix,
 )
@@ -45,6 +51,12 @@ WINDOWS_LOCK = ROOT / "requirements-windows-py313.lock"
 WINDOWS_VALIDATION = ROOT / "data/evaluation/windows_lock_validation_v1.json"
 WINDOWS_SBOM = ROOT / "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json"
 CI_ACTION_LOCK = ROOT / "data/evaluation/ci_action_lock_v1.json"
+PRODUCT_PROTOCOL_REPORT = (
+    ROOT / "data/evaluation/product_validation_protocol_verification_v1.json"
+)
+INDEPENDENT_PROTOCOL_REPORT = (
+    ROOT / "data/evaluation/independent_reproduction_protocol_verification_v1.json"
+)
 
 EXPECTED_SOURCE_IDS = {
     "statsbomb_open_data",
@@ -214,6 +226,8 @@ def verify_reproduction_release() -> dict:
     manifest = _read_json(REPRODUCTION_MANIFEST)
     environment = _read_json(ENVIRONMENT)
     action_lock = _read_json(CI_ACTION_LOCK)
+    stored_product_protocol = _read_json(PRODUCT_PROTOCOL_REPORT)
+    stored_independent_protocol = _read_json(INDEPENDENT_PROTOCOL_REPORT)
     pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
     requirements = _parse_exact_requirements(REQUIREMENTS.read_text(encoding="utf-8"))
     project_requirements = _parse_exact_requirements(
@@ -241,6 +255,8 @@ def verify_reproduction_release() -> dict:
     local_runtime_report = verify_local_runtime()
     image_report = verify_container_images()
     data_release_report = verify_data_release()
+    product_protocol = product_validation_protocol_report()
+    independent_protocol = independent_reproduction_protocol_report()
 
     checks: dict[str, bool] = {
         "dependency_contract_schema_and_scope": (
@@ -343,6 +359,28 @@ def verify_reproduction_release() -> dict:
         "container_ci_is_immutable_attested_and_zero_training": _ci_workflow_is_locked(
             action_lock, ci_workflow
         ),
+        "human_and_independent_validation_protocols_are_current": (
+            product_protocol.get("passed") is True
+            and product_protocol.get("study_executed") is False
+            and product_protocol.get("participants_observed") == 0
+            and stored_product_protocol.get("status") == product_protocol.get("status")
+            and stored_product_protocol.get("checks") == product_protocol.get("checks")
+            and stored_product_protocol.get("artifact_sha256")
+            == product_protocol.get("artifact_sha256")
+            and independent_protocol.get("passed") is True
+            and independent_protocol.get("ready_to_start") is False
+            and independent_protocol.get("runs_executed") == 0
+            and stored_independent_protocol.get("status")
+            in {
+                "registered_waiting_for_prerequisites",
+                "ready_for_independent_reviewer",
+            }
+            and stored_independent_protocol.get("passed") is True
+            and stored_independent_protocol.get("checks")
+            == independent_protocol.get("checks")
+            and stored_independent_protocol.get("artifact_sha256")
+            == independent_protocol.get("artifact_sha256")
+        ),
         "container_direct_distributions_were_observed": (
             contract.get("index_observation", {}).get("target")
             == "CPython 3.12 Linux wheel or universal wheel"
@@ -383,6 +421,14 @@ def verify_reproduction_release() -> dict:
                 "deployment_contract_verifier": "scripts/verify_deployment_contract.py",
                 "container_ci_workflow": ".github/workflows/ci.yml",
                 "ci_action_lock": "data/evaluation/ci_action_lock_v1.json",
+                "product_validation_protocol": "data/evaluation/product_validation_protocol_v1.json",
+                "product_validation_protocol_verification": "data/evaluation/product_validation_protocol_verification_v1.json",
+                "product_validation_guide": "docs/PRODUCT_VALIDATION_STUDY.md",
+                "product_validation_analyzer": "scripts/product_validation_study.py",
+                "independent_reproduction_protocol": "data/evaluation/independent_reproduction_protocol_v1.json",
+                "independent_reproduction_protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
+                "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
+                "independent_reproduction_verifier": "scripts/verify_independent_reproduction.py",
                 "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
                 "data_release_verification": "data/evaluation/data_release_verification_v1.json",
                 "data_release_builder": "scripts/build_data_release_archive.py",
@@ -431,6 +477,14 @@ def verify_reproduction_release() -> dict:
         "scripts/verify_deployment_contract.py",
         ".github/workflows/ci.yml",
         "data/evaluation/ci_action_lock_v1.json",
+        "data/evaluation/product_validation_protocol_v1.json",
+        "docs/PRODUCT_VALIDATION_STUDY.md",
+        "scripts/product_validation_study.py",
+        "data/evaluation/independent_reproduction_protocol_v1.json",
+        "docs/INDEPENDENT_REPRODUCTION.md",
+        "scripts/verify_independent_reproduction.py",
+        "scripts/verify_paper_package.py",
+        "scripts/verify_reproduction_release.py",
     ]
     identity = {
         path: file_sha256(ROOT / path)
@@ -448,6 +502,10 @@ def verify_reproduction_release() -> dict:
         "container_images_digest_pinned": image_report.get("passed") is True,
         "container_build_verified": False,
         "external_data_archive_approved": data_release_report.get("passed") is True,
+        "product_validation_protocol_ready": product_protocol.get("passed") is True,
+        "independent_reproduction_protocol_ready": (
+            independent_protocol.get("passed") is True
+        ),
         "confirmatory_results_available": False,
         "independent_reproduction_available": False,
     }
