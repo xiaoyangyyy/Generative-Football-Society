@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_evidence_derived_excellence_score",
-  "generated_at": "2026-08-09T20:34:29.401784+00:00",
+  "generated_at": "2026-08-09T20:49:13.339209+00:00",
   "status": "passed_dynamic_scoring",
   "passed": true,
   "scores": {
@@ -236,11 +236,13 @@
     "data/evaluation/excellence_scoring_contract_v1.json": "650bf8d0140545d32447253b2d9e27f39f5f130e74fca02aa676b588b75cc13b",
     "data/evaluation/excellence_roadmap_v1.json": "894dfc88bb04431339c7d74183141366c66a618a57cf4552e6aef31458187c66",
     "src/product/excellence.py": "1cf02fae25a9a72659abfcd621e9ba0a68d707fe74bfaf3b3db7cd5ea5c7a6fc",
-    "src/product/control_plane.py": "c121d8b514c0d42b3d4ccfc5de5f464c72bca9c07ba2f6b07974c938eaca792d",
-    "src/product/completion_plan.py": "b2de18c74263d31855cbdd8a03ec57255c19b01efb186b852c59ddc5f8ff07d1",
-    "src/cli.py": "e8f834c0de8bdfd3930750ae0340e122d749730d5edbc5e28de9b0a1a0c4b5ee",
-    "src/product/web.py": "6ffbf3343598e64cbdf8638dc241c895a628a2088c4214e5c14c7b4bc9211bee",
-    "scripts/verify_excellence_score.py": "908e85f5b1b41b6a5f940f6c76049fbd6c94c1235d4b2d981c2f1451b6e7bb7f"
+    "src/product/control_plane.py": "78dc77299abb15266fc6f1bbeba4af8a07f9a1a1ab3fd8696189d684e912e4cb",
+    "src/product/completion_plan.py": "a31d42c16b8a4b4be9e848e6d3fb2fc436447deb0f2de390f2214a3dc04881a4",
+    "src/cli.py": "d8d4381ef94daa459fc3b2af2c7737947f95beb9a15a4e08150879ce6db68529",
+    "src/product/web.py": "ed21e5cfd6297ce91012d73715525e7d2782941ad52b614cf7143703eb243dcc",
+    "scripts/build_excellence_evidence_kit.py": "0964b6f9319d22f8628877d30ed30dad3d497b50b9330c263887c87d46f63a3d",
+    "data/evaluation/excellence_evidence_kit_verification_v1.json": "ea9e43e6c79474e0680eabbb8d616275e03fadf4dd2ac8aba75632a2fc798404",
+    "scripts/verify_excellence_score.py": "36085dc49e90e0112e6ae77b49cbe80d90070500bcde97b8381fb9b8af6c9afa"
   },
   "external_calls_made": false,
   "matches_executed": 0,

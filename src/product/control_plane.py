@@ -243,6 +243,9 @@ class ProductControlPlane:
         security_protocol = self._report(
             "data/evaluation/security_closure_protocol_verification_v1.json"
         )
+        evidence_kit_report = self._report(
+            "data/evaluation/excellence_evidence_kit_verification_v1.json"
+        )
         security_closure = self._report(
             "data/evaluation/security_closure_verification_v1.json"
         )
@@ -309,6 +312,9 @@ class ProductControlPlane:
         )
         security_protocol_current = self._artifact_hashes_current(
             security_protocol.get("artifact_sha256") or {}
+        )
+        evidence_kit_current = self._artifact_hashes_current(
+            evidence_kit_report.get("artifact_sha256") or {}
         )
         security_closure_current = self._artifact_hashes_current(
             security_closure.get("artifact_sha256") or {}
@@ -545,6 +551,16 @@ class ProductControlPlane:
             {gate["id"]: gate["passed"] for gate in gates}
         )
         completion_plan = build_completion_plan(gates)
+        completion_plan["evidence_kit"].update({
+            "ready": (
+                evidence_kit_report.get("passed") is True
+                and evidence_kit_report.get("status") == "passed_template_only_kit"
+                and evidence_kit_current
+            ),
+            "verification": (
+                "data/evaluation/excellence_evidence_kit_verification_v1.json"
+            ),
+        })
         scores = {
             name: row.get("score")
             for name, row in (excellence.get("tracks") or {}).items()

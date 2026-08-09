@@ -40,6 +40,10 @@ def test_code_only_release_contract_is_honest_and_zero_compute():
     assert report["readiness"]["paper_finalization_protocol_ready"] is True
     assert report["readiness"]["security_closure_protocol_ready"] is True
     assert report["readiness"]["evidence_derived_scoring_ready"] is True
+    assert report["readiness"]["excellence_evidence_kit_ready"] is True
+    assert report["checks"][
+        "excellence_evidence_kit_is_current_template_only_and_zero_execution"
+    ] is True
     assert "src/product/completion_plan.py" in report["artifact_sha256"]
     assert "src/product/control_plane.py" in report["artifact_sha256"]
     assert "src/cli.py" in report["artifact_sha256"]

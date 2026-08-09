@@ -238,6 +238,15 @@ explicit authorization. Commands are guidance only: rendering the plan never
 executes a study, container, match, provider call, or training job, and it never
 changes an evidence score.
 
+The next code-only usability increment adds a deterministic evidence kit for
+all external roles. `python gfs.py studio evidence-kit` audits seven deliberately
+invalid JSON templates plus a completed-paper scaffold entirely in memory;
+`--materialize build/evidence-kits/gfs-excellence-evidence-kit-v1.zip` is the
+only write path. Output is confined away from authoritative evidence, contains
+no credential value, and is rejected by real validators until placeholders and
+template-only fields are removed. The kit reduces collection error but earns no
+score and cannot substitute for participants, reviewers, execution, or results.
+
 ## Stage 3 — product validation
 
 Run a preregistered usability study with at least ten target users completing

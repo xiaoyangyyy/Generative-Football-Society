@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_excellence_evidence_kit",
+  "status": "passed_template_only_kit",
+  "passed": true,
+  "kit_id": "gfs-excellence-evidence-kit-v1",
+  "template_count": 7,
+  "archive_sha256": "feabe35b58423068748ed5ae4407e5de469deac15cf46f09a3038b004370d410",
+  "checks": {
+    "template_inventory_is_exact": true,
+    "all_json_templates_are_explicitly_non_evidence": true,
+    "templates_contain_placeholders": true,
+    "archive_is_secret_free": true,
+    "archive_paths_are_relative_and_normalized": true,
+    "archive_is_deterministic": true
+  },
+  "artifact_sha256": {
+    "data/evaluation/security_closure_protocol_v1.json": "42dce899c298ff5d00a24651c930c984700ca97952bb856375b828ffbe02d75e",
+    "data/evaluation/product_validation_protocol_v1.json": "76b8848d0910d4c4fd60f9e13c183f8eb99d3a684c4afe73cabfa9305ffedd2e",
+    "data/evaluation/production_validation_protocol_v1.json": "33d57def38df799e3cd6847434e0eef66144981734a4435993919dd6303ae7e3",
+    "data/evaluation/product_value_validation_protocol_v1.json": "416114c03ce821ba53ee125f87128ba14320dc03c02432007b26ba38792f6843",
+    "data/evaluation/independent_reproduction_protocol_v1.json": "0330c1c2b71fa445f368f7b0d2f0967d7021aff026800b746f3d9eb162e5ebae",
+    "data/evaluation/paper_finalization_protocol_v1.json": "a6f0b3923623d0c954ed3056571e46a65af28d480934bfbf138f42906bdad3be",
+    "scripts/build_excellence_evidence_kit.py": "0964b6f9319d22f8628877d30ed30dad3d497b50b9330c263887c87d46f63a3d",
+    "docs/EXCELLENCE_EVIDENCE_KIT.md": "511092290c6851b86352de91fe49fc9cecd46521940ea0833ca9773cf3e6bd20"
+  },
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "provider_calls_made": false
+}

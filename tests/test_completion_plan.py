@@ -36,6 +36,8 @@ def test_plan_prioritizes_credential_closure_and_exposes_parallel_work():
         "confirmatory_results", "completed_manuscript",
     }
     assert all(row["required_inputs"] for row in plan["steps"])
+    assert plan["evidence_kit"]["template_only"] is True
+    assert plan["evidence_kit"]["changes_gate_scores"] is False
 
 
 def test_dependency_completion_unblocks_downstream_without_marking_it_passed():
@@ -72,6 +74,7 @@ def test_live_plan_is_integrated_and_never_executes_external_work(capsys):
     release = ProductControlPlane(ROOT).release_readiness()
     assert release["next_action"] == "credential_security_closure"
     assert release["completion_plan"]["open_step_count"] == 10
+    assert release["completion_plan"]["evidence_kit"]["ready"] is True
     assert release["completion_plan"]["zero_execution_plan"] is True
     parser = build_parser()
     args = parser.parse_args(["--base-dir", str(ROOT), "studio", "excellence"])

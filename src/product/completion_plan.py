@@ -211,4 +211,14 @@ def build_completion_plan(gates: list[dict[str, Any]]) -> dict[str, Any]:
             row["gate_id"] for row in open_rows
             if row["requires_explicit_authorization"]
         ],
+        "evidence_kit": {
+            "template_only": True,
+            "audit_command": "python gfs.py studio evidence-kit",
+            "materialize_command": (
+                "python gfs.py studio evidence-kit --materialize "
+                "build/evidence-kits/gfs-excellence-evidence-kit-v1.zip"
+            ),
+            "materialization_is_explicit": True,
+            "changes_gate_scores": False,
+        },
     }

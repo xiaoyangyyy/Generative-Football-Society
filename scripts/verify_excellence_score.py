@@ -99,6 +99,10 @@ def verify_excellence_score(root: Path = ROOT) -> dict:
         ),
         "completion_plan_is_dependency_aware_and_zero_execution": (
             completion_plan.get("zero_execution_plan") is True
+            and completion_plan.get("evidence_kit", {}).get("ready") is True
+            and completion_plan.get("evidence_kit", {}).get("template_only") is True
+            and completion_plan.get("evidence_kit", {}).get("changes_gate_scores")
+            is False
             and {row.get("gate_id") for row in plan_steps}
             == {step.gate_id for step in STEPS}
             and completion_plan.get("open_step_count")
@@ -143,6 +147,15 @@ def verify_excellence_score(root: Path = ROOT) -> dict:
             ),
             "src/cli.py": file_sha256(root / "src/cli.py"),
             "src/product/web.py": file_sha256(root / "src/product/web.py"),
+            "scripts/build_excellence_evidence_kit.py": file_sha256(
+                root / "scripts/build_excellence_evidence_kit.py"
+            ),
+            "data/evaluation/excellence_evidence_kit_verification_v1.json": (
+                file_sha256(
+                    root
+                    / "data/evaluation/excellence_evidence_kit_verification_v1.json"
+                )
+            ),
             "scripts/verify_excellence_score.py": file_sha256(Path(__file__)),
         },
         "external_calls_made": False,

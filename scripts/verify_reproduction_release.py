@@ -41,6 +41,7 @@ from scripts.finalize_paper import (  # noqa: E402
 from scripts.verify_security_closure import (  # noqa: E402
     protocol_report as security_closure_protocol_report,
 )
+from scripts.build_excellence_evidence_kit import verify_kit  # noqa: E402
 from scripts.verify_reproducibility_matrix import (  # noqa: E402
     verify_reproducibility_matrix,
 )
@@ -90,6 +91,9 @@ SECURITY_CLOSURE_PROTOCOL_REPORT = (
 )
 EXCELLENCE_SCORING_CONTRACT = (
     ROOT / "data/evaluation/excellence_scoring_contract_v1.json"
+)
+EXCELLENCE_EVIDENCE_KIT_REPORT = (
+    ROOT / "data/evaluation/excellence_evidence_kit_verification_v1.json"
 )
 
 EXPECTED_SOURCE_IDS = {
@@ -273,6 +277,7 @@ def verify_reproduction_release() -> dict:
     stored_security_closure_protocol = _read_json(
         SECURITY_CLOSURE_PROTOCOL_REPORT
     )
+    stored_evidence_kit = _read_json(EXCELLENCE_EVIDENCE_KIT_REPORT)
     excellence_scoring_contract = _read_json(EXCELLENCE_SCORING_CONTRACT)
     pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
     requirements = _parse_exact_requirements(REQUIREMENTS.read_text(encoding="utf-8"))
@@ -308,6 +313,7 @@ def verify_reproduction_release() -> dict:
     independent_protocol = independent_reproduction_protocol_report()
     paper_finalization_protocol = paper_finalization_protocol_report()
     security_closure_protocol = security_closure_protocol_report()
+    evidence_kit = verify_kit()
 
     checks: dict[str, bool] = {
         "dependency_contract_schema_and_scope": (
@@ -467,6 +473,19 @@ def verify_reproduction_release() -> dict:
         "excellence_scoring_contract_is_evidence_derived": all(
             validate_scoring_contract(excellence_scoring_contract).values()
         ),
+        "excellence_evidence_kit_is_current_template_only_and_zero_execution": (
+            evidence_kit.get("passed") is True
+            and evidence_kit.get("status") == "passed_template_only_kit"
+            and all(evidence_kit.get("checks", {}).values())
+            and evidence_kit.get("external_calls_made") is False
+            and evidence_kit.get("matches_executed") == 0
+            and evidence_kit.get("training_executed") is False
+            and stored_evidence_kit.get("checks") == evidence_kit.get("checks")
+            and stored_evidence_kit.get("artifact_sha256")
+            == evidence_kit.get("artifact_sha256")
+            and stored_evidence_kit.get("archive_sha256")
+            == evidence_kit.get("archive_sha256")
+        ),
         "container_direct_distributions_were_observed": (
             contract.get("index_observation", {}).get("target")
             == "CPython 3.12 Linux wheel or universal wheel"
@@ -536,6 +555,9 @@ def verify_reproduction_release() -> dict:
                 "excellence_score_module": "src/product/excellence.py",
                 "excellence_score_verifier": "scripts/verify_excellence_score.py",
                 "excellence_completion_plan": "src/product/completion_plan.py",
+                "excellence_evidence_kit_builder": "scripts/build_excellence_evidence_kit.py",
+                "excellence_evidence_kit_verification": "data/evaluation/excellence_evidence_kit_verification_v1.json",
+                "excellence_evidence_kit_guide": "docs/EXCELLENCE_EVIDENCE_KIT.md",
                 "product_control_plane": "src/product/control_plane.py",
                 "product_cli": "src/cli.py",
                 "product_web": "src/product/web.py",
@@ -613,6 +635,9 @@ def verify_reproduction_release() -> dict:
         "src/product/excellence.py",
         "scripts/verify_excellence_score.py",
         "src/product/completion_plan.py",
+        "scripts/build_excellence_evidence_kit.py",
+        "data/evaluation/excellence_evidence_kit_verification_v1.json",
+        "docs/EXCELLENCE_EVIDENCE_KIT.md",
         "src/product/control_plane.py",
         "src/cli.py",
         "src/product/web.py",
@@ -660,6 +685,7 @@ def verify_reproduction_release() -> dict:
         "evidence_derived_scoring_ready": all(
             validate_scoring_contract(excellence_scoring_contract).values()
         ),
+        "excellence_evidence_kit_ready": evidence_kit.get("passed") is True,
         "confirmatory_results_available": False,
         "independent_reproduction_available": False,
     }

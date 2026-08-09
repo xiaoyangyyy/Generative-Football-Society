@@ -70,6 +70,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "renderRelease(data)" in document
     assert "recommended_gate_id" in document
     assert "dataset.actionState" in document
+    assert "证据包" in document
     assert 'name="confirmation"' in document and 'name="replace"' in document
     assert 'type="file"' not in document
     assert "innerHTML" not in document

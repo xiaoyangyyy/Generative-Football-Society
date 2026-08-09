@@ -275,6 +275,22 @@ def cmd_studio_excellence(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_studio_evidence_kit(args: argparse.Namespace) -> int:
+    """Audit or explicitly materialize the template-only evidence kit."""
+    import json
+    from scripts.build_excellence_evidence_kit import materialize_kit, verify_kit
+
+    root = Path(args.base_dir).resolve()
+    report = verify_kit(root)
+    if args.materialize:
+        target = materialize_kit(
+            Path(args.materialize), root=root, overwrite=args.overwrite,
+        )
+        report["materialized_path"] = target.relative_to(root).as_posix()
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    return 0 if report["passed"] else 1
+
+
 def cmd_studio_stop_job(args: argparse.Namespace) -> int:
     path = ProductControlPlane(args.base_dir).request_stop(args.run_id)
     print(f"Cooperative stop requested: {path}")
@@ -405,6 +421,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show evidence-derived scores and the dependency-aware completion plan",
     )
     p_studio_excellence.set_defaults(func=cmd_studio_excellence)
+    p_studio_evidence_kit = studio_sub.add_parser(
+        "evidence-kit",
+        help="Audit or materialize privacy-safe templates for open evidence gates",
+    )
+    p_studio_evidence_kit.add_argument(
+        "--materialize",
+        help="ZIP path confined under build/evidence-kits; omitted for memory-only audit",
+    )
+    p_studio_evidence_kit.add_argument("--overwrite", action="store_true")
+    p_studio_evidence_kit.set_defaults(func=cmd_studio_evidence_kit)
     p_studio_stop = studio_sub.add_parser(
         "stop-job", help="Request a safe stop at the next epoch boundary",
     )
