@@ -43,6 +43,16 @@ The Web recovery center writes its bounded managed catalog to the `gfs_backups`
 volume. Copying bundles off-host, retention beyond 50 entries, encryption, and
 timed RPO/RTO drills remain deployment-operator responsibilities.
 
+Before a real deployment exists, the cross-platform local process drill checks
+the same application lease and startup reconciliation paths without a match:
+
+```bash
+python scripts/verify_process_recovery.py --out data/evaluation/process_recovery_verification_v1.json
+```
+
+Its timing is not a deployment-volume RTO and does not validate Docker,
+orchestrator restart policy, storage latency, or kill-during-write behavior.
+
 ## Stop and recover
 
 ```bash

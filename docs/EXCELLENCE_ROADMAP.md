@@ -65,8 +65,8 @@ Stage 1/3.
 The persistent idempotent background-match queue, single-server lease, task
 history, refresh-safe polling, bounded retention, and interrupted-task
 reconciliation add three more product points, bringing the current score to
-70. The isolated verifier executes no real match; multi-host execution and a
-real process-kill drill remain unclaimed.
+70. The isolated verifier executes no real match; multi-host execution remains
+unclaimed, while a later cross-process drill covers local process death.
 
 The authenticated socket boundary and static container/TLS deployment
 contract add one security point and two operations points, bringing the
@@ -98,8 +98,9 @@ explicit, and restore requires CSRF, `replace=true`, an exact typed ID, no
 active match tasks, and the existing transactional rollback implementation. A
 real local socket verifier passes all 13 gates without running a match. This
 closes the final functional-completeness point and adds one usability point,
-bringing the product score to 78. Deployment-volume RPO/RTO, process-kill
-recovery, Web export, and target-user evidence remain unclaimed.
+bringing the product score to 78. Deployment-volume RPO/RTO, recovery during
+an in-flight filesystem replacement, Web export, and target-user evidence
+remain unclaimed.
 
 The Studio and login surfaces now expose atomic polite/assertive status
 regions, explicit asynchronous busy state, terminal-result focus, 44 px
@@ -112,6 +113,18 @@ socket. All 32 checks pass and the lowest measured declared contrast is
 score to 80. It remains a code-level contract: no browser accessibility tree,
 screen reader, zoom/reflow interoperability, external WCAG audit, or
 target-user study is claimed.
+
+A real cross-process drill now starts a loopback Studio service, commits a
+Studio and managed backup over HTTP, persists a synthetic owned task only
+after stopping the match worker, and force-kills that exact child process.
+The next fresh process reacquires the OS lease, reconciles the orphaned task to
+`interrupted`, serves health, reads the Studio, and verifies the original
+backup. All 20 checks pass with zero match artifacts and zero loss among files
+committed before the kill; the recorded local recovery time is 0.311 seconds.
+This adds one reliability point, bringing the product score to 81. The run uses
+a temporary local filesystem and kills between committed requests, so
+deployment-volume failure injection, kill-during-transaction behavior, and a
+production RPO/RTO or SLA remain open.
 
 ## Stage 2 — confirmatory academic experiment
 

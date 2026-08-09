@@ -60,9 +60,19 @@ call:
 python scripts\verify_product_recovery.py --out data\evaluation\product_recovery_verification_v1.json
 ```
 
-Current objectives are manual: take a backup before each product study or
-release-candidate change, and verify it immediately. Production RPO/RTO remain
-unclaimed until timed restore drills run against the deployment storage.
+Take a backup before each product study or release-candidate change and verify
+it immediately. The following automated drill force-kills an owned local Web
+child, starts a fresh process, and proves OS-lease release, orphaned-task
+reconciliation, committed Studio/backup preservation, and timed health
+recovery without running a match:
+
+```powershell
+python scripts\verify_process_recovery.py --out data\evaluation\process_recovery_verification_v1.json
+```
+
+This is a temporary-local-filesystem process test. Production RPO/RTO remain
+unclaimed until timed failure and restore drills run against the actual
+deployment volumes, including faults during filesystem replacement.
 
 The Studio Web recovery center manages `backups/studio/` with generated backup
 IDs and a 50-entry capacity. Its API never accepts or returns an absolute path.

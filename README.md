@@ -123,6 +123,15 @@ Restore refuses to replace an existing session unless `--replace` is explicit.
 See `docs/STUDIO_RECOVERY.md` for scope, trust boundaries, and the still-
 unmeasured production RPO/RTO.
 
+Exercise real local process death and restart without a match:
+
+```bash
+python scripts/verify_process_recovery.py --out data/evaluation/process_recovery_verification_v1.json
+```
+
+This verifies application recovery on a temporary filesystem; it is not a
+container/deployment-volume RPO/RTO claim.
+
 The next confirmatory paper experiment is frozen separately from exploratory
 work. Its default command is read-only:
 

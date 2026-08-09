@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_cross_process_recovery_drill",
+  "generated_at": "2026-08-09T16:00:58.684012+00:00",
+  "status": "passed_local_process_kill_recovery",
+  "passed": true,
+  "recovery_time_seconds": 0.311,
+  "recovery_point": "zero_loss_for_files_committed_before_kill",
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false,
+  "checks": {
+    "first_process_served_real_http": true,
+    "synthetic_task_claimed_without_match_worker": true,
+    "studio_committed_before_kill": true,
+    "managed_backup_committed_before_kill": true,
+    "server_lease_excludes_second_process": true,
+    "duplicate_server_rejected_cross_process": true,
+    "owned_child_was_force_killed": true,
+    "os_lease_released_after_process_death": true,
+    "running_task_survived_process_death": true,
+    "committed_session_and_backup_survived_kill": true,
+    "service_recovered_on_second_process": true,
+    "local_recovery_time_measured": true,
+    "orphaned_running_task_reconciled": true,
+    "studio_readable_after_restart": true,
+    "managed_backup_verified_after_restart": true,
+    "zero_loss_for_committed_drill_files": true,
+    "no_match_transaction_or_artifact_created": true,
+    "no_partial_temporary_files_remain": true,
+    "second_process_stopped_cleanly": true,
+    "lease_released_after_clean_shutdown": true
+  },
+  "limitations": [
+    "the drill uses a temporary local filesystem, not a deployment volume or container orchestrator",
+    "the forced kill occurs between committed requests, not during backup, restore, or filesystem replacement",
+    "the running task is synthetic and claimed only after the match worker is stopped",
+    "the measured local recovery time is evidence for this run, not a production RTO or SLA"
+  ]
+}

@@ -143,6 +143,17 @@ whitelists, semantic session validation, staging, session-last switching, and
 rollback on failure. It excludes provider credentials, frozen releases,
 research checkpoints, and training state. See `docs/STUDIO_RECOVERY.md`.
 
+The local cross-process recovery gate is also executable without a match:
+
+```bash
+python scripts/verify_process_recovery.py --out data/evaluation/process_recovery_verification_v1.json
+```
+
+It force-kills only its own temporary child process, then checks OS-lease
+release, startup task reconciliation, committed-file hashes, backup
+verification, and health recovery in a fresh process. It does not claim
+deployment-volume RPO/RTO.
+
 Every match is reserved in the session before simulation starts. Match IDs and
 seeds are monotonic even after a failure. The run journal distinguishes
 `running`, `finalizing`, `completed`, `failed`, and recovered `interrupted`
