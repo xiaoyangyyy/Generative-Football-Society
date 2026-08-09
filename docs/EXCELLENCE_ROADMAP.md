@@ -6,9 +6,17 @@ interesting model is necessary but cannot substitute for deployment, users,
 confirmatory results, external validity, a reproducibility package, and
 independent review.
 
-The machine-readable authority is
-`data/evaluation/excellence_roadmap_v1.json`. Current scores are readiness
-scores, not claims about universal football realism or scientific superiority.
+The roadmap and its historical snapshot live in
+`data/evaluation/excellence_roadmap_v1.json`. The authoritative current score
+is derived from named evidence gates by
+`data/evaluation/excellence_scoring_contract_v1.json`; manual edits to roadmap
+`current_points` do not change it. Product 100 still requires successful
+security, usability, deployment, operations, accessibility, and comparative-
+value outcomes. Academic 100 requires complete, identity-locked results,
+full-study independent review, and a completed evidence-locked manuscript,
+but a rigorous negative result is not penalized merely for being negative.
+These are readiness scores, not claims about universal football realism or
+scientific superiority.
 
 ## Security boundary
 
@@ -16,6 +24,9 @@ Any API key pasted into chat, source, logs, or screenshots is considered
 compromised. Revoke it in the provider console and create a replacement. The
 replacement belongs only in a local process environment or ignored local
 `.env`; it must never enter Git, test fixtures, reports, or command history.
+Product security cannot reach 15/15 until the redacted, content-addressed
+closure procedure in `docs/SECURITY_CREDENTIAL_CLOSURE.md` passes together
+with the independent application-security review.
 
 For the current DeepSeek OpenAI-compatible API:
 
@@ -212,9 +223,11 @@ handoff covering the 60-run confirmation and the result-selected 72-run
 mechanism replication, with exact decision-field comparison, negative-result
 preservation, and material-deviation handling. Both zero-execution protocol audits pass. The
 unified control plane now exposes the product gates that were previously only
-described in prose, yielding 10 passed of 18 total gates. Scores remain product
-83 and academic 70 because no participant, external reviewer, production soak,
-value comparison, confirmatory run, or independent reproduction has occurred.
+described in prose. With the later explicit security-protocol and completed-
+manuscript gates, the unified control plane now reports 11 passed of 21 total
+gates. Scores remain dynamically derived at product 83 and academic 70 because
+credential closure, participants, external reviewers, production soak, value
+comparison, confirmatory runs, and independent reproduction remain absent.
 
 ## Stage 3 — product validation
 

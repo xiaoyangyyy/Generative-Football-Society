@@ -54,6 +54,14 @@
     "paper_finalization_protocol_verification": "data/evaluation/paper_finalization_protocol_verification_v1.json",
     "paper_finalization_guide": "docs/PAPER_FINALIZATION.md",
     "paper_finalization_verifier": "scripts/finalize_paper.py",
+    "excellence_scoring_contract": "data/evaluation/excellence_scoring_contract_v1.json",
+    "excellence_score_verification": "data/evaluation/excellence_score_verification_v1.json",
+    "excellence_score_module": "src/product/excellence.py",
+    "excellence_score_verifier": "scripts/verify_excellence_score.py",
+    "security_closure_protocol": "data/evaluation/security_closure_protocol_v1.json",
+    "security_closure_protocol_verification": "data/evaluation/security_closure_protocol_verification_v1.json",
+    "security_closure_guide": "docs/SECURITY_CREDENTIAL_CLOSURE.md",
+    "security_closure_verifier": "scripts/verify_security_closure.py",
     "sbom_builder": "scripts/build_supply_chain_sbom.py",
     "data_license_registry": "data/evaluation/data_license_registry_v1.json",
     "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
@@ -235,6 +243,27 @@
       "effect": "read_only_completed_manuscript_evidence_audit",
       "runs_simulation": false,
       "explicit_authority_required": false
+    },
+    {
+      "id": "excellence_score_audit",
+      "command": "python scripts/verify_excellence_score.py",
+      "effect": "read_only_evidence_derived_product_and_academic_scoring",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "security_closure_protocol_audit",
+      "command": "python scripts/verify_security_closure.py",
+      "effect": "read_only_zero_secret_closure_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "security_closure_attestation_audit",
+      "command": "python scripts/verify_security_closure.py --attestation data/evaluation/security_closure_v1/attestation.json --out data/evaluation/security_closure_verification_v1.json",
+      "effect": "verify_user_revocation_attestation_and_redacted_receipt",
+      "runs_simulation": false,
+      "explicit_authority_required": true
     },
     {
       "id": "experiment_status",

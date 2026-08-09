@@ -38,6 +38,9 @@ from scripts.verify_independent_reproduction import (  # noqa: E402
 from scripts.finalize_paper import (  # noqa: E402
     protocol_report as paper_finalization_protocol_report,
 )
+from scripts.verify_security_closure import (  # noqa: E402
+    protocol_report as security_closure_protocol_report,
+)
 from scripts.verify_reproducibility_matrix import (  # noqa: E402
     verify_reproducibility_matrix,
 )
@@ -46,6 +49,7 @@ from src.infrastructure.supply_chain import (  # noqa: E402
     build_cyclonedx_sbom,
     parse_hashed_lock,
 )
+from src.product.excellence import validate_scoring_contract  # noqa: E402
 
 
 LOCK_CONTRACT = ROOT / "data/evaluation/dependency_lock_contract_v1.json"
@@ -80,6 +84,12 @@ INDEPENDENT_PROTOCOL_REPORT = (
 )
 PAPER_FINALIZATION_PROTOCOL_REPORT = (
     ROOT / "data/evaluation/paper_finalization_protocol_verification_v1.json"
+)
+SECURITY_CLOSURE_PROTOCOL_REPORT = (
+    ROOT / "data/evaluation/security_closure_protocol_verification_v1.json"
+)
+EXCELLENCE_SCORING_CONTRACT = (
+    ROOT / "data/evaluation/excellence_scoring_contract_v1.json"
 )
 
 EXPECTED_SOURCE_IDS = {
@@ -260,6 +270,10 @@ def verify_reproduction_release() -> dict:
     stored_paper_finalization_protocol = _read_json(
         PAPER_FINALIZATION_PROTOCOL_REPORT
     )
+    stored_security_closure_protocol = _read_json(
+        SECURITY_CLOSURE_PROTOCOL_REPORT
+    )
+    excellence_scoring_contract = _read_json(EXCELLENCE_SCORING_CONTRACT)
     pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
     requirements = _parse_exact_requirements(REQUIREMENTS.read_text(encoding="utf-8"))
     project_requirements = _parse_exact_requirements(
@@ -293,6 +307,7 @@ def verify_reproduction_release() -> dict:
     academic_replication_protocol = academic_replication_protocol_report()
     independent_protocol = independent_reproduction_protocol_report()
     paper_finalization_protocol = paper_finalization_protocol_report()
+    security_closure_protocol = security_closure_protocol_report()
 
     checks: dict[str, bool] = {
         "dependency_contract_schema_and_scope": (
@@ -440,6 +455,17 @@ def verify_reproduction_release() -> dict:
             == paper_finalization_protocol.get("checks")
             and stored_paper_finalization_protocol.get("artifact_sha256")
             == paper_finalization_protocol.get("artifact_sha256")
+            and security_closure_protocol.get("passed") is True
+            and security_closure_protocol.get("closure_complete") is False
+            and security_closure_protocol.get("boundary_aware_secret_match_count")
+            == 0
+            and stored_security_closure_protocol.get("checks")
+            == security_closure_protocol.get("checks")
+            and stored_security_closure_protocol.get("artifact_sha256")
+            == security_closure_protocol.get("artifact_sha256")
+        ),
+        "excellence_scoring_contract_is_evidence_derived": all(
+            validate_scoring_contract(excellence_scoring_contract).values()
         ),
         "container_direct_distributions_were_observed": (
             contract.get("index_observation", {}).get("target")
@@ -505,6 +531,14 @@ def verify_reproduction_release() -> dict:
                 "paper_finalization_protocol_verification": "data/evaluation/paper_finalization_protocol_verification_v1.json",
                 "paper_finalization_guide": "docs/PAPER_FINALIZATION.md",
                 "paper_finalization_verifier": "scripts/finalize_paper.py",
+                "excellence_scoring_contract": "data/evaluation/excellence_scoring_contract_v1.json",
+                "excellence_score_verification": "data/evaluation/excellence_score_verification_v1.json",
+                "excellence_score_module": "src/product/excellence.py",
+                "excellence_score_verifier": "scripts/verify_excellence_score.py",
+                "security_closure_protocol": "data/evaluation/security_closure_protocol_v1.json",
+                "security_closure_protocol_verification": "data/evaluation/security_closure_protocol_verification_v1.json",
+                "security_closure_guide": "docs/SECURITY_CREDENTIAL_CLOSURE.md",
+                "security_closure_verifier": "scripts/verify_security_closure.py",
                 "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
                 "data_release_verification": "data/evaluation/data_release_verification_v1.json",
                 "data_release_builder": "scripts/build_data_release_archive.py",
@@ -571,6 +605,12 @@ def verify_reproduction_release() -> dict:
         "data/evaluation/paper_finalization_protocol_v1.json",
         "docs/PAPER_FINALIZATION.md",
         "scripts/finalize_paper.py",
+        "data/evaluation/excellence_scoring_contract_v1.json",
+        "src/product/excellence.py",
+        "scripts/verify_excellence_score.py",
+        "data/evaluation/security_closure_protocol_v1.json",
+        "docs/SECURITY_CREDENTIAL_CLOSURE.md",
+        "scripts/verify_security_closure.py",
         "scripts/verify_paper_package.py",
         "scripts/verify_reproduction_release.py",
     ]
@@ -605,6 +645,12 @@ def verify_reproduction_release() -> dict:
         ),
         "paper_finalization_protocol_ready": (
             paper_finalization_protocol.get("passed") is True
+        ),
+        "security_closure_protocol_ready": (
+            security_closure_protocol.get("passed") is True
+        ),
+        "evidence_derived_scoring_ready": all(
+            validate_scoring_contract(excellence_scoring_contract).values()
         ),
         "confirmatory_results_available": False,
         "independent_reproduction_available": False,

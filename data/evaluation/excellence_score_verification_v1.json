@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_evidence_derived_excellence_score",
+  "generated_at": "2026-08-09T20:19:38.065871+00:00",
+  "status": "passed_dynamic_scoring",
+  "passed": true,
+  "scores": {
+    "product": 83,
+    "academic": 70
+  },
+  "all_tracks_full_maturity": false,
+  "release_ready": false,
+  "passed_gate_count": 11,
+  "open_gate_count": 10,
+  "tracks": {
+    "product": {
+      "score": 83,
+      "baseline_score": 58,
+      "maximum": 100,
+      "level": "in_progress",
+      "categories": [
+        {
+          "id": "P1",
+          "name": "architecture_and_workflow",
+          "weight": 20,
+          "points": 20,
+          "status": "verified",
+          "completion_requires": [],
+          "missing_gates": []
+        },
+        {
+          "id": "P2",
+          "name": "security_and_trust",
+          "weight": 15,
+          "points": 14,
+          "status": "partial",
+          "completion_requires": [
+            "external_security_review",
+            "credential_security_closure"
+          ],
+          "missing_gates": [
+            "external_security_review",
+            "credential_security_closure"
+          ]
+        },
+        {
+          "id": "P3",
+          "name": "functional_completeness",
+          "weight": 15,
+          "points": 15,
+          "status": "verified",
+          "completion_requires": [],
+          "missing_gates": []
+        },
+        {
+          "id": "P4",
+          "name": "reliability_and_recovery",
+          "weight": 15,
+          "points": 14,
+          "status": "partial",
+          "completion_requires": [
+            "production_operations_validation"
+          ],
+          "missing_gates": [
+            "production_operations_validation"
+          ]
+        },
+        {
+          "id": "P5",
+          "name": "usability_and_accessibility",
+          "weight": 15,
+          "points": 11,
+          "status": "partial",
+          "completion_requires": [
+            "target_user_validation",
+            "external_accessibility_review"
+          ],
+          "missing_gates": [
+            "target_user_validation",
+            "external_accessibility_review"
+          ]
+        },
+        {
+          "id": "P6",
+          "name": "deployment_and_operations",
+          "weight": 10,
+          "points": 9,
+          "status": "partial",
+          "completion_requires": [
+            "container_build",
+            "production_operations_validation"
+          ],
+          "missing_gates": [
+            "container_build",
+            "production_operations_validation"
+          ]
+        },
+        {
+          "id": "P7",
+          "name": "user_value_validation",
+          "weight": 10,
+          "points": 0,
+          "status": "partial",
+          "completion_requires": [
+            "user_value_validation"
+          ],
+          "missing_gates": [
+            "user_value_validation"
+          ]
+        }
+      ],
+      "critical_gates_remaining": [
+        "P2",
+        "P4",
+        "P5",
+        "P6",
+        "P7"
+      ]
+    },
+    "academic": {
+      "score": 70,
+      "baseline_score": 62,
+      "maximum": 100,
+      "level": "in_progress",
+      "categories": [
+        {
+          "id": "A1",
+          "name": "question_and_protocol",
+          "weight": 15,
+          "points": 15,
+          "status": "verified",
+          "completion_requires": [],
+          "missing_gates": []
+        },
+        {
+          "id": "A2",
+          "name": "method_implementation",
+          "weight": 15,
+          "points": 13,
+          "status": "partial",
+          "completion_requires": [
+            "confirmatory_results"
+          ],
+          "missing_gates": [
+            "confirmatory_results"
+          ]
+        },
+        {
+          "id": "A3",
+          "name": "confirmatory_statistics_and_results",
+          "weight": 20,
+          "points": 12,
+          "status": "partial",
+          "completion_requires": [
+            "confirmatory_results"
+          ],
+          "missing_gates": [
+            "confirmatory_results"
+          ]
+        },
+        {
+          "id": "A4",
+          "name": "external_validity",
+          "weight": 15,
+          "points": 10,
+          "status": "partial",
+          "completion_requires": [
+            "confirmatory_results"
+          ],
+          "missing_gates": [
+            "confirmatory_results"
+          ]
+        },
+        {
+          "id": "A5",
+          "name": "reproducibility",
+          "weight": 15,
+          "points": 15,
+          "status": "verified",
+          "completion_requires": [],
+          "missing_gates": []
+        },
+        {
+          "id": "A6",
+          "name": "mechanism_and_replication",
+          "weight": 10,
+          "points": 2,
+          "status": "partial",
+          "completion_requires": [
+            "confirmatory_results",
+            "independent_reproduction"
+          ],
+          "missing_gates": [
+            "confirmatory_results",
+            "independent_reproduction"
+          ]
+        },
+        {
+          "id": "A7",
+          "name": "manuscript_and_independent_review",
+          "weight": 10,
+          "points": 3,
+          "status": "partial",
+          "completion_requires": [
+            "independent_reproduction",
+            "completed_manuscript"
+          ],
+          "missing_gates": [
+            "independent_reproduction",
+            "completed_manuscript"
+          ]
+        }
+      ],
+      "critical_gates_remaining": [
+        "A2",
+        "A3",
+        "A4",
+        "A6",
+        "A7"
+      ]
+    }
+  },
+  "checks": {
+    "scoring_contract_is_valid": true,
+    "all_required_gate_ids_exist": true,
+    "control_plane_uses_current_contract": true,
+    "roadmap_points_are_declared_non_authoritative": true,
+    "scores_equal_category_point_sums": true,
+    "scores_are_bounded_and_have_100_maximum": true,
+    "full_maturity_equivalence_is_exact": true,
+    "release_ready_cannot_precede_full_maturity": true,
+    "current_scores_are_not_read_from_roadmap_points": true
+  },
+  "artifact_sha256": {
+    "data/evaluation/excellence_scoring_contract_v1.json": "650bf8d0140545d32447253b2d9e27f39f5f130e74fca02aa676b588b75cc13b",
+    "data/evaluation/excellence_roadmap_v1.json": "894dfc88bb04431339c7d74183141366c66a618a57cf4552e6aef31458187c66",
+    "src/product/excellence.py": "1cf02fae25a9a72659abfcd621e9ba0a68d707fe74bfaf3b3db7cd5ea5c7a6fc",
+    "src/product/control_plane.py": "5e3000360c3fc98c1908a654298989182a082187d8e4c17ff875a3b34e973928",
+    "scripts/verify_excellence_score.py": "00dc52d1a444b07a812b5ef036d49c4458cb3ef43ea28c70a972db869bf0b4dd"
+  },
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "provider_calls_made": false
+}

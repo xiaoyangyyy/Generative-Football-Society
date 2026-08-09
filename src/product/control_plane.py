@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from src.infrastructure import FileLease, file_sha256
+from src.product.excellence import derive_excellence
 
 
 DECISION_ARTIFACTS = {
@@ -99,31 +100,40 @@ class ProductControlPlane:
                 result[name] = {"available": False, "path": relative}
         return result
 
-    def excellence(self) -> dict[str, Any]:
+    def excellence(
+        self,
+        passed_gates: dict[str, bool],
+    ) -> dict[str, Any]:
         path = self.root / "data/evaluation/excellence_roadmap_v1.json"
-        if not path.is_file():
+        contract_path = (
+            self.root / "data/evaluation/excellence_scoring_contract_v1.json"
+        )
+        if not path.is_file() or not contract_path.is_file():
             return {"available": False}
         roadmap = json.loads(path.read_text(encoding="utf-8"))
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
         baseline = roadmap.get("baseline_assessment") or {}
-        tracks = {}
-        for name, gates in (roadmap.get("tracks") or {}).items():
-            tracks[name] = {
-                "score": sum(int(gate.get("current_points", 0)) for gate in gates),
-                "baseline_score": int((baseline.get(name) or {}).get("score", 0)),
-                "maximum": sum(int(gate.get("weight", 0)) for gate in gates),
-                "critical_gates_remaining": [
-                    gate["id"]
-                    for gate in gates
-                    if gate.get("critical") and gate.get("status") != "verified"
-                ],
-            }
+        derived = derive_excellence(
+            contract,
+            passed_gates,
+            baseline_scores={
+                name: int((baseline.get(name) or {}).get("score", 0))
+                for name in ("product", "academic")
+            },
+        )
         return {
             "available": True,
             "path": path.relative_to(self.root).as_posix(),
+            "scoring_contract": contract_path.relative_to(self.root).as_posix(),
+            "contract_id": derived["contract_id"],
             "current_phase": roadmap.get("current_phase"),
-            "tracks": tracks,
-            "security_action": (roadmap.get("security") or {}).get(
-                "exposed_key_status"
+            "tracks": derived["tracks"],
+            "all_tracks_full_maturity": derived["all_tracks_full_maturity"],
+            "contract_checks": derived["contract_checks"],
+            "security_action": (
+                "credential_incident_closed"
+                if passed_gates.get("credential_security_closure") is True
+                else (roadmap.get("security") or {}).get("exposed_key_status")
             ),
         }
 
@@ -179,6 +189,29 @@ class ProductControlPlane:
             )
         return self._artifact_hashes_current(expected)
 
+    @staticmethod
+    def _academic_replication_is_complete(result: dict[str, Any]) -> bool:
+        gates = result.get("gates") or {}
+        external = result.get("external_validity") or {}
+        external_checks = external.get("checks") or {}
+        return (
+            result.get("status")
+            in {"passed_academic_replication", "failed_academic_replication"}
+            and result.get("runs_executed") == 72
+            and result.get("pairs_per_arm") == 24
+            and result.get("material_deviations") == []
+            and gates.get("fixed_complete_paired_budget") is True
+            and gates.get("execution_identity_verified") is True
+            and gates.get("no_material_deviations") is True
+            and external.get("source") == "sportec_idsse"
+            and set(external_checks)
+            == {
+                "passes_inside_idsse_observed_range",
+                "shots_inside_idsse_observed_range",
+            }
+            and all(isinstance(value, bool) for value in external_checks.values())
+        )
+
     def release_readiness(self) -> dict[str, Any]:
         paper = self._report("data/evaluation/paper_package_verification_v1.json")
         release = self._report(
@@ -205,6 +238,12 @@ class ProductControlPlane:
         )
         paper_finalization_protocol = self._report(
             "data/evaluation/paper_finalization_protocol_verification_v1.json"
+        )
+        security_protocol = self._report(
+            "data/evaluation/security_closure_protocol_verification_v1.json"
+        )
+        security_closure = self._report(
+            "data/evaluation/security_closure_verification_v1.json"
         )
         product_validation = self._report(
             "data/evaluation/product_validation_v1/decision.json"
@@ -267,6 +306,12 @@ class ProductControlPlane:
         paper_finalization_protocol_current = self._artifact_hashes_current(
             paper_finalization_protocol.get("artifact_sha256") or {}
         )
+        security_protocol_current = self._artifact_hashes_current(
+            security_protocol.get("artifact_sha256") or {}
+        )
+        security_closure_current = self._artifact_hashes_current(
+            security_closure.get("artifact_sha256") or {}
+        )
         product_validation_current = self._artifact_hashes_current(
             product_validation.get("artifact_sha256") or {}
         )
@@ -278,11 +323,6 @@ class ProductControlPlane:
         )
         product_gates = product_validation.get("gates") or {}
         external_review_checks = product_validation.get("external_review_checks") or {}
-        excellence = self.excellence()
-        scores = {
-            name: row.get("score")
-            for name, row in (excellence.get("tracks") or {}).items()
-        }
         gate_values = [
             (
                 "paper_package",
@@ -344,6 +384,15 @@ class ProductControlPlane:
                 "Licensed external-data release subset",
                 readiness.get("external_data_archive_approved") is True,
                 "data/evaluation/data_release_verification_v1.json",
+            ),
+            (
+                "security_closure_protocol",
+                "Frozen exposed-credential closure protocol",
+                security_protocol.get("passed") is True
+                and security_protocol.get("closure_complete") is False
+                and security_protocol.get("boundary_aware_secret_match_count") == 0
+                and security_protocol_current,
+                "data/evaluation/security_closure_protocol_verification_v1.json",
             ),
             (
                 "product_validation_protocol",
@@ -410,6 +459,16 @@ class ProductControlPlane:
                 "data/evaluation/product_validation_v1/external_review.json",
             ),
             (
+                "credential_security_closure",
+                "Exposed provider credential revoked with redacted evidence",
+                security_closure.get("passed") is True
+                and security_closure.get("closure_complete") is True
+                and security_closure.get("boundary_aware_secret_match_count") == 0
+                and security_closure.get("credential_value_stored") is False
+                and security_closure_current,
+                "data/evaluation/security_closure_verification_v1.json",
+            ),
+            (
                 "production_operations_validation",
                 "100-match soak and deployment-volume recovery drill",
                 production_operations.get("passed") is True
@@ -444,8 +503,7 @@ class ProductControlPlane:
                     protocol="data/evaluation/formal_experiment_protocol_v2.json",
                     checkpoint="data/world_model/latent_wm_rollout_calibrated_candidate.pt",
                 )
-                and academic_replication.get("passed") is True
-                and academic_replication.get("runs_executed") == 72
+                and self._academic_replication_is_complete(academic_replication)
                 and self._execution_identity_current(
                     academic_replication.get("execution_identity") or {},
                     protocol="data/evaluation/academic_replication_protocol_v1.json",
@@ -482,6 +540,13 @@ class ProductControlPlane:
             {"id": identifier, "label": label, "passed": passed, "evidence": evidence}
             for identifier, label, passed, evidence in gate_values
         ]
+        excellence = self.excellence(
+            {gate["id"]: gate["passed"] for gate in gates}
+        )
+        scores = {
+            name: row.get("score")
+            for name, row in (excellence.get("tracks") or {}).items()
+        }
         code_gate_ids = {
             "paper_package",
             "target_hash_lock",
@@ -493,6 +558,7 @@ class ProductControlPlane:
             "external_data_archive",
             "product_validation_protocol",
             "independent_reproduction_protocol",
+            "security_closure_protocol",
         }
         code_ready = all(
             gate["passed"] for gate in gates if gate["id"] in code_gate_ids
@@ -511,6 +577,7 @@ class ProductControlPlane:
             "code_ready": code_ready,
             "release_ready": release_ready,
             "scores": scores,
+            "excellence": excellence,
             "passed_gate_count": len(gates) - len(open_gates),
             "open_gate_count": len(open_gates),
             "next_action": open_gates[0]["id"] if open_gates else None,
@@ -520,6 +587,7 @@ class ProductControlPlane:
 
     def snapshot(self) -> dict[str, Any]:
         jobs = self.training_jobs()
+        release = self.release_readiness()
         return {
             "schema_version": 1,
             "training_jobs": jobs,
@@ -544,8 +612,8 @@ class ProductControlPlane:
                 "completed": sum(job.get("state") == "completed" for job in jobs),
             },
             "decisions": self.decisions(),
-            "excellence": self.excellence(),
-            "release": self.release_readiness(),
+            "excellence": release["excellence"],
+            "release": release,
         }
 
     def request_stop(self, run_id: str) -> Path:

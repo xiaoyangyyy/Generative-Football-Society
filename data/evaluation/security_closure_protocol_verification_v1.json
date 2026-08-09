@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_security_credential_closure_preregistration",
+  "generated_at": "2026-08-09T20:19:04.276520+00:00",
+  "status": "registered_waiting_for_user_revocation",
+  "passed": true,
+  "closure_complete": false,
+  "checks": {
+    "schema_state_and_provider_are_frozen": true,
+    "attestation_allowlist_is_exact": true,
+    "redacted_evidence_contract_is_fail_closed": true,
+    "output_is_confined": true,
+    "execution_is_zero_and_contains_no_credential": true
+  },
+  "artifact_sha256": {
+    "data/evaluation/security_closure_protocol_v1.json": "42dce899c298ff5d00a24651c930c984700ca97952bb856375b828ffbe02d75e",
+    "docs/SECURITY_CREDENTIAL_CLOSURE.md": "71c966156c4ddb8c7580a5943693417536995093f03dab62b134f9b27b7d2844",
+    "scripts/verify_security_closure.py": "f2eb634652f74f091ed157384b16d932ee05d532f10a6e705b15a6180797ffe2"
+  },
+  "boundary_aware_secret_match_count": 0,
+  "credential_value_stored": false,
+  "provider_calls_made": false,
+  "training_executed": false,
+  "matches_executed": 0
+}

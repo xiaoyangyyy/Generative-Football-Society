@@ -57,12 +57,20 @@ def test_control_plane_exposes_scores_and_security_action():
     assert snapshot["security_action"] == "revocation_required_by_user"
 
 
+def test_security_action_closes_only_from_evidence_gate():
+    control = ProductControlPlane(ROOT)
+    open_state = control.excellence({})
+    closed_state = control.excellence({"credential_security_closure": True})
+    assert open_state["security_action"] == "revocation_required_by_user"
+    assert closed_state["security_action"] == "credential_incident_closed"
+
+
 def test_control_plane_unifies_product_and_paper_release_gates():
     release = ProductControlPlane(ROOT).snapshot()["release"]
     assert release["code_ready"] is True
     assert release["release_ready"] is False
-    assert release["passed_gate_count"] == 10
-    assert release["open_gate_count"] == 9
+    assert release["passed_gate_count"] == 11
+    assert release["open_gate_count"] == 10
     assert release["next_action"] == "container_build"
     assert release["scores"] == {"product": 83, "academic": 70}
     gates = {gate["id"]: gate for gate in release["gates"]}
@@ -75,10 +83,12 @@ def test_control_plane_unifies_product_and_paper_release_gates():
     assert gates["container_build"]["passed"] is False
     assert gates["external_data_archive"]["passed"] is True
     assert gates["product_validation_protocol"]["passed"] is True
+    assert gates["security_closure_protocol"]["passed"] is True
     assert gates["independent_reproduction_protocol"]["passed"] is True
     assert gates["target_user_validation"]["passed"] is False
     assert gates["external_accessibility_review"]["passed"] is False
     assert gates["external_security_review"]["passed"] is False
+    assert gates["credential_security_closure"]["passed"] is False
     assert gates["production_operations_validation"]["passed"] is False
     assert gates["user_value_validation"]["passed"] is False
     assert gates["confirmatory_results"]["passed"] is False
@@ -97,3 +107,29 @@ def test_control_plane_rejects_stale_or_escaping_report_hashes(tmp_path):
     assert control._artifact_hashes_current({"artifact.txt": digest})
     assert not control._artifact_hashes_current({"artifact.txt": "0" * 64})
     assert not control._artifact_hashes_current({"../outside.txt": digest})
+
+
+def test_completed_negative_academic_result_is_valid_but_deviation_is_not():
+    negative = {
+        "status": "failed_academic_replication",
+        "passed": False,
+        "runs_executed": 72,
+        "pairs_per_arm": 24,
+        "material_deviations": [],
+        "gates": {
+            "fixed_complete_paired_budget": True,
+            "execution_identity_verified": True,
+            "no_material_deviations": True,
+            "branch_conclusion_matches_confirmatory_decision": False,
+        },
+        "external_validity": {
+            "source": "sportec_idsse",
+            "checks": {
+                "passes_inside_idsse_observed_range": True,
+                "shots_inside_idsse_observed_range": False,
+            },
+        },
+    }
+    assert ProductControlPlane._academic_replication_is_complete(negative)
+    negative["material_deviations"] = ["fixture_changed"]
+    assert not ProductControlPlane._academic_replication_is_complete(negative)
