@@ -2,15 +2,20 @@ import copy
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
 from scripts.verify_reproduction_release import (
+    CI_ACTION_LOCK,
     LICENSE_REGISTRY,
+    _ci_workflow_is_locked,
     _license_checks,
     _parse_exact_requirements,
     verify_reproduction_release,
 )
+
+CI_WORKFLOW = Path(".github/workflows/ci.yml")
 
 
 def test_code_only_release_contract_is_honest_and_zero_compute():
@@ -18,7 +23,10 @@ def test_code_only_release_contract_is_honest_and_zero_compute():
     assert report["passed"]
     assert report["status"] == "passed_code_contract"
     assert report["release_ready"] is False
-    assert report["dependency_lock_level"] == "supported_profile_transitive_hash_lock_matrix"
+    assert (
+        report["dependency_lock_level"]
+        == "supported_profile_transitive_hash_lock_matrix"
+    )
     assert report["known_external_source_count"] == 5
     assert report["archive_eligible_external_source_count"] == 1
     assert all(report["checks"].values())
@@ -71,3 +79,12 @@ def test_license_gate_rejects_missing_provider_coverage():
     registry = json.loads(LICENSE_REGISTRY.read_text(encoding="utf-8"))
     registry["sources"].pop()
     assert not _license_checks(registry)["known_provider_coverage_is_exact"]
+
+
+def test_ci_gate_rejects_action_commit_drift():
+    action_lock = json.loads(CI_ACTION_LOCK.read_text(encoding="utf-8"))
+    workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    assert _ci_workflow_is_locked(action_lock, workflow)
+    tampered = copy.deepcopy(action_lock)
+    tampered["actions"][0]["resolved_commit"] = "0" * 40
+    assert not _ci_workflow_is_locked(tampered, workflow)

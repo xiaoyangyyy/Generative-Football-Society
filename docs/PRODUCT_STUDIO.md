@@ -125,6 +125,11 @@ root filesystem, dropped capabilities, persistent product volumes, and health
 checks. See `deploy/README.md`. The contract is statically verified but remains
 unbuilt because Docker is unavailable in the current environment.
 
+The Docker-host handoff is implemented as a separately attested CI job. Its
+third-party actions are locked to exact commits recorded in
+`data/evaluation/ci_action_lock_v1.json`; a passing artifact must still match
+the commit and verifier hashes before it can close the container gate.
+
 ## Backup and recovery
 
 Back up the persisted Studio and every artifact referenced by its match

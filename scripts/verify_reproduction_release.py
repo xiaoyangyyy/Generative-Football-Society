@@ -44,6 +44,7 @@ SBOM = ROOT / "data/evaluation/supply_chain_sbom_v1.cdx.json"
 WINDOWS_LOCK = ROOT / "requirements-windows-py313.lock"
 WINDOWS_VALIDATION = ROOT / "data/evaluation/windows_lock_validation_v1.json"
 WINDOWS_SBOM = ROOT / "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json"
+CI_ACTION_LOCK = ROOT / "data/evaluation/ci_action_lock_v1.json"
 
 EXPECTED_SOURCE_IDS = {
     "statsbomb_open_data",
@@ -109,8 +110,7 @@ def _license_checks(registry: dict) -> dict[str, bool]:
         ),
         "license_policy_is_default_deny": (
             policy.get("default") == "exclude_from_distribution"
-            and policy.get("unknown_or_ambiguous_terms")
-            == "exclude_from_distribution"
+            and policy.get("unknown_or_ambiguous_terms") == "exclude_from_distribution"
             and policy.get("source_access_is_not_redistribution_permission") is True
             and policy.get("source_specific_review_complete") is True
             and policy.get("blanket_redistribution_approved") is False
@@ -155,6 +155,55 @@ def _observed_direct_packages(expected: dict[str, str]) -> dict[str, dict]:
     return observed
 
 
+def _ci_workflow_is_locked(action_lock: dict, workflow: str) -> bool:
+    actions = action_lock.get("actions") or []
+    return (
+        action_lock.get("schema_version") == 1
+        and action_lock.get("contract_id")
+        == "gfs-github-actions-immutable-references-v1"
+        and {row.get("id") for row in actions}
+        == {
+            "checkout",
+            "setup_python",
+            "upload_artifact",
+            "attest_build_provenance",
+        }
+        and all(
+            re.fullmatch(
+                r"[0-9a-f]{40}",
+                str(row.get("resolved_commit") or ""),
+            )
+            and workflow.count(f"{row.get('repository')}@{row.get('resolved_commit')}")
+            == row.get("expected_workflow_occurrences")
+            for row in actions
+        )
+        and all(
+            marker in workflow
+            for marker in (
+                "--require-hashes -r requirements-linux-py312.lock",
+                'python-version: "3.12.11"',
+                "runs-on: ubuntu-24.04",
+                "--deselect tests/test_world_model_semantic_event_training.py::test_trainer_persists_real_one_and_two_step_event_evidence",
+                "deployment_contract_ci_verification_v1.json",
+                "attestations: write",
+            )
+        )
+        and not any(
+            mutable in workflow
+            for mutable in (
+                "actions/checkout@v",
+                "actions/setup-python@v",
+                "actions/upload-artifact@v",
+                "actions/attest-build-provenance@v",
+                "ubuntu-latest",
+                "pip install --upgrade pip",
+            )
+        )
+        and workflow.count('python-version: "3.12.11"') == 2
+        and workflow.count("runs-on: ubuntu-24.04") == 2
+    )
+
+
 def _base_version(version: str) -> str:
     return version.split("+", 1)[0]
 
@@ -164,10 +213,9 @@ def verify_reproduction_release() -> dict:
     registry = _read_json(LICENSE_REGISTRY)
     manifest = _read_json(REPRODUCTION_MANIFEST)
     environment = _read_json(ENVIRONMENT)
+    action_lock = _read_json(CI_ACTION_LOCK)
     pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
-    requirements = _parse_exact_requirements(
-        REQUIREMENTS.read_text(encoding="utf-8")
-    )
+    requirements = _parse_exact_requirements(REQUIREMENTS.read_text(encoding="utf-8"))
     project_requirements = _parse_exact_requirements(
         "\n".join(pyproject["project"]["dependencies"])
     )
@@ -188,6 +236,7 @@ def verify_reproduction_release() -> dict:
     )
     artifacts = manifest.get("artifacts") or {}
     commands = manifest.get("commands") or []
+    ci_workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     matrix_report = verify_reproducibility_matrix()
     local_runtime_report = verify_local_runtime()
     image_report = verify_container_images()
@@ -220,7 +269,8 @@ def verify_reproduction_release() -> dict:
             _confined_file(str(path)) for path in contract.get("identity_inputs") or []
         ),
         "target_lock_is_complete_and_hashed": (
-            len(locked_packages) == contract.get("target_lock", {}).get("package_count")
+            len(locked_packages)
+            == contract.get("target_lock", {}).get("package_count")
             == 64
             and all(row["sha256"] for row in locked_packages)
             and contract.get("target_lock", {}).get("all_packages_exact") is True
@@ -264,8 +314,7 @@ def verify_reproduction_release() -> dict:
             and sbom.get("bomFormat") == "CycloneDX"
             and sbom.get("specVersion") == "1.6"
             and len(sbom.get("components") or []) == 64
-            and len((sbom.get("dependencies") or [])[0].get("dependsOn") or [])
-            == 64
+            and len((sbom.get("dependencies") or [])[0].get("dependsOn") or []) == 64
         ),
         "supported_profile_matrix_is_current": (
             matrix_report.get("passed") is True
@@ -291,6 +340,9 @@ def verify_reproduction_release() -> dict:
                 "python -m pip install --no-build-isolation --no-deps .",
             )
         ),
+        "container_ci_is_immutable_attested_and_zero_training": _ci_workflow_is_locked(
+            action_lock, ci_workflow
+        ),
         "container_direct_distributions_were_observed": (
             contract.get("index_observation", {}).get("target")
             == "CPython 3.12 Linux wheel or universal wheel"
@@ -304,14 +356,11 @@ def verify_reproduction_release() -> dict:
         "target_scope_and_remaining_limits_are_honest": (
             contract.get("container_images_digest_pinned") is True
             and len(contract.get("limitations") or []) >= 4
-            and environment.get("status")
-            == "supported_profile_matrix_runtime_verified"
-            and manifest.get("environment", {}).get("full_transitive_hash_lock")
-            is True
+            and environment.get("status") == "supported_profile_matrix_runtime_verified"
+            and manifest.get("environment", {}).get("full_transitive_hash_lock") is True
             and manifest.get("environment", {}).get("cross_platform_lock_matrix")
             is True
-            and manifest.get("environment", {}).get("container_build_verified")
-            is False
+            and manifest.get("environment", {}).get("container_build_verified") is False
         ),
         "release_artifacts_are_registered": all(
             artifacts.get(key) == value
@@ -331,6 +380,9 @@ def verify_reproduction_release() -> dict:
                 "container_image_contract": "data/evaluation/container_image_contract_v1.json",
                 "container_image_verification": "data/evaluation/container_image_verification_v1.json",
                 "container_runtime_verifier": "scripts/verify_container_runtime.py",
+                "deployment_contract_verifier": "scripts/verify_deployment_contract.py",
+                "container_ci_workflow": ".github/workflows/ci.yml",
+                "ci_action_lock": "data/evaluation/ci_action_lock_v1.json",
                 "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
                 "data_release_verification": "data/evaluation/data_release_verification_v1.json",
                 "data_release_builder": "scripts/build_data_release_archive.py",
@@ -341,8 +393,7 @@ def verify_reproduction_release() -> dict:
         ),
         "release_audit_is_read_only": any(
             row.get("id") == "reproduction_release_audit"
-            and row.get("command")
-            == "python scripts/verify_reproduction_release.py"
+            and row.get("command") == "python scripts/verify_reproduction_release.py"
             and row.get("effect") == "read_only"
             and row.get("runs_simulation") is False
             and row.get("explicit_authority_required") is False
@@ -376,6 +427,10 @@ def verify_reproduction_release() -> dict:
         "docs/IDSSE_ATTRIBUTION.md",
         "scripts/build_data_release_archive.py",
         "scripts/verify_data_release.py",
+        "scripts/verify_container_runtime.py",
+        "scripts/verify_deployment_contract.py",
+        ".github/workflows/ci.yml",
+        "data/evaluation/ci_action_lock_v1.json",
     ]
     identity = {
         path: file_sha256(ROOT / path)

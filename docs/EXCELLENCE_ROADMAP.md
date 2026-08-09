@@ -182,6 +182,14 @@ and academic to 70. A real container build remains open because this verifier
 host has no Docker CLI; `scripts/verify_container_runtime.py --execute` is the
 fail-closed handoff for a Docker host.
 
+The container handoff now verifies actual runtime UID/GID, network isolation,
+read-only and capability/PID controls, dependency imports, the health-response
+contract, Docker health state, and complete ephemeral cleanup. CI dependencies
+are fixed to exact official action commits; successful push runs attest and
+upload both runtime and deployment evidence. These changes strengthen the open
+gate but do not close it: no Docker daemon exists on the present host, and no
+successful remote artifact has been imported and verified.
+
 The source-specific data stage verifies official evidence for all five known
 source families under a default-deny policy. Only the DFL-authorized CC BY 4.0
 IDSSE/Sportec-derived subset enters a deterministic 37-file supplement;

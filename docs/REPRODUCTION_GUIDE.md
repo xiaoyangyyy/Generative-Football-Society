@@ -101,8 +101,20 @@ python scripts/verify_container_runtime.py --execute \
 ```
 
 That command builds and launches an ephemeral read-only container, verifies
-the declared non-root user, imports all direct dependencies, probes `/healthz`,
-and removes the temporary container. It does not run a match or train a model.
+the declared and actual non-root UID/GID, imports all direct dependencies with
+networking disabled, inspects the runtime hardening options, validates both the
+`/healthz` JSON contract and Docker health state, and removes both the
+temporary container and image. It does not run a match or train a model.
+
+The pinned GitHub Actions handoff in `.github/workflows/ci.yml` uses exact
+official action commits, Ubuntu 24.04, exact CPython 3.12.11, the hashed Linux
+dependency closure, and the same explicitly non-training test boundary. It
+does not perform an unpinned pip self-upgrade. A successful push run uploads the
+runtime and deployment reports and produces a GitHub artifact provenance
+attestation. An uploaded artifact is evidence for its recorded commit only; it
+does not make the current checkout pass automatically. GitHub-hosted runner
+images still receive platform updates, so the runtime report records the
+observed Docker server rather than claiming an immutable virtual machine.
 
 ## 4. Data review
 

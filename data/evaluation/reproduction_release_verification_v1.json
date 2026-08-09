@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_code_only_reproduction_release_contract",
-  "generated_at": "2026-08-09T18:05:38.087113+00:00",
+  "generated_at": "2026-08-09T18:25:42.362137+00:00",
   "status": "passed_code_contract",
   "passed": true,
   "release_ready": false,
@@ -24,6 +24,7 @@
     "local_runtime_import_smoke_passes": true,
     "container_image_digest_contract_is_current": true,
     "container_uses_transitive_hash_lock": true,
+    "container_ci_is_immutable_attested_and_zero_training": true,
     "container_direct_distributions_were_observed": true,
     "target_scope_and_remaining_limits_are_honest": true,
     "release_artifacts_are_registered": true,
@@ -105,7 +106,7 @@
     "data/evaluation/container_image_contract_v1.json": "e2bd5134e849ad38fb525a3fdb1a7f359cc4370f2096df8223e2a5bd99b703e9",
     "data/evaluation/dependency_lock_contract_v1.json": "05db2ea11767b6ae246aa712a26a62a100633d817285e84b267c00e9a246dbb2",
     "data/evaluation/data_license_registry_v1.json": "c4c15186c1826ae530685e48695500d710dae57072d0301ec624e66bd1634edf",
-    "data/evaluation/reproduction_manifest_v1.json": "3af395b8b46e84882e9a25e9dd2ac1ae55b463156e4799983c5a038428184cb0",
+    "data/evaluation/reproduction_manifest_v1.json": "0071e5d1b7e7d5ca1377fd48bf1ffe5e6364aaeca5d3ebb98788e77ed0305cca",
     "data/evaluation/target_lock_validation_v1.json": "9f91850dcf9cc1b3aeab53c23b78d4c158a581365ee2ca82f77384080e297315",
     "data/evaluation/local_runtime_verification_v1.json": "6e2d63d3b0eea4b732efb98408356b45632d279cd777c22ff44b73d9c1c80939",
     "data/evaluation/reproducibility_matrix_verification_v1.json": "277f2d3840102f1f838a67436690a0c51d25c542694c4fad04e9583bbc2d1bc0",
@@ -114,7 +115,11 @@
     "data/evaluation/data_release_verification_v1.json": "8cabd4f6e6fdb89007a0ca69df2cc4d5b9b86da7fec02cbd420e519e87eb5983",
     "docs/IDSSE_ATTRIBUTION.md": "0d0613fec8f0ca886477e237b5f063981861a28ddef159bd1634549552c29f6b",
     "scripts/build_data_release_archive.py": "141cb726a91623741b9868539d52de1667d19050eed376538b631998a6cbcc49",
-    "scripts/verify_data_release.py": "1f29ee861e9b1fc09264de602fa3e9f1a30304b7ec02d12dd6f9e441edc1eefc"
+    "scripts/verify_data_release.py": "1f29ee861e9b1fc09264de602fa3e9f1a30304b7ec02d12dd6f9e441edc1eefc",
+    "scripts/verify_container_runtime.py": "c5c13d7527656345d64d29f46d562a4932a79e8be1e9f2281023dbe76181a4d7",
+    "scripts/verify_deployment_contract.py": "e66768dab18f6153fcd7fb80eefff5a024c452fe634f4b2259a4e3ee8cb0a301",
+    ".github/workflows/ci.yml": "684e63627a002d221bb58cf43a96f36e16539714145a8a63d2a81c1e18a18482",
+    "data/evaluation/ci_action_lock_v1.json": "7508737ce15d272052d1bdb1d3b3163a42cc3e3c65acdf9ae222961b52332541"
   },
   "external_calls_made": false,
   "matches_executed": 0,
