@@ -24,15 +24,29 @@
       "missing": ["confirmatory_results", "mechanism_replication", "manuscript", "independent_reproduction"]
     }
   },
+  "current_assessment": {
+    "product": {
+      "score": 64,
+      "level": "local_web_beta",
+      "strengths": ["architecture", "transactional_workflow", "integrity_chain", "local_web_workflow"],
+      "missing": ["production_deployment", "100_match_soak", "external_accessibility_audit", "usability_study", "value_validation"]
+    },
+    "academic": {
+      "score": 62,
+      "level": "research_prototype",
+      "strengths": ["frozen_question", "paired_protocol", "reproducibility_controls"],
+      "missing": ["confirmatory_results", "mechanism_replication", "manuscript", "independent_reproduction"]
+    }
+  },
   "tracks": {
     "product": [
       {"id": "P1", "name": "architecture_and_workflow", "weight": 20, "current_points": 20, "critical": true, "status": "verified", "evidence": ["data/evaluation/architecture_v2_audit.json", "data/evaluation/workflow_and_experiment_completion_v1.json"]},
       {"id": "P2", "name": "security_and_trust", "weight": 15, "current_points": 12, "critical": true, "status": "partial", "evidence": ["src/infrastructure/integrity.py", "src/simulation/llm_gateway.py"]},
-      {"id": "P3", "name": "functional_completeness", "weight": 15, "current_points": 10, "critical": true, "status": "partial", "evidence": ["src/product/workspace.py", "src/product/control_plane.py"]},
+      {"id": "P3", "name": "functional_completeness", "weight": 15, "current_points": 13, "critical": true, "status": "partial", "evidence": ["src/product/workspace.py", "src/product/control_plane.py", "src/product/web.py", "data/evaluation/web_beta_verification_v1.json"]},
       {"id": "P4", "name": "reliability_and_recovery", "weight": 15, "current_points": 8, "critical": true, "status": "partial", "evidence": ["src/infrastructure/locking.py", "src/training/job.py"]},
-      {"id": "P5", "name": "usability_and_accessibility", "weight": 15, "current_points": 4, "critical": true, "status": "missing", "evidence": []},
-      {"id": "P6", "name": "deployment_and_operations", "weight": 10, "current_points": 2, "critical": true, "status": "missing", "evidence": []},
-      {"id": "P7", "name": "user_value_validation", "weight": 10, "current_points": 2, "critical": true, "status": "missing", "evidence": []}
+      {"id": "P5", "name": "usability_and_accessibility", "weight": 15, "current_points": 7, "critical": true, "status": "partial", "evidence": ["src/product/web.py", "data/evaluation/web_beta_verification_v1.json"]},
+      {"id": "P6", "name": "deployment_and_operations", "weight": 10, "current_points": 4, "critical": true, "status": "partial", "evidence": ["scripts/verify_product_web.py", "data/evaluation/web_beta_verification_v1.json"]},
+      {"id": "P7", "name": "user_value_validation", "weight": 10, "current_points": 0, "critical": true, "status": "missing", "evidence": []}
     ],
     "academic": [
       {"id": "A1", "name": "question_and_protocol", "weight": 15, "current_points": 15, "critical": true, "status": "verified", "evidence": ["data/evaluation/formal_experiment_protocol_v2.json"]},
@@ -40,7 +54,7 @@
       {"id": "A3", "name": "confirmatory_statistics_and_results", "weight": 20, "current_points": 12, "critical": true, "status": "partial", "evidence": ["scripts/run_formal_experiment.py"]},
       {"id": "A4", "name": "external_validity", "weight": 15, "current_points": 10, "critical": true, "status": "partial", "evidence": ["data/evaluation/research_evidence_v1.json"]},
       {"id": "A5", "name": "reproducibility", "weight": 15, "current_points": 10, "critical": true, "status": "partial", "evidence": ["data/evaluation/architecture_v2_audit.json", "data/training/entrypoints.json"]},
-      {"id": "A6", "name": "mechanism_and_replication", "weight": 10, "current_points": 2, "critical": true, "status": "missing", "evidence": []},
+      {"id": "A6", "name": "mechanism_and_replication", "weight": 10, "current_points": 2, "critical": true, "status": "partial", "evidence": ["src/match_engine/world_model/mechanism_stress_test.py", "tests/test_world_model_mechanism_stress_test.py"]},
       {"id": "A7", "name": "manuscript_and_independent_review", "weight": 10, "current_points": 0, "critical": true, "status": "missing", "evidence": []}
     ]
   },

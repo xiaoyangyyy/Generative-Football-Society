@@ -186,6 +186,24 @@ def cmd_studio_provider(args: argparse.Namespace) -> int:
     return 0 if result["ready"] else 2
 
 
+def cmd_studio_web(args: argparse.Namespace) -> int:
+    """Serve the loopback-only Studio Web Beta."""
+    from src.product import create_product_web_server
+
+    server = create_product_web_server(
+        args.base_dir, host=args.host, port=args.port,
+    )
+    print(f"GFS Studio Web Beta: http://{args.host}:{server.server_port}")
+    print("Local access only. Press Ctrl+C to stop.")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nWeb Beta stopped.")
+    finally:
+        server.server_close()
+    return 0
+
+
 def cmd_studio_jobs(args: argparse.Namespace) -> int:
     import json
     print(json.dumps(
@@ -281,6 +299,12 @@ def build_parser() -> argparse.ArgumentParser:
         "provider", help="Validate LLM provider configuration without any API call",
     )
     p_studio_provider.set_defaults(func=cmd_studio_provider)
+    p_studio_web = studio_sub.add_parser(
+        "web", help="Serve the loopback-only Studio Web Beta",
+    )
+    p_studio_web.add_argument("--host", default="127.0.0.1")
+    p_studio_web.add_argument("--port", type=int, default=8765)
+    p_studio_web.set_defaults(func=cmd_studio_web)
     p_studio_jobs = studio_sub.add_parser(
         "jobs", help="Show training jobs and model/LLM decision artifacts",
     )

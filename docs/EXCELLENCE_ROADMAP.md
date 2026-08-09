@@ -48,6 +48,15 @@ Exit gates include accessibility checks, cross-platform packaging, automated
 deployment verification, failure recovery, and a 100-match deterministic soak
 with zero lost or duplicated transactions.
 
+Current code-level progress: the loopback Web workflow, health/readiness
+boundary, browser hardening, and automated accessibility landmarks pass a real
+HTTP verifier in `data/evaluation/web_beta_verification_v1.json`. This raises
+the evidence-backed product score from the frozen 58 baseline to 64 after
+removing two unsupported user-value points from the original rubric. It does
+not close Stage 1: authenticated deployment, background/recovery UX,
+cross-platform packaging, production telemetry, the 100-match soak, and an
+external accessibility audit remain open.
+
 ## Stage 2 — confirmatory academic experiment
 
 Freeze the commit and run only

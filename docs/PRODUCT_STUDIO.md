@@ -48,6 +48,33 @@ python gfs.py studio status
 python gfs.py studio match --home Brazil --away Argentina --fast
 ```
 
+## Local Web Beta
+
+The same state machine is available through one dependency-free local Web
+surface:
+
+```bash
+python gfs.py studio web
+```
+
+Open `http://127.0.0.1:8765`. The page creates a Studio, shows evidence-aware
+readiness, runs an authorized match, and opens the generated dashboard. It
+does not duplicate simulation rules: all mutations call `ProductWorkspace`,
+and control-plane status comes from `ProductControlPlane`.
+
+The Beta is intentionally loopback-only until authenticated TLS deployment is
+implemented. Mutations require a per-process CSRF token; requests are size
+limited, concurrent mutations fail fast, report paths are confined to Studio
+HTML outputs, and responses use restrictive browser security headers. Verify
+the actual HTTP boundary without running a match or making an external call:
+
+```bash
+python scripts/verify_product_web.py --out data/evaluation/web_beta_verification_v1.json
+```
+
+See `docs/WEB_BETA_ACCEPTANCE.md` for accepted scope and remaining Stage 1
+limits.
+
 Every match is reserved in the session before simulation starts. Match IDs and
 seeds are monotonic even after a failure. The run journal distinguishes
 `running`, `finalizing`, `completed`, `failed`, and recovered `interrupted`

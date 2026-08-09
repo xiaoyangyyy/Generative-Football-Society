@@ -77,6 +77,17 @@ single JSON audit and HTML dashboard. The persisted workflow exposes one of
 valid action. The lower-level `init`, `status`, and `match` commands remain
 available for operators. See `docs/PRODUCT_STUDIO.md`.
 
+Run the same cohesive workflow in the loopback-only Web Beta:
+
+```bash
+python gfs.py studio web
+```
+
+Open `http://127.0.0.1:8765`. The Web layer adds no second business path: it
+uses the persisted Studio state machine and evidence gates directly. See
+`docs/WEB_BETA_ACCEPTANCE.md` for its verified security/accessibility scope and
+the production capabilities that are still deliberately unclaimed.
+
 The next confirmatory paper experiment is frozen separately from exploratory
 work. Its default command is read-only:
 

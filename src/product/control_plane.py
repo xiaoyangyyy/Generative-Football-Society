@@ -98,10 +98,12 @@ class ProductControlPlane:
         if not path.is_file():
             return {"available": False}
         roadmap = json.loads(path.read_text(encoding="utf-8"))
+        baseline = roadmap.get("baseline_assessment") or {}
         tracks = {}
         for name, gates in (roadmap.get("tracks") or {}).items():
             tracks[name] = {
                 "score": sum(int(gate.get("current_points", 0)) for gate in gates),
+                "baseline_score": int((baseline.get(name) or {}).get("score", 0)),
                 "maximum": sum(int(gate.get("weight", 0)) for gate in gates),
                 "critical_gates_remaining": [
                     gate["id"] for gate in gates
