@@ -7,13 +7,82 @@ remain available, but product users work through a studio session.
 ## Product loop
 
 ```text
-configure/load -> verify evidence -> reserve and run -> persist report -> review
-    blocked          ready_to_run          running              review
+configure/load -> verify evidence -> start persistent season
+    -> freeze season/player commitments -> submit matchday decision
+    -> advance/resume matchday -> debrief -> repeat
+    -> board review + sporting plan -> next season
 ```
 
-This is a persisted state machine, not just documentation. `studio status`
-returns the current state, completed and failed counts, progress flags, and one
-next action derived from the session journal.
+This is a derived state machine over persisted product evidence, not just
+documentation and not a second mutable season tracker. `studio status` returns
+one authoritative next action, a five-step season journey, completed and failed
+counts, and progress flags. The normal guided route is the persistent season;
+an isolated match remains available as an explicitly labeled alternative for
+observation or tactical laboratory work.
+
+The Web surface progressively discloses that complete system through four
+stable work areas rather than one unbounded page:
+
+- **Manager career** contains the season, matchday, lineup, club and long-term
+  career loop.
+- **Match laboratory** contains isolated observation, paired comparisons and
+  fixed-budget tactical studies.
+- **Evidence center** contains world-model adoption evidence, retained
+  artifacts and release gates.
+- **Operations and recovery** contains backups, restore controls and raw
+  runtime state.
+
+The authoritative workflow chooses the relevant area automatically until the
+user explicitly chooses another area. That choice is retained only as one of
+four allowlisted identifiers in browser session storage. Choosing “go to next
+step” reveals the owning area before scrolling and moving keyboard focus.
+
+Before a manager freezes a matchday decision, Studio now recalculates a
+zero-persistence impact preview whenever the tactic, rotation, lineup, club
+situation response, or in-match rule changes. The preview and the actual
+submission use the same authoritative backend normalization path. It shows the
+exact automatic/manual lineup that would be frozen, fixed rotation mechanics,
+in-match rule count, club-situation resolution, opponent preparation, and
+hypothetical one-decision progress for season and named-player promises. It
+does not predict the score, win probability, or causal effect, and it never
+counts the hypothetical decision as completed evidence in the saved season.
+Submission stays disabled until the current preview succeeds and carries its
+season revision; the atomic submit rejects that preview if another tab or
+process changed the season meanwhile.
+
+After submission, the matchday command center keeps the decision in one
+continuous lifecycle ledger. Every entry separates the frozen plan, direct
+runtime execution, descriptive score, and season/player-promise accounting.
+The ledger is replayed from authoritative season and report evidence rather
+than persisted as another mutable journal. Full execution detail is loaded for
+the most recent eight managed matches; older entries retain their frozen
+decision, result, long-term accounting, identities, and full-report link. If a
+report is missing or its match/team/decision identity disagrees, execution is
+shown as unavailable instead of borrowing data or inferring success.
+
+For each completed manager-controlled fixture, that same lifecycle now carries
+an identity-bound world-state transition: simulated squad carryover immediately
+before the match, immediately after settlement, and after the matchday recovery
+transaction. The derived view exposes fatigue, morale, media pressure, injuries,
+suspensions and bounded per-player carryover changes; recovery is kept separate
+from the match delta. It is replayed from canonical snapshots and retained in
+season history, so rehashed derived-field tampering still fails validation.
+This evidence says what persisted simulated state changed. It does not say that
+the decision caused the score, and injury fields are not real medical judgments.
+Legacy completed fixtures without a pre-match snapshot remain explicitly
+unavailable rather than receiving reconstructed evidence.
+
+In `research` and `cognitive` modes, the manager can explicitly request a local
+world-model advisory before submitting the next fixture decision. It evaluates
+all seven playable tactics, including the club's native identity, as bounded
+short-horizon action mixtures on one deterministic representative pre-match
+state. The screen shows ranking, confidence, uncertainty, fatigue proxy,
+recommendation margin and historical trust. Nothing is selected automatically:
+the player may adopt the recommendation or review it and choose differently.
+That interaction is bound to the advice identity and final frozen tactic in the
+same lifecycle ledger. Advice expires after any season revision. Stable mode
+does not load or imitate the research model, and no advice is described as a
+score forecast, win probability, causal effect or real-football recommendation.
 
 Three explicit modes prevent research flags from leaking into stable use:
 
@@ -34,9 +103,10 @@ provider/model configuration before simulation.
 python gfs.py studio run --name "My World Cup" --mode stable --seed 42 --home Brazil --away Argentina --fast
 ```
 
-`studio run` is the normal end-to-end product entry: it creates or loads the
+`studio run` is the shortest isolated-match entry: it creates or loads the
 workspace, verifies readiness before spending simulation time, reserves the
-match, runs it, and returns both report paths. If a persisted Studio exists,
+match, runs it, and returns both report paths. The Web Studio is the guided
+multi-season product entry. If a persisted Studio exists,
 configuration overrides must match it. Changing name, mode, or seed requires
 the explicit destructive boundary `--replace`.
 
@@ -304,3 +374,76 @@ The managed catalog is capped at 50 entries. Archive older bundles through the
 deployment storage workflow before creating more. The Web API deliberately
 does not stream backup archives; exporting them remains an authenticated
 deployment/storage operation.
+
+## Manager advisor adoption evidence
+
+The manager decision ledger now summarizes how often world-model advice was
+available, whether the manager explicitly adopted it or reviewed it and chose
+another tactic, whether advice was left unlinked, and whether the frozen tactic
+has direct execution evidence. The summary is derived from the authoritative
+fixture ledger and is identity-bound; it is not separate mutable telemetry.
+
+Use `python scripts/manager_advisor_study.py --status` to audit the frozen
+collection protocol. Analysis of an existing Studio is read-only:
+`python scripts/manager_advisor_study.py --analyze --base-dir <studio-dir>`.
+The result measures evidence completeness only. It does not estimate score or
+win effects and cannot promote the product or research candidate.
+
+Advisor inference uses a two-phase optimistic transaction. Studio freezes the
+request identity under a short session lease, releases that lease while the
+local checkpoint evaluates the seven tactics, and reacquires it only for the
+atomic commit. If the manager submits a decision, the fixture advances, team
+carryover changes, or the checkpoint changes during inference, the advice is
+discarded with a retryable stale-input result. No concurrent decision is
+overwritten and no partial advice is persisted.
+
+Repeated requests for the same current advice are semantically idempotent.
+Studio verifies the persisted advice against the live fixture revision,
+checkpoint file SHA-256 and both teams' world-state source identities before
+returning it with `reused: true`. This retry path performs zero inference and
+zero session writes. Concurrent duplicate requests converge on the same advice
+identity and advance the revision only once; changed world state forces a new
+evaluation instead of reusing stale advice.
+
+Completed managed fixtures now expose a world-model advisor execution chain:
+advice, explicit interaction, frozen selection and direct tactical runtime
+binding. The micro engine records the exact 22-dimensional opening tactical
+vector and its final state. Studio distinguishes a named locked preset from the
+native `team_identity` vector, shows selected control values and in-match
+changes, and identity-binds the result into the replayable decision ledger.
+This proves that the selected tactical input reached the engine; it does not
+prove that the tactic caused the observed score or result.
+
+The submit preview also compares the recommended tactic with the manager's
+current selection. It shows rank, proxy-value, confidence, uncertainty,
+fatigue, structural-risk and event-distribution deltas computed by the server.
+Low confidence, weak historical trust, a narrow top-two margin or insufficient
+history marks the recommendation as exploratory and changes the action wording
+accordingly. The thresholds disclose evidence weakness; they are not win-rate
+calibration and never authorize automatic adoption.
+
+## Unified manager journey
+
+The career workspace exposes one five-stage lifecycle:
+
+1. club planning;
+2. pre-match decision and optional world-model advice;
+3. match execution;
+4. post-match evidence and replay;
+5. long-term club and career operations.
+
+The highlighted stage is derived from the canonical season command center.
+The existing next-step control moves focus to the authoritative form or action
+for that state, so the lifecycle rail is navigation and explanation, not
+another mutable workflow.
+
+Use the four-run diagnostic before any fixed-budget study:
+
+    python scripts/action_adoption_study.py --smoke
+
+It compares no-advisor, deterministic rule fallback, prediction-only and
+direct-action paths using one shared short fixture per arm. It does not train,
+call a provider, modify formal progress or support an effectiveness claim.
+After an explicitly authorized formal study completes, the analyze command
+writes the identity-bound decision JSON plus flat CSV rows and a Markdown gate
+summary.

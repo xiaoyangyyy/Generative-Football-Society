@@ -26,7 +26,7 @@ class SocialMediaFeed:
             })
 
 class WorldEngine:
-    def __init__(self, stats_df, tactical_map=None):
+    def __init__(self, stats_df, tactical_map=None, initialization_rng=None):
         self.agents = {}
         self.feed = SocialMediaFeed()
         self.current_date = pd.to_datetime("2026-01-01")
@@ -35,7 +35,10 @@ class WorldEngine:
         print(f"Initializing {len(stats_df)} Agents with Social Capabilities...")
         for team_name, row in stats_df.iterrows():
             tactical_info = tactical_map.get(team_name)
-            self.agents[team_name] = SocietyAgent(team_name, row.to_dict(), tactical_info=tactical_info)
+            self.agents[team_name] = SocietyAgent(
+                team_name, row.to_dict(), tactical_info=tactical_info,
+                initialization_rng=initialization_rng,
+            )
             
     def run_day(self):
         print(f"\n[DAY {self.current_date.strftime('%Y-%m-%d')}]")

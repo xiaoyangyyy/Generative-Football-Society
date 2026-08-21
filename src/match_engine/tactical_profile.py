@@ -69,7 +69,20 @@ def compose_llm_tactical_vector(
     if cp is not None and preset != raw_preset:
         cp.preferred_preset = preset
 
-    base = dict(TACTICAL_PRESETS[preset])
+    return compose_locked_tactical_vector(agent, preset, hints=hints)
+
+
+def compose_locked_tactical_vector(
+    agent: "SocietyAgent",
+    preset: str,
+    *,
+    hints: Optional[Dict[str, float]] = None,
+) -> Dict[str, float]:
+    """Compose a preset-anchored vector independently of who selected it."""
+    resolved = resolve_tactical_preset(preset)
+    if resolved != preset or resolved not in TACTICAL_PRESETS:
+        raise ValueError(f"unsupported tactical preset: {preset}")
+    base = dict(TACTICAL_PRESETS[resolved])
     controls = dict(getattr(agent, "tactical_controls", {}) or {})
     w_ctrl = _control_blend_weight(agent)
     merged = blend_vectors(base, vector_from_controls(controls), weight=w_ctrl)
@@ -80,6 +93,30 @@ def compose_llm_tactical_vector(
             merged = blend_vectors(merged, {k: float(v)}, weight=hint_weight)
 
     return _apply_formation_adjustments(merged, agent)
+
+
+def apply_locked_tactical_preset(
+    agent: "SocietyAgent", preset: str, *, source: str,
+) -> Dict[str, float]:
+    """Apply a full preset vector and retain its explicit intervention source."""
+    vector = compose_locked_tactical_vector(agent, preset)
+    coach = getattr(agent, "coach_profile", None)
+    if coach is not None:
+        coach.preferred_preset = preset
+    agent._tactical_preset_locked = True
+    agent.style_archetype = preset
+    agent.tactical_vector = vector
+    controls = legacy_controls_from_vector(vector)
+    if hasattr(agent, "set_tactical_controls"):
+        agent.set_tactical_controls(controls)
+    else:
+        agent.tactical_controls.update(controls)
+    memory = getattr(agent, "semantic_memory", None)
+    if isinstance(memory, dict):
+        memory["tactical_intervention"] = {
+            "preset": preset, "source": str(source),
+        }
+    return vector
 
 
 def vector_from_controls(controls: Dict[str, float]) -> Dict[str, float]:

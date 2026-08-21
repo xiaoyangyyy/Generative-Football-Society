@@ -1,6 +1,7 @@
 """Regression tests for the boundaries extracted from former god objects."""
 
 import inspect
+import random
 from types import SimpleNamespace
 
 import numpy as np
@@ -128,6 +129,28 @@ def test_agent_initialization_preserves_required_state_contract():
     }
     assert agent.episodic_memory == []
     assert agent.memory_event_log == []
+
+
+def test_agent_local_initialization_rng_is_replayable_and_does_not_touch_global_rng():
+    stats = {
+        "tier": "Semi-Core", "final_status_score": 55.0,
+        "c1_win_rate": 52.0, "c3_major_exp": 45.0, "c5_pressure": 40.0,
+    }
+    random.seed(991)
+    expected_next = random.random()
+    random.seed(991)
+    first = SocietyAgent(
+        "Seeded United", stats, initialization_rng=random.Random(17),
+    )
+    observed_next = random.random()
+    second = SocietyAgent(
+        "Seeded United", stats, initialization_rng=random.Random(17),
+    )
+
+    assert observed_next == expected_next
+    assert first.personality == second.personality
+    assert first.coach_authority == second.coach_authority
+    assert first.referee_trust == second.referee_trust
 
 
 def test_match_execution_is_inherited_from_dedicated_mixin():

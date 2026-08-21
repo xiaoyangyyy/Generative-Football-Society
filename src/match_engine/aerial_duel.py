@@ -19,6 +19,42 @@ class AerialOutcome:
     contact: str  # header | clearance | loose
     xg_added: float
     landed_xy: np.ndarray
+    goal: bool = False
+
+
+def aerial_goal_events(
+    state: MatchAffectiveState,
+    crosser: PlayerAffectiveState,
+    outcome: AerialOutcome,
+):
+    """Build the same live-score event contract used by normal shots."""
+    if not outcome.goal or not outcome.winner_id:
+        return []
+    from src.match_engine.micro_events import MicroEvent, MicroEventType
+
+    attacking_home = crosser.team_id == state.home.team_id
+    opponent_id = (
+        state.away.team_id if attacking_home else state.home.team_id
+    )
+    return [
+        MicroEvent(
+            t_sec=float(state.clock_seconds),
+            event_type=MicroEventType.GOAL_SCORED,
+            team_id=crosser.team_id,
+            player_id=outcome.winner_id,
+            opponent_team_id=opponent_id,
+            intensity=1.0,
+            meta={"source": "aerial_header"},
+        ),
+        MicroEvent(
+            t_sec=float(state.clock_seconds) + 0.5,
+            event_type=MicroEventType.GOAL_CONCEDED,
+            team_id=opponent_id,
+            opponent_team_id=crosser.team_id,
+            intensity=0.9,
+            meta={"source": "aerial_header"},
+        ),
+    ]
 
 
 def apply_aerial_xg_to_state(
@@ -140,6 +176,7 @@ class AerialDuelEngine:
             contact = "clearance"
 
         xg = 0.0
+        goal = False
         attacking_home = atk_team.team_id == state.home.team_id
         side = "home" if attacking_home else "away"
         if contact == "header" and winner is not None:
@@ -152,7 +189,11 @@ class AerialDuelEngine:
                 self.stats[f"{side}_headers"] += 1
                 self.stats["header_attempts"] += 1
             if rng.random() < xg:
+                goal = True
                 self.stats["aerial_goals"] += 1
                 self.stats[f"{side}_aerial_goals"] += 1
 
-        return AerialOutcome(winner.player_id if winner else None, contact, xg, point)
+        return AerialOutcome(
+            winner.player_id if winner else None, contact, xg, point,
+            goal=goal,
+        )

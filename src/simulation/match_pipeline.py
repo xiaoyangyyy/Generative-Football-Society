@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Dict, Mapping, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
 from src.simulation.runtime import environment_snapshot, env_bool
 
-from src.data_engine.roster_loader import load_roster_json, roster_path_for_team
 from src.memory_engine.macro_micro_fusion import resolve_unified_score
 from src.simulation.cross_match_state import (
     apply_carryover_to_agent,
@@ -16,6 +15,7 @@ from src.simulation.cross_match_state import (
     ingest_match_result,
     sync_carryover_from_roster,
 )
+from src.simulation.squad_registry import load_effective_roster
 
 if TYPE_CHECKING:
     from src.simulation.agent import SocietyAgent
@@ -25,19 +25,32 @@ def prepare_match_agents(
     home: "SocietyAgent",
     away: "SocietyAgent",
     base_dir: str,
+    *,
+    home_lineup: Optional[Mapping[str, Any]] = None,
+    away_lineup: Optional[Mapping[str, Any]] = None,
 ) -> Tuple[Optional[Dict], Optional[Dict]]:
     """Apply cross-match memory to agents + roster snapshots for micro."""
-    apply_carryover_to_agent(home)
-    apply_carryover_to_agent(away)
-    rh = load_roster_json(roster_path_for_team(base_dir, home.team_name))
-    ra = load_roster_json(roster_path_for_team(base_dir, away.team_name))
+    rh = load_effective_roster(base_dir, home.team_name)
+    ra = load_effective_roster(base_dir, away.team_name)
     if rh:
         sync_carryover_from_roster(home, rh)
+    apply_carryover_to_agent(home)
+    if rh:
         rh = apply_carryover_to_roster_for_agent(home, rh)
+        if home_lineup is not None:
+            from src.simulation.lineup import LineupSelection, apply_lineup_selection
+
+            rh = apply_lineup_selection(rh, LineupSelection.from_payload(home_lineup))
         home._roster_carryover_snapshot = rh
     if ra:
         sync_carryover_from_roster(away, ra)
+    apply_carryover_to_agent(away)
+    if ra:
         ra = apply_carryover_to_roster_for_agent(away, ra)
+        if away_lineup is not None:
+            from src.simulation.lineup import LineupSelection, apply_lineup_selection
+
+            ra = apply_lineup_selection(ra, LineupSelection.from_payload(away_lineup))
         away._roster_carryover_snapshot = ra
     return rh, ra
 
@@ -260,9 +273,12 @@ def finalize_match_feedback(
     social_chaos: float,
     stage_name: str,
     micro_summary: Any = None,
+    transaction_id: str | None = None,
+    fatigue_load_home: float = 1.0,
+    fatigue_load_away: float = 1.0,
 ) -> None:
-    rh = load_roster_json(roster_path_for_team(base_dir, home.team_name))
-    ra = load_roster_json(roster_path_for_team(base_dir, away.team_name))
+    rh = load_effective_roster(base_dir, home.team_name)
+    ra = load_effective_roster(base_dir, away.team_name)
     ingest_match_result(
         home,
         roster=rh,
@@ -274,6 +290,8 @@ def finalize_match_feedback(
         social_chaos=social_chaos,
         stage_name=stage_name,
         micro_player_stats=extract_micro_player_stats(micro_summary, home.team_name),
+        transaction_id=transaction_id,
+        fatigue_load_multiplier=fatigue_load_home,
     )
     ingest_match_result(
         away,
@@ -286,6 +304,8 @@ def finalize_match_feedback(
         social_chaos=social_chaos,
         stage_name=stage_name,
         micro_player_stats=extract_micro_player_stats(micro_summary, away.team_name),
+        transaction_id=transaction_id,
+        fatigue_load_multiplier=fatigue_load_away,
     )
     if micro_summary is not None:
         plans = getattr(micro_summary, "cognitive_plans", None) or []
@@ -325,6 +345,9 @@ def _save_cognitive_match_log(
         ),
         "world_model_decision_adoption": getattr(
             micro_summary, "world_model_decision_adoption", {},
+        ),
+        "world_model_action_adoption": getattr(
+            micro_summary, "world_model_action_adoption", {},
         ),
     }
     path = log_dir / f"{key}.json"

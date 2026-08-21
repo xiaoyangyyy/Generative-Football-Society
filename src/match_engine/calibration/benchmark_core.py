@@ -30,6 +30,7 @@ def row_from_summary(s) -> dict[str, float]:
     shots = s.shots_home + s.shots_away
     micro_xg = s.micro_xg_home + s.micro_xg_away
     goals = s.goals_micro_home + s.goals_micro_away
+    action_adoption = getattr(s, "world_model_action_adoption", {}) or {}
     return {
         "pass_completion": completed / max(1.0, passes),
         "interceptions_per_pass": (s.pass_intercepts_home + s.pass_intercepts_away) / max(1.0, passes),
@@ -58,6 +59,45 @@ def row_from_summary(s) -> dict[str, float]:
         "tackles_per_team_match": (s.tackles_home + s.tackles_away) / 2.0,
         "micro_xg_per_team_match": micro_xg / 2.0,
         "goals_to_micro_xg_ratio": (goals / max(0.05, micro_xg)) if micro_xg > 0.01 else 0.0,
+        "wm_action_opportunities": float(action_adoption.get("opportunities", 0)),
+        "wm_action_influenced_opportunities": float(
+            action_adoption.get("influenced_opportunities", 0)
+        ),
+        "wm_action_adoptions": float(action_adoption.get("adopted", 0)),
+        "wm_action_attributable_adoptions": float(
+            action_adoption.get("attributable_adoptions", 0)
+        ),
+        "wm_action_attribution_eligible_opportunities": float(
+            action_adoption.get("attribution_eligible_opportunities", 0)
+        ),
+        "wm_action_counterfactual_changes": float(
+            action_adoption.get("counterfactual_action_changes", 0)
+        ),
+        "wm_action_expected_counterfactual_changes": float(
+            action_adoption.get("expected_counterfactual_action_changes", 0.0)
+        ),
+        "wm_action_counterfactual_change_rate": float(
+            action_adoption.get("counterfactual_change_rate", 0.0)
+        ),
+        "wm_action_expected_counterfactual_change_rate": float(
+            action_adoption.get("expected_counterfactual_change_rate", 0.0)
+        ),
+        "wm_action_adoption_rate": float(action_adoption.get("adoption_rate", 0.0)),
+        "wm_action_mean_probability_shift": float(
+            action_adoption.get("mean_recommended_probability_shift", 0.0)
+        ),
+        "wm_pass_target_opportunities": float(
+            action_adoption.get("pass_target_opportunities", 0)
+        ),
+        "wm_pass_target_influenced_opportunities": float(
+            action_adoption.get("pass_target_influenced_opportunities", 0)
+        ),
+        "wm_pass_target_changes": float(
+            action_adoption.get("pass_target_changes", 0)
+        ),
+        "wm_pass_target_expected_changes": float(
+            action_adoption.get("pass_target_expected_changes", 0.0)
+        ),
     }
 
 

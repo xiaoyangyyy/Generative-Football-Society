@@ -377,7 +377,35 @@ def status(root: Path = ROOT) -> dict[str, Any]:
             "training_executed": False,
             "provider_calls_made": False,
         }
-    decision_path, decision, branch = _confirmatory_decision(protocol, root)
+    try:
+        decision_path, decision, branch = _confirmatory_decision(protocol, root)
+    except ValueError as exc:
+        if "confirmatory decision identity is stale or invalid" not in str(exc):
+            raise
+        decision_path = root / protocol["prerequisite"]["confirmatory_decision"]
+        decision = _read_json(decision_path)
+        branch = resolve_branch(decision)
+        progress = _read_json(progress_path) if progress_path.is_file() else {}
+        completed = {
+            arm: len(((progress.get("arms") or {}).get(arm) or {}).get("rows") or [])
+            for arm in ARM_IDS
+        }
+        return {
+            "schema_version": 1,
+            "protocol_id": protocol["protocol_id"],
+            "state": "blocked_prerequisite_identity_drift",
+            "branch": branch,
+            "completed_runs": completed,
+            "remaining_runs": 72 - sum(completed.values()),
+            "identity_matches_progress": False,
+            "historical_execution_complete": sum(completed.values()) == 72,
+            "historical_results_are_current_evidence": False,
+            "protocol_audit": audit,
+            "next_action": "preregister_new_candidate_protocol",
+            "matches_executed": sum(completed.values()),
+            "training_executed": False,
+            "provider_calls_made": False,
+        }
     identity = execution_identity(
         PROTOCOL_PATH, protocol, decision_path, decision, root,
     )

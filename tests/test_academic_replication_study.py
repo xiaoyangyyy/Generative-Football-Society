@@ -64,16 +64,21 @@ def _comparison_sequence(*results):
     return compare
 
 
-def test_academic_replication_protocol_is_registered_but_not_executed():
+def test_academic_replication_protocol_and_stale_execution_are_auditable():
     report = study.protocol_report()
     current = study.status()
     assert report["passed"] is True
-    assert report["ready_to_start"] is False
+    assert report["ready_to_start"] is True
     assert report["runs_executed"] == 0
     assert all(report["checks"].values())
-    assert current["state"] == "blocked_waiting_for_confirmatory_decision"
-    assert current["remaining_runs"] == 72
-    assert current["matches_executed"] == 0
+    assert current["state"] == "blocked_prerequisite_identity_drift"
+    assert current["branch"] == "variance_diagnosis"
+    assert current["remaining_runs"] == 0
+    assert current["matches_executed"] == 72
+    assert current["identity_matches_progress"] is False
+    assert current["historical_execution_complete"] is True
+    assert current["historical_results_are_current_evidence"] is False
+    assert current["next_action"] == "preregister_new_candidate_protocol"
     assert current["training_executed"] is False
     assert current["provider_calls_made"] is False
 

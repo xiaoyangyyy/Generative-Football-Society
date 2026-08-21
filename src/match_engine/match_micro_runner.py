@@ -495,11 +495,69 @@ def _tactical_drift(team) -> float:
     )
 
 
+def _tactical_vector_snapshot(values) -> Dict[str, float]:
+    from src.match_engine.tactical_catalog import TACTICAL_KEYS
+
+    source = values if isinstance(values, dict) else {}
+    return {
+        key: round(float(source.get(key, 0.5)), 6)
+        for key in TACTICAL_KEYS
+    }
+
+
+def _initial_tactical_execution(agent, team) -> Dict[str, Any]:
+    memory = getattr(agent, "semantic_memory", None)
+    intervention = (
+        memory.get("tactical_intervention")
+        if isinstance(memory, dict) else None
+    )
+    intervention = intervention if isinstance(intervention, dict) else {}
+    locked = bool(getattr(agent, "_tactical_preset_locked", False))
+    native_archetype = str(
+        getattr(getattr(agent, "coach_profile", None), "preferred_preset", "")
+        or getattr(agent, "style_archetype", "") or "balanced"
+    )
+    return {
+        "schema_version": 1,
+        "team": str(team.team_id),
+        "applied_tactic": str(
+            intervention.get("preset") if locked else "team_identity"
+        ),
+        "native_archetype": native_archetype,
+        "binding_kind": "locked_preset" if locked else "native_team_vector",
+        "source": str(
+            intervention.get("source")
+            or ("unknown_locked_source" if locked else "agent_team_identity")
+        ),
+        "preset_locked": locked,
+        "initial_vector": _tactical_vector_snapshot(team.coach.tactical_base),
+    }
+
+
+def _final_tactical_execution(initial, state) -> Dict[str, Any]:
+    result = {}
+    for side, team in (("home", state.home), ("away", state.away)):
+        row = dict(initial[side])
+        final_vector = _tactical_vector_snapshot(team.coach.tactical_current)
+        initial_vector = row["initial_vector"]
+        row["final_vector"] = final_vector
+        row["changed_controls"] = [
+            key for key in initial_vector
+            if abs(final_vector[key] - initial_vector[key]) > 1e-6
+        ]
+        row["final_delta_l1"] = round(sum(
+            abs(final_vector[key] - initial_vector[key])
+            for key in initial_vector
+        ), 6)
+        result[side] = row
+    return result
+
+
 def _build_micro_match_summary(
     *,
     state, cfg, passing, shots, aerial, player_tracker,
     cognitive_bus, cognitive_executor, continuous_clock, subtick_queue,
-    wm_runtime,
+    wm_runtime, manager_runtimes, tactical_execution,
     packets, timeline, n_ticks, strictness_sum, poss_home_ticks,
     phi_sum_h, phi_sum_a, emo_home, emo_away, eff_h, eff_a,
     final_gh, final_ga, physics_gh, physics_ga, xg_supplement_meta,
@@ -516,6 +574,9 @@ def _build_micro_match_summary(
     away_disc = discipline.get(state.away.team_id, {})
     from src.match_engine.world_model.decision_adoption import (
         decision_adoption_diagnostics,
+    )
+    from src.match_engine.world_model.action_adoption import (
+        direct_action_adoption_diagnostics,
     )
 
     return MicroMatchSummary(
@@ -622,6 +683,7 @@ def _build_micro_match_summary(
             if wm_runtime is not None else {"available": False}
         ),
         world_model_decision_adoption=decision_adoption_diagnostics(state),
+        world_model_action_adoption=direct_action_adoption_diagnostics(state),
         world_model_runtime={
             "loaded": wm_runtime is not None,
             "checkpoint_signature": (
@@ -641,6 +703,11 @@ def _build_micro_match_summary(
                 if wm_runtime is not None else None
             ),
         },
+        in_match_management={
+            side: runtime.diagnostics()
+            for side, runtime in manager_runtimes.items()
+        },
+        tactical_execution=_final_tactical_execution(tactical_execution, state),
     )
 
 
@@ -864,7 +931,10 @@ def _step_affective_discipline(
         for event in tackle_events:
             apply_micro_event(state, event, cfg)
             tick_events.append(event)
-        emit_tick_cross(state, aerial, cfg=cfg, rng=rng)
+        cross_events = emit_tick_cross(state, aerial, cfg=cfg, rng=rng)
+        for event in cross_events:
+            apply_micro_event(state, event, cfg)
+            tick_events.append(event)
     return mod_home, mod_away, scalars
 
 
@@ -1015,6 +1085,9 @@ def run_match_micro_simulation(
     match_seconds: Optional[float] = None,
     tactical_override_home: Optional[Dict[str, float]] = None,
     tactical_override_away: Optional[Dict[str, float]] = None,
+    in_match_plan_home: Optional[Dict[str, Any]] = None,
+    in_match_plan_away: Optional[Dict[str, Any]] = None,
+    base_dir: str | os.PathLike[str] | None = None,
 ) -> MicroMatchSummary:
     cfg = config or MicroMatchConfig()
     rng = np.random.default_rng(seed)
@@ -1022,12 +1095,15 @@ def run_match_micro_simulation(
     eff_a = float(eff_status_away if eff_status_away is not None else away_agent.status_score)
     poss_home = _possession_prior_from_strength(eff_h, eff_a, cfg, neutral_venue=neutral_venue)
 
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    resolved_base_dir = os.path.abspath(
+        os.fspath(base_dir) if base_dir is not None
+        else os.path.join(os.path.dirname(__file__), "..", "..")
+    )
     (
         affective, spatial, sie, kinematic, wm_runtime, passing, shots,
         player_tracker, aerial, continuous_clock, subtick_queue, actions,
         tactical_eng,
-    ) = _build_micro_engines(cfg, base_dir)
+    ) = _build_micro_engines(cfg, resolved_base_dir)
 
     initialized = _initialize_micro_match_state(
         home_agent=home_agent, away_agent=away_agent, referee=referee,
@@ -1042,6 +1118,27 @@ def run_match_micro_simulation(
         drama_score=drama_score,
     )
     state = initialized["state"]
+    tactical_execution = {
+        "home": _initial_tactical_execution(home_agent, state.home),
+        "away": _initial_tactical_execution(away_agent, state.away),
+    }
+    manager_runtimes = {}
+    from src.match_engine.manager_plan import InMatchPlan, InMatchPlanRuntime
+
+    for side, payload, expected_team in (
+        ("home", in_match_plan_home, state.home.team_id),
+        ("away", in_match_plan_away, state.away.team_id),
+    ):
+        if payload is None:
+            continue
+        manager_plan = InMatchPlan.from_payload(payload)
+        if manager_plan.team != expected_team:
+            raise ValueError(f"{side} in-match plan team identity mismatch")
+        manager_runtimes[side] = InMatchPlanRuntime(manager_plan)
+    manager_substitution_teams = {
+        runtime.plan.team for runtime in manager_runtimes.values()
+        if runtime.plan.controls_substitutions
+    }
     state._wm_policy_experiment_seed = int(seed)
     coord_h, coord_a = initialized["coord_h"], initialized["coord_a"]
     conflict_h, conflict_a = initialized["conflict_h"], initialized["conflict_a"]
@@ -1061,7 +1158,7 @@ def run_match_micro_simulation(
     cognitive_bus, cognitive_executor = _resolve_cognitive_layer(
         cfg, seed, home_agent, away_agent,
         world_model_runtime=wm_runtime,
-        base_dir=base_dir,
+        base_dir=resolved_base_dir,
     )
     processed_subs: set = set()
 
@@ -1088,6 +1185,11 @@ def run_match_micro_simulation(
             xg_swing_home=xg_swing_home, referee_strictness=ref_strict,
             drama_score=drama_score, aerial=aerial, rng=rng,
         )
+        for runtime in manager_runtimes.values():
+            timeline.extend(runtime.step(
+                state, clock_sec=t1, tracker=player_tracker,
+                subs_done=subs_done,
+            ))
         strictness_sum += scalars["strictness_effective"]
         possession_tick, phi_home, phi_away = _step_possession_spatial(
             state, cfg, kinematic, mod_home, mod_away,
@@ -1101,7 +1203,10 @@ def run_match_micro_simulation(
             passing=passing, mod_home=mod_home, mod_away=mod_away, rng=rng,
         )
         player_tracker.tick_minutes(state, dt)
-        sub_notes = maybe_apply_substitutions(state, t1, rng, player_tracker, subs_done=subs_done)
+        sub_notes = maybe_apply_substitutions(
+            state, t1, rng, player_tracker, subs_done=subs_done,
+            disabled_team_ids=manager_substitution_teams,
+        )
         timeline.extend(sub_notes)
         _process_cognitive_tick(
             cognitive_bus, cognitive_executor, state, tick_events, t1, dt,
@@ -1142,7 +1247,8 @@ def run_match_micro_simulation(
         player_tracker=player_tracker, cognitive_bus=cognitive_bus,
         cognitive_executor=cognitive_executor,
         continuous_clock=continuous_clock, subtick_queue=subtick_queue,
-        wm_runtime=wm_runtime,
+        wm_runtime=wm_runtime, manager_runtimes=manager_runtimes,
+        tactical_execution=tactical_execution,
         packets=packets, timeline=timeline, n_ticks=n_ticks,
         strictness_sum=strictness_sum, poss_home_ticks=poss_home_ticks,
         phi_sum_h=phi_sum_h, phi_sum_a=phi_sum_a,
@@ -1162,7 +1268,7 @@ def run_match_micro_simulation(
         home_team=state.home.team_id,
         away_team=state.away.team_id,
         stage_name=stage_name,
-        base_dir=base_dir,
+        base_dir=resolved_base_dir,
         score_home=final_gh,
         score_away=final_ga,
     )

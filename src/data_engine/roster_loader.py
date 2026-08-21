@@ -120,7 +120,7 @@ def build_team_squad_from_roster(
         p
         for p in players_data
         if p not in starters
-        and p.get("squad_role") != "suspended"
+        and p.get("squad_role") == "bench"
         and float(p.get("availability", 1.0)) > 0.15
     ]
 

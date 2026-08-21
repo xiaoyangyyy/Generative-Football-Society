@@ -294,10 +294,10 @@ def emit_tick_cross(
     *,
     cfg: "MicroMatchConfig",
     rng: np.random.Generator,
-) -> None:
+) -> list[MicroEvent]:
     """Wing crosses at rate calibrated to StatsBomb (~11/team/match)."""
     if not state.ball.possession_team_id:
-        return
+        return []
     dt = float(cfg.dt_default)
     match_sec = float(getattr(cfg, "match_seconds", 90.0 * 60.0))
     ticks = max(1.0, match_sec / dt)
@@ -307,13 +307,17 @@ def emit_tick_cross(
     target = float(getattr(cfg, "cross_tick_target", 20.0))
     p = float(np.clip((target / ticks) * (0.68 + 0.52 * wing), 0.0, 0.16))
     if rng.random() >= p:
-        return
+        return []
     wide = [p for p in team.players if p.on_pitch and p.role in ("LW", "RW", "LB", "RB")]
     if not wide:
-        return
+        return []
     crosser = wide[int(rng.integers(0, len(wide)))]
     _, outcome = aerial_engine.resolve_cross(state, crosser, rng)
-    from src.match_engine.aerial_duel import apply_aerial_xg_to_state
+    from src.match_engine.aerial_duel import (
+        aerial_goal_events,
+        apply_aerial_xg_to_state,
+    )
 
     attacking_home = crosser.team_id == state.home.team_id
     apply_aerial_xg_to_state(state, outcome.xg_added, attacking_home, cfg)
+    return aerial_goal_events(state, crosser, outcome)

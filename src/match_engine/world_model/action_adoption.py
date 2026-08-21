@@ -1,0 +1,418 @@
+"""Auditable adoption records for direct world-model action guidance."""
+
+from __future__ import annotations
+
+from typing import Any, Sequence
+
+import numpy as np
+
+
+_MAX_SAMPLED_RECORDS = 96
+
+
+def mask_infeasible_action_probabilities(
+    labels: Sequence[str], probabilities: Sequence[float],
+    feasible_actions: set[str],
+) -> np.ndarray:
+    """Return a normalized distribution with zero mass on invalid actions."""
+    probs = np.asarray(probabilities, dtype=float).copy()
+    if probs.shape != (len(labels),):
+        raise ValueError("action probability shape does not match labels")
+    feasible = np.asarray([
+        str(action) in feasible_actions for action in labels
+    ], dtype=bool)
+    if not feasible.any():
+        raise ValueError("at least one action must be feasible")
+    probs = np.where(feasible, np.clip(probs, 0.0, None), 0.0)
+    total = float(probs.sum())
+    if not np.isfinite(total) or total <= 0.0:
+        probs = feasible.astype(float)
+        total = float(probs.sum())
+    return probs / total
+
+
+def sample_action_from_uniform(
+    labels: Sequence[str], probabilities: Sequence[float], draw: float,
+) -> str:
+    """Deterministically sample a categorical action from one shared draw."""
+    probs = np.asarray(probabilities, dtype=float)
+    probs = np.clip(probs, 0.0, None)
+    total = float(probs.sum())
+    if not np.isfinite(total) or total <= 0.0:
+        raise ValueError("action probabilities must have positive finite mass")
+    probs /= total
+    u = float(np.clip(draw, 0.0, np.nextafter(1.0, 0.0)))
+    index = min(len(labels) - 1, int(np.searchsorted(
+        np.cumsum(probs), u, side="right",
+    )))
+    return str(labels[index])
+
+
+def mix_direct_action_probabilities(
+    state,
+    *,
+    labels: Sequence[str],
+    probabilities: Sequence[float],
+) -> np.ndarray:
+    """Blend a validated pass-vs-continuation policy into normal sampling."""
+    base = np.asarray(probabilities, dtype=float)
+    record = getattr(state, "_wm_pending_direct_action_adoption", None)
+    if not isinstance(record, dict) or "pass" not in labels:
+        return base
+    gate = (record.get("quality_gates") or {}).get("pass") or {}
+    if not gate.get("open", False):
+        return base
+    advantage = float(gate.get("model_advantage", 0.0))
+    confidence = float(gate.get(
+        "decision_confidence", gate.get("confidence", 0.0),
+    ))
+    policy_blend = float(gate.get("policy_blend", 0.0))
+    certainty = float(gate.get(
+        "decision_certainty", gate.get("certainty", confidence),
+    ))
+    reliability = min(confidence, certainty)
+    blend_weight = float(np.clip(policy_blend * reliability, 0.0, 0.35))
+    if blend_weight <= 0.0 or not np.isfinite(advantage):
+        return base
+    pass_index = labels.index("pass")
+    base_pass = float(base[pass_index])
+    preference = float(np.tanh(advantage / 0.10))
+    model_pass_probability = float(np.clip(
+        base_pass + (
+            (1.0 - base_pass) * preference
+            if preference >= 0.0 else base_pass * preference
+        ),
+        1e-6,
+        1.0 - 1e-6,
+    ))
+    mixed = base.copy()
+    mixed_pass = (
+        (1.0 - blend_weight) * base_pass
+        + blend_weight * model_pass_probability
+    )
+    remaining_before = max(1e-12, 1.0 - float(base[pass_index]))
+    remaining_after = max(0.0, 1.0 - mixed_pass)
+    for index in range(len(mixed)):
+        if index != pass_index:
+            mixed[index] = float(base[index]) * remaining_after / remaining_before
+    mixed[pass_index] = mixed_pass
+    mixed = np.clip(mixed, 0.0, 1.0)
+    mixed /= max(1e-12, float(mixed.sum()))
+    gate["model_target_pass_probability"] = model_pass_probability
+    gate["applied_probability_blend_weight"] = blend_weight
+    return mixed
+
+
+def register_action_policy_opportunity(
+    state,
+    *,
+    team_id: str,
+    t_sec: float,
+    feasible_actions: set[str],
+    base_utilities: Sequence[float],
+    adjusted_utilities: Sequence[float],
+    labels: Sequence[str],
+    model_adjustments: dict[str, float],
+    quality_gates: dict[str, dict[str, Any]],
+) -> str:
+    """Register one current-action opportunity without claiming adoption yet."""
+    store = getattr(state, "_wm_direct_action_adoption", None)
+    if store is None:
+        store = {
+            "opportunities": 0, "influenced_opportunities": 0,
+            "resolved": 0, "adopted": 0, "attributable_adoptions": 0,
+            "attribution_eligible_opportunities": 0,
+            "counterfactual_action_changes": 0,
+            "expected_counterfactual_action_changes": 0.0,
+            "probability_shift_sum": 0.0, "records": [],
+        }
+        state._wm_direct_action_adoption = store
+    base = np.asarray(base_utilities, dtype=float)
+    adjusted = np.asarray(adjusted_utilities, dtype=float)
+    feasible_indices = [
+        index for index, action in enumerate(labels) if action in feasible_actions
+    ]
+    changed_indices = [
+        index for index in feasible_indices
+        if abs(float(adjusted[index] - base[index])) > 1e-12
+    ]
+    policy_signals: list[tuple[int, float]] = []
+    for index in feasible_indices:
+        action = str(labels[index])
+        gate = quality_gates.get(action) or {}
+        if not gate.get("open", False):
+            continue
+        confidence = float(gate.get(
+            "decision_confidence", gate.get("confidence", 0.0),
+        ))
+        certainty = float(gate.get(
+            "decision_certainty", gate.get("certainty", confidence),
+        ))
+        blend = float(gate.get("policy_blend", 0.0))
+        advantage = float(gate.get("model_advantage", 0.0))
+        if (
+            np.isfinite(advantage) and abs(advantage) > 1e-12
+            and confidence > 0.0 and certainty > 0.0 and blend > 0.0
+        ):
+            policy_signals.append((index, advantage))
+    positive_indices = [
+        index for index in changed_indices
+        if float(adjusted[index] - base[index]) > 0.0
+    ]
+    positive_policy = [item for item in policy_signals if item[1] > 0.0]
+    negative_policy_indices = {
+        index for index, advantage in policy_signals if advantage < 0.0
+    }
+    if positive_policy:
+        recommended_index = max(positive_policy, key=lambda item: item[1])[0]
+    elif negative_policy_indices:
+        alternatives = [
+            index for index in feasible_indices
+            if index not in negative_policy_indices
+        ]
+        recommended_index = max(
+            alternatives or feasible_indices, key=lambda index: base[index],
+        )
+    elif positive_indices:
+        recommended_index = max(
+            positive_indices, key=lambda index: adjusted[index] - base[index],
+        )
+    elif changed_indices:
+        unchanged = [
+            index for index in feasible_indices if index not in changed_indices
+        ]
+        recommended_index = max(
+            unchanged or feasible_indices, key=lambda index: base[index],
+        )
+    else:
+        recommended_index = (
+            max(feasible_indices, key=lambda index: base[index])
+            if feasible_indices else None
+        )
+    recommended = (
+        str(labels[recommended_index]) if recommended_index is not None else "none"
+    )
+    influenced = bool(changed_indices or policy_signals)
+    opportunity_id = (
+        f"direct:{team_id}:{float(t_sec):.3f}:{int(store['opportunities'])}"
+    )
+    record = {
+        "opportunity_id": opportunity_id, "team_id": str(team_id),
+        "t_sec": float(t_sec),
+        "feasible_actions": sorted(str(action) for action in feasible_actions),
+        "recommended_action": recommended,
+        "base_utilities": {
+            str(action): float(base[index]) for index, action in enumerate(labels)
+        },
+        "adjusted_utilities": {
+            str(action): float(adjusted[index]) for index, action in enumerate(labels)
+        },
+        "model_adjustments": {
+            str(action): float(model_adjustments.get(str(action), 0.0))
+            for action in labels
+        },
+        "quality_gates": quality_gates, "influenced": influenced,
+        "base_probability": None, "adjusted_probability": None,
+        "recommended_probability_delta": None, "actual_action": None,
+        "sampling_uniform": None, "counterfactual_baseline_action": None,
+        "policy_changed_action": None,
+        "total_variation_distance": None,
+        "adopted": None, "attribution_eligible": None,
+        "resolution": "pending_sample",
+    }
+    store["opportunities"] += 1
+    store["influenced_opportunities"] += int(influenced)
+    records = store["records"]
+    records.append(record)
+    if len(records) > _MAX_SAMPLED_RECORDS:
+        del records[0]
+    state._wm_pending_direct_action_adoption = record
+    return opportunity_id
+
+
+def record_action_policy_sample(
+    state,
+    *,
+    actual_action: str,
+    labels: Sequence[str],
+    base_probabilities: Sequence[float],
+    adjusted_probabilities: Sequence[float],
+    sampling_uniform: float | None = None,
+    counterfactual_baseline_action: str | None = None,
+    externally_overridden: bool = False,
+    cointervention: bool = False,
+) -> None:
+    """Resolve the latest direct policy opportunity against the actual action."""
+    record = getattr(state, "_wm_pending_direct_action_adoption", None)
+    if not isinstance(record, dict) or record.get("resolution") != "pending_sample":
+        return
+    store = getattr(state, "_wm_direct_action_adoption", None)
+    if not isinstance(store, dict):
+        return
+    base = np.asarray(base_probabilities, dtype=float)
+    adjusted = np.asarray(adjusted_probabilities, dtype=float)
+    record["base_probability"] = {
+        str(action): float(base[index]) for index, action in enumerate(labels)
+    }
+    record["adjusted_probability"] = {
+        str(action): float(adjusted[index]) for index, action in enumerate(labels)
+    }
+    recommended = str(record["recommended_action"])
+    recommended_index = labels.index(recommended) if recommended in labels else None
+    delta = (
+        float(adjusted[recommended_index] - base[recommended_index])
+        if recommended_index is not None else 0.0
+    )
+    actual = str(actual_action).lower()
+    adopted = actual == recommended
+    attribution_eligible = bool(
+        record["influenced"] and not externally_overridden and not cointervention
+    )
+    counterfactual = (
+        str(counterfactual_baseline_action).lower()
+        if counterfactual_baseline_action is not None else None
+    )
+    changed_action = bool(
+        attribution_eligible and counterfactual is not None
+        and actual != counterfactual
+    )
+    total_variation = float(0.5 * np.abs(adjusted - base).sum())
+    record.update({
+        "recommended_probability_delta": delta, "actual_action": actual,
+        "sampling_uniform": (
+            float(sampling_uniform) if sampling_uniform is not None else None
+        ),
+        "counterfactual_baseline_action": counterfactual,
+        "policy_changed_action": changed_action,
+        "total_variation_distance": total_variation,
+        "adopted": adopted, "attribution_eligible": attribution_eligible,
+        "resolution": (
+            "external_schedule_override" if externally_overridden
+            else "cointervention_not_attributable" if cointervention
+            else "sampled_after_world_model_adjustment"
+        ),
+    })
+    store["resolved"] += 1
+    store["adopted"] += int(adopted)
+    store.setdefault("attribution_eligible_opportunities", 0)
+    store["attribution_eligible_opportunities"] += int(attribution_eligible)
+    store["attributable_adoptions"] += int(adopted and attribution_eligible)
+    store.setdefault("counterfactual_action_changes", 0)
+    store["counterfactual_action_changes"] += int(changed_action)
+    store.setdefault("expected_counterfactual_action_changes", 0.0)
+    if attribution_eligible:
+        store["expected_counterfactual_action_changes"] += total_variation
+    store["probability_shift_sum"] += abs(delta)
+    state._wm_pending_direct_action_adoption = None
+
+
+def record_pass_target_policy_sample(
+    state,
+    *,
+    candidate_ids: Sequence[str],
+    base_probabilities: Sequence[float],
+    adjusted_probabilities: Sequence[float],
+    selected_index: int,
+    counterfactual_index: int,
+    sampling_uniform: float,
+    evidence: dict[str, Any],
+) -> None:
+    """Attach exact receiver/target adoption evidence to the high-level action."""
+    record = getattr(state, "_wm_pending_direct_action_adoption", None)
+    store = getattr(state, "_wm_direct_action_adoption", None)
+    if not isinstance(record, dict) or not isinstance(store, dict):
+        return
+    base = np.asarray(base_probabilities, dtype=float)
+    adjusted = np.asarray(adjusted_probabilities, dtype=float)
+    total_variation = float(0.5 * np.abs(adjusted - base).sum())
+    changed = bool(selected_index != counterfactual_index)
+    applied = bool(evidence.get("applied", False) and total_variation > 1e-12)
+    selected_id = str(candidate_ids[selected_index])
+    counterfactual_id = str(candidate_ids[counterfactual_index])
+    recommended_index = int(np.argmax(adjusted - base)) if applied else selected_index
+    record["pass_target_policy"] = {
+        **evidence,
+        "candidate_ids": [str(item) for item in candidate_ids],
+        "base_probability": [float(value) for value in base],
+        "adjusted_probability": [float(value) for value in adjusted],
+        "sampling_uniform": float(sampling_uniform),
+        "selected_candidate_id": selected_id,
+        "counterfactual_baseline_candidate_id": counterfactual_id,
+        "recommended_candidate_id": str(candidate_ids[recommended_index]),
+        "policy_changed_target": bool(applied and changed),
+        "total_variation_distance": total_variation,
+    }
+    store.setdefault("pass_target_opportunities", 0)
+    store.setdefault("pass_target_influenced_opportunities", 0)
+    store.setdefault("pass_target_changes", 0)
+    store.setdefault("pass_target_expected_changes", 0.0)
+    store["pass_target_opportunities"] += 1
+    store["pass_target_influenced_opportunities"] += int(applied)
+    store["pass_target_changes"] += int(applied and changed)
+    if applied:
+        store["pass_target_expected_changes"] += total_variation
+
+
+def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
+    """Return bounded records plus aggregate direct-policy adoption metrics."""
+    store = getattr(state, "_wm_direct_action_adoption", None)
+    if not isinstance(store, dict):
+        return {
+            "available": False,
+            "reason": "no_direct_world_model_action_opportunities",
+            "opportunities": 0, "influenced_opportunities": 0,
+            "resolved": 0, "adopted": 0, "attributable_adoptions": 0,
+            "attribution_eligible_opportunities": 0,
+            "counterfactual_action_changes": 0,
+            "expected_counterfactual_action_changes": 0.0,
+            "counterfactual_change_rate": 0.0,
+            "expected_counterfactual_change_rate": 0.0,
+            "pass_target_opportunities": 0,
+            "pass_target_influenced_opportunities": 0,
+            "pass_target_changes": 0,
+            "pass_target_expected_changes": 0.0,
+            "adoption_rate": 0.0,
+            "mean_recommended_probability_shift": 0.0, "records": [],
+        }
+    resolved = int(store["resolved"])
+    return {
+        "available": True,
+        "opportunities": int(store["opportunities"]),
+        "influenced_opportunities": int(store["influenced_opportunities"]),
+        "resolved": resolved, "adopted": int(store["adopted"]),
+        "attributable_adoptions": int(store["attributable_adoptions"]),
+        "attribution_eligible_opportunities": int(
+            store.get("attribution_eligible_opportunities", 0)
+        ),
+        "counterfactual_action_changes": int(
+            store.get("counterfactual_action_changes", 0)
+        ),
+        "expected_counterfactual_action_changes": float(
+            store.get("expected_counterfactual_action_changes", 0.0)
+        ),
+        "counterfactual_change_rate": float(
+            store.get("counterfactual_action_changes", 0)
+            / max(1, store.get("attribution_eligible_opportunities", 0))
+        ),
+        "expected_counterfactual_change_rate": float(
+            store.get("expected_counterfactual_action_changes", 0.0)
+            / max(1, store.get("attribution_eligible_opportunities", 0))
+        ),
+        "pass_target_opportunities": int(
+            store.get("pass_target_opportunities", 0)
+        ),
+        "pass_target_influenced_opportunities": int(
+            store.get("pass_target_influenced_opportunities", 0)
+        ),
+        "pass_target_changes": int(store.get("pass_target_changes", 0)),
+        "pass_target_expected_changes": float(
+            store.get("pass_target_expected_changes", 0.0)
+        ),
+        "adoption_rate": float(store["adopted"] / max(1, resolved)),
+        "mean_recommended_probability_shift": float(
+            store["probability_shift_sum"] / max(1, resolved)
+        ),
+        "records_retained": len(store["records"]),
+        "records_truncated": int(store["opportunities"]) > len(store["records"]),
+        "records": list(store["records"]),
+    }

@@ -8,10 +8,10 @@ from scripts.verify_paper_package import (
 )
 
 
-def test_preexecution_paper_package_is_honest_and_zero_execution():
+def test_preexecution_package_fails_closed_after_confirmatory_execution():
     report = verify_paper_package()
-    assert report["passed"]
-    assert report["status"] == "passed_preexecution_package"
+    assert report["passed"] is False
+    assert report["status"] == "failed"
     assert report["confirmatory_result_available"] is False
     assert report["independent_reproduction_available"] is False
     assert report["external_calls_made"] is False
@@ -19,7 +19,12 @@ def test_preexecution_paper_package_is_honest_and_zero_execution():
     assert report["training_executed"] is False
     assert report["formal_experiment_executed"] is False
     assert report["claim_count"] >= 8
-    assert all(report["checks"].values())
+    assert report["checks"]["confirmatory_outputs_are_absent"] is False
+    failed = {key for key, value in report["checks"].items() if not value}
+    assert failed == {
+        "formal_identity_preflight_passes",
+        "confirmatory_outputs_are_absent",
+    }
     assert any("not a completed results manuscript" in row for row in report["limitations"])
     assert any("actual Docker build" in row for row in report["limitations"])
 

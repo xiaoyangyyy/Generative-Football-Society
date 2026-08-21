@@ -26,11 +26,20 @@ ROUTES = {
     "/", "/healthz", "/login", "/readyz", "/api/v1/login",
     "/api/v1/logout",
     "/api/v1/excellence/evidence-kit.zip",
-    "/api/v1/studio", "/api/v1/matches", "/api/v1/tasks",
+    "/api/v1/studio", "/api/v1/matches", "/api/v1/paired-matches",
+    "/api/v1/tactical-studies",
+    "/api/v1/seasons", "/api/v1/seasons/decision",
+    "/api/v1/seasons/decision-preview",
+    "/api/v1/seasons/decision-advice",
+    "/api/v1/seasons/next-matchday", "/api/v1/seasons/player-promises",
+    "/api/v1/scouting-reports",
+    "/api/v1/recruitment-markets/{team}",
+    "/api/v1/tasks",
     "/api/v1/recovery", "/api/v1/backups",
     "/api/v1/backups/{backup_id}/verify",
     "/api/v1/backups/{backup_id}/restore",
-    "/api/v1/tasks/{task_id}", "/api/v1/operations",
+    "/api/v1/tasks/{task_id}", "/api/v1/tasks/{task_id}/requeue",
+    "/api/v1/operations",
     "/artifacts/{artifact}", "unmatched",
 }
 EVENT_FIELDS = {
@@ -69,8 +78,12 @@ def route_template(path: str) -> str:
     """Collapse user-controlled path components before persistence."""
     if path in ROUTES:
         return path
+    if re.fullmatch(r"/api/v1/tasks/[^/]+/requeue", path):
+        return "/api/v1/tasks/{task_id}/requeue"
     if path.startswith("/api/v1/tasks/"):
         return "/api/v1/tasks/{task_id}"
+    if path.startswith("/api/v1/recruitment-markets/"):
+        return "/api/v1/recruitment-markets/{team}"
     if re.fullmatch(r"/api/v1/backups/[^/]+/verify", path):
         return "/api/v1/backups/{backup_id}/verify"
     if re.fullmatch(r"/api/v1/backups/[^/]+/restore", path):

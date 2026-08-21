@@ -24,11 +24,15 @@ class SocietyAgent(
             return float(default)
         return v
 
-    def __init__(self, name, stats, tactical_info=None):
+    def __init__(self, name, stats, tactical_info=None, initialization_rng=None):
+        import random
+
+        self._initialization_rng = initialization_rng or random
         self._initialize_identity(name, stats)
         self._initialize_roles_and_strategy(stats, tactical_info)
         self._initialize_runtime_state()
         self._initialize_affective_state()
+        del self._initialization_rng
 
     def _infer_region(self):
         europe = {

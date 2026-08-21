@@ -185,7 +185,8 @@ def verify_web_accessibility() -> dict:
             "kind==='error'?'alert':'status'",
             "kind==='error'?'assertive':'polite'",
             "announce(message,e.message,'error',true)",
-            "announce(message,'比赛完成。','success',true)",
+            "if(task.state==='completed'){announce(message,",
+            ",'success',true);showReport(",
         )
     )
     checks["restore_keyboard_focus_contract"] = all(
@@ -195,6 +196,128 @@ def verify_web_accessibility() -> dict:
             "restoreTrigger?.isConnected",
             "event.key==='Escape'",
             "closeRestore(true)",
+        )
+    )
+    checks["guided_workflow_focus_contract"] = all(
+        token in index
+        for token in (
+            'id="workflow" class="status" role="status"',
+            'id="workflow-action" type="button" hidden',
+            "function renderUnifiedWorkflow(data)",
+            "workflowAction._target=targets[action.id]||null",
+            "target.scrollIntoView({block:'center'})",
+            "if(focusable)focusable.focus()",
+        )
+    )
+    checks["workspace_navigation_contract"] = all(
+        token in index
+        for token in (
+            'id="workspace-nav" class="workspace-nav" aria-label=',
+            'data-workspace-view="career" aria-pressed="true"',
+            'data-workspace-view="lab" aria-pressed="false"',
+            'data-workspace-view="evidence" aria-pressed="false"',
+            'data-workspace-view="operations" aria-pressed="false"',
+            'id="workspace-view-description" class="status" role="status"',
+        )
+    )
+    checks["workspace_progressive_disclosure_contract"] = all(
+        token in index
+        for token in (
+            ".workspace-area-hidden { display:none!important }",
+            "const workspaceAreaDescriptions={career:",
+            "section.classList.toggle('workspace-area-hidden',!visible)",
+            "sessionStorage.getItem('gfs-workspace-area')",
+            "sessionStorage.setItem('gfs-workspace-area',resolved)",
+            "if(!workspaceAreaExplicit&&!active)currentWorkspaceArea=workflowWorkspaceArea(data)",
+        )
+    )
+    checks["manager_product_journey_contract"] = all(
+        token in index
+        for token in (
+            'id="manager-product-journey" class="manager-product-journey"',
+            'aria-label="&#32463;&#29702;&#20135;&#21697;&#23436;&#25972;&#20027;&#27969;&#31243;"',
+            "function renderManagerProductJourney(",
+            "item.dataset.stage=id",
+            "item.dataset.status=status",
+            "item.setAttribute('aria-current','step')",
+            ".row,.matchday-journey,.manager-product-journey",
+        )
+    )
+    checks["workflow_navigation_reveals_target_before_focus"] = all(
+        token in index
+        for token in (
+            "workflowAction._area=workflowAreaByAction[action]",
+            "applyWorkspaceArea(workflowAction._area,{remember:true,configured:true})",
+            "target.scrollIntoView({block:'center'})",
+            "if(focusable)focusable.focus()",
+        )
+    ) and index.index(
+        "applyWorkspaceArea(workflowAction._area,{remember:true,configured:true})"
+    ) < index.index("target.scrollIntoView({block:'center'})")
+    checks["manager_decision_preview_contract"] = all(
+        token in index
+        for token in (
+            'id="manager-decision-preview" class="decision-preview"',
+            'aria-live="polite" aria-atomic="true"',
+            "function managerDecisionPayload(includeRevision=false)",
+            "function scheduleManagerDecisionPreview()",
+            "++managerPreviewSequence",
+            "managerDecisionSubmit.disabled=true",
+            "payload.expected_revision=managerPreviewBaseRevision",
+            "renderManagerDecisionPreview(data.preview);managerDecisionSubmit.disabled=false",
+            "renderManagerDecisionPreviewWithoutWorldModelComparison",
+            "comparison.recommended_tactic",
+            "comparison.selected_tactic",
+            "authority.level==='exploratory_only'",
+            "deltas.risk_adjusted_value",
+            "adoptManagerAdvice.textContent=",
+            "'/api/v1/seasons/decision-preview'",
+            "不预测比分、胜率",
+        )
+    )
+    checks["manager_world_model_advice_contract"] = all(
+        token in index
+        for token in (
+            'id="manager-world-model-advice" class="decision-preview"',
+            'id="manager-world-model-advice-summary" class="status"',
+            'id="manager-world-model-advice-candidates" class="cards" role="list"',
+            'id="request-manager-advice" type="button"',
+            'id="adopt-manager-advice" type="button" disabled',
+            "function requestManagerWorldModelAdvice()",
+            "function adoptCurrentManagerAdvice()",
+            "managerAdviceIntent='adopt_recommendation'",
+            "managerAdviceIntent='reviewed_then_selected'",
+            "payload.advice_adoption=",
+            "建议、经理选择和赛果分别取证",
+        )
+    )
+    checks["manager_decision_ledger_contract"] = all(
+        token in index
+        for token in (
+            'id="manager-decision-ledger" aria-labelledby="manager-decision-ledger-title"',
+            'id="manager-decision-ledger-summary" class="status" role="status"',
+            'id="manager-decision-ledger-list" class="journal-list" role="list"',
+            "function renderManagerDecisionLedger(season)",
+            "artifactLink('打开该场完整复盘',row.dashboard)",
+            "单场赛果不证明决策效果",
+            "世界状态：比赛后疲劳",
+            "伤停为模拟状态",
+        )
+    )
+    checks["manager_advisor_evidence_summary_contract"] = all(
+        token in index
+        for token in (
+            'id="manager-advisor-evidence-summary" class="status"',
+            "renderManagerDecisionLedgerWithoutAdvisorEvidence",
+            "evidence.advised_decisions",
+            "evidence.adopted_recommendation",
+            "evidence.reviewed_then_selected",
+            "evidence.unlinked_advice",
+            "evidence.direct_execution_coverage",
+            'id="manager-advisor-protocol-evidence" class="status"',
+            "renderActionAdoptionWithoutManagerProtocol",
+            "studio?.evidence?.manager_advisor_adoption",
+            "protocol.fixed_information_windows",
         )
     )
     checks["dynamic_backup_controls_are_named"] = (

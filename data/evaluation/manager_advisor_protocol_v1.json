@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-manager-world-model-advisor-adoption-v1",
+  "state": "preregistered_collection_not_started",
+  "research_question": "When a manager explicitly requests identity-bound world-model tactical advice, is the advice interaction captured, intentionally resolved, and directly traceable to the frozen tactic and its execution evidence?",
+  "claim_scope": "product_adoption_instrumentation_only_no_outcome_effectiveness_or_causal_claim",
+  "unit": "one_manager_fixture_decision_in_one_identity_validated_ledger",
+  "source": {
+    "artifact": "manager_decision_ledger",
+    "required_schema_version": 1,
+    "identity_validation": "entry_summary_and_ledger_semantic_replay",
+    "retention_scope": "one_exported_current_season_ledger_snapshot",
+    "raw_personal_data_collected": false
+  },
+  "inclusion": {
+    "requires_world_model_advice": true,
+    "requires_explicit_intent_for_interaction": true,
+    "allowed_intents": [
+      "adopt_recommendation",
+      "reviewed_then_selected"
+    ],
+    "unlinked_advice_is_retained_as_missing_interaction_evidence": true,
+    "completed_without_direct_execution_evidence_is_retained": true,
+    "fixed_window_requires_all_decisions_executed": true
+  },
+  "analysis": {
+    "fixed_information_windows": [12, 24, 48],
+    "minimum_advised_decisions": 12,
+    "minimum_explicit_interaction_coverage": 0.95,
+    "minimum_direct_execution_coverage": 0.9,
+    "maximum_unlinked_advice_fraction": 0.05,
+    "minimum_distinct_recommended_tactics": 2,
+    "primary_metrics": [
+      "advice_coverage",
+      "explicit_interaction_coverage",
+      "adopted_recommendation",
+      "reviewed_then_selected",
+      "descriptive_alignment_rate",
+      "direct_execution_coverage"
+    ],
+    "diagnostic_metrics": [
+      "mean_recommendation_confidence",
+      "mean_recommendation_margin",
+      "low_authority_advice",
+      "recommendation_counts"
+    ],
+    "outcome_effect_estimate": null,
+    "causal_effect_authorized": false,
+    "real_football_generalization_authorized": false
+  },
+  "decision_rules": {
+    "insufficient_evidence": "advised decisions have not reached the next fixed information window",
+    "instrumentation_confirmed": "all frozen coverage and diversity gates pass at a fixed information window",
+    "instrumentation_failed": "at least one frozen coverage or diversity gate fails at a fixed information window",
+    "product_or_academic_promotion_authorized": false
+  },
+  "integrity": {
+    "interim_threshold_changes": false,
+    "optional_stopping": false,
+    "post_hoc_exclusions": false,
+    "code_identity_files": [
+      "src/product/decision_advice.py",
+      "src/product/decision_ledger.py",
+      "src/product/season.py",
+      "src/product/workspace.py",
+      "src/product/web.py",
+      "scripts/manager_advisor_study.py"
+    ]
+  },
+  "execution": {
+    "matches_executed": 0,
+    "training_executed": false,
+    "provider_calls_made": false,
+    "results_available": false
+  }
+}

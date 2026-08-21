@@ -1,5 +1,6 @@
 import json
 import os
+import random
 
 from src.data_engine.loader import load_data
 from src.data_engine.cleaner import clean_results
@@ -16,15 +17,18 @@ from src.simulation.tournament_2026 import TournamentManager
 
 
 def _attach_team_dynamics_from_rosters(base_dir: str, agents: dict) -> None:
-    from src.data_engine.roster_loader import load_roster_json, roster_path_for_team
+    from src.simulation.squad_registry import load_effective_roster
 
     for team_name, agent in agents.items():
-        roster = load_roster_json(roster_path_for_team(base_dir, team_name))
+        roster = load_effective_roster(base_dir, team_name)
         if roster and roster.get("team_dynamics"):
             agent.team_dynamics = dict(roster["team_dynamics"])
 
 
-def build_world_and_tournament(base_dir, require_tactics=False, load_coaches=True):
+def build_world_and_tournament(
+    base_dir, require_tactics=False, load_coaches=True,
+    initialization_seed=None,
+):
     raw_dir = os.path.join(base_dir, "data", "raw")
     data = load_data(raw_dir)
     cleaned_df = clean_results(data["results"])
@@ -45,7 +49,14 @@ def build_world_and_tournament(base_dir, require_tactics=False, load_coaches=Tru
         coaches = load_coaches_json(coaches_path)
         tactical_map = merge_coach_into_tactical_map(tactical_map, coaches)
 
-    engine = WorldEngine(stats, tactical_map=tactical_map)
+    initialization_rng = (
+        random.Random(int(initialization_seed))
+        if initialization_seed is not None else None
+    )
+    engine = WorldEngine(
+        stats, tactical_map=tactical_map,
+        initialization_rng=initialization_rng,
+    )
     if coaches:
         n = attach_coaches_to_agents(engine.agents, coaches)
         print(f"Loaded {n} real coach profiles from {coaches_path}")

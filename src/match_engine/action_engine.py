@@ -126,6 +126,14 @@ class ActionEngine:
             utils[3] += 0.05 * float(intent.get("cover", 0.0))
         utils = np.nan_to_num(utils, nan=0.0, posinf=5.0, neginf=-5.0)
         labels = ["pass", "shot", "cross", "hold"]
+        feasible_actions = {"pass", "hold"}
+        if dist_goal < self.cfg.shot_max_dist and shot_cooldown_ok(
+            state, attacking_home, self.cfg, float(state.clock_seconds),
+        ):
+            feasible_actions.add("shot")
+        if carrier.role in ("LW", "RW", "LB", "RB"):
+            feasible_actions.add("cross")
+        pre_world_model_utils = utils.copy()
         if self.wm_runtime is not None:
             from src.match_engine.world_model.planner import action_imagination_adjustments
 
@@ -139,14 +147,8 @@ class ActionEngine:
                 dist_goal=dist_goal,
                 tac=tac,
                 team_shots=team_shots,
+                feasible_actions=feasible_actions,
             )
-        feasible_actions = {"pass", "hold"}
-        if dist_goal < self.cfg.shot_max_dist and shot_cooldown_ok(
-            state, attacking_home, self.cfg, float(state.clock_seconds),
-        ):
-            feasible_actions.add("shot")
-        if carrier.role in ("LW", "RW", "LB", "RB"):
-            feasible_actions.add("cross")
         from src.match_engine.world_model.decision_adoption import (
             pending_policy_action_bias,
             record_policy_intervention_result,
@@ -171,6 +173,28 @@ class ActionEngine:
             if policy_intent is not None else None
         )
 
+        tau = self.cfg.action_tau * mod_c.tau_dec
+        base_probs = softmax(pre_world_model_utils, tau=max(0.2, tau))
+        from src.match_engine.world_model.action_adoption import (
+            mask_infeasible_action_probabilities,
+        )
+
+        base_probs = mask_infeasible_action_probabilities(
+            labels, base_probs, feasible_actions,
+        )
+        # The probability controller is the single high-level adoption point.
+        # Planner utility deltas remain auditable evidence and must not be
+        # applied a second time before the bounded policy blend.
+        direct_world_model_probs = base_probs.copy()
+        if self.wm_runtime is not None:
+            from src.match_engine.world_model.action_adoption import (
+                mix_direct_action_probabilities,
+            )
+
+            direct_world_model_probs = mix_direct_action_probabilities(
+                state, labels=labels, probabilities=direct_world_model_probs,
+            )
+
         def record_policy_result(actual_action: str) -> None:
             if policy_intent is not None:
                 record_policy_intervention_result(
@@ -180,12 +204,52 @@ class ActionEngine:
                     t_sec=float(state.clock_seconds),
                     outcome_baseline=policy_outcome_baseline,
                 )
+            if self.wm_runtime is not None:
+                from src.match_engine.world_model.action_adoption import (
+                    record_action_policy_sample,
+                )
 
-        tau = self.cfg.action_tau * mod_c.tau_dec
-        probs = softmax(utils, tau=max(0.2, tau))
-        choice = labels[int(rng.choice(len(labels), p=probs))]
+                record_action_policy_sample(
+                    state,
+                    actual_action=actual_action,
+                    labels=labels,
+                    base_probabilities=baseline_sampling_probs,
+                    adjusted_probabilities=probs,
+                    sampling_uniform=sampling_uniform,
+                    counterfactual_baseline_action=counterfactual_baseline_action,
+                    externally_overridden=planned_kind in {"pass", "shot"},
+                    cointervention=bool(
+                        policy_intent is not None
+                        and float(policy_intent["logit_bias"]) > 0.0
+                    ),
+                )
+
+        def apply_coach_bias(probabilities: np.ndarray) -> np.ndarray:
+            biased = probabilities.copy()
+            if policy_intent is None or float(policy_intent["logit_bias"]) <= 0.0:
+                return biased
+            selected_index = labels.index(policy_intent["action"])
+            biased[selected_index] *= float(np.exp(
+                min(0.5, float(policy_intent["logit_bias"])) / max(0.2, tau)
+            ))
+            return mask_infeasible_action_probabilities(
+                labels, biased, feasible_actions,
+            )
+
+        baseline_sampling_probs = apply_coach_bias(base_probs)
+        probs = apply_coach_bias(direct_world_model_probs)
+        from src.match_engine.world_model.action_adoption import (
+            sample_action_from_uniform,
+        )
+
+        sampling_uniform = float(rng.random())
+        counterfactual_baseline_action = sample_action_from_uniform(
+            labels, baseline_sampling_probs, sampling_uniform,
+        )
+        choice = sample_action_from_uniform(labels, probs, sampling_uniform)
         if planned_kind in {"pass", "shot"}:
             choice = planned_kind
+            counterfactual_baseline_action = planned_kind
 
         events: List[MicroEvent] = []
 
@@ -238,8 +302,10 @@ class ActionEngine:
             traj, aerial_out = self.aerial.resolve_cross(state, carrier, rng)
             state.ball.position = aerial_out.landed_xy
             from src.match_engine.aerial_duel import apply_aerial_xg_to_state
+            from src.match_engine.aerial_duel import aerial_goal_events
 
             apply_aerial_xg_to_state(state, aerial_out.xg_added, attacking_home, self.cfg)
+            events.extend(aerial_goal_events(state, carrier, aerial_out))
             if aerial_out.winner_id:
                 for p in state.home.players + state.away.players:
                     if p.player_id == aerial_out.winner_id:

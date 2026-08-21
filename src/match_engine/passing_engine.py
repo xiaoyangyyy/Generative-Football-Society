@@ -498,17 +498,53 @@ class PassingEngine:
                 receiver, kind, target, lane, press,
                 omega_desired, success_prior,
             ))
-        if self.wm_runtime is not None:
-            from src.match_engine.world_model.planner import pass_imagination_bonuses
-
-            bonuses = pass_imagination_bonuses(
-                self.wm_runtime, state, carrier, metadata, attacking_home,
-            )
-            utilities = [utility + bonus for utility, bonus in zip(utilities, bonuses)]
         temperature = cfg.pass_tau_base * max(0.15, float(mod_carrier.tau_dec))
         utility_array = np.nan_to_num(np.array(utilities, dtype=float), nan=0.0)
-        probabilities = softmax(utility_array, tau=max(0.15, temperature))
-        index = int(rng.choice(len(probabilities), p=probabilities))
+        base_probabilities = softmax(
+            utility_array, tau=max(0.15, temperature),
+        )
+        probabilities = base_probabilities.copy()
+        policy_evidence = {
+            "applied": False, "reason": "world_model_runtime_unavailable",
+        }
+        if self.wm_runtime is not None:
+            from src.match_engine.world_model.planner import (
+                pass_candidate_policy_probabilities,
+            )
+
+            probabilities, policy_evidence = pass_candidate_policy_probabilities(
+                self.wm_runtime, state, carrier, metadata, attacking_home,
+                base_probabilities,
+            )
+        from src.match_engine.world_model.action_adoption import (
+            record_pass_target_policy_sample,
+            sample_action_from_uniform,
+        )
+
+        candidate_ids = [
+            f"{item[0].player_id}:{item[1]}:{idx}"
+            for idx, item in enumerate(metadata)
+        ]
+        sampling_uniform = float(rng.random())
+        baseline_id = sample_action_from_uniform(
+            candidate_ids, base_probabilities, sampling_uniform,
+        )
+        selected_id = sample_action_from_uniform(
+            candidate_ids, probabilities, sampling_uniform,
+        )
+        baseline_index = candidate_ids.index(baseline_id)
+        index = candidate_ids.index(selected_id)
+        if self.wm_runtime is not None:
+            record_pass_target_policy_sample(
+                state,
+                candidate_ids=candidate_ids,
+                base_probabilities=base_probabilities,
+                adjusted_probabilities=probabilities,
+                selected_index=index,
+                counterfactual_index=baseline_index,
+                sampling_uniform=sampling_uniform,
+                evidence=policy_evidence,
+            )
         return metadata[index], float(utilities[index])
 
     def _resolve_pass_delivery(

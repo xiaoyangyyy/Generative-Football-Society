@@ -13,6 +13,7 @@ from src.cli import build_parser, cmd_studio_web
 from src.product.web import ProductWebApp, _is_loopback_host, create_product_web_server
 from src.product.web_security import WebAccessPolicy
 from src.product.tasks import BackgroundMatchWorker
+from src.product.tactical_study import TacticalStudyPlan
 from scripts.build_excellence_evidence_kit import PROTOCOLS, SECRET_PATTERN
 
 
@@ -73,9 +74,48 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert response["status"].startswith("200")
     assert "Content-Security-Policy" in response["headers"]
     assert response["headers"]["X-Frame-Options"] == "DENY"
+    capabilities = _request(
+        ProductWebApp(tmp_path), path="/api/v1/studio"
+    )["json"]["match_capabilities"]
+    assert capabilities["paired_match"] == {
+        "modes": ["research", "cognitive"],
+        "seed": "explicit_shared_seed",
+        "intervention": "exactly_one_tactical_side",
+        "score_path": "physics_official",
+        "cognitive_claim_boundary": "descriptive_only",
+    }
     assert '<a class="skip" href="#main">' in document
     assert 'id="main"' in document
     assert 'aria-live="polite"' in document
+    assert 'id="workflow" class="status" role="status"' in document
+    assert 'id="manager-world-model-advice"' in document
+    assert 'id="request-manager-advice"' in document
+    assert 'id="adopt-manager-advice"' in document
+    assert "/api/v1/seasons/decision-advice" in document
+    assert "payload.advice_adoption=" in document
+    assert "建议、经理选择和赛果分别取证" in document
+    assert 'id="workflow-action" type="button" hidden' in document
+    assert 'id="workspace-nav" class="workspace-nav"' in document
+    assert document.count('data-workspace-view=') == 4
+    assert 'data-workspace-area="career"' in document
+    assert document.count('data-workspace-area="lab"') == 3
+    assert document.count('data-workspace-area="evidence"') == 3
+    assert document.count('data-workspace-area="operations"') == 2
+    assert "function applyWorkspaceArea(" in document
+    assert "function workflowWorkspaceArea(" in document
+    assert "function renderWorkspaceAreas(" in document
+    assert "sessionStorage.getItem('gfs-workspace-area')" in document
+    assert "sessionStorage.setItem('gfs-workspace-area',resolved)" in document
+    assert ".workspace-area-hidden { display:none!important }" in document
+    assert "function renderUnifiedWorkflow(data)" in document
+    assert "start_season:seasonForm" in document
+    assert "freeze_player_promises:playerPromiseForm" in document
+    assert "submit_manager_decision:managerDecisionForm" in document
+    assert "advance_season_matchday:playMatchday" in document
+    assert "workflowAction._target=targets[action.id]||null" in document
+    assert "workflowAction._area=workflowAreaByAction[action]" in document
+    assert "applyWorkspaceArea(workflowAction._area,{remember:true,configured:true})" in document
+    assert "if(focusable)focusable.focus()" in document
     assert "prefers-reduced-motion" in document
     assert 'id="logout-button" type="button" hidden' in document
     assert 'aria-labelledby="recovery-title"' in document
@@ -85,6 +125,185 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="release-summary"' in document
     assert 'id="release-gates"' in document and 'role="list"' in document
     assert "renderRelease(data)" in document
+    assert 'aria-labelledby="action-adoption-title"' in document
+    assert 'id="action-adoption-metrics"' in document
+    assert 'id="manager-advisor-protocol-evidence"' in document
+    assert "renderActionAdoption(" in document
+    assert "renderActionAdoptionWithoutManagerProtocol" in document
+    assert "manager_advisor_adoption" in document
+    assert 'name="experience"' in document
+    assert 'id="tactical-options"' in document
+    assert 'name="reuse_last_seed" type="checkbox" disabled' in document
+    assert "reuseSeed.disabled=!lab" in document
+    assert "configureMatchPlan(data.match_capabilities" in document
+    assert "战术实验使用物理比分" in document
+    assert "打开同种子战术配对比较" in document
+    assert "s?.last_match?.comparison_url" in document
+    assert "action_adoption_mechanism" in document
+    assert "promotion_authorized" in document
+    assert "单场运行观测不等于机制证明" in document
+    assert 'id="study-panel"' in document
+    assert 'id="study-form"' in document
+    assert 'name="pair_budget"' in document
+    assert "configureTacticalStudy(data.match_capabilities" in document
+    assert "中期效应保持隐藏" in document
+    assert "'/api/v1/tactical-studies'" in document
+    assert "task.result?.study_url" in document
+    assert 'id="season-panel"' in document
+    assert 'id="manager-product-journey"' in document
+    assert 'class="manager-product-journey"' in document
+    assert "function renderManagerProductJourney(" in document
+    assert "renderUnifiedWorkflowWithoutManagerJourney" in document
+    assert "item.dataset.status=status" in document
+    assert "item.setAttribute('aria-current','step')" in document
+    assert 'id="matchday-command-center"' in document
+    assert 'id="matchday-journey"' in document
+    assert 'id="matchday-briefing"' in document
+    assert 'id="matchday-intelligence"' in document
+    assert 'id="matchday-debrief"' in document
+    assert 'id="matchday-attribution"' in document
+    assert "function renderMatchdayCommand" in document
+    assert "fixture.opponent_preparation" in document
+    assert "对手准备审计" in document
+    assert "不是学习结果或已证明的克制关系" in document
+    assert "prep.selected_tactic" in document
+    assert "function renderManagerIntelligence" in document
+    assert "俱乐部长期支持" in document
+    assert "effects.club_fatigue_load_factor" in document
+    assert "direct_persisted_state" in document
+    assert "单场比分仅作描述" in document
+    assert "rotation_tradeoff" in document
+    assert 'id="manager-decision-ledger"' in document
+    assert 'id="manager-advisor-evidence-summary"' in document
+    assert "function renderManagerDecisionLedger(season)" in document
+    assert "renderManagerDecisionLedgerWithoutAdvisorEvidence" in document
+    assert "evidence.adopted_recommendation" in document
+    assert "evidence.reviewed_then_selected" in document
+    assert "单场赛果不证明决策效果" in document
+    assert "世界状态：比赛后疲劳" in document
+    assert "伤停为模拟状态" in document
+    assert "renderManagerDecisionPreviewWithoutWorldModelComparison" in document
+    assert "comparison.recommended_tactic" in document
+    assert "comparison.selected_tactic" in document
+    assert "deltas.risk_adjusted_value" in document
+    assert "authority.level==='exploratory_only'" in document
+    assert "adoptManagerAdvice.textContent=" in document
+    assert "command.decision_required" in document
+    assert "safeFixture?.dashboard_url" in document
+    assert 'id="season-form"' in document
+    assert 'name="manager_objective"' in document
+    assert 'name="manager_points_target"' in document
+    assert 'id="season-commitment-fieldset"' in document
+    assert 'name="commitment_tactic_policy"' in document
+    assert 'name="commitment_rotation_policy"' in document
+    assert "function renderSeasonCommitments" in document
+    assert "payload.plan.manager_commitments" in document
+    assert 'id="player-promise-form"' in document
+    assert "function renderPlayerPromises" in document
+    assert "function syncPlayerPromiseForm" in document
+    assert "'/api/v1/seasons/player-promises'" in document
+    assert 'name="resource_recovery"' in document
+    assert 'name="resource_medical"' in document
+    assert 'name="resource_sports_science"' in document
+    assert 'id="club-resource-summary"' in document
+    assert 'id="recruitment-fieldset"' in document
+    assert 'id="recruitment-summary"' in document
+    assert "function loadRecruitmentMarket" in document
+    assert "function recruitmentPayload" in document
+    assert "payload.plan.manager_recruitment=recruitmentPayload()" in document
+    assert "'/api/v1/recruitment-markets/'" in document
+    assert "function renderClubFinance" in document
+    assert "data.studio?.club_finance" in document
+    assert "currentRecruitmentMarket.available_budget" in document
+    assert "俱乐部财政与工资" in document
+    assert "财政为有界游戏积分账本" in document
+    assert "function renderLeagueEcosystem" in document
+    assert "data.studio?.league_ecosystem" in document
+    assert "renderPlayerDevelopment(data.studio?.player_development)" in document
+    assert "球员成长与生涯" in document
+    assert "renderPlayerLifecycle(data.studio?.player_lifecycle)" in document
+    assert "/api/v1/lifecycle-previews/" in document
+    assert "合同、退役与青训" in document
+    assert "renderGlobalPlayerMarket(data.studio?.player_market)" in document
+    assert "/api/v1/free-agent-markets/" in document
+    assert "/api/v1/scouting-reports" in document
+    assert "function scoutSelectedFreeAgent" in document
+    assert "renderScouting(data.studio?.scouting)" in document
+    assert "function renderScoutingOutcomes" in document
+    assert "renderScoutingOutcomes(data.studio?.scouting_outcomes)" in document
+    assert "签约结果与球探复盘" in document
+    assert 'id="sporting-director-fieldset"' in document
+    assert "'/api/v1/sporting-plans/'" in document
+    assert "function sportingDirectivePayload" in document
+    assert "review_sporting_plan" in document
+    assert "function renderSportingReview" in document
+    assert "data.studio?.sporting_reviews" in document
+    assert "populateSportingPlanWithoutContinuity" in document
+    assert "previous_strategy_review" in document
+    assert 'id="club-situation-fieldset"' in document
+    assert "function renderClubSituation" in document
+    assert "payload.decision.club_event_choice" in document
+    assert "payload.plan.manager_sporting_directive=sportingDirectivePayload()" in document
+    assert "同一计划同时约束续约、普通招募与自由签约" in document
+    assert "function renderSportingDirection" in document
+    assert "renderSportingDirection(data.studio?.season)" in document
+    assert "冻结体育总监计划" in document
+    season_form = document.index('<form id="season-form"')
+    season_form_end = document.index("</form>", season_form)
+    for control_id in (
+        'id="sporting-director-fieldset"', 'id="lifecycle-fieldset"',
+        'id="recruitment-fieldset"', 'id="free-agent-fieldset"',
+    ):
+        assert season_form < document.index(control_id) < season_form_end
+    assert "全局自由球员市场" in document
+    assert "动态联赛生态" in document
+    assert "查看各俱乐部决策与证据" in document
+    assert "AI 俱乐部使用可重放的游戏策略" in document
+    assert "function renderClubStrategyBriefing" in document
+    assert "function renderClubStrategies" in document
+    assert "season?.matchday_command_center?.club_strategy" in document
+    assert "data.studio?.season?.club_strategies" in document
+    assert "赛季身份与对手打法" in document
+    assert "俱乐部赛季身份" in document
+    assert "function syncClubResources" in document
+    assert "manager_resources:manager?resources:null" in document
+    assert "当场实力 +0" in document
+    assert 'id="manager-profile"' in document
+    assert 'id="manager-career-contract"' in document
+    assert 'id="season-history"' in document
+    assert 'id="season-history-summary"' in document
+    assert "function renderManagerCareer" in document
+    assert "function renderCareerContract" in document
+    assert "s?.manager_career" in document
+    assert "最近 ${career.history_scope?.retained_seasons" in document
+    assert "contract.same_club_allowed" in document
+    assert "seasonForm.dataset.startNext" in document
+    assert "s?.season_history||[]" in document
+    assert "s?.season_history_summary||{}" in document
+    assert 'id="season-standings"' in document
+    assert 'id="season-fixtures"' in document
+    assert 'id="manager-manual-lineup"' in document
+    assert 'id="manager-squad"' in document
+    assert "function renderManagerSquad" in document
+    assert "manualLineupPayload" in document
+    assert "renderSeason(s?.season" in document
+    assert "'/api/v1/seasons/next-matchday'" in document
+    assert 'id="pair-panel"' in document
+    assert 'id="pair-form"' in document
+    assert "configurePairedMatch(data.match_capabilities" in document
+    assert "'/api/v1/paired-matches'" in document
+    assert "task.kind==='paired_match'" in document
+    assert "配对对决完成，三层复盘已开放" in document
+    assert "认知模式含不受共享 seed 完全控制的供应商输出" in document
+    assert "安全恢复配对事务" in document
+    assert "resumeInterruptedTask(item.task_id" in document
+    assert "studio_pair_transaction_resume" in document
+    assert 'id="library-title"' in document
+    assert 'id="library-filter"' in document
+    assert 'id="library-list"' in document
+    assert "renderLibrary(data.evidence_library)" in document
+    assert ".innerHTML" not in document
+    assert "meta.textContent=" in document
     assert "recommended_gate_id" in document
     assert "dataset.actionState" in document
     assert "evidence-kit-download" in document
@@ -221,16 +440,861 @@ def test_match_route_validates_input_before_domain_execution(tmp_path):
     assert response["json"]["error"]["code"] == "same_team"
 
 
+def test_season_routes_create_and_idempotently_queue_next_matchday(
+    tmp_path, monkeypatch,
+):
+    class Workspace:
+        def create_season(self, plan):
+            assert plan.teams == ("A", "B", "C", "D")
+            return {"season_id": "season-0001", "next_matchday": 1, "revision": 0}
+
+        def season_status(self):
+            return {"season_id": "season-0001", "next_matchday": 1, "revision": 0}
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    created = _request(app, "POST", "/api/v1/seasons", {
+        "plan": {"teams": ["A", "B", "C", "D"], "legs": 1, "fast": True},
+    }, csrf=app.csrf_token)
+    assert created["status"].startswith("201")
+    first = _request(
+        app, "POST", "/api/v1/seasons/next-matchday", {},
+        csrf=app.csrf_token,
+    )
+    repeated = _request(
+        app, "POST", "/api/v1/seasons/next-matchday", {},
+        csrf=app.csrf_token,
+    )
+    assert first["status"].startswith("202")
+    assert repeated["status"].startswith("200")
+    assert first["json"]["task"]["task_id"] == repeated["json"]["task"]["task_id"]
+    assert first["json"]["task"]["kind"] == "season_matchday"
+
+
+def test_season_route_explicitly_starts_next_completed_season_with_objective(
+    tmp_path, monkeypatch,
+):
+    observed = {}
+
+    class Workspace:
+        def create_season(self, plan, *, replace=False):
+            observed["plan"] = plan
+            observed["replace"] = replace
+            return {"season_id": "season-0002", "next_matchday": 1}
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    response = _request(app, "POST", "/api/v1/seasons", {
+        "start_next": True,
+        "plan": {
+            "teams": ["A", "B", "C", "D"], "manager_team": "A",
+            "manager_objective": "points_target", "manager_points_target": 7,
+            "manager_resources": {
+                "recovery": 4, "medical": 1, "sports_science": 1,
+            },
+            "manager_recruitment": {
+                "market_id": "market-0002-deadbeefdead",
+                "moves": [{
+                    "candidate_id": "candidate-1",
+                    "outgoing_player_id": "player-1",
+                }],
+            },
+            "manager_sporting_directive": {
+                "schema_version": 1, "planning_id": "a" * 64,
+                "philosophy": "win_now", "risk_level": "low",
+                "priority_roles": ["CM", "ST"],
+            },
+            "manager_commitments": {
+                "schema_version": 1, "tactic_policy": "adaptive",
+                "rotation_policy": "trust_core",
+            },
+        },
+    }, csrf=app.csrf_token)
+
+    assert response["status"].startswith("201")
+    assert observed["replace"] is True
+    assert observed["plan"].manager_objective == "points_target"
+    assert observed["plan"].manager_points_target == 7
+    assert observed["plan"].manager_resources.recovery == 4
+    assert observed["plan"].manager_resources.medical == 1
+    assert observed["plan"].manager_resources.sports_science == 1
+    assert observed["plan"].manager_recruitment.market_id == (
+        "market-0002-deadbeefdead"
+    )
+    assert observed["plan"].manager_recruitment.moves[0].candidate_id == (
+        "candidate-1"
+    )
+    assert observed["plan"].manager_sporting_directive.philosophy == "win_now"
+    assert observed["plan"].manager_sporting_directive.risk_level == "low"
+    assert observed["plan"].manager_sporting_directive.priority_roles == (
+        "CM", "ST",
+    )
+    assert observed["plan"].manager_commitments.tactic_policy == "adaptive"
+    assert observed["plan"].manager_commitments.rotation_policy == "trust_core"
+
+    invalid = _request(app, "POST", "/api/v1/seasons", {
+        "start_next": "yes", "plan": {"teams": ["A", "B", "C", "D"]},
+    }, csrf=app.csrf_token)
+    assert invalid["status"].startswith("422")
+    assert invalid["json"]["error"]["code"] == "invalid_season"
+
+
+def test_recruitment_market_route_is_read_only_and_decodes_team(tmp_path, monkeypatch):
+    class Workspace:
+        def recruitment_market(self, team):
+            assert team == "A Team"
+            return {
+                "market_id": "market-0002-a", "team": team,
+                "budget": 8, "candidates": [], "outgoing_players": [],
+            }
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    response = _request(
+        app, path="/api/v1/recruitment-markets/A%20Team",
+    )
+
+    assert response["status"].startswith("200")
+    assert response["json"]["market"]["team"] == "A Team"
+    assert response["json"]["market"]["budget"] == 8
+
+
+def test_sporting_plan_route_is_read_only_and_decodes_team(tmp_path, monkeypatch):
+    class Workspace:
+        def sporting_plan(self, team):
+            assert team == "A Team"
+            return {
+                "planning_id": "a" * 64, "team": team,
+                "source_season_id": "season-0001",
+                "target_season_id": "season-0002",
+            }
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    response = _request(
+        ProductWebApp(tmp_path), path="/api/v1/sporting-plans/A%20Team",
+    )
+
+    assert response["status"].startswith("200")
+    assert response["json"]["plan"]["team"] == "A Team"
+    assert response["json"]["plan"]["planning_id"] == "a" * 64
+
+
+def test_season_route_exposes_board_contract_conflict(tmp_path, monkeypatch):
+    class Workspace:
+        def create_season(self, _plan, *, replace=False):
+            assert replace is True
+            raise ValueError("manager was dismissed and must change club")
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    response = _request(app, "POST", "/api/v1/seasons", {
+        "start_next": True,
+        "plan": {
+            "teams": ["A", "B", "C", "D"], "manager_team": "A",
+            "manager_objective": "top_half",
+        },
+    }, csrf=app.csrf_token)
+
+    assert response["status"].startswith("409")
+    assert response["json"]["error"] == {
+        "code": "season_transition_invalid",
+        "message": "manager was dismissed and must change club",
+    }
+
+
+def test_manager_decision_route_validates_and_persists_frozen_choice(
+    tmp_path, monkeypatch,
+):
+    observed = {}
+
+    class Workspace:
+        def set_manager_decision(
+            self, decision, *, fixture_id=None, expected_revision=None,
+            advice_adoption=None,
+        ):
+            observed.update(
+                decision=decision, fixture_id=fixture_id,
+                expected_revision=expected_revision,
+                advice_adoption=advice_adoption,
+            )
+            return {
+                "season_id": "season-0001", "revision": 4,
+                "next_matchday": 1,
+            }
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    accepted = _request(app, "POST", "/api/v1/seasons/decision", {
+        "fixture_id": "md01-fx01",
+        "expected_revision": 3,
+        "advice_adoption": {
+            "schema_version": 1,
+            "advice_identity": "a" * 64,
+            "intent": "reviewed_then_selected",
+        },
+        "decision": {
+            "team": "Brazil", "tactic": "gegenpress", "rotation": "rotate",
+            "club_event_choice": {
+                "schema_version": 1,
+                "event_id": "season-0001:md01-fx01:form_response",
+                "event_identity": "b" * 64,
+                "choice_id": "reset_approach",
+            },
+        },
+    }, csrf=app.csrf_token)
+    assert accepted["status"].startswith("200")
+    assert accepted["json"]["season"]["revision"] == 4
+    assert observed["fixture_id"] == "md01-fx01"
+    assert observed["expected_revision"] == 3
+    assert observed["advice_adoption"]["advice_identity"] == "a" * 64
+    assert observed["decision"].as_dict()["rotation"] == "rotate"
+    assert observed["decision"].club_event_choice.choice_id == "reset_approach"
+
+    rejected = _request(app, "POST", "/api/v1/seasons/decision", {
+        "fixture_id": "md01-fx01",
+        "decision": {
+            "team": "Brazil", "tactic": "imaginary", "rotation": "rotate",
+        },
+    }, csrf=app.csrf_token)
+    assert rejected["status"].startswith("422")
+    assert rejected["json"]["error"]["code"] == "invalid_manager_decision"
+
+
+def test_manager_decision_preview_route_is_csrf_protected_and_read_only(
+    tmp_path, monkeypatch,
+):
+    observed = {}
+
+    class Workspace:
+        def preview_manager_decision(self, decision, *, fixture_id=None):
+            observed.update(decision=decision, fixture_id=fixture_id)
+            return {
+                "schema_version": 1, "base_revision": 7,
+                "normalized_decision": decision.as_dict(),
+            }
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    payload = {
+        "fixture_id": "md01-fx01",
+        "decision": {
+            "team": "Brazil", "tactic": "balanced", "rotation": "strongest",
+        },
+    }
+    rejected = _request(
+        app, "POST", "/api/v1/seasons/decision-preview", payload,
+    )
+    assert rejected["status"].startswith("403")
+
+    accepted = _request(
+        app, "POST", "/api/v1/seasons/decision-preview", payload,
+        csrf=app.csrf_token,
+    )
+    assert accepted["status"].startswith("200")
+    assert accepted["json"]["preview"]["base_revision"] == 7
+    assert observed["fixture_id"] == "md01-fx01"
+    assert observed["decision"].tactic == "balanced"
+
+
+def test_manager_decision_advice_route_is_csrf_protected_and_strict(
+    tmp_path, monkeypatch,
+):
+    observed = {}
+
+    class Workspace:
+        def request_manager_decision_advice(self, *, fixture_id=None):
+            observed["fixture_id"] = fixture_id
+            return {
+                "schema_version": 1, "available": True,
+                "fixture_id": fixture_id, "advice_identity": "a" * 64,
+            }
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    payload = {"fixture_id": "md01-fx01"}
+    rejected = _request(
+        app, "POST", "/api/v1/seasons/decision-advice", payload,
+    )
+    assert rejected["status"].startswith("403")
+
+    accepted = _request(
+        app, "POST", "/api/v1/seasons/decision-advice", payload,
+        csrf=app.csrf_token,
+    )
+    assert accepted["status"].startswith("200")
+    assert accepted["json"]["advice"]["advice_identity"] == "a" * 64
+    assert observed["fixture_id"] == "md01-fx01"
+
+    extra = _request(
+        app, "POST", "/api/v1/seasons/decision-advice",
+        {**payload, "client_score": 1.0}, csrf=app.csrf_token,
+    )
+    assert extra["status"].startswith("422")
+    assert extra["json"]["error"]["code"] == "manager_advice_unavailable"
+
+
+def test_player_promise_route_parses_and_freezes_named_roles(tmp_path, monkeypatch):
+    observed = {}
+
+    class Workspace:
+        def set_player_role_promises(self, plan):
+            observed["plan"] = plan
+            return {
+                "season_id": "season-0001",
+                "player_role_promises": {"control": "manager"},
+            }
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    response = _request(app, "POST", "/api/v1/seasons/player-promises", {
+        "schema_version": 1,
+        "promises": [
+            {"player_id": "p-core", "role": "core"},
+            {"player_id": "p-young", "role": "development"},
+        ],
+    }, csrf=app.csrf_token)
+
+    assert response["status"].startswith("200")
+    assert [(row.player_id, row.role) for row in observed["plan"].promises] == [
+        ("p-core", "core"), ("p-young", "development"),
+    ]
+
+    invalid = _request(app, "POST", "/api/v1/seasons/player-promises", {
+        "schema_version": 1, "promises": [],
+    }, csrf=app.csrf_token)
+    assert invalid["status"].startswith("422")
+    assert invalid["json"]["error"]["code"] == "invalid_player_promises"
+
+
+def test_manager_decision_route_parses_manual_lineup_contract(tmp_path, monkeypatch):
+    observed = {}
+    starters = [f"p{index:02d}" for index in range(11)]
+
+    class Workspace:
+        def set_manager_decision(self, decision, *, fixture_id=None):
+            observed["decision"] = decision
+            return {"season_id": "season-0001", "revision": 2}
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    response = _request(app, "POST", "/api/v1/seasons/decision", {
+        "fixture_id": "md01-fx01",
+        "decision": {
+            "team": "Brazil", "tactic": "balanced", "rotation": "balanced",
+            "lineup": {
+                "starters": starters, "bench": ["p11", "p12"],
+                "source": "manual", "roster_fingerprint": "a" * 64,
+            },
+        },
+    }, csrf=app.csrf_token)
+    assert response["status"].startswith("200")
+    assert observed["decision"].lineup.starters == tuple(starters)
+    assert observed["decision"].lineup.bench == ("p11", "p12")
+
+
+def test_season_route_rejects_invalid_plan_before_workspace_load(tmp_path):
+    app = ProductWebApp(tmp_path)
+    response = _request(app, "POST", "/api/v1/seasons", {
+        "teams": ["A", "B", "C"],
+    }, csrf=app.csrf_token)
+    assert response["status"].startswith("422")
+    assert response["json"]["error"]["code"] == "invalid_season"
+
+
+def test_match_route_rejects_unknown_tactic_before_queueing(tmp_path):
+    app = ProductWebApp(tmp_path)
+    response = _request(app, "POST", "/api/v1/matches", {
+        "home": "Brazil", "away": "Argentina", "fast": True,
+        "plan": {
+            "experience": "tactical_lab",
+            "home_tactic": "imaginary",
+            "away_tactic": "team_identity",
+            "reuse_last_seed": False,
+        },
+    }, csrf=app.csrf_token)
+    assert response["status"].startswith("422")
+    assert response["json"]["error"]["code"] == "invalid_match_plan"
+    assert app.task_queue.list_tasks() == []
+
+
+def test_tactical_lab_queue_resolves_shared_seed_and_normalizes_plan(
+    tmp_path, monkeypatch,
+):
+    class FakeWorkspace:
+        config = type("Config", (), {"mode": "research"})()
+
+        def readiness(self):
+            return {"ready": True, "blockers": []}
+
+        def replay_seed(self, home, away):
+            assert (home, away) == ("Brazil", "Argentina")
+            return 77
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: FakeWorkspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    response = _request(app, "POST", "/api/v1/matches", {
+        "home": "Brazil", "away": "Argentina", "fast": True,
+        "plan": {
+            "experience": "tactical_lab",
+            "home_tactic": "gegenpress",
+            "away_tactic": "low_block_counter",
+            "reuse_last_seed": True,
+        },
+    }, csrf=app.csrf_token, idempotency_key="paired-tactic-run")
+    assert response["status"].startswith("202")
+    request = response["json"]["task"]["request"]
+    assert request["seed_override"] == 77
+    assert request["plan"]["score_path"] == "physics_official"
+    assert request["plan"]["claim_boundary"].startswith(
+        "single_run_descriptive_only"
+    )
+
+
+def test_task_web_adapter_exposes_only_safe_comparison_html_url(tmp_path):
+    app = ProductWebApp(tmp_path)
+    safe = app._task_for_web({"result": {
+        "comparison_dashboard": (
+            "outputs/studio/demo/matches/m2-paired-vs-m1.comparison.html"
+        ),
+    }})
+    assert safe["result"]["comparison_url"].endswith(".comparison.html")
+    unsafe = app._task_for_web({"result": {
+        "comparison_dashboard": "outputs/studio/../../private.html",
+    }})
+    assert "comparison_url" not in unsafe["result"]
+    assert app._safe_artifact_url("outputs/studio/demo/matches/m1.html") == (
+        "/artifacts/outputs/studio/demo/matches/m1.html"
+    )
+    assert app._safe_artifact_url("outputs/studio/../private.html") is None
+    pair = app._task_for_web({"result": {
+        "baseline_dashboard": "outputs/studio/demo/matches/b.html",
+        "treatment_dashboard": "outputs/studio/demo/matches/t.html",
+        "comparison_dashboard": "outputs/studio/demo/matches/p.comparison.html",
+    }})
+    assert pair["result"]["baseline_url"].endswith("/b.html")
+    assert pair["result"]["treatment_url"].endswith("/t.html")
+    assert pair["result"]["comparison_url"].endswith(".comparison.html")
+    escaped = app._task_for_web({"result": {
+        "baseline_dashboard": "outputs/studio/../../secret.html",
+        "treatment_dashboard": "javascript:alert(1)",
+    }})
+    assert "baseline_url" not in escaped["result"]
+    assert "treatment_url" not in escaped["result"]
+
+
+def _study_plan_payload(study_id="pressing-study"):
+    return {
+        "study_id": study_id,
+        "fixture": {"home": "Brazil", "away": "Argentina"},
+        "baseline": {
+            "home_tactic": "balanced", "away_tactic": "low_block_counter",
+        },
+        "treatment": {
+            "home_tactic": "gegenpress", "away_tactic": "low_block_counter",
+        },
+        "seeds": [101, 102, 103, 104],
+        "fast": True,
+    }
+
+
+def _paired_plan_payload(seed=77):
+    return {
+        "seed": seed,
+        "baseline": {
+            "home_tactic": "balanced", "away_tactic": "low_block_counter",
+        },
+        "treatment": {
+            "home_tactic": "gegenpress", "away_tactic": "low_block_counter",
+        },
+    }
+
+
+def test_paired_match_route_is_mode_gated_validated_and_idempotent(
+    tmp_path, monkeypatch,
+):
+    class FakeWorkspace:
+        config = type("Config", (), {"mode": "research"})()
+
+        def readiness(self):
+            return {"ready": True, "blockers": []}
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: FakeWorkspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    payload = {
+        "home": "Brazil", "away": "Argentina", "fast": True,
+        "plan": _paired_plan_payload(),
+    }
+    first = _request(
+        app, "POST", "/api/v1/paired-matches", payload,
+        csrf=app.csrf_token, idempotency_key="pair-web-1",
+    )
+    assert first["status"].startswith("202")
+    task = first["json"]["task"]
+    assert task["kind"] == "paired_match"
+    assert task["request"]["plan"]["seed"] == 77
+    assert task["request"]["plan"]["focus_side"] == "home"
+    duplicate = _request(
+        app, "POST", "/api/v1/paired-matches", payload,
+        csrf=app.csrf_token, idempotency_key="pair-web-1",
+    )
+    assert duplicate["status"].startswith("200")
+    assert duplicate["json"]["task"]["task_id"] == task["task_id"]
+
+    invalid = {**payload, "plan": _paired_plan_payload()}
+    invalid["plan"]["treatment"] = invalid["plan"]["baseline"]
+    rejected = _request(
+        app, "POST", "/api/v1/paired-matches", invalid,
+        csrf=app.csrf_token,
+    )
+    assert rejected["status"].startswith("422")
+    assert rejected["json"]["error"]["code"] == "invalid_paired_match"
+
+
+def test_paired_match_route_rejects_stable_mode(tmp_path, monkeypatch):
+    class StableWorkspace:
+        config = type("Config", (), {"mode": "stable"})()
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: StableWorkspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    response = _request(
+        app, "POST", "/api/v1/paired-matches", {
+            "home": "Brazil", "away": "Argentina", "fast": True,
+            "plan": _paired_plan_payload(),
+        }, csrf=app.csrf_token,
+    )
+    assert response["status"].startswith("422")
+    assert response["json"]["error"]["code"] == "invalid_paired_match"
+    assert app.task_queue.list_tasks() == []
+
+
+def test_interrupted_pair_requeue_api_preserves_task_identity_and_requires_csrf(
+    tmp_path,
+):
+    app = ProductWebApp(tmp_path)
+    task, _ = app.task_queue.submit_paired_match(
+        "Brazil", "Argentina", fast=True, plan=_paired_plan_payload(),
+    )
+    app.task_queue.claim_next("crashed-web-worker")
+    assert app.task_queue.recover_running(reason="process_restart") == 1
+    path = f"/api/v1/tasks/{task['task_id']}/requeue"
+    denied = _request(app, "POST", path, {
+        "reason": "studio_pair_transaction_resume",
+    })
+    assert denied["status"].startswith("403")
+    resumed = _request(app, "POST", path, {
+        "reason": "studio_pair_transaction_resume",
+    }, csrf=app.csrf_token)
+    assert resumed["status"].startswith("200")
+    assert resumed["json"]["task"]["task_id"] == task["task_id"]
+    assert resumed["json"]["task"]["state"] == "queued"
+    repeated = _request(app, "POST", path, {
+        "reason": "studio_pair_transaction_resume",
+    }, csrf=app.csrf_token)
+    assert repeated["status"].startswith("409")
+    assert repeated["json"]["error"]["code"] == "task_not_interrupted"
+
+
+def test_tactical_study_route_is_research_only_and_idempotent(
+    tmp_path, monkeypatch,
+):
+    class FakeWorkspace:
+        config = type("Config", (), {"mode": "research"})()
+
+        def readiness(self):
+            return {"ready": True, "blockers": []}
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: FakeWorkspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    first = _request(
+        app, "POST", "/api/v1/tactical-studies",
+        {"plan": _study_plan_payload()}, csrf=app.csrf_token,
+        idempotency_key="fixed-study-1",
+    )
+    assert first["status"].startswith("202")
+    assert first["json"]["task"]["kind"] == "tactical_study"
+    duplicate = _request(
+        app, "POST", "/api/v1/tactical-studies",
+        {"plan": _study_plan_payload()}, csrf=app.csrf_token,
+        idempotency_key="fixed-study-1",
+    )
+    assert duplicate["status"].startswith("200")
+    assert duplicate["json"]["created"] is False
+    assert duplicate["json"]["task"]["task_id"] == first["json"]["task"]["task_id"]
+
+
+def test_tactical_study_route_rejects_non_research_mode(tmp_path, monkeypatch):
+    class StableWorkspace:
+        config = type("Config", (), {"mode": "stable"})()
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: StableWorkspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    response = _request(
+        app, "POST", "/api/v1/tactical-studies",
+        {"plan": _study_plan_payload()}, csrf=app.csrf_token,
+    )
+    assert response["status"].startswith("422")
+    assert response["json"]["error"]["code"] == "study_requires_research_mode"
+    assert app.task_queue.list_tasks() == []
+
+
+def test_tactical_study_route_validates_plan_before_workspace_lookup(
+    tmp_path, monkeypatch,
+):
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load",
+        lambda _root: pytest.fail("invalid plan must not load workspace"),
+    )
+    app = ProductWebApp(tmp_path)
+    invalid = _study_plan_payload()
+    invalid["treatment"] = invalid["baseline"]
+    response = _request(
+        app, "POST", "/api/v1/tactical-studies", {"plan": invalid},
+        csrf=app.csrf_token,
+    )
+    assert response["status"].startswith("422")
+    assert response["json"]["error"]["code"] == "invalid_tactical_study"
+    assert app.task_queue.list_tasks() == []
+
+
+def test_tactical_study_task_never_discloses_interim_effects(
+    tmp_path, monkeypatch,
+):
+    plan = TacticalStudyPlan.from_payload(_study_plan_payload())
+    output_root = tmp_path / "outputs" / "studio" / "demo"
+    progress_path = output_root / "studies" / plan.study_id / "progress.json"
+    progress_path.parent.mkdir(parents=True)
+    progress_path.write_text(json.dumps({
+        "state": "running", "pairs_completed": 2, "fixed_pair_budget": 4,
+        "interim_effects_disclosed": False, "analysis": None,
+        "completed_pairs": [{"secret_effect": 99.0}],
+    }), encoding="utf-8")
+
+    class FakeWorkspace:
+        pass
+
+    workspace = FakeWorkspace()
+    workspace.output_root = output_root
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: workspace,
+    )
+    app = ProductWebApp(tmp_path)
+    task = app._task_for_web({
+        "kind": "tactical_study", "state": "running",
+        "request": {"plan": plan.as_dict()}, "result": None,
+    })
+    assert task["study_progress"] == {
+        "state": "running", "pairs_completed": 2, "fixed_pair_budget": 4,
+        "analysis_withheld": True,
+    }
+    assert "secret_effect" not in json.dumps(task)
+
+    progress_path.write_text(json.dumps({
+        "state": "running", "pairs_completed": 2, "fixed_pair_budget": 4,
+        "interim_effects_disclosed": False,
+        "analysis": {"primary_mean": 99.0},
+    }), encoding="utf-8")
+    invalid = app._task_for_web({
+        "kind": "tactical_study", "state": "running",
+        "request": {"plan": plan.as_dict()}, "result": None,
+    })
+    assert invalid["study_progress"] == {
+        "state": "invalid_progress", "analysis_withheld": True,
+    }
+    assert "primary_mean" not in json.dumps(invalid)
+
+
+def test_tactical_study_task_rejects_tampered_study_id_before_path_use(
+    tmp_path, monkeypatch,
+):
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load",
+        lambda _root: pytest.fail("invalid plan must fail before workspace lookup"),
+    )
+    task = ProductWebApp(tmp_path)._task_for_web({
+        "kind": "tactical_study", "state": "running",
+        "request": {"plan": {"study_id": "../../escape"}}, "result": None,
+    })
+    assert task["study_progress"] == {
+        "state": "invalid_progress", "analysis_withheld": True,
+    }
+
+
+def test_tactical_study_final_dashboard_url_is_html_and_workspace_scoped(tmp_path):
+    app = ProductWebApp(tmp_path)
+    safe = app._task_for_web({"result": {
+        "study_dashboard": "outputs/studio/demo/studies/s1/result.html",
+    }})
+    assert safe["result"]["study_url"].endswith("/studies/s1/result.html")
+    unsafe = app._task_for_web({"result": {
+        "study_dashboard": "outputs/studio/../../secret.html",
+    }})
+    assert "study_url" not in unsafe["result"]
+
+
+def test_studio_evidence_library_is_safe_bounded_and_effect_free(
+    tmp_path, monkeypatch,
+):
+    plan = TacticalStudyPlan.from_payload(_study_plan_payload())
+    output_root = tmp_path / "outputs/studio/demo"
+
+    class FakeWorkspace:
+        def __init__(self):
+            self.output_root = output_root
+
+        def status(self):
+            return {
+                "last_match": None,
+                "match_history_truncated": False,
+                "match_history": [{
+                    "match_id": "m-safe", "home": "<Home>", "away": "Away",
+                    "seed": 7, "fast": True,
+                    "score": {"home": 1, "away": 0},
+                    "integrity": "accepted", "experience": "tactical_lab",
+                    "home_tactic": "gegenpress",
+                    "away_tactic": "low_block_counter",
+                    "dashboard": "outputs/studio/demo/matches/m-safe.html",
+                    "comparison_dashboard": (
+                        "outputs/studio/demo/matches/m-safe.comparison.html"
+                    ),
+                    "secret": "must-not-cross-library-boundary",
+                }, {
+                    "match_id": "m-unsafe", "home": "A", "away": "B",
+                    "dashboard": "outputs/studio/../../secret.html",
+                    "comparison_dashboard": "javascript:alert(1)",
+                }],
+            }
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: FakeWorkspace(),
+    )
+    session_path = tmp_path / "data/persistence/product_session.json"
+    session_path.parent.mkdir(parents=True)
+    session_path.write_text("{}", encoding="utf-8")
+    app = ProductWebApp(tmp_path)
+    task = {
+        "task_id": "a" * 32, "kind": "tactical_study", "state": "completed",
+        "request": {"plan": plan.as_dict()},
+        "result": {
+            "study_dashboard": "outputs/studio/demo/studies/s/index.html",
+            "analysis": {"secret_interim_effect": 99},
+        },
+    }
+    pair_task = {
+        "task_id": "b" * 32, "kind": "paired_match", "state": "completed",
+        "request": {
+            "home": "Brazil", "away": "Argentina", "fast": True,
+            "plan": _paired_plan_payload(),
+        },
+        "result": {
+            "baseline_match_id": "m-base", "treatment_match_id": "m-treat",
+            "baseline_dashboard": "outputs/studio/demo/matches/base.html",
+            "treatment_dashboard": "outputs/studio/demo/matches/treat.html",
+            "comparison_dashboard": (
+                "outputs/studio/demo/matches/treat.comparison.html"
+            ),
+        },
+    }
+    monkeypatch.setattr(
+        app.task_queue, "list_tasks", lambda *, limit=50: [pair_task, task],
+    )
+    response = _request(app, path="/api/v1/studio")
+    library = response["json"]["evidence_library"]
+    assert response["status"].startswith("200")
+    assert len(library["matches"]) == 2
+    assert library["matches"][0]["dashboard_url"].endswith("m-safe.html")
+    assert library["matches"][0]["comparison_url"].endswith(
+        "m-safe.comparison.html"
+    )
+    assert library["matches"][1]["dashboard_url"] is None
+    assert library["matches"][1]["comparison_url"] is None
+    assert library["studies"][0]["study_url"].endswith("/studies/s/index.html")
+    assert library["pairs"][0]["seed"] == 77
+    assert library["pairs"][0]["focus_side"] == "home"
+    assert library["pairs"][0]["baseline_url"].endswith("/base.html")
+    assert library["pairs"][0]["treatment_url"].endswith("/treat.html")
+    assert library["pairs"][0]["comparison_url"].endswith(
+        "/treat.comparison.html"
+    )
+    serialized = json.dumps(library)
+    assert "must-not-cross-library-boundary" not in serialized
+    assert "secret_interim_effect" not in serialized
+    assert '"seeds"' not in serialized
+    assert "javascript:" not in serialized
+
+
+def test_archived_season_journal_links_remain_workspace_scoped(
+    tmp_path, monkeypatch,
+):
+    class FakeWorkspace:
+        output_root = tmp_path / "outputs/studio/demo"
+
+        def status(self):
+            return {
+                "last_match": None, "match_history": [], "season": None,
+                "season_history": [{
+                    "manager_profile": {"journal": [
+                        {"fixture_id": "safe", "dashboard": "outputs/studio/demo/matches/safe.html"},
+                        {"fixture_id": "unsafe", "dashboard": "outputs/studio/../../secret.html"},
+                    ]},
+                }],
+            }
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: FakeWorkspace(),
+    )
+    session = tmp_path / "data/persistence/product_session.json"
+    session.parent.mkdir(parents=True)
+    session.write_text("{}", encoding="utf-8")
+
+    payload = ProductWebApp(tmp_path)._studio_status()
+    journal = payload["studio"]["season_history"][0]["manager_profile"]["journal"]
+
+    assert journal[0]["dashboard_url"].endswith("/matches/safe.html")
+    assert "dashboard_url" not in journal[1]
+
+
 def test_match_route_queues_idempotently_then_returns_report_url(tmp_path, monkeypatch):
     dashboard = tmp_path / "outputs/studio/demo/matches/0001.html"
     dashboard.parent.mkdir(parents=True)
     dashboard.write_text("<html><body>report</body></html>", encoding="utf-8")
 
     class FakeWorkspace:
+        config = type("Config", (), {"mode": "research"})()
+
         def readiness(self):
             return {"ready": True, "blockers": []}
 
-        def run_match(self, home, away, *, fast):
+        def run_match(self, home, away, *, fast, plan, seed_override):
             return {
                 "match_id": "0001-brazil-vs-argentina",
                 "fixture": {"home": home, "away": away, "fast": fast},
@@ -240,6 +1304,9 @@ def test_match_route_queues_idempotently_then_returns_report_url(tmp_path, monke
                 "dashboard_path": str(dashboard),
                 "raw_summary": {"large": "must-not-cross-api-boundary"},
             }
+
+        def replay_seed(self, home, away):
+            return 17
 
     monkeypatch.setattr(
         "src.product.web.ProductWorkspace.load", lambda _root: FakeWorkspace(),

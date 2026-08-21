@@ -7,10 +7,14 @@ from src.product.web import ProductWebApp, create_product_web_server
 from src.product.recovery import ProductRecovery
 from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue, TaskConflict
 from src.product.telemetry import ProductTelemetry
+from src.product.season import SeasonPlan
+from src.product.season_commitments import SeasonCommitmentPlan
+from src.product.player_promises import PlayerPromisePlan, PlayerRolePromise
 
 __all__ = [
     "BackgroundMatchWorker", "PilotProtocol", "ProductControlPlane",
     "ProductTaskQueue", "ProductTelemetry", "ProductWorkspace", "TaskConflict",
-    "ProductRecovery", "ProductWebApp", "ProspectivePilot", "StudioConfig",
-    "create_product_web_server",
+    "PlayerPromisePlan", "PlayerRolePromise", "ProductRecovery", "ProductWebApp",
+    "ProspectivePilot", "StudioConfig",
+    "SeasonCommitmentPlan", "SeasonPlan", "create_product_web_server",
 ]

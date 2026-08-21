@@ -18,10 +18,10 @@ from scripts.verify_reproduction_release import (
 CI_WORKFLOW = Path(".github/workflows/ci.yml")
 
 
-def test_code_only_release_contract_is_honest_and_zero_compute():
+def test_preexecution_release_contract_fails_closed_after_execution():
     report = verify_reproduction_release()
-    assert report["passed"]
-    assert report["status"] == "passed_code_contract"
+    assert report["passed"] is False
+    assert report["status"] == "failed"
     assert report["release_ready"] is False
     assert (
         report["dependency_lock_level"]
@@ -29,7 +29,12 @@ def test_code_only_release_contract_is_honest_and_zero_compute():
     )
     assert report["known_external_source_count"] == 5
     assert report["archive_eligible_external_source_count"] == 1
-    assert all(report["checks"].values())
+    assert report["checks"]["paper_package_still_passes"] is False
+    failed = {key for key, value in report["checks"].items() if not value}
+    assert failed == {
+        "human_and_independent_validation_protocols_are_current",
+        "paper_package_still_passes",
+    }
     assert report["readiness"]["full_transitive_hash_lock"] is True
     assert report["readiness"]["runtime_direct_dependencies_match"] is True
     assert report["readiness"]["cross_platform_lock_matrix"] is True
@@ -58,12 +63,13 @@ def test_code_only_release_contract_is_honest_and_zero_compute():
 def test_release_verifier_is_a_standalone_cli():
     completed = subprocess.run(
         [sys.executable, "scripts/verify_reproduction_release.py"],
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
     report = json.loads(completed.stdout)
-    assert report["passed"] is True
+    assert completed.returncode == 1
+    assert report["passed"] is False
     assert report["release_ready"] is False
 
 

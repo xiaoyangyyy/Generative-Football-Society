@@ -18,11 +18,26 @@ def _request(telemetry, *, status=200, route="/api/v1/studio", duration=1.0, cod
 
 def test_route_template_removes_user_controlled_components():
     assert route_template("/api/v1/tasks/private-task") == "/api/v1/tasks/{task_id}"
+    assert route_template("/api/v1/tasks/private-task/requeue") == (
+        "/api/v1/tasks/{task_id}/requeue"
+    )
     assert route_template("/artifacts/outputs/private/team.html") == "/artifacts/{artifact}"
     assert route_template("/unknown/private") == "unmatched"
     assert route_template("/api/v1/studio") == "/api/v1/studio"
+    assert route_template("/api/v1/seasons/player-promises") == (
+        "/api/v1/seasons/player-promises"
+    )
+    assert route_template("/api/v1/seasons/decision-preview") == (
+        "/api/v1/seasons/decision-preview"
+    )
+    assert route_template("/api/v1/seasons/decision-advice") == (
+        "/api/v1/seasons/decision-advice"
+    )
     assert route_template("/api/v1/excellence/evidence-kit.zip") == (
         "/api/v1/excellence/evidence-kit.zip"
+    )
+    assert route_template("/api/v1/recruitment-markets/private-team") == (
+        "/api/v1/recruitment-markets/{team}"
     )
 
 

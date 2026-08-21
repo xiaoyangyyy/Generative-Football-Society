@@ -61,6 +61,7 @@ def maybe_apply_substitutions(
     sub_windows: tuple = DEFAULT_SUB_WINDOWS,
     max_subs_per_team: int = 5,
     subs_done: Optional[dict] = None,
+    disabled_team_ids: Optional[set[str]] = None,
 ) -> List[str]:
     """
     At configured minutes, swap tired on-pitch player for bench.
@@ -72,6 +73,8 @@ def maybe_apply_substitutions(
 
     for team in (state.home, state.away):
         tid = team.team_id
+        if tid in (disabled_team_ids or set()):
+            continue
         count = subs_done.get(tid, 0)
         if count >= max_subs_per_team:
             continue
@@ -103,6 +106,42 @@ def maybe_apply_substitutions(
         notes.append(f"{int(minute)}' SUB {on_p.name} on for {off_p.name} ({tid})")
 
     return notes
+
+
+def validate_explicit_substitution(team, off_player_id: str, on_player_id: str):
+    off_player = next(
+        (player for player in team.players if player.player_id == off_player_id),
+        None,
+    )
+    on_player = next(
+        (player for player in team.players if player.player_id == on_player_id),
+        None,
+    )
+    if off_player is None or on_player is None:
+        raise ValueError("planned_substitution_player_missing")
+    if not off_player.on_pitch:
+        raise ValueError("planned_off_player_not_on_pitch")
+    if on_player.on_pitch:
+        raise ValueError("planned_on_player_already_on_pitch")
+    if float(getattr(on_player, "availability", 1.0)) <= 0.2:
+        raise ValueError("planned_on_player_unavailable")
+    if (off_player.role == "GK") != (on_player.role == "GK"):
+        raise ValueError("planned_substitution_goalkeeper_role_mismatch")
+    return off_player, on_player
+
+
+def apply_explicit_substitution(
+    team, off_player, on_player, *, minute: float, tracker: PlayerMatchStatsTracker,
+) -> str:
+    _swap_players(
+        team, off_player, on_player,
+        attacks_high_x=team.attacks_high_x,
+        formation_key=team.formation_key,
+    )
+    tracker.record_substitution(
+        team.team_id, off_player.player_id, on_player.player_id, minute,
+    )
+    return f"SUB {on_player.name} on for {off_player.name}"
 
 
 def _swap_players(

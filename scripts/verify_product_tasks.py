@@ -31,7 +31,9 @@ def verify_product_tasks() -> dict:
         dashboard.write_text("<html></html>\n", encoding="utf-8")
 
         class VerificationWorkspace:
-            def run_match(self, home, away, *, fast):
+            def run_match(
+                self, home, away, *, fast, plan=None, seed_override=None,
+            ):
                 return {
                     "match_id": "verification-0001",
                     "fixture": {"home": home, "away": away, "fast": fast},

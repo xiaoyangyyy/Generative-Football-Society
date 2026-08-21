@@ -198,9 +198,10 @@ def _evaluate_action_candidates(
     return observation, candidates
 
 
-def _tactical_action_weights(preset_name: str) -> dict[str, float]:
-    """Translate a tactical vector into an auditable high-level policy mixture."""
-    preset = TACTICAL_PRESETS[resolve_tactical_preset(preset_name)]
+def _tactical_action_weights_from_vector(
+    preset: dict[str, float],
+) -> dict[str, float]:
+    """Translate one tactical vector into an auditable action mixture."""
     raw = {
         "hold": (
             0.08
@@ -225,6 +226,13 @@ def _tactical_action_weights(preset_name: str) -> dict[str, float]:
     }
     total = sum(raw.values())
     return {key: float(value / total) for key, value in raw.items()}
+
+
+def _tactical_action_weights(preset_name: str) -> dict[str, float]:
+    """Translate a named tactical preset into a high-level policy mixture."""
+    return _tactical_action_weights_from_vector(
+        TACTICAL_PRESETS[resolve_tactical_preset(preset_name)]
+    )
 
 
 def _condition_on_opponent_hypothesis(
@@ -327,6 +335,7 @@ def build_prematch_tactical_packet(
     candidate_presets: tuple[str, ...] = PREMATCH_TACTICAL_CANDIDATES,
     uncertainty_penalty: float = 0.25,
     opponent_belief: dict[str, Any] | None = None,
+    native_tactical_vector: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """Rank tactical policy mixtures using bounded world-model evidence."""
     if runtime is None:
@@ -339,8 +348,14 @@ def build_prematch_tactical_packet(
         }
     try:
         normalized = tuple(dict.fromkeys(
-            resolve_tactical_preset(name) for name in candidate_presets
+            "team_identity" if name == "team_identity"
+            else resolve_tactical_preset(name)
+            for name in candidate_presets
         ))
+        if "team_identity" in normalized and not isinstance(
+            native_tactical_vector, dict
+        ):
+            raise ValueError("team_identity requires a native tactical vector")
         observation, action_evidence = _evaluate_action_candidates(
             runtime, state, team_id, horizon_s=horizon_s,
             uncertainty_penalty=uncertainty_penalty,
@@ -386,7 +401,12 @@ def build_prematch_tactical_packet(
         )
         tactical_candidates = []
         for preset_name in normalized:
-            weights = _tactical_action_weights(preset_name)
+            vector = (
+                native_tactical_vector
+                if preset_name == "team_identity"
+                else TACTICAL_PRESETS[preset_name]
+            )
+            weights = _tactical_action_weights_from_vector(vector)
 
             def weighted(field: str) -> float:
                 return float(sum(
@@ -402,7 +422,6 @@ def build_prematch_tactical_packet(
                 ))
                 for event in ("retain", "turnover", "shot", "foul", "out")
             }
-            vector = TACTICAL_PRESETS[preset_name]
             fatigue_cost = float(np.clip(
                 0.55 * vector.get("pressing_intensity", 0.5)
                 + 0.25 * vector.get("tempo", 0.5)

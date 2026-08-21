@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.infrastructure import file_sha256  # noqa: E402
+from src.product.match_plan import MatchPlan  # noqa: E402
 from src.product.recovery import ProductRecovery  # noqa: E402
 from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue  # noqa: E402
 from src.product.workspace import ProductWorkspace, _atomic_json  # noqa: E402
@@ -270,6 +271,8 @@ def analyze_completed_run(
             "home": expected["home"],
             "away": expected["away"],
             "fast": True,
+            "plan": MatchPlan().as_dict(),
+            "seed_override": None,
         }
         and report.get("fixture") == {
             "home": expected["home"],

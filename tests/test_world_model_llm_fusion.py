@@ -354,6 +354,37 @@ def test_prematch_packet_ranks_auditable_tactical_policy_mixtures():
         assert 0.0 <= candidate["fatigue_cost_proxy"] <= 1.0
 
 
+def test_prematch_packet_compares_native_team_identity_without_aliasing_it():
+    native = {
+        "possession_orientation": 0.73, "low_block": 0.12,
+        "build_up_short": 0.81, "through_ball_bias": 0.44,
+        "cross_frequency": 0.23, "wing_focus": 0.31,
+        "verticality": 0.38, "risk_budget": 0.41,
+        "pressing_intensity": 0.57, "tempo": 0.49,
+        "counterpress": 0.52, "line_height": 0.58,
+        "compactness": 0.67,
+    }
+    packet = build_prematch_tactical_packet(
+        _Runtime(), _state(), "Home",
+        candidate_presets=("team_identity", "balanced", "gegenpress"),
+        native_tactical_vector=native,
+    )
+
+    assert packet["available"]
+    assert {row["tactical_preset"] for row in packet["candidates"]} == {
+        "team_identity", "balanced", "gegenpress",
+    }
+    identity = next(
+        row for row in packet["candidates"]
+        if row["tactical_preset"] == "team_identity"
+    )
+    balanced = next(
+        row for row in packet["candidates"]
+        if row["tactical_preset"] == "balanced"
+    )
+    assert identity["policy_action_weights"] != balanced["policy_action_weights"]
+
+
 def test_prematch_packet_closes_quality_gate_without_model_confidence():
     packet = build_prematch_tactical_packet(
         _Runtime(confidence=0.0), _state(), "Home",

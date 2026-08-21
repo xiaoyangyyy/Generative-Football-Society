@@ -14,11 +14,14 @@ from typing import Any, Callable
 
 from src.infrastructure import FileLease
 from src.product.telemetry import ProductTelemetry
+from src.product.match_plan import MatchPlan, PairedMatchPlan
+from src.product.tactical_study import TacticalStudyPlan
 from src.product.workspace import ProductWorkspace, _atomic_json, _now
 
 
 TASK_SCHEMA_VERSION = 1
 TASK_STATES = {"queued", "running", "completed", "failed", "interrupted"}
+TASK_KINDS = {"match", "paired_match", "tactical_study", "season_matchday"}
 TERMINAL_TASK_STATES = {"completed", "failed", "interrupted"}
 MAX_RETAINED_TASKS = 1000
 PRUNE_TO_TASKS = 900
@@ -70,6 +73,7 @@ class ProductTaskQueue:
             raise ValueError("invalid product task queue")
         if any(
             not isinstance(task, dict) or task.get("state") not in TASK_STATES
+            or task.get("kind") not in TASK_KINDS
             for task in tasks
         ):
             raise ValueError("invalid product task record")
@@ -95,6 +99,8 @@ class ProductTaskQueue:
 
     def submit_match(
         self, home: str, away: str, *, fast: bool,
+        plan: MatchPlan | dict[str, Any] | None = None,
+        seed_override: int | None = None,
         idempotency_key: str = "",
     ) -> tuple[dict[str, Any], bool]:
         if (
@@ -112,14 +118,30 @@ class ProductTaskQueue:
             raise ValueError("home and away teams must differ")
         if not isinstance(fast, bool):
             raise ValueError("fast must be boolean")
+        normalized_plan = (
+            plan if isinstance(plan, MatchPlan) else MatchPlan.from_payload(plan)
+        )
+        if (
+            seed_override is not None
+            and (
+                isinstance(seed_override, bool)
+                or not isinstance(seed_override, int)
+                or not 0 <= seed_override <= 2**31 - 1
+            )
+        ):
+            raise ValueError("seed_override must be a 32-bit non-negative integer")
+        normalized_request = {
+            "home": home, "away": away, "fast": fast,
+            "plan": normalized_plan.as_dict(),
+            "seed_override": seed_override,
+        }
         idempotency_hash = self._idempotency_hash(idempotency_key)
         with FileLease(self.lease_path, timeout=5.0):
             payload = self._load()
             if idempotency_hash:
                 for task in payload["tasks"]:
                     if task.get("idempotency_hash") == idempotency_hash:
-                        expected = {"home": home, "away": away, "fast": fast}
-                        if task.get("request") != expected:
+                        if task.get("request") != normalized_request:
                             raise TaskConflict(
                                 "idempotency key was already used for a different match",
                             )
@@ -153,7 +175,7 @@ class ProductTaskQueue:
                 "created_at": _now(),
                 "updated_at": _now(),
                 "attempt": 0,
-                "request": {"home": home, "away": away, "fast": bool(fast)},
+                "request": normalized_request,
                 "idempotency_hash": idempotency_hash,
             }
             payload["tasks"].append(task)
@@ -161,6 +183,203 @@ class ProductTaskQueue:
             public = _public_task(task)
             self.telemetry.try_record(
                 "task_submitted", task_id=public["task_id"], created=True, fast=fast,
+            )
+            return public, True
+
+    def submit_season_matchday(
+        self, *, season_id: str, matchday: int, season_revision: int,
+        idempotency_key: str = "",
+    ) -> tuple[dict[str, Any], bool]:
+        if not isinstance(season_id, str) or not season_id.strip():
+            raise ValueError("invalid season_id")
+        if isinstance(matchday, bool) or not isinstance(matchday, int) or matchday < 1:
+            raise ValueError("invalid matchday")
+        if isinstance(season_revision, bool) or not isinstance(season_revision, int) or season_revision < 0:
+            raise ValueError("invalid season_revision")
+        request = {
+            "season_id": season_id.strip(), "matchday": matchday,
+            "season_revision": season_revision,
+        }
+        idempotency_hash = self._idempotency_hash(idempotency_key)
+        with FileLease(self.lease_path, timeout=5.0):
+            payload = self._load()
+            if idempotency_hash:
+                for task in payload["tasks"]:
+                    if task.get("idempotency_hash") != idempotency_hash:
+                        continue
+                    if task.get("kind") != "season_matchday" or task.get("request") != request:
+                        raise TaskConflict(
+                            "idempotency key was already used for a different matchday"
+                        )
+                    return _public_task(task), False
+            if len(payload["tasks"]) >= MAX_RETAINED_TASKS:
+                removable = sum(
+                    task.get("state") in TERMINAL_TASK_STATES
+                    for task in payload["tasks"]
+                )
+                remove_count = min(
+                    removable, len(payload["tasks"]) - PRUNE_TO_TASKS,
+                )
+                retained = []
+                for task in payload["tasks"]:
+                    if remove_count and task.get("state") in TERMINAL_TASK_STATES:
+                        remove_count -= 1
+                        continue
+                    retained.append(task)
+                payload["tasks"] = retained
+            if len(payload["tasks"]) >= MAX_RETAINED_TASKS:
+                raise RuntimeError("product task queue is full")
+            task = {
+                "task_id": uuid.uuid4().hex,
+                "kind": "season_matchday", "state": "queued",
+                "created_at": _now(), "updated_at": _now(), "attempt": 0,
+                "request": request, "idempotency_hash": idempotency_hash,
+            }
+            payload["tasks"].append(task)
+            self._write(payload)
+            public = _public_task(task)
+            self.telemetry.try_record(
+                "task_submitted", task_id=public["task_id"], created=True,
+            )
+            return public, True
+
+    def submit_tactical_study(
+        self, plan: TacticalStudyPlan | dict[str, Any], *,
+        idempotency_key: str = "",
+    ) -> tuple[dict[str, Any], bool]:
+        normalized = (
+            plan if isinstance(plan, TacticalStudyPlan)
+            else TacticalStudyPlan.from_payload(plan)
+        )
+        request = {"plan": normalized.as_dict()}
+        idempotency_hash = self._idempotency_hash(idempotency_key)
+        with FileLease(self.lease_path, timeout=5.0):
+            payload = self._load()
+            if idempotency_hash:
+                for task in payload["tasks"]:
+                    if task.get("idempotency_hash") != idempotency_hash:
+                        continue
+                    if task.get("kind") != "tactical_study" or task.get(
+                        "request"
+                    ) != request:
+                        raise TaskConflict(
+                            "idempotency key was already used for a different study"
+                        )
+                    public = _public_task(task)
+                    self.telemetry.try_record(
+                        "task_submitted", task_id=public["task_id"],
+                        created=False, fast=normalized.fast,
+                    )
+                    return public, False
+            if len(payload["tasks"]) >= MAX_RETAINED_TASKS:
+                removable = sum(
+                    task.get("state") in TERMINAL_TASK_STATES
+                    for task in payload["tasks"]
+                )
+                remove_count = min(
+                    removable, len(payload["tasks"]) - PRUNE_TO_TASKS,
+                )
+                retained = []
+                for task in payload["tasks"]:
+                    if remove_count and task.get("state") in TERMINAL_TASK_STATES:
+                        remove_count -= 1
+                        continue
+                    retained.append(task)
+                payload["tasks"] = retained
+            if len(payload["tasks"]) >= MAX_RETAINED_TASKS:
+                raise RuntimeError("product task queue is full")
+            task = {
+                "task_id": uuid.uuid4().hex,
+                "kind": "tactical_study",
+                "state": "queued",
+                "created_at": _now(), "updated_at": _now(), "attempt": 0,
+                "request": request,
+                "idempotency_hash": idempotency_hash,
+            }
+            payload["tasks"].append(task)
+            self._write(payload)
+            public = _public_task(task)
+            self.telemetry.try_record(
+                "task_submitted", task_id=public["task_id"],
+                created=True, fast=normalized.fast,
+            )
+            return public, True
+
+    def submit_paired_match(
+        self, home: str, away: str, *, fast: bool,
+        plan: PairedMatchPlan | dict[str, Any], idempotency_key: str = "",
+    ) -> tuple[dict[str, Any], bool]:
+        if (
+            not isinstance(home, str) or not home.strip() or len(home.strip()) > 80
+            or any(ord(char) < 32 for char in home)
+        ):
+            raise ValueError("invalid home team")
+        if (
+            not isinstance(away, str) or not away.strip() or len(away.strip()) > 80
+            or any(ord(char) < 32 for char in away)
+        ):
+            raise ValueError("invalid away team")
+        home, away = home.strip(), away.strip()
+        if home.casefold() == away.casefold():
+            raise ValueError("home and away teams must differ")
+        if not isinstance(fast, bool):
+            raise ValueError("fast must be boolean")
+        normalized = (
+            plan if isinstance(plan, PairedMatchPlan)
+            else PairedMatchPlan.from_payload(plan)
+        )
+        request = {
+            "home": home, "away": away, "fast": fast,
+            "plan": normalized.as_dict(),
+        }
+        idempotency_hash = self._idempotency_hash(idempotency_key)
+        with FileLease(self.lease_path, timeout=5.0):
+            payload = self._load()
+            if idempotency_hash:
+                for task in payload["tasks"]:
+                    if task.get("idempotency_hash") != idempotency_hash:
+                        continue
+                    if task.get("kind") != "paired_match" or task.get(
+                        "request"
+                    ) != request:
+                        raise TaskConflict(
+                            "idempotency key was already used for a different pair"
+                        )
+                    public = _public_task(task)
+                    self.telemetry.try_record(
+                        "task_submitted", task_id=public["task_id"],
+                        created=False, fast=fast,
+                    )
+                    return public, False
+            if len(payload["tasks"]) >= MAX_RETAINED_TASKS:
+                removable = sum(
+                    task.get("state") in TERMINAL_TASK_STATES
+                    for task in payload["tasks"]
+                )
+                remove_count = min(
+                    removable, len(payload["tasks"]) - PRUNE_TO_TASKS,
+                )
+                retained = []
+                for task in payload["tasks"]:
+                    if remove_count and task.get("state") in TERMINAL_TASK_STATES:
+                        remove_count -= 1
+                        continue
+                    retained.append(task)
+                payload["tasks"] = retained
+            if len(payload["tasks"]) >= MAX_RETAINED_TASKS:
+                raise RuntimeError("product task queue is full")
+            task = {
+                "task_id": uuid.uuid4().hex, "kind": "paired_match",
+                "state": "queued", "created_at": _now(),
+                "updated_at": _now(), "attempt": 0,
+                "request": request, "idempotency_hash": idempotency_hash,
+            }
+            payload["tasks"].append(task)
+            self._write(payload)
+            public = _public_task(task)
+            self.telemetry.try_record(
+                "task_submitted", task_id=public["task_id"],
+                created=True, fast=fast,
             )
             return public, True
 
@@ -328,17 +547,95 @@ class BackgroundMatchWorker:
             return False
         try:
             request = task["request"]
-            report = self.workspace_loader(self.queue.root).run_match(
-                str(request["home"]), str(request["away"]), fast=bool(request["fast"]),
-            )
-            result = {
-                "match_id": report["match_id"],
-                "fixture": report["fixture"],
-                "result": report["result"],
-                "integrity": report["integrity"],
-                "report": self._relative(self.queue.root, report["report_path"]),
-                "dashboard": self._relative(self.queue.root, report["dashboard_path"]),
-            }
+            workspace = self.workspace_loader(self.queue.root)
+            if task.get("kind") == "tactical_study":
+                from src.product.tactical_study import execute_tactical_study
+
+                plan = TacticalStudyPlan.from_payload(request["plan"])
+                study = execute_tactical_study(workspace, plan)
+                result = {
+                    "study_id": plan.study_id,
+                    "status": study["status"],
+                    "study_result": self._relative(
+                        self.queue.root, study["result_path"],
+                    ),
+                    "study_dashboard": self._relative(
+                        self.queue.root, study["dashboard_path"],
+                    ),
+                }
+            elif task.get("kind") == "season_matchday":
+                season = workspace.play_next_matchday(
+                    expected_season_id=str(request["season_id"]),
+                    expected_matchday=int(request["matchday"]),
+                    expected_revision=int(request["season_revision"]),
+                )
+                result = {
+                    "season_id": season["season_id"],
+                    "completed_matchday": int(request["matchday"]),
+                    "next_matchday": season["next_matchday"],
+                    "progress": season["progress"],
+                    "state": season["state"],
+                }
+            elif task.get("kind") == "paired_match":
+                plan = PairedMatchPlan.from_payload(request["plan"])
+                plan.validate_for_mode(workspace.config.mode)
+                baseline, treatment = workspace.run_paired_matches(
+                    str(request["home"]), str(request["away"]),
+                    fast=bool(request["fast"]),
+                    baseline_plan=plan.baseline_plan(),
+                    treatment_plan=plan.treatment_plan(), seed=plan.seed,
+                    transaction_id=str(task["task_id"]),
+                )
+                if not treatment.get("comparison_dashboard_path"):
+                    raise RuntimeError("paired match did not produce a comparison")
+                result = {
+                    "pair_id": (
+                        f"{treatment['match_id']}-paired-vs-"
+                        f"{baseline['match_id']}"
+                    ),
+                    "fixture": treatment["fixture"],
+                    "baseline_match_id": baseline["match_id"],
+                    "treatment_match_id": treatment["match_id"],
+                    "baseline_dashboard": self._relative(
+                        self.queue.root, baseline["dashboard_path"],
+                    ),
+                    "treatment_dashboard": self._relative(
+                        self.queue.root, treatment["dashboard_path"],
+                    ),
+                    "comparison": self._relative(
+                        self.queue.root, treatment["comparison_path"],
+                    ),
+                    "comparison_dashboard": self._relative(
+                        self.queue.root,
+                        treatment["comparison_dashboard_path"],
+                    ),
+                }
+            else:
+                report = workspace.run_match(
+                    str(request["home"]), str(request["away"]),
+                    fast=bool(request["fast"]),
+                    plan=MatchPlan.from_payload(request.get("plan")),
+                    seed_override=request.get("seed_override"),
+                )
+                result = {
+                    "match_id": report["match_id"],
+                    "fixture": report["fixture"],
+                    "result": report["result"],
+                    "integrity": report["integrity"],
+                    "report": self._relative(
+                        self.queue.root, report["report_path"],
+                    ),
+                    "dashboard": self._relative(
+                        self.queue.root, report["dashboard_path"],
+                    ),
+                }
+                if report.get("comparison_dashboard_path"):
+                    result["comparison"] = self._relative(
+                        self.queue.root, report["comparison_path"],
+                    )
+                    result["comparison_dashboard"] = self._relative(
+                        self.queue.root, report["comparison_dashboard_path"],
+                    )
             self.queue.complete(task["task_id"], self.worker_id, result)
         except Exception as exc:
             try:

@@ -278,15 +278,15 @@ def _review_fixture(tmp_path):
     }
 
 
-def test_independent_reproduction_protocol_is_valid_but_not_ready():
+def test_independent_reproduction_waits_only_for_remaining_prerequisites():
     report = protocol_report()
     assert report["passed"] is True
     assert report["ready_to_start"] is False
     assert report["review_available"] is False
-    assert report["prerequisite_checks"]["confirmatory_decision_is_complete"] is False
+    assert report["prerequisite_checks"]["confirmatory_decision_is_complete"] is True
     assert report["prerequisite_checks"][
         "academic_replication_decision_is_complete"
-    ] is False
+    ] is True
     assert report["prerequisite_checks"]["container_runtime_gate_passed"] is False
     assert report["runs_executed"] == 0
     assert report["training_executed"] is False

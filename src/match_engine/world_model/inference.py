@@ -72,6 +72,10 @@ class WorldModelRuntime:
         ).hexdigest()[:16]
         self._hidden: Optional[np.ndarray] = None
         self.last_uncertainty = 1.0
+        # Decision uncertainty excludes validation quality.  Validation is a
+        # hard authorization gate; folding it into every per-action confidence
+        # term made an authorized head effectively inert at sampling time.
+        self.last_decision_uncertainty = 1.0
         version = int(getattr(model, "checkpoint_version", 2))
         validation = self.meta.get("validation", {}) if isinstance(self.meta, dict) else {}
         if version < 4:
@@ -238,6 +242,10 @@ class WorldModelRuntime:
                 0.50,
             ))
             base_source = str(out.uncertainty_source)
+        self.last_decision_uncertainty = compose_uncertainty(
+            float(np.clip(2.0 * model_epistemic, 0.0, 1.0)),
+            aleatoric,
+        )
         epistemic = float(np.clip(
             max(quality_uncertainty, 2.0 * model_epistemic), 0.0, 1.0,
         ))
@@ -258,17 +266,38 @@ class WorldModelRuntime:
         return out
 
     def planner_confidence(self, obs: np.ndarray, kind: str = "general") -> float:
+        authority = self.planner_authority(obs, kind=kind)
+        if not authority["authorized"]:
+            return 0.0
+        return float(authority["validation_quality"] * authority["decision_confidence"])
+
+    def planner_authority(self, obs: np.ndarray, kind: str = "general") -> dict:
+        """Separate checkpoint authorization from state-specific authority.
+
+        Validation quality is used once, as a hard release gate.  Observation
+        coverage and online calibration then determine how much of the bounded
+        action-policy budget may be used for this decision.
+        """
         coverage = observation_coverage(obs)
         quality = self.base_quality
         if kind == "pass":
             quality = self.pass_quality
         elif kind == "shot":
             quality = self.shot_quality
-        confidence = quality * (0.25 + 0.75 * coverage)
-        if confidence < float(self.cfg.min_planner_quality):
-            return 0.0
-        confidence *= self.online_calibrator.trust_factor(kind)
-        return float(np.clip(confidence, 0.0, 1.0))
+        threshold = float(self.cfg.min_planner_quality)
+        authorized = bool(quality >= threshold)
+        trust = float(np.clip(self.online_calibrator.trust_factor(kind), 0.0, 1.0))
+        decision_confidence = float(np.clip(
+            (0.25 + 0.75 * coverage) * trust, 0.0, 1.0,
+        )) if authorized else 0.0
+        return {
+            "authorized": authorized,
+            "validation_quality": float(quality),
+            "minimum_validation_quality": threshold,
+            "observation_coverage": float(coverage),
+            "online_trust": trust,
+            "decision_confidence": decision_confidence,
+        }
 
     def observe_transition(
         self,

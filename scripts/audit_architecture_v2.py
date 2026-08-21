@@ -12,8 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.data_engine.dataset_registry import write_json_atomic
-from src.infrastructure import (
+from src.data_engine.dataset_registry import write_json_atomic  # noqa: E402
+from src.infrastructure import (  # noqa: E402
     file_sha256, portable_text_hash_matches, verify_artifact_manifest,
 )
 
@@ -83,6 +83,42 @@ def main() -> int:
     ensure = (ROOT / "scripts/ensure_world_model.py").read_text(encoding="utf-8")
     job = (ROOT / "src/training/job.py").read_text(encoding="utf-8")
     workspace = (ROOT / "src/product/workspace.py").read_text(encoding="utf-8")
+    web = (ROOT / "src/product/web.py").read_text(encoding="utf-8")
+    decision_ledger = (
+        ROOT / "src/product/decision_ledger.py"
+    ).read_text(encoding="utf-8")
+    world_state_evidence = (
+        ROOT / "src/product/world_state_evidence.py"
+    ).read_text(encoding="utf-8")
+    decision_advice = (
+        ROOT / "src/product/decision_advice.py"
+    ).read_text(encoding="utf-8")
+    manager_advisor_study = (
+        ROOT / "scripts/manager_advisor_study.py"
+    ).read_text(encoding="utf-8")
+    manager_advisor_protocol = _read(
+        "data/evaluation/manager_advisor_protocol_v1.json"
+    )
+    action_adoption_study = (
+        ROOT / "scripts/action_adoption_study.py"
+    ).read_text(encoding="utf-8")
+    action_adoption_protocol = _read(
+        "data/evaluation/action_adoption_protocol_v1.json"
+    )
+    manager_intelligence = (
+        ROOT / "src/product/manager_intelligence.py"
+    ).read_text(encoding="utf-8")
+    match_micro_runner = (
+        ROOT / "src/match_engine/match_micro_runner.py"
+    ).read_text(encoding="utf-8")
+    wm_decision_support = (
+        ROOT / "src/match_engine/world_model/decision_support.py"
+    ).read_text(encoding="utf-8")
+    agent = (ROOT / "src/simulation/agent.py").read_text(encoding="utf-8")
+    world_runner = (
+        ROOT / "src/simulation/world_cup_runner.py"
+    ).read_text(encoding="utf-8")
+    season = (ROOT / "src/product/season.py").read_text(encoding="utf-8")
     cli = (ROOT / "src/cli.py").read_text(encoding="utf-8")
     formal_runner = (
         ROOT / "scripts/run_formal_experiment.py"
@@ -93,6 +129,10 @@ def main() -> int:
     wm_inference = (
         ROOT / "src/match_engine/world_model/inference.py"
     ).read_text(encoding="utf-8")
+    manager_advice_request = workspace[
+        workspace.index("def request_manager_decision_advice("):
+        workspace.index("def _generate_manager_decision_advice_packet(")
+    ]
 
     registry = _read("data/training/entrypoints.json")
     discovered_trainers = {
@@ -167,8 +207,312 @@ def main() -> int:
             "def workflow(" in workspace
             and "def cmd_studio_run(" in cli
             and all(state in workspace for state in (
-                '"blocked"', '"ready_to_run"', '"running"', '"review"',
+                '"blocked"', '"ready_to_start_season"', '"running"',
+                '"season_setup"', '"season_decision"',
+                '"season_matchday_ready"', '"season_planning"', '"review"',
             ))
+            and all(action in workspace for action in (
+                '"start_season"', '"freeze_player_promises"',
+                '"submit_manager_decision"', '"advance_season_matchday"',
+                '"review_sporting_plan"',
+            ))
+        ),
+        "studio_progressively_discloses_product_areas": (
+            all(token in web for token in (
+                'data-workspace-view="career"',
+                'data-workspace-view="lab"',
+                'data-workspace-view="evidence"',
+                'data-workspace-view="operations"',
+                "function applyWorkspaceArea(",
+                "function workflowWorkspaceArea(",
+                "function renderWorkspaceAreas(",
+                "workspaceAreaExplicit",
+                "workflowAction._area=workflowAreaByAction[action]",
+            ))
+            and ".workspace-area-hidden { display:none!important }" in web
+            and "innerHTML" not in web
+        ),
+        "studio_manager_journey_is_state_derived_and_unified": (
+            all(token in web for token in (
+                'id="manager-product-journey"',
+                "function renderManagerProductJourney(",
+                "season?.matchday_command_center",
+                "renderUnifiedWorkflowWithoutManagerJourney",
+                "item.dataset.stage=id",
+                "item.dataset.status=status",
+            ))
+            and "innerHTML" not in web
+        ),
+        "action_adoption_smoke_is_four_arm_and_zero_training": (
+            all(token in action_adoption_study for token in (
+                'SMOKE_ARM_IDS = (',
+                '"M0_no_advisor"',
+                '"C1_rule_fallback"',
+                '"M1_predict_only"',
+                '"M1_action_policy"',
+                "def smoke(",
+                '"formal_progress_modified": False',
+                '"training_executed": False',
+                '"provider_calls_made": False',
+                "def export_analysis_artifacts(",
+                'actions.add_argument("--smoke"',
+            ))
+            and action_adoption_protocol.get("state")
+            == "preregistered_not_executed"
+            and set(action_adoption_protocol.get("outputs") or {}) == {
+                "progress", "decision", "rows_csv", "summary_markdown", "smoke",
+            }
+            and action_adoption_protocol.get("current_execution", {}).get(
+                "runs_executed"
+            ) == 0
+        ),
+        "studio_previews_authoritative_decision_effects_without_persistence": (
+            workspace.count("self._prepare_manager_decision(") >= 2
+            and "def preview_manager_decision(" in workspace
+            and "season = copy.deepcopy(source)" in workspace
+            and "_atomic_json(self.session_path, session)" not in workspace[
+                workspace.index("def preview_manager_decision("):
+                workspace.index("def request_manager_decision_advice(")
+            ]
+            and all(token in web for token in (
+                'path == "/api/v1/seasons/decision-preview"',
+                "function managerDecisionPayload(includeRevision=false)",
+                "function refreshManagerDecisionPreview()",
+                "++managerPreviewSequence",
+                "payload.expected_revision=managerPreviewBaseRevision",
+                "不预测比分、胜率",
+            ))
+        ),
+        "studio_replays_manager_decision_lifecycle_without_second_state": (
+            "def build_manager_decision_ledger(" in decision_ledger
+            and "manager_season_profile(state)" in decision_ledger
+            and "commitment_progress_from_evidence(" in decision_ledger
+            and "player_promise_progress(" in decision_ledger
+            and "execution_identity_or_boundary_mismatch" in decision_ledger
+            and "payload[\"entry_identity\"] = _identity(payload)" in decision_ledger
+            and "ledger[\"ledger_identity\"] = _identity(ledger)" in decision_ledger
+            and "per_fixture_persisted_state_snapshot_not_retained" in decision_ledger
+            and "build_manager_decision_ledger(" in workspace
+            and "live_window: int = 8" in workspace
+            and all(token in web for token in (
+                'id="manager-decision-ledger"',
+                "function renderManagerDecisionLedger(season)",
+                "单场赛果不证明决策效果",
+            ))
+        ),
+        "managed_fixtures_bind_three_phase_world_state_evidence": (
+            all(token in world_state_evidence for token in (
+                "def capture_world_state(",
+                "def build_fixture_world_state_transition(",
+                "def validate_fixture_world_state_transition(",
+                '"before_match":', '"after_match":', '"after_recovery":',
+                "expected = build_fixture_world_state_transition(",
+                "len(players) > 128",
+                "deterministic_team_baseline",
+                "deterministic_roster_baseline",
+                "persisted_carryover",
+            ))
+            and all(token in workspace for token in (
+                "decision is not None",
+                '"world_state_before"',
+                '"world_state_transition"',
+                "after_recovery = capture_world_state(",
+                "validate_fixture_world_state_transition(",
+            ))
+            and all(token in season for token in (
+                "validate_team_state_snapshot(before_state[team], team=team)",
+                "validate_fixture_world_state_transition(",
+                "fixture recovery-state evidence is inconsistent",
+                '"world_state_transition": copy.deepcopy(',
+            ))
+            and "persistent_team_state_delta" in decision_ledger
+            and all(token in web for token in (
+                "世界状态：比赛后疲劳",
+                "比赛日恢复尚未结算",
+                "伤停为模拟状态",
+            ))
+        ),
+        "manager_action_adoption_uses_identity_bound_world_model_advice": (
+            all(token in decision_advice for token in (
+                "def build_manager_decision_advice(",
+                "def validate_manager_decision_advice(",
+                "def build_manager_advice_adoption(",
+                "every playable tactic once",
+                'runtime_signature != f"sha256:{checkpoint_sha256}"',
+                "recommendation replay mismatch",
+                "adopted world-model recommendation does not match tactic",
+            ))
+            and all(token in wm_decision_support for token in (
+                '"team_identity" if name == "team_identity"',
+                "native_tactical_vector",
+                "_tactical_action_weights_from_vector",
+            ))
+            and "self._initialization_rng = initialization_rng or random" in agent
+            and "random.Random(int(initialization_seed))" in world_runner
+            and all(token in workspace for token in (
+                "def request_manager_decision_advice(",
+                "def _generate_manager_decision_advice_packet(",
+                'if self.config.mode == "stable":',
+                'target["manager_decision_advice"] = advice',
+                'target["manager_advice_adoption"] = build_manager_advice_adoption(',
+                "manager advice is stale; request fresh advice",
+                "candidate_presets=tuple(PLAYABLE_TACTICS)",
+            ))
+            and all(token in season for token in (
+                "validate_manager_decision_advice(advice)",
+                "validate_manager_advice_adoption(",
+                'fixture.get("manager_decision_advice")',
+                'fixture.get("manager_advice_adoption")',
+            ))
+            and "world_model_decision_support" in decision_ledger
+            and all(token in web for token in (
+                'path == "/api/v1/seasons/decision-advice"',
+                'id="manager-world-model-advice"',
+                "function requestManagerWorldModelAdvice()",
+                "function adoptCurrentManagerAdvice()",
+                "payload.advice_adoption=",
+                "建议、经理选择和赛果分别取证",
+            ))
+        ),
+        "manager_advisor_evidence_is_replayable_and_preregistered": (
+            all(token in decision_ledger for token in (
+                "def world_model_advisor_summary(",
+                "def validate_manager_decision_ledger(",
+                "manager decision ledger summary replay mismatch",
+                '"outcome_effect_estimate": None',
+                '"causal_effect_authorized": False',
+            ))
+            and manager_advisor_protocol.get("state")
+            == "preregistered_collection_not_started"
+            and manager_advisor_protocol.get("analysis", {}).get(
+                "fixed_information_windows"
+            ) == [12, 24, 48]
+            and manager_advisor_protocol.get("analysis", {}).get(
+                "causal_effect_authorized"
+            ) is False
+            and manager_advisor_protocol.get("decision_rules", {}).get(
+                "product_or_academic_promotion_authorized"
+            ) is False
+            and all(token in manager_advisor_study for token in (
+                "validate_manager_decision_ledger(ledger)",
+                '"state": "insufficient_evidence"',
+                '"state": "window_not_closed"',
+                '"instrumentation_confirmed" if passed',
+                '"matches_executed_by_analyzer": 0',
+                '"outcome_effect_estimate": None',
+            ))
+            and all(token in workspace for token in (
+                '"data/evaluation/manager_advisor_protocol_v1.json"',
+                '"manager_advisor_adoption": {',
+                '"results_available": (',
+                '"causal_effect_authorized": (',
+                '"promotion_authorized": (',
+            ))
+            and all(token in web for token in (
+                'id="manager-advisor-evidence-summary"',
+                'id="manager-advisor-protocol-evidence"',
+                "evidence.adopted_recommendation",
+                "evidence.reviewed_then_selected",
+                "studio?.evidence?.manager_advisor_adoption",
+            ))
+        ),
+        "manager_advice_inference_uses_optimistic_short_leases": (
+            manager_advice_request.count(
+                "with FileLease(self.session_lease_path, timeout=30.0):"
+            ) == 3
+            and manager_advice_request.index(
+                "packet = self._generate_manager_decision_advice_packet("
+            ) < manager_advice_request.rindex(
+                "with FileLease(self.session_lease_path, timeout=30.0):"
+            )
+            and all(token in manager_advice_request for token in (
+                '"base_revision": int(season.get("revision", 0))',
+                '"advice_inputs_changed_during_generation"',
+                '"retryable": True',
+                "current_session.get(\"mode\") == request_state[\"mode\"]",
+                "current_snapshots = capture_world_state(self.root, teams)",
+                'current_snapshots[team]["source_identity"]',
+                "file_sha256(checkpoint_path) == checkpoint_sha256",
+                "_atomic_json(self.session_path, current_session)",
+            ))
+        ),
+        "manager_advice_request_is_semantically_idempotent": (
+            all(token in manager_advice_request for token in (
+                '"existing_advice": copy.deepcopy(',
+                "existing_matches_inputs = bool(",
+                'existing_advice.get("issued_revision")',
+                'existing_sources[team]["source_identity"]',
+                'current_target.get("manager_decision_advice")',
+                '"reused": True',
+                'current_advice == advice',
+            ))
+            and manager_advice_request.index("if existing_matches_inputs:")
+            < manager_advice_request.index(
+                "packet = self._generate_manager_decision_advice_packet("
+            )
+            and manager_advice_request.index('"reused": True')
+            < manager_advice_request.index(
+                "packet = self._generate_manager_decision_advice_packet("
+            )
+        ),
+        "manager_advice_execution_trace_is_runtime_bound_and_non_causal": (
+            all(token in match_micro_runner for token in (
+                "def _initial_tactical_execution(",
+                '"native_team_vector"',
+                '"locked_preset"',
+                '"initial_vector": _tactical_vector_snapshot(',
+                '"final_vector"] = final_vector',
+                'tactical_execution=_final_tactical_execution(',
+            ))
+            and all(token in manager_intelligence for token in (
+                "def _strict_tactical_vector(",
+                "def _tactical_binding(",
+                'expected_tactic == "team_identity"',
+                '"initial_vector_identity": _identity(initial)',
+                'payload["binding_identity"] = _identity(payload)',
+                '"tactical_execution_binding_mismatch"',
+            ))
+            and all(token in decision_ledger for token in (
+                "def _advisor_execution_trace(",
+                '"recommendation_executed"',
+                '"reviewed_alternative_executed"',
+                '"direct_recommendation_execution"',
+                '"outcome_effect_estimate": None',
+                '"causal_effect_authorized": False',
+                '"manager advisor execution trace replay mismatch"',
+            ))
+            and all(token in web for token in (
+                "renderManagerDecisionLedgerWithoutExecutionTrace",
+                "trace.runtime_binding",
+                "binding.initial_vector",
+                "renderManagerIntelligenceWithoutTacticalBinding",
+                "binding.changed_controls",
+            ))
+        ),
+        "manager_advice_preview_is_confidence_aware_and_non_causal": (
+            all(token in decision_advice for token in (
+                "def build_manager_advice_comparison(",
+                "def validate_manager_advice_comparison(",
+                '"exploratory_only" if reasons else "bounded_review"',
+                '"automatic_adoption_authorized": False',
+                '"performance_validated": False',
+                '"recommended_minus_selected": {',
+                "world-model advice comparison replay mismatch",
+            ))
+            and all(token in workspace for token in (
+                "build_manager_advice_comparison,",
+                '"comparison": build_manager_advice_comparison(',
+                "advice, selected_tactic=frozen[\"tactic\"]",
+            ))
+            and all(token in web for token in (
+                "renderManagerDecisionPreviewWithoutWorldModelComparison",
+                "authority.level==='exploratory_only'",
+                "comparison.recommended_tactic",
+                "comparison.selected_tactic",
+                "deltas.risk_adjusted_value",
+                "adoptManagerAdvice.textContent=",
+            ))
+            and "innerHTML" not in web
         ),
         "formal_experiment_is_preregistered_and_compute_bounded": (
             formal_protocol.get("state") == "preregistered_not_executed"

@@ -67,13 +67,12 @@ def build_team_squad(
     try:
         from src.data_engine.roster_loader import (
             build_team_squad_from_roster,
-            load_roster_json,
-            roster_path_for_team,
         )
+        from src.simulation.squad_registry import load_effective_roster
 
         roster = getattr(agent, "_roster_carryover_snapshot", None)
         if roster is None:
-            roster = load_roster_json(roster_path_for_team(base_dir, team_id))
+            roster = load_effective_roster(base_dir, team_id)
         if roster:
             real = build_team_squad_from_roster(agent, roster, rng)
             if real is not None:

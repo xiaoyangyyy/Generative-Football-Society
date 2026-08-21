@@ -293,7 +293,12 @@ class MicroMatchSummary:
     subtick_reception_queue: Dict[str, Any] = field(default_factory=dict)
     world_model_online_calibration: Dict[str, Any] = field(default_factory=dict)
     world_model_decision_adoption: Dict[str, Any] = field(default_factory=dict)
+    world_model_action_adoption: Dict[str, Any] = field(default_factory=dict)
     world_model_runtime: Dict[str, Any] = field(default_factory=dict)
+    continuity_state: Dict[str, Any] = field(default_factory=dict)
+    manager_effects: Dict[str, Any] = field(default_factory=dict)
+    in_match_management: Dict[str, Any] = field(default_factory=dict)
+    tactical_execution: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

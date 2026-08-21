@@ -57,6 +57,13 @@ def _player_label(p: "PlayerAffectiveState") -> str:
     return f"{p.name} [{p.role}]"
 
 
+def _world_model_opportunity_id(state: "MatchAffectiveState") -> str:
+    pending = getattr(state, "_wm_pending_direct_action_adoption", None)
+    if not isinstance(pending, dict):
+        return ""
+    return str(pending.get("opportunity_id") or "")[:180]
+
+
 def _safe_slug(text: str) -> str:
     return re.sub(r"[^\w\-]+", "_", text.strip()).strip("_")[:80]
 
@@ -118,6 +125,9 @@ def record_pass(
         "lateral_dev": round(float(lateral_dev), 4),
         "wall_combo": bool(wall_combo),
     }
+    opportunity_id = _world_model_opportunity_id(state)
+    if opportunity_id:
+        entry["wm_action_opportunity_id"] = opportunity_id
     if interceptor is not None:
         entry["interceptor"] = _player_label(interceptor)
         entry["interceptor_id"] = interceptor.player_id
@@ -177,6 +187,9 @@ def record_shot(
         "tof_s": round(float(traj_tof), 3),
         "in_goal_mouth": bool(in_goal),
     }
+    opportunity_id = _world_model_opportunity_id(state)
+    if opportunity_id:
+        entry["wm_action_opportunity_id"] = opportunity_id
     if gk is not None:
         entry["gk"] = _player_label(gk)
         entry["gk_id"] = gk.player_id

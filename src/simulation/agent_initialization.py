@@ -1,7 +1,5 @@
 """Ordered initialization stages for SocietyAgent."""
 
-import random
-
 import numpy as np
 
 
@@ -16,8 +14,8 @@ class AgentInitializationMixin:
         self.region = self._infer_region()
         self.personality = {
             "arrogance": min(0.95, max(0.1, self.status_score / 100.0)),
-            "discipline": random.uniform(0.45, 0.95),
-            "temper": random.uniform(0.2, 0.8),
+            "discipline": self._initialization_rng.uniform(0.45, 0.95),
+            "temper": self._initialization_rng.uniform(0.2, 0.8),
         }
 
         gate = stats.get("global_exposure_gate")
@@ -37,7 +35,10 @@ class AgentInitializationMixin:
 
         self.roles = {
             "Manager": {"name": self.coach_name, "rationality": 0.9, "pressure": 0.0},
-            "Icon": {"ego": random.uniform(0.6, 0.95), "patience": 0.8},
+            "Icon": {
+                "ego": self._initialization_rng.uniform(0.6, 0.95),
+                "patience": 0.8,
+            },
             "President": {"media_sensitivity": self.media_exposure}
         }
         
@@ -86,12 +87,18 @@ class AgentInitializationMixin:
             "rotation_aggressiveness": 0.50,
         }
         # --- INTERNAL GAME: COACH vs PLAYER POWER BALANCE ---
-        self.coach_authority = float(np.clip(0.52 + random.uniform(-0.08, 0.10), 0.20, 0.95))
+        self.coach_authority = float(np.clip(
+            0.52 + self._initialization_rng.uniform(-0.08, 0.10), 0.20, 0.95,
+        ))
         self.icon_influence = float(np.clip(self.roles["Icon"]["ego"] * 0.85, 0.20, 0.95))
-        self.team_cohesion = float(np.clip(0.62 + random.uniform(-0.10, 0.12), 0.15, 0.98))
+        self.team_cohesion = float(np.clip(
+            0.62 + self._initialization_rng.uniform(-0.10, 0.12), 0.15, 0.98,
+        ))
         self.conflict_heat = 0.12
         # --- REFEREE RELATION / PERCEIVED FAIRNESS ---
-        self.referee_trust = float(np.clip(0.55 + random.uniform(-0.08, 0.08), 0.10, 0.98))
+        self.referee_trust = float(np.clip(
+            0.55 + self._initialization_rng.uniform(-0.08, 0.08), 0.10, 0.98,
+        ))
         self.referee_grievance = 0.05
         self.social_narrative_state = {
             "trust_index": 0.56,
@@ -142,4 +149,3 @@ class AgentInitializationMixin:
         self.roles["President"]["media_sensitivity"] = float(np.clip(self.psychology_profile["media_sensitivity"], 0.05, 0.99))
         self.team_cohesion = float(np.clip(0.35 + 0.60 * self.psychology_profile["resilience"], 0.05, 0.99))
         self.z_state = self._initialize_latent_states()
-
