@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_production_validation_preregistration",
-  "generated_at": "2026-08-09T19:10:28.103025+00:00",
+  "generated_at": "2026-08-31T16:18:34.951954+00:00",
   "status": "passed_preregistered_not_executed",
   "passed": true,
   "execution_authorized": false,
@@ -20,7 +20,7 @@
   },
   "artifact_sha256": {
     "data/evaluation/production_validation_protocol_v1.json": "33d57def38df799e3cd6847434e0eef66144981734a4435993919dd6303ae7e3",
-    "scripts/run_production_validation.py": "48192b3b136f195800865cb71235389b34433fa2ff5940b95c65c5754a6c88ca",
+    "scripts/run_production_validation.py": "597fed3495c1184a2669d01bf7b95778588afad1962ca0ca2eea6726a3ef6668",
     "docs/PRODUCTION_VALIDATION.md": "0ffaaf09e27faf766fd5d44c823945de2d07c996652be2121ae191db9f17c4b5"
   },
   "external_calls_made": false,

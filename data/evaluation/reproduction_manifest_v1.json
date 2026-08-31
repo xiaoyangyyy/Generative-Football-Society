@@ -49,16 +49,16 @@
     "product_value_validation_protocol_verification": "data/evaluation/product_value_validation_protocol_verification_v1.json",
     "product_value_validation_guide": "docs/PRODUCT_VALUE_STUDY.md",
     "product_value_validation_analyzer": "scripts/product_value_study.py",
-    "independent_reproduction_protocol": "data/evaluation/independent_reproduction_protocol_v1.json",
-    "independent_reproduction_protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
+    "independent_reproduction_protocol": "data/evaluation/independent_action_reproduction_protocol_v2.json",
+    "independent_reproduction_protocol_verification": "data/evaluation/independent_action_reproduction_protocol_verification_v2.json",
     "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
     "independent_reproduction_verifier": "scripts/verify_independent_reproduction.py",
-    "academic_replication_protocol": "data/evaluation/academic_replication_protocol_v1.json",
-    "academic_replication_protocol_verification": "data/evaluation/academic_replication_protocol_verification_v1.json",
+    "academic_replication_protocol": "data/evaluation/academic_action_replication_protocol_v2.json",
+    "academic_replication_protocol_verification": "data/evaluation/academic_action_replication_protocol_verification_v2.json",
     "academic_replication_guide": "docs/ACADEMIC_REPLICATION_STUDY.md",
     "academic_replication_runner": "scripts/academic_replication_study.py",
-    "paper_finalization_protocol": "data/evaluation/paper_finalization_protocol_v1.json",
-    "paper_finalization_protocol_verification": "data/evaluation/paper_finalization_protocol_verification_v1.json",
+    "paper_finalization_protocol": "data/evaluation/action_paper_finalization_protocol_v2.json",
+    "paper_finalization_protocol_verification": "data/evaluation/action_paper_finalization_protocol_verification_v2.json",
     "paper_finalization_guide": "docs/PAPER_FINALIZATION.md",
     "paper_finalization_verifier": "scripts/finalize_paper.py",
     "excellence_scoring_contract": "data/evaluation/excellence_scoring_contract_v1.json",
@@ -212,7 +212,7 @@
     },
     {
       "id": "independent_reproduction_review_audit",
-      "command": "python scripts/verify_independent_reproduction.py --review data/evaluation/independent_reproduction_v1/review.json",
+      "command": "python scripts/verify_independent_reproduction.py --review data/evaluation/independent_action_reproduction_v2/review.json",
       "effect": "read_only_signed_external_review_audit",
       "runs_simulation": false,
       "explicit_authority_required": true
@@ -226,7 +226,7 @@
     },
     {
       "id": "academic_replication_execution",
-      "command": "python scripts/academic_replication_study.py --execute --authorization I_AUTHORIZE_GFS_ACADEMIC_REPLICATION_V1",
+      "command": "python scripts/academic_replication_study.py --execute --authorization I_AUTHORIZE_GFS_ACTION_REPLICATION_V2",
       "effect": "fixed_72_run_disjoint_fixture_mechanism_replication",
       "runs_simulation": true,
       "explicit_authority_required": true
@@ -247,7 +247,7 @@
     },
     {
       "id": "paper_result_ledger_build",
-      "command": "python scripts/finalize_paper.py --build-ledger --authorization I_AUTHORIZE_GFS_PAPER_RESULT_LEDGER_V1",
+      "command": "python scripts/finalize_paper.py --build-ledger --authorization I_AUTHORIZE_GFS_ACTION_PAPER_LEDGER_V2",
       "effect": "build_deterministic_ledger_from_complete_existing_results",
       "runs_simulation": false,
       "explicit_authority_required": true
@@ -354,23 +354,23 @@
   },
   "independent_reproduction": {
     "status": "not_performed",
-    "scope": "confirmatory_and_result_contingent_mechanism_replication",
+    "scope": "action_outcome_and_v2_action_policy_replication",
     "runs_total": 132,
     "stages": {
       "confirmatory_runs": 60,
       "academic_replication_runs": 72
     },
-    "protocol": "data/evaluation/independent_reproduction_protocol_v1.json",
-    "protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
+    "protocol": "data/evaluation/independent_action_reproduction_protocol_v2.json",
+    "protocol_verification": "data/evaluation/independent_action_reproduction_protocol_verification_v2.json",
     "reviewer_independent_of_implementation": null,
     "report": null
   },
   "academic_replication": {
-    "status": "registered_waiting_for_confirmatory_decision",
-    "protocol": "data/evaluation/academic_replication_protocol_v1.json",
-    "protocol_verification": "data/evaluation/academic_replication_protocol_verification_v1.json",
-    "confirmatory_decision_available": false,
-    "branch": null,
+    "status": "registered_ready_for_fixed_replication",
+    "protocol": "data/evaluation/academic_action_replication_protocol_v2.json",
+    "protocol_verification": "data/evaluation/academic_action_replication_protocol_verification_v2.json",
+    "confirmatory_decision_available": true,
+    "branch": "variance_diagnosis",
     "runs_executed": 0,
     "decision": null
   },

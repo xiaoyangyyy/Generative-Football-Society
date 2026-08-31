@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_evidence_derived_excellence_score",
-  "generated_at": "2026-08-31T15:40:40.032971+00:00",
+  "generated_at": "2026-08-31T16:26:47.739999+00:00",
   "status": "passed_dynamic_scoring",
   "passed": true,
   "scores": {
@@ -10,8 +10,8 @@
   },
   "all_tracks_full_maturity": false,
   "release_ready": false,
-  "passed_gate_count": 9,
-  "open_gate_count": 12,
+  "passed_gate_count": 11,
+  "open_gate_count": 10,
   "tracks": {
     "product": {
       "score": 83,
@@ -234,15 +234,15 @@
   },
   "artifact_sha256": {
     "data/evaluation/excellence_scoring_contract_v1.json": "650bf8d0140545d32447253b2d9e27f39f5f130e74fca02aa676b588b75cc13b",
-    "data/evaluation/excellence_roadmap_v1.json": "894dfc88bb04431339c7d74183141366c66a618a57cf4552e6aef31458187c66",
+    "data/evaluation/excellence_roadmap_v1.json": "7455468e8cab604495cf4c5b80f6bb2fcc6f483fa0f30a2e8de3571a4b1aa3f0",
     "src/product/excellence.py": "1cf02fae25a9a72659abfcd621e9ba0a68d707fe74bfaf3b3db7cd5ea5c7a6fc",
-    "src/product/control_plane.py": "f9c489c2cafcee82036c7afcfb6439a26a32728f804f4d60d5dcd7dd2ca54d3e",
-    "src/product/completion_plan.py": "a31d42c16b8a4b4be9e848e6d3fb2fc436447deb0f2de390f2214a3dc04881a4",
+    "src/product/control_plane.py": "4cb8d8705ef99bd45d3bd8eca5b9463cef8bdada8268cdbcabeb0f0b08b87ea7",
+    "src/product/completion_plan.py": "16579e1fbc4c7c82470eebf6601ad26d2e723020e77f9bfe031f27cd314e4698",
     "src/cli.py": "d8d4381ef94daa459fc3b2af2c7737947f95beb9a15a4e08150879ce6db68529",
     "src/product/web.py": "a6a863bfd73d4d11f8936475c02e2837c02ee95132a2a8a1121b209b00b3bfa4",
     "src/product/telemetry.py": "d3b7cda8f249da11f0e908d514b70abb8446b94721c33fa2681d5f7e361162a7",
-    "scripts/build_excellence_evidence_kit.py": "0964b6f9319d22f8628877d30ed30dad3d497b50b9330c263887c87d46f63a3d",
-    "data/evaluation/excellence_evidence_kit_verification_v1.json": "5fbc2bcee63b44598e06793287f999e6af4bcb4a67469ef0839ddf5975372a52",
+    "scripts/build_excellence_evidence_kit.py": "5c2d1fcb29239153cf5ca1cef483d13c366d5fba60e0d339c2459d8610fc1186",
+    "data/evaluation/excellence_evidence_kit_verification_v1.json": "77fb795f2fec61bd2d073d77523b0ceaf4348fa3151c0e1cf90e4d96969e0537",
     "scripts/verify_excellence_score.py": "6310d79bce04964bb41b1d4fae3a20c5ed330c8d9c3b0efadd2f583d966ae173"
   },
   "external_calls_made": false,

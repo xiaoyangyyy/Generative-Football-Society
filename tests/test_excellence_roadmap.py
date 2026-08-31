@@ -41,6 +41,7 @@ def test_excellence_phase_graph_is_ordered_and_not_falsely_complete():
     phases = {phase["id"]: phase for phase in roadmap["phases"]}
     assert roadmap["current_phase"] == "S0"
     assert phases["S0"]["status"] == "in_progress"
+    assert phases["S2"]["status"] == "completed_research_only"
     assert all(
         dependency in phases
         for phase in phases.values()
@@ -67,24 +68,24 @@ def test_security_action_closes_only_from_evidence_gate():
 
 def test_control_plane_unifies_product_and_paper_release_gates():
     release = ProductControlPlane(ROOT).snapshot()["release"]
-    assert release["code_ready"] is False
+    assert release["code_ready"] is True
     assert release["release_ready"] is False
-    assert release["passed_gate_count"] == 9
-    assert release["open_gate_count"] == 12
+    assert release["passed_gate_count"] == 11
+    assert release["open_gate_count"] == 10
     assert release["next_action"] == "credential_security_closure"
     assert release["completion_plan"]["zero_execution_plan"] is True
     assert release["completion_plan"]["open_step_count"] == 10
     assert release["scores"] == {"product": 83, "academic": 70}
     gates = {gate["id"]: gate for gate in release["gates"]}
     assert gates["paper_package"]["passed"] is True
-    assert gates["target_hash_lock"]["passed"] is False
+    assert gates["target_hash_lock"]["passed"] is True
     assert gates["cyclonedx_sbom"]["passed"] is True
     assert gates["local_runtime"]["passed"] is True
     assert gates["cross_platform_lock_matrix"]["passed"] is True
     assert gates["container_image_digests"]["passed"] is True
     assert gates["container_build"]["passed"] is False
     assert gates["external_data_archive"]["passed"] is True
-    assert gates["product_validation_protocol"]["passed"] is False
+    assert gates["product_validation_protocol"]["passed"] is True
     assert gates["security_closure_protocol"]["passed"] is True
     assert gates["independent_reproduction_protocol"]["passed"] is True
     assert gates["target_user_validation"]["passed"] is False

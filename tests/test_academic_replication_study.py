@@ -9,7 +9,7 @@ from scripts.merge_formal_ablation_results import METRICS
 def _decision(value: str) -> dict:
     return {
         "schema_version": 2,
-        "protocol_id": "gfs-m0-vs-sealed-m1-confirmatory-v2",
+        "protocol_id": "gfs-action-policy-full-match-outcome-v1",
         "decision": value,
     }
 
@@ -64,21 +64,21 @@ def _comparison_sequence(*results):
     return compare
 
 
-def test_academic_replication_protocol_and_stale_execution_are_auditable():
+def test_action_replication_v2_is_registered_and_ready_without_execution():
     report = study.protocol_report()
     current = study.status()
     assert report["passed"] is True
     assert report["ready_to_start"] is True
     assert report["runs_executed"] == 0
     assert all(report["checks"].values())
-    assert current["state"] == "blocked_prerequisite_identity_drift"
+    assert current["state"] == "ready_not_started"
     assert current["branch"] == "variance_diagnosis"
-    assert current["remaining_runs"] == 0
-    assert current["matches_executed"] == 72
-    assert current["identity_matches_progress"] is False
-    assert current["historical_execution_complete"] is True
-    assert current["historical_results_are_current_evidence"] is False
-    assert current["next_action"] == "preregister_new_candidate_protocol"
+    assert current["remaining_runs"] == 72
+    assert current["matches_executed"] == 0
+    assert current["identity_matches_progress"] is True
+    assert current["next_action"] == (
+        "explicitly_authorize_fixed_replication_execution"
+    )
     assert current["training_executed"] is False
     assert current["provider_calls_made"] is False
 
@@ -224,3 +224,4 @@ def test_prediction_only_arm_uses_same_m1_model_with_planning_disabled():
     assert full.env["MATCH_WORLD_MODEL"] == "1"
     assert prediction.env["MATCH_WM_PLAN"] == "0"
     assert full.env["MATCH_WM_PLAN"] == "1"
+    assert "action policy" in full.description.casefold()

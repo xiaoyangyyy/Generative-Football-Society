@@ -17,7 +17,7 @@ DECISION_ARTIFACTS = {
     "world_model_formal_m1": "data/evaluation/formal_ablation/M1_calibrated_decision.json",
     "frozen_shot_head": "data/evaluation/frozen_shot_head_decision.json",
     "llm_prospective_pilot": "data/evaluation/llm_prospective_pilot_v1.json",
-    "formal_confirmatory_v2": "data/evaluation/formal_confirmatory_v2/decision.json",
+    "action_outcome_v1": "data/evaluation/action_outcome_v1/decision.json",
 }
 
 
@@ -232,13 +232,13 @@ class ProductControlPlane:
             "data/evaluation/product_value_validation_protocol_verification_v1.json"
         )
         independent_protocol = self._report(
-            "data/evaluation/independent_reproduction_protocol_verification_v1.json"
+            "data/evaluation/independent_action_reproduction_protocol_verification_v2.json"
         )
         academic_protocol = self._report(
-            "data/evaluation/academic_replication_protocol_verification_v1.json"
+            "data/evaluation/academic_action_replication_protocol_verification_v2.json"
         )
         paper_finalization_protocol = self._report(
-            "data/evaluation/paper_finalization_protocol_verification_v1.json"
+            "data/evaluation/action_paper_finalization_protocol_verification_v2.json"
         )
         security_protocol = self._report(
             "data/evaluation/security_closure_protocol_verification_v1.json"
@@ -253,7 +253,7 @@ class ProductControlPlane:
             "data/evaluation/product_validation_v1/decision.json"
         )
         independent_review = self._report(
-            "data/evaluation/independent_reproduction_verification_v1.json"
+            "data/evaluation/independent_action_reproduction_verification_v2.json"
         )
         production_operations = self._report(
             "data/evaluation/production_validation_v1/decision.json"
@@ -262,13 +262,13 @@ class ProductControlPlane:
             "data/evaluation/product_value_validation_v1/decision.json"
         )
         confirmatory = self._report(
-            "data/evaluation/formal_confirmatory_v2/decision.json"
+            "data/evaluation/action_outcome_v1/decision.json"
         )
         academic_replication = self._report(
-            "data/evaluation/academic_replication_v1/decision.json"
+            "data/evaluation/academic_action_replication_v2/decision.json"
         )
         completed_paper = self._report(
-            "data/evaluation/paper_finalization_v1/verification.json"
+            "data/evaluation/action_paper_finalization_v2/verification.json"
         )
         readiness = release.get("readiness") or {}
         checks = release.get("checks") or {}
@@ -496,7 +496,7 @@ class ProductControlPlane:
             ),
             (
                 "confirmatory_results",
-                "Confirmatory result plus mechanism and external replication",
+                "Completed action-policy result plus current external replication",
                 academic_protocol.get("passed") is True
                 and academic_protocol_current
                 and confirmatory.get("decision") in {
@@ -507,17 +507,17 @@ class ProductControlPlane:
                 and confirmatory.get("pairs_total") == 30
                 and self._execution_identity_current(
                     confirmatory.get("execution_identity") or {},
-                    protocol="data/evaluation/formal_experiment_protocol_v2.json",
+                    protocol="data/evaluation/action_outcome_protocol_v1.json",
                     checkpoint="data/world_model/latent_wm_rollout_calibrated_candidate.pt",
                 )
                 and self._academic_replication_is_complete(academic_replication)
                 and self._execution_identity_current(
                     academic_replication.get("execution_identity") or {},
-                    protocol="data/evaluation/academic_replication_protocol_v1.json",
+                    protocol="data/evaluation/academic_action_replication_protocol_v2.json",
                     checkpoint="data/world_model/latent_wm_rollout_calibrated_candidate.pt",
-                    prerequisite_decision="data/evaluation/formal_confirmatory_v2/decision.json",
+                    prerequisite_decision="data/evaluation/action_outcome_v1/decision.json",
                 ),
-                "data/evaluation/academic_replication_v1/decision.json",
+                "data/evaluation/academic_action_replication_v2/decision.json",
             ),
             (
                 "independent_reproduction",
@@ -530,7 +530,7 @@ class ProductControlPlane:
                 and set(independent_review.get("computed_comparison") or {})
                 == {"confirmatory", "academic_replication"}
                 and independent_review_current,
-                "data/evaluation/independent_reproduction_verification_v1.json",
+                "data/evaluation/independent_action_reproduction_verification_v2.json",
             ),
             (
                 "completed_manuscript",
@@ -540,7 +540,7 @@ class ProductControlPlane:
                 and completed_paper.get("status")
                 == "verified_completed_manuscript"
                 and completed_paper_current,
-                "data/evaluation/paper_finalization_v1/verification.json",
+                "data/evaluation/action_paper_finalization_v2/verification.json",
             ),
         ]
         gates = [

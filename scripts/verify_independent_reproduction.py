@@ -15,7 +15,9 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-PROTOCOL_PATH = ROOT / "data/evaluation/independent_reproduction_protocol_v1.json"
+PROTOCOL_PATH = (
+    ROOT / "data/evaluation/independent_action_reproduction_protocol_v2.json"
+)
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
 ORCID = re.compile(r"^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$")
@@ -89,16 +91,17 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
         "schema_and_state_are_registered": (
             protocol.get("schema_version") == 1
             and protocol.get("protocol_id")
-            == "gfs-independent-full-study-reproduction-v1"
-            and protocol.get("state") == "registered_waiting_for_complete_study"
+            == "gfs-independent-action-study-reproduction-v2"
+            and protocol.get("state")
+            == "registered_waiting_for_complete_v2_replication"
         ),
         "prerequisites_are_exact_and_fail_closed": (
             prerequisites
             == {
-                "confirmatory_protocol": "data/evaluation/formal_experiment_protocol_v2.json",
-                "confirmatory_decision": "data/evaluation/formal_confirmatory_v2/decision.json",
-                "academic_replication_protocol": "data/evaluation/academic_replication_protocol_v1.json",
-                "academic_replication_decision": "data/evaluation/academic_replication_v1/decision.json",
+                "confirmatory_protocol": "data/evaluation/action_outcome_protocol_v1.json",
+                "confirmatory_decision": "data/evaluation/action_outcome_v1/decision.json",
+                "academic_replication_protocol": "data/evaluation/academic_action_replication_protocol_v2.json",
+                "academic_replication_decision": "data/evaluation/academic_action_replication_v2/decision.json",
                 "container_runtime_evidence": "data/evaluation/container_runtime_verification_v1.json",
                 "reproduction_release_evidence": "data/evaluation/reproduction_release_verification_v1.json",
                 "all_must_pass_before_reproduction": True,
@@ -268,13 +271,17 @@ def _prerequisite_checks(root: Path, protocol: dict[str, Any]) -> dict[str, bool
             and decision.get("protocol_id") == formal.get("protocol_id")
             and decision.get("pairs_total") == 30
             and decision.get("decision") in BRANCH_BY_DECISION
+            and decision.get("decision")
+            == replication_protocol.get("prerequisite", {}).get(
+                "observed_decision_at_registration"
+            )
         ),
         "academic_replication_protocol_is_frozen": (
             replication_protocol.get("schema_version") == 1
             and replication_protocol.get("protocol_id")
-            == "gfs-result-contingent-mechanism-replication-v1"
+            == "gfs-action-policy-external-replication-v2"
             and replication_protocol.get("state")
-            == "preregistered_waiting_for_confirmatory_decision"
+            == "registered_post_result_before_replication"
             and replication_protocol.get("design", {}).get("runs_total") == 72
         ),
         "academic_replication_decision_is_complete": (
@@ -346,7 +353,7 @@ def protocol_report(
         "prerequisite_checks": prerequisites,
         "protocol_sha256": _sha256(protocol_path),
         "artifact_sha256": {
-            "data/evaluation/independent_reproduction_protocol_v1.json": _sha256(
+            "data/evaluation/independent_action_reproduction_protocol_v2.json": _sha256(
                 protocol_path
             ),
             "docs/INDEPENDENT_REPRODUCTION.md": _sha256(

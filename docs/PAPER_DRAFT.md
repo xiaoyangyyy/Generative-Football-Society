@@ -227,10 +227,11 @@ source-bounded licensed data supplement. Only an explicit `--execute` command ca
 60-run experiment, and analysis fails closed until evidence is complete and
 identity-matched.
 
-The independent-reproduction handoff was registered before results existed.
-It requires a reviewer independent of implementation, a clean source commit,
-the complete 60-run confirmatory budget followed by the selected 72-run
-mechanism-replication budget, current container and release evidence, exact
+The active V2 independent-reproduction handoff was registered after the
+primary action-outcome result and before V2 external-replication results. It
+requires a reviewer independent of implementation, a clean source commit,
+reproduction of the complete 60-run primary budget followed by the fixed
+72-run action-policy replication budget, current container and release evidence, exact
 agreement for both categorical decisions, scalar agreement within `1e-12`,
 disclosure of every deviation, and a signed public identity or ORCID. The
 total independent budget is 132 simulations. A valid negative, failed, or

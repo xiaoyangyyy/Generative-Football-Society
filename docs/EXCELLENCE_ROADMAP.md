@@ -286,28 +286,28 @@ claiming benefit. If inconclusive, diagnose variance before registering any
 new sample. Add an external provider/dataset replication and competitive
 baselines.
 
-The Stage 4 code contract is now frozen in
-`data/evaluation/academic_replication_protocol_v1.json`. The confirmatory
-decision deterministically selects one of three branches before any replication
-result exists. Every branch uses the same 72-run, three-arm design on six
-fixtures whose twelve teams do not occur in the confirmatory fixtures. The
-mechanism ablation loads the same sealed M1 checkpoint while disabling planning,
-which separates prediction from downstream adoption without training another
-model. Literal pass and shot ranges are derived from the seven-match licensed
-IDSSE manifest and can fail independently of the internal calibration gates.
-The protocol audit passes, but Stage 4 remains pending with zero runs because
-the confirmatory decision does not yet exist. No academic score is awarded for
-the protocol alone.
+The current Stage 4 contract is frozen in
+`data/evaluation/academic_action_replication_protocol_v2.json`. It was
+registered after the completed action-outcome result and before V2 replication
+execution, so it explicitly fixes the observed inconclusive decision and the
+variance-diagnosis branch. The 72-run, three-arm design uses six disjoint
+fixtures. The negative-control arm loads the same sealed checkpoint with action
+planning disabled, while full M1 uses the mechanism-confirmed action policy.
+Literal pass and shot ranges come from the seven-match licensed IDSSE manifest
+and may fail independently of internal calibration gates. V2 is ready with
+zero runs; its protocol alone earns no result or replication credit. The old
+V1 72-run failure remains historical and is not current-candidate evidence.
 
 ## Stage 5 — paper and release candidate
 
 The code-only finalization contract now requires a deterministic result ledger
-derived from the 60-run confirmatory decision, the selected 72-run mechanism
-replication, and the signed full-study independent review. A completed
+derived from the completed 60-run action-outcome decision, the V2 72-run
+action-policy replication, and the signed V2 full-study independent review. A completed
 manuscript must embed that exact ledger and its digest, remove all pending-
 execution language, and preserve negative, failed, or inconclusive outcomes.
 The protocol audit passes with zero runs, but the completed-manuscript gate
-remains open because none of those result artifacts exists yet.
+remains open because V2 replication and independent-review artifacts do not yet
+exist.
 
 Freeze a containerized, one-command reproduction package with manifests,
 licenses, environment lock, data provenance, expected hashes, and an artifact

@@ -10,7 +10,9 @@ from scripts.verify_independent_reproduction import (
     verify_review,
 )
 
-ROOT_PROTOCOL = Path("data/evaluation/independent_reproduction_protocol_v1.json")
+ROOT_PROTOCOL = Path(
+    "data/evaluation/independent_action_reproduction_protocol_v2.json"
+)
 
 
 def _sha(path):
@@ -25,8 +27,8 @@ def _write_json(path, payload):
 def _decision(point_delta=0.0):
     return {
         "schema_version": 2,
-        "protocol_id": "gfs-m0-vs-sealed-m1-confirmatory-v2",
-        "decision": "no_meaningful_difference_keep_research_only",
+        "protocol_id": "gfs-action-policy-full-match-outcome-v1",
+        "decision": "inconclusive_keep_research_only",
         "promotion_supported": False,
         "pairs_total": 30,
         "primary": {
@@ -38,11 +40,11 @@ def _decision(point_delta=0.0):
             "ci95_high": 0.01,
         },
         "minimum_meaningful_delta_loss": 0.1,
-        "behavior": {"changed_pairs": 0, "changed_pair_fraction": 0.0},
+        "behavior": {"changed_pairs": 30, "changed_pair_fraction": 1.0},
         "promotion_gates": {
             "candidate_passes_all_external_validity_gates": True,
             "upper_interval_below_negative_minimum_effect": False,
-            "minimum_behavior_change_met": False,
+            "minimum_behavior_change_met": True,
             "execution_identity_verified": True,
         },
         "secondary_metrics": {},
@@ -64,12 +66,12 @@ def _replication_decision(point_delta=0.0):
         }
     return {
         "schema_version": 1,
-        "protocol_id": "gfs-result-contingent-mechanism-replication-v1",
+        "protocol_id": "gfs-action-policy-external-replication-v2",
         "status": "passed_academic_replication",
         "passed": True,
-        "branch": "adoption_path_diagnosis",
-        "confirmatory_decision": "no_meaningful_difference_keep_research_only",
-        "conclusion": "replicated_equivalence_and_planning_nonadoption",
+        "branch": "variance_diagnosis",
+        "confirmatory_decision": "inconclusive_keep_research_only",
+        "conclusion": "bounded_inconclusive_replication",
         "runs_executed": 72,
         "pairs_per_arm": 24,
         "comparisons": {
@@ -84,7 +86,7 @@ def _replication_decision(point_delta=0.0):
             "replicated_harm": False,
             "planning_contribution": False,
             "planning_nonadoption": True,
-            "bounded_inconclusive": False,
+            "bounded_inconclusive": True,
         },
         "external_validity": {
             "source": "sportec_idsse",
@@ -128,7 +130,7 @@ def _review_fixture(tmp_path):
     formal = {
         "schema_version": 2,
         "state": "preregistered_not_executed",
-        "protocol_id": "gfs-m0-vs-sealed-m1-confirmatory-v2",
+        "protocol_id": "gfs-action-policy-full-match-outcome-v1",
         "design": {"runs_total": 60},
         "candidate": {
             "checkpoint": "checkpoint.bin",
@@ -142,9 +144,14 @@ def _review_fixture(tmp_path):
     )
     replication_protocol = {
         "schema_version": 1,
-        "protocol_id": "gfs-result-contingent-mechanism-replication-v1",
-        "state": "preregistered_waiting_for_confirmatory_decision",
+        "protocol_id": "gfs-action-policy-external-replication-v2",
+        "state": "registered_post_result_before_replication",
         "design": {"runs_total": 72},
+        "prerequisite": {
+            "observed_decision_at_registration": (
+                "inconclusive_keep_research_only"
+            )
+        },
         "integrity": {
             "code_identity_files": ["code.py"],
             "data_identity_files": ["data.json"],
@@ -286,7 +293,7 @@ def test_independent_reproduction_waits_only_for_remaining_prerequisites():
     assert report["prerequisite_checks"]["confirmatory_decision_is_complete"] is True
     assert report["prerequisite_checks"][
         "academic_replication_decision_is_complete"
-    ] is True
+    ] is False
     assert report["prerequisite_checks"]["container_runtime_gate_passed"] is False
     assert report["runs_executed"] == 0
     assert report["training_executed"] is False

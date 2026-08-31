@@ -13,7 +13,9 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-PROTOCOL_PATH = ROOT / "data/evaluation/paper_finalization_protocol_v1.json"
+PROTOCOL_PATH = (
+    ROOT / "data/evaluation/action_paper_finalization_protocol_v2.json"
+)
 BRANCH_BY_DECISION = {
     "promotion_candidate_pending_release_review": "mechanism_confirmation",
     "no_meaningful_difference_keep_research_only": "adoption_path_diagnosis",
@@ -74,17 +76,18 @@ def validate_protocol(protocol: dict[str, Any], root: Path = ROOT) -> dict[str, 
         "schema_state_and_objective_are_frozen": (
             protocol.get("schema_version") == 1
             and protocol.get("protocol_id")
-            == "gfs-evidence-locked-paper-finalization-v1"
-            and protocol.get("state") == "registered_waiting_for_complete_evidence"
+            == "gfs-action-evidence-locked-paper-finalization-v2"
+            and protocol.get("state")
+            == "registered_waiting_for_replication_and_independent_review"
             and isinstance(protocol.get("objective"), str)
         ),
         "inputs_are_exact_and_confined": (
             inputs
             == {
-                "confirmatory_decision": "data/evaluation/formal_confirmatory_v2/decision.json",
-                "academic_replication_decision": "data/evaluation/academic_replication_v1/decision.json",
-                "independent_reproduction_verification": "data/evaluation/independent_reproduction_verification_v1.json",
-                "preexecution_paper_package": "data/evaluation/paper_package_verification_v1.json",
+                "confirmatory_decision": "data/evaluation/action_outcome_v1/decision.json",
+                "academic_replication_decision": "data/evaluation/academic_action_replication_v2/decision.json",
+                "independent_reproduction_verification": "data/evaluation/independent_action_reproduction_verification_v2.json",
+                "results_paper_package": "data/evaluation/paper_package_verification_v1.json",
             }
             and all(_confined(root, value) is not None for value in inputs.values())
         ),
@@ -94,7 +97,7 @@ def validate_protocol(protocol: dict[str, Any], root: Path = ROOT) -> dict[str, 
         ),
         "ledger_requires_explicit_zero_compute_authority": (
             authority.get("ledger_build_requires_explicit_token") is True
-            and authority.get("token") == "I_AUTHORIZE_GFS_PAPER_RESULT_LEDGER_V1"
+            and authority.get("token") == "I_AUTHORIZE_GFS_ACTION_PAPER_LEDGER_V2"
             and authority.get("simulation_authorized") is False
             and authority.get("training_authorized") is False
             and authority.get("provider_calls_authorized") is False
@@ -152,13 +155,13 @@ def evidence_checks(root: Path, protocol: dict[str, Any]) -> dict[str, bool]:
     confirmatory = values.get("confirmatory_decision") or {}
     replication = values.get("academic_replication_decision") or {}
     independent = values.get("independent_reproduction_verification") or {}
-    paper = values.get("preexecution_paper_package") or {}
+    paper = values.get("results_paper_package") or {}
     decision = str(confirmatory.get("decision") or "")
     return {
         "confirmatory_decision_is_complete": (
             confirmatory.get("schema_version") == 2
             and confirmatory.get("protocol_id")
-            == "gfs-m0-vs-sealed-m1-confirmatory-v2"
+            == "gfs-action-policy-full-match-outcome-v1"
             and confirmatory.get("pairs_total") == 30
             and decision in BRANCH_BY_DECISION
             and isinstance(confirmatory.get("execution_identity"), dict)
@@ -166,7 +169,7 @@ def evidence_checks(root: Path, protocol: dict[str, Any]) -> dict[str, bool]:
         "academic_replication_is_complete_and_branch_locked": (
             replication.get("schema_version") == 1
             and replication.get("protocol_id")
-            == "gfs-result-contingent-mechanism-replication-v1"
+            == "gfs-action-policy-external-replication-v2"
             and replication.get("runs_executed") == 72
             and replication.get("pairs_per_arm") == 24
             and replication.get("confirmatory_decision") == decision
@@ -185,10 +188,10 @@ def evidence_checks(root: Path, protocol: dict[str, Any]) -> dict[str, bool]:
             and independent.get("reviewer_conclusion")
             in {"reproduced", "not_reproduced", "inconclusive"}
         ),
-        "preexecution_paper_package_is_current": (
+        "results_paper_package_is_current": (
             paper.get("passed") is True
-            and paper.get("status") == "passed_preexecution_package"
-            and paths.get("preexecution_paper_package") is not None
+            and paper.get("status") == "passed_completed_results_package"
+            and paths.get("results_paper_package") is not None
         ),
     }
 
@@ -260,7 +263,7 @@ def protocol_report(root: Path = ROOT, protocol_path: Path = PROTOCOL_PATH) -> d
         "checks": checks,
         "evidence_checks": evidence,
         "artifact_sha256": {
-            "data/evaluation/paper_finalization_protocol_v1.json": _sha256(protocol_path),
+            "data/evaluation/action_paper_finalization_protocol_v2.json": _sha256(protocol_path),
             "docs/PAPER_FINALIZATION.md": _sha256(root / "docs/PAPER_FINALIZATION.md"),
             "scripts/finalize_paper.py": _sha256(Path(__file__)),
         },

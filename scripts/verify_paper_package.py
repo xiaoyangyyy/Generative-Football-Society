@@ -219,7 +219,7 @@ def verify_paper_package() -> dict:
         } == {
             "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --execute",
             "python scripts/run_production_validation.py --execute --workspace . --authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION --deployment-instance-id instance-replace",
-            "python scripts/academic_replication_study.py --execute --authorization I_AUTHORIZE_GFS_ACADEMIC_REPLICATION_V1",
+            "python scripts/academic_replication_study.py --execute --authorization I_AUTHORIZE_GFS_ACTION_REPLICATION_V2",
         }
         and all(
             row.get("explicit_authority_required") is True

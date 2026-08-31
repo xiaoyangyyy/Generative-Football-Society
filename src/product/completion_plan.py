@@ -104,12 +104,11 @@ STEPS = (
     CompletionStep(
         "confirmatory_results", "academic_execution", 80,
         "authorized_compute", "research_lead", (),
-        ("python scripts/run_formal_experiment.py --execute",
-         "python scripts/academic_replication_study.py --execute "
-         "--authorization I_AUTHORIZE_GFS_ACADEMIC_REPLICATION_V1"),
+        ("python scripts/academic_replication_study.py --execute "
+         "--authorization I_AUTHORIZE_GFS_ACTION_REPLICATION_V2",),
         required_inputs=(
-            "frozen confirmatory protocol and candidate checkpoint",
-            "explicit authorization for both fixed execution budgets",
+            "completed identity-matched action outcome and candidate checkpoint",
+            "explicit authorization for the fixed 72-run V2 replication budget",
         ),
         requires_explicit_authorization=True,
     ),
@@ -118,10 +117,10 @@ STEPS = (
         "independent_review", "independent_reproducer",
         ("confirmatory_results",),
         ("python scripts/verify_independent_reproduction.py --review "
-         "data/evaluation/independent_reproduction_v1/review.json "
-         "--out data/evaluation/independent_reproduction_verification_v1.json",),
+         "data/evaluation/independent_action_reproduction_v2/review.json "
+         "--out data/evaluation/independent_action_reproduction_verification_v2.json",),
         required_inputs=(
-            "data/evaluation/independent_reproduction_v1/review.json",
+            "data/evaluation/independent_action_reproduction_v2/review.json",
             "independently reproduced confirmatory and replication decisions",
             "independent execution log and reviewer signature",
         ),
@@ -131,9 +130,9 @@ STEPS = (
         "document_finalization", "paper_author",
         ("confirmatory_results", "independent_reproduction"),
         ("python scripts/finalize_paper.py --build-ledger --authorization "
-         "I_AUTHORIZE_GFS_PAPER_RESULT_LEDGER_V1",
+         "I_AUTHORIZE_GFS_ACTION_PAPER_LEDGER_V2",
          "python scripts/finalize_paper.py --verify-final --out "
-         "data/evaluation/paper_finalization_v1/verification.json"),
+         "data/evaluation/action_paper_finalization_v2/verification.json"),
         required_inputs=(
             "complete identity-matched confirmatory and replication results",
             "verified independent reproduction",

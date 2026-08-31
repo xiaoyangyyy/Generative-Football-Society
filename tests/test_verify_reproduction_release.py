@@ -18,10 +18,10 @@ from scripts.verify_reproduction_release import (
 CI_WORKFLOW = Path(".github/workflows/ci.yml")
 
 
-def test_release_contract_accepts_result_package_but_fails_on_external_gates():
+def test_code_release_contract_passes_while_external_release_gates_stay_open():
     report = verify_reproduction_release()
-    assert report["passed"] is False
-    assert report["status"] == "failed"
+    assert report["passed"] is True
+    assert report["status"] == "passed_code_contract"
     assert report["release_ready"] is False
     assert (
         report["dependency_lock_level"]
@@ -34,9 +34,7 @@ def test_release_contract_accepts_result_package_but_fails_on_external_gates():
         "release_manifest_has_completed_action_outcome_result"
     ] is True
     failed = {key for key, value in report["checks"].items() if not value}
-    assert failed == {
-        "human_and_independent_validation_protocols_are_current",
-    }
+    assert failed == set()
     assert report["readiness"]["full_transitive_hash_lock"] is True
     assert report["readiness"]["runtime_direct_dependencies_match"] is True
     assert report["readiness"]["cross_platform_lock_matrix"] is True
@@ -70,8 +68,8 @@ def test_release_verifier_is_a_standalone_cli():
         text=True,
     )
     report = json.loads(completed.stdout)
-    assert completed.returncode == 1
-    assert report["passed"] is False
+    assert completed.returncode == 0
+    assert report["passed"] is True
     assert report["release_ready"] is False
 
 

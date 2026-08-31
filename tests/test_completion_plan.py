@@ -55,10 +55,10 @@ def test_dependency_completion_unblocks_downstream_without_marking_it_passed():
     assert rows["completed_manuscript"]["state"] == "blocked_by_dependency"
     assert not rows["completed_manuscript"]["passed"]
     assert rows["independent_reproduction"]["commands"][0].endswith(
-        "data/evaluation/independent_reproduction_verification_v1.json"
+        "data/evaluation/independent_action_reproduction_verification_v2.json"
     )
     assert rows["completed_manuscript"]["commands"][0].endswith(
-        "I_AUTHORIZE_GFS_PAPER_RESULT_LEDGER_V1"
+        "I_AUTHORIZE_GFS_ACTION_PAPER_LEDGER_V2"
     )
 
 

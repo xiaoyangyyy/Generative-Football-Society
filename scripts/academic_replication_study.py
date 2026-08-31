@@ -19,7 +19,6 @@ if str(ROOT) not in sys.path:
 
 from scripts.merge_formal_ablation_results import METRICS  # noqa: E402
 from scripts.run_formal_experiment import (  # noqa: E402
-    DEFAULT_PROTOCOL as CONFIRMATORY_PROTOCOL_PATH,
     _loss as formal_loss,
     execution_identity as confirmatory_identity,
     load_protocol as load_confirmatory_protocol,
@@ -33,7 +32,9 @@ from src.match_engine.calibration.benchmark_core import (  # noqa: E402
     run_micro_benchmark_rows,
 )
 
-PROTOCOL_PATH = ROOT / "data/evaluation/academic_replication_protocol_v1.json"
+PROTOCOL_PATH = (
+    ROOT / "data/evaluation/academic_action_replication_protocol_v2.json"
+)
 IDSSE_MANIFEST = ROOT / "data/external/sportec/derived/manifest.json"
 CONFIRMATORY_TEAMS = {
     "Mexico", "South_Korea", "South Korea", "Brazil", "Germany", "France",
@@ -113,14 +114,16 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
         "schema_state_and_prerequisite_are_frozen": (
             protocol.get("schema_version") == 1
             and protocol.get("protocol_id")
-            == "gfs-result-contingent-mechanism-replication-v1"
+            == "gfs-action-policy-external-replication-v2"
             and protocol.get("state")
-            == "preregistered_waiting_for_confirmatory_decision"
+            == "registered_post_result_before_replication"
             and prerequisite.get("confirmatory_protocol")
-            == "data/evaluation/formal_experiment_protocol_v2.json"
+            == "data/evaluation/action_outcome_protocol_v1.json"
             and prerequisite.get("confirmatory_decision")
-            == "data/evaluation/formal_confirmatory_v2/decision.json"
+            == "data/evaluation/action_outcome_v1/decision.json"
             and prerequisite.get("accepted_decisions") == list(BRANCH_BY_DECISION)
+            and prerequisite.get("observed_decision_at_registration")
+            == "inconclusive_keep_research_only"
             and prerequisite.get("branch_is_selected_only_from_confirmatory_decision")
             is True
         ),
@@ -143,8 +146,8 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             [row.get("arm_id") for row in arms] == list(ARM_IDS)
             and [row.get("role") for row in arms] == [
                 "physics_competitive_baseline",
-                "mechanism_ablation_same_checkpoint_without_planning",
-                "full_candidate",
+                "same_checkpoint_prediction_only_negative_control",
+                "mechanism_confirmed_action_policy_candidate",
             ]
             and [(row.get("world_model"), row.get("planning")) for row in arms]
             == [(False, False), (True, False), (True, True)]
@@ -167,7 +170,7 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             design.get("provider_calls_authorized") is False
             and design.get("training_authorized") is False
             and design.get("explicit_execution_token")
-            == "I_AUTHORIZE_GFS_ACADEMIC_REPLICATION_V1"
+            == "I_AUTHORIZE_GFS_ACTION_REPLICATION_V2"
         ),
         "analysis_thresholds_and_multiplicity_are_frozen": (
             analysis.get("method") == "fixture_stratified_paired_bootstrap"
@@ -203,7 +206,7 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
         "identity_negative_results_and_deviations_are_fail_closed": (
             integrity.get("interim_analysis") is False
             and integrity.get("optional_stopping") is False
-            and integrity.get("post_hoc_branch_selection") is False
+            and integrity.get("post_hoc_replication_outcome_selection") is False
             and integrity.get("post_hoc_fixture_or_metric_selection") is False
             and integrity.get(
                 "resume_requires_identical_protocol_decision_checkpoint_and_code_identity"
@@ -211,6 +214,11 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             and integrity.get("failed_and_negative_results_are_preserved") is True
             and integrity.get("material_deviations_force_inconclusive") is True
             and set(integrity.get("code_identity_files") or []) == {
+                "src/match_engine/action_engine.py",
+                "src/match_engine/passing_engine.py",
+                "src/match_engine/world_model/action_adoption.py",
+                "src/match_engine/world_model/inference.py",
+                "src/match_engine/world_model/planner.py",
                 "src/match_engine/calibration/ablation.py",
                 "src/match_engine/calibration/benchmark_core.py",
                 "src/match_engine/calibration/contract.py",
@@ -244,12 +252,14 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             set(outputs) == {"progress", "decision"}
             and all(
                 isinstance(value, str)
-                and value.startswith("data/evaluation/academic_replication_v1/")
+                and value.startswith(
+                    "data/evaluation/academic_action_replication_v2/"
+                )
                 and ".." not in Path(value).parts
                 for value in outputs.values()
             )
-            and current.get("confirmatory_decision_available") is False
-            and current.get("branch_selected") is None
+            and current.get("confirmatory_decision_available") is True
+            and current.get("branch_selected") == "variance_diagnosis"
             and current.get("runs_executed") == 0
             and current.get("training_executed") is False
             and current.get("provider_calls_made") is False
@@ -264,12 +274,12 @@ def protocol_report(protocol_path: Path = PROTOCOL_PATH) -> dict[str, Any]:
     decision_path = ROOT / protocol["prerequisite"]["confirmatory_decision"]
     return {
         "schema_version": 1,
-        "verification": "gfs_result_contingent_academic_replication_preregistration",
+        "verification": "gfs_action_policy_external_replication_v2_registration",
         "generated_at": _now(),
         "status": (
             "registered_waiting_for_confirmatory_decision"
             if all(checks.values()) and not decision_path.is_file()
-            else "registered_ready_for_branch_selection"
+            else "registered_ready_for_fixed_replication"
             if all(checks.values()) else "failed"
         ),
         "passed": all(checks.values()),
@@ -278,7 +288,9 @@ def protocol_report(protocol_path: Path = PROTOCOL_PATH) -> dict[str, Any]:
         "runs_executed": 0,
         "checks": checks,
         "artifact_sha256": {
-            "data/evaluation/academic_replication_protocol_v1.json": file_sha256(protocol_path),
+            "data/evaluation/academic_action_replication_protocol_v2.json": (
+                file_sha256(protocol_path)
+            ),
             "docs/ACADEMIC_REPLICATION_STUDY.md": file_sha256(ROOT / "docs/ACADEMIC_REPLICATION_STUDY.md"),
             "scripts/academic_replication_study.py": file_sha256(Path(__file__)),
             "data/external/sportec/derived/manifest.json": file_sha256(IDSSE_MANIFEST),
@@ -292,7 +304,9 @@ def protocol_report(protocol_path: Path = PROTOCOL_PATH) -> dict[str, Any]:
 def resolve_branch(confirmatory_decision: dict[str, Any]) -> str:
     if confirmatory_decision.get("schema_version") != 2:
         raise ValueError("confirmatory decision schema must be 2")
-    if confirmatory_decision.get("protocol_id") != "gfs-m0-vs-sealed-m1-confirmatory-v2":
+    if confirmatory_decision.get("protocol_id") != (
+        "gfs-action-policy-full-match-outcome-v1"
+    ):
         raise ValueError("confirmatory decision protocol mismatch")
     decision = str(confirmatory_decision.get("decision") or "")
     try:
@@ -309,8 +323,9 @@ def _confirmatory_decision(
         raise FileNotFoundError("confirmatory decision is required before replication")
     decision = _read_json(path)
     branch = resolve_branch(decision)
-    formal_protocol = load_confirmatory_protocol(CONFIRMATORY_PROTOCOL_PATH)
-    expected = confirmatory_identity(root, CONFIRMATORY_PROTOCOL_PATH, formal_protocol)
+    formal_path = root / protocol["prerequisite"]["confirmatory_protocol"]
+    formal_protocol = load_confirmatory_protocol(formal_path)
+    expected = confirmatory_identity(root, formal_path, formal_protocol)
     if decision.get("execution_identity") != expected:
         raise ValueError("confirmatory decision identity is stale or invalid")
     if decision.get("pairs_total") != 30:
@@ -325,7 +340,8 @@ def execution_identity(
     if not all(validate_protocol(protocol).values()):
         raise ValueError("academic replication protocol is invalid")
     resolve_branch(decision)
-    formal = load_confirmatory_protocol(CONFIRMATORY_PROTOCOL_PATH)
+    formal_path = root / protocol["prerequisite"]["confirmatory_protocol"]
+    formal = load_confirmatory_protocol(formal_path)
     checkpoint = root / formal["candidate"]["checkpoint"]
     expected_checkpoint = formal["candidate"]["checkpoint_sha256"]
     if not checkpoint.is_file() or file_sha256(checkpoint) != expected_checkpoint:
@@ -448,7 +464,8 @@ def _arm_spec(arm: str) -> AblationSpec:
         name="M1",
         description=(
             "Sealed M1 prediction with planning disabled."
-            if arm == "M1_predict_only" else "Sealed M1 full planner."
+            if arm == "M1_predict_only"
+            else "Mechanism-confirmed M1 world-model action policy."
         ),
         env={
             **PIPELINE_PRESETS["M1"].env,
@@ -513,7 +530,8 @@ def execute(authorization: str, root: Path = ROOT) -> dict[str, Any]:
             }
         _atomic_json(progress_path, state)
         fixtures = [tuple(pair) for pair in protocol["design"]["fixtures"]]
-        formal = load_confirmatory_protocol(CONFIRMATORY_PROTOCOL_PATH)
+        formal_path = root / protocol["prerequisite"]["confirmatory_protocol"]
+        formal = load_confirmatory_protocol(formal_path)
         checkpoint = root / formal["candidate"]["checkpoint"]
         try:
             for arm in ARM_IDS:

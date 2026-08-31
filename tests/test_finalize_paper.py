@@ -19,8 +19,8 @@ def _write_json(path, payload):
 def _confirmatory():
     return {
         "schema_version": 2,
-        "protocol_id": "gfs-m0-vs-sealed-m1-confirmatory-v2",
-        "decision": "no_meaningful_difference_keep_research_only",
+        "protocol_id": "gfs-action-policy-full-match-outcome-v1",
+        "decision": "inconclusive_keep_research_only",
         "promotion_supported": False,
         "pairs_total": 30,
         "primary": {
@@ -32,7 +32,7 @@ def _confirmatory():
             "ci95_high": 0.01,
         },
         "minimum_meaningful_delta_loss": 0.1,
-        "behavior": {"changed_pairs": 0, "changed_pair_fraction": 0.0},
+        "behavior": {"changed_pairs": 30, "changed_pair_fraction": 1.0},
         "promotion_gates": {"promotion_supported": False},
         "secondary_metrics": {},
         "execution_identity": {"protocol_sha256": "a" * 64},
@@ -50,12 +50,12 @@ def _replication():
     }
     return {
         "schema_version": 1,
-        "protocol_id": "gfs-result-contingent-mechanism-replication-v1",
+        "protocol_id": "gfs-action-policy-external-replication-v2",
         "status": "passed_academic_replication",
         "passed": True,
-        "branch": "adoption_path_diagnosis",
-        "confirmatory_decision": "no_meaning_difference_keep_research_only",
-        "conclusion": "replicated_equivalence_and_planning_nonadoption",
+        "branch": "variance_diagnosis",
+        "confirmatory_decision": "inconclusive_keep_research_only",
+        "conclusion": "bounded_inconclusive_replication",
         "runs_executed": 72,
         "pairs_per_arm": 24,
         "comparisons": {
@@ -70,7 +70,7 @@ def _replication():
             "replicated_harm": False,
             "planning_contribution": False,
             "planning_nonadoption": True,
-            "bounded_inconclusive": False,
+            "bounded_inconclusive": True,
         },
         "external_validity": {"source": "sportec_idsse", "checks": {}},
         "material_deviations": [],
@@ -108,9 +108,9 @@ def _fixture(tmp_path):
             "reproduction_matches": True,
             "material_deviation": False,
         },
-        "preexecution_paper_package": {
+        "results_paper_package": {
             "passed": True,
-            "status": "passed_preexecution_package",
+            "status": "passed_completed_results_package",
         },
     }
     for name, value in values.items():

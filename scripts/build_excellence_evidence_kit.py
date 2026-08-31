@@ -40,8 +40,8 @@ PROTOCOLS = {
     "product": "data/evaluation/product_validation_protocol_v1.json",
     "production": "data/evaluation/production_validation_protocol_v1.json",
     "value": "data/evaluation/product_value_validation_protocol_v1.json",
-    "independent": "data/evaluation/independent_reproduction_protocol_v1.json",
-    "paper": "data/evaluation/paper_finalization_protocol_v1.json",
+    "independent": "data/evaluation/independent_action_reproduction_protocol_v2.json",
+    "paper": "data/evaluation/action_paper_finalization_protocol_v2.json",
 }
 
 

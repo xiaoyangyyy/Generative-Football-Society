@@ -78,13 +78,13 @@ PRODUCT_VALUE_PROTOCOL_REPORT = (
     ROOT / "data/evaluation/product_value_validation_protocol_verification_v1.json"
 )
 ACADEMIC_REPLICATION_PROTOCOL_REPORT = (
-    ROOT / "data/evaluation/academic_replication_protocol_verification_v1.json"
+    ROOT / "data/evaluation/academic_action_replication_protocol_verification_v2.json"
 )
 INDEPENDENT_PROTOCOL_REPORT = (
-    ROOT / "data/evaluation/independent_reproduction_protocol_verification_v1.json"
+    ROOT / "data/evaluation/independent_action_reproduction_protocol_verification_v2.json"
 )
 PAPER_FINALIZATION_PROTOCOL_REPORT = (
-    ROOT / "data/evaluation/paper_finalization_protocol_verification_v1.json"
+    ROOT / "data/evaluation/action_paper_finalization_protocol_verification_v2.json"
 )
 SECURITY_CLOSURE_PROTOCOL_REPORT = (
     ROOT / "data/evaluation/security_closure_protocol_verification_v1.json"
@@ -538,16 +538,16 @@ def verify_reproduction_release() -> dict:
                 "product_value_validation_protocol_verification": "data/evaluation/product_value_validation_protocol_verification_v1.json",
                 "product_value_validation_guide": "docs/PRODUCT_VALUE_STUDY.md",
                 "product_value_validation_analyzer": "scripts/product_value_study.py",
-                "academic_replication_protocol": "data/evaluation/academic_replication_protocol_v1.json",
-                "academic_replication_protocol_verification": "data/evaluation/academic_replication_protocol_verification_v1.json",
+                "academic_replication_protocol": "data/evaluation/academic_action_replication_protocol_v2.json",
+                "academic_replication_protocol_verification": "data/evaluation/academic_action_replication_protocol_verification_v2.json",
                 "academic_replication_guide": "docs/ACADEMIC_REPLICATION_STUDY.md",
                 "academic_replication_runner": "scripts/academic_replication_study.py",
-                "independent_reproduction_protocol": "data/evaluation/independent_reproduction_protocol_v1.json",
-                "independent_reproduction_protocol_verification": "data/evaluation/independent_reproduction_protocol_verification_v1.json",
+                "independent_reproduction_protocol": "data/evaluation/independent_action_reproduction_protocol_v2.json",
+                "independent_reproduction_protocol_verification": "data/evaluation/independent_action_reproduction_protocol_verification_v2.json",
                 "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
                 "independent_reproduction_verifier": "scripts/verify_independent_reproduction.py",
-                "paper_finalization_protocol": "data/evaluation/paper_finalization_protocol_v1.json",
-                "paper_finalization_protocol_verification": "data/evaluation/paper_finalization_protocol_verification_v1.json",
+                "paper_finalization_protocol": "data/evaluation/action_paper_finalization_protocol_v2.json",
+                "paper_finalization_protocol_verification": "data/evaluation/action_paper_finalization_protocol_verification_v2.json",
                 "paper_finalization_guide": "docs/PAPER_FINALIZATION.md",
                 "paper_finalization_verifier": "scripts/finalize_paper.py",
                 "excellence_scoring_contract": "data/evaluation/excellence_scoring_contract_v1.json",
@@ -623,13 +623,13 @@ def verify_reproduction_release() -> dict:
         "data/evaluation/product_value_validation_protocol_v1.json",
         "docs/PRODUCT_VALUE_STUDY.md",
         "scripts/product_value_study.py",
-        "data/evaluation/academic_replication_protocol_v1.json",
+        "data/evaluation/academic_action_replication_protocol_v2.json",
         "docs/ACADEMIC_REPLICATION_STUDY.md",
         "scripts/academic_replication_study.py",
-        "data/evaluation/independent_reproduction_protocol_v1.json",
+        "data/evaluation/independent_action_reproduction_protocol_v2.json",
         "docs/INDEPENDENT_REPRODUCTION.md",
         "scripts/verify_independent_reproduction.py",
-        "data/evaluation/paper_finalization_protocol_v1.json",
+        "data/evaluation/action_paper_finalization_protocol_v2.json",
         "docs/PAPER_FINALIZATION.md",
         "scripts/finalize_paper.py",
         "data/evaluation/excellence_scoring_contract_v1.json",
