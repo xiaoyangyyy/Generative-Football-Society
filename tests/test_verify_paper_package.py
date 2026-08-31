@@ -8,24 +8,23 @@ from scripts.verify_paper_package import (
 )
 
 
-def test_preexecution_package_fails_closed_after_confirmatory_execution():
+def test_completed_action_outcome_package_replays_and_passes():
     report = verify_paper_package()
-    assert report["passed"] is False
-    assert report["status"] == "failed"
-    assert report["confirmatory_result_available"] is False
+    assert report["passed"] is True
+    assert report["status"] == "passed_completed_results_package"
+    assert report["confirmatory_result_available"] is True
     assert report["independent_reproduction_available"] is False
     assert report["external_calls_made"] is False
-    assert report["matches_executed"] == 0
+    assert report["matches_executed"] == 60
     assert report["training_executed"] is False
-    assert report["formal_experiment_executed"] is False
+    assert report["formal_experiment_executed"] is True
     assert report["claim_count"] >= 8
-    assert report["checks"]["confirmatory_outputs_are_absent"] is False
-    failed = {key for key, value in report["checks"].items() if not value}
-    assert failed == {
-        "formal_identity_preflight_passes",
-        "confirmatory_outputs_are_absent",
-    }
-    assert any("not a completed results manuscript" in row for row in report["limitations"])
+    assert report["checks"]["formal_result_identity_and_replay_pass"] is True
+    assert report["checks"][
+        "confirmatory_outputs_are_complete_and_research_only"
+    ] is True
+    assert all(report["checks"].values())
+    assert any("does not authorize M1 promotion" in row for row in report["limitations"])
     assert any("actual Docker build" in row for row in report["limitations"])
 
 

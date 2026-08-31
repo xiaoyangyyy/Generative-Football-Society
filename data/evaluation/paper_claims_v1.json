@@ -2,7 +2,7 @@
   "schema_version": 1,
   "registry_id": "gfs-paper-claims-v1",
   "manuscript": "docs/PAPER_DRAFT.md",
-  "policy": "Every substantive manuscript claim must have one explicit marker and a bounded evidence class. Existing evidence cannot be relabeled as the unexecuted confirmatory study.",
+  "policy": "Every substantive manuscript claim must have one explicit marker and a bounded evidence class. Historical evidence, the completed action-policy result, and unavailable independent evidence must remain distinguishable.",
   "prohibited_phrases": [
     "M1 significantly outperforms M0",
     "confirmatory evidence demonstrates that M1",
@@ -65,16 +65,19 @@
     },
     {
       "claim_id": "CLM-005",
-      "manuscript_section": "Confirmatory protocol and pending results",
-      "evidence_class": "preregistered_protocol",
-      "status": "preregistered_not_executed",
-      "statement": "The next M0-versus-sealed-M1 comparison is preregistered for 30 matched pairs and 60 total runs; no confirmatory estimate, interval, decision, or promotion claim exists.",
+      "manuscript_section": "Confirmatory protocol and completed results",
+      "evidence_class": "identity_bound_simulator_experiment",
+      "status": "verified_current_result",
+      "statement": "The fixed action-policy comparison completed all 30 matched pairs and 60 runs; all pairs changed behavior, but the external-loss interval crossed zero and the sealed decision kept M1 research-only without promotion.",
       "evidence": [
-        "data/evaluation/formal_experiment_protocol_v2.json",
-        "docs/FORMAL_EXPERIMENT_PROTOCOL_V2.md"
+        "data/evaluation/action_outcome_protocol_v1.json",
+        "data/evaluation/action_outcome_v1/progress.json",
+        "data/evaluation/action_outcome_v1/decision.json",
+        "scripts/verify_action_outcome_result.py",
+        "docs/ACTION_OUTCOME_RESULT_V1.md"
       ],
-      "allowed_scope": "design, estimand, budget, identity, and decision rules",
-      "forbidden_inference": "any numerical or directional confirmatory result"
+      "allowed_scope": "the frozen 30-pair simulator-internal action-policy comparison and its deterministic replay",
+      "forbidden_inference": "M1 promotion, real-football causality, external deployment benefit, or independent reproduction"
     },
     {
       "claim_id": "CLM-006",

@@ -14,98 +14,153 @@ from pathlib import Path
 from typing import Any, Iterator, Mapping
 
 from src.infrastructure import (
-    FileLease, file_sha256, portable_text_hash_matches,
+    FileLease,
+    file_sha256,
+    portable_text_hash_matches,
     verify_artifact_manifest,
 )
 from src.product.match_plan import MatchPlan, NATIVE_TACTIC
 from src.product.manager_intelligence import (
-    build_postmatch_debrief, build_prematch_intelligence,
+    build_postmatch_debrief,
+    build_prematch_intelligence,
 )
 from src.product.decision_ledger import build_manager_decision_ledger
 from src.product.decision_advice import (
-    build_manager_advice_adoption, build_manager_advice_comparison,
+    build_manager_advice_adoption,
+    build_manager_advice_comparison,
     build_manager_decision_advice,
-    validate_manager_advice_adoption, validate_manager_decision_advice,
+    validate_manager_advice_adoption,
+    validate_manager_decision_advice,
 )
 from src.product.world_state_evidence import (
-    build_fixture_world_state_transition, capture_world_state,
+    build_fixture_world_state_transition,
+    capture_world_state,
     validate_fixture_world_state_transition,
 )
 from src.simulation.lineup import (
-    automatic_lineup, build_squad_catalog, validate_and_freeze_lineup,
+    automatic_lineup,
+    build_squad_catalog,
+    validate_and_freeze_lineup,
 )
 from src.product.season import (
-    ClubResourcePlan, ManagerDecision, SeasonPlan, archive_completed_season,
+    ClubResourcePlan,
+    ManagerDecision,
+    SeasonPlan,
+    archive_completed_season,
     archived_opponent_preparation,
     club_resource_effects,
-    manager_board_review, manager_career_profile, manager_season_profile,
-    matchday_command_center, new_season_state, next_matchday,
-    opponent_preparation, season_standings,
-    validate_manager_career_transition, validate_season_state,
+    manager_board_review,
+    manager_career_profile,
+    manager_season_profile,
+    matchday_command_center,
+    new_season_state,
+    next_matchday,
+    opponent_preparation,
+    season_standings,
+    validate_manager_career_transition,
+    validate_season_state,
 )
 from src.product.replay import (
-    build_match_replay, build_world_model_action_links,
+    build_match_replay,
+    build_world_model_action_links,
 )
 from src.simulation.runtime import environment_snapshot
 from src.simulation.squad_registry import (
-    append_recruitment_transaction, load_effective_roster,
-    generate_recruitment_market, RecruitmentPlan,
-    recruitment_market_for_workspace, recruitment_market_id,
-    replay_squad_registry_through, squad_player_quality,
+    append_recruitment_transaction,
+    load_effective_roster,
+    generate_recruitment_market,
+    RecruitmentPlan,
+    recruitment_market_for_workspace,
+    recruitment_market_id,
+    replay_squad_registry_through,
+    squad_player_quality,
     validate_squad_registry,
 )
 from src.data_engine.roster_loader import load_roster_json, roster_path_for_team
 from src.product.club_finance import (
-    append_recruitment_charge, append_season_settlement,
-    build_season_finance_settlement, club_finance_view, ensure_finance_club,
-    evidence_identity, player_wage_tier, recruitment_allowance,
+    append_recruitment_charge,
+    append_season_settlement,
+    build_season_finance_settlement,
+    club_finance_view,
+    ensure_finance_club,
+    evidence_identity,
+    player_wage_tier,
+    recruitment_allowance,
     seasonal_wage_expense,
     validate_finance_registry,
 )
 from src.product.league_ecosystem import (
-    ai_club_recruitment_decision, append_league_transition,
-    league_ecosystem_view, validate_league_ecosystem,
+    ai_club_recruitment_decision,
+    append_league_transition,
+    league_ecosystem_view,
+    validate_league_ecosystem,
 )
 from src.product.club_strategy import (
-    build_season_club_strategies, resolve_fixture_club_strategy,
+    build_season_club_strategies,
+    resolve_fixture_club_strategy,
     strategy_identity,
 )
 from src.product.player_development import (
-    append_development_transaction, build_development_transaction,
-    collect_season_participation, development_view,
-    validate_development_registry, validate_participation_evidence,
+    append_development_transaction,
+    build_development_transaction,
+    collect_season_participation,
+    development_view,
+    validate_development_registry,
+    validate_participation_evidence,
     verify_participation_report_files,
 )
 from src.simulation.player_lifecycle import (
-    append_lifecycle_transaction, build_lifecycle_preview,
-    build_lifecycle_transaction, lifecycle_view, RetentionPlan,
-    retirement_age_for_player, validate_lifecycle_registry,
+    append_lifecycle_transaction,
+    build_lifecycle_preview,
+    build_lifecycle_transaction,
+    lifecycle_view,
+    RetentionPlan,
+    retirement_age_for_player,
+    validate_lifecycle_registry,
 )
 from src.simulation.player_market import (
-    FreeAgentPlan, ai_free_agent_decision, execute_free_agent_signing,
-    finalize_market_transition, market_preview_from_window, market_view,
-    market_player_quality, open_market_window, pool_entry_from_player,
+    FreeAgentPlan,
+    ai_free_agent_decision,
+    execute_free_agent_signing,
+    finalize_market_transition,
+    market_preview_from_window,
+    market_view,
+    market_player_quality,
+    open_market_window,
+    pool_entry_from_player,
     validate_market_registry,
 )
 from src.simulation.scouting import (
-    append_scouting_report, reports_for_market, scouting_identity,
-    scouting_observation, scouting_view, validate_scouting_registry,
+    append_scouting_report,
+    reports_for_market,
+    scouting_identity,
+    scouting_observation,
+    scouting_view,
+    validate_scouting_registry,
 )
 from src.product.scouting_outcomes import (
-    append_scouting_outcome, build_scouting_outcome,
-    resolve_signing_observation, scouting_outcome_view,
+    append_scouting_outcome,
+    build_scouting_outcome,
+    resolve_signing_observation,
+    scouting_outcome_view,
     validate_scouting_outcome_registry,
 )
 from src.product.sporting_director import (
-    build_sporting_brief, validate_sporting_brief,
+    build_sporting_brief,
+    validate_sporting_brief,
     validate_sporting_choices,
 )
 from src.product.sporting_reviews import (
-    append_sporting_review, build_sporting_review, sporting_review_view,
-    sporting_review_feedback, validate_sporting_review_registry,
+    append_sporting_review,
+    build_sporting_review,
+    sporting_review_view,
+    sporting_review_feedback,
+    validate_sporting_review_registry,
 )
 from src.product.club_timeline import (
-    build_timeline_resolution, club_timeline_view, compatible_choice,
+    build_timeline_resolution,
+    club_timeline_view,
+    compatible_choice,
     derive_club_situation,
 )
 from src.product.season_commitments import (
@@ -113,8 +168,10 @@ from src.product.season_commitments import (
     commitment_progress_from_evidence,
 )
 from src.product.player_promises import (
-    PlayerPromisePlan, build_player_promise_contract,
-    player_promise_progress, settle_player_promise_outcomes,
+    PlayerPromisePlan,
+    build_player_promise_contract,
+    player_promise_progress,
+    settle_player_promise_outcomes,
 )
 
 
@@ -123,22 +180,27 @@ PRODUCT_MODES = ("stable", "research", "cognitive")
 ACTIVE_RUN_STATES = {"running", "finalizing"}
 MODE_ENVIRONMENT = {
     "stable": {
-        "MATCH_WORLD_MODEL": "0", "MATCH_WM_PLAN": "0",
+        "MATCH_WORLD_MODEL": "0",
+        "MATCH_WM_PLAN": "0",
         "MATCH_WORLD_MODEL_REQUIRED": "0",
         "MATCH_COGNITIVE": "0",
-        "MATCH_BALL_LOG": "1", "MATCH_BALL_LOG_MAX": "800",
+        "MATCH_BALL_LOG": "1",
+        "MATCH_BALL_LOG_MAX": "800",
         "MATCH_BALL_LOG_TXT": "0",
     },
     "research": {
-        "MATCH_WORLD_MODEL": "1", "MATCH_WM_PLAN": "1",
+        "MATCH_WORLD_MODEL": "1",
+        "MATCH_WM_PLAN": "1",
         "MATCH_WORLD_MODEL_REQUIRED": "1",
         "MATCH_COGNITIVE": "0",
-        "MATCH_BALL_LOG": "1", "MATCH_BALL_LOG_MAX": "800",
+        "MATCH_BALL_LOG": "1",
+        "MATCH_BALL_LOG_MAX": "800",
         "MATCH_BALL_LOG_TXT": "0",
         "MATCH_WM_CHECKPOINT": "data/world_model/latent_wm_rollout_calibrated_candidate.pt",
     },
     "cognitive": {
-        "MATCH_WORLD_MODEL": "1", "MATCH_WM_PLAN": "1",
+        "MATCH_WORLD_MODEL": "1",
+        "MATCH_WM_PLAN": "1",
         "MATCH_WORLD_MODEL_REQUIRED": "1",
         "MATCH_COGNITIVE": "1",
         "MATCH_COGNITIVE_SYNC": "1",
@@ -146,10 +208,13 @@ MODE_ENVIRONMENT = {
         "MATCH_COGNITIVE_MAX_PER_TIER": "2,0,0,0,0",
         "MATCH_WM_LLM_TWO_STAGE_DELIBERATION": "0",
         "MATCH_WM_CHECKPOINT": "data/world_model/latent_wm_rollout_calibrated_candidate.pt",
-        "MATCH_BALL_LOG": "1", "MATCH_BALL_LOG_MAX": "800",
+        "MATCH_BALL_LOG": "1",
+        "MATCH_BALL_LOG_MAX": "800",
         "MATCH_BALL_LOG_TXT": "0",
     },
 }
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -201,7 +266,9 @@ def _action_adoption_digest(value: Any) -> dict[str, Any]:
 def _atomic_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(
-        dir=path.parent, prefix=f".{path.name}-", suffix=".tmp",
+        dir=path.parent,
+        prefix=f".{path.name}-",
+        suffix=".tmp",
     )
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -241,7 +308,11 @@ class ProductWorkspace:
 
     @classmethod
     def create(
-        cls, root: str | Path, config: StudioConfig, *, replace: bool = False,
+        cls,
+        root: str | Path,
+        config: StudioConfig,
+        *,
+        replace: bool = False,
     ) -> "ProductWorkspace":
         workspace = cls(root, config)
         session = {
@@ -285,10 +356,14 @@ class ProductWorkspace:
         session = json.loads(path.read_text(encoding="utf-8"))
         if session.get("schema_version") != PRODUCT_SCHEMA_VERSION:
             raise ValueError("unsupported studio session schema")
-        return cls(root, StudioConfig(
-            name=str(session["name"]), mode=str(session["mode"]),
-            seed=int(session["seed"]),
-        ))
+        return cls(
+            root,
+            StudioConfig(
+                name=str(session["name"]),
+                mode=str(session["mode"]),
+                seed=int(session["seed"]),
+            ),
+        )
 
     def _session(self) -> dict[str, Any]:
         session = json.loads(self.session_path.read_text(encoding="utf-8"))
@@ -301,7 +376,8 @@ class ProductWorkspace:
         validate_scouting_outcome_registry(session.get("scouting_outcomes"))
         validate_sporting_review_registry(session.get("sporting_reviews"))
         validate_squad_registry(
-            self.root, session.get("squad_registry"),
+            self.root,
+            session.get("squad_registry"),
             development_registry=session.get("player_development"),
             lifecycle_registry=session.get("player_lifecycle"),
             market_registry=session.get("player_market"),
@@ -314,14 +390,19 @@ class ProductWorkspace:
             plan = SeasonPlan.from_payload(season["plan"])
             if plan.manager_recruitment is not None:
                 club = (
-                    (session.get("squad_registry") or {}).get("clubs", {})
+                    (session.get("squad_registry") or {})
+                    .get("clubs", {})
                     .get(str(plan.manager_team), {})
                 )
-                matches = [
-                    transaction
-                    for transaction in club.get("transactions", [])
-                    if transaction.get("season_id") == season.get("season_id")
-                ] if isinstance(club, Mapping) else []
+                matches = (
+                    [
+                        transaction
+                        for transaction in club.get("transactions", [])
+                        if transaction.get("season_id") == season.get("season_id")
+                    ]
+                    if isinstance(club, Mapping)
+                    else []
+                )
                 if (
                     len(matches) != 1
                     or season.get("recruitment_transaction") != matches[0]
@@ -335,21 +416,13 @@ class ProductWorkspace:
             for archive in session.get("season_history") or []
             if isinstance(archive, Mapping)
         }
-        finance_clubs = (
-            (session.get("finance_registry") or {}).get("clubs") or {}
-        )
-        squad_clubs = (
-            (session.get("squad_registry") or {}).get("clubs") or {}
-        )
-        development_clubs = (
-            (session.get("player_development") or {}).get("clubs") or {}
-        )
-        lifecycle_clubs = (
-            (session.get("player_lifecycle") or {}).get("clubs") or {}
-        )
-        for scouting_report in (
-            (session.get("scouting_registry") or {}).get("reports") or []
-        ):
+        finance_clubs = (session.get("finance_registry") or {}).get("clubs") or {}
+        squad_clubs = (session.get("squad_registry") or {}).get("clubs") or {}
+        development_clubs = (session.get("player_development") or {}).get("clubs") or {}
+        lifecycle_clubs = (session.get("player_lifecycle") or {}).get("clubs") or {}
+        for scouting_report in (session.get("scouting_registry") or {}).get(
+            "reports"
+        ) or []:
             target_id = str(scouting_report.get("target_season_id") or "")
             target_index = int(target_id.split("-")[-1])
             prior_market = {
@@ -359,12 +432,12 @@ class ProductWorkspace:
                     for item in (session.get("player_market") or {}).get(
                         "transitions", []
                     )
-                    if int(str(item["target_season_id"]).split("-")[-1])
-                    < target_index
+                    if int(str(item["target_season_id"]).split("-")[-1]) < target_index
                 ],
             }
             window = open_market_window(
-                prior_market, target_season_id=target_id,
+                prior_market,
+                target_season_id=target_id,
             )
             team = str(scouting_report.get("team") or "")
             preview = market_preview_from_window(window, team=team)
@@ -375,8 +448,10 @@ class ProductWorkspace:
                 or scouting_report.get("market_id") != preview["market_id"]
                 or scouting_report.get("candidate_entry_identity")
                 != scouting_identity(entry)
-                or scouting_report.get("observation") != scouting_observation(
-                    market_id=preview["market_id"], team=team,
+                or scouting_report.get("observation")
+                != scouting_observation(
+                    market_id=preview["market_id"],
+                    team=team,
                     player_id=player_id,
                     true_quality=market_player_quality(entry["player"]),
                     level="scouted",
@@ -384,9 +459,12 @@ class ProductWorkspace:
             ):
                 raise ValueError("scouting report source replay mismatch")
         for lifecycle_team, club in lifecycle_clubs.items():
-            base_roster = load_roster_json(roster_path_for_team(
-                str(self.root), lifecycle_team,
-            ))
+            base_roster = load_roster_json(
+                roster_path_for_team(
+                    str(self.root),
+                    lifecycle_team,
+                )
+            )
             if base_roster is None:
                 raise ValueError("lifecycle source roster is unavailable")
             transactions = club.get("transactions") or []
@@ -398,35 +476,47 @@ class ProductWorkspace:
                 target_index = int(target_id.split("-")[-1])
                 prior_lifecycle = {
                     "schema_version": 1,
-                    "clubs": {lifecycle_team: {"transactions": [
-                        copy.deepcopy(item) for item in transactions
-                        if int(str(item["target_season_id"]).split("-")[-1])
-                        < target_index
-                    ]}},
+                    "clubs": {
+                        lifecycle_team: {
+                            "transactions": [
+                                copy.deepcopy(item)
+                                for item in transactions
+                                if int(str(item["target_season_id"]).split("-")[-1])
+                                < target_index
+                            ]
+                        }
+                    },
                 }
                 development_transactions = (
-                    (development_clubs.get(lifecycle_team) or {}).get(
-                        "transactions", []
-                    )
-                )
+                    development_clubs.get(lifecycle_team) or {}
+                ).get("transactions", [])
                 prior_development = {
                     "schema_version": 1,
-                    "clubs": {lifecycle_team: {"transactions": [
-                        copy.deepcopy(item) for item in development_transactions
-                        if int(str(item["target_season_id"]).split("-")[-1])
-                        < target_index
-                    ]}},
+                    "clubs": {
+                        lifecycle_team: {
+                            "transactions": [
+                                copy.deepcopy(item)
+                                for item in development_transactions
+                                if int(str(item["target_season_id"]).split("-")[-1])
+                                < target_index
+                            ]
+                        }
+                    },
                 }
                 source_roster = replay_squad_registry_through(
-                    base_roster, team=lifecycle_team,
-                    registry=session.get("squad_registry"), season_id=source_id,
+                    base_roster,
+                    team=lifecycle_team,
+                    registry=session.get("squad_registry"),
+                    season_id=source_id,
                     development_registry=session.get("player_development"),
                     lifecycle_registry=session.get("player_lifecycle"),
                     market_registry=session.get("player_market"),
                 )
                 target_roster = replay_squad_registry_through(
-                    base_roster, team=lifecycle_team,
-                    registry=session.get("squad_registry"), season_id=target_id,
+                    base_roster,
+                    team=lifecycle_team,
+                    registry=session.get("squad_registry"),
+                    season_id=target_id,
                     development_registry=prior_development,
                     lifecycle_registry=prior_lifecycle,
                     market_registry=session.get("player_market"),
@@ -434,19 +524,26 @@ class ProductWorkspace:
                 raw_plan = transaction.get("plan")
                 retention = (
                     RetentionPlan.from_payload(raw_plan)
-                    if raw_plan is not None else None
+                    if raw_plan is not None
+                    else None
                 )
                 expected, _result = build_lifecycle_transaction(
-                    source_roster, target_roster, team=lifecycle_team,
-                    target_season_id=target_id, plan=retention,
+                    source_roster,
+                    target_roster,
+                    team=lifecycle_team,
+                    target_season_id=target_id,
+                    plan=retention,
                     control=str(transaction.get("control") or ""),
                 )
                 if transaction != expected:
                     raise ValueError("player lifecycle source replay mismatch")
         for development_team, club in development_clubs.items():
-            base_roster = load_roster_json(roster_path_for_team(
-                str(self.root), development_team,
-            ))
+            base_roster = load_roster_json(
+                roster_path_for_team(
+                    str(self.root),
+                    development_team,
+                )
+            )
             if base_roster is None:
                 raise ValueError("development source roster is unavailable")
             transactions = club.get("transactions") or []
@@ -467,8 +564,10 @@ class ProductWorkspace:
                 participation = evidence_by_team[development_team]
                 verify_participation_report_files(self.root, participation)
                 source_roster = replay_squad_registry_through(
-                    base_roster, team=development_team,
-                    registry=session.get("squad_registry"), season_id=source_id,
+                    base_roster,
+                    team=development_team,
+                    registry=session.get("squad_registry"),
+                    season_id=source_id,
                     development_registry=session.get("player_development"),
                     lifecycle_registry=session.get("player_lifecycle"),
                     market_registry=session.get("player_market"),
@@ -479,7 +578,8 @@ class ProductWorkspace:
                     "clubs": {
                         development_team: {
                             "transactions": [
-                                copy.deepcopy(item) for item in transactions
+                                copy.deepcopy(item)
+                                for item in transactions
                                 if int(str(item["target_season_id"]).split("-")[-1])
                                 < target_index
                             ],
@@ -487,15 +587,21 @@ class ProductWorkspace:
                     },
                 }
                 target_roster = replay_squad_registry_through(
-                    base_roster, team=development_team,
-                    registry=session.get("squad_registry"), season_id=target_id,
+                    base_roster,
+                    team=development_team,
+                    registry=session.get("squad_registry"),
+                    season_id=target_id,
                     development_registry=prior_development,
                     lifecycle_registry=session.get("player_lifecycle"),
                     market_registry=session.get("player_market"),
                 )
                 expected, _result = build_development_transaction(
-                    source_archive, source_roster, target_roster, participation,
-                    team=development_team, target_season_id=target_id,
+                    source_archive,
+                    source_roster,
+                    target_roster,
+                    participation,
+                    team=development_team,
+                    target_season_id=target_id,
                 )
                 if transaction != expected:
                     raise ValueError("player development source replay mismatch")
@@ -518,22 +624,29 @@ class ProductWorkspace:
                     ):
                         raise ValueError("recruitment finance evidence mismatch")
                 elif entry_season_id in archives:
-                    base_roster = load_roster_json(roster_path_for_team(
-                        str(self.root), team,
-                    ))
+                    base_roster = load_roster_json(
+                        roster_path_for_team(
+                            str(self.root),
+                            team,
+                        )
+                    )
                     historical_roster = (
                         replay_squad_registry_through(
-                            base_roster, team=team,
+                            base_roster,
+                            team=team,
                             registry=session.get("squad_registry"),
                             season_id=entry_season_id,
                             development_registry=session.get("player_development"),
                             lifecycle_registry=session.get("player_lifecycle"),
                             market_registry=session.get("player_market"),
                         )
-                        if base_roster is not None else None
+                        if base_roster is not None
+                        else None
                     )
                     expected = build_season_finance_settlement(
-                        archives[entry_season_id], historical_roster, team=team,
+                        archives[entry_season_id],
+                        historical_roster,
+                        team=team,
                     )
                     if evidence != expected:
                         raise ValueError("season finance evidence mismatch")
@@ -546,35 +659,51 @@ class ProductWorkspace:
                 continue
             promise_plan = SeasonPlan.from_payload(promise_state.get("plan") or {})
             team = str(promise_plan.manager_team or "")
-            base_roster = load_roster_json(roster_path_for_team(
-                str(self.root), team,
-            )) if team else None
+            base_roster = (
+                load_roster_json(
+                    roster_path_for_team(
+                        str(self.root),
+                        team,
+                    )
+                )
+                if team
+                else None
+            )
             historical_roster = (
                 replay_squad_registry_through(
-                    base_roster, team=team,
+                    base_roster,
+                    team=team,
                     registry=session.get("squad_registry"),
                     season_id=promise_season_id,
                     development_registry=session.get("player_development"),
                     lifecycle_registry=session.get("player_lifecycle"),
                     market_registry=session.get("player_market"),
                 )
-                if base_roster is not None else None
+                if base_roster is not None
+                else None
             )
             frozen_plan = (
-                PlayerPromisePlan.from_payload({
-                    "schema_version": 1,
-                    "promises": [{
-                        "player_id": row.get("player_id"),
-                        "role": row.get("promised_role"),
-                    } for row in contract.get("players") or []],
-                })
-                if contract.get("control") == "manager" else None
+                PlayerPromisePlan.from_payload(
+                    {
+                        "schema_version": 1,
+                        "promises": [
+                            {
+                                "player_id": row.get("player_id"),
+                                "role": row.get("promised_role"),
+                            }
+                            for row in contract.get("players") or []
+                        ],
+                    }
+                )
+                if contract.get("control") == "manager"
+                else None
             )
             expected_contract = build_player_promise_contract(
-                season_id=promise_season_id, team=team,
-                total_managed_matches=(len(promise_plan.teams) - 1)
-                * promise_plan.legs,
-                roster=historical_roster, plan=frozen_plan,
+                season_id=promise_season_id,
+                team=team,
+                total_managed_matches=(len(promise_plan.teams) - 1) * promise_plan.legs,
+                roster=historical_roster,
+                plan=frozen_plan,
                 control=str(contract.get("control") or ""),
             )
             if contract != expected_contract:
@@ -589,24 +718,26 @@ class ProductWorkspace:
             if source_archive is None:
                 continue
             expected_brief = self._sporting_brief_for_transition(
-                session, source_archive, team=str(target_plan.manager_team),
+                session,
+                source_archive,
+                team=str(target_plan.manager_team),
                 target_season_id=target_id,
             )
             if target_state.get("sporting_brief") != expected_brief:
                 raise ValueError("sporting brief source replay mismatch")
         for lifecycle_team, club in lifecycle_clubs.items():
             for transaction in club.get("transactions") or []:
-                target_state = season_sources.get(str(
-                    transaction.get("target_season_id") or ""
-                ))
+                target_state = season_sources.get(
+                    str(transaction.get("target_season_id") or "")
+                )
                 if target_state is None:
                     continue
                 target_plan = SeasonPlan.from_payload(target_state["plan"])
                 manager_controlled = target_plan.manager_team == lifecycle_team
                 expected_plan = (
                     target_plan.manager_retention.as_dict()
-                    if manager_controlled
-                    and target_plan.manager_retention is not None else None
+                    if manager_controlled and target_plan.manager_retention is not None
+                    else None
                 )
                 if (
                     transaction.get("control")
@@ -614,33 +745,30 @@ class ProductWorkspace:
                     or transaction.get("plan") != expected_plan
                 ):
                     raise ValueError("player lifecycle season plan mismatch")
-        for market_transition in (
-            (session.get("player_market") or {}).get("transitions") or []
-        ):
+        for market_transition in (session.get("player_market") or {}).get(
+            "transitions"
+        ) or []:
             source_id = str(market_transition.get("source_season_id") or "")
             target_id = str(market_transition.get("target_season_id") or "")
-            target_state = season_sources.get(str(
-                target_id
-            ))
+            target_state = season_sources.get(str(target_id))
             if target_state is None:
                 continue
             target_plan = SeasonPlan.from_payload(target_state["plan"])
             manager_signings = [
-                signing for signing in market_transition.get("signings") or []
+                signing
+                for signing in market_transition.get("signings") or []
                 if signing.get("control") == "manager"
             ]
             expected_manager_plan = (
                 target_plan.manager_free_agent.as_dict()
-                if target_plan.manager_free_agent is not None else None
+                if target_plan.manager_free_agent is not None
+                else None
             )
-            if (
-                len(manager_signings) != (1 if expected_manager_plan else 0)
-                or (
-                    expected_manager_plan is not None
-                    and (
-                        manager_signings[0].get("team") != target_plan.manager_team
-                        or manager_signings[0].get("plan") != expected_manager_plan
-                    )
+            if len(manager_signings) != (1 if expected_manager_plan else 0) or (
+                expected_manager_plan is not None
+                and (
+                    manager_signings[0].get("team") != target_plan.manager_team
+                    or manager_signings[0].get("plan") != expected_manager_plan
                 )
             ):
                 raise ValueError("global market season plan mismatch")
@@ -657,47 +785,62 @@ class ProductWorkspace:
                     for item in (session.get("player_market") or {}).get(
                         "transitions", []
                     )
-                    if int(str(item["target_season_id"]).split("-")[-1])
-                    < target_index
+                    if int(str(item["target_season_id"]).split("-")[-1]) < target_index
                 ],
             }
             replay_window = open_market_window(
-                prior_market, target_season_id=target_id,
+                prior_market,
+                target_season_id=target_id,
             )
             replay_rosters = {}
             for market_team in continuing:
-                base_roster = load_roster_json(roster_path_for_team(
-                    str(self.root), market_team,
-                ))
+                base_roster = load_roster_json(
+                    roster_path_for_team(
+                        str(self.root),
+                        market_team,
+                    )
+                )
                 if base_roster is None:
                     continue
                 prior_development = {
                     "schema_version": 1,
-                    "clubs": {market_team: {"transactions": [
-                        copy.deepcopy(item) for item in (
-                            (development_clubs.get(market_team) or {}).get(
-                                "transactions", []
-                            )
-                        )
-                        if int(str(item["target_season_id"]).split("-")[-1])
-                        < target_index
-                    ]}},
+                    "clubs": {
+                        market_team: {
+                            "transactions": [
+                                copy.deepcopy(item)
+                                for item in (
+                                    (development_clubs.get(market_team) or {}).get(
+                                        "transactions", []
+                                    )
+                                )
+                                if int(str(item["target_season_id"]).split("-")[-1])
+                                < target_index
+                            ]
+                        }
+                    },
                 }
                 prior_lifecycle = {
                     "schema_version": 1,
-                    "clubs": {market_team: {"transactions": [
-                        copy.deepcopy(item) for item in (
-                            (lifecycle_clubs.get(market_team) or {}).get(
-                                "transactions", []
-                            )
-                        )
-                        if int(str(item["target_season_id"]).split("-")[-1])
-                        < target_index
-                    ]}},
+                    "clubs": {
+                        market_team: {
+                            "transactions": [
+                                copy.deepcopy(item)
+                                for item in (
+                                    (lifecycle_clubs.get(market_team) or {}).get(
+                                        "transactions", []
+                                    )
+                                )
+                                if int(str(item["target_season_id"]).split("-")[-1])
+                                < target_index
+                            ]
+                        }
+                    },
                 }
                 replay_rosters[market_team] = replay_squad_registry_through(
-                    base_roster, team=market_team,
-                    registry=session.get("squad_registry"), season_id=target_id,
+                    base_roster,
+                    team=market_team,
+                    registry=session.get("squad_registry"),
+                    season_id=target_id,
                     development_registry=prior_development,
                     lifecycle_registry=prior_lifecycle,
                     market_registry=prior_market,
@@ -707,25 +850,31 @@ class ProductWorkspace:
                 manager_team = str(target_plan.manager_team or "")
                 replay_window, replay_rosters[manager_team], signing = (
                     execute_free_agent_signing(
-                        replay_window, replay_rosters[manager_team],
-                        team=manager_team, plan=target_plan.manager_free_agent,
+                        replay_window,
+                        replay_rosters[manager_team],
+                        team=manager_team,
+                        plan=target_plan.manager_free_agent,
                         control="manager",
                     )
                 )
                 expected_signings.append(signing)
             expected_ai_decisions = []
             for market_team in (
-                team for team in continuing
+                team
+                for team in continuing
                 if team != target_plan.manager_team and team in replay_rosters
             ):
                 decision = ai_free_agent_decision(
-                    replay_window, replay_rosters[market_team], team=market_team,
+                    replay_window,
+                    replay_rosters[market_team],
+                    team=market_team,
                 )
                 expected_ai_decisions.append(decision)
                 if decision["plan"] is not None:
                     replay_window, replay_rosters[market_team], signing = (
                         execute_free_agent_signing(
-                            replay_window, replay_rosters[market_team],
+                            replay_window,
+                            replay_rosters[market_team],
                             team=market_team,
                             plan=FreeAgentPlan.from_payload(decision["plan"]),
                             control="ai",
@@ -734,24 +883,26 @@ class ProductWorkspace:
                     expected_signings.append(signing)
             if (
                 market_transition.get("signings") != expected_signings
-                or market_transition.get("ai_decisions")
-                != expected_ai_decisions
+                or market_transition.get("ai_decisions") != expected_ai_decisions
             ):
                 raise ValueError("global market source replay mismatch")
             expected_entries = [
                 pool_entry_from_player(
-                    signing["outgoing"], origin_team=str(signing["team"]),
+                    signing["outgoing"],
+                    origin_team=str(signing["team"]),
                     entered_season_id=target_id,
                     retirement_age=retirement_age_for_player(
                         str(signing["team"]),
                         str(signing["outgoing"]["player_id"]),
-                    ), reason="squad_replacement",
+                    ),
+                    reason="squad_replacement",
                 )
                 for signing in expected_signings
             ]
             for lifecycle_team in continuing:
                 matches = [
-                    item for item in (
+                    item
+                    for item in (
                         (lifecycle_clubs.get(lifecycle_team) or {}).get(
                             "transactions", []
                         )
@@ -762,32 +913,33 @@ class ProductWorkspace:
                     continue
                 for exit_row in matches[0]["exits"]:
                     if exit_row["reason"] == "contract_released":
-                        expected_entries.append(pool_entry_from_player(
-                            exit_row["player"], origin_team=lifecycle_team,
-                            entered_season_id=target_id,
-                            retirement_age=int(exit_row["retirement_age"]),
-                            reason="contract_released",
-                        ))
+                        expected_entries.append(
+                            pool_entry_from_player(
+                                exit_row["player"],
+                                origin_team=lifecycle_team,
+                                entered_season_id=target_id,
+                                retirement_age=int(exit_row["retirement_age"]),
+                                reason="contract_released",
+                            )
+                        )
             if market_transition.get("entries") != expected_entries:
                 raise ValueError("global market entry source mismatch")
-        for outcome in (
-            (session.get("scouting_outcomes") or {}).get("outcomes") or []
-        ):
+        for outcome in (session.get("scouting_outcomes") or {}).get("outcomes") or []:
             season_id = str(outcome.get("season_id") or "")
             source_archive = archives.get(season_id)
             if source_archive is None:
                 continue
             transitions = [
-                item for item in (session.get("player_market") or {}).get(
-                    "transitions", []
-                )
+                item
+                for item in (session.get("player_market") or {}).get("transitions", [])
                 if item.get("target_season_id") == season_id
             ]
             if len(transitions) != 1:
                 raise ValueError("scouting outcome market source is unavailable")
             market_transition = transitions[0]
             signings = [
-                item for item in market_transition.get("signings") or []
+                item
+                for item in market_transition.get("signings") or []
                 if evidence_identity(item) == outcome.get("signing_identity")
             ]
             if len(signings) != 1:
@@ -797,30 +949,31 @@ class ProductWorkspace:
             participation = (
                 source_archive.get("player_development_evidence") or {}
             ).get(team)
-            finance_entries = (
-                (finance_clubs.get(team) or {}).get("entries") or []
-            )
+            finance_entries = (finance_clubs.get(team) or {}).get("entries") or []
             settlements = [
-                entry.get("evidence") for entry in finance_entries
+                entry.get("evidence")
+                for entry in finance_entries
                 if entry.get("type") == "season_settlement"
                 and entry.get("season_id") == season_id
             ]
             if not isinstance(participation, Mapping) or len(settlements) != 1:
                 raise ValueError("scouting outcome season evidence is unavailable")
             observation, observation_source = resolve_signing_observation(
-                signing, market_transition, session.get("scouting_registry"),
+                signing,
+                market_transition,
+                session.get("scouting_registry"),
             )
             expected = build_scouting_outcome(
-                signing, observation=observation,
+                signing,
+                observation=observation,
                 observation_source=observation_source,
-                archive=source_archive, participation=participation,
+                archive=source_archive,
+                participation=participation,
                 settlement=settlements[0],
             )
             if outcome != expected:
                 raise ValueError("scouting outcome source replay mismatch")
-        for review in (
-            (session.get("sporting_reviews") or {}).get("reviews") or []
-        ):
+        for review in (session.get("sporting_reviews") or {}).get("reviews") or []:
             season_id = str(review.get("season_id") or "")
             source_archive = archives.get(season_id)
             if source_archive is None:
@@ -836,17 +989,24 @@ class ProductWorkspace:
                 if entry.get("type") == "season_settlement"
                 and entry.get("season_id") == season_id
             ]
-            base_roster = load_roster_json(roster_path_for_team(
-                str(self.root), team,
-            ))
+            base_roster = load_roster_json(
+                roster_path_for_team(
+                    str(self.root),
+                    team,
+                )
+            )
             completed_roster = (
                 replay_squad_registry_through(
-                    base_roster, team=team,
-                    registry=session.get("squad_registry"), season_id=season_id,
+                    base_roster,
+                    team=team,
+                    registry=session.get("squad_registry"),
+                    season_id=season_id,
                     development_registry=session.get("player_development"),
                     lifecycle_registry=session.get("player_lifecycle"),
                     market_registry=session.get("player_market"),
-                ) if base_roster is not None else None
+                )
+                if base_roster is not None
+                else None
             )
             signings = [
                 signing
@@ -859,12 +1019,15 @@ class ProductWorkspace:
             ]
             if (
                 not isinstance(participation, Mapping)
-                or len(settlements) != 1 or completed_roster is None
+                or len(settlements) != 1
+                or completed_roster is None
             ):
                 raise ValueError("sporting review source evidence is unavailable")
             expected_review = build_sporting_review(
-                source_archive, completed_roster,
-                participation=participation, settlement=settlements[0],
+                source_archive,
+                completed_roster,
+                participation=participation,
+                settlement=settlements[0],
                 free_agent_signings=signings,
             )
             if review != expected_review:
@@ -882,39 +1045,46 @@ class ProductWorkspace:
             participating = sorted(set(source_plan.teams) & set(target_plan.teams))
             controlled_team = (
                 target_plan.manager_team
-                if target_plan.manager_team in participating else None
+                if target_plan.manager_team in participating
+                else None
             )
             expected_clubs = []
-            for ai_team in (
-                team for team in participating if team != controlled_team
-            ):
-                finance_entries = (
-                    (finance_clubs.get(ai_team) or {}).get("entries") or []
-                )
+            for ai_team in (team for team in participating if team != controlled_team):
+                finance_entries = (finance_clubs.get(ai_team) or {}).get(
+                    "entries"
+                ) or []
                 settlement_matches = [
-                    entry for entry in finance_entries
+                    entry
+                    for entry in finance_entries
                     if entry.get("type") == "season_settlement"
                     and entry.get("season_id") == source_id
                 ]
                 if len(settlement_matches) != 1:
                     raise ValueError("league ecosystem settlement evidence mismatch")
                 settlement_entry = settlement_matches[0]
-                base_roster = load_roster_json(roster_path_for_team(
-                    str(self.root), ai_team,
-                ))
+                base_roster = load_roster_json(
+                    roster_path_for_team(
+                        str(self.root),
+                        ai_team,
+                    )
+                )
                 historical_roster = (
-                        replay_squad_registry_through(
-                            base_roster, team=ai_team,
-                            registry=session.get("squad_registry"),
-                            season_id=source_id,
-                            development_registry=session.get("player_development"),
-                            lifecycle_registry=session.get("player_lifecycle"),
-                            market_registry=session.get("player_market"),
-                        )
-                    if base_roster is not None else None
+                    replay_squad_registry_through(
+                        base_roster,
+                        team=ai_team,
+                        registry=session.get("squad_registry"),
+                        season_id=source_id,
+                        development_registry=session.get("player_development"),
+                        lifecycle_registry=session.get("player_lifecycle"),
+                        market_registry=session.get("player_market"),
+                    )
+                    if base_roster is not None
+                    else None
                 )
                 decision = ai_club_recruitment_decision(
-                    source_archive, historical_roster, team=ai_team,
+                    source_archive,
+                    historical_roster,
+                    team=ai_team,
                     next_season_index=int(target_id.split("-")[-1]),
                     allowance=recruitment_allowance(
                         int(settlement_entry["balance_after"]),
@@ -938,14 +1108,16 @@ class ProductWorkspace:
                     ):
                         raise ValueError("AI recruitment policy mismatch")
                     transaction_identity = evidence_identity(transactions[0])
-                expected_clubs.append({
-                    "team": ai_team,
-                    "settlement_identity": evidence_identity(
-                        settlement_entry["evidence"],
-                    ),
-                    "decision": decision,
-                    "squad_transaction_identity": transaction_identity,
-                })
+                expected_clubs.append(
+                    {
+                        "team": ai_team,
+                        "settlement_identity": evidence_identity(
+                            settlement_entry["evidence"],
+                        ),
+                        "decision": decision,
+                        "squad_transaction_identity": transaction_identity,
+                    }
+                )
             expected_event = {
                 "schema_version": 1,
                 "from_season_id": source_id,
@@ -981,7 +1153,8 @@ class ProductWorkspace:
                     continue
                 previous_snapshot = source_archive.get("club_strategies")
                 transition_matches = [
-                    item for item in ecosystem_transitions
+                    item
+                    for item in ecosystem_transitions
                     if item.get("from_season_id") == source_id
                     and item.get("to_season_id") == target_id
                 ]
@@ -991,25 +1164,30 @@ class ProductWorkspace:
             strategy_rosters = {}
             recruitment_moves = {}
             for strategy_team in sorted(target_plan.teams):
-                base_roster = load_roster_json(roster_path_for_team(
-                    str(self.root), strategy_team,
-                ))
+                base_roster = load_roster_json(
+                    roster_path_for_team(
+                        str(self.root),
+                        strategy_team,
+                    )
+                )
                 strategy_rosters[strategy_team] = (
                     replay_squad_registry_through(
-                        base_roster, team=strategy_team,
+                        base_roster,
+                        team=strategy_team,
                         registry=session.get("squad_registry"),
                         season_id=target_id,
                         development_registry=session.get("player_development"),
                         lifecycle_registry=session.get("player_lifecycle"),
                         market_registry=session.get("player_market"),
                     )
-                    if base_roster is not None else None
+                    if base_roster is not None
+                    else None
                 )
                 target_transactions = [
                     transaction
-                    for transaction in (
-                        squad_clubs.get(strategy_team) or {}
-                    ).get("transactions", [])
+                    for transaction in (squad_clubs.get(strategy_team) or {}).get(
+                        "transactions", []
+                    )
                     if transaction.get("season_id") == target_id
                 ]
                 recruitment_moves[strategy_team] = sum(
@@ -1017,9 +1195,11 @@ class ProductWorkspace:
                     for transaction in target_transactions
                 )
             expected_snapshot = build_season_club_strategies(
-                season_id=target_id, teams=target_plan.teams,
+                season_id=target_id,
+                teams=target_plan.teams,
                 manager_team=target_plan.manager_team,
-                rosters=strategy_rosters, source_archive=source_archive,
+                rosters=strategy_rosters,
+                source_archive=source_archive,
                 previous_snapshot=previous_snapshot,
                 ecosystem_transition=transition,
                 recruitment_moves=recruitment_moves,
@@ -1031,29 +1211,32 @@ class ProductWorkspace:
                 continue
             fixtures_by_id = {
                 str(fixture.get("fixture_id") or ""): fixture
-                for fixture in fixtures if isinstance(fixture, Mapping)
+                for fixture in fixtures
+                if isinstance(fixture, Mapping)
             }
             for match_record in session.get("matches") or []:
                 match_plan = (
                     match_record.get("match_plan")
-                    if isinstance(match_record, Mapping) else None
+                    if isinstance(match_record, Mapping)
+                    else None
                 )
                 competition = (
                     match_plan.get("competition")
-                    if isinstance(match_plan, Mapping) else None
+                    if isinstance(match_plan, Mapping)
+                    else None
                 )
                 if (
                     not isinstance(competition, Mapping)
                     or competition.get("season_id") != target_id
                 ):
                     continue
-                fixture = fixtures_by_id.get(
-                    str(competition.get("fixture_id") or "")
-                )
+                fixture = fixtures_by_id.get(str(competition.get("fixture_id") or ""))
                 if fixture is None:
                     raise ValueError("club strategy match fixture mismatch")
                 expected_fixture_strategy = resolve_fixture_club_strategy(
-                    snapshot, home=str(fixture["home"]), away=str(fixture["away"]),
+                    snapshot,
+                    home=str(fixture["home"]),
+                    away=str(fixture["away"]),
                     manager_decision=fixture.get("manager_decision"),
                     opponent_preparation=fixture.get("opponent_preparation"),
                 )
@@ -1070,23 +1253,22 @@ class ProductWorkspace:
     def evidence(self) -> dict[str, Any]:
         def read(relative: str) -> dict:
             path = self.root / relative
-            return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+            return (
+                json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+            )
 
         release = read("data/releases/current.json")
         staged = read("data/evaluation/staged_completion_v1.json")
         phase5 = read("data/evaluation/phase5_research_layer_validation_v1.json")
-        action_protocol = read(
-            "data/evaluation/action_adoption_protocol_v1.json"
-        )
+        action_protocol = read("data/evaluation/action_adoption_protocol_v1.json")
         manager_advisor_protocol = read(
             "data/evaluation/manager_advisor_protocol_v1.json"
         )
-        action_progress = read(
-            "data/evaluation/action_adoption_v1/progress.json"
-        )
-        action_decision = read(
-            "data/evaluation/action_adoption_v1/decision.json"
-        )
+        action_progress = read("data/evaluation/action_adoption_v1/progress.json")
+        action_decision = read("data/evaluation/action_adoption_v1/decision.json")
+        outcome_protocol = read("data/evaluation/action_outcome_protocol_v1.json")
+        outcome_progress = read("data/evaluation/action_outcome_v1/progress.json")
+        outcome_decision = read("data/evaluation/action_outcome_v1/decision.json")
         candidate = phase5.get("world_model_candidate") or {}
         live_llm = phase5.get("live_llm_evidence") or {}
         return {
@@ -1100,17 +1282,17 @@ class ProductWorkspace:
             "world_model_checkpoint_sha256": candidate.get("checkpoint_sha256"),
             "shot_planner_active": candidate.get("shot_planner_active", False),
             "shot_fallback": candidate.get("shot_fallback"),
-            "frozen_shot_head": read(
-                "data/evaluation/frozen_shot_head_decision.json"
-            ),
+            "frozen_shot_head": read("data/evaluation/frozen_shot_head_decision.json"),
             "live_llm_evaluable": live_llm.get("evaluable", False),
             "action_adoption_mechanism": {
                 "available": bool(action_protocol),
                 "protocol_id": action_protocol.get("protocol_id"),
                 "claim_scope": action_protocol.get("claim_scope"),
                 "protocol_state": action_protocol.get("state"),
-                "execution_state": action_progress.get(
-                    "state", "ready_not_started" if action_protocol else "absent",
+                "execution_state": action_decision.get("status")
+                or action_progress.get(
+                    "state",
+                    "ready_not_started" if action_protocol else "absent",
                 ),
                 "runs_executed": sum(
                     len((row or {}).get("rows") or [])
@@ -1121,9 +1303,42 @@ class ProductWorkspace:
                 ),
                 "result_status": action_decision.get("status"),
                 "passed": action_decision.get("passed"),
+                "mechanism": dict(action_decision.get("mechanism") or {}),
                 "promotion_authorized": action_decision.get(
-                    "promotion_authorized", False,
+                    "promotion_authorized",
+                    False,
                 ),
+            },
+            "action_outcome_study": {
+                "available": bool(outcome_protocol),
+                "protocol_id": outcome_protocol.get("protocol_id"),
+                "claim_scope": (
+                    "full_match_simulator_outcome_not_real_football_causality"
+                ),
+                "execution_state": outcome_decision.get("decision")
+                or outcome_progress.get(
+                    "state",
+                    "not_started" if outcome_protocol else "absent",
+                ),
+                "runs_executed": sum(
+                    len((row or {}).get("rows") or [])
+                    for row in (outcome_progress.get("arms") or {}).values()
+                ),
+                "fixed_run_budget": (
+                    (outcome_protocol.get("design") or {}).get("runs_total")
+                ),
+                "promotion_supported": outcome_decision.get(
+                    "promotion_supported",
+                    False,
+                ),
+                "result_status": outcome_decision.get("decision"),
+                "pairs_total": outcome_decision.get("pairs_total"),
+                "primary": dict(outcome_decision.get("primary") or {}),
+                "minimum_meaningful_delta_loss": outcome_decision.get(
+                    "minimum_meaningful_delta_loss"
+                ),
+                "behavior": dict(outcome_decision.get("behavior") or {}),
+                "promotion_gates": dict(outcome_decision.get("promotion_gates") or {}),
             },
             "manager_advisor_adoption": {
                 "available": bool(manager_advisor_protocol),
@@ -1133,7 +1348,8 @@ class ProductWorkspace:
                 "fixed_information_windows": list(
                     (manager_advisor_protocol.get("analysis") or {}).get(
                         "fixed_information_windows"
-                    ) or []
+                    )
+                    or []
                 ),
                 "results_available": (
                     manager_advisor_protocol.get("execution") or {}
@@ -1145,17 +1361,23 @@ class ProductWorkspace:
                     manager_advisor_protocol.get("decision_rules") or {}
                 ).get("product_or_academic_promotion_authorized", False),
             },
-            "production_promotion_ready": staged.get("production_promotion_ready", False),
+            "production_promotion_ready": staged.get(
+                "production_promotion_ready", False
+            ),
         }
 
     def readiness(self) -> dict[str, Any]:
         evidence = self.evidence()
-        checkpoint = _artifact_path(self.root, (
-            evidence.get("world_model_checkpoint")
-            or "data/world_model/latent_wm_rollout_calibrated_candidate.pt"
-        ))
+        checkpoint = _artifact_path(
+            self.root,
+            (
+                evidence.get("world_model_checkpoint")
+                or "data/world_model/latent_wm_rollout_calibrated_candidate.pt"
+            ),
+        )
         release_manifest = _artifact_path(
-            self.root, evidence.get("stable_release_manifest"),
+            self.root,
+            evidence.get("stable_release_manifest"),
         )
         expected_release_sha256 = str(
             evidence.get("stable_release_manifest_sha256") or ""
@@ -1165,11 +1387,13 @@ class ProductWorkspace:
             and release_manifest.is_file()
             and expected_release_sha256
             and portable_text_hash_matches(
-                release_manifest, expected_release_sha256,
+                release_manifest,
+                expected_release_sha256,
             )
         )
         release_artifact_verification: dict[str, Any] = {
-            "ok": False, "artifacts": 0,
+            "ok": False,
+            "artifacts": 0,
             "failures": [{"reason": "release_manifest_identity_unverified"}],
         }
         if release_identity_verified and release_manifest is not None:
@@ -1178,38 +1402,41 @@ class ProductWorkspace:
                     release_manifest.read_text(encoding="utf-8-sig")
                 )
                 release_artifact_verification = verify_artifact_manifest(
-                    self.root, release_payload,
+                    self.root,
+                    release_payload,
                 )
             except (OSError, ValueError, TypeError) as exc:
                 release_artifact_verification = {
-                    "ok": False, "artifacts": 0,
-                    "failures": [{
-                        "reason": "invalid_release_manifest",
-                        "error_type": type(exc).__name__,
-                    }],
+                    "ok": False,
+                    "artifacts": 0,
+                    "failures": [
+                        {
+                            "reason": "invalid_release_manifest",
+                            "error_type": type(exc).__name__,
+                        }
+                    ],
                 }
         expected_checkpoint_sha256 = str(
             evidence.get("world_model_checkpoint_sha256") or ""
         )
         actual_checkpoint_sha256 = (
             file_sha256(checkpoint)
-            if checkpoint is not None and checkpoint.is_file() else None
+            if checkpoint is not None and checkpoint.is_file()
+            else None
         )
         shot_decision = evidence.get("frozen_shot_head") or {}
         shot_artifact_value = shot_decision.get("promotion_artifact")
         shot_artifact = _artifact_path(self.root, shot_artifact_value)
-        shot_identity_verified = (
-            not shot_decision.get("accepted")
-            or bool(
-                shot_artifact is not None
-                and shot_artifact.is_file()
-                and shot_decision.get("promotion_artifact_sha256")
-                and file_sha256(shot_artifact)
-                == shot_decision.get("promotion_artifact_sha256")
-            )
+        shot_identity_verified = not shot_decision.get("accepted") or bool(
+            shot_artifact is not None
+            and shot_artifact.is_file()
+            and shot_decision.get("promotion_artifact_sha256")
+            and file_sha256(shot_artifact)
+            == shot_decision.get("promotion_artifact_sha256")
         )
         from src.simulation.llm_gateway import (
-            LLMGatewayConfig, llm_credentials_available,
+            LLMGatewayConfig,
+            llm_credentials_available,
         )
 
         llm_values = environment_snapshot()
@@ -1229,7 +1456,9 @@ class ProductWorkspace:
             "research_checkpoint_available": bool(
                 checkpoint is not None and checkpoint.is_file()
             ),
-            "research_checkpoint_accepted": bool(evidence.get("world_model_candidate_accepted")),
+            "research_checkpoint_accepted": bool(
+                evidence.get("world_model_candidate_accepted")
+            ),
             "research_checkpoint_identity_verified": bool(
                 expected_checkpoint_sha256
                 and actual_checkpoint_sha256 == expected_checkpoint_sha256
@@ -1239,50 +1468,80 @@ class ProductWorkspace:
             "llm_config_valid": llm_config_error is None,
         }
         if self.config.mode == "stable":
-            ready = all(checks[name] for name in (
-                "stable_release_available", "stable_release_identity_verified",
-                "stable_release_artifacts_verified",
-            ))
-            blockers: list[str] = [] if ready else [
-                name for name in (
-                    "stable_release_available", "stable_release_identity_verified",
+            ready = all(
+                checks[name]
+                for name in (
+                    "stable_release_available",
+                    "stable_release_identity_verified",
                     "stable_release_artifacts_verified",
-                ) if not checks[name]
-            ]
+                )
+            )
+            blockers: list[str] = (
+                []
+                if ready
+                else [
+                    name
+                    for name in (
+                        "stable_release_available",
+                        "stable_release_identity_verified",
+                        "stable_release_artifacts_verified",
+                    )
+                    if not checks[name]
+                ]
+            )
         elif self.config.mode == "research":
-            ready = all(checks[name] for name in (
-                "research_checkpoint_available",
-                "research_checkpoint_accepted",
-                "research_checkpoint_identity_verified",
-                "shot_head_identity_verified",
-            ))
-            blockers = [] if ready else [
-                name for name in (
+            ready = all(
+                checks[name]
+                for name in (
                     "research_checkpoint_available",
                     "research_checkpoint_accepted",
                     "research_checkpoint_identity_verified",
                     "shot_head_identity_verified",
                 )
+            )
+            blockers = (
+                []
+                if ready
+                else [
+                    name
+                    for name in (
+                        "research_checkpoint_available",
+                        "research_checkpoint_accepted",
+                        "research_checkpoint_identity_verified",
+                        "shot_head_identity_verified",
+                    )
+                    if not checks[name]
+                ]
+            )
+        else:
+            ready = all(
+                checks[name]
+                for name in (
+                    "research_checkpoint_available",
+                    "research_checkpoint_accepted",
+                    "research_checkpoint_identity_verified",
+                    "shot_head_identity_verified",
+                    "llm_credentials_available",
+                    "llm_config_valid",
+                )
+            )
+            blockers = [
+                name
+                for name in (
+                    "research_checkpoint_available",
+                    "research_checkpoint_accepted",
+                    "research_checkpoint_identity_verified",
+                    "shot_head_identity_verified",
+                    "llm_credentials_available",
+                    "llm_config_valid",
+                )
                 if not checks[name]
             ]
-        else:
-            ready = all(checks[name] for name in (
-                "research_checkpoint_available", "research_checkpoint_accepted",
-                "research_checkpoint_identity_verified",
-                "shot_head_identity_verified",
-                "llm_credentials_available",
-                "llm_config_valid",
-            ))
-            blockers = [name for name in (
-                "research_checkpoint_available", "research_checkpoint_accepted",
-                "research_checkpoint_identity_verified",
-                "shot_head_identity_verified",
-                "llm_credentials_available",
-                "llm_config_valid",
-            ) if not checks[name]]
         return {
-            "mode": self.config.mode, "ready": ready,
-            "checks": checks, "blockers": blockers,
+            "mode": self.config.mode,
+            "ready": ready,
+            "checks": checks,
+            "blockers": blockers,
             "release_artifact_verification": release_artifact_verification,
             "llm_provider": llm_provider,
             "llm_config_error": llm_config_error,
@@ -1291,6 +1550,7 @@ class ProductWorkspace:
     def status(self) -> dict[str, Any]:
         session = self._session()
         from src.product.control_plane import ProductControlPlane
+
         lease_held = FileLease.is_held(self.session_lease_path)
         runs = list(session.get("runs") or [])
         session_matches = list(session.get("matches") or [])
@@ -1303,10 +1563,8 @@ class ProductWorkspace:
                         report_path.read_text(encoding="utf-8")
                     )
                     adoption = (
-                        ((historical_report.get("layers") or {}).get(
-                            "world_model"
-                        ) or {}).get("action_adoption")
-                    )
+                        (historical_report.get("layers") or {}).get("world_model") or {}
+                    ).get("action_adoption")
                     digest = _action_adoption_digest(adoption)
                     if digest:
                         last_match["world_model_action_adoption"] = digest
@@ -1315,9 +1573,9 @@ class ProductWorkspace:
         observed_runs = [
             {
                 **run,
-                "observed_state": (
-                    "running" if lease_held else "abandoned"
-                ) if run.get("state") in ACTIVE_RUN_STATES else run.get("state"),
+                "observed_state": ("running" if lease_held else "abandoned")
+                if run.get("state") in ACTIVE_RUN_STATES
+                else run.get("state"),
             }
             for run in runs
         ]
@@ -1327,33 +1585,39 @@ class ProductWorkspace:
                 continue
             plan = item.get("match_plan") or {}
             score = item.get("score") or {}
-            match_history.append({
-                "match_id": str(item.get("match_id") or ""),
-                "home": str(item.get("home") or ""),
-                "away": str(item.get("away") or ""),
-                "seed": item.get("seed"),
-                "fast": item.get("fast"),
-                "score": dict(score) if isinstance(score, Mapping) else {},
-                "integrity": str(item.get("integrity") or "unknown"),
-                "experience": (
-                    str(plan.get("experience") or "observational")
-                    if isinstance(plan, Mapping) else "unknown"
-                ),
-                "home_tactic": (
-                    str(plan.get("home_tactic") or NATIVE_TACTIC)
-                    if isinstance(plan, Mapping) else "unknown"
-                ),
-                "away_tactic": (
-                    str(plan.get("away_tactic") or NATIVE_TACTIC)
-                    if isinstance(plan, Mapping) else "unknown"
-                ),
-                "dashboard": item.get("dashboard"),
-                "comparison_dashboard": item.get("comparison_dashboard"),
-            })
+            match_history.append(
+                {
+                    "match_id": str(item.get("match_id") or ""),
+                    "home": str(item.get("home") or ""),
+                    "away": str(item.get("away") or ""),
+                    "seed": item.get("seed"),
+                    "fast": item.get("fast"),
+                    "score": dict(score) if isinstance(score, Mapping) else {},
+                    "integrity": str(item.get("integrity") or "unknown"),
+                    "experience": (
+                        str(plan.get("experience") or "observational")
+                        if isinstance(plan, Mapping)
+                        else "unknown"
+                    ),
+                    "home_tactic": (
+                        str(plan.get("home_tactic") or NATIVE_TACTIC)
+                        if isinstance(plan, Mapping)
+                        else "unknown"
+                    ),
+                    "away_tactic": (
+                        str(plan.get("away_tactic") or NATIVE_TACTIC)
+                        if isinstance(plan, Mapping)
+                        else "unknown"
+                    ),
+                    "dashboard": item.get("dashboard"),
+                    "comparison_dashboard": item.get("comparison_dashboard"),
+                }
+            )
         season_history = self._season_history_view(session)
         archived_total = session.get("archived_seasons_total", len(season_history))
         if (
-            isinstance(archived_total, bool) or not isinstance(archived_total, int)
+            isinstance(archived_total, bool)
+            or not isinstance(archived_total, int)
             or archived_total < len(season_history)
         ):
             raise ValueError("invalid archived season count")
@@ -1365,26 +1629,32 @@ class ProductWorkspace:
             current_manager_team = current_plan.manager_team
             if current_plan.manager_team is not None:
                 projected_settlement = None
-                base_roster = load_roster_json(roster_path_for_team(
-                    str(self.root), current_plan.manager_team,
-                ))
+                base_roster = load_roster_json(
+                    roster_path_for_team(
+                        str(self.root),
+                        current_plan.manager_team,
+                    )
+                )
                 current_roster = (
                     replay_squad_registry_through(
-                        base_roster, team=current_plan.manager_team,
+                        base_roster,
+                        team=current_plan.manager_team,
                         registry=session.get("squad_registry"),
                         season_id=str(current_season["season_id"]),
                         development_registry=session.get("player_development"),
                         lifecycle_registry=session.get("player_lifecycle"),
                         market_registry=session.get("player_market"),
                     )
-                    if base_roster is not None else None
+                    if base_roster is not None
+                    else None
                 )
                 if current_season.get("state") == "complete":
                     current_archive = self._archive_with_development_evidence(
                         current_season,
                     )
                     projected_settlement = build_season_finance_settlement(
-                        current_archive, current_roster,
+                        current_archive,
+                        current_roster,
                         team=current_plan.manager_team,
                     )
                 club_finance = club_finance_view(
@@ -1394,7 +1664,8 @@ class ProductWorkspace:
                 )
                 club_finance["current_wage"] = (
                     seasonal_wage_expense(current_roster)
-                    if current_roster is not None else {
+                    if current_roster is not None
+                    else {
                         "roster_identity": None,
                         "player_count": None,
                         "wage_tier_total": None,
@@ -1404,8 +1675,10 @@ class ProductWorkspace:
                     }
                 )
         status = {
-            "product": session["product"], "name": session["name"],
-            "mode": session["mode"], "seed": session["seed"],
+            "product": session["product"],
+            "name": session["name"],
+            "mode": session["mode"],
+            "seed": session["seed"],
             "matches_played": len(session_matches),
             "match_history": match_history,
             "match_history_limit": 50,
@@ -1417,11 +1690,13 @@ class ProductWorkspace:
                 run.get("observed_state") == "abandoned" for run in observed_runs
             ),
             "last_run": (observed_runs or [None])[-1],
-            "readiness": self.readiness(), "evidence": self.evidence(),
+            "readiness": self.readiness(),
+            "evidence": self.evidence(),
             "control_plane": ProductControlPlane(self.root).snapshot(),
             "season": (
                 self._season_view(session["season"])
-                if session.get("season") is not None else None
+                if session.get("season") is not None
+                else None
             ),
             "season_history": season_history,
             "season_history_summary": {
@@ -1431,7 +1706,8 @@ class ProductWorkspace:
                 "truncated": archived_total > len(season_history),
             },
             "manager_career": manager_career_profile(
-                season_history, current_season=session.get("season"),
+                season_history,
+                current_season=session.get("season"),
             ),
             "club_finance": club_finance,
             "league_ecosystem": league_ecosystem_view(
@@ -1462,7 +1738,8 @@ class ProductWorkspace:
             session = self._session()
             current_season = (
                 self._season_view(session["season"])
-                if session.get("season") is not None else None
+                if session.get("season") is not None
+                else None
             )
             readiness = self.readiness()
             lease_held = FileLease.is_held(self.session_lease_path)
@@ -1478,10 +1755,9 @@ class ProductWorkspace:
             readiness = status["readiness"]
             matches = [None] * int(status.get("matches_played", 0))
             last_match = status.get("last_match")
-            active = (
-                (status.get("last_run") or {}).get("observed_state")
-                in ACTIVE_RUN_STATES
-            )
+            active = (status.get("last_run") or {}).get(
+                "observed_state"
+            ) in ACTIVE_RUN_STATES
             failed = int(status.get("failed_runs", 0))
 
         season_present = isinstance(current_season, Mapping)
@@ -1489,27 +1765,21 @@ class ProductWorkspace:
             season_present and current_season.get("state") == "complete"
         )
         season_command = (
-            current_season.get("matchday_command_center")
-            if season_present else None
+            current_season.get("matchday_command_center") if season_present else None
         )
         command_phase = (
-            season_command.get("phase")
-            if isinstance(season_command, Mapping) else None
+            season_command.get("phase") if isinstance(season_command, Mapping) else None
         )
-        season_plan = (
-            current_season.get("plan") or {} if season_present else {}
-        )
+        season_plan = current_season.get("plan") or {} if season_present else {}
         manager_team = (
             season_plan.get("manager_team")
-            if isinstance(season_plan, Mapping) else None
+            if isinstance(season_plan, Mapping)
+            else None
         )
         next_manager_fixture = (
-            current_season.get("next_manager_fixture")
-            if season_present else None
+            current_season.get("next_manager_fixture") if season_present else None
         )
-        manager_squad = (
-            current_season.get("manager_squad") if season_present else None
-        )
+        manager_squad = current_season.get("manager_squad") if season_present else None
         player_promise_setup_required = bool(
             manager_team
             and isinstance(next_manager_fixture, Mapping)
@@ -1572,7 +1842,8 @@ class ProductWorkspace:
         elif season_present and command_phase == "decision_required":
             fixture = (
                 season_command.get("current_fixture")
-                or season_command.get("next_fixture") or {}
+                or season_command.get("next_fixture")
+                or {}
             )
             state = "season_decision"
             next_action = {
@@ -1587,21 +1858,22 @@ class ProductWorkspace:
                 ),
             }
         elif season_present and command_phase in {
-            "ready_to_advance", "ready_to_resume", "spectator",
+            "ready_to_advance",
+            "ready_to_resume",
+            "spectator",
         }:
             resume = command_phase == "ready_to_resume"
             state = "season_matchday_ready"
             next_action = {
                 "id": (
-                    "resume_season_matchday" if resume
-                    else "advance_season_matchday"
+                    "resume_season_matchday" if resume else "advance_season_matchday"
                 ),
                 "target": "#play-matchday",
                 "matchday": season_command.get("current_matchday"),
                 "reason": (
                     "resume the partially completed persisted matchday"
-                    if resume else
-                    "all required decisions are frozen; advance the matchday"
+                    if resume
+                    else "all required decisions are frozen; advance the matchday"
                 ),
             }
         elif season_present:
@@ -1634,39 +1906,50 @@ class ProductWorkspace:
             readiness_ready = bool(readiness["ready"])
             decision_pending = command_phase == "decision_required"
             execution_ready = command_phase in {
-                "ready_to_advance", "ready_to_resume", "spectator",
+                "ready_to_advance",
+                "ready_to_resume",
+                "spectator",
             }
             season_journey = [
                 {
                     "id": "season_setup",
                     "status": (
-                        "blocked" if not readiness_ready
-                        else "action_required" if player_promise_setup_required
+                        "blocked"
+                        if not readiness_ready
+                        else "action_required"
+                        if player_promise_setup_required
                         else "complete"
                     ),
                 },
                 {
                     "id": "matchday_decision",
                     "status": (
-                        "complete" if season_complete
-                        else "blocked" if (
-                            not readiness_ready or player_promise_setup_required
-                        )
-                        else "action_required" if decision_pending
-                        else "complete" if execution_ready
+                        "complete"
+                        if season_complete
+                        else "blocked"
+                        if (not readiness_ready or player_promise_setup_required)
+                        else "action_required"
+                        if decision_pending
+                        else "complete"
+                        if execution_ready
                         else "pending"
                     ),
                 },
                 {
                     "id": "matchday_execution",
                     "status": (
-                        "complete" if season_complete
-                        else "blocked" if (
-                            not readiness_ready or player_promise_setup_required
+                        "complete"
+                        if season_complete
+                        else "blocked"
+                        if (
+                            not readiness_ready
+                            or player_promise_setup_required
                             or decision_pending
                         )
-                        else "pending" if active
-                        else "ready" if execution_ready
+                        else "pending"
+                        if active
+                        else "ready"
+                        if execution_ready
                         else "pending"
                     ),
                 },
@@ -1677,11 +1960,12 @@ class ProductWorkspace:
                 {
                     "id": "next_season",
                     "status": (
-                        "blocked" if not readiness_ready
-                        else "action_required" if (
-                            season_complete and manager_team is not None
-                        )
-                        else "available" if season_complete
+                        "blocked"
+                        if not readiness_ready
+                        else "action_required"
+                        if (season_complete and manager_team is not None)
+                        else "available"
+                        if season_complete
                         else "pending"
                     ),
                 },
@@ -1705,14 +1989,17 @@ class ProductWorkspace:
             },
             "journey": season_journey,
             "alternative_actions": (
-                [{
-                    "id": "run_standalone_match",
-                    "target": "#match-form",
-                    "reason": (
-                        "optional isolated observation or tactical laboratory entry"
-                    ),
-                }]
-                if not season_present else []
+                [
+                    {
+                        "id": "run_standalone_match",
+                        "target": "#match-form",
+                        "reason": (
+                            "optional isolated observation or tactical laboratory entry"
+                        ),
+                    }
+                ]
+                if not season_present
+                else []
             ),
             "completed_matches": len(matches),
             "failed_attempts": failed,
@@ -1744,7 +2031,8 @@ class ProductWorkspace:
                 except (OSError, ValueError, TypeError):
                     seed = None
         if (
-            isinstance(seed, bool) or not isinstance(seed, int)
+            isinstance(seed, bool)
+            or not isinstance(seed, int)
             or not 0 <= seed <= 2**31 - 1
         ):
             raise ValueError("latest match has no reusable deterministic seed")
@@ -1765,7 +2053,8 @@ class ProductWorkspace:
         shot_artifact = shot_decision.get("promotion_artifact")
         values["MATCH_WM_SHOT_HEAD"] = (
             str(shot_artifact)
-            if shot_decision.get("accepted") and shot_artifact else ""
+            if shot_decision.get("accepted") and shot_artifact
+            else ""
         )
         checkpoint = values.get("MATCH_WM_CHECKPOINT")
         if checkpoint:
@@ -1783,16 +2072,26 @@ class ProductWorkspace:
             yield
 
     def run_match(
-        self, home: str, away: str, *, fast: bool = False,
-        plan: MatchPlan | None = None, seed_override: int | None = None,
+        self,
+        home: str,
+        away: str,
+        *,
+        fast: bool = False,
+        plan: MatchPlan | None = None,
+        seed_override: int | None = None,
     ) -> dict[str, Any]:
         with FileLease(self.session_lease_path, timeout=30.0):
             return self._run_match_locked(
-                home, away, fast=fast, plan=plan, seed_override=seed_override,
+                home,
+                away,
+                fast=fast,
+                plan=plan,
+                seed_override=seed_override,
             )
 
     def _archive_with_development_evidence(
-        self, season: Mapping[str, Any],
+        self,
+        season: Mapping[str, Any],
     ) -> dict[str, Any]:
         """Freeze season results together with exact available player minutes."""
         archived = archive_completed_season(season)
@@ -1805,36 +2104,51 @@ class ProductWorkspace:
         if isinstance(contract, Mapping) and plan.manager_team is not None:
             progress = archived["manager_profile"]["player_role_promises"]
             archived["player_promise_outcomes"] = settle_player_promise_outcomes(
-                contract, progress,
+                contract,
+                progress,
                 archived["player_development_evidence"][plan.manager_team],
             )
         return archived
 
     def _sporting_brief_for_transition(
-        self, session: Mapping[str, Any], source_archive: Mapping[str, Any], *,
-        team: str, target_season_id: str,
+        self,
+        session: Mapping[str, Any],
+        source_archive: Mapping[str, Any],
+        *,
+        team: str,
+        target_season_id: str,
     ) -> dict[str, Any]:
         source_season_id = str(source_archive.get("season_id") or "")
         target_index = int(str(target_season_id).split("-")[-1])
         source_index = int(source_season_id.split("-")[-1])
         source_plan = SeasonPlan.from_payload(source_archive.get("plan") or {})
         if team not in source_plan.teams or target_index <= source_index:
-            raise ValueError("sporting plan requires a continuing club and later season")
-        base_roster = load_roster_json(roster_path_for_team(
-            str(self.root), team,
-        ))
+            raise ValueError(
+                "sporting plan requires a continuing club and later season"
+            )
+        base_roster = load_roster_json(
+            roster_path_for_team(
+                str(self.root),
+                team,
+            )
+        )
         if base_roster is None:
             raise ValueError("sporting plan roster is unavailable")
         roster = replay_squad_registry_through(
-            base_roster, team=team, registry=session.get("squad_registry"),
+            base_roster,
+            team=team,
+            registry=session.get("squad_registry"),
             season_id=source_season_id,
             development_registry=session.get("player_development"),
             lifecycle_registry=session.get("player_lifecycle"),
             market_registry=session.get("player_market"),
         )
         recruitment = generate_recruitment_market(
-            roster, team=team, market_id=recruitment_market_id(
-                season_index=target_index, team=team,
+            roster,
+            team=team,
+            market_id=recruitment_market_id(
+                season_index=target_index,
+                team=team,
             ),
         )
         outgoing = [
@@ -1852,14 +2166,18 @@ class ProductWorkspace:
         ]
         recruitment["outgoing_players"] = outgoing
         settlement = build_season_finance_settlement(
-            source_archive, roster, team=team,
+            source_archive,
+            roster,
+            team=team,
         )
         finance_entries = (
             ((session.get("finance_registry") or {}).get("clubs") or {})
-            .get(team, {}).get("entries", [])
+            .get(team, {})
+            .get("entries", [])
         )
         settled = [
-            entry for entry in finance_entries
+            entry
+            for entry in finance_entries
             if entry.get("type") == "season_settlement"
             and entry.get("season_id") == source_season_id
         ]
@@ -1869,35 +2187,40 @@ class ProductWorkspace:
             club_balance = int(settled[0]["balance_after"])
         else:
             prospective, _entry = append_season_settlement(
-                session.get("finance_registry"), team=team,
+                session.get("finance_registry"),
+                team=team,
                 settlement=settlement,
             )
-            club_balance = int(club_finance_view(
-                prospective, team=team,
-            )["balance"])
+            club_balance = int(
+                club_finance_view(
+                    prospective,
+                    team=team,
+                )["balance"]
+            )
         recruitment["club_balance"] = club_balance
         recruitment["available_budget"] = recruitment_allowance(club_balance)
         lifecycle = build_lifecycle_preview(
-            roster, team=team, target_season_id=target_season_id,
+            roster,
+            team=team,
+            target_season_id=target_season_id,
         )
         prior_market = {
             "schema_version": 1,
             "transitions": [
                 copy.deepcopy(item)
-                for item in (session.get("player_market") or {}).get(
-                    "transitions", []
-                )
-                if int(str(item["target_season_id"]).split("-")[-1])
-                < target_index
+                for item in (session.get("player_market") or {}).get("transitions", [])
+                if int(str(item["target_season_id"]).split("-")[-1]) < target_index
             ],
         }
         market_window = open_market_window(
-            prior_market, target_season_id=target_season_id,
+            prior_market,
+            target_season_id=target_season_id,
         )
         free_market = market_preview_from_window(market_window, team=team)
         reports = reports_for_market(
             session.get("scouting_registry"),
-            market_id=free_market["market_id"], team=team,
+            market_id=free_market["market_id"],
+            team=team,
         )
         report_by_player = {report["player_id"]: report for report in reports}
         for candidate in free_market["candidates"]:
@@ -1909,7 +2232,9 @@ class ProductWorkspace:
             else:
                 candidate["scouted"] = False
         free_market["scouting_budget"] = {
-            "limit": 2, "used": len(reports), "remaining": 2 - len(reports),
+            "limit": 2,
+            "used": len(reports),
+            "remaining": 2 - len(reports),
         }
         free_market["outgoing_players"] = [
             {key: row[key] for key in ("player_id", "name", "role", "quality")}
@@ -1919,9 +2244,7 @@ class ProductWorkspace:
             "schema_version": 1,
             "outcomes": [
                 copy.deepcopy(item)
-                for item in (session.get("scouting_outcomes") or {}).get(
-                    "outcomes", []
-                )
+                for item in (session.get("scouting_outcomes") or {}).get("outcomes", [])
                 if int(str(item["season_id"]).split("-")[-1]) < source_index
             ],
         }
@@ -1931,11 +2254,9 @@ class ProductWorkspace:
             and source_plan.manager_team == team
         ):
             existing_reviews = [
-                row for row in (session.get("sporting_reviews") or {}).get(
-                    "reviews", []
-                )
-                if row.get("season_id") == source_season_id
-                and row.get("team") == team
+                row
+                for row in (session.get("sporting_reviews") or {}).get("reviews", [])
+                if row.get("season_id") == source_season_id and row.get("team") == team
             ]
             if len(existing_reviews) > 1:
                 raise ValueError("duplicate sporting strategy review")
@@ -1957,17 +2278,24 @@ class ProductWorkspace:
                 if not isinstance(participation, Mapping):
                     raise ValueError("sporting strategy review evidence is unavailable")
                 prior_review = build_sporting_review(
-                    source_archive, roster, participation=participation,
-                    settlement=settlement, free_agent_signings=source_signings,
+                    source_archive,
+                    roster,
+                    participation=participation,
+                    settlement=settlement,
+                    free_agent_signings=source_signings,
                 )
             previous_strategy_review = sporting_review_feedback(prior_review)
         return build_sporting_brief(
-            team=team, source_season_id=source_season_id,
-            target_season_id=target_season_id, roster=roster,
-            recruitment_market=recruitment, lifecycle_preview=lifecycle,
+            team=team,
+            source_season_id=source_season_id,
+            target_season_id=target_season_id,
+            roster=roster,
+            recruitment_market=recruitment,
+            lifecycle_preview=lifecycle,
             free_agent_market=free_market,
             scouting_outcomes=scouting_outcome_view(
-                prior_outcomes, manager_team=team,
+                prior_outcomes,
+                manager_team=team,
             ),
             previous_strategy_review=previous_strategy_review,
         )
@@ -1985,12 +2313,17 @@ class ProductWorkspace:
         archive = self._archive_with_development_evidence(season)
         target_index = int(session.get("next_season_index", 1))
         return self._sporting_brief_for_transition(
-            session, archive, team=cleaned_team,
+            session,
+            archive,
+            team=cleaned_team,
             target_season_id=f"season-{target_index:04d}",
         )
 
     def create_season(
-        self, plan: SeasonPlan, *, replace: bool = False,
+        self,
+        plan: SeasonPlan,
+        *,
+        replace: bool = False,
     ) -> dict[str, Any]:
         """Create one deterministic competition inside the Studio session."""
         with FileLease(self.session_lease_path, timeout=30.0):
@@ -2010,9 +2343,7 @@ class ProductWorkspace:
                 ):
                     raise ValueError("only a completed season can be replaced")
                 history = self._season_history_view(session)
-                archived_total = session.get(
-                    "archived_seasons_total", len(history)
-                )
+                archived_total = session.get("archived_seasons_total", len(history))
                 if (
                     isinstance(archived_total, bool)
                     or not isinstance(archived_total, int)
@@ -2029,34 +2360,41 @@ class ProductWorkspace:
                     raise ValueError("completed season is already archived")
                 previous_plan = SeasonPlan.from_payload(existing["plan"])
                 for previous_team in sorted(previous_plan.teams):
-                    base_roster = load_roster_json(roster_path_for_team(
-                        str(self.root), previous_team,
-                    ))
+                    base_roster = load_roster_json(
+                        roster_path_for_team(
+                            str(self.root),
+                            previous_team,
+                        )
+                    )
                     historical_roster = (
                         replay_squad_registry_through(
-                            base_roster, team=previous_team,
+                            base_roster,
+                            team=previous_team,
                             registry=session.get("squad_registry"),
                             season_id=str(existing["season_id"]),
                             development_registry=session.get("player_development"),
                             lifecycle_registry=session.get("player_lifecycle"),
                             market_registry=session.get("player_market"),
                         )
-                        if base_roster is not None else None
+                        if base_roster is not None
+                        else None
                     )
                     rollover_rosters[previous_team] = historical_roster
                     settlement = build_season_finance_settlement(
-                        archived, historical_roster, team=previous_team,
+                        archived,
+                        historical_roster,
+                        team=previous_team,
                     )
                     rollover_settlements[previous_team] = settlement
-                    finance_registry, _settlement_entry = (
-                        append_season_settlement(
-                            session.get("finance_registry"),
-                            team=previous_team, settlement=settlement,
-                        )
+                    finance_registry, _settlement_entry = append_season_settlement(
+                        session.get("finance_registry"),
+                        team=previous_team,
+                        settlement=settlement,
                     )
                     session["finance_registry"] = finance_registry
                 completed_market_transitions = [
-                    item for item in (session.get("player_market") or {}).get(
+                    item
+                    for item in (session.get("player_market") or {}).get(
                         "transitions", []
                     )
                     if item.get("target_season_id") == archived["season_id"]
@@ -2067,38 +2405,44 @@ class ProductWorkspace:
                     completed_market = completed_market_transitions[0]
                     for signing in completed_market.get("signings") or []:
                         signing_team = str(signing.get("team") or "")
-                        observation, observation_source = (
-                            resolve_signing_observation(
-                                signing, completed_market,
-                                session.get("scouting_registry"),
-                            )
+                        observation, observation_source = resolve_signing_observation(
+                            signing,
+                            completed_market,
+                            session.get("scouting_registry"),
                         )
                         outcome = build_scouting_outcome(
-                            signing, observation=observation,
+                            signing,
+                            observation=observation,
                             observation_source=observation_source,
                             archive=archived,
-                            participation=archived[
-                                "player_development_evidence"
-                            ][signing_team],
+                            participation=archived["player_development_evidence"][
+                                signing_team
+                            ],
                             settlement=rollover_settlements[signing_team],
                         )
                         session["scouting_outcomes"] = append_scouting_outcome(
-                            session.get("scouting_outcomes"), outcome,
+                            session.get("scouting_outcomes"),
+                            outcome,
                         )
                 archived_plan = SeasonPlan.from_payload(archived["plan"])
                 if archived_plan.manager_sporting_directive is not None:
                     review_team = str(archived_plan.manager_team)
                     review = build_sporting_review(
-                        archived, rollover_rosters[review_team],
-                        participation=archived["player_development_evidence"][review_team],
+                        archived,
+                        rollover_rosters[review_team],
+                        participation=archived["player_development_evidence"][
+                            review_team
+                        ],
                         settlement=rollover_settlements[review_team],
                         free_agent_signings=(
                             completed_market_transitions[0].get("signings") or []
-                            if completed_market_transitions else []
+                            if completed_market_transitions
+                            else []
                         ),
                     )
                     session["sporting_reviews"] = append_sporting_review(
-                        session.get("sporting_reviews"), review,
+                        session.get("sporting_reviews"),
+                        review,
                     )
                 history.append(archived)
                 session["season_history"] = history[-12:]
@@ -2109,7 +2453,8 @@ class ProductWorkspace:
             validate_manager_career_transition(plan, career)
             if plan.manager_team is not None:
                 session["finance_registry"] = ensure_finance_club(
-                    session.get("finance_registry"), plan.manager_team,
+                    session.get("finance_registry"),
+                    plan.manager_team,
                 )
             season_index = int(session.get("next_season_index", 1))
             used_ids = {
@@ -2130,22 +2475,28 @@ class ProductWorkspace:
                         "sporting directive is available only for a later managed season"
                     )
                 sporting_brief = self._sporting_brief_for_transition(
-                    session, rollover_archive, team=plan.manager_team,
+                    session,
+                    rollover_archive,
+                    team=plan.manager_team,
                     target_season_id=season_id,
                 )
                 sporting_evaluation = validate_sporting_choices(
-                    plan.manager_sporting_directive, sporting_brief,
+                    plan.manager_sporting_directive,
+                    sporting_brief,
                     recruitment=(
                         plan.manager_recruitment.as_dict()
-                        if plan.manager_recruitment is not None else None
+                        if plan.manager_recruitment is not None
+                        else None
                     ),
                     retention=(
                         plan.manager_retention.as_dict()
-                        if plan.manager_retention is not None else None
+                        if plan.manager_retention is not None
+                        else None
                     ),
                     free_agent=(
                         plan.manager_free_agent.as_dict()
-                        if plan.manager_free_agent is not None else None
+                        if plan.manager_free_agent is not None
+                        else None
                     ),
                 )
             recruitment_transaction = None
@@ -2155,19 +2506,25 @@ class ProductWorkspace:
                         "recruitment is available only when starting a later season"
                     )
                 expected_market_id = recruitment_market_id(
-                    season_index=season_index, team=str(plan.manager_team),
+                    season_index=season_index,
+                    team=str(plan.manager_team),
                 )
                 if plan.manager_recruitment.market_id != expected_market_id:
                     raise ValueError("recruitment market identity mismatch")
-                base_roster = load_roster_json(roster_path_for_team(
-                    str(self.root), str(plan.manager_team),
-                ))
+                base_roster = load_roster_json(
+                    roster_path_for_team(
+                        str(self.root),
+                        str(plan.manager_team),
+                    )
+                )
                 if base_roster is None:
                     raise ValueError("recruitment roster is unavailable")
                 registry, _result_roster, recruitment_transaction = (
                     append_recruitment_transaction(
-                        base_roster, team=str(plan.manager_team),
-                        plan=plan.manager_recruitment, season_id=season_id,
+                        base_roster,
+                        team=str(plan.manager_team),
+                        plan=plan.manager_recruitment,
+                        season_id=season_id,
                         registry=session.get("squad_registry"),
                         development_registry=session.get("player_development"),
                         lifecycle_registry=session.get("player_lifecycle"),
@@ -2177,42 +2534,52 @@ class ProductWorkspace:
                 session["squad_registry"] = registry
                 finance_registry, _finance_entry = append_recruitment_charge(
                     session.get("finance_registry"),
-                    team=str(plan.manager_team), season_id=season_id,
+                    team=str(plan.manager_team),
+                    season_id=season_id,
                     squad_transaction=recruitment_transaction,
                 )
                 session["finance_registry"] = finance_registry
             if rollover_archive is not None:
-                prior_teams = set(SeasonPlan.from_payload(
-                    rollover_archive["plan"],
-                ).teams)
+                prior_teams = set(
+                    SeasonPlan.from_payload(
+                        rollover_archive["plan"],
+                    ).teams
+                )
                 participating_teams = sorted(prior_teams & set(plan.teams))
                 controlled_team = (
                     plan.manager_team
-                    if plan.manager_team in participating_teams else None
+                    if plan.manager_team in participating_teams
+                    else None
                 )
                 ai_clubs = []
                 for ai_team in (
-                    team for team in participating_teams
-                    if team != controlled_team
+                    team for team in participating_teams if team != controlled_team
                 ):
                     finance = club_finance_view(
-                        session.get("finance_registry"), team=ai_team,
+                        session.get("finance_registry"),
+                        team=ai_team,
                     )
                     decision = ai_club_recruitment_decision(
-                        rollover_archive, rollover_rosters.get(ai_team),
-                        team=ai_team, next_season_index=season_index,
+                        rollover_archive,
+                        rollover_rosters.get(ai_team),
+                        team=ai_team,
+                        next_season_index=season_index,
                         allowance=finance["recruitment_allowance"],
                     )
                     ai_transaction = None
                     if decision["plan"] is not None:
-                        base_roster = load_roster_json(roster_path_for_team(
-                            str(self.root), ai_team,
-                        ))
+                        base_roster = load_roster_json(
+                            roster_path_for_team(
+                                str(self.root),
+                                ai_team,
+                            )
+                        )
                         if base_roster is None:
                             raise ValueError("AI recruitment roster is unavailable")
                         registry, _result_roster, ai_transaction = (
                             append_recruitment_transaction(
-                                base_roster, team=ai_team,
+                                base_roster,
+                                team=ai_team,
                                 plan=RecruitmentPlan.from_payload(decision["plan"]),
                                 season_id=season_id,
                                 registry=session.get("squad_registry"),
@@ -2223,22 +2590,26 @@ class ProductWorkspace:
                         )
                         session["squad_registry"] = registry
                         finance_registry, _finance_entry = append_recruitment_charge(
-                            session.get("finance_registry"), team=ai_team,
+                            session.get("finance_registry"),
+                            team=ai_team,
                             season_id=season_id,
                             squad_transaction=ai_transaction,
                         )
                         session["finance_registry"] = finance_registry
-                    ai_clubs.append({
-                        "team": ai_team,
-                        "settlement_identity": evidence_identity(
-                            rollover_settlements[ai_team],
-                        ),
-                        "decision": decision,
-                        "squad_transaction_identity": (
-                            evidence_identity(ai_transaction)
-                            if ai_transaction is not None else None
-                        ),
-                    })
+                    ai_clubs.append(
+                        {
+                            "team": ai_team,
+                            "settlement_identity": evidence_identity(
+                                rollover_settlements[ai_team],
+                            ),
+                            "decision": decision,
+                            "squad_transaction_identity": (
+                                evidence_identity(ai_transaction)
+                                if ai_transaction is not None
+                                else None
+                            ),
+                        }
+                    )
                 transition = {
                     "schema_version": 1,
                     "from_season_id": rollover_archive["season_id"],
@@ -2253,7 +2624,8 @@ class ProductWorkspace:
                     ),
                 }
                 session["league_ecosystem"] = append_league_transition(
-                    session.get("league_ecosystem"), transition,
+                    session.get("league_ecosystem"),
+                    transition,
                 )
                 rollover_transition = transition
             if rollover_archive is not None:
@@ -2261,18 +2633,24 @@ class ProductWorkspace:
                 participation = rollover_archive["player_development_evidence"]
                 continuing_teams = sorted(set(source_plan.teams) & set(plan.teams))
                 market_window = open_market_window(
-                    session.get("player_market"), target_season_id=season_id,
+                    session.get("player_market"),
+                    target_season_id=season_id,
                 )
                 target_rosters: dict[str, dict[str, Any]] = {}
                 for market_team in continuing_teams:
-                    base_roster = load_roster_json(roster_path_for_team(
-                        str(self.root), market_team,
-                    ))
+                    base_roster = load_roster_json(
+                        roster_path_for_team(
+                            str(self.root),
+                            market_team,
+                        )
+                    )
                     if base_roster is None:
                         continue
                     target_rosters[market_team] = replay_squad_registry_through(
-                        base_roster, team=market_team,
-                        registry=session.get("squad_registry"), season_id=season_id,
+                        base_roster,
+                        team=market_team,
+                        registry=session.get("squad_registry"),
+                        season_id=season_id,
                         development_registry=session.get("player_development"),
                         lifecycle_registry=session.get("player_lifecycle"),
                         market_registry=session.get("player_market"),
@@ -2285,24 +2663,30 @@ class ProductWorkspace:
                         )
                     market_window, target_rosters[manager_team], _manager_signing = (
                         execute_free_agent_signing(
-                            market_window, target_rosters[manager_team],
-                            team=manager_team, plan=plan.manager_free_agent,
+                            market_window,
+                            target_rosters[manager_team],
+                            team=manager_team,
+                            plan=plan.manager_free_agent,
                             control="manager",
                         )
                     )
                 ai_market_decisions = []
                 for market_team in (
-                    team for team in continuing_teams
+                    team
+                    for team in continuing_teams
                     if team != plan.manager_team and team in target_rosters
                 ):
                     decision = ai_free_agent_decision(
-                        market_window, target_rosters[market_team], team=market_team,
+                        market_window,
+                        target_rosters[market_team],
+                        team=market_team,
                     )
                     ai_market_decisions.append(decision)
                     if decision["plan"] is not None:
                         market_window, target_rosters[market_team], _ai_signing = (
                             execute_free_agent_signing(
-                                market_window, target_rosters[market_team],
+                                market_window,
+                                target_rosters[market_team],
                                 team=market_team,
                                 plan=FreeAgentPlan.from_payload(decision["plan"]),
                                 control="ai",
@@ -2313,14 +2697,18 @@ class ProductWorkspace:
                 market_entries = []
                 for signing in market_window.get("signings") or []:
                     outgoing = signing["outgoing"]
-                    market_entries.append(pool_entry_from_player(
-                        outgoing, origin_team=str(signing["team"]),
-                        entered_season_id=season_id,
-                        retirement_age=retirement_age_for_player(
-                            str(signing["team"]), str(outgoing["player_id"]),
-                        ),
-                        reason="squad_replacement",
-                    ))
+                    market_entries.append(
+                        pool_entry_from_player(
+                            outgoing,
+                            origin_team=str(signing["team"]),
+                            entered_season_id=season_id,
+                            retirement_age=retirement_age_for_player(
+                                str(signing["team"]),
+                                str(outgoing["player_id"]),
+                            ),
+                            reason="squad_replacement",
+                        )
+                    )
                 for lifecycle_team in continuing_teams:
                     source_roster = rollover_rosters.get(lifecycle_team)
                     target_roster = target_rosters.get(lifecycle_team)
@@ -2328,33 +2716,41 @@ class ProductWorkspace:
                         continue
                     retention = (
                         plan.manager_retention
-                        if lifecycle_team == plan.manager_team else None
+                        if lifecycle_team == plan.manager_team
+                        else None
                     )
                     transaction, lifecycle_result = build_lifecycle_transaction(
-                        source_roster, target_roster, team=lifecycle_team,
-                        target_season_id=season_id, plan=retention,
+                        source_roster,
+                        target_roster,
+                        team=lifecycle_team,
+                        target_season_id=season_id,
+                        plan=retention,
                         control=(
-                            "manager" if lifecycle_team == plan.manager_team
-                            else "ai"
+                            "manager" if lifecycle_team == plan.manager_team else "ai"
                         ),
                     )
                     session["player_lifecycle"] = append_lifecycle_transaction(
-                        session.get("player_lifecycle"), team=lifecycle_team,
+                        session.get("player_lifecycle"),
+                        team=lifecycle_team,
                         transaction=transaction,
                     )
                     lifecycle_results[lifecycle_team] = lifecycle_result
                     for exit_row in transaction["exits"]:
                         if exit_row["reason"] != "contract_released":
                             continue
-                        market_entries.append(pool_entry_from_player(
-                            exit_row["player"], origin_team=lifecycle_team,
-                            entered_season_id=season_id,
-                            retirement_age=int(exit_row["retirement_age"]),
-                            reason="contract_released",
-                        ))
+                        market_entries.append(
+                            pool_entry_from_player(
+                                exit_row["player"],
+                                origin_team=lifecycle_team,
+                                entered_season_id=season_id,
+                                retirement_age=int(exit_row["retirement_age"]),
+                                reason="contract_released",
+                            )
+                        )
                 session["player_market"], _market_transition = (
                     finalize_market_transition(
-                        session.get("player_market"), market_window,
+                        session.get("player_market"),
+                        market_window,
                         entries=market_entries,
                     )
                 )
@@ -2364,40 +2760,47 @@ class ProductWorkspace:
                     if source_roster is None or target_roster is None:
                         continue
                     transaction, _developed_roster = build_development_transaction(
-                        rollover_archive, source_roster, target_roster,
-                        participation[development_team], team=development_team,
+                        rollover_archive,
+                        source_roster,
+                        target_roster,
+                        participation[development_team],
+                        team=development_team,
                         target_season_id=season_id,
                     )
                     session["player_development"] = append_development_transaction(
-                        session.get("player_development"), team=development_team,
+                        session.get("player_development"),
+                        team=development_team,
                         transaction=transaction,
                     )
             session["next_season_index"] = season_index + 1
             strategy_rosters = {}
             recruitment_moves = {}
-            squad_clubs = (
-                (session.get("squad_registry") or {}).get("clubs") or {}
-            )
+            squad_clubs = (session.get("squad_registry") or {}).get("clubs") or {}
             for strategy_team in sorted(plan.teams):
-                base_roster = load_roster_json(roster_path_for_team(
-                    str(self.root), strategy_team,
-                ))
+                base_roster = load_roster_json(
+                    roster_path_for_team(
+                        str(self.root),
+                        strategy_team,
+                    )
+                )
                 strategy_rosters[strategy_team] = (
                     replay_squad_registry_through(
-                        base_roster, team=strategy_team,
+                        base_roster,
+                        team=strategy_team,
                         registry=session.get("squad_registry"),
                         season_id=season_id,
                         development_registry=session.get("player_development"),
                         lifecycle_registry=session.get("player_lifecycle"),
                         market_registry=session.get("player_market"),
                     )
-                    if base_roster is not None else None
+                    if base_roster is not None
+                    else None
                 )
                 target_transactions = [
                     transaction
-                    for transaction in (
-                        squad_clubs.get(strategy_team) or {}
-                    ).get("transactions", [])
+                    for transaction in (squad_clubs.get(strategy_team) or {}).get(
+                        "transactions", []
+                    )
                     if transaction.get("season_id") == season_id
                 ]
                 recruitment_moves[strategy_team] = sum(
@@ -2405,12 +2808,15 @@ class ProductWorkspace:
                     for transaction in target_transactions
                 )
             club_strategies = build_season_club_strategies(
-                season_id=season_id, teams=plan.teams,
-                manager_team=plan.manager_team, rosters=strategy_rosters,
+                season_id=season_id,
+                teams=plan.teams,
+                manager_team=plan.manager_team,
+                rosters=strategy_rosters,
                 source_archive=rollover_archive,
                 previous_snapshot=(
                     existing.get("club_strategies")
-                    if isinstance(existing, Mapping) else None
+                    if isinstance(existing, Mapping)
+                    else None
                 ),
                 ecosystem_transition=rollover_transition,
                 recruitment_moves=recruitment_moves,
@@ -2447,7 +2853,9 @@ class ProductWorkspace:
             raise ValueError("invalid recruitment team")
         season_index = int(session.get("next_season_index", 1))
         market = recruitment_market_for_workspace(
-            self.root, team=cleaned_team, season_index=season_index,
+            self.root,
+            team=cleaned_team,
+            season_index=season_index,
             registry=session.get("squad_registry"),
             development_registry=session.get("player_development"),
             lifecycle_registry=session.get("player_lifecycle"),
@@ -2472,33 +2880,43 @@ class ProductWorkspace:
         completed_plan = SeasonPlan.from_payload(season["plan"])
         settlement_preview = None
         balance_before_settlement = club_finance_view(
-            prospective_finance_registry, team=cleaned_team,
+            prospective_finance_registry,
+            team=cleaned_team,
         )["balance"]
         if cleaned_team in completed_plan.teams:
             completed_archive = self._archive_with_development_evidence(season)
-            base_roster = load_roster_json(roster_path_for_team(
-                str(self.root), cleaned_team,
-            ))
+            base_roster = load_roster_json(
+                roster_path_for_team(
+                    str(self.root),
+                    cleaned_team,
+                )
+            )
             completed_roster = (
                 replay_squad_registry_through(
-                    base_roster, team=cleaned_team,
+                    base_roster,
+                    team=cleaned_team,
                     registry=session.get("squad_registry"),
                     season_id=str(season["season_id"]),
                     development_registry=session.get("player_development"),
                     lifecycle_registry=session.get("player_lifecycle"),
                     market_registry=session.get("player_market"),
                 )
-                if base_roster is not None else None
+                if base_roster is not None
+                else None
             )
             settlement_preview = build_season_finance_settlement(
-                completed_archive, completed_roster, team=cleaned_team,
+                completed_archive,
+                completed_roster,
+                team=cleaned_team,
             )
             prospective_finance_registry, _ = append_season_settlement(
-                prospective_finance_registry, team=cleaned_team,
+                prospective_finance_registry,
+                team=cleaned_team,
                 settlement=settlement_preview,
             )
         finance = club_finance_view(
-            prospective_finance_registry, team=cleaned_team,
+            prospective_finance_registry,
+            team=cleaned_team,
         )
         market["club_balance"] = finance["balance"]
         market["balance_before_settlement"] = balance_before_settlement
@@ -2517,13 +2935,17 @@ class ProductWorkspace:
         plan = SeasonPlan.from_payload(season["plan"])
         if cleaned_team not in plan.teams:
             raise ValueError("lifecycle team is outside the completed season")
-        base_roster = load_roster_json(roster_path_for_team(
-            str(self.root), cleaned_team,
-        ))
+        base_roster = load_roster_json(
+            roster_path_for_team(
+                str(self.root),
+                cleaned_team,
+            )
+        )
         if base_roster is None:
             raise ValueError("lifecycle roster is unavailable")
         source_roster = replay_squad_registry_through(
-            base_roster, team=cleaned_team,
+            base_roster,
+            team=cleaned_team,
             registry=session.get("squad_registry"),
             season_id=str(season["season_id"]),
             development_registry=session.get("player_development"),
@@ -2532,7 +2954,8 @@ class ProductWorkspace:
         )
         target_index = int(session.get("next_season_index", 1))
         return build_lifecycle_preview(
-            source_roster, team=cleaned_team,
+            source_roster,
+            team=cleaned_team,
             target_season_id=f"season-{target_index:04d}",
         )
 
@@ -2553,7 +2976,8 @@ class ProductWorkspace:
         )
         preview = market_preview_from_window(window, team=cleaned_team)
         reports = reports_for_market(
-            session.get("scouting_registry"), market_id=preview["market_id"],
+            session.get("scouting_registry"),
+            market_id=preview["market_id"],
             team=cleaned_team,
         )
         reports_by_player = {report["player_id"]: report for report in reports}
@@ -2566,7 +2990,9 @@ class ProductWorkspace:
             else:
                 candidate["scouted"] = False
         preview["scouting_budget"] = {
-            "limit": 2, "used": len(reports), "remaining": 2 - len(reports),
+            "limit": 2,
+            "used": len(reports),
+            "remaining": 2 - len(reports),
         }
         roster = load_effective_roster(self.root, cleaned_team)
         if roster is None:
@@ -2597,7 +3023,8 @@ class ProductWorkspace:
             target_index = int(session.get("next_season_index", 1))
             target_id = f"season-{target_index:04d}"
             window = open_market_window(
-                session.get("player_market"), target_season_id=target_id,
+                session.get("player_market"),
+                target_season_id=target_id,
             )
             preview = market_preview_from_window(window, team=cleaned_team)
             cleaned_player = str(player_id or "").strip()
@@ -2609,8 +3036,10 @@ class ProductWorkspace:
                 raise ValueError("scouting candidate is outside the current market")
             registry, _report = append_scouting_report(
                 session.get("scouting_registry"),
-                market_id=preview["market_id"], team=cleaned_team,
-                entry=entry, true_quality=market_player_quality(entry["player"]),
+                market_id=preview["market_id"],
+                team=cleaned_team,
+                entry=entry,
+                true_quality=market_player_quality(entry["player"]),
             )
             session["scouting_registry"] = registry
             session["updated_at"] = _now()
@@ -2634,25 +3063,28 @@ class ProductWorkspace:
                 if sporting_brief is not None or sporting_evaluation is not None:
                     raise ValueError("invalid archived sporting evidence")
             else:
-                if (
-                    not isinstance(sporting_brief, Mapping)
-                    or not isinstance(sporting_evaluation, Mapping)
+                if not isinstance(sporting_brief, Mapping) or not isinstance(
+                    sporting_evaluation, Mapping
                 ):
                     raise ValueError("archived sporting evidence is unavailable")
                 validate_sporting_brief(sporting_brief)
                 expected_sporting = validate_sporting_choices(
-                    plan.manager_sporting_directive, sporting_brief,
+                    plan.manager_sporting_directive,
+                    sporting_brief,
                     recruitment=(
                         plan.manager_recruitment.as_dict()
-                        if plan.manager_recruitment is not None else None
+                        if plan.manager_recruitment is not None
+                        else None
                     ),
                     retention=(
                         plan.manager_retention.as_dict()
-                        if plan.manager_retention is not None else None
+                        if plan.manager_retention is not None
+                        else None
                     ),
                     free_agent=(
                         plan.manager_free_agent.as_dict()
-                        if plan.manager_free_agent is not None else None
+                        if plan.manager_free_agent is not None
+                        else None
                     ),
                 )
                 if (
@@ -2663,10 +3095,9 @@ class ProductWorkspace:
                     raise ValueError("invalid archived sporting evidence")
             participation_by_team = item.get("player_development_evidence")
             if participation_by_team is not None:
-                if (
-                    not isinstance(participation_by_team, Mapping)
-                    or list(participation_by_team) != sorted(plan.teams)
-                ):
+                if not isinstance(participation_by_team, Mapping) or list(
+                    participation_by_team
+                ) != sorted(plan.teams):
                     raise ValueError("invalid archived development evidence")
                 for evidence_team, evidence in participation_by_team.items():
                     validate_participation_evidence(evidence)
@@ -2683,23 +3114,31 @@ class ProductWorkspace:
                     raise ValueError("invalid archived recruitment identity")
             else:
                 club = (
-                    (session.get("squad_registry") or {}).get("clubs", {})
+                    (session.get("squad_registry") or {})
+                    .get("clubs", {})
                     .get(str(plan.manager_team), {})
                 )
-                matches = [
-                    transaction
-                    for transaction in club.get("transactions", [])
-                    if transaction.get("season_id") == season_id
-                ] if isinstance(club, Mapping) else []
+                matches = (
+                    [
+                        transaction
+                        for transaction in club.get("transactions", [])
+                        if transaction.get("season_id") == season_id
+                    ]
+                    if isinstance(club, Mapping)
+                    else []
+                )
                 if len(matches) != 1 or archived_recruitment != matches[0]:
                     raise ValueError("invalid archived recruitment identity")
             standings = item.get("final_standings")
             profile = item.get("manager_profile")
             expected_commitment_contract = build_commitment_contract_from_sources(
-                season_id=season_id, plan=item.get("plan") or {},
+                season_id=season_id,
+                plan=item.get("plan") or {},
                 club_strategies=item.get("club_strategies"),
             )
-            expected_fixture_count = len(plan.teams) * (len(plan.teams) - 1) // 2 * plan.legs
+            expected_fixture_count = (
+                len(plan.teams) * (len(plan.teams) - 1) // 2 * plan.legs
+            )
             valid_rows = (
                 isinstance(standings, list)
                 and len(standings) == len(plan.teams)
@@ -2714,7 +3153,8 @@ class ProductWorkspace:
                 )
             )
             if (
-                not season_id or season_id in seen
+                not season_id
+                or season_id in seen
                 or item.get("fixture_count") != expected_fixture_count
                 or not valid_rows
                 or {row.get("team") for row in standings if isinstance(row, Mapping)}
@@ -2727,10 +3167,7 @@ class ProductWorkspace:
                     plan.manager_team is not None
                     and profile.get("season_id") != season_id
                 )
-                or (
-                    plan.manager_team is None
-                    and profile.get("available") is not False
-                )
+                or (plan.manager_team is None and profile.get("available") is not False)
             ):
                 raise ValueError("invalid season archive identity")
             if plan.manager_team is not None:
@@ -2742,9 +3179,11 @@ class ProductWorkspace:
                     row for row in standings if row.get("team") == plan.manager_team
                 )
                 expected_target_position = (
-                    1 if plan.manager_objective == "champion"
+                    1
+                    if plan.manager_objective == "champion"
                     else (len(plan.teams) + 1) // 2
-                    if plan.manager_objective == "top_half" else None
+                    if plan.manager_objective == "top_half"
+                    else None
                 )
                 objective_met = (
                     manager_row["position"] <= expected_target_position
@@ -2752,8 +3191,7 @@ class ProductWorkspace:
                     else manager_row["points"] >= int(plan.manager_points_target or 0)
                 )
                 maximum_matchday = (
-                    len(plan.teams) - 1
-                    if len(plan.teams) % 2 == 0 else len(plan.teams)
+                    len(plan.teams) - 1 if len(plan.teams) % 2 == 0 else len(plan.teams)
                 ) * plan.legs
                 if (
                     profile.get("available") is not True
@@ -2772,9 +3210,8 @@ class ProductWorkspace:
                     or objective.get("remaining_matches") != 0
                     or objective.get("maximum_points") != manager_row["points"]
                     or objective.get("current_snapshot_met") is not objective_met
-                    or objective.get("status") != (
-                        "achieved" if objective_met else "missed"
-                    )
+                    or objective.get("status")
+                    != ("achieved" if objective_met else "missed")
                     or record.get("points") != manager_row["points"]
                 ):
                     raise ValueError("invalid archived manager profile")
@@ -2800,7 +3237,9 @@ class ProductWorkspace:
                     stored_preparation = entry.get("opponent_preparation")
                     if stored_preparation is not None and stored_preparation != (
                         archived_opponent_preparation(
-                            plan.manager_team, entry, prior_journal_entries,
+                            plan.manager_team,
+                            entry,
+                            prior_journal_entries,
                         )
                     ):
                         raise ValueError(
@@ -2810,17 +3249,21 @@ class ProductWorkspace:
                     if world_transition is not None:
                         home = (
                             plan.manager_team
-                            if entry.get("venue") == "home" else entry.get("opponent")
+                            if entry.get("venue") == "home"
+                            else entry.get("opponent")
                         )
                         away = (
                             entry.get("opponent")
-                            if entry.get("venue") == "home" else plan.manager_team
+                            if entry.get("venue") == "home"
+                            else plan.manager_team
                         )
                         validate_fixture_world_state_transition(
-                            world_transition, season_id=season_id,
+                            world_transition,
+                            season_id=season_id,
                             fixture_id=entry["fixture_id"],
                             match_id=str(entry.get("match_id") or ""),
-                            home=str(home), away=str(away),
+                            home=str(home),
+                            away=str(away),
                         )
                     advice = entry.get("manager_decision_advice")
                     adoption = entry.get("manager_advice_adoption")
@@ -2840,7 +3283,8 @@ class ProductWorkspace:
                             or advice.get("home") != home
                             or advice.get("away") != away
                             or advice.get("manager_team") != plan.manager_team
-                            or advice.get("match_seed") != (
+                            or advice.get("match_seed")
+                            != (
                                 archive_seed
                                 + int(entry["matchday"]) * 100
                                 + fixture_order
@@ -2851,7 +3295,8 @@ class ProductWorkspace:
                             )
                         if adoption is not None:
                             validate_manager_advice_adoption(
-                                adoption, advice=advice,
+                                adoption,
+                                advice=advice,
                                 selected_tactic=str(entry.get("tactic") or ""),
                             )
                     elif adoption is not None:
@@ -2862,7 +3307,9 @@ class ProductWorkspace:
                     prior_journal_entries.append(entry)
                 expected_commitment_progress = commitment_progress_from_evidence(
                     expected_commitment_contract,
-                    journal=journal, objective=objective, final=True,
+                    journal=journal,
+                    objective=objective,
+                    final=True,
                 )
                 if profile.get("commitments") != expected_commitment_progress:
                     raise ValueError(
@@ -2870,58 +3317,69 @@ class ProductWorkspace:
                     )
                 player_contract = item.get("player_role_promises")
                 if isinstance(player_contract, Mapping):
-                    replay_fixtures = [{
-                        "fixture_id": entry["fixture_id"],
-                        "matchday": entry["matchday"],
-                        "home": plan.manager_team,
-                        "away": entry["opponent"],
-                        "state": "completed",
-                        "manager_decision": {"lineup": entry.get("lineup")},
-                        "player_promise_availability": entry.get(
-                            "player_promise_availability"
-                        ),
-                    } for entry in journal]
+                    replay_fixtures = [
+                        {
+                            "fixture_id": entry["fixture_id"],
+                            "matchday": entry["matchday"],
+                            "home": plan.manager_team,
+                            "away": entry["opponent"],
+                            "state": "completed",
+                            "manager_decision": {"lineup": entry.get("lineup")},
+                            "player_promise_availability": entry.get(
+                                "player_promise_availability"
+                            ),
+                        }
+                        for entry in journal
+                    ]
                     expected_player_progress = player_promise_progress(
-                        player_contract, fixtures=replay_fixtures, final=True,
+                        player_contract,
+                        fixtures=replay_fixtures,
+                        final=True,
                     )
-                    if (
-                        profile.get("player_role_promises")
-                        != expected_player_progress
-                    ):
+                    if profile.get("player_role_promises") != expected_player_progress:
                         raise ValueError(
                             "archived player promise source replay mismatch"
                         )
                     participation = (
                         participation_by_team.get(plan.manager_team)
-                        if isinstance(participation_by_team, Mapping) else None
+                        if isinstance(participation_by_team, Mapping)
+                        else None
                     )
                     expected_outcome = (
                         settle_player_promise_outcomes(
-                            player_contract, expected_player_progress,
+                            player_contract,
+                            expected_player_progress,
                             participation,
                         )
-                        if isinstance(participation, Mapping) else None
+                        if isinstance(participation, Mapping)
+                        else None
                     )
                     if item.get("player_promise_outcomes") != expected_outcome:
                         raise ValueError(
                             "archived player promise outcome replay mismatch"
                         )
                 elif (
-                    profile.get("player_role_promises") != {
-                        "schema_version": 1, "available": False,
-                        "reason": "not_frozen", "entries": [],
+                    profile.get("player_role_promises")
+                    != {
+                        "schema_version": 1,
+                        "available": False,
+                        "reason": "not_frozen",
+                        "entries": [],
                     }
                     or item.get("player_promise_outcomes") is not None
                 ):
                     raise ValueError("invalid archived player promise boundary")
                 expected_review = manager_board_review(
-                    profile, league_size=len(plan.teams),
+                    profile,
+                    league_size=len(plan.teams),
                 )
                 if (
                     item.get("board_review") is not None
                     and item.get("board_review") != expected_review
                 ):
-                    raise ValueError("archived board review does not match season evidence")
+                    raise ValueError(
+                        "archived board review does not match season evidence"
+                    )
             elif item.get("board_review") is not None:
                 raise ValueError("spectator season cannot have a board review")
             seen.add(season_id)
@@ -2941,7 +3399,8 @@ class ProductWorkspace:
         return self._season_view(season)
 
     def set_player_role_promises(
-        self, promise_plan: PlayerPromisePlan,
+        self,
+        promise_plan: PlayerPromisePlan,
     ) -> dict[str, Any]:
         """Freeze one named-player plan before the first managed decision."""
         if not isinstance(promise_plan, PlayerPromisePlan):
@@ -2956,7 +3415,8 @@ class ProductWorkspace:
             if plan.manager_team is None:
                 raise ValueError("season has no focus team")
             managed = [
-                row for row in season["fixtures"]
+                row
+                for row in season["fixtures"]
                 if plan.manager_team in {row["home"], row["away"]}
             ]
             if season.get("player_role_promises") is not None:
@@ -2972,9 +3432,12 @@ class ProductWorkspace:
                 )
             roster = load_effective_roster(self.root, plan.manager_team)
             contract = build_player_promise_contract(
-                season_id=str(season["season_id"]), team=plan.manager_team,
-                total_managed_matches=len(managed), roster=roster,
-                plan=promise_plan, control="manager",
+                season_id=str(season["season_id"]),
+                team=plan.manager_team,
+                total_managed_matches=len(managed),
+                roster=roster,
+                plan=promise_plan,
+                control="manager",
             )
             season["player_role_promises"] = contract
             season["revision"] = int(season.get("revision", 0)) + 1
@@ -2985,7 +3448,10 @@ class ProductWorkspace:
             return self._season_view(season)
 
     def set_manager_decision(
-        self, decision: ManagerDecision, *, fixture_id: str | None = None,
+        self,
+        decision: ManagerDecision,
+        *,
+        fixture_id: str | None = None,
         expected_revision: int | None = None,
         advice_adoption: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -3005,27 +3471,41 @@ class ProductWorkspace:
                 expected_revision is not None
                 and int(season.get("revision", 0)) != expected_revision
             ):
-                raise ValueError("manager decision preview is stale; refresh before submitting")
+                raise ValueError(
+                    "manager decision preview is stale; refresh before submitting"
+                )
             prepared = self._prepare_manager_decision(
-                season, decision, fixture_id=fixture_id,
+                season,
+                decision,
+                fixture_id=fixture_id,
             )
             target = prepared["target"]
             target.pop("manager_advice_adoption", None)
             if advice_adoption is not None:
-                if not isinstance(advice_adoption, Mapping) or set(advice_adoption) != {
-                    "schema_version", "advice_identity", "intent",
-                } or advice_adoption.get("schema_version") != 1:
+                if (
+                    not isinstance(advice_adoption, Mapping)
+                    or set(advice_adoption)
+                    != {
+                        "schema_version",
+                        "advice_identity",
+                        "intent",
+                    }
+                    or advice_adoption.get("schema_version") != 1
+                ):
                     raise ValueError("manager advice adoption payload is invalid")
                 advice = target.get("manager_decision_advice")
                 if not isinstance(advice, Mapping):
-                    raise ValueError("manager decision has no world-model advice to adopt")
+                    raise ValueError(
+                        "manager decision has no world-model advice to adopt"
+                    )
                 validate_manager_decision_advice(advice)
                 if advice_adoption.get("advice_identity") != advice["advice_identity"]:
                     raise ValueError("manager advice identity mismatch")
                 if advice.get("issued_revision") != int(season.get("revision", 0)):
                     raise ValueError("manager advice is stale; request fresh advice")
                 target["manager_advice_adoption"] = build_manager_advice_adoption(
-                    advice, selected_tactic=decision.tactic,
+                    advice,
+                    selected_tactic=decision.tactic,
                     intent=str(advice_adoption.get("intent") or ""),
                 )
             season["revision"] = int(season.get("revision", 0)) + 1
@@ -3036,7 +3516,10 @@ class ProductWorkspace:
             return self._season_view(season)
 
     def preview_manager_decision(
-        self, decision: ManagerDecision, *, fixture_id: str | None = None,
+        self,
+        decision: ManagerDecision,
+        *,
+        fixture_id: str | None = None,
     ) -> dict[str, Any]:
         """Normalize a decision and expose deterministic effects without writing state."""
         with FileLease(self.session_lease_path, timeout=30.0):
@@ -3047,7 +3530,9 @@ class ProductWorkspace:
             base_revision = int(source.get("revision", 0))
             season = copy.deepcopy(source)
             prepared = self._prepare_manager_decision(
-                season, decision, fixture_id=fixture_id,
+                season,
+                decision,
+                fixture_id=fixture_id,
             )
             target = prepared["target"]
             frozen = target["manager_decision"]
@@ -3064,29 +3549,38 @@ class ProductWorkspace:
             if isinstance(contract, Mapping):
                 journal = []
                 for row in season["fixtures"]:
-                    if (
-                        row.get("state") != "completed"
-                        or contract["team"] not in {row.get("home"), row.get("away")}
-                    ):
+                    if row.get("state") != "completed" or contract["team"] not in {
+                        row.get("home"),
+                        row.get("away"),
+                    }:
                         continue
                     recorded = row.get("manager_decision")
-                    journal.append({
-                        "fixture_id": row.get("fixture_id"),
-                        "matchday": row.get("matchday"),
-                        "tactic": recorded.get("tactic", "unrecorded")
-                        if isinstance(recorded, Mapping) else "unrecorded",
-                        "rotation": recorded.get("rotation", "unrecorded")
-                        if isinstance(recorded, Mapping) else "unrecorded",
-                    })
-                journal.append({
-                    "fixture_id": target["fixture_id"],
-                    "matchday": target["matchday"],
-                    "tactic": frozen["tactic"],
-                    "rotation": frozen["rotation"],
-                })
+                    journal.append(
+                        {
+                            "fixture_id": row.get("fixture_id"),
+                            "matchday": row.get("matchday"),
+                            "tactic": recorded.get("tactic", "unrecorded")
+                            if isinstance(recorded, Mapping)
+                            else "unrecorded",
+                            "rotation": recorded.get("rotation", "unrecorded")
+                            if isinstance(recorded, Mapping)
+                            else "unrecorded",
+                        }
+                    )
+                journal.append(
+                    {
+                        "fixture_id": target["fixture_id"],
+                        "matchday": target["matchday"],
+                        "tactic": frozen["tactic"],
+                        "rotation": frozen["rotation"],
+                    }
+                )
                 objective = manager_season_profile(season)["objective"]
                 commitment_projection = commitment_progress_from_evidence(
-                    contract, journal=journal, objective=objective, final=False,
+                    contract,
+                    journal=journal,
+                    objective=objective,
+                    final=False,
                 )
 
             player_projection = None
@@ -3094,12 +3588,15 @@ class ProductWorkspace:
             if isinstance(player_contract, Mapping):
                 projected_fixtures = copy.deepcopy(season["fixtures"])
                 projected_target = next(
-                    row for row in projected_fixtures
+                    row
+                    for row in projected_fixtures
                     if row["fixture_id"] == target["fixture_id"]
                 )
                 projected_target["state"] = "completed"
                 player_projection = player_promise_progress(
-                    player_contract, fixtures=projected_fixtures, final=False,
+                    player_contract,
+                    fixtures=projected_fixtures,
+                    final=False,
                 )
 
             timeline = prepared.get("timeline_resolution")
@@ -3115,7 +3612,8 @@ class ProductWorkspace:
                         frozen["tactic"] == advice.get("recommended_tactic")
                     ),
                     "comparison": build_manager_advice_comparison(
-                        advice, selected_tactic=frozen["tactic"],
+                        advice,
+                        selected_tactic=frozen["tactic"],
                     ),
                 }
             return {
@@ -3125,16 +3623,21 @@ class ProductWorkspace:
                 "fixture": {
                     "fixture_id": target["fixture_id"],
                     "matchday": target["matchday"],
-                    "home": target["home"], "away": target["away"],
+                    "home": target["home"],
+                    "away": target["away"],
                 },
                 "normalized_decision": copy.deepcopy(frozen),
                 "lineup": {
                     "available": isinstance(lineup, Mapping),
-                    "source": lineup.get("source") if isinstance(lineup, Mapping) else None,
+                    "source": lineup.get("source")
+                    if isinstance(lineup, Mapping)
+                    else None,
                     "starters": len(lineup.get("starters") or [])
-                    if isinstance(lineup, Mapping) else 0,
+                    if isinstance(lineup, Mapping)
+                    else 0,
                     "bench": len(lineup.get("bench") or [])
-                    if isinstance(lineup, Mapping) else 0,
+                    if isinstance(lineup, Mapping)
+                    else 0,
                 },
                 "engine_tradeoff": {
                     **rotation_tradeoff,
@@ -3145,7 +3648,8 @@ class ProductWorkspace:
                         isinstance(plan, Mapping) and plan.get("controls_substitutions")
                     ),
                     "rule_count": len(plan.get("instructions") or [])
-                    if isinstance(plan, Mapping) else 0,
+                    if isinstance(plan, Mapping)
+                    else 0,
                 },
                 "club_situation": {
                     "available": timeline is not None,
@@ -3165,7 +3669,9 @@ class ProductWorkspace:
             }
 
     def request_manager_decision_advice(
-        self, *, fixture_id: str | None = None,
+        self,
+        *,
+        fixture_id: str | None = None,
     ) -> dict[str, Any]:
         """Run inference outside the session lease, then commit if inputs still match."""
         with FileLease(self.session_lease_path, timeout=30.0):
@@ -3178,7 +3684,8 @@ class ProductWorkspace:
             if plan.manager_team is None:
                 raise ValueError("season has no focus team")
             candidates = [
-                row for row in season["fixtures"]
+                row
+                for row in season["fixtures"]
                 if plan.manager_team in {row["home"], row["away"]}
                 and row["state"] != "completed"
             ]
@@ -3188,18 +3695,21 @@ class ProductWorkspace:
             if fixture_id is not None and fixture_id != target["fixture_id"]:
                 raise ValueError("only the next focus-team fixture can receive advice")
             if target["state"] != "scheduled" or int(target.get("attempts", 0)) != 0:
-                raise ValueError("world-model advice is frozen after fixture execution starts")
+                raise ValueError(
+                    "world-model advice is frozen after fixture execution starts"
+                )
             mode = str(session["mode"])
             unavailable = {
-                "schema_version": 1, "available": False,
+                "schema_version": 1,
+                "available": False,
                 "season_id": str(season["season_id"]),
                 "fixture_id": str(target["fixture_id"]),
                 "mode": mode,
                 "reason": "stable_mode_has_no_world_model_advisor",
                 "claim_boundary": (
                     "stable mode does not load or imitate the research world model"
-                    if mode == "stable" else
-                    "research advisor unavailable; no advice or adoption was persisted"
+                    if mode == "stable"
+                    else "research advisor unavailable; no advice or adoption was persisted"
                 ),
             }
             if mode == "stable":
@@ -3217,9 +3727,7 @@ class ProductWorkspace:
                 "match_seed": match_seed,
                 "fixture": copy.deepcopy(dict(target)),
                 "season": copy.deepcopy(dict(season)),
-                "existing_advice": copy.deepcopy(
-                    target.get("manager_decision_advice")
-                ),
+                "existing_advice": copy.deepcopy(target.get("manager_decision_advice")),
             }
 
         readiness = self.readiness()
@@ -3229,9 +3737,7 @@ class ProductWorkspace:
             return unavailable
         evidence = self.evidence()
         checkpoint_artifact = str(evidence.get("world_model_checkpoint") or "")
-        checkpoint_sha256 = str(
-            evidence.get("world_model_checkpoint_sha256") or ""
-        )
+        checkpoint_sha256 = str(evidence.get("world_model_checkpoint_sha256") or "")
         teams = (
             str(request_state["fixture"]["home"]),
             str(request_state["fixture"]["away"]),
@@ -3250,17 +3756,13 @@ class ProductWorkspace:
                 == request_state["fixture"]["fixture_id"]
                 and existing_advice.get("home") == teams[0]
                 and existing_advice.get("away") == teams[1]
-                and existing_advice.get("manager_team")
-                == request_state["manager_team"]
+                and existing_advice.get("manager_team") == request_state["manager_team"]
                 and existing_advice.get("mode") == request_state["mode"]
-                and existing_advice.get("match_seed")
-                == request_state["match_seed"]
+                and existing_advice.get("match_seed") == request_state["match_seed"]
                 and existing_advice.get("issued_revision")
                 == request_state["base_revision"]
-                and existing_advice["checkpoint"]["artifact"]
-                == checkpoint_artifact
-                and existing_advice["checkpoint"]["sha256"]
-                == checkpoint_sha256
+                and existing_advice["checkpoint"]["artifact"] == checkpoint_artifact
+                and existing_advice["checkpoint"]["sha256"] == checkpoint_sha256
                 and all(
                     existing_sources[team]["source_identity"]
                     == snapshots[team]["source_identity"]
@@ -3274,18 +3776,28 @@ class ProductWorkspace:
                 if isinstance(current_season, Mapping):
                     validate_season_state(current_season)
                     current_plan = SeasonPlan.from_payload(current_season["plan"])
-                    current_candidates = [
-                        row for row in current_season["fixtures"]
-                        if current_plan.manager_team in {row["home"], row["away"]}
-                        and row["state"] != "completed"
-                    ] if current_plan.manager_team is not None else []
+                    current_candidates = (
+                        [
+                            row
+                            for row in current_season["fixtures"]
+                            if current_plan.manager_team in {row["home"], row["away"]}
+                            and row["state"] != "completed"
+                        ]
+                        if current_plan.manager_team is not None
+                        else []
+                    )
                     current_target = (
                         current_candidates[0] if current_candidates else None
                     )
                     expected_fixture = request_state["fixture"]
                     fixture_fields = (
-                        "fixture_id", "matchday", "order", "home", "away",
-                        "state", "attempts",
+                        "fixture_id",
+                        "matchday",
+                        "order",
+                        "home",
+                        "away",
+                        "state",
+                        "attempts",
                     )
                     session_matches = bool(
                         current_session.get("mode") == request_state["mode"]
@@ -3293,21 +3805,17 @@ class ProductWorkspace:
                         == request_state["season_id"]
                         and int(current_season.get("revision", -1))
                         == request_state["base_revision"]
-                        and current_plan.manager_team
-                        == request_state["manager_team"]
+                        and current_plan.manager_team == request_state["manager_team"]
                         and isinstance(current_target, Mapping)
                         and all(
-                            current_target.get(field)
-                            == expected_fixture.get(field)
+                            current_target.get(field) == expected_fixture.get(field)
                             for field in fixture_fields
                         )
                         and current_target.get("manager_decision_advice")
                         == existing_advice
                     )
                     current_evidence = self.evidence()
-                    checkpoint_path = _artifact_path(
-                        self.root, checkpoint_artifact
-                    )
+                    checkpoint_path = _artifact_path(self.root, checkpoint_artifact)
                     checkpoint_matches = bool(
                         current_evidence.get("world_model_checkpoint")
                         == checkpoint_artifact
@@ -3335,7 +3843,8 @@ class ProductWorkspace:
                 "retryable": True,
             }
         packet = self._generate_manager_decision_advice_packet(
-            season=request_state["season"], fixture=request_state["fixture"],
+            season=request_state["season"],
+            fixture=request_state["fixture"],
             manager_team=request_state["manager_team"],
             match_seed=request_state["match_seed"],
         )
@@ -3348,8 +3857,10 @@ class ProductWorkspace:
             packet=packet,
             season_id=request_state["season_id"],
             fixture_id=str(request_state["fixture"]["fixture_id"]),
-            home=teams[0], away=teams[1],
-            manager_team=request_state["manager_team"], mode=request_state["mode"],
+            home=teams[0],
+            away=teams[1],
+            manager_team=request_state["manager_team"],
+            mode=request_state["mode"],
             match_seed=request_state["match_seed"],
             base_revision=request_state["base_revision"],
             checkpoint_artifact=checkpoint_artifact,
@@ -3369,15 +3880,25 @@ class ProductWorkspace:
                 return stale
             validate_season_state(current_season)
             current_plan = SeasonPlan.from_payload(current_season["plan"])
-            current_candidates = [
-                row for row in current_season["fixtures"]
-                if current_plan.manager_team in {row["home"], row["away"]}
-                and row["state"] != "completed"
-            ] if current_plan.manager_team is not None else []
+            current_candidates = (
+                [
+                    row
+                    for row in current_season["fixtures"]
+                    if current_plan.manager_team in {row["home"], row["away"]}
+                    and row["state"] != "completed"
+                ]
+                if current_plan.manager_team is not None
+                else []
+            )
             current_target = current_candidates[0] if current_candidates else None
             expected_fixture = request_state["fixture"]
             fixture_fields = (
-                "fixture_id", "matchday", "order", "home", "away", "state",
+                "fixture_id",
+                "matchday",
+                "order",
+                "home",
+                "away",
+                "state",
                 "attempts",
             )
             subject_matches = bool(
@@ -3396,11 +3917,11 @@ class ProductWorkspace:
             current_evidence = self.evidence()
             checkpoint_path = _artifact_path(self.root, checkpoint_artifact)
             checkpoint_matches = bool(
-                current_evidence.get("world_model_checkpoint")
-                == checkpoint_artifact
+                current_evidence.get("world_model_checkpoint") == checkpoint_artifact
                 and current_evidence.get("world_model_checkpoint_sha256")
                 == checkpoint_sha256
-                and checkpoint_path is not None and checkpoint_path.is_file()
+                and checkpoint_path is not None
+                and checkpoint_path.is_file()
                 and file_sha256(checkpoint_path) == checkpoint_sha256
             )
             current_snapshots = capture_world_state(self.root, teams)
@@ -3413,8 +3934,7 @@ class ProductWorkspace:
                 return stale
             current_advice = current_target.get("manager_decision_advice")
             if (
-                int(current_season.get("revision", -1))
-                == advice["issued_revision"]
+                int(current_season.get("revision", -1)) == advice["issued_revision"]
                 and current_advice == advice
             ):
                 return {
@@ -3437,13 +3957,18 @@ class ProductWorkspace:
             return {**copy.deepcopy(advice), "available": True}
 
     def _generate_manager_decision_advice_packet(
-        self, *, season: Mapping[str, Any], fixture: Mapping[str, Any],
-        manager_team: str, match_seed: int,
+        self,
+        *,
+        season: Mapping[str, Any],
+        fixture: Mapping[str, Any],
+        manager_team: str,
+        match_seed: int,
     ) -> dict[str, Any]:
         """Use the match engine's existing bounded tactical-policy evaluator."""
         from src.match_engine.macro_bridge import build_match_affective_state
         from src.match_engine.tactical_profile import (
-            apply_locked_tactical_preset, build_tactical_vector_for_agent,
+            apply_locked_tactical_preset,
+            build_tactical_vector_for_agent,
         )
         from src.match_engine.world_model.decision_support import (
             build_prematch_tactical_packet,
@@ -3452,7 +3977,8 @@ class ProductWorkspace:
         from src.product.match_plan import PLAYABLE_TACTICS
         from src.simulation.fusion_audit import fusion_audit_path, load_fusion_audits
         from src.simulation.counterfactual_evidence import (
-            counterfactual_evidence_path, load_counterfactual_evidence,
+            counterfactual_evidence_path,
+            load_counterfactual_evidence,
         )
         from src.simulation.fusion_reliability import (
             enrich_decision_packet_with_history,
@@ -3465,26 +3991,32 @@ class ProductWorkspace:
         opponent = away if manager_team == home else home
         with self._mode_environment():
             world, _, _ = build_world_and_tournament(
-                str(self.root), require_tactics=False, load_coaches=True,
+                str(self.root),
+                require_tactics=False,
+                load_coaches=True,
                 initialization_seed=match_seed,
             )
             home_agent, away_agent = world.agents[home], world.agents[away]
             prepare_match_agents(home_agent, away_agent, str(self.root))
             preparation = opponent_preparation(
-                season, str(fixture["fixture_id"]),
+                season,
+                str(fixture["fixture_id"]),
             )
             strategy_snapshot = season.get("club_strategies")
             resolved_strategy = None
             if isinstance(strategy_snapshot, Mapping):
                 resolved_strategy = resolve_fixture_club_strategy(
-                    strategy_snapshot, home=home, away=away,
+                    strategy_snapshot,
+                    home=home,
+                    away=away,
                     manager_decision=None,
                     opponent_preparation=preparation,
                 )
             for side, agent in (("home", home_agent), ("away", away_agent)):
                 tactic = (
                     str(resolved_strategy.get(f"{side}_tactic") or "team_identity")
-                    if isinstance(resolved_strategy, Mapping) else "team_identity"
+                    if isinstance(resolved_strategy, Mapping)
+                    else "team_identity"
                 )
                 if agent.team_name == opponent:
                     prepared_tactic = str(
@@ -3494,15 +4026,20 @@ class ProductWorkspace:
                         tactic = prepared_tactic
                 if tactic != "team_identity":
                     apply_locked_tactical_preset(
-                        agent, tactic, source="manager_world_model_advice_context",
+                        agent,
+                        tactic,
+                        source="manager_world_model_advice_context",
                     )
             manager_agent = home_agent if manager_team == home else away_agent
             native_vector = build_tactical_vector_for_agent(manager_agent)
             state = build_match_affective_state(
-                home_agent, away_agent,
+                home_agent,
+                away_agent,
                 rng=named_rng(
-                    match_seed, "manager_world_model_advice",
-                    season["season_id"], fixture["fixture_id"],
+                    match_seed,
+                    "manager_world_model_advice",
+                    season["season_id"],
+                    fixture["fixture_id"],
                 ),
             )
             team_state = state.team(manager_team)
@@ -3515,19 +4052,22 @@ class ProductWorkspace:
             state.ball.possessor_id = carrier.player_id
             state.ball.possession_team_id = team_state.team_id
             runtime = WorldModelRuntime.load_default(
-                str(self.root), required=True,
+                str(self.root),
+                required=True,
             )
             packet = build_prematch_tactical_packet(
-                runtime, state, manager_team,
+                runtime,
+                state,
+                manager_team,
                 candidate_presets=tuple(PLAYABLE_TACTICS),
                 native_tactical_vector=native_vector,
             )
             if packet.get("available"):
                 packet = enrich_decision_packet_with_history(
-                    packet, team=manager_team, opponent=opponent,
-                    audit_records=load_fusion_audits(
-                        fusion_audit_path(str(self.root))
-                    ),
+                    packet,
+                    team=manager_team,
+                    opponent=opponent,
+                    audit_records=load_fusion_audits(fusion_audit_path(str(self.root))),
                     counterfactual_records=load_counterfactual_evidence(
                         counterfactual_evidence_path(str(self.root))
                     ),
@@ -3535,8 +4075,11 @@ class ProductWorkspace:
             return packet
 
     def _prepare_manager_decision(
-        self, season: dict[str, Any], decision: ManagerDecision,
-        *, fixture_id: str | None = None,
+        self,
+        season: dict[str, Any],
+        decision: ManagerDecision,
+        *,
+        fixture_id: str | None = None,
     ) -> dict[str, Any]:
         """Apply authoritative decision normalization to an in-memory season."""
         validate_season_state(season)
@@ -3546,7 +4089,8 @@ class ProductWorkspace:
         if decision.team != plan.manager_team:
             raise ValueError("manager decision team identity mismatch")
         candidates = [
-            item for item in season["fixtures"]
+            item
+            for item in season["fixtures"]
             if plan.manager_team in {item["home"], item["away"]}
             and item["state"] != "completed"
         ]
@@ -3555,30 +4099,41 @@ class ProductWorkspace:
         if fixture_id is not None and fixture_id != candidates[0]["fixture_id"]:
             raise ValueError("only the next focus-team fixture can receive a decision")
         target = (
-            next((item for item in candidates if item["fixture_id"] == fixture_id), None)
-            if fixture_id is not None else candidates[0]
+            next(
+                (item for item in candidates if item["fixture_id"] == fixture_id), None
+            )
+            if fixture_id is not None
+            else candidates[0]
         )
         if target is None:
             raise ValueError("manager fixture identity mismatch")
         if target["state"] != "scheduled" or int(target.get("attempts", 0)) != 0:
-            raise ValueError("manager decision is frozen after fixture execution starts")
+            raise ValueError(
+                "manager decision is frozen after fixture execution starts"
+            )
         squad = build_squad_catalog(self.root, plan.manager_team)
         if season.get("player_role_promises") is None:
             season["player_role_promises"] = build_player_promise_contract(
-                season_id=str(season["season_id"]), team=plan.manager_team,
-                total_managed_matches=len([
-                    row for row in season["fixtures"]
-                    if plan.manager_team in {row["home"], row["away"]}
-                ]),
+                season_id=str(season["season_id"]),
+                team=plan.manager_team,
+                total_managed_matches=len(
+                    [
+                        row
+                        for row in season["fixtures"]
+                        if plan.manager_team in {row["home"], row["away"]}
+                    ]
+                ),
                 roster=load_effective_roster(self.root, plan.manager_team),
-                plan=None, control="deterministic_compatibility",
+                plan=None,
+                control="deterministic_compatibility",
             )
         promised_ids = [
             row["player_id"] for row in season["player_role_promises"]["players"]
         ]
         squad_players = {
             str(row.get("player_id") or ""): row
-            for row in squad.get("players") or [] if isinstance(row, Mapping)
+            for row in squad.get("players") or []
+            if isinstance(row, Mapping)
         }
         if any(player_id not in squad_players for player_id in promised_ids):
             raise ValueError("promised player is missing from the matchday squad")
@@ -3596,64 +4151,90 @@ class ProductWorkspace:
         elif frozen_lineup is not None:
             raise ValueError("manager squad is unavailable for a manual lineup")
         elif squad.get("reason") not in {
-            "roster_unavailable", "roster_missing_goalkeeper",
+            "roster_unavailable",
+            "roster_missing_goalkeeper",
         }:
             raise ValueError("manager squad cannot form a legal lineup")
         frozen_in_match_plan = decision.in_match_plan
-        if frozen_in_match_plan is not None and frozen_in_match_plan.controls_substitutions:
+        if (
+            frozen_in_match_plan is not None
+            and frozen_in_match_plan.controls_substitutions
+        ):
             if frozen_lineup is None:
-                raise ValueError("planned substitutions require an available frozen lineup")
+                raise ValueError(
+                    "planned substitutions require an available frozen lineup"
+                )
             frozen_in_match_plan.validate_lineup(
-                starters=frozen_lineup.starters, bench=frozen_lineup.bench,
+                starters=frozen_lineup.starters,
+                bench=frozen_lineup.bench,
             )
         situation = derive_club_situation(season, target["fixture_id"])
         event_choice = decision.club_event_choice
         timeline_resolution = None
         if situation is None:
             if event_choice is not None:
-                raise ValueError("manager decision supplied a choice without a club situation")
+                raise ValueError(
+                    "manager decision supplied a choice without a club situation"
+                )
         else:
             control = "manager"
             if event_choice is None:
                 event_choice = compatible_choice(
-                    situation, tactic=decision.tactic, rotation=decision.rotation,
+                    situation,
+                    tactic=decision.tactic,
+                    rotation=decision.rotation,
                 )
                 control = "deterministic_compatibility"
             timeline_resolution = build_timeline_resolution(
-                situation, event_choice, tactic=decision.tactic,
-                rotation=decision.rotation, control=control,
+                situation,
+                event_choice,
+                tactic=decision.tactic,
+                rotation=decision.rotation,
+                control=control,
             )
         frozen_decision = ManagerDecision(
-            team=decision.team, tactic=decision.tactic,
-            rotation=decision.rotation, lineup=frozen_lineup,
-            in_match_plan=frozen_in_match_plan, club_event_choice=event_choice,
+            team=decision.team,
+            tactic=decision.tactic,
+            rotation=decision.rotation,
+            lineup=frozen_lineup,
+            in_match_plan=frozen_in_match_plan,
+            club_event_choice=event_choice,
         )
         target["manager_decision"] = frozen_decision.as_dict()
         if timeline_resolution is not None:
             timeline = season.setdefault(
-                "club_timeline", {"schema_version": 1, "events": []},
+                "club_timeline",
+                {"schema_version": 1, "events": []},
             )
             events = timeline["events"]
             events[:] = [
-                row for row in events
+                row
+                for row in events
                 if row["event"]["fixture_id"] != target["fixture_id"]
             ]
             events.append(timeline_resolution)
         target["opponent_preparation"] = opponent_preparation(
-            season, target["fixture_id"],
+            season,
+            target["fixture_id"],
         )
         return {"target": target, "timeline_resolution": timeline_resolution}
 
     def _season_view(self, season: Mapping[str, Any]) -> dict[str, Any]:
         fixtures = season.get("fixtures") or []
-        completed = sum(1 for fixture in fixtures if fixture.get("state") == "completed")
+        completed = sum(
+            1 for fixture in fixtures if fixture.get("state") == "completed"
+        )
         plan = SeasonPlan.from_payload(season["plan"])
-        next_manager_fixture = next((
-            dict(fixture) for fixture in fixtures
-            if plan.manager_team is not None
-            and plan.manager_team in {fixture.get("home"), fixture.get("away")}
-            and fixture.get("state") != "completed"
-        ), None)
+        next_manager_fixture = next(
+            (
+                dict(fixture)
+                for fixture in fixtures
+                if plan.manager_team is not None
+                and plan.manager_team in {fixture.get("home"), fixture.get("away")}
+                and fixture.get("state") != "completed"
+            ),
+            None,
+        )
         command_center = matchday_command_center(season)
         timeline = club_timeline_view(season)
         manager_profile = manager_season_profile(season)
@@ -3667,16 +4248,17 @@ class ProductWorkspace:
             if plan.manager_team is not None and next_manager_fixture is not None
             else None
         )
-        command_fixture = (
-            command_center.get("current_fixture")
-            or command_center.get("next_fixture")
+        command_fixture = command_center.get("current_fixture") or command_center.get(
+            "next_fixture"
         )
         opponent = (
             command_fixture.get("opponent")
-            if isinstance(command_fixture, Mapping) else None
+            if isinstance(command_fixture, Mapping)
+            else None
         )
         strategy_briefing = {
-            "schema_version": 1, "available": False,
+            "schema_version": 1,
+            "available": False,
             "reason": "strategy_snapshot_unavailable",
         }
         strategy_snapshot = season.get("club_strategies")
@@ -3700,17 +4282,15 @@ class ProductWorkspace:
             if manager_strategy is not None and opponent_strategy is not None:
                 opponent_side = (
                     "away"
-                    if next_manager_fixture["away"] == strategy_opponent else "home"
+                    if next_manager_fixture["away"] == strategy_opponent
+                    else "home"
                 )
                 identity_tactic = opponent_strategy[f"{opponent_side}_tactic"]
                 applied_preview = None
                 decision_payload = next_manager_fixture.get("manager_decision")
-                preparation_payload = next_manager_fixture.get(
-                    "opponent_preparation"
-                )
-                if (
-                    isinstance(decision_payload, Mapping)
-                    and isinstance(preparation_payload, Mapping)
+                preparation_payload = next_manager_fixture.get("opponent_preparation")
+                if isinstance(decision_payload, Mapping) and isinstance(
+                    preparation_payload, Mapping
                 ):
                     applied_preview = resolve_fixture_club_strategy(
                         strategy_snapshot,
@@ -3737,13 +4317,16 @@ class ProductWorkspace:
             build_squad_catalog(self.root, str(opponent)) if opponent else None
         )
         command_center["prematch_intelligence"] = build_prematch_intelligence(
-            command_center, manager_squad, opponent_squad,
+            command_center,
+            manager_squad,
+            opponent_squad,
         )
         last_result = command_center.get("last_result")
         if isinstance(last_result, Mapping) and plan.manager_team is not None:
             report_path = _artifact_path(self.root, last_result.get("report"))
             postmatch_debrief = {
-                "schema_version": 1, "available": False,
+                "schema_version": 1,
+                "available": False,
                 "reason": "report_reference_unavailable",
             }
             if report_path is not None and report_path.suffix.lower() == ".json":
@@ -3761,15 +4344,19 @@ class ProductWorkspace:
                     )
                 except (OSError, UnicodeError, ValueError, TypeError, RecursionError):
                     postmatch_debrief = {
-                        "schema_version": 1, "available": False,
+                        "schema_version": 1,
+                        "available": False,
                         "reason": "report_unreadable_or_invalid",
                     }
             command_center["postmatch_debrief"] = postmatch_debrief
         decision_ledger = build_manager_decision_ledger(
             season,
             execution_by_fixture=self._manager_execution_evidence(
-                season, manager_team=plan.manager_team,
-            ) if plan.manager_team is not None else {},
+                season,
+                manager_team=plan.manager_team,
+            )
+            if plan.manager_team is not None
+            else {},
         )
         command_center["decision_ledger"] = decision_ledger
         return {
@@ -3788,12 +4375,16 @@ class ProductWorkspace:
         }
 
     def _manager_execution_evidence(
-        self, season: Mapping[str, Any], *, manager_team: str,
+        self,
+        season: Mapping[str, Any],
+        *,
+        manager_team: str,
         live_window: int = 8,
     ) -> dict[str, dict[str, Any]]:
         """Load a bounded recent window through the strict postmatch parser."""
         completed = [
-            row for row in season.get("fixtures") or []
+            row
+            for row in season.get("fixtures") or []
             if row.get("state") == "completed"
             and manager_team in {row.get("home"), row.get("away")}
             and isinstance(row.get("manager_decision"), Mapping)
@@ -3804,7 +4395,8 @@ class ProductWorkspace:
             report_path = _artifact_path(self.root, fixture.get("report"))
             if report_path is None or report_path.suffix.lower() != ".json":
                 result[fixture_id] = {
-                    "schema_version": 1, "available": False,
+                    "schema_version": 1,
+                    "available": False,
                     "reason": "report_reference_unavailable",
                 }
                 continue
@@ -3816,18 +4408,22 @@ class ProductWorkspace:
                     raise OSError("manager report is unavailable or oversized")
                 report = json.loads(report_path.read_text(encoding="utf-8"))
                 result[fixture_id] = build_postmatch_debrief(
-                    report, manager_team=manager_team,
+                    report,
+                    manager_team=manager_team,
                     expected_match_id=str(fixture.get("match_id") or ""),
                 )
             except (OSError, UnicodeError, ValueError, TypeError, RecursionError):
                 result[fixture_id] = {
-                    "schema_version": 1, "available": False,
+                    "schema_version": 1,
+                    "available": False,
                     "reason": "report_unreadable_or_invalid",
                 }
         return result
 
     def play_next_matchday(
-        self, *, expected_season_id: str | None = None,
+        self,
+        *,
+        expected_season_id: str | None = None,
         expected_matchday: int | None = None,
         expected_revision: int | None = None,
     ) -> dict[str, Any]:
@@ -3838,9 +4434,15 @@ class ProductWorkspace:
             if season is None:
                 raise ValueError("studio season has not been created")
             validate_season_state(season)
-            if expected_season_id is not None and season.get("season_id") != expected_season_id:
+            if (
+                expected_season_id is not None
+                and season.get("season_id") != expected_season_id
+            ):
                 raise ValueError("season task identity conflict")
-            if expected_revision is not None and int(season.get("revision", 0)) != expected_revision:
+            if (
+                expected_revision is not None
+                and int(season.get("revision", 0)) != expected_revision
+            ):
                 raise ValueError("season decision revision conflict")
             matchday = next_matchday(season)
             if expected_matchday is not None and matchday != expected_matchday:
@@ -3854,26 +4456,32 @@ class ProductWorkspace:
             resource_plan = season_plan.manager_resources
             resource_effects = (
                 club_resource_effects(resource_plan)
-                if resource_plan is not None else None
+                if resource_plan is not None
+                else None
             )
             fixture_ids = [
-                fixture["fixture_id"] for fixture in season["fixtures"]
+                fixture["fixture_id"]
+                for fixture in season["fixtures"]
                 if fixture["matchday"] == matchday
             ]
             managed_fixtures = [
-                fixture for fixture in season["fixtures"]
+                fixture
+                for fixture in season["fixtures"]
                 if fixture["matchday"] == matchday
                 and season_plan.manager_team is not None
                 and season_plan.manager_team in {fixture["home"], fixture["away"]}
             ]
-            if any(fixture.get("manager_decision") is None for fixture in managed_fixtures):
+            if any(
+                fixture.get("manager_decision") is None for fixture in managed_fixtures
+            ):
                 raise ValueError("manager decision is required before this matchday")
             for fixture_id in fixture_ids:
                 session = self._session()
                 season = session.get("season")
                 validate_season_state(season)
                 fixture = next(
-                    item for item in season["fixtures"]
+                    item
+                    for item in season["fixtures"]
                     if item["fixture_id"] == fixture_id
                 )
                 if fixture["state"] == "completed":
@@ -3886,7 +4494,8 @@ class ProductWorkspace:
                 decision_payload = fixture.get("manager_decision")
                 decision = (
                     ManagerDecision.from_payload(decision_payload)
-                    if decision_payload is not None else None
+                    if decision_payload is not None
+                    else None
                 )
                 preparation = None
                 club_support = None
@@ -3914,10 +4523,13 @@ class ProductWorkspace:
                     }
                     if decision.team == fixture["home"]:
                         home_tactic, home_rotation = decision.tactic, decision.rotation
-                        home_lineup = decision.lineup.as_dict() if decision.lineup else None
+                        home_lineup = (
+                            decision.lineup.as_dict() if decision.lineup else None
+                        )
                         home_in_match_plan = (
                             decision.in_match_plan.as_dict()
-                            if decision.in_match_plan else None
+                            if decision.in_match_plan
+                            else None
                         )
                         away_tactic = opponent_tactic
                         home_fatigue_load_factor = float(
@@ -3925,10 +4537,13 @@ class ProductWorkspace:
                         )
                     else:
                         away_tactic, away_rotation = decision.tactic, decision.rotation
-                        away_lineup = decision.lineup.as_dict() if decision.lineup else None
+                        away_lineup = (
+                            decision.lineup.as_dict() if decision.lineup else None
+                        )
                         away_in_match_plan = (
                             decision.in_match_plan.as_dict()
-                            if decision.in_match_plan else None
+                            if decision.in_match_plan
+                            else None
                         )
                         home_tactic = opponent_tactic
                         away_fatigue_load_factor = float(
@@ -3943,7 +4558,8 @@ class ProductWorkspace:
                 if strategy_snapshot is not None:
                     club_strategy = resolve_fixture_club_strategy(
                         strategy_snapshot,
-                        home=str(fixture["home"]), away=str(fixture["away"]),
+                        home=str(fixture["home"]),
+                        away=str(fixture["away"]),
                         manager_decision=(
                             decision.as_dict() if decision is not None else None
                         ),
@@ -3958,38 +4574,32 @@ class ProductWorkspace:
                     )
                 existing = self._find_season_match(session, competition)
                 if existing is not None:
-                    recorded_preparation = (
-                        (existing.get("match_plan") or {}).get(
-                            "opponent_preparation"
-                        )
+                    recorded_preparation = (existing.get("match_plan") or {}).get(
+                        "opponent_preparation"
                     )
                     if recorded_preparation != preparation:
                         raise ValueError(
                             "completed season match opponent preparation conflict"
                         )
-                    if (
-                        (existing.get("match_plan") or {}).get("club_support")
-                        != club_support
-                    ):
-                        raise ValueError(
-                            "completed season match club support conflict"
-                        )
-                    if (
-                        (existing.get("match_plan") or {}).get("club_strategy")
-                        != club_strategy
-                    ):
+                    if (existing.get("match_plan") or {}).get(
+                        "club_support"
+                    ) != club_support:
+                        raise ValueError("completed season match club support conflict")
+                    if (existing.get("match_plan") or {}).get(
+                        "club_strategy"
+                    ) != club_strategy:
                         raise ValueError(
                             "completed season match club strategy conflict"
                         )
                     report = self._load_completed_match(existing)
                 else:
                     before_world_state = fixture.get("world_state_before")
-                    if (
-                        decision is not None
-                        and not isinstance(before_world_state, Mapping)
+                    if decision is not None and not isinstance(
+                        before_world_state, Mapping
                     ):
                         before_world_state = capture_world_state(
-                            self.root, (fixture["home"], fixture["away"]),
+                            self.root,
+                            (fixture["home"], fixture["away"]),
                         )
                     running_update = {
                         "state": "running",
@@ -4004,9 +4614,13 @@ class ProductWorkspace:
                     _atomic_json(self.session_path, session)
                     try:
                         report = self._run_match_locked(
-                            fixture["home"], fixture["away"], fast=season_plan.fast,
+                            fixture["home"],
+                            fixture["away"],
+                            fast=season_plan.fast,
                             plan=match_plan,
-                            seed_override=int(season["seed"]) + matchday * 100 + int(fixture["order"]),
+                            seed_override=int(season["seed"])
+                            + matchday * 100
+                            + int(fixture["order"]),
                             continuity=True,
                             continuity_id=f"{season_id}:{fixture_id}",
                             competition=competition,
@@ -4016,8 +4630,10 @@ class ProductWorkspace:
                             club_strategy=club_strategy,
                             home_fatigue_load_factor=home_fatigue_load_factor,
                             away_fatigue_load_factor=away_fatigue_load_factor,
-                            home_rotation=home_rotation, away_rotation=away_rotation,
-                            home_lineup=home_lineup, away_lineup=away_lineup,
+                            home_rotation=home_rotation,
+                            away_rotation=away_rotation,
+                            home_lineup=home_lineup,
+                            away_lineup=away_lineup,
                             home_in_match_plan=home_in_match_plan,
                             away_in_match_plan=away_in_match_plan,
                         )
@@ -4025,10 +4641,14 @@ class ProductWorkspace:
                         failed_session = self._session()
                         failed_season = failed_session.get("season")
                         if isinstance(failed_season, Mapping):
-                            failed_fixture = next((
-                                item for item in failed_season.get("fixtures") or []
-                                if item.get("fixture_id") == fixture_id
-                            ), None)
+                            failed_fixture = next(
+                                (
+                                    item
+                                    for item in failed_season.get("fixtures") or []
+                                    if item.get("fixture_id") == fixture_id
+                                ),
+                                None,
+                            )
                             if failed_fixture is not None:
                                 failed_fixture["state"] = "failed"
                                 failed_fixture["failed_at"] = _now()
@@ -4038,30 +4658,48 @@ class ProductWorkspace:
                         raise
                 session = self._session()
                 season = session["season"]
-                fixture = next(item for item in season["fixtures"] if item["fixture_id"] == fixture_id)
+                fixture = next(
+                    item
+                    for item in season["fixtures"]
+                    if item["fixture_id"] == fixture_id
+                )
                 score = report.get("result", {}).get("score") or {}
                 before_world_state = fixture.get("world_state_before")
                 world_state_transition = None
                 if isinstance(before_world_state, Mapping):
                     after_match_world_state = capture_world_state(
-                        self.root, (fixture["home"], fixture["away"]),
+                        self.root,
+                        (fixture["home"], fixture["away"]),
                     )
                     world_state_transition = build_fixture_world_state_transition(
-                        season_id=season_id, fixture_id=fixture_id,
+                        season_id=season_id,
+                        fixture_id=fixture_id,
                         match_id=str(report["match_id"]),
-                        home=fixture["home"], away=fixture["away"],
+                        home=fixture["home"],
+                        away=fixture["away"],
                         before_match=before_world_state,
                         after_match=after_match_world_state,
                     )
-                fixture.update({
-                    "state": "completed",
-                    "completed_at": _now(),
-                    "match_id": report["match_id"],
-                    "report": Path(report["report_path"]).resolve().relative_to(self.root).as_posix(),
-                    "dashboard": Path(report["dashboard_path"]).resolve().relative_to(self.root).as_posix(),
-                    "score": {"home": int(score["home"]), "away": int(score["away"])},
-                    "world_state_transition": world_state_transition,
-                })
+                fixture.update(
+                    {
+                        "state": "completed",
+                        "completed_at": _now(),
+                        "match_id": report["match_id"],
+                        "report": Path(report["report_path"])
+                        .resolve()
+                        .relative_to(self.root)
+                        .as_posix(),
+                        "dashboard": Path(report["dashboard_path"])
+                        .resolve()
+                        .relative_to(self.root)
+                        .as_posix(),
+                        "score": {
+                            "home": int(score["home"]),
+                            "away": int(score["away"]),
+                        },
+                        "world_state_transition": world_state_transition,
+                    }
+                )
                 fixture.pop("world_state_before", None)
                 season["updated_at"] = _now()
                 if next_matchday(season) is None:
@@ -4082,25 +4720,28 @@ class ProductWorkspace:
                 recovery_id = f"{season_id}:recovery:md{matchday:02d}"
                 if season_plan.manager_team is None or resource_effects is None:
                     recover_persisted_teams(
-                        str(self.root), list(season_plan.teams), rest_units=1.0,
+                        str(self.root),
+                        list(season_plan.teams),
+                        rest_units=1.0,
                         transaction_id=recovery_id,
                     )
                 else:
                     recover_persisted_teams(
-                        str(self.root), [
-                            team for team in season_plan.teams
+                        str(self.root),
+                        [
+                            team
+                            for team in season_plan.teams
                             if team != season_plan.manager_team
                         ],
                         rest_units=float(resource_effects["baseline_rest_units"]),
                         transaction_id=recovery_id,
                     )
                     recover_persisted_teams(
-                        str(self.root), [season_plan.manager_team],
+                        str(self.root),
+                        [season_plan.manager_team],
                         rest_units=float(resource_effects["manager_rest_units"]),
                         medical_recovery_credit=float(
-                            resource_effects[
-                                "medical_recovery_credit_per_matchday"
-                            ]
+                            resource_effects["medical_recovery_credit_per_matchday"]
                         ),
                         transaction_id=recovery_id,
                     )
@@ -4113,7 +4754,8 @@ class ProductWorkspace:
                     ):
                         continue
                     after_recovery = capture_world_state(
-                        self.root, (fixture["home"], fixture["away"]),
+                        self.root,
+                        (fixture["home"], fixture["away"]),
                     )
                     phases = transition["phases"]
                     fixture["world_state_transition"] = (
@@ -4121,7 +4763,8 @@ class ProductWorkspace:
                             season_id=season_id,
                             fixture_id=fixture["fixture_id"],
                             match_id=fixture["match_id"],
-                            home=fixture["home"], away=fixture["away"],
+                            home=fixture["home"],
+                            away=fixture["away"],
                             before_match=phases["before_match"],
                             after_match=phases["after_match"],
                             after_recovery=after_recovery,
@@ -4135,20 +4778,30 @@ class ProductWorkspace:
 
     @staticmethod
     def _find_season_match(
-        session: Mapping[str, Any], competition: Mapping[str, Any],
+        session: Mapping[str, Any],
+        competition: Mapping[str, Any],
     ) -> Mapping[str, Any] | None:
         matches = []
         for record in session.get("matches") or []:
             metadata = (record.get("match_plan") or {}).get("competition") or {}
-            if all(metadata.get(key) == competition.get(key) for key in ("season_id", "fixture_id")):
+            if all(
+                metadata.get(key) == competition.get(key)
+                for key in ("season_id", "fixture_id")
+            ):
                 matches.append(record)
         if len(matches) > 1:
             raise ValueError("season fixture has duplicate completed matches")
         return matches[0] if matches else None
 
     def run_paired_matches(
-        self, home: str, away: str, *, fast: bool,
-        baseline_plan: MatchPlan, treatment_plan: MatchPlan, seed: int,
+        self,
+        home: str,
+        away: str,
+        *,
+        fast: bool,
+        baseline_plan: MatchPlan,
+        treatment_plan: MatchPlan,
+        seed: int,
         transaction_id: str | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Run one baseline/treatment pair without allowing interleaving."""
@@ -4164,7 +4817,8 @@ class ProductWorkspace:
         if not treatment_plan.reuse_last_seed:
             raise ValueError("treatment plan must declare shared-seed reuse")
         changed_sides = [
-            side for side in ("home", "away")
+            side
+            for side in ("home", "away")
             if getattr(baseline_plan, f"{side}_tactic")
             != getattr(treatment_plan, f"{side}_tactic")
         ]
@@ -4184,18 +4838,23 @@ class ProductWorkspace:
                     if not isinstance(item, Mapping):
                         continue
                     persisted_plan = item.get("match_plan") or {}
-                    if not isinstance(persisted_plan, Mapping) or persisted_plan.get(
-                        "pair_transaction_id"
-                    ) != transaction_id:
+                    if (
+                        not isinstance(persisted_plan, Mapping)
+                        or persisted_plan.get("pair_transaction_id") != transaction_id
+                    ):
                         continue
                     role = persisted_plan.get("pair_role")
                     if role == "baseline":
                         if baseline_record is not None:
-                            raise ValueError("paired transaction has duplicate baseline")
+                            raise ValueError(
+                                "paired transaction has duplicate baseline"
+                            )
                         baseline_record = item
                     elif role == "treatment":
                         if treatment_record is not None:
-                            raise ValueError("paired transaction has duplicate treatment")
+                            raise ValueError(
+                                "paired transaction has duplicate treatment"
+                            )
                         treatment_record = item
                     else:
                         raise ValueError("paired transaction contains invalid role")
@@ -4208,13 +4867,18 @@ class ProductWorkspace:
                     persisted_plan = record.get("match_plan") or {}
                     expected = expected_plan.as_dict()
                     if (
-                        record.get("home") != home or record.get("away") != away
-                        or record.get("seed") != seed or record.get("fast") is not fast
+                        record.get("home") != home
+                        or record.get("away") != away
+                        or record.get("seed") != seed
+                        or record.get("fast") is not fast
                         or any(
                             persisted_plan.get(key) != expected.get(key)
                             for key in (
-                                "experience", "home_tactic", "away_tactic",
-                                "reuse_last_seed", "score_path",
+                                "experience",
+                                "home_tactic",
+                                "away_tactic",
+                                "reuse_last_seed",
+                                "score_path",
                             )
                         )
                         or persisted_plan.get("pair_role") != role
@@ -4224,17 +4888,27 @@ class ProductWorkspace:
                     raise ValueError("paired transaction treatment has no baseline")
             baseline = (
                 self._load_completed_match(baseline_record)
-                if baseline_record is not None else self._run_match_locked(
-                    home, away, fast=fast, plan=baseline_plan,
-                    seed_override=seed, pair_transaction_id=transaction_id,
+                if baseline_record is not None
+                else self._run_match_locked(
+                    home,
+                    away,
+                    fast=fast,
+                    plan=baseline_plan,
+                    seed_override=seed,
+                    pair_transaction_id=transaction_id,
                     pair_role="baseline" if transaction_id else None,
                 )
             )
             treatment = (
                 self._load_completed_match(treatment_record)
-                if treatment_record is not None else self._run_match_locked(
-                    home, away, fast=fast, plan=treatment_plan,
-                    seed_override=seed, pair_transaction_id=transaction_id,
+                if treatment_record is not None
+                else self._run_match_locked(
+                    home,
+                    away,
+                    fast=fast,
+                    plan=treatment_plan,
+                    seed_override=seed,
+                    pair_transaction_id=transaction_id,
                     pair_role="treatment" if transaction_id else None,
                     paired_baseline_match_id_override=baseline["match_id"],
                 )
@@ -4245,16 +4919,17 @@ class ProductWorkspace:
         report_path = _artifact_path(self.root, record.get("report"))
         dashboard_path = _artifact_path(self.root, record.get("dashboard"))
         if (
-            report_path is None or dashboard_path is None
+            report_path is None
+            or dashboard_path is None
             or report_path.suffix.lower() != ".json"
             or dashboard_path.suffix.lower() != ".html"
-            or not report_path.is_file() or not dashboard_path.is_file()
+            or not report_path.is_file()
+            or not dashboard_path.is_file()
         ):
             raise ValueError("completed paired match artifacts are unavailable")
         report = json.loads(report_path.read_text(encoding="utf-8"))
-        if (
-            not isinstance(report, Mapping)
-            or report.get("match_id") != record.get("match_id")
+        if not isinstance(report, Mapping) or report.get("match_id") != record.get(
+            "match_id"
         ):
             raise ValueError("completed paired match artifact identity mismatch")
         comparison_path = _artifact_path(self.root, record.get("comparison"))
@@ -4279,16 +4954,24 @@ class ProductWorkspace:
             ),
             "comparison_dashboard_path": (
                 str(comparison_dashboard_path)
-                if comparison_dashboard_path is not None else None
+                if comparison_dashboard_path is not None
+                else None
             ),
         }
 
     def _run_match_locked(
-        self, home: str, away: str, *, fast: bool = False,
-        plan: MatchPlan | None = None, seed_override: int | None = None,
-        pair_transaction_id: str | None = None, pair_role: str | None = None,
+        self,
+        home: str,
+        away: str,
+        *,
+        fast: bool = False,
+        plan: MatchPlan | None = None,
+        seed_override: int | None = None,
+        pair_transaction_id: str | None = None,
+        pair_role: str | None = None,
         paired_baseline_match_id_override: str | None = None,
-        continuity: bool = False, continuity_id: str | None = None,
+        continuity: bool = False,
+        continuity_id: str | None = None,
         competition: Mapping[str, Any] | None = None,
         manager_decision: Mapping[str, Any] | None = None,
         opponent_preparation: Mapping[str, Any] | None = None,
@@ -4296,7 +4979,8 @@ class ProductWorkspace:
         club_strategy: Mapping[str, Any] | None = None,
         home_fatigue_load_factor: float = 1.0,
         away_fatigue_load_factor: float = 1.0,
-        home_rotation: str | None = None, away_rotation: str | None = None,
+        home_rotation: str | None = None,
+        away_rotation: str | None = None,
         home_lineup: Mapping[str, Any] | None = None,
         away_lineup: Mapping[str, Any] | None = None,
         home_in_match_plan: Mapping[str, Any] | None = None,
@@ -4304,7 +4988,9 @@ class ProductWorkspace:
     ) -> dict[str, Any]:
         readiness = self.readiness()
         if not readiness["ready"]:
-            raise RuntimeError("studio mode is not ready: " + ", ".join(readiness["blockers"]))
+            raise RuntimeError(
+                "studio mode is not ready: " + ", ".join(readiness["blockers"])
+            )
         plan = plan or MatchPlan()
         plan.validate_for_mode(
             self.config.mode,
@@ -4316,7 +5002,8 @@ class ProductWorkspace:
             if (
                 not isinstance(home_strategy, Mapping)
                 or not isinstance(away_strategy, Mapping)
-                or not continuity or competition is None
+                or not continuity
+                or competition is None
                 or club_strategy.get("season_id") != competition.get("season_id")
                 or home_strategy.get("team") != home
                 or away_strategy.get("team") != away
@@ -4329,13 +5016,13 @@ class ProductWorkspace:
                 raise ValueError("fatigue load factor requires frozen club support")
         else:
             if (
-                not continuity or competition is None or manager_decision is None
+                not continuity
+                or competition is None
+                or manager_decision is None
                 or not isinstance(club_support, Mapping)
             ):
                 raise ValueError("club support requires a managed season fixture")
-            support_plan = ClubResourcePlan.from_payload(
-                club_support.get("plan") or {}
-            )
+            support_plan = ClubResourcePlan.from_payload(club_support.get("plan") or {})
             expected_effects = club_resource_effects(support_plan)
             support_team = str(club_support.get("team") or "")
             decision_team = str(manager_decision.get("team") or "")
@@ -4348,35 +5035,38 @@ class ProductWorkspace:
                 raise ValueError("club support identity or effects mismatch")
             expected_home_factor = (
                 float(expected_effects["fatigue_load_factor"])
-                if support_team == home else 1.0
+                if support_team == home
+                else 1.0
             )
             expected_away_factor = (
                 float(expected_effects["fatigue_load_factor"])
-                if support_team == away else 1.0
+                if support_team == away
+                else 1.0
             )
             if (
                 home_fatigue_load_factor != expected_home_factor
                 or away_fatigue_load_factor != expected_away_factor
             ):
                 raise ValueError("club support fatigue factor mismatch")
-        if (
-            seed_override is not None
-            and (
-                isinstance(seed_override, bool)
-                or not isinstance(seed_override, int)
-                or not 0 <= seed_override <= 2**31 - 1
-            )
+        if seed_override is not None and (
+            isinstance(seed_override, bool)
+            or not isinstance(seed_override, int)
+            or not 0 <= seed_override <= 2**31 - 1
         ):
             raise ValueError("seed_override must be a 32-bit non-negative integer")
         session = self._session()
         paired_baseline_match_id = None
         if plan.reuse_last_seed:
             if paired_baseline_match_id_override:
-                baseline_record = next((
-                    item for item in session.get("matches") or []
-                    if isinstance(item, Mapping) and item.get("match_id")
-                    == paired_baseline_match_id_override
-                ), None)
+                baseline_record = next(
+                    (
+                        item
+                        for item in session.get("matches") or []
+                        if isinstance(item, Mapping)
+                        and item.get("match_id") == paired_baseline_match_id_override
+                    ),
+                    None,
+                )
                 if baseline_record is None:
                     raise ValueError("explicit paired baseline is unavailable")
                 if (
@@ -4395,19 +5085,15 @@ class ProductWorkspace:
                 baseline_plan.get("experience") != "tactical_lab"
                 or baseline_plan.get("score_path") != "physics_official"
             ):
-                raise ValueError(
-                    "paired baseline must be a tactical_lab physics match"
-                )
+                raise ValueError("paired baseline must be a tactical_lab physics match")
             if baseline_record.get("fast") is not fast:
-                raise ValueError(
-                    "paired baseline must use the same fast configuration"
-                )
+                raise ValueError("paired baseline must use the same fast configuration")
             if seed_override is not None and seed_override != expected_seed:
                 raise ValueError("seed_override does not match the paired baseline")
             seed_override = expected_seed
-            paired_baseline_match_id = str(
-                baseline_record.get("match_id") or ""
-            ) or None
+            paired_baseline_match_id = (
+                str(baseline_record.get("match_id") or "") or None
+            )
         plan_record = {
             **plan.as_dict(),
             "paired_baseline_match_id": paired_baseline_match_id,
@@ -4418,30 +5104,33 @@ class ProductWorkspace:
                 dict(manager_decision) if manager_decision is not None else None
             ),
             "opponent_preparation": (
-                dict(opponent_preparation)
-                if opponent_preparation is not None else None
+                dict(opponent_preparation) if opponent_preparation is not None else None
             ),
-            "club_support": (
-                dict(club_support) if club_support is not None else None
-            ),
+            "club_support": (dict(club_support) if club_support is not None else None),
             "club_strategy": (
                 dict(club_strategy) if club_strategy is not None else None
             ),
         }
         for prior in session.setdefault("runs", []):
             if prior.get("state") in ACTIVE_RUN_STATES:
-                prior.update({
-                    "state": "interrupted",
-                    "finished_at": _now(),
-                    "reason": "session_lease_recovered",
-                })
-        match_index = int(session.get(
-            "next_match_index", len(session.get("matches") or []) + 1,
-        ))
+                prior.update(
+                    {
+                        "state": "interrupted",
+                        "finished_at": _now(),
+                        "reason": "session_lease_recovered",
+                    }
+                )
+        match_index = int(
+            session.get(
+                "next_match_index",
+                len(session.get("matches") or []) + 1,
+            )
+        )
         session["next_match_index"] = match_index + 1
         seed = (
             int(seed_override)
-            if seed_override is not None else self.config.seed + match_index - 1
+            if seed_override is not None
+            else self.config.seed + match_index - 1
         )
         match_id = f"{match_index:04d}-{_slug(home)}-vs-{_slug(away)}"
         run_record = {
@@ -4449,7 +5138,10 @@ class ProductWorkspace:
             "state": "running",
             "started_at": _now(),
             "fixture": {
-                "home": home, "away": away, "seed": seed, "fast": fast,
+                "home": home,
+                "away": away,
+                "seed": seed,
+                "fast": fast,
                 "plan": plan_record,
             },
             "mode": self.config.mode,
@@ -4459,12 +5151,22 @@ class ProductWorkspace:
         _atomic_json(self.session_path, session)
         try:
             return self._execute_reserved_match(
-                home, away, fast=fast, session=session,
-                match_index=match_index, seed=seed, match_id=match_id,
-                run_record=run_record, plan=plan, plan_record=plan_record,
-                continuity=continuity, continuity_id=continuity_id,
-                home_rotation=home_rotation, away_rotation=away_rotation,
-                home_lineup=home_lineup, away_lineup=away_lineup,
+                home,
+                away,
+                fast=fast,
+                session=session,
+                match_index=match_index,
+                seed=seed,
+                match_id=match_id,
+                run_record=run_record,
+                plan=plan,
+                plan_record=plan_record,
+                continuity=continuity,
+                continuity_id=continuity_id,
+                home_rotation=home_rotation,
+                away_rotation=away_rotation,
+                home_lineup=home_lineup,
+                away_lineup=away_lineup,
                 home_in_match_plan=home_in_match_plan,
                 away_in_match_plan=away_in_match_plan,
                 home_fatigue_load_factor=home_fatigue_load_factor,
@@ -4474,24 +5176,36 @@ class ProductWorkspace:
             latest = self._session()
             for recorded in latest.get("runs") or []:
                 if recorded.get("match_id") == match_id:
-                    recorded.update({
-                        "state": "failed",
-                        "finished_at": _now(),
-                        "error_type": type(exc).__name__,
-                        "error": str(exc)[:500],
-                    })
+                    recorded.update(
+                        {
+                            "state": "failed",
+                            "finished_at": _now(),
+                            "error_type": type(exc).__name__,
+                            "error": str(exc)[:500],
+                        }
+                    )
                     break
             latest["updated_at"] = _now()
             _atomic_json(self.session_path, latest)
             raise
 
     def _execute_reserved_match(
-        self, home: str, away: str, *, fast: bool,
-        session: dict[str, Any], match_index: int, seed: int,
-        match_id: str, run_record: dict[str, Any], plan: MatchPlan,
+        self,
+        home: str,
+        away: str,
+        *,
+        fast: bool,
+        session: dict[str, Any],
+        match_index: int,
+        seed: int,
+        match_id: str,
+        run_record: dict[str, Any],
+        plan: MatchPlan,
         plan_record: dict[str, Any],
-        continuity: bool = False, continuity_id: str | None = None,
-        home_rotation: str | None = None, away_rotation: str | None = None,
+        continuity: bool = False,
+        continuity_id: str | None = None,
+        home_rotation: str | None = None,
+        away_rotation: str | None = None,
         home_lineup: Mapping[str, Any] | None = None,
         away_lineup: Mapping[str, Any] | None = None,
         home_in_match_plan: Mapping[str, Any] | None = None,
@@ -4507,27 +5221,30 @@ class ProductWorkspace:
         with self._mode_environment():
             if self.config.mode == "cognitive":
                 from src.simulation.llm_gateway import get_shared_llm_gateway
+
                 gateway = get_shared_llm_gateway()
                 calls_before = int(gateway.call_count)
-            micro_config = (
-                MicroMatchConfig.fast_demo() if fast else MicroMatchConfig()
-            )
+            micro_config = MicroMatchConfig.fast_demo() if fast else MicroMatchConfig()
             micro_config.use_micro_goals = plan.score_path == "physics_official"
             summary = app.run_micro_match(
-                home, away, base_dir=self.root, seed=seed, config=micro_config,
+                home,
+                away,
+                base_dir=self.root,
+                seed=seed,
+                config=micro_config,
                 home_tactic=(
-                    None if plan.home_tactic == NATIVE_TACTIC
-                    else plan.home_tactic
+                    None if plan.home_tactic == NATIVE_TACTIC else plan.home_tactic
                 ),
                 away_tactic=(
-                    None if plan.away_tactic == NATIVE_TACTIC
-                    else plan.away_tactic
+                    None if plan.away_tactic == NATIVE_TACTIC else plan.away_tactic
                 ),
                 stage_name=match_id,
                 continuity=continuity,
                 continuity_id=continuity_id,
-                home_rotation=home_rotation, away_rotation=away_rotation,
-                home_lineup=home_lineup, away_lineup=away_lineup,
+                home_rotation=home_rotation,
+                away_rotation=away_rotation,
+                home_lineup=home_lineup,
+                away_lineup=away_lineup,
                 home_in_match_plan=home_in_match_plan,
                 away_in_match_plan=away_in_match_plan,
                 home_fatigue_load_factor=home_fatigue_load_factor,
@@ -4536,11 +5253,13 @@ class ProductWorkspace:
         calls_after = int(gateway.call_count) if gateway is not None else 0
         provider_calls = max(0, calls_after - calls_before)
         raw = asdict(summary) if is_dataclass(summary) else dict(summary)
-        run_record.update({
-            "state": "finalizing",
-            "simulation_completed_at": _now(),
-            "successful_provider_calls": provider_calls,
-        })
+        run_record.update(
+            {
+                "state": "finalizing",
+                "simulation_completed_at": _now(),
+                "successful_provider_calls": provider_calls,
+            }
+        )
         session["updated_at"] = _now()
         _atomic_json(self.session_path, session)
         observed_world_model = raw.get("world_model_runtime") or {}
@@ -4551,17 +5270,21 @@ class ProductWorkspace:
         elif shot_decision.get("accepted") and shot_decision.get("promotion_artifact"):
             shot_source = "frozen_backbone_shot_head"
         else:
-            shot_source = evidence_snapshot.get("shot_fallback") or "joint_world_model_head"
+            shot_source = (
+                evidence_snapshot.get("shot_fallback") or "joint_world_model_head"
+            )
         shot_source = observed_world_model.get("shot_probability_source") or shot_source
         ball_log_path = _artifact_path(self.root, raw.get("ball_log_path"))
         ball_log_reference = (
             ball_log_path.relative_to(self.root).as_posix()
-            if ball_log_path is not None else ""
+            if ball_log_path is not None
+            else ""
         )
         action_adoption = raw.get("world_model_action_adoption") or {}
         adoption_records = (
             action_adoption.get("records") or []
-            if isinstance(action_adoption, Mapping) else []
+            if isinstance(action_adoption, Mapping)
+            else []
         )
         priority_opportunity_ids = {
             str(record.get("opportunity_id"))
@@ -4569,11 +5292,15 @@ class ProductWorkspace:
             if isinstance(record, Mapping) and record.get("opportunity_id")
         }
         replay = build_match_replay(
-            ball_log_path, root=self.root, home=home, away=away,
+            ball_log_path,
+            root=self.root,
+            home=home,
+            away=away,
             priority_opportunity_ids=priority_opportunity_ids,
         )
         replay["world_model_action_links"] = build_world_model_action_links(
-            replay, action_adoption,
+            replay,
+            action_adoption,
         )
         replay["manager_annotations"] = [
             {
@@ -4598,21 +5325,42 @@ class ProductWorkspace:
             "created_at": _now(),
             "studio": {"name": self.config.name, "mode": self.config.mode},
             "fixture": {
-                "home": home, "away": away, "seed": seed, "fast": fast,
+                "home": home,
+                "away": away,
+                "seed": seed,
+                "fast": fast,
             },
             "match_plan": plan_record,
             "result": {
-                "score": {"home": raw.get("goals_micro_home"), "away": raw.get("goals_micro_away")},
-                "xg": {"home": raw.get("micro_xg_home"), "away": raw.get("micro_xg_away")},
-                "possession": {"home": raw.get("possession_home"), "away": 1.0 - float(raw.get("possession_home", 0.5))},
-                "passes": {"home": raw.get("passes_home"), "away": raw.get("passes_away")},
+                "score": {
+                    "home": raw.get("goals_micro_home"),
+                    "away": raw.get("goals_micro_away"),
+                },
+                "xg": {
+                    "home": raw.get("micro_xg_home"),
+                    "away": raw.get("micro_xg_away"),
+                },
+                "possession": {
+                    "home": raw.get("possession_home"),
+                    "away": 1.0 - float(raw.get("possession_home", 0.5)),
+                },
+                "passes": {
+                    "home": raw.get("passes_home"),
+                    "away": raw.get("passes_away"),
+                },
                 "shots": {"home": raw.get("shots_home"), "away": raw.get("shots_away")},
             },
             "layers": {
                 "psychology": {
                     "crowd_field": raw.get("final_psi"),
-                    "coach_stress": {"home": raw.get("home_coach_stress"), "away": raw.get("away_coach_stress")},
-                    "tactical_drift": {"home": raw.get("tactical_drift_home"), "away": raw.get("tactical_drift_away")},
+                    "coach_stress": {
+                        "home": raw.get("home_coach_stress"),
+                        "away": raw.get("away_coach_stress"),
+                    },
+                    "tactical_drift": {
+                        "home": raw.get("tactical_drift_home"),
+                        "away": raw.get("tactical_drift_away"),
+                    },
                 },
                 "world_model": {
                     "configured": self.config.mode in {"research", "cognitive"},
@@ -4620,18 +5368,24 @@ class ProductWorkspace:
                     "runtime": observed_world_model,
                     "shot_probability_source": shot_source,
                     "shot_head_authorized": bool(shot_decision.get("accepted")),
-                    "online_calibration": raw.get("world_model_online_calibration") or {},
+                    "online_calibration": raw.get("world_model_online_calibration")
+                    or {},
                     "decision_adoption": raw.get("world_model_decision_adoption") or {},
                     "action_adoption": action_adoption,
                     "action_adoption_mechanism": evidence_snapshot.get(
                         "action_adoption_mechanism"
-                    ) or {},
+                    )
+                    or {},
                 },
                 "cognition": {
                     "enabled": self.config.mode == "cognitive",
                     "provider": {
-                        "model": str(gateway.config.model) if gateway is not None else None,
-                        "base_url": str(gateway.config.base_url) if gateway is not None else None,
+                        "model": str(gateway.config.model)
+                        if gateway is not None
+                        else None,
+                        "base_url": str(gateway.config.base_url)
+                        if gateway is not None
+                        else None,
                         "successful_calls": provider_calls,
                         "real_provider_evidence": provider_calls > 0,
                     },
@@ -4657,10 +5411,10 @@ class ProductWorkspace:
             "raw_summary": raw,
         }
         integrity_blockers = []
-        if (
-            self.config.mode in {"research", "cognitive"}
-            and not observed_world_model.get("loaded")
-        ):
+        if self.config.mode in {
+            "research",
+            "cognitive",
+        } and not observed_world_model.get("loaded"):
             integrity_blockers.append("required_world_model_not_observed")
         expected_runtime_signature = "sha256:" + str(
             evidence_snapshot.get("world_model_checkpoint_sha256") or ""
@@ -4674,14 +5428,11 @@ class ProductWorkspace:
             integrity_blockers.append("world_model_runtime_identity_mismatch")
         if self.config.mode == "cognitive" and provider_calls <= 0:
             integrity_blockers.append("no_successful_provider_call")
-        if (
-            plan.score_path == "physics_official"
-            and (
-                int(raw.get("goals_micro_home", -1))
-                != int(raw.get("goals_physics_home", -2))
-                or int(raw.get("goals_micro_away", -1))
-                != int(raw.get("goals_physics_away", -2))
-            )
+        if plan.score_path == "physics_official" and (
+            int(raw.get("goals_micro_home", -1))
+            != int(raw.get("goals_physics_home", -2))
+            or int(raw.get("goals_micro_away", -1))
+            != int(raw.get("goals_physics_away", -2))
         ):
             integrity_blockers.append("physics_score_path_not_observed")
         report["integrity"] = {
@@ -4694,16 +5445,22 @@ class ProductWorkspace:
         comparison_html_path = None
         if plan_record.get("paired_baseline_match_id"):
             from src.product.comparison import (
-                build_paired_comparison, write_paired_comparison_html,
+                build_paired_comparison,
+                write_paired_comparison_html,
             )
 
             baseline_id = str(plan_record["paired_baseline_match_id"])
-            baseline_record = next((
-                item for item in (session.get("matches") or [])
-                if item.get("match_id") == baseline_id
-            ), None)
+            baseline_record = next(
+                (
+                    item
+                    for item in (session.get("matches") or [])
+                    if item.get("match_id") == baseline_id
+                ),
+                None,
+            )
             baseline_report_path = _artifact_path(
-                self.root, (baseline_record or {}).get("report"),
+                self.root,
+                (baseline_record or {}).get("report"),
             )
             if baseline_report_path is None or not baseline_report_path.is_file():
                 raise ValueError("paired baseline report is unavailable")
@@ -4713,13 +5470,13 @@ class ProductWorkspace:
             comparison = build_paired_comparison(baseline_report, report)
             comparison["created_at"] = _now()
             comparison["reports"] = {
-                "baseline": baseline_report_path.relative_to(
-                    self.root
-                ).as_posix(),
+                "baseline": baseline_report_path.relative_to(self.root).as_posix(),
                 "treatment": report_path.relative_to(self.root).as_posix(),
             }
-            comparison_path = self.output_root / "matches" / (
-                f"{match_id}-paired-vs-{baseline_id}.comparison.json"
+            comparison_path = (
+                self.output_root
+                / "matches"
+                / (f"{match_id}-paired-vs-{baseline_id}.comparison.json")
             )
             comparison_html_path = comparison_path.with_suffix(".html")
             comparison["dashboard"] = comparison_html_path.relative_to(
@@ -4727,76 +5484,98 @@ class ProductWorkspace:
             ).as_posix()
             _atomic_json(comparison_path, comparison)
             write_paired_comparison_html(comparison_html_path, comparison)
-            report["artifacts"].update({
-                "paired_comparison": comparison_path.relative_to(
-                    self.root
-                ).as_posix(),
-                "paired_comparison_dashboard": comparison_html_path.relative_to(
-                    self.root
-                ).as_posix(),
-            })
+            report["artifacts"].update(
+                {
+                    "paired_comparison": comparison_path.relative_to(
+                        self.root
+                    ).as_posix(),
+                    "paired_comparison_dashboard": comparison_html_path.relative_to(
+                        self.root
+                    ).as_posix(),
+                }
+            )
         if self.config.mode == "cognitive":
             cognitive_path = (
-                self.root / "data/persistence/cognitive_log"
-                / f"studio_{match_id}.json"
+                self.root / "data/persistence/cognitive_log" / f"studio_{match_id}.json"
             )
-            _atomic_json(cognitive_path, {
-                "schema_version": PRODUCT_SCHEMA_VERSION,
-                "match_id": match_id,
-                "fixture": report["fixture"],
-                "provider": report["layers"]["cognition"]["provider"],
-                "cognitive_triggers": report["layers"]["cognition"]["triggers"],
-                "cognitive_plans": report["layers"]["cognition"]["plans"],
-                "cognitive_tier_usage": report["layers"]["cognition"]["tier_usage"],
-                "world_model_online_calibration": report["layers"]["world_model"]["online_calibration"],
-                "world_model_decision_adoption": report["layers"]["world_model"]["decision_adoption"],
-                "world_model_action_adoption": report["layers"]["world_model"]["action_adoption"],
-            })
-            report["artifacts"]["cognitive_log"] = cognitive_path.relative_to(self.root).as_posix()
+            _atomic_json(
+                cognitive_path,
+                {
+                    "schema_version": PRODUCT_SCHEMA_VERSION,
+                    "match_id": match_id,
+                    "fixture": report["fixture"],
+                    "provider": report["layers"]["cognition"]["provider"],
+                    "cognitive_triggers": report["layers"]["cognition"]["triggers"],
+                    "cognitive_plans": report["layers"]["cognition"]["plans"],
+                    "cognitive_tier_usage": report["layers"]["cognition"]["tier_usage"],
+                    "world_model_online_calibration": report["layers"]["world_model"][
+                        "online_calibration"
+                    ],
+                    "world_model_decision_adoption": report["layers"]["world_model"][
+                        "decision_adoption"
+                    ],
+                    "world_model_action_adoption": report["layers"]["world_model"][
+                        "action_adoption"
+                    ],
+                },
+            )
+            report["artifacts"]["cognitive_log"] = cognitive_path.relative_to(
+                self.root
+            ).as_posix()
         _atomic_json(report_path, report)
         from src.product.reporting import write_match_html
+
         html_path = write_match_html(report_path.with_suffix(".html"), report)
-        session.setdefault("matches", []).append({
-            "match_id": match_id, "home": home, "away": away,
-            "seed": seed,
-            "fast": fast,
-            "score": report["result"]["score"],
-            "match_plan": plan_record,
-            "report": report_path.relative_to(self.root).as_posix(),
-            "dashboard": html_path.relative_to(self.root).as_posix(),
-            "integrity": report["integrity"]["state"],
-            "world_model_action_adoption": _action_adoption_digest(
-                report["layers"]["world_model"]["action_adoption"]
-            ),
-            "comparison": (
-                comparison_path.relative_to(self.root).as_posix()
-                if comparison_path is not None else None
-            ),
-            "comparison_dashboard": (
-                comparison_html_path.relative_to(self.root).as_posix()
-                if comparison_html_path is not None else None
-            ),
-        })
-        run_record.update({
-            "state": "completed",
-            "finished_at": _now(),
-            "integrity": report["integrity"]["state"],
-            "report": report_path.relative_to(self.root).as_posix(),
-            "comparison": (
-                comparison_path.relative_to(self.root).as_posix()
-                if comparison_path is not None else None
-            ),
-        })
+        session.setdefault("matches", []).append(
+            {
+                "match_id": match_id,
+                "home": home,
+                "away": away,
+                "seed": seed,
+                "fast": fast,
+                "score": report["result"]["score"],
+                "match_plan": plan_record,
+                "report": report_path.relative_to(self.root).as_posix(),
+                "dashboard": html_path.relative_to(self.root).as_posix(),
+                "integrity": report["integrity"]["state"],
+                "world_model_action_adoption": _action_adoption_digest(
+                    report["layers"]["world_model"]["action_adoption"]
+                ),
+                "comparison": (
+                    comparison_path.relative_to(self.root).as_posix()
+                    if comparison_path is not None
+                    else None
+                ),
+                "comparison_dashboard": (
+                    comparison_html_path.relative_to(self.root).as_posix()
+                    if comparison_html_path is not None
+                    else None
+                ),
+            }
+        )
+        run_record.update(
+            {
+                "state": "completed",
+                "finished_at": _now(),
+                "integrity": report["integrity"]["state"],
+                "report": report_path.relative_to(self.root).as_posix(),
+                "comparison": (
+                    comparison_path.relative_to(self.root).as_posix()
+                    if comparison_path is not None
+                    else None
+                ),
+            }
+        )
         session["updated_at"] = _now()
         _atomic_json(self.session_path, session)
         return {
-            **report, "report_path": str(report_path),
+            **report,
+            "report_path": str(report_path),
             "dashboard_path": str(html_path),
             "comparison_path": (
                 str(comparison_path) if comparison_path is not None else None
             ),
             "comparison_dashboard_path": (
-                str(comparison_html_path)
-                if comparison_html_path is not None else None
+                str(comparison_html_path) if comparison_html_path is not None else None
             ),
         }

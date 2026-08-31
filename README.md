@@ -11,6 +11,14 @@ The completed formal baseline, seven-variant ablation, retrained-candidate
 decision, and final verification are summarized in
 `docs/FORMAL_RESEARCH_VALIDATION_2026-08.md`.
 
+The newer action-policy study closes one narrower gap: the learned world-model
+signal changed 25 sampled micro-actions in the fixed 24-run mechanism study and
+changed behavior in all 30 pairs of a 60-run full-match study. It did **not**
+establish outcome improvement: the external-loss delta was `-0.0318925`, its
+95% interval crossed zero, and the sealed decision remains
+`inconclusive_keep_research_only`. M1 is still default-off. See
+`docs/ACTION_OUTCOME_RESULT_V1.md`.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

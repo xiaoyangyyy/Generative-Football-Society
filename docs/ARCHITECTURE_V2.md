@@ -1375,3 +1375,44 @@ decision freezes, verified against the runtime tactical vector during match
 execution, and exposed again through post-match evidence and the long-term
 decision ledger. Research lab, evidence and recovery remain separate
 workspaces, but the manager career itself is one continuous product journey.
+
+## 54. V3.36 Confirmed action adoption and full-match outcome gate
+
+The sealed action-adoption mechanism study completed its full 24-run budget
+without exclusions, training or provider calls. The prediction-only negative
+control retained zero influenced opportunities. The direct-action arm reached
+1954 opportunities, influenced 1951, produced 25.246 expected and 25 realized
+shared-random-number action changes, and changed all 12 matched pairs. Every
+frozen mechanism gate passed. A separate verifier replays the decision from
+the exact protocol, checkpoint, code identity and progress rows, then verifies
+the CSV and Markdown export hashes.
+
+This result closes the structural question of whether the validated learned
+signal reaches the normal sampler and changes micro-actions. It does not close
+the downstream outcome question. A new full-match protocol therefore binds
+the confirmed mechanism decision itself, the same checkpoint and all
+decision-relevant engine/statistical files. It freezes 30 matched fixture-seed
+pairs for both M0 and action-policy M1, 5400 simulated seconds per run, one
+fixture-stratified paired bootstrap primary comparison and descriptive-only
+secondary behavior metrics. No interim effect is exposed and optional stopping
+remains forbidden.
+
+Evidence Center reads both layers separately. It shows the completed mechanism
+budget and realized changes, then the independent full-match run count and
+decision state. The interface states that mechanism confirmation is not match
+improvement, real-football causality or product/academic promotion.
+
+The full-match gate subsequently completed all 60 runs: 30 M0 and 30 M1 over
+the exact preregistered fixture-seed pairs. M1 changed at least one observable
+in every pair, but its external-calibration-loss delta was -0.031893 with a
+95% fixture-stratified paired interval of [-26.061955, 5.137430]. The
+external-validity gate and the upper-bound-below--0.10 gate failed. The frozen
+decision is `inconclusive_keep_research_only`; stable authority remains with
+M0 and no product or academic promotion is supported.
+
+`scripts/verify_action_outcome_result.py` rebuilds the 10,000-draw primary
+analysis from the completed progress rows, verifies the exact 30 paired units,
+protocol, checkpoint, mechanism prerequisite and critical-code identities,
+and compares the replayed decision field-for-field. Evidence Center exposes
+the interval, 30/30 behavior-changing pairs and failed promotion state without
+turning descriptive shot, goal or possession differences into efficacy claims.

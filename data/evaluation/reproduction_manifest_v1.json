@@ -1,13 +1,20 @@
 {
   "schema_version": 1,
-  "package_id": "gfs-registered-report-reproduction-v1",
-  "stage": "preexecution_auditable_package",
-  "scope": "Existing evidence, manuscript claims, the preregistered confirmatory and mechanism-replication workflows, and their full-study independent reproduction; no new simulation is part of package verification.",
+  "package_id": "gfs-action-outcome-results-reproduction-v1",
+  "stage": "completed_action_outcome_results_package",
+  "scope": "Existing evidence, the completed 60-run action-policy outcome study, its deterministic replay, bounded manuscript claims, and the still-pending independent reproduction; package verification runs no simulation.",
   "artifacts": {
     "manuscript": "docs/PAPER_DRAFT.md",
     "claims": "data/evaluation/paper_claims_v1.json",
-    "protocol": "data/evaluation/formal_experiment_protocol_v2.json",
-    "protocol_documentation": "docs/FORMAL_EXPERIMENT_PROTOCOL_V2.md",
+    "protocol": "data/evaluation/action_outcome_protocol_v1.json",
+    "protocol_documentation": "docs/ACTION_OUTCOME_RESULT_V1.md",
+    "mechanism_protocol": "data/evaluation/action_adoption_protocol_v1.json",
+    "mechanism_progress": "data/evaluation/action_adoption_v1/progress.json",
+    "mechanism_decision": "data/evaluation/action_adoption_v1/decision.json",
+    "mechanism_verifier": "scripts/verify_action_adoption_result.py",
+    "outcome_progress": "data/evaluation/action_outcome_v1/progress.json",
+    "outcome_decision": "data/evaluation/action_outcome_v1/decision.json",
+    "outcome_verifier": "scripts/verify_action_outcome_result.py",
     "reproduction_guide": "docs/REPRODUCTION_GUIDE.md",
     "model_card": "docs/RESEARCH_MODEL_CARD.md",
     "data_card": "docs/RESEARCH_DATA_CARD.md",
@@ -303,23 +310,23 @@
     },
     {
       "id": "confirmatory_execution",
-      "command": "python scripts/run_formal_experiment.py --execute",
+      "command": "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --execute",
       "effect": "fixed_60_run_simulation",
       "runs_simulation": true,
       "explicit_authority_required": true
     },
     {
       "id": "complete_only_analysis",
-      "command": "python scripts/run_formal_experiment.py --analyze",
+      "command": "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --analyze",
       "effect": "analysis_only_after_complete_identity_matched_evidence",
       "runs_simulation": false,
       "explicit_authority_required": true
     }
   ],
   "expected_confirmatory_outputs": {
-    "progress": "data/evaluation/formal_confirmatory_v2/progress.json",
-    "decision": "data/evaluation/formal_confirmatory_v2/decision.json",
-    "current_status": "absent_not_executed"
+    "progress": "data/evaluation/action_outcome_v1/progress.json",
+    "decision": "data/evaluation/action_outcome_v1/decision.json",
+    "current_status": "complete_research_only"
   },
   "data_distribution": {
     "status": "source_specific_review_complete_idsse_subset_ready",

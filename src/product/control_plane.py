@@ -277,7 +277,7 @@ class ProductControlPlane:
         )
         paper_identity_current = self._artifact_hashes_current(
             {
-                "data/evaluation/formal_experiment_protocol_v2.json": paper.get(
+                "data/evaluation/action_outcome_protocol_v1.json": paper.get(
                     "protocol_sha256"
                 ),
                 "data/evaluation/paper_claims_v1.json": paper.get(

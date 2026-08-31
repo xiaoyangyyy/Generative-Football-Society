@@ -26,6 +26,7 @@ deploy/secrets/
 logs/
 reports/*
 data/evaluation/shards/
+data/evaluation/**/*.lock
 !reports/acceptance/
 reports/acceptance/*
 !reports/acceptance/*.json

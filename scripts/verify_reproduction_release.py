@@ -582,8 +582,8 @@ def verify_reproduction_release() -> dict:
             and row.get("explicit_authority_required") is False
             for row in commands
         ),
-        "release_manifest_remains_preexecution": (
-            manifest.get("stage") == "preexecution_auditable_package"
+        "release_manifest_has_completed_action_outcome_result": (
+            manifest.get("stage") == "completed_action_outcome_results_package"
             and manifest.get("data_distribution", {}).get("license_review_complete")
             is True
             and manifest.get("archive", {}).get("status")
@@ -718,7 +718,7 @@ def verify_reproduction_release() -> dict:
             "container image digests are fixed, but a successful build is unverified on this Docker-less host",
             "only the DFL-authorized CC BY 4.0 IDSSE subset is approved; four other external sources remain excluded",
             "the licensed supplement boundary does not audit or rewrite repository history",
-            "confirmatory execution and independent reproduction have not been performed",
+            "the action-policy outcome study is complete, but the separate human, production, academic, and independent validation programs remain unperformed",
         ],
     }
 

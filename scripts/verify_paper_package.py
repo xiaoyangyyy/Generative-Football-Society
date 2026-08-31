@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the pre-execution paper package without running any simulation."""
+"""Verify the completed action-policy paper package without simulation."""
 
 from __future__ import annotations
 
@@ -17,10 +17,12 @@ if str(ROOT) not in sys.path:
 
 from scripts.audit_research_evidence import build_report as build_research_report  # noqa: E402
 from scripts.run_formal_experiment import (  # noqa: E402
-    DEFAULT_PROTOCOL,
     load_protocol,
-    status as formal_status,
     validate_protocol,
+)
+from scripts.verify_action_outcome_result import (  # noqa: E402
+    PROTOCOL_PATH,
+    verify as verify_action_outcome,
 )
 from src.infrastructure import file_sha256  # noqa: E402
 
@@ -50,12 +52,14 @@ def _claim_checks(registry: dict, manuscript: str) -> dict[str, bool]:
     identifiers = [str(claim.get("claim_id") or "") for claim in claims]
     allowed_status = {
         "verified_existing",
+        "verified_current_result",
         "preregistered_not_executed",
         "not_available",
     }
     supported_evidence = all(
         (
-            claim.get("status") != "verified_existing"
+            claim.get("status")
+            not in {"verified_existing", "verified_current_result"}
             or (
                 bool(claim.get("evidence"))
                 and all(_confined_file(str(path)) for path in claim["evidence"])
@@ -109,7 +113,7 @@ def verify_paper_package() -> dict:
     manifest = _read_json(MANIFEST)
     registry = _read_json(CLAIMS)
     environment = _read_json(ENVIRONMENT)
-    protocol = load_protocol(DEFAULT_PROTOCOL)
+    protocol = load_protocol(PROTOCOL_PATH)
     manuscript = MANUSCRIPT.read_text(encoding="utf-8")
     references = REFERENCES.read_text(encoding="utf-8")
     normalized_manuscript = " ".join(manuscript.split())
@@ -117,7 +121,7 @@ def verify_paper_package() -> dict:
     artifacts = manifest.get("artifacts") or {}
     checks["manifest_schema_and_stage"] = (
         manifest.get("schema_version") == 1
-        and manifest.get("stage") == "preexecution_auditable_package"
+        and manifest.get("stage") == "completed_action_outcome_results_package"
     )
     checks["manifest_artifacts_exist_and_are_confined"] = (
         len(artifacts) >= 12
@@ -139,22 +143,29 @@ def verify_paper_package() -> dict:
     checks["manuscript_has_required_sections"] = all(
         section in manuscript for section in required_sections
     )
-    checks["manuscript_status_is_explicitly_preexecution"] = all(
+    checks["manuscript_status_is_explicitly_completed"] = all(
         marker in manuscript
         for marker in (
-            "MANUSCRIPT_STAGE: REGISTERED_REPORT_DRAFT",
-            "CONFIRMATORY_RESULT_STATUS: NOT_EXECUTED",
+            "MANUSCRIPT_STAGE: COMPLETED_RESULTS_DRAFT",
+            "CONFIRMATORY_RESULT_STATUS: COMPLETE_RESEARCH_ONLY",
             "INDEPENDENT_REPRODUCTION_STATUS: NOT_PERFORMED",
-            "**Status: NOT EXECUTED.**",
+            "**Status: COMPLETE, RESEARCH-ONLY.**",
         )
     )
-    checks["confirmatory_result_cells_are_unavailable"] = (
-        manuscript.count("| not available |") >= 8
-        and "CONFIRMATORY_RESULT_STATUS: COMPLETE" not in manuscript
+    checks["confirmatory_result_cells_match_sealed_result"] = all(
+        marker in manuscript
+        for marker in (
+            "| Completed M0 runs | 30/30 |",
+            "| Completed M1 runs | 30/30 |",
+            "| Point delta in external loss | -0.03189252164278855 |",
+            "| 95% paired interval | [-26.061954645805613, 5.137429588662575] |",
+            "| Changed-pair fraction | 30/30 (1.0) |",
+            "| Decision | `inconclusive_keep_research_only` |",
+            "| Promotion supported | no |",
+        )
     )
 
     budget = validate_protocol(protocol)
-    experiment_status = formal_status(ROOT, DEFAULT_PROTOCOL, protocol)
     outputs = manifest.get("expected_confirmatory_outputs") or {}
     progress_path = ROOT / str(outputs.get("progress") or "")
     decision_path = ROOT / str(outputs.get("decision") or "")
@@ -162,16 +173,24 @@ def verify_paper_package() -> dict:
         protocol.get("state") == "preregistered_not_executed"
         and budget == {"fixtures": 6, "pairs": 30, "runs": 60}
     )
-    checks["formal_identity_preflight_passes"] = (
-        experiment_status.get("identity_ready") is True
-        and experiment_status.get("identity_matches_progress") is True
+    try:
+        outcome_verification = verify_action_outcome()
+    except (OSError, ValueError, KeyError, TypeError):
+        outcome_verification = {"passed": False}
+    checks["formal_result_identity_and_replay_pass"] = (
+        outcome_verification.get("passed") is True
+        and outcome_verification.get("runs") == 60
+        and outcome_verification.get("pairs") == 30
+        and outcome_verification.get("replay_matches") is True
     )
-    checks["confirmatory_outputs_are_absent"] = (
-        outputs.get("current_status") == "absent_not_executed"
-        and not progress_path.exists()
-        and not decision_path.exists()
-        and experiment_status.get("execution_state") == "not_started"
-        and experiment_status.get("remaining_runs") == 60
+    decision = _read_json(decision_path) if decision_path.is_file() else {}
+    progress = _read_json(progress_path) if progress_path.is_file() else {}
+    checks["confirmatory_outputs_are_complete_and_research_only"] = (
+        outputs.get("current_status") == "complete_research_only"
+        and progress.get("state") == "completed"
+        and decision.get("decision") == "inconclusive_keep_research_only"
+        and decision.get("promotion_supported") is False
+        and decision.get("behavior", {}).get("changed_pairs") == 30
     )
 
     stored_research = _read_json(ROOT / "data/evaluation/research_evidence_v1.json")
@@ -198,7 +217,7 @@ def verify_paper_package() -> dict:
         and {
             row.get("command") for row in simulation_commands
         } == {
-            "python scripts/run_formal_experiment.py --execute",
+            "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --execute",
             "python scripts/run_production_validation.py --execute --workspace . --authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION --deployment-instance-id instance-replace",
             "python scripts/academic_replication_study.py --execute --authorization I_AUTHORIZE_GFS_ACADEMIC_REPLICATION_V1",
         }
@@ -284,27 +303,27 @@ def verify_paper_package() -> dict:
     passed = all(checks.values())
     return {
         "schema_version": 1,
-        "verification": "gfs_preexecution_paper_package",
+        "verification": "gfs_completed_action_outcome_paper_package",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "status": "passed_preexecution_package" if passed else "failed",
+        "status": "passed_completed_results_package" if passed else "failed",
         "passed": passed,
         "package_stage": manifest.get("stage"),
         "claim_count": len(registry.get("claims") or []),
         "artifact_count": len(artifacts),
-        "protocol_sha256": file_sha256(DEFAULT_PROTOCOL),
+        "protocol_sha256": file_sha256(PROTOCOL_PATH),
         "claim_registry_sha256": file_sha256(CLAIMS),
         "manuscript_sha256": file_sha256(MANUSCRIPT),
         "reproduction_manifest_sha256": file_sha256(MANIFEST),
         "environment_snapshot_sha256": file_sha256(ENVIRONMENT),
-        "confirmatory_result_available": False,
+        "confirmatory_result_available": outcome_verification.get("passed") is True,
         "independent_reproduction_available": False,
         "external_calls_made": False,
-        "matches_executed": 0,
+        "matches_executed": 60 if outcome_verification.get("passed") is True else 0,
         "training_executed": False,
-        "formal_experiment_executed": False,
+        "formal_experiment_executed": outcome_verification.get("passed") is True,
         "checks": checks,
         "limitations": [
-            "this verifies a registered-report-stage package, not a completed results manuscript",
+            "the completed simulator-internal result is inconclusive and does not authorize M1 promotion",
             "the Linux/Windows reference matrix and image digests are verified, but an actual Docker build remains incomplete",
             "the licensed archive is limited to IDSSE/Sportec derivatives; four other providers remain excluded",
             "the licensed supplement boundary does not audit or rewrite repository history",

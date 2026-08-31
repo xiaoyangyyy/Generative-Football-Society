@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_evidence_derived_excellence_score",
-  "generated_at": "2026-08-21T07:02:56.941708+00:00",
+  "generated_at": "2026-08-31T15:40:40.032971+00:00",
   "status": "passed_dynamic_scoring",
   "passed": true,
   "scores": {
@@ -236,10 +236,10 @@
     "data/evaluation/excellence_scoring_contract_v1.json": "650bf8d0140545d32447253b2d9e27f39f5f130e74fca02aa676b588b75cc13b",
     "data/evaluation/excellence_roadmap_v1.json": "894dfc88bb04431339c7d74183141366c66a618a57cf4552e6aef31458187c66",
     "src/product/excellence.py": "1cf02fae25a9a72659abfcd621e9ba0a68d707fe74bfaf3b3db7cd5ea5c7a6fc",
-    "src/product/control_plane.py": "78dc77299abb15266fc6f1bbeba4af8a07f9a1a1ab3fd8696189d684e912e4cb",
+    "src/product/control_plane.py": "f9c489c2cafcee82036c7afcfb6439a26a32728f804f4d60d5dcd7dd2ca54d3e",
     "src/product/completion_plan.py": "a31d42c16b8a4b4be9e848e6d3fb2fc436447deb0f2de390f2214a3dc04881a4",
     "src/cli.py": "d8d4381ef94daa459fc3b2af2c7737947f95beb9a15a4e08150879ce6db68529",
-    "src/product/web.py": "8d9e528576d823d1e5d4abd998dfb9e86fd20084fd174939a5518f9433939329",
+    "src/product/web.py": "a6a863bfd73d4d11f8936475c02e2837c02ee95132a2a8a1121b209b00b3bfa4",
     "src/product/telemetry.py": "d3b7cda8f249da11f0e908d514b70abb8446b94721c33fa2681d5f7e361162a7",
     "scripts/build_excellence_evidence_kit.py": "0964b6f9319d22f8628877d30ed30dad3d497b50b9330c263887c87d46f63a3d",
     "data/evaluation/excellence_evidence_kit_verification_v1.json": "5fbc2bcee63b44598e06793287f999e6af4bcb4a67469ef0839ddf5975372a52",

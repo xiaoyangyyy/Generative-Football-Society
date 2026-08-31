@@ -83,6 +83,7 @@ def main() -> int:
     ensure = (ROOT / "scripts/ensure_world_model.py").read_text(encoding="utf-8")
     job = (ROOT / "src/training/job.py").read_text(encoding="utf-8")
     workspace = (ROOT / "src/product/workspace.py").read_text(encoding="utf-8")
+    workspace = " ".join(workspace.split())
     web = (ROOT / "src/product/web.py").read_text(encoding="utf-8")
     decision_ledger = (
         ROOT / "src/product/decision_ledger.py"

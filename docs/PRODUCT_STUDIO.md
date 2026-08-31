@@ -37,6 +37,30 @@ user explicitly chooses another area. That choice is retained only as one of
 four allowlisted identifiers in browser session storage. Choosing “go to next
 step” reveals the owning area before scrolling and moving keyboard focus.
 
+## Causal world lab loop
+
+The Match laboratory is one connected intervention workflow, not a collection
+of unrelated demos:
+
+```text
+freeze fixture + shared seed
+    -> choose exactly one tactical intervention
+    -> run baseline and treatment worlds
+    -> align both replays on a shared timeline
+    -> inspect local action, chance and score-path divergence
+    -> repeat over a fixed seed budget
+    -> expose the final paired estimate only after completion
+```
+
+The one-pair view answers “where did these two simulated futures first
+diverge?” The fixed-budget tactical study answers the narrower aggregate
+question for the registered fixture and seed set. The Evidence center then
+separates three claims that the interface never merges: the world model entered
+the action policy, simulated behavior changed, and outcome improvement remains
+unresolved. Manager advice can be reviewed or adopted, but its lifecycle ledger
+records the choice as user behavior rather than converting it into causal or
+performance evidence.
+
 Before a manager freezes a matchday decision, Studio now recalculates a
 zero-persistence impact preview whenever the tactic, rotation, lineup, club
 situation response, or in-match rule changes. The preview and the actual
@@ -444,6 +468,24 @@ Use the four-run diagnostic before any fixed-budget study:
 It compares no-advisor, deterministic rule fallback, prediction-only and
 direct-action paths using one shared short fixture per arm. It does not train,
 call a provider, modify formal progress or support an effectiveness claim.
-After an explicitly authorized formal study completes, the analyze command
-writes the identity-bound decision JSON plus flat CSV rows and a Markdown gate
-summary.
+The explicitly authorized 24-run mechanism study completed on 2026-08-31.
+Its identity-bound decision is `mechanism_confirmed`: 1951 of 1954 action
+opportunities received non-zero policy influence, 25.246 counterfactual
+changes were expected, 25 were realized, and all 12 matched pairs changed.
+The decision JSON, 24 flat CSV rows and Markdown summary replay through:
+
+    python scripts/verify_action_adoption_result.py
+
+This confirms the micro-action adoption path. The separate 60-run full-match
+outcome protocol, `data/evaluation/action_outcome_protocol_v1.json`, also
+completed on 2026-08-31. All 30 matched pairs changed behavior, but the M1-minus-
+M0 external-loss estimate was -0.031893 with a 95% paired interval of
+[-26.061955, 5.137430]. The external-validity and minimum-effect gates failed,
+so the sealed decision is `inconclusive_keep_research_only` and promotion is
+not supported. Replay the result with:
+
+    python scripts/verify_action_outcome_result.py
+
+Evidence Center reports the mechanism and outcome layers separately. The
+product may say that M1 changes simulated actions and full-match behavior; it
+must not claim reliable outcome improvement or real-football causality.

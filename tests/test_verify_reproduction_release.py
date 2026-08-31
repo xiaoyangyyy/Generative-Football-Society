@@ -18,7 +18,7 @@ from scripts.verify_reproduction_release import (
 CI_WORKFLOW = Path(".github/workflows/ci.yml")
 
 
-def test_preexecution_release_contract_fails_closed_after_execution():
+def test_release_contract_accepts_result_package_but_fails_on_external_gates():
     report = verify_reproduction_release()
     assert report["passed"] is False
     assert report["status"] == "failed"
@@ -29,11 +29,13 @@ def test_preexecution_release_contract_fails_closed_after_execution():
     )
     assert report["known_external_source_count"] == 5
     assert report["archive_eligible_external_source_count"] == 1
-    assert report["checks"]["paper_package_still_passes"] is False
+    assert report["checks"]["paper_package_still_passes"] is True
+    assert report["checks"][
+        "release_manifest_has_completed_action_outcome_result"
+    ] is True
     failed = {key for key, value in report["checks"].items() if not value}
     assert failed == {
         "human_and_independent_validation_protocols_are_current",
-        "paper_package_still_passes",
     }
     assert report["readiness"]["full_transitive_hash_lock"] is True
     assert report["readiness"]["runtime_direct_dependencies_match"] is True
