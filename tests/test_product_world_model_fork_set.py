@@ -9,7 +9,9 @@ from src.product.season import ManagerDecision, SeasonPlan, new_season_state
 from src.product.world_model_fork_set import (
     aggregate_fork_set,
     execute_world_model_fork_set,
+    project_fork_set_scenario_evidence,
     render_fork_set_html,
+    validate_fork_set_scenario_evidence,
 )
 from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue, TaskConflict
 
@@ -97,6 +99,27 @@ def test_aggregate_reports_timing_sensitivity_without_ranking_or_causal_upgrade(
         "real_football_causality": False,
         "promotion_authorized": False,
     }
+    scenarios = project_fork_set_scenario_evidence({
+        "plan": plan.as_dict(), "rows": result["rows"],
+    })
+    assert [row["branch_minute"] for row in scenarios] == [30.0, 45.0]
+    assert scenarios[1]["simulator_local_action_attribution"] is True
+    validate_fork_set_scenario_evidence(
+        scenarios, plan.branch_times_sec,
+    )
+    tampered = json.loads(json.dumps(scenarios))
+    tampered[1]["changed_actions"] = 3
+    with pytest.raises(ValueError, match="identity mismatch"):
+        validate_fork_set_scenario_evidence(
+            tampered, plan.branch_times_sec,
+        )
+    invalid_source = {
+        "plan": plan.as_dict(),
+        "rows": json.loads(json.dumps(result["rows"])),
+    }
+    invalid_source["rows"][0]["branch_at_sec"] = None
+    with pytest.raises(ValueError, match="source time"):
+        project_fork_set_scenario_evidence(invalid_source)
     result.update({
         "fixture": {"home": "Brazil", "away": "Argentina"},
         "fixed_scenario_budget": 2, "scenarios_completed": 2,

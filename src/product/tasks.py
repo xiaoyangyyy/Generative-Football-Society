@@ -838,6 +838,7 @@ class BackgroundMatchWorker:
             elif task.get("kind") == "world_model_fork_set":
                 from src.product.world_model_fork_set import (
                     execute_world_model_fork_set,
+                    project_fork_set_scenario_evidence,
                 )
 
                 plan = WorldModelForkSetPlan.from_payload(request["plan"])
@@ -869,6 +870,9 @@ class BackgroundMatchWorker:
                         self.queue.root, fork_set["dashboard_path"],
                     ),
                     "aggregate": fork_set["aggregate"],
+                    "scenario_evidence": (
+                        project_fork_set_scenario_evidence(fork_set)
+                    ),
                     "claim_authority": fork_set["claim_authority"],
                 }
                 if manager_context is not None:

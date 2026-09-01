@@ -129,6 +129,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "function requestManagerFutureExperiment(" in document
     assert "function reviewManagerFutureEvidence(" in document
     assert "renderManagerDecisionLedgerWithoutFutureReviews" in document
+    assert "renderManagerDecisionLedgerWithoutFutureScenarioEvidence" in document
+    assert "renderManagerFutureSetsWithoutScenarioEvidence" in document
+    assert "scenario.scenario_identity" in document
+    assert "已封存的分叉机制链" in document
     assert "row.world_model_future_reviews" in document
     assert "keep_after_review" in document
     assert "revise_after_review" in document
@@ -1365,6 +1369,28 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
             },
             "source_context": kwargs["source_context"],
             "plan": frozen_plan.as_dict(),
+            "rows": [
+                {
+                    "branch_at_sec": float(branch),
+                    "branch_minute": float(branch) / 60.0,
+                    "future_status": (
+                        "local_action_divergence_with_descriptive_future_difference"
+                        if index == 0 else "no_realized_action_divergence"
+                    ),
+                    "eligible": True,
+                    "branch_anchor_verified": True,
+                    "branch_state_identity": format(index + 1, "064x"),
+                    "changed_actions": 1 if index == 0 else 0,
+                    "locally_attributable_changes": 1 if index == 0 else 0,
+                    "descriptive_future_difference_count": (
+                        1 if index == 0 else 0
+                    ),
+                    "simulator_local_action_attribution": index == 0,
+                    "outcome_causality": False,
+                    "real_football_causality": False,
+                }
+                for index, branch in enumerate(frozen_plan.branch_times_sec)
+            ],
             "aggregate": aggregate,
             "claim_authority": authority,
         }
@@ -1385,6 +1411,14 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
     ).run_once()
     completed = app.task_queue.get_task(task["task_id"])
     assert completed["state"] == "completed"
+    assert len(completed["result"]["scenario_evidence"]) == 2
+    projection = app._studio_status()["studio"]["season"]
+    projected_set = projection["manager_future_sets"][0]
+    assert projected_set["scenario_evidence_available"] is True
+    assert len(projected_set["scenario_evidence"]) == 2
+    assert projected_set["scenario_evidence"][0][
+        "simulator_local_action_attribution"
+    ] is True
 
     response = _request(
         app, "POST", "/api/v1/seasons/world-model-future-review", {
@@ -1399,6 +1433,8 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
     receipt = season["next_manager_fixture"]["manager_future_reviews"][0]
     assert receipt["task_id"] == task["task_id"]
     assert receipt["intent"] == "keep_after_review"
+    assert receipt["schema_version"] == 2
+    assert len(receipt["scenario_evidence"]) == 2
     assert season["revision"] == decided["revision"] + 1
     assert season["manager_decision_ledger"]["summary"][
         "world_model_future_reviews"

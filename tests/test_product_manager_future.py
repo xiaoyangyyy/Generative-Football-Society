@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -21,6 +22,9 @@ from src.product.season import (
 )
 from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue
 from src.product.workspace import ProductWorkspace, StudioConfig
+from src.product.world_model_fork_set import (
+    project_fork_set_scenario_evidence,
+)
 
 
 def _season_with_decision():
@@ -81,7 +85,8 @@ def _task_evidence(context, task_id="future123", workspace=None):
             "timing_sensitivity_observed": True,
             "status_counts": {
                 "local_action_divergence_with_descriptive_future_difference": 1,
-                "no_realized_action_divergence": 2,
+                "action_divergence_without_local_attribution": 1,
+                "no_realized_action_divergence": 1,
             },
             "ranking_performed": False,
             "best_branch_time": None,
@@ -95,6 +100,32 @@ def _task_evidence(context, task_id="future123", workspace=None):
             "promotion_authorized": False,
         },
     }
+    rows = [
+        {
+            "branch_at_sec": float(branch),
+            "branch_minute": float(branch) / 60.0,
+            "future_status": (
+                "local_action_divergence_with_descriptive_future_difference"
+                if index == 0 else
+                "action_divergence_without_local_attribution"
+                if index == 1 else
+                "no_realized_action_divergence"
+            ),
+            "eligible": True,
+            "branch_anchor_verified": True,
+            "branch_state_identity": format(index + 1, "064x"),
+            "changed_actions": 1 if index < 2 else 0,
+            "locally_attributable_changes": 1 if index == 0 else 0,
+            "descriptive_future_difference_count": 1 if index == 0 else 0,
+            "simulator_local_action_attribution": index == 0,
+            "outcome_causality": False,
+            "real_football_causality": False,
+        }
+        for index, branch in enumerate(plan.branch_times_sec)
+    ]
+    result["scenario_evidence"] = project_fork_set_scenario_evidence({
+        "plan": plan.as_dict(), "rows": rows,
+    })
     if workspace is not None:
         artifact_root = workspace.output_root / "fork_sets" / task_id
         artifact_root.mkdir(parents=True, exist_ok=True)
@@ -109,6 +140,7 @@ def _task_evidence(context, task_id="future123", workspace=None):
             "source_context": context,
             "plan": plan.as_dict(),
             "aggregate": result["aggregate"],
+            "rows": rows,
             "claim_authority": result["claim_authority"],
         }
         result_path = artifact_root / "result.json"
@@ -289,8 +321,69 @@ def test_manager_future_review_receipt_distinguishes_keep_and_revise():
         manager_team="A",
     )
     assert kept["decision_changed"] is False
+    assert kept["schema_version"] == 2
+    assert len(kept["scenario_evidence"]) == 3
     assert kept["evidence_summary"]["ranking_performed"] is False
     assert kept["claim_authority"]["match_outcome_causality"] is False
+    legacy = copy.deepcopy(kept)
+    legacy.pop("scenario_evidence")
+    legacy.pop("review_identity")
+    legacy["schema_version"] = 1
+    legacy["review_identity"] = hashlib.sha256(json.dumps(
+        legacy, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"), allow_nan=False,
+    ).encode("utf-8")).hexdigest()
+    validate_manager_future_review(
+        legacy,
+        season_id=season["season_id"],
+        fixture_id=fixture["fixture_id"],
+        matchday=fixture["matchday"],
+        manager_team="A",
+    )
+    scenario_tamper = copy.deepcopy(kept)
+    scenario_tamper["scenario_evidence"][0]["changed_actions"] = 2
+    with pytest.raises(ValueError, match="scenario evidence identity"):
+        validate_manager_future_review(
+            scenario_tamper,
+            season_id=season["season_id"],
+            fixture_id=fixture["fixture_id"],
+            matchday=fixture["matchday"],
+            manager_team="A",
+        )
+    rehashed_summary_tamper = copy.deepcopy(kept)
+    rehashed_summary_tamper["evidence_summary"][
+        "action_divergence_scenarios"
+    ] = 1
+    rehashed_summary_tamper.pop("review_identity")
+    rehashed_summary_tamper["review_identity"] = hashlib.sha256(json.dumps(
+        rehashed_summary_tamper, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"), allow_nan=False,
+    ).encode("utf-8")).hexdigest()
+    with pytest.raises(ValueError, match="scenario summary mismatch"):
+        validate_manager_future_review(
+            rehashed_summary_tamper,
+            season_id=season["season_id"],
+            fixture_id=fixture["fixture_id"],
+            matchday=fixture["matchday"],
+            manager_team="A",
+        )
+    inconsistent = copy.deepcopy(result)
+    second = inconsistent["scenario_evidence"][1]
+    second["changed_actions"] = 0
+    second["future_status"] = "no_realized_action_divergence"
+    second.pop("scenario_identity")
+    second["scenario_identity"] = hashlib.sha256(json.dumps(
+        second, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"), allow_nan=False,
+    ).encode("utf-8")).hexdigest()
+    with pytest.raises(ValueError, match="scenario aggregate is inconsistent"):
+        build_manager_future_review(
+            task_id="future123",
+            request=request,
+            result=inconsistent,
+            final_decision=fixture["manager_decision"],
+            intent="keep_after_review",
+        )
 
     revised_decision = ManagerDecision(
         team="A", tactic="balanced",
@@ -314,7 +407,7 @@ def test_manager_future_review_receipt_distinguishes_keep_and_revise():
 
     tampered = copy.deepcopy(kept)
     tampered["evidence_summary"]["action_divergence_scenarios"] = 3
-    with pytest.raises(ValueError, match="identity mismatch"):
+    with pytest.raises(ValueError, match="scenario summary mismatch"):
         validate_manager_future_review(
             tampered,
             season_id=season["season_id"],

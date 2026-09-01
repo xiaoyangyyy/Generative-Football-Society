@@ -34,6 +34,9 @@ from src.product.manager_future_review import (
     build_manager_future_review,
     validate_manager_future_review,
 )
+from src.product.world_model_fork_set import (
+    project_fork_set_scenario_evidence,
+)
 from src.product.decision_advice import (
     build_manager_advice_adoption,
     build_manager_advice_comparison,
@@ -3879,6 +3882,11 @@ class ProductWorkspace:
                 or artifact.get("source_context") != context
                 or artifact.get("plan") != task_request.get("plan")
                 or artifact.get("aggregate") != task_result.get("aggregate")
+                or (
+                    "scenario_evidence" in task_result
+                    and project_fork_set_scenario_evidence(artifact)
+                    != task_result.get("scenario_evidence")
+                )
                 or artifact.get("claim_authority")
                 != task_result.get("claim_authority")
             ):

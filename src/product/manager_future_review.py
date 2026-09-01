@@ -9,9 +9,13 @@ from typing import Any, Mapping
 from src.product.manager_future import validate_manager_future_context_shape
 from src.product.match_plan import WorldModelForkSetPlan
 from src.product.season import ManagerDecision
+from src.product.world_model_fork_set import (
+    summarize_fork_set_scenario_evidence,
+    validate_fork_set_scenario_evidence,
+)
 
 
-REVIEW_SCHEMA_VERSION = 1
+REVIEW_SCHEMA_VERSION = 2
 REVIEW_INTENTS = {"keep_after_review", "revise_after_review"}
 MAX_REVIEWS_PER_FIXTURE = 16
 _BOUNDARY = (
@@ -74,7 +78,10 @@ def _validated_task_evidence(
     task_id: str,
     request: Mapping[str, Any],
     result: Mapping[str, Any],
-) -> tuple[dict[str, Any], WorldModelForkSetPlan, dict[str, Any]]:
+) -> tuple[
+    dict[str, Any], WorldModelForkSetPlan, dict[str, Any],
+    list[dict[str, Any]] | None,
+]:
     if (
         not isinstance(task_id, str)
         or not task_id.isalnum()
@@ -170,7 +177,23 @@ def _validated_task_evidence(
         "ranking_performed": False,
         "best_branch_time": None,
     }
-    return context, plan, summary
+    scenario_evidence = result.get("scenario_evidence")
+    validated_scenarios = (
+        None
+        if scenario_evidence is None else
+        validate_fork_set_scenario_evidence(
+            scenario_evidence, plan.branch_times_sec,
+        )
+    )
+    if validated_scenarios is not None:
+        rebuilt = summarize_fork_set_scenario_evidence(
+            validated_scenarios, plan.branch_times_sec,
+        )
+        if any(aggregate.get(key) != value for key, value in rebuilt.items()):
+            raise ValueError(
+                "manager future review scenario aggregate is inconsistent"
+            )
+    return context, plan, summary, validated_scenarios
 
 
 def build_manager_future_review(
@@ -184,7 +207,7 @@ def build_manager_future_review(
     """Bind an explicit keep/revise interaction to completed bounded evidence."""
     if intent not in REVIEW_INTENTS:
         raise ValueError("manager future review intent is invalid")
-    context, plan, summary = _validated_task_evidence(
+    context, plan, summary, scenarios = _validated_task_evidence(
         task_id, request, result,
     )
     normalized_decision = ManagerDecision.from_payload(final_decision).as_dict()
@@ -198,7 +221,9 @@ def build_manager_future_review(
         raise ValueError("manager future review intent does not match decision")
     fixture = context["fixture"]
     payload = {
-        "schema_version": REVIEW_SCHEMA_VERSION,
+        "schema_version": (
+            REVIEW_SCHEMA_VERSION if scenarios is not None else 1
+        ),
         "task_id": task_id,
         "season_id": context["season_id"],
         "source_season_revision": context["season_revision"],
@@ -217,6 +242,8 @@ def build_manager_future_review(
         "causal_effect_authorized": False,
         "claim_boundary": _BOUNDARY,
     }
+    if scenarios is not None:
+        payload["scenario_evidence"] = scenarios
     return {**payload, "review_identity": _identity(payload)}
 
 
@@ -229,7 +256,7 @@ def validate_manager_future_review(
     manager_team: str,
 ) -> None:
     """Validate a persisted receipt without depending on the mutable task queue."""
-    required = {
+    base_required = {
         "schema_version",
         "task_id",
         "season_id",
@@ -250,14 +277,24 @@ def validate_manager_future_review(
         "claim_boundary",
         "review_identity",
     }
-    if not isinstance(review, Mapping) or set(review) != required:
+    schema_version = review.get("schema_version") if isinstance(
+        review, Mapping,
+    ) else None
+    required = (
+        base_required | {"scenario_evidence"}
+        if schema_version == REVIEW_SCHEMA_VERSION else base_required
+    )
+    if (
+        not isinstance(review, Mapping)
+        or schema_version not in {1, REVIEW_SCHEMA_VERSION}
+        or set(review) != required
+    ):
         raise ValueError("manager future review fields are invalid")
     task_id = review.get("task_id")
     branch_times = review.get("branch_times_sec")
     summary = review.get("evidence_summary")
     if (
-        review.get("schema_version") != REVIEW_SCHEMA_VERSION
-        or not isinstance(task_id, str)
+        not isinstance(task_id, str)
         or not task_id.isalnum()
         or not 1 <= len(task_id) <= 64
         or review.get("season_id") != season_id
@@ -323,6 +360,21 @@ def validate_manager_future_review(
         for field in count_fields
     ):
         raise ValueError("manager future review summary is invalid")
+    if schema_version == REVIEW_SCHEMA_VERSION:
+        scenarios = validate_fork_set_scenario_evidence(
+            review.get("scenario_evidence"), branch_times,
+        )
+        rebuilt = summarize_fork_set_scenario_evidence(
+            scenarios, branch_times,
+        )
+        if (
+            any(summary.get(field) != rebuilt[field] for field in count_fields)
+            or summary.get("timing_sensitivity_observed")
+            is not rebuilt["timing_sensitivity_observed"]
+        ):
+            raise ValueError(
+                "manager future review scenario summary mismatch"
+            )
     frozen = dict(review)
     observed = frozen.pop("review_identity")
     if observed != _identity(frozen):

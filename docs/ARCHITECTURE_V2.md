@@ -1694,3 +1694,35 @@ remains the only operation that advances competition state.
 This stage completes a product interaction loop, not an efficacy result. It
 changes code, tests and zero-execution documentation only and runs no model
 training, formal experiment, match study, human study or provider call.
+
+## 63. V3.45 Replayable per-timepoint manager evidence
+
+The completed future-set task previously exposed only aggregate counts to the
+manager screen. Its official artifact already contained one row for every
+preregistered branch time, but those rows remained behind a separate research
+dashboard. This preserved scientific caution while leaving the product
+experience fragmented: a manager could record a review without retaining the
+specific mechanism chain that was visible at review time.
+
+Every newly completed future-set task now carries a bounded public projection
+for its two to four frozen branch times. Each row records the branch minute,
+eligibility and prefix-anchor state, realized action changes, locally
+attributable changes, descriptive future differences and explicit false
+outcome/real-football causal authority. A canonical scenario identity binds
+the complete row. Validation replays each identity, enforces status semantics
+and rebuilds the aggregate counts, status distribution and timing-sensitivity
+flag from the rows. A task or receipt whose row facts and aggregate disagree
+fails closed.
+
+Version 2 manager review receipts preserve the validated rows inside the
+existing fixture review history. Version 1 receipts remain replayable for
+backward compatibility, while all newly executed tasks produce the richer
+contract. Studio renders the same rows inline on the current manager future
+set and again from the immutable receipt in the decision ledger, so task
+pruning does not erase the evidence behind a recorded decision. No second
+season state, preferred branch, best-time ranking or automatic decision is
+introduced.
+
+This is a product observability and evidence-continuity improvement. It does
+not add training, execute matches or formal studies, estimate decision quality,
+or upgrade simulator differences into match-outcome or real-football causality.

@@ -97,6 +97,12 @@ def main() -> int:
     manager_future_review = (
         ROOT / "src/product/manager_future_review.py"
     ).read_text(encoding="utf-8")
+    world_model_fork_set = (
+        ROOT / "src/product/world_model_fork_set.py"
+    ).read_text(encoding="utf-8")
+    product_tasks = (
+        ROOT / "src/product/tasks.py"
+    ).read_text(encoding="utf-8")
     manager_advisor_study = (
         ROOT / "scripts/manager_advisor_study.py"
     ).read_text(encoding="utf-8")
@@ -530,6 +536,32 @@ def main() -> int:
                 "keep_after_review",
                 "revise_after_review",
                 '"second_persisted_season_state": False',
+            ))
+        ),
+        "manager_future_scenarios_are_replayable_and_product_visible": (
+            all(token in world_model_fork_set for token in (
+                "def project_fork_set_scenario_evidence(",
+                "def validate_fork_set_scenario_evidence(",
+                "def summarize_fork_set_scenario_evidence(",
+                '"scenario_identity": _identity(payload)',
+                "future-set scenario evidence semantics are invalid",
+                "completed fork-set scenario aggregate mismatch",
+            ))
+            and all(token in product_tasks for token in (
+                '"scenario_evidence": (',
+                "project_fork_set_scenario_evidence(fork_set)",
+            ))
+            and all(token in manager_future_review for token in (
+                "REVIEW_SCHEMA_VERSION = 2",
+                'payload["scenario_evidence"] = scenarios',
+                "manager future review scenario aggregate is inconsistent",
+            ))
+            and all(token in web for token in (
+                '"scenario_evidence": scenario_evidence',
+                "renderManagerFutureSetsWithoutScenarioEvidence",
+                "renderManagerDecisionLedgerWithoutFutureScenarioEvidence",
+                "scenario.scenario_identity",
+                "时点之间不排名",
             ))
         ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (

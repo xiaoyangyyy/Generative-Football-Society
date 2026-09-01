@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import hashlib
 import json
 import math
 import os
@@ -13,6 +14,22 @@ from typing import Any, Mapping
 
 from src.product.manager_future import validate_manager_future_context_shape
 from src.product.match_plan import WorldModelForkSetPlan
+
+
+FUTURE_SET_SCENARIO_STATUSES = {
+    "descriptive_only_ineligible",
+    "no_realized_action_divergence",
+    "action_divergence_without_local_attribution",
+    "local_action_divergence_with_descriptive_future_difference",
+    "local_action_divergence_without_measured_future_difference",
+}
+
+
+def _identity(payload: Mapping[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(
+        payload, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"), allow_nan=False,
+    ).encode("utf-8")).hexdigest()
 
 
 def _paths(workspace: Any, set_id: str) -> dict[str, Path]:
@@ -46,6 +63,232 @@ def _bounded_count(value: Any) -> int:
         return 0
     number = float(value)
     return max(0, min(100_000, int(number))) if math.isfinite(number) else 0
+
+
+def validate_fork_set_scenario_evidence(
+    scenarios: Any, branch_times_sec: Any,
+) -> list[dict[str, Any]]:
+    """Replay the bounded per-timepoint evidence exposed to product surfaces."""
+    if (
+        not isinstance(branch_times_sec, (list, tuple))
+        or not 2 <= len(branch_times_sec) <= 4
+        or any(
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+            or not 0 <= float(value) <= 5400
+            or (
+                index > 0
+                and float(value) <= float(branch_times_sec[index - 1])
+            )
+            for index, value in enumerate(branch_times_sec)
+        )
+    ):
+        raise ValueError("future-set scenario branch contract is invalid")
+    expected_times = [float(value) for value in branch_times_sec]
+    if (
+        not isinstance(scenarios, list)
+        or len(scenarios) != len(expected_times)
+    ):
+        raise ValueError("future-set scenario evidence budget is invalid")
+    required = {
+        "schema_version", "branch_at_sec", "branch_minute",
+        "future_status", "eligible", "anchor_verified",
+        "branch_state_identity",
+        "changed_actions", "locally_attributable_changes",
+        "descriptive_future_difference_count",
+        "simulator_local_action_attribution",
+        "outcome_causality_authorized", "real_football_causality_authorized",
+        "scenario_identity",
+    }
+    normalized = []
+    for index, raw in enumerate(scenarios):
+        if not isinstance(raw, Mapping) or set(raw) != required:
+            raise ValueError("future-set scenario evidence fields are invalid")
+        branch = raw.get("branch_at_sec")
+        minute = raw.get("branch_minute")
+        state_identity = raw.get("branch_state_identity")
+        if (
+            raw.get("schema_version") != 1
+            or isinstance(branch, bool)
+            or not isinstance(branch, (int, float))
+            or not math.isfinite(float(branch))
+            or float(branch) != expected_times[index]
+            or isinstance(minute, bool)
+            or not isinstance(minute, (int, float))
+            or not math.isclose(
+                float(minute), float(branch) / 60.0,
+                rel_tol=0.0, abs_tol=1e-9,
+            )
+            or raw.get("future_status") not in FUTURE_SET_SCENARIO_STATUSES
+            or not isinstance(raw.get("eligible"), bool)
+            or not isinstance(raw.get("anchor_verified"), bool)
+            or (
+                raw.get("eligible") is True
+                and raw.get("anchor_verified") is not True
+            )
+            or (
+                state_identity is not None
+                and re.fullmatch(r"[0-9a-f]{64}", str(state_identity)) is None
+            )
+            or (
+                raw.get("anchor_verified") is True
+                and state_identity is None
+            )
+            or not isinstance(
+                raw.get("simulator_local_action_attribution"), bool,
+            )
+            or raw.get("outcome_causality_authorized") is not False
+            or raw.get("real_football_causality_authorized") is not False
+        ):
+            raise ValueError("future-set scenario evidence values are invalid")
+        for field in (
+            "changed_actions", "locally_attributable_changes",
+            "descriptive_future_difference_count",
+        ):
+            value = raw.get(field)
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or not 0 <= value <= 100_000
+            ):
+                raise ValueError("future-set scenario evidence counts are invalid")
+        changed = int(raw["changed_actions"])
+        local = int(raw["locally_attributable_changes"])
+        differences = int(raw["descriptive_future_difference_count"])
+        local_authorized = raw["simulator_local_action_attribution"]
+        status = raw["future_status"]
+        semantic_status = (
+            "descriptive_only_ineligible"
+            if not raw["eligible"] else
+            "no_realized_action_divergence"
+            if changed == 0 else
+            "action_divergence_without_local_attribution"
+            if not local_authorized else
+            "local_action_divergence_with_descriptive_future_difference"
+            if differences > 0 else
+            "local_action_divergence_without_measured_future_difference"
+        )
+        if (
+            local > changed
+            or (local_authorized and local == 0)
+            or (not raw["eligible"] and local_authorized)
+            or status != semantic_status
+        ):
+            raise ValueError("future-set scenario evidence semantics are invalid")
+        frozen = dict(raw)
+        observed = frozen.pop("scenario_identity")
+        if (
+            not isinstance(observed, str)
+            or observed != _identity(frozen)
+        ):
+            raise ValueError("future-set scenario evidence identity mismatch")
+        normalized.append(dict(raw))
+    return normalized
+
+
+def summarize_fork_set_scenario_evidence(
+    scenarios: Any, branch_times_sec: Any,
+) -> dict[str, Any]:
+    """Rebuild aggregate facts from the bounded scenario evidence."""
+    validated = validate_fork_set_scenario_evidence(
+        scenarios, branch_times_sec,
+    )
+    signatures = {
+        (
+            row["future_status"], row["changed_actions"],
+            row["locally_attributable_changes"],
+            row["descriptive_future_difference_count"],
+        )
+        for row in validated
+    }
+    return {
+        "eligible_scenarios": sum(
+            row["eligible"] for row in validated
+        ),
+        "verified_anchor_scenarios": sum(
+            row["anchor_verified"] for row in validated
+        ),
+        "action_divergence_scenarios": sum(
+            row["changed_actions"] > 0 for row in validated
+        ),
+        "local_attribution_scenarios": sum(
+            row["simulator_local_action_attribution"]
+            for row in validated
+        ),
+        "descriptive_future_difference_scenarios": sum(
+            row["descriptive_future_difference_count"] > 0
+            for row in validated
+        ),
+        "timing_sensitivity_observed": len(signatures) > 1,
+        "status_counts": dict(sorted(Counter(
+            row["future_status"] for row in validated
+        ).items())),
+    }
+
+
+def project_fork_set_scenario_evidence(
+    result: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Build a privacy-safe, non-ranked product projection from official rows."""
+    plan = result.get("plan")
+    rows = result.get("rows")
+    branch_times = (
+        plan.get("branch_times_sec")
+        if isinstance(plan, Mapping) else None
+    )
+    if (
+        not isinstance(rows, list)
+        or not isinstance(branch_times, list)
+        or len(rows) != len(branch_times)
+    ):
+        raise ValueError("future-set scenario source is invalid")
+    scenarios = []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            raise ValueError("future-set scenario source row is invalid")
+        raw_branch = row.get("branch_at_sec")
+        raw_minute = row.get("branch_minute")
+        if (
+            isinstance(raw_branch, bool)
+            or not isinstance(raw_branch, (int, float))
+            or not math.isfinite(float(raw_branch))
+            or isinstance(raw_minute, bool)
+            or not isinstance(raw_minute, (int, float))
+            or not math.isfinite(float(raw_minute))
+        ):
+            raise ValueError("future-set scenario source time is invalid")
+        raw_state_identity = str(row.get("branch_state_identity") or "")
+        state_identity = (
+            raw_state_identity
+            if re.fullmatch(r"[0-9a-f]{64}", raw_state_identity)
+            else None
+        )
+        payload = {
+            "schema_version": 1,
+            "branch_at_sec": float(raw_branch),
+            "branch_minute": float(raw_minute),
+            "future_status": str(row.get("future_status") or ""),
+            "eligible": row.get("eligible") is True,
+            "anchor_verified": row.get("branch_anchor_verified") is True,
+            "branch_state_identity": state_identity,
+            "changed_actions": _bounded_count(row.get("changed_actions")),
+            "locally_attributable_changes": _bounded_count(
+                row.get("locally_attributable_changes")
+            ),
+            "descriptive_future_difference_count": _bounded_count(
+                row.get("descriptive_future_difference_count")
+            ),
+            "simulator_local_action_attribution": (
+                row.get("simulator_local_action_attribution") is True
+            ),
+            "outcome_causality_authorized": False,
+            "real_football_causality_authorized": False,
+        }
+        scenarios.append({
+            **payload, "scenario_identity": _identity(payload),
+        })
+    return validate_fork_set_scenario_evidence(scenarios, branch_times)
 
 
 def _row(plan: WorldModelForkSetPlan, comparison: Mapping[str, Any]) -> dict[str, Any]:
@@ -244,6 +487,12 @@ def _validate_completed_result(
         for row in rows
     ):
         raise ValueError("completed fork-set claim boundary is invalid")
+    scenarios = project_fork_set_scenario_evidence(result)
+    rebuilt = summarize_fork_set_scenario_evidence(
+        scenarios, plan.branch_times_sec,
+    )
+    if any(aggregate.get(key) != value for key, value in rebuilt.items()):
+        raise ValueError("completed fork-set scenario aggregate mismatch")
 
 
 def execute_world_model_fork_set(
