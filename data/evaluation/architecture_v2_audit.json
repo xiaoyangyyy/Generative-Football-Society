@@ -17,6 +17,7 @@
     "manager_advice_preview_is_confidence_aware_and_non_causal": true,
     "manager_advice_request_is_semantically_idempotent": true,
     "manager_advisor_evidence_is_replayable_and_preregistered": true,
+    "manager_counterfactual_workbench_is_one_replayable_workflow": true,
     "manager_future_action_examples_are_bounded_and_non_causal": true,
     "manager_future_review_closes_to_runtime_selection_without_outcome_claim": true,
     "manager_future_review_is_identity_bound_and_non_causal": true,

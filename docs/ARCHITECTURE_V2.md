@@ -1878,3 +1878,47 @@ This stage reduces product fragmentation and clarifies the complex-system
 experience. It does not execute training, matches, formal experiments, human
 studies or provider calls, and it does not estimate score improvement or
 real-football causality.
+
+## 68. V3.50 Canonical manager counterfactual intervention workspace
+
+The prematch manager product already supported frozen decisions, fixed-budget
+future sets, per-timepoint mechanisms and explicit keep-or-revise receipts.
+Those capabilities were scientifically bounded but the browser still inferred
+their workflow from several task cards. Task state, current fixture binding,
+available evidence and the next manager action therefore had no single
+replayable product contract.
+
+Studio now derives one manager intervention workspace from the current season
+view and the already validated future-set projections. It is a five-stage
+state machine:
+
+1. freeze the intervention decision;
+2. generate bounded, preregistered futures;
+3. inspect simulator-local action mechanisms;
+4. record an explicit manager review;
+5. advance the official football world through the existing matchday action.
+
+The workspace normalizes the frozen decision, recomputes its identity, checks
+future-set fixture, revision and decision binding, retains only bounded
+scenario identities and aggregate mechanism counts, and links a review only
+through its persisted receipt identity. Every stage and the full workspace
+have canonical identities. Validation rebuilds the complete object and rejects
+even a rehashed edited workflow.
+
+Queued, running, interrupted, completed-with-scenario-evidence,
+completed-with-aggregate-only, review-ready and reviewed-and-refrozen states
+remain distinct. Projection drift, invalid identities and missing completed
+scenario evidence are visible continuity gaps. An interrupted current future
+set exposes the existing safe-resume operation directly in the manager panel.
+
+The same workspace identity is published in the season view and matchday
+command center. The browser renders its five ordered stages, evidence totals
+and one derived next action before the detailed per-set cards. It no longer
+has to infer the overall journey from independent panels. Existing future-set
+artifacts and review receipts remain the authorities; the workspace is
+read-only and introduces no second season state.
+
+This is a workflow-cohesion and product-comprehension improvement. It does not
+rank intervention times, select a tactic, execute a match, predict a score,
+estimate an outcome effect, authorize real-football causality, run training or
+call an external provider.

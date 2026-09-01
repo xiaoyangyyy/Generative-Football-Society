@@ -42,5 +42,8 @@ def test_architecture_v2_machine_audit_passes():
     assert report["checks"][
         "manager_product_exposes_one_replayable_world_evolution_thread"
     ]
+    assert report["checks"][
+        "manager_counterfactual_workbench_is_one_replayable_workflow"
+    ]
     assert report["checks"]["formal_experiment_is_preregistered_and_compute_bounded"]
     assert report["checks"]["formal_experiment_fails_closed_on_identity_or_partial_evidence"]

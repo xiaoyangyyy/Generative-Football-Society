@@ -122,10 +122,15 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="request-manager-advice"' in document
     assert 'id="adopt-manager-advice"' in document
     assert 'id="manager-future-set"' in document
+    assert 'id="manager-intervention-workspace"' in document
     assert 'id="request-manager-future-set"' in document
     assert "/api/v1/seasons/world-model-future-set" in document
     assert "/api/v1/seasons/world-model-future-review" in document
     assert "function renderManagerFutureSets(" in document
+    assert "function renderManagerInterventionWorkspace(" in document
+    assert "经理反事实干预五步流程" in document
+    assert "不排名时点、不预测比分" in document
+    assert "从已验证进度恢复未来生成" in document
     assert "function requestManagerFutureExperiment(" in document
     assert "function reviewManagerFutureEvidence(" in document
     assert "renderManagerDecisionLedgerWithoutFutureReviews" in document
@@ -1460,6 +1465,22 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
     assert len(completed["result"]["scenario_evidence"]) == 2
     projection = app._studio_status()["studio"]["season"]
     projected_set = projection["manager_future_sets"][0]
+    intervention = projection["manager_intervention_workspace"]
+    assert intervention["workflow_state"] == "evidence_ready_for_review"
+    assert intervention["allowed_actions"]["review_future_set"] is True
+    assert intervention["stages"][0]["status"] == "decision_frozen"
+    assert intervention["stages"][2]["status"] == (
+        "scenario_evidence_available"
+    )
+    assert intervention["evidence_summary"][
+        "local_attribution_scenarios"
+    ] == 1
+    assert (
+        projection["matchday_command_center"][
+            "manager_intervention_workspace"
+        ]["workspace_identity"]
+        == intervention["workspace_identity"]
+    )
     assert projected_set["scenario_evidence_available"] is True
     assert len(projected_set["scenario_evidence"]) == 2
     assert projected_set["scenario_evidence"][0][
@@ -1494,6 +1515,22 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
     assert season["manager_decision_ledger"]["summary"][
         "world_model_future_reviews"
     ]["retained_mechanism_examples"] == 1
+    reviewed_projection = app._studio_status()["studio"]["season"]
+    reviewed_workspace = reviewed_projection[
+        "manager_intervention_workspace"
+    ]
+    assert reviewed_workspace["workflow_state"] == (
+        "review_recorded_decision_refrozen"
+    )
+    assert reviewed_workspace["stages"][3]["status"] == (
+        "review_recorded"
+    )
+    assert reviewed_workspace["evidence_summary"][
+        "reviewed_future_sets"
+    ] == 1
+    assert reviewed_workspace["allowed_actions"][
+        "advance_official_match"
+    ] is True
     assert "manager_future_reviews" not in workspace._session()
     repeated = _request(
         app, "POST", "/api/v1/seasons/world-model-future-review", {

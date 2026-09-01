@@ -124,6 +124,9 @@ def main() -> int:
     manager_world_thread = (
         ROOT / "src/product/manager_world_thread.py"
     ).read_text(encoding="utf-8")
+    manager_intervention_workspace = (
+        ROOT / "src/product/manager_intervention_workspace.py"
+    ).read_text(encoding="utf-8")
     match_micro_runner = (
         ROOT / "src/match_engine/match_micro_runner.py"
     ).read_text(encoding="utf-8")
@@ -674,6 +677,30 @@ def main() -> int:
                 "renderManagerDecisionLedgerWithoutWorldEvolutionThread",
                 "renderManagerIntelligenceWithoutWorldEvolutionThread",
                 "同场出现不等于因果",
+            ))
+            and "innerHTML" not in web
+        ),
+        "manager_counterfactual_workbench_is_one_replayable_workflow": (
+            all(token in manager_intervention_workspace for token in (
+                "def build_manager_intervention_workspace(",
+                "def validate_manager_intervention_workspace(",
+                '"freeze_intervention"',
+                '"generate_bounded_futures"',
+                '"inspect_local_mechanism"',
+                '"record_manager_review"',
+                '"advance_official_world"',
+                '"outcome_effect_estimate": None',
+                '"causal_effect_authorized": False',
+                "manager intervention workspace replay mismatch",
+            ))
+            and all(token in web for token in (
+                "build_manager_intervention_workspace(",
+                "validate_manager_intervention_workspace(",
+                '"manager_intervention_workspace"',
+                "function renderManagerInterventionWorkspace(",
+                "经理反事实干预五步流程",
+                "从已验证进度恢复未来生成",
+                "不排名时点、不预测比分",
             ))
             and "innerHTML" not in web
         ),

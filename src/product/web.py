@@ -18,6 +18,10 @@ from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from src.infrastructure import FileLease, LeaseUnavailable
 from src.product.control_plane import ProductControlPlane
+from src.product.manager_intervention_workspace import (
+    build_manager_intervention_workspace,
+    validate_manager_intervention_workspace,
+)
 from src.product.match_plan import (
     MatchPlan, PairedMatchPlan, WorldModelForkPlan, WorldModelForkSetPlan,
     playable_tactic_catalog,
@@ -950,9 +954,43 @@ class ProductWebApp:
                     ),
                 })
             season["manager_future_sets"] = manager_sets
+            intervention_workspace = build_manager_intervention_workspace(
+                season, manager_sets,
+            )
+            canonical_binding = {
+                row["task_id"]: row["current_binding"]
+                for row in intervention_workspace["explorations"]
+            }
+            binding_normalized = False
+            for item in manager_sets:
+                task_id = item.get("task_id")
+                if (
+                    task_id in canonical_binding
+                    and item.get("binding_current")
+                    is not canonical_binding[task_id]
+                ):
+                    item["binding_current"] = canonical_binding[task_id]
+                    binding_normalized = True
+            if binding_normalized:
+                intervention_workspace = (
+                    build_manager_intervention_workspace(
+                        season, manager_sets,
+                    )
+                )
+            validate_manager_intervention_workspace(
+                intervention_workspace,
+                season=season,
+                manager_future_sets=manager_sets,
+            )
+            season["manager_intervention_workspace"] = (
+                intervention_workspace
+            )
             command = season.get("matchday_command_center")
             if isinstance(command, dict):
                 command["manager_future_sets"] = manager_sets
+                command["manager_intervention_workspace"] = (
+                    intervention_workspace
+                )
         return {
             "schema_version": 1, "configured": True,
             "studio": status, "provider": provider,
@@ -2216,7 +2254,8 @@ _INDEX_HTML = """<!doctype html>
         <div id="manager-world-model-advice-candidates" class="cards" role="list" aria-label="世界模型战术候选比较"></div>
         <p class="status">短视野策略代理，不预测比分或胜率；建议、经理选择和赛果分别取证。</p>
         <div id="manager-future-set" class="decision-preview" hidden>
-          <h4>用已冻结决策生成多时点未来</h4>
+          <h4>经理反事实干预工作台</h4>
+          <div id="manager-intervention-workspace" aria-live="polite" aria-atomic="true"></div>
           <p id="manager-future-set-summary" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
           <label>分叉分钟（2–4 个，逗号分隔）<input id="manager-future-set-minutes" type="text" inputmode="decimal" pattern="[0-9., ]+" value="30,45,60"></label>
           <button id="request-manager-future-set" type="button">运行赛前未来实验</button>
@@ -2268,7 +2307,7 @@ const freeAgentFieldset=document.querySelector('#free-agent-fieldset'),freeAgent
 const sportingDirectorFieldset=document.querySelector('#sporting-director-fieldset'),sportingPhilosophy=document.querySelector('#sporting-philosophy'),sportingRisk=document.querySelector('#sporting-risk'),sportingPriorityRoles=document.querySelector('#sporting-priority-roles'),sportingRoleDiagnostics=document.querySelector('#sporting-role-diagnostics'),sportingDirectorSummary=document.querySelector('#sporting-director-summary');let currentSportingPlan=null,sportingRequestTeam='';
 const clubSituationFieldset=document.querySelector('#club-situation-fieldset'),clubSituationSummary=document.querySelector('#club-situation-summary'),clubSituationChoice=document.querySelector('#club-situation-choice'),clubSituationTradeoff=document.querySelector('#club-situation-tradeoff');let currentClubSituation=null;
 const playerPromiseForm=document.querySelector('#player-promise-form'),playerPromiseRows=[...playerPromiseForm.querySelectorAll('.player-promise-row')],playerPromiseSummary=document.querySelector('#player-promise-summary');
-const managerFutureSet=document.querySelector('#manager-future-set'),managerFutureSetSummary=document.querySelector('#manager-future-set-summary'),managerFutureSetMinutes=document.querySelector('#manager-future-set-minutes'),requestManagerFutureSet=document.querySelector('#request-manager-future-set'),managerFutureSetList=document.querySelector('#manager-future-set-list');
+const managerFutureSet=document.querySelector('#manager-future-set'),managerInterventionWorkspace=document.querySelector('#manager-intervention-workspace'),managerFutureSetSummary=document.querySelector('#manager-future-set-summary'),managerFutureSetMinutes=document.querySelector('#manager-future-set-minutes'),requestManagerFutureSet=document.querySelector('#request-manager-future-set'),managerFutureSetList=document.querySelector('#manager-future-set-list');
 const releaseSummary=document.querySelector('#release-summary'),releaseGates=document.querySelector('#release-gates');
 const evidenceKitDownload=document.createElement('a'),evidenceKitRow=document.createElement('p');evidenceKitDownload.id='evidence-kit-download';evidenceKitDownload.href='/api/v1/excellence/evidence-kit.zip';evidenceKitDownload.download='gfs-excellence-evidence-kit-v1.zip';evidenceKitDownload.setAttribute('aria-describedby','release-summary');evidenceKitDownload.textContent='Download template-only evidence kit';evidenceKitRow.append(evidenceKitDownload);releaseSummary.insertAdjacentElement('afterend',evidenceKitRow);
 const message=document.querySelector('#message'),details=document.querySelector('#details'),workflow=document.querySelector('#workflow'),workflowAction=document.querySelector('#workflow-action'),report=document.querySelector('#report-link'),logoutButton=document.querySelector('#logout-button');
@@ -2488,6 +2527,7 @@ const renderManagerIntelligenceWithoutWorldEvolutionThread=renderManagerIntellig
 renderManagerIntelligence=(command,configured)=>{renderManagerIntelligenceWithoutWorldEvolutionThread(command,configured);const matchId=command?.postmatch_debrief?.match_id,entry=(command?.decision_ledger?.entries||[]).find(row=>row.execution?.match_id===matchId);if(configured&&entry?.world_evolution_thread)appendManagerWorldEvolutionThread(matchdayAttribution,entry.world_evolution_thread)};
 const renderManagerWorldModelAdviceWithoutStatusReset=renderManagerWorldModelAdvice;
 renderManagerWorldModelAdvice=(...args)=>{managerWorldModelAdviceSummary.className='status';return renderManagerWorldModelAdviceWithoutStatusReset(...args)};
+function renderManagerInterventionWorkspace(season){managerInterventionWorkspace.replaceChildren();const workspace=season?.manager_intervention_workspace;if(!workspace?.available)return;const stateLabels={decision_required:'等待冻结经理决策',ready_to_explore:'已冻结，可生成有界未来',future_generation_in_progress:'正在生成预注册未来',future_generation_interrupted:'未来生成中断，可安全恢复',future_generation_failed:'未来生成失败，可检查后重试',evidence_ready_for_review:'机制证据已就绪，等待经理复核',review_recorded_decision_refrozen:'复核已记录，最终决策已重新冻结'},stageLabels={freeze_intervention:'1 · 冻结干预方案',generate_bounded_futures:'2 · 生成有界未来',inspect_local_mechanism:'3 · 检查局部动作机制',record_manager_review:'4 · 记录经理复核',advance_official_world:'5 · 推进正式足球世界'},statusLabels={decision_frozen:'已完成',available:'可开始',running:'进行中',interrupted:'已中断',failed:'已失败',evidence_complete:'证据完成',scenario_evidence_available:'逐时点机制可检查',aggregate_only:'仅有聚合证据',awaiting_future_set:'等待未来集',review_available:'可选择保留或修改',review_recorded:'已记录',optional_not_started:'尚未复核（可选）',ready_for_official_match:'正式比赛可推进'};const heading=document.createElement('p'),flow=document.createElement('ol'),facts=document.createElement('p'),next=document.createElement('p'),boundary=document.createElement('p');heading.className='status';heading.textContent=(stateLabels[workspace.workflow_state]||workspace.workflow_state)+' · 会话 '+String(workspace.workspace_identity||'').slice(0,12);flow.className='journal-list';flow.setAttribute('aria-label','经理反事实干预五步流程');for(const stage of workspace.stages||[]){const item=document.createElement('li'),title=document.createElement('strong'),status=document.createElement('p');title.textContent=stageLabels[stage.stage_id]||stage.stage_id;status.className='status';status.textContent=statusLabels[stage.status]||stage.status;item.append(title,status);flow.append(item)}const evidence=workspace.evidence_summary||{};facts.className='status';facts.textContent='未来集 '+Number(evidence.future_sets||0)+' · 注册时点 '+Number(evidence.registered_scenarios||0)+' · 动作分叉 '+Number(evidence.action_divergence_scenarios||0)+' · 局部归因 '+Number(evidence.local_attribution_scenarios||0)+' · 已复核 '+Number(evidence.reviewed_future_sets||0);const allowed=workspace.allowed_actions||{};next.className='status';next.textContent='下一步：'+(allowed.review_future_set?'检查逐时点证据并明确保留或修改当前方案':workspace.workflow_state==='future_generation_in_progress'?'等待固定场景预算完成':workspace.workflow_state==='future_generation_interrupted'?'从已验证进度安全恢复':workspace.workflow_state==='future_generation_failed'?'检查失败原因后重新提交':allowed.request_future_set?'生成新的身份绑定多时点未来':'推进正式比赛');if((workspace.continuity_gaps||[]).length){const gaps=document.createElement('p');gaps.className='status';gaps.textContent='证据断点：'+workspace.continuity_gaps.join(' · ');managerInterventionWorkspace.append(heading,flow,facts,next,gaps)}else managerInterventionWorkspace.append(heading,flow,facts,next);boundary.className='status';boundary.textContent='工作台只组织同一冻结决策的模拟器分叉、局部动作证据和显式复核；不排名时点、不预测比分，也不授权赛果或现实足球因果。';managerInterventionWorkspace.append(boundary)}
 function renderManagerFutureSets(season,managed){const available=currentStudioMode==='research'&&Boolean(managed?.manager_decision);managerFutureSet.hidden=!available;managerFutureSetList.replaceChildren();if(!available){managerFutureSetSummary.textContent='';return}const sets=season?.manager_future_sets||[];managerFutureSetSummary.textContent=sets.length?`${sets.length} \u4e2a\u8d5b\u524d\u672a\u6765\u5b9e\u9a8c\u5df2\u7ed1\u5b9a\u672c\u8d5b\u5b63\uff1b\u53ea\u6709\u5f53\u524d revision \u7684\u7ed3\u679c\u53ef\u7ee7\u7eed\u7528\u4e8e\u672c\u8f6e\u590d\u76d8\u3002`:'\u51b3\u7b56\u5df2\u51bb\u7ed3\u3002\u53ef\u590d\u7528\u6b63\u5f0f\u5bf9\u9635\u3001seed \u548c\u53cc\u65b9\u5b9e\u9645\u6218\u672f\uff0c\u751f\u6210\u56fa\u5b9a\u591a\u65f6\u70b9\u53cc\u4e16\u754c\u8bc1\u636e\u3002';for(const item of sets){const context=item.manager_context||{},node=card(`\u7b2c ${context.matchday??'?'} \u8f6e \u00b7 ${item.home||'?'} vs ${item.away||'?'}`,item.state),meta=document.createElement('p'),boundary=document.createElement('p'),links=document.createElement('p');node.setAttribute('role','listitem');meta.className='status';meta.textContent=`\u573a\u666f ${item.scenario_id||item.task_id||'?'} \u00b7 \u4e0a\u4e0b\u6587 ${String(context.context_identity||'').slice(0,12)} \u00b7 ${item.binding_current?'\u5f53\u524d\u7ed1\u5b9a':'\u5386\u53f2\u8bc1\u636e'}`;boundary.className='status';boundary.textContent='\u53ea\u63cf\u8ff0\u6a21\u62df\u5668\u5185\u52a8\u4f5c\u4e0e\u672a\u6765\u5dee\u5f02\uff1b\u4e0d\u9884\u6d4b\u6bd4\u5206\u3001\u4e0d\u9009\u62e9\u6700\u4f73\u65f6\u70b9\u3001\u4e0d\u6388\u6743\u8d5b\u679c\u56e0\u679c\u3002';const link=artifactLink('\u6253\u5f00\u8d5b\u524d\u672a\u6765\u5b9e\u9a8c',item.fork_set_url);if(link)links.append(link);node.append(meta,boundary,links);managerFutureSetList.append(node)}}
 async function requestManagerFutureExperiment(){const managed=currentSeason?.next_manager_fixture,values=String(managerFutureSetMinutes.value||'').split(',').map(value=>Number(value.trim())),valid=values.length>=2&&values.length<=4&&values.every((value,index)=>Number.isFinite(value)&&value>=0&&value<=90&&(index===0||value>values[index-1]));if(!managed?.manager_decision){announce(managerFutureSetSummary,'\u8bf7\u5148\u51bb\u7ed3\u672c\u573a\u7ecf\u7406\u51b3\u7b56\u3002','error',true);return}if(!valid){announce(managerFutureSetSummary,'\u8bf7\u8f93\u5165 2\u20134 \u4e2a\u4e25\u683c\u9012\u589e\u4e14\u4f4d\u4e8e 0\u201390 \u7684\u5206\u949f\u3002','error',true);managerFutureSetMinutes.focus();return}requestManagerFutureSet.disabled=true;requestManagerFutureSet.setAttribute('aria-busy','true');announce(managerFutureSetSummary,'\u6b63\u5728\u63d0\u4ea4\u8eab\u4efd\u7ed1\u5b9a\u7684\u8d5b\u524d\u672a\u6765\u5b9e\u9a8c\u2026\u2026');try{const key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random(),data=await api('/api/v1/seasons/world-model-future-set',{method:'POST',headers:{'Idempotency-Key':key},body:JSON.stringify({fixture_id:managed.fixture_id,branch_times_sec:values.map(value=>value*60)})});activePoll=data.task.task_id;await pollTask(data.task.task_id)}catch(error){announce(managerFutureSetSummary,error.message,'error',true)}finally{requestManagerFutureSet.disabled=false;requestManagerFutureSet.setAttribute('aria-busy','false')}}
 async function reviewManagerFutureEvidence(item,intent,button){button.disabled=true;button.setAttribute('aria-busy','true');try{const managed=currentSeason?.next_manager_fixture,payload={task_id:item.task_id,fixture_id:managed?.fixture_id,expected_revision:currentSeason?.revision,intent};if(intent==='revise_after_review'){const decisionPayload=managerDecisionPayload(true);if(decisionPayload.expected_revision!==currentSeason?.revision)throw new Error('\u5f53\u524d\u65b9\u6848\u9884\u89c8\u5df2\u8fc7\u671f\uff0c\u8bf7\u7b49\u5f85\u5237\u65b0\u3002');payload.decision=decisionPayload.decision}announce(managerFutureSetSummary,'\u6b63\u5728\u8bb0\u5f55\u8eab\u4efd\u7ed1\u5b9a\u7684\u590d\u6838\u6536\u636e\u2026\u2026');await api('/api/v1/seasons/world-model-future-review',{method:'POST',body:JSON.stringify(payload)});await refresh()}catch(error){announce(managerFutureSetSummary,error.message,'error',true)}finally{button.disabled=false;button.setAttribute('aria-busy','false')}}
@@ -2496,9 +2536,9 @@ renderManagerFutureSets=(season,managed)=>{renderManagerFutureSetsWithoutReviewA
 const renderManagerFutureSetsWithoutScenarioEvidence=renderManagerFutureSets;
 renderManagerFutureSets=(season,managed)=>{renderManagerFutureSetsWithoutScenarioEvidence(season,managed);const sets=season?.manager_future_sets||[],nodes=[...managerFutureSetList.children],labels={descriptive_only_ineligible:'资格未通过，仅描述',no_realized_action_divergence:'策略介入但动作未分叉',action_divergence_without_local_attribution:'动作分叉，局部归因不足',local_action_divergence_with_descriptive_future_difference:'局部归因成立，未来出现描述差异',local_action_divergence_without_measured_future_difference:'局部归因成立，已测未来未变化'};for(const [index,item] of sets.entries()){const node=nodes[index],scenarios=item.scenario_evidence||[];if(!node||!scenarios.length)continue;const details=document.createElement('details'),heading=document.createElement('summary');heading.textContent='展开分叉机制链 · '+scenarios.length+' 个预注册时点';details.append(heading);for(const scenario of scenarios){const line=document.createElement('p'),identity=String(scenario.scenario_identity||'').slice(0,12);line.className='status';line.textContent=Number(scenario.branch_minute||0).toFixed(1)+' 分钟 · 前缀'+(scenario.anchor_verified?'已验证':'未验证')+' · '+(labels[scenario.future_status]||scenario.future_status)+' · 动作 '+Number(scenario.changed_actions||0)+' · 局部归因 '+Number(scenario.locally_attributable_changes||0)+' · 后续差异 '+Number(scenario.descriptive_future_difference_count||0)+' · '+identity;details.append(line)}const boundary=document.createElement('p');boundary.className='status';boundary.textContent='每行身份随复核收据封存；时点之间不排名，后续差异不授予赛果因果。';details.append(boundary);node.append(details)}};
 const renderManagerFutureSetsWithoutMechanismExamples=renderManagerFutureSets;
-renderManagerFutureSets=(season,managed)=>{renderManagerFutureSetsWithoutMechanismExamples(season,managed);const sets=season?.manager_future_sets||[],nodes=[...managerFutureSetList.children];for(const [index,item] of sets.entries())appendFutureMechanismExamples(nodes[index],item.scenario_evidence||[],'查看具体动作采用链')};
+renderManagerFutureSets=(season,managed)=>{renderManagerFutureSetsWithoutMechanismExamples(season,managed);const sets=season?.manager_future_sets||[],nodes=[...managerFutureSetList.children];for(const [index,item] of sets.entries()){const node=nodes[index];appendFutureMechanismExamples(node,item.scenario_evidence||[],'查看具体动作采用链');if(node&&item.state==='interrupted'&&item.binding_current){const resume=document.createElement('button');resume.type='button';resume.textContent='从已验证进度恢复未来生成';resume.addEventListener('click',()=>void resumeInterruptedTask(item.task_id,resume));node.append(resume)}}};
 const renderSeasonWithoutManagerFutureSets=renderSeason;
-renderSeason=(season,configured,history=[],historySummary={})=>{renderSeasonWithoutManagerFutureSets(season,configured,history,historySummary);renderManagerFutureSets(season,season?.next_manager_fixture)};
+renderSeason=(season,configured,history=[],historySummary={})=>{renderSeasonWithoutManagerFutureSets(season,configured,history,historySummary);renderManagerFutureSets(season,season?.next_manager_fixture);renderManagerInterventionWorkspace(season)};
 managerManual.addEventListener('change',()=>renderManagerSquad(currentSeason,currentSeason?.next_manager_fixture));
 managerRotation.addEventListener('change',()=>renderManagerSquad(currentSeason,currentSeason?.next_manager_fixture));
 requestManagerAdvice.addEventListener('click',()=>void requestManagerWorldModelAdvice());
