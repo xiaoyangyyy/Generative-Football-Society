@@ -3,7 +3,9 @@ from types import SimpleNamespace
 
 import pytest
 
+from src.product.manager_future import build_manager_future_context
 from src.product.match_plan import WorldModelForkSetPlan
+from src.product.season import ManagerDecision, SeasonPlan, new_season_state
 from src.product.world_model_fork_set import (
     aggregate_fork_set,
     execute_world_model_fork_set,
@@ -201,6 +203,60 @@ def test_execute_fork_set_resumes_fixed_prefix_and_rejects_result_claim_tamper(t
         execute_world_model_fork_set(
             resumed, plan, set_id="task123", home="Brazil", away="Argentina",
             fast=True,
+        )
+
+
+def test_execute_fork_set_persists_manager_source_identity_in_all_artifacts(
+    tmp_path,
+):
+    plan = WorldModelForkSetPlan(
+        "gegenpress", "team_identity", 108, (1800, 2700),
+    )
+    season = new_season_state(
+        SeasonPlan(
+            ("Brazil", "B", "C", "Argentina"),
+            fast=True, manager_team="Brazil",
+        ),
+        season_id="season-0001", seed=7,
+        created_at="2026-01-01T00:00:00Z",
+    )
+    fixture = next(
+        row for row in season["fixtures"]
+        if "Brazil" in {row["home"], row["away"]}
+    )
+    fixture["manager_decision"] = ManagerDecision(
+        team="Brazil", tactic="gegenpress",
+    ).as_dict()
+    source = build_manager_future_context(season)
+    assert source["fixture"]["away"] == "Argentina"
+
+    result = execute_world_model_fork_set(
+        _Workspace(tmp_path), plan,
+        set_id="manager123", home="Brazil", away="Argentina", fast=True,
+        source_context=source,
+    )
+
+    assert result["source_context"] == source
+    protocol = json.loads((
+        tmp_path
+        / "outputs/studio/demo/fork_sets/manager123/protocol.json"
+    ).read_text(encoding="utf-8"))
+    assert protocol["source_context"] == source
+    dashboard = (
+        tmp_path
+        / "outputs/studio/demo/fork_sets/manager123/index.html"
+    ).read_text(encoding="utf-8")
+    assert "经理决策绑定" in dashboard
+    assert "season-0001" in dashboard
+    assert source["context_identity"][:16] in dashboard
+
+    season["revision"] = 4
+    changed = build_manager_future_context(season)
+    with pytest.raises(ValueError, match="different frozen plan"):
+        execute_world_model_fork_set(
+            _Workspace(tmp_path), plan,
+            set_id="manager123", home="Brazil", away="Argentina", fast=True,
+            source_context=changed,
         )
 
 

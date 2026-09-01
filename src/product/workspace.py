@@ -25,6 +25,10 @@ from src.product.manager_intelligence import (
     build_prematch_intelligence,
 )
 from src.product.decision_ledger import build_manager_decision_ledger
+from src.product.manager_future import (
+    build_manager_future_context,
+    validate_manager_future_context,
+)
 from src.product.decision_advice import (
     build_manager_advice_adoption,
     build_manager_advice_comparison,
@@ -3683,6 +3687,32 @@ class ProductWorkspace:
                     "causal or real-world performance claim"
                 ),
             }
+
+    def manager_future_set_context(
+        self, *, fixture_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Return one read-only future-set context from authoritative season state."""
+        if self.config.mode != "research":
+            raise ValueError("manager future sets require research mode")
+        with FileLease(self.session_lease_path, timeout=30.0):
+            session = self._session()
+            season = session.get("season")
+            if not isinstance(season, Mapping):
+                raise ValueError("studio season has not been created")
+            return build_manager_future_context(season, fixture_id=fixture_id)
+
+    def validate_manager_future_set_context(
+        self, context: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Recheck a queued future set without persisting a second state source."""
+        if self.config.mode != "research":
+            raise ValueError("manager future sets require research mode")
+        with FileLease(self.session_lease_path, timeout=30.0):
+            session = self._session()
+            season = session.get("season")
+            if not isinstance(season, Mapping):
+                raise ValueError("studio season has not been created")
+            return validate_manager_future_context(context, season)
 
     def request_manager_decision_advice(
         self,

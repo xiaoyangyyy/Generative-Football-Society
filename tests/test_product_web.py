@@ -121,6 +121,12 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-world-model-advice"' in document
     assert 'id="request-manager-advice"' in document
     assert 'id="adopt-manager-advice"' in document
+    assert 'id="manager-future-set"' in document
+    assert 'id="request-manager-future-set"' in document
+    assert "/api/v1/seasons/world-model-future-set" in document
+    assert "function renderManagerFutureSets(" in document
+    assert "function requestManagerFutureExperiment(" in document
+    assert document.count("const renderLibraryWithoutForkSets=") == 1
     assert "前缀锚点" in document
     assert "确定性重放（非进程快照）" in document
     assert "反事实未来：" in document
@@ -1160,6 +1166,71 @@ def test_world_model_fork_set_route_is_research_only_fixed_and_idempotent(
     assert rejected["json"]["error"]["code"] == (
         "invalid_world_model_fork_set"
     )
+
+
+def test_manager_future_set_route_freezes_official_context_and_is_idempotent(
+    tmp_path, monkeypatch,
+):
+    from src.product.manager_future import build_manager_future_context
+    from src.product.season import (
+        ManagerDecision, SeasonPlan, new_season_state,
+    )
+
+    season = new_season_state(
+        SeasonPlan(
+            ("A", "B", "C", "D"), fast=True, manager_team="A",
+        ),
+        season_id="season-0001", seed=7,
+        created_at="2026-01-01T00:00:00Z",
+    )
+    fixture = next(
+        row for row in season["fixtures"]
+        if "A" in {row["home"], row["away"]}
+    )
+    fixture["manager_decision"] = ManagerDecision(
+        team="A", tactic="gegenpress",
+    ).as_dict()
+    context = build_manager_future_context(season)
+
+    class FakeWorkspace:
+        config = type("Config", (), {"mode": "research"})()
+
+        def readiness(self):
+            return {"ready": True, "blockers": []}
+
+        def manager_future_set_context(self, *, fixture_id=None):
+            assert fixture_id == fixture["fixture_id"]
+            return context
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: FakeWorkspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    payload = {
+        "fixture_id": fixture["fixture_id"],
+        "branch_times_sec": [1800, 2700, 3600],
+    }
+    denied = _request(
+        app, "POST", "/api/v1/seasons/world-model-future-set", payload,
+    )
+    assert denied["status"].startswith("403")
+
+    first = _request(
+        app, "POST", "/api/v1/seasons/world-model-future-set", payload,
+        csrf=app.csrf_token, idempotency_key="manager-future-1",
+    )
+    assert first["status"].startswith("202")
+    task = first["json"]["task"]
+    assert task["request"]["manager_context"] == context
+    assert task["request"]["home"] == context["fixture"]["home"]
+    assert task["request"]["plan"]["seed"] == context["match_seed"]
+
+    duplicate = _request(
+        app, "POST", "/api/v1/seasons/world-model-future-set", payload,
+        csrf=app.csrf_token, idempotency_key="manager-future-1",
+    )
+    assert duplicate["status"].startswith("200")
+    assert duplicate["json"]["task"]["task_id"] == task["task_id"]
 
 
 def test_tactical_study_route_is_research_only_and_idempotent(

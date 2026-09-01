@@ -130,6 +130,12 @@ def _match_capabilities() -> dict[str, Any]:
             "interim_ranking": "withheld_and_never_performed",
             "result_contract": "descriptive_timing_sensitivity_v1",
             "claim_boundary": "fixed_simulator_timing_set_no_best_time",
+            "manager_bridge": {
+                "endpoint": "/api/v1/seasons/world-model-future-set",
+                "requires": "frozen_unstarted_manager_decision",
+                "identity_checks": "before_and_after_task_execution",
+                "second_persisted_season_state": False,
+            },
         },
     }
 
@@ -371,6 +377,11 @@ class ProductWebApp:
             return self._queue_world_model_fork_set(
                 environ, self._read_json(environ),
             )
+        if method == "POST" and path == "/api/v1/seasons/world-model-future-set":
+            self._require_csrf(environ)
+            return self._queue_manager_world_model_future_set(
+                environ, self._read_json(environ),
+            )
         if method == "POST" and path == "/api/v1/tactical-studies":
             self._require_csrf(environ)
             return self._queue_tactical_study(environ, self._read_json(environ))
@@ -414,6 +425,7 @@ class ProductWebApp:
             "/api/v1/studio", "/api/v1/matches", "/api/v1/paired-matches",
             "/api/v1/world-model-forks",
             "/api/v1/world-model-fork-sets",
+            "/api/v1/seasons/world-model-future-set",
             "/api/v1/tactical-studies",
             "/api/v1/seasons", "/api/v1/seasons/next-matchday",
             "/api/v1/seasons/decision",
@@ -671,6 +683,37 @@ class ProductWebApp:
                 result = task.get("result") or {}
                 progress = task.get("fork_set_progress") or {}
                 aggregate = result.get("aggregate") or {}
+                raw_manager_context = (
+                    result.get("manager_context")
+                    or request.get("manager_context")
+                )
+                manager_context = None
+                if isinstance(raw_manager_context, Mapping):
+                    raw_fixture = raw_manager_context.get("fixture") or {}
+                    manager_context = {
+                        "season_id": raw_manager_context.get("season_id"),
+                        "season_revision": raw_manager_context.get(
+                            "season_revision"
+                        ),
+                        "fixture_id": (
+                            raw_manager_context.get("fixture_id")
+                            or raw_fixture.get("fixture_id")
+                        ),
+                        "matchday": (
+                            raw_manager_context.get("matchday")
+                            or raw_fixture.get("matchday")
+                        ),
+                        "manager_team": raw_manager_context.get("manager_team"),
+                        "decision_identity": raw_manager_context.get(
+                            "decision_identity"
+                        ),
+                        "context_identity": raw_manager_context.get(
+                            "context_identity"
+                        ),
+                        "claim_boundary": raw_manager_context.get(
+                            "claim_boundary"
+                        ),
+                    }
                 library_fork_sets.append({
                     "task_id": task.get("task_id"),
                     "home": request.get("home"), "away": request.get("away"),
@@ -686,6 +729,7 @@ class ProductWebApp:
                     ),
                     "ranking_performed": False,
                     "fork_set_url": result.get("fork_set_url"),
+                    "manager_context": manager_context,
                 })
                 continue
             if task.get("kind") == "world_model_fork":
@@ -828,6 +872,33 @@ class ProductWebApp:
                 ),
                 "study_url": (task.get("result") or {}).get("study_url"),
             })
+        if isinstance(season, dict):
+            season_id = str(season.get("season_id") or "")
+            season_revision = int(season.get("revision", -1))
+            next_fixture = season.get("next_manager_fixture") or {}
+            manager_sets = []
+            for item in library_fork_sets:
+                context = item.get("manager_context")
+                if not isinstance(context, Mapping) or context.get(
+                    "season_id"
+                ) != season_id:
+                    continue
+                manager_sets.append({
+                    **item,
+                    "binding_current": bool(
+                        context.get("season_revision") == season_revision
+                        and context.get("fixture_id")
+                        == next_fixture.get("fixture_id")
+                    ),
+                    "claim_boundary": (
+                        "simulator exploration bound to one frozen manager decision; "
+                        "never score prediction or causal coaching evidence"
+                    ),
+                })
+            season["manager_future_sets"] = manager_sets
+            command = season.get("matchday_command_center")
+            if isinstance(command, dict):
+                command["manager_future_sets"] = manager_sets
         return {
             "schema_version": 1, "configured": True,
             "studio": status, "provider": provider,
@@ -1527,6 +1598,70 @@ class ProductWebApp:
         finally:
             self._mutation_lock.release()
 
+    def _queue_manager_world_model_future_set(
+        self, environ: dict[str, Any], payload: dict[str, Any],
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        raw_times = payload.get("branch_times_sec")
+        if not isinstance(raw_times, list):
+            raise WebRequestError(
+                422, "invalid_manager_future_set",
+                "branch_times_sec must be a fixed list",
+            )
+        if not self._mutation_lock.acquire(blocking=False):
+            raise WebRequestError(
+                409, "operation_in_progress", "Another mutation is running",
+            )
+        try:
+            try:
+                workspace = ProductWorkspace.load(self.root)
+            except FileNotFoundError as exc:
+                raise WebRequestError(
+                    404, "studio_missing", "Create a Studio first",
+                ) from exc
+            if not workspace.readiness()["ready"]:
+                raise WebRequestError(
+                    409, "manager_future_set_blocked",
+                    "Manager future set blocked by readiness gates",
+                )
+            try:
+                context = workspace.manager_future_set_context(
+                    fixture_id=payload.get("fixture_id"),
+                )
+                plan = WorldModelForkSetPlan(
+                    home_tactic=context["home_tactic"],
+                    away_tactic=context["away_tactic"],
+                    seed=context["match_seed"],
+                    branch_times_sec=tuple(raw_times),
+                )
+                plan.validate_for_mode(workspace.config.mode)
+                fixture = context["fixture"]
+                task, created = self.task_queue.submit_world_model_fork_set(
+                    fixture["home"], fixture["away"],
+                    fast=context["fast"], plan=plan,
+                    manager_context=context,
+                    idempotency_key=str(
+                        environ.get("HTTP_IDEMPOTENCY_KEY", "")
+                    ),
+                )
+            except TaskConflict as exc:
+                raise WebRequestError(
+                    409, "idempotency_conflict", str(exc),
+                ) from exc
+            except ValueError as exc:
+                raise WebRequestError(
+                    422, "invalid_manager_future_set", str(exc),
+                ) from exc
+            except RuntimeError as exc:
+                raise WebRequestError(
+                    409, "task_queue_full", "Task queue is full",
+                ) from exc
+            return self._json_response(202 if created else 200, {
+                "schema_version": 1, "created": created,
+                "task": self._task_for_web(task),
+            })
+        finally:
+            self._mutation_lock.release()
+
     @staticmethod
     def _safe_artifact_url(value: Any) -> str | None:
         relative = str(value or "")
@@ -1954,6 +2089,13 @@ _INDEX_HTML = """<!doctype html>
         <div class="toolbar"><button id="request-manager-advice" type="button">请求世界模型建议</button><button id="adopt-manager-advice" type="button" disabled>采用模型建议</button></div>
         <div id="manager-world-model-advice-candidates" class="cards" role="list" aria-label="世界模型战术候选比较"></div>
         <p class="status">短视野策略代理，不预测比分或胜率；建议、经理选择和赛果分别取证。</p>
+        <div id="manager-future-set" class="decision-preview" hidden>
+          <h4>用已冻结决策生成多时点未来</h4>
+          <p id="manager-future-set-summary" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <label>分叉分钟（2–4 个，逗号分隔）<input id="manager-future-set-minutes" type="text" inputmode="decimal" pattern="[0-9., ]+" value="30,45,60"></label>
+          <button id="request-manager-future-set" type="button">运行赛前未来实验</button>
+          <div id="manager-future-set-list" class="cards" role="list" aria-label="当前赛季经理未来实验"></div>
+        </div>
       </section>
       <section id="manager-decision-preview" class="decision-preview" aria-labelledby="manager-decision-preview-title" aria-live="polite" aria-atomic="true">
         <h3 id="manager-decision-preview-title">提交前影响预览</h3>
@@ -2000,6 +2142,7 @@ const freeAgentFieldset=document.querySelector('#free-agent-fieldset'),freeAgent
 const sportingDirectorFieldset=document.querySelector('#sporting-director-fieldset'),sportingPhilosophy=document.querySelector('#sporting-philosophy'),sportingRisk=document.querySelector('#sporting-risk'),sportingPriorityRoles=document.querySelector('#sporting-priority-roles'),sportingRoleDiagnostics=document.querySelector('#sporting-role-diagnostics'),sportingDirectorSummary=document.querySelector('#sporting-director-summary');let currentSportingPlan=null,sportingRequestTeam='';
 const clubSituationFieldset=document.querySelector('#club-situation-fieldset'),clubSituationSummary=document.querySelector('#club-situation-summary'),clubSituationChoice=document.querySelector('#club-situation-choice'),clubSituationTradeoff=document.querySelector('#club-situation-tradeoff');let currentClubSituation=null;
 const playerPromiseForm=document.querySelector('#player-promise-form'),playerPromiseRows=[...playerPromiseForm.querySelectorAll('.player-promise-row')],playerPromiseSummary=document.querySelector('#player-promise-summary');
+const managerFutureSet=document.querySelector('#manager-future-set'),managerFutureSetSummary=document.querySelector('#manager-future-set-summary'),managerFutureSetMinutes=document.querySelector('#manager-future-set-minutes'),requestManagerFutureSet=document.querySelector('#request-manager-future-set'),managerFutureSetList=document.querySelector('#manager-future-set-list');
 const releaseSummary=document.querySelector('#release-summary'),releaseGates=document.querySelector('#release-gates');
 const evidenceKitDownload=document.createElement('a'),evidenceKitRow=document.createElement('p');evidenceKitDownload.id='evidence-kit-download';evidenceKitDownload.href='/api/v1/excellence/evidence-kit.zip';evidenceKitDownload.download='gfs-excellence-evidence-kit-v1.zip';evidenceKitDownload.setAttribute('aria-describedby','release-summary');evidenceKitDownload.textContent='Download template-only evidence kit';evidenceKitRow.append(evidenceKitDownload);releaseSummary.insertAdjacentElement('afterend',evidenceKitRow);
 const message=document.querySelector('#message'),details=document.querySelector('#details'),workflow=document.querySelector('#workflow'),workflowAction=document.querySelector('#workflow-action'),report=document.querySelector('#report-link'),logoutButton=document.querySelector('#logout-button');
@@ -2189,7 +2332,7 @@ renderLibrary=library=>{renderLibraryWithoutBranchIdentity(library);const source
 const renderLibraryWithoutUnifiedFuture=renderLibrary;
 renderLibrary=library=>{renderLibraryWithoutUnifiedFuture(library);const source=library||{matches:[],forks:[]},filter=libraryFilter.value,visibleMatches=['paired','forks','studies'].includes(filter)?[]:(source.matches||[]),visibleForks=['matches','paired','studies'].includes(filter)?[]:(source.forks||[]),hosts=[...libraryList.children].slice(visibleMatches.length,visibleMatches.length+visibleForks.length),labels={descriptive_only_ineligible:'仅描述：资格未通过',no_realized_action_divergence:'策略介入但动作未分叉',action_divergence_without_local_attribution:'动作分叉但局部归因不足',local_action_divergence_with_descriptive_future_difference:'局部动作已归因，未来出现描述性差异',local_action_divergence_without_measured_future_difference:'局部动作已归因，已测未来未变化'};for(const [index,item] of visibleForks.entries()){const host=hosts[index],future=item.propagation?.future_summary;if(!host||!future?.available)continue;const row=document.createElement('p'),local=future.simulator_local_action_attribution?'局部动作归因成立':'不授予局部动作归因';row.className='status';row.textContent='反事实未来：'+(labels[future.status]||future.status)+' · 动作变化 '+Number(future.changed_actions||0)+' · 后续描述差异 '+Number(future.descriptive_outcome_difference_count||0)+' · '+local+' · 不授予赛果因果';host.append(row)}};
 const renderLibraryWithoutForkSets=renderLibrary;
-renderLibrary=library=>{renderLibraryWithoutForkSets(library);const source=library||{},sets=source.fork_sets||[],filter=libraryFilter.value;if(!['all','forks'].includes(filter))return;if(sets.length)librarySummary.textContent+=' · '+sets.length+' 个多时点未来集';for(const item of sets){const node=card(${item.home} vs ,item.state);node.setAttribute('role','listitem');const minutes=(item.branch_times_sec||[]).map(value=>(Number(value)/60).toFixed(1)).join(' / '),progress=document.createElement('p'),boundary=document.createElement('p'),links=document.createElement('p');progress.className='status';progress.textContent=固定 seed  · 分叉分钟  · / 个场景完成;boundary.className='status';boundary.textContent=item.state==='completed'?时间敏感性 · 未执行最佳时点排名 · 不授予赛果或现实足球因果:'完整预算完成前不披露场景排名或最佳时点';const link=artifactLink('打开多时点未来集',item.fork_set_url);if(link)links.append(link);if(item.state==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='安全恢复未来集';resume.addEventListener('click',()=>resumeInterruptedTask(item.task_id,resume));node.append(progress,boundary,links,resume)}else node.append(progress,boundary,links);libraryList.append(node)}};
+renderLibrary=library=>{renderLibraryWithoutForkSets(library);const source=library||{},sets=source.fork_sets||[],filter=libraryFilter.value;if(!['all','forks'].includes(filter))return;if(sets.length)librarySummary.textContent+=' \u00b7 '+sets.length+' \u4e2a\u591a\u65f6\u70b9\u672a\u6765\u96c6';for(const item of sets){const node=card(`${item.home} vs ${item.away}`,item.state);node.setAttribute('role','listitem');const minutes=(item.branch_times_sec||[]).map(value=>(Number(value)/60).toFixed(1)).join(' / '),progress=document.createElement('p'),boundary=document.createElement('p'),links=document.createElement('p');progress.className='status';progress.textContent=`\u56fa\u5b9a seed ${item.seed} \u00b7 \u5206\u53c9\u5206\u949f ${minutes} \u00b7 ${item.scenarios_completed||0}/${item.fixed_scenario_budget||0} \u4e2a\u573a\u666f\u5b8c\u6210`;boundary.className='status';boundary.textContent=item.state==='completed'?`\u65f6\u95f4\u654f\u611f\u6027 ${item.timing_sensitivity_observed?'\u5df2\u89c2\u5bdf\u5230':'\u672a\u89c2\u5bdf\u5230'} \u00b7 \u672a\u6267\u884c\u6700\u4f73\u65f6\u70b9\u6392\u540d \u00b7 \u4e0d\u6388\u4e88\u8d5b\u679c\u6216\u73b0\u5b9e\u8db3\u7403\u56e0\u679c`:'\u5b8c\u6574\u9884\u7b97\u5b8c\u6210\u524d\u4e0d\u62ab\u9732\u573a\u666f\u6392\u540d\u6216\u6700\u4f73\u65f6\u70b9';const link=artifactLink('\u6253\u5f00\u591a\u65f6\u70b9\u672a\u6765\u96c6',item.fork_set_url);if(link)links.append(link);if(item.state==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='\u5b89\u5168\u6062\u590d\u672a\u6765\u96c6';resume.addEventListener('click',()=>resumeInterruptedTask(item.task_id,resume));node.append(progress,boundary,links,resume)}else node.append(progress,boundary,links);libraryList.append(node)}};
 const renderActionAdoptionWithoutManagerProtocol=renderActionAdoption;
 renderActionAdoption=studio=>{renderActionAdoptionWithoutManagerProtocol(studio);const node=document.querySelector('#manager-advisor-protocol-evidence'),protocol=studio?.evidence?.manager_advisor_adoption;if(!protocol?.available){node.textContent=studio?'\u7ecf\u7406\u987e\u95ee\u91c7\u7eb3\u534f\u8bae\u7f3a\u5931\uff1b\u4e0d\u80fd\u5f62\u6210\u91c7\u7eb3\u53d6\u8bc1\u7ed3\u8bba\u3002':'';return}node.textContent=`\u7ecf\u7406\u7ea7\u91c7\u7eb3\u534f\u8bae\uff1a${protocol.protocol_state} \u00b7 \u56fa\u5b9a\u4fe1\u606f\u7a97\u53e3 ${(protocol.fixed_information_windows||[]).join('/')} \u00b7 ${protocol.results_available?'\u5df2\u6709\u7ed3\u679c':'\u5c1a\u65e0\u7ed3\u679c'} \u00b7 \u4e0d\u6388\u6743\u8d5b\u679c\u56e0\u679c\u6216\u4ea7\u54c1/\u8bba\u6587\u664b\u7ea7\u3002`};
 const renderManagerDecisionLedgerWithoutAdvisorEvidence=renderManagerDecisionLedger;
@@ -2200,9 +2343,14 @@ const renderManagerIntelligenceWithoutTacticalBinding=renderManagerIntelligence;
 renderManagerIntelligence=(command,configured)=>{renderManagerIntelligenceWithoutTacticalBinding(command,configured);const debrief=command?.postmatch_debrief,binding=debrief?.tactical_binding;if(!configured||!debrief?.available||!binding)return;if(!binding.available){const unavailable=document.createElement('p');unavailable.className='status';unavailable.textContent=`\u6218\u672f\u8fd0\u884c\u65f6\u7ed1\u5b9a\u4e0d\u53ef\u7528\uff1a${binding.reason||'unknown'}`;matchdayAttribution.append(unavailable);return}const vector=binding.initial_vector||{},value=`${binding.applied_tactic} \u00b7 ${binding.binding_kind==='native_team_vector'?'\u539f\u751f\u7403\u961f\u5411\u91cf':'\u9501\u5b9a\u6218\u672f\u9884\u8bbe'} \u00b7 \u903c\u62a2 ${Math.round(Number(vector.pressing_intensity||0)*100)}% \u00b7 \u9632\u7ebf ${Math.round(Number(vector.line_height||0)*100)}% \u00b7 \u7eb5\u5411 ${Math.round(Number(vector.verticality||0)*100)}% \u00b7 \u53d8\u5316 ${binding.changed_controls?.length||0}/22 \u7ef4`,node=card('\u5f15\u64ce\u6218\u672f\u7ed1\u5b9a',value);node.setAttribute('role','listitem');matchdayAttribution.append(node)};
 const renderManagerWorldModelAdviceWithoutStatusReset=renderManagerWorldModelAdvice;
 renderManagerWorldModelAdvice=(...args)=>{managerWorldModelAdviceSummary.className='status';return renderManagerWorldModelAdviceWithoutStatusReset(...args)};
+function renderManagerFutureSets(season,managed){const available=currentStudioMode==='research'&&Boolean(managed?.manager_decision);managerFutureSet.hidden=!available;managerFutureSetList.replaceChildren();if(!available){managerFutureSetSummary.textContent='';return}const sets=season?.manager_future_sets||[];managerFutureSetSummary.textContent=sets.length?`${sets.length} \u4e2a\u8d5b\u524d\u672a\u6765\u5b9e\u9a8c\u5df2\u7ed1\u5b9a\u672c\u8d5b\u5b63\uff1b\u53ea\u6709\u5f53\u524d revision \u7684\u7ed3\u679c\u53ef\u7ee7\u7eed\u7528\u4e8e\u672c\u8f6e\u590d\u76d8\u3002`:'\u51b3\u7b56\u5df2\u51bb\u7ed3\u3002\u53ef\u590d\u7528\u6b63\u5f0f\u5bf9\u9635\u3001seed \u548c\u53cc\u65b9\u5b9e\u9645\u6218\u672f\uff0c\u751f\u6210\u56fa\u5b9a\u591a\u65f6\u70b9\u53cc\u4e16\u754c\u8bc1\u636e\u3002';for(const item of sets){const context=item.manager_context||{},node=card(`\u7b2c ${context.matchday??'?'} \u8f6e \u00b7 ${item.home||'?'} vs ${item.away||'?'}`,item.state),meta=document.createElement('p'),boundary=document.createElement('p'),links=document.createElement('p');node.setAttribute('role','listitem');meta.className='status';meta.textContent=`\u573a\u666f ${item.scenario_id||item.task_id||'?'} \u00b7 \u4e0a\u4e0b\u6587 ${String(context.context_identity||'').slice(0,12)} \u00b7 ${item.binding_current?'\u5f53\u524d\u7ed1\u5b9a':'\u5386\u53f2\u8bc1\u636e'}`;boundary.className='status';boundary.textContent='\u53ea\u63cf\u8ff0\u6a21\u62df\u5668\u5185\u52a8\u4f5c\u4e0e\u672a\u6765\u5dee\u5f02\uff1b\u4e0d\u9884\u6d4b\u6bd4\u5206\u3001\u4e0d\u9009\u62e9\u6700\u4f73\u65f6\u70b9\u3001\u4e0d\u6388\u6743\u8d5b\u679c\u56e0\u679c\u3002';const link=artifactLink('\u6253\u5f00\u8d5b\u524d\u672a\u6765\u5b9e\u9a8c',item.fork_set_url);if(link)links.append(link);node.append(meta,boundary,links);managerFutureSetList.append(node)}}
+async function requestManagerFutureExperiment(){const managed=currentSeason?.next_manager_fixture,values=String(managerFutureSetMinutes.value||'').split(',').map(value=>Number(value.trim())),valid=values.length>=2&&values.length<=4&&values.every((value,index)=>Number.isFinite(value)&&value>=0&&value<=90&&(index===0||value>values[index-1]));if(!managed?.manager_decision){announce(managerFutureSetSummary,'\u8bf7\u5148\u51bb\u7ed3\u672c\u573a\u7ecf\u7406\u51b3\u7b56\u3002','error',true);return}if(!valid){announce(managerFutureSetSummary,'\u8bf7\u8f93\u5165 2\u20134 \u4e2a\u4e25\u683c\u9012\u589e\u4e14\u4f4d\u4e8e 0\u201390 \u7684\u5206\u949f\u3002','error',true);managerFutureSetMinutes.focus();return}requestManagerFutureSet.disabled=true;requestManagerFutureSet.setAttribute('aria-busy','true');announce(managerFutureSetSummary,'\u6b63\u5728\u63d0\u4ea4\u8eab\u4efd\u7ed1\u5b9a\u7684\u8d5b\u524d\u672a\u6765\u5b9e\u9a8c\u2026\u2026');try{const key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random(),data=await api('/api/v1/seasons/world-model-future-set',{method:'POST',headers:{'Idempotency-Key':key},body:JSON.stringify({fixture_id:managed.fixture_id,branch_times_sec:values.map(value=>value*60)})});activePoll=data.task.task_id;await pollTask(data.task.task_id)}catch(error){announce(managerFutureSetSummary,error.message,'error',true)}finally{requestManagerFutureSet.disabled=false;requestManagerFutureSet.setAttribute('aria-busy','false')}}
+const renderSeasonWithoutManagerFutureSets=renderSeason;
+renderSeason=(season,configured,history=[],historySummary={})=>{renderSeasonWithoutManagerFutureSets(season,configured,history,historySummary);renderManagerFutureSets(season,season?.next_manager_fixture)};
 managerManual.addEventListener('change',()=>renderManagerSquad(currentSeason,currentSeason?.next_manager_fixture));
 managerRotation.addEventListener('change',()=>renderManagerSquad(currentSeason,currentSeason?.next_manager_fixture));
 requestManagerAdvice.addEventListener('click',()=>void requestManagerWorldModelAdvice());
+requestManagerFutureSet.addEventListener('click',()=>void requestManagerFutureExperiment());
 adoptManagerAdvice.addEventListener('click',adoptCurrentManagerAdvice);
 managerTactic.addEventListener('change',()=>{if(currentManagerAdvice)managerAdviceIntent='reviewed_then_selected'});
 managerDecisionForm.addEventListener('submit',event=>{event.preventDefault();let payload;try{payload=managerDecisionPayload(true)}catch(error){announce(message,error.message,'error',true);return}submit(managerDecisionForm,'/api/v1/seasons/decision',payload)});

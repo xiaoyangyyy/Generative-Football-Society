@@ -11,6 +11,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Mapping
 
+from src.product.manager_future import validate_manager_future_context_shape
 from src.product.match_plan import WorldModelForkSetPlan
 
 
@@ -187,12 +188,22 @@ def render_fork_set_html(result: Mapping[str, Any]) -> str:
     aggregate = result.get("aggregate") or {}
     fixture = result.get("fixture") or {}
     boundary = html.escape(str(result.get("claim_boundary") or ""))
-    return f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GFS 多时点未来分叉</title><style>:root{{color-scheme:dark}}*{{box-sizing:border-box}}body{{max-width:1100px;margin:auto;padding:32px 20px;background:#07111e;color:#edf4ff;font:15px/1.6 system-ui}}section{{background:#111d2e;border:1px solid #2a3a51;border-radius:14px;padding:18px;margin:16px 0}}table{{width:100%;border-collapse:collapse}}th,td{{text-align:left;padding:9px;border-bottom:1px solid #2a3a51}}a{{color:#65e6b4}}.muted{{color:#a8b6c9}}a:focus-visible{{outline:3px solid #ffc36a}}</style></head><body><p class="muted">Football Causal World Lab</p><h1>{html.escape(str(fixture.get('home') or ''))} vs {html.escape(str(fixture.get('away') or ''))} · 多时点未来分叉</h1><section><h2>固定预算已完成</h2><p>{int(result.get('scenarios_completed', 0))} / {int(result.get('fixed_scenario_budget', 0))} 个预注册时点；动作分叉 {int(aggregate.get('action_divergence_scenarios', 0))} 个，局部归因 {int(aggregate.get('local_attribution_scenarios', 0))} 个，未来描述差异 {int(aggregate.get('descriptive_future_difference_scenarios', 0))} 个。</p><p>时间敏感性：{'已观察到' if aggregate.get('timing_sensitivity_observed') else '在已测指标中未观察到'}。系统没有挑选最佳时点。</p></section><section><h2>同一控制条件下的未来集</h2><table><thead><tr><th>分叉分钟</th><th>前缀锚点</th><th>证据状态</th><th>动作变化</th><th>后续描述差异</th><th>证据</th></tr></thead><tbody>{rows}</tbody></table></section><section><h2>结论边界</h2><p>{boundary}</p><p>这是模拟器内时间敏感性描述，不授权赛果因果、总体推断、现实足球因果或产品/论文晋级。</p></section></body></html>"""
+    source = result.get("source_context") or {}
+    manager_binding = (
+        "<section><h2>经理决策绑定</h2><p>赛季 {} · 轮次 {} · 决策上下文 {}</p>"
+        "<p>本报告复用该冻结决策的正式对阵、seed 与双方实际战术；"
+        "若赛季 revision 改变，任务会失败关闭。</p></section>"
+    ).format(
+        html.escape(str(source.get("season_id") or "")),
+        html.escape(str((source.get("fixture") or {}).get("matchday") or "")),
+        html.escape(str(source.get("context_identity") or "")[:16]),
+    ) if source.get("kind") == "manager_prematch_world_model_future_set" else ""
+    return f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GFS 多时点未来分叉</title><style>:root{{color-scheme:dark}}*{{box-sizing:border-box}}body{{max-width:1100px;margin:auto;padding:32px 20px;background:#07111e;color:#edf4ff;font:15px/1.6 system-ui}}section{{background:#111d2e;border:1px solid #2a3a51;border-radius:14px;padding:18px;margin:16px 0}}table{{width:100%;border-collapse:collapse}}th,td{{text-align:left;padding:9px;border-bottom:1px solid #2a3a51}}a{{color:#65e6b4}}.muted{{color:#a8b6c9}}a:focus-visible{{outline:3px solid #ffc36a}}</style></head><body><p class="muted">Football Causal World Lab</p><h1>{html.escape(str(fixture.get('home') or ''))} vs {html.escape(str(fixture.get('away') or ''))} · 多时点未来分叉</h1>{manager_binding}<section><h2>固定预算已完成</h2><p>{int(result.get('scenarios_completed', 0))} / {int(result.get('fixed_scenario_budget', 0))} 个预注册时点；动作分叉 {int(aggregate.get('action_divergence_scenarios', 0))} 个，局部归因 {int(aggregate.get('local_attribution_scenarios', 0))} 个，未来描述差异 {int(aggregate.get('descriptive_future_difference_scenarios', 0))} 个。</p><p>时间敏感性：{'已观察到' if aggregate.get('timing_sensitivity_observed') else '在已测指标中未观察到'}。系统没有挑选最佳时点。</p></section><section><h2>同一控制条件下的未来集</h2><table><thead><tr><th>分叉分钟</th><th>前缀锚点</th><th>证据状态</th><th>动作变化</th><th>后续描述差异</th><th>证据</th></tr></thead><tbody>{rows}</tbody></table></section><section><h2>结论边界</h2><p>{boundary}</p><p>这是模拟器内时间敏感性描述，不授权赛果因果、总体推断、现实足球因果或产品/论文晋级。</p></section></body></html>"""
 
 
 def _validate_completed_result(
     plan: WorldModelForkSetPlan, set_id: str, result: Mapping[str, Any],
-    *, home: str, away: str,
+    *, home: str, away: str, source_context: Mapping[str, Any] | None,
 ) -> None:
     rows = result.get("rows") or []
     aggregate = result.get("aggregate") or {}
@@ -202,6 +213,9 @@ def _validate_completed_result(
         or result.get("status") != "complete"
         or result.get("set_id") != set_id
         or result.get("fixture") != {"home": home, "away": away}
+        or result.get("source_context") != (
+            dict(source_context) if source_context is not None else None
+        )
         or result.get("plan") != plan.as_dict()
         or result.get("fixed_scenario_budget") != len(plan.branch_times_sec)
         or result.get("scenarios_completed") != len(plan.branch_times_sec)
@@ -235,12 +249,24 @@ def _validate_completed_result(
 def execute_world_model_fork_set(
     workspace: Any, plan: WorldModelForkSetPlan, *, set_id: str,
     home: str, away: str, fast: bool,
+    source_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Execute or resume all preregistered branch times without interim ranking."""
     if getattr(getattr(workspace, "config", None), "mode", None) != "research":
         raise ValueError("world-model fork sets require research mode")
     if not set_id.isalnum() or len(set_id) > 64:
         raise ValueError("invalid fork-set identity")
+    if source_context is not None:
+        source_context = validate_manager_future_context_shape(source_context)
+        if (
+            source_context["fixture"]["home"] != home
+            or source_context["fixture"]["away"] != away
+            or source_context["match_seed"] != plan.seed
+            or source_context["fast"] is not fast
+            or source_context["home_tactic"] != plan.home_tactic
+            or source_context["away_tactic"] != plan.away_tactic
+        ):
+            raise ValueError("future-set source context does not match controls")
     from src.infrastructure import FileLease
     from src.product.workspace import _atomic_json
 
@@ -252,6 +278,9 @@ def execute_world_model_fork_set(
         "fixture": {"home": home, "away": away},
         "fast": fast,
         "plan": plan.as_dict(),
+        "source_context": (
+            dict(source_context) if source_context is not None else None
+        ),
     }
     with FileLease(paths["lease"], timeout=5.0):
         if paths["protocol"].is_file():
@@ -265,6 +294,7 @@ def execute_world_model_fork_set(
                 raise ValueError("completed fork-set result must be an object")
             _validate_completed_result(
                 plan, set_id, result, home=home, away=away,
+                source_context=source_context,
             )
             if not paths["dashboard"].is_file():
                 paths["dashboard"].write_text(render_fork_set_html(result), encoding="utf-8")
@@ -347,6 +377,9 @@ def execute_world_model_fork_set(
                 "fixture": {"home": home, "away": away},
                 "fast": fast,
                 "plan": plan.as_dict(),
+                "source_context": (
+                    dict(source_context) if source_context is not None else None
+                ),
                 "fixed_scenario_budget": len(plan.branch_times_sec),
                 "scenarios_completed": len(plan.branch_times_sec),
                 "interim_ranking_disclosed": False,

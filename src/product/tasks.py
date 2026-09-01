@@ -19,6 +19,7 @@ from src.product.match_plan import (
     MatchPlan, PairedMatchPlan, WorldModelForkPlan, WorldModelForkSetPlan,
 )
 from src.product.tactical_study import TacticalStudyPlan
+from src.product.manager_future import validate_manager_future_context_shape
 from src.product.workspace import ProductWorkspace, _atomic_json, _now
 
 
@@ -566,6 +567,7 @@ class ProductTaskQueue:
     def submit_world_model_fork_set(
         self, home: str, away: str, *, fast: bool,
         plan: WorldModelForkSetPlan | dict[str, Any],
+        manager_context: dict[str, Any] | None = None,
         idempotency_key: str = "",
     ) -> tuple[dict[str, Any], bool]:
         for side, value in (("home", home), ("away", away)):
@@ -588,6 +590,18 @@ class ProductTaskQueue:
             "home": home, "away": away, "fast": fast,
             "plan": normalized.as_dict(),
         }
+        if manager_context is not None:
+            frozen_context = validate_manager_future_context_shape(manager_context)
+            if (
+                frozen_context["fixture"]["home"] != home
+                or frozen_context["fixture"]["away"] != away
+                or frozen_context["match_seed"] != normalized.seed
+                or frozen_context["fast"] is not fast
+                or frozen_context["home_tactic"] != normalized.home_tactic
+                or frozen_context["away_tactic"] != normalized.away_tactic
+            ):
+                raise ValueError("manager context does not match fork-set controls")
+            request["manager_context"] = frozen_context
         idempotency_hash = self._idempotency_hash(idempotency_key)
         with FileLease(self.lease_path, timeout=5.0):
             payload = self._load()
@@ -828,11 +842,23 @@ class BackgroundMatchWorker:
 
                 plan = WorldModelForkSetPlan.from_payload(request["plan"])
                 plan.validate_for_mode(workspace.config.mode)
+                manager_context = request.get("manager_context")
+                if manager_context is not None:
+                    manager_context = workspace.validate_manager_future_set_context(
+                        manager_context
+                    )
                 fork_set = execute_world_model_fork_set(
                     workspace, plan, set_id=str(task["task_id"]),
                     home=str(request["home"]), away=str(request["away"]),
                     fast=bool(request["fast"]),
+                    source_context=manager_context,
                 )
+                if manager_context is not None:
+                    final_context = workspace.validate_manager_future_set_context(
+                        manager_context
+                    )
+                    if final_context != manager_context:
+                        raise ValueError("manager future-set context changed during execution")
                 result = {
                     "fork_set_id": str(task["task_id"]),
                     "status": fork_set["status"],
@@ -845,6 +871,17 @@ class BackgroundMatchWorker:
                     "aggregate": fork_set["aggregate"],
                     "claim_authority": fork_set["claim_authority"],
                 }
+                if manager_context is not None:
+                    result["manager_context"] = {
+                        "season_id": manager_context["season_id"],
+                        "season_revision": manager_context["season_revision"],
+                        "fixture_id": manager_context["fixture"]["fixture_id"],
+                        "matchday": manager_context["fixture"]["matchday"],
+                        "manager_team": manager_context["manager_team"],
+                        "decision_identity": manager_context["decision_identity"],
+                        "context_identity": manager_context["context_identity"],
+                        "claim_boundary": manager_context["claim_boundary"],
+                    }
             elif task.get("kind") == "season_matchday":
                 season = workspace.play_next_matchday(
                     expected_season_id=str(request["season_id"]),

@@ -1619,3 +1619,39 @@ opens one aggregate dashboard with links back to every two-world comparison.
 The original single-fork API remains available for compatibility and focused
 debugging. This stage changes code and product contracts only; it executes no
 training, formal protocol, product match study or external provider call.
+
+## 61. V3.43 Identity-bound manager prematch future bridge
+
+The fixed future set previously lived only in the research Lab. It could
+demonstrate simulator-local action and trajectory divergence, but it was not
+connected to the manager's actual next fixture. The career product now offers
+an optional bridge after the manager decision is frozen. It derives the exact
+official fixture, matchday seed, fast configuration and both tactics from the
+authoritative persisted season. When club-strategy snapshots are present it
+uses the same resolver as matchday execution; otherwise it uses the frozen
+manager decision and deterministic opponent preparation.
+
+One canonical context identity binds the season id and revision, fixture
+identity, manager decision, opponent preparation, optional club-strategy
+resolution and all execution controls. The queue independently validates the
+shape, hashes and equality with the future-set plan. The worker then rebuilds
+the context from the persisted season immediately before execution and again
+after all registered branch times finish. A changed revision, fixture,
+decision, preparation or strategy fails the task without publishing a result.
+The executor performs a final defense-in-depth control check and stores the
+context in its frozen protocol, result and dashboard.
+
+There is no second persisted season state. The career view derives queued,
+running, interrupted and completed future sets from the existing task queue,
+and marks evidence current only when its revision and next-fixture identity
+still match the active season. Historical artifacts remain inspectable but
+are not silently reused as current advice. The official matchday remains the
+only authority that advances the season.
+
+This bridge makes the research capability perceptible in the product:
+freeze one manager decision, inspect several preregistered entry times, and
+return the resulting two-world evidence to the same career surface. It does
+not select a best time, predict a score, estimate a population effect, prove
+match-outcome causality or provide real-football coaching advice. This stage
+changes code, tests and zero-execution documentation only; it runs no model
+training, formal experiment, match study or external provider call.
