@@ -54,11 +54,30 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             manager_record_coverage_complete=True,
             source_identity="e" * 64,
         ),
-        _stage("observed_match_result", "observed_descriptive"),
+        _stage(
+            "observed_match_result", "observed_descriptive",
+            source_identity="a" * 64,
+        ),
         _stage(
             "persistent_world_state",
             "after_recovery_recorded",
             source_identity="f" * 64,
+            recovery_complete=True,
+            metrics_delta={
+                "team_fatigue_ema": 0.08,
+                "squad_morale_ema": 0.02,
+                "team_media_pressure": 0.01,
+                "injured_players": 1.0,
+                "suspended_players": 0.0,
+                "unavailable_players": 1.0,
+            },
+            transition_summary={
+                "changed_players": 7,
+                "new_injuries": 1,
+                "injuries_cleared": 0,
+                "new_suspensions": 0,
+                "suspensions_cleared": 0,
+            },
         ),
     ]
     return _freeze({
@@ -90,13 +109,59 @@ def _entry(index=1, *, pending=False, gaps=None):
             None if pending else {
                 "score": {"home": index % 3, "away": 1},
                 "outcome": "win" if index % 3 > 1 else "draw",
+                "points_earned": 3 if index % 3 > 1 else 1,
                 "descriptive_only": True,
             }
         ),
+        "long_term_accounting": {
+            "persistent_team_state_delta": {
+                "available": not pending,
+                "transition_identity": None if pending else "f" * 64,
+                "recovery_complete": not pending,
+                "match_delta": None if pending else {
+                    "metrics_delta": {
+                        "team_fatigue_ema": 0.08,
+                        "squad_morale_ema": 0.02,
+                        "team_media_pressure": 0.01,
+                        "injured_players": 1.0,
+                        "suspended_players": 0.0,
+                        "unavailable_players": 1.0,
+                    },
+                    "summary": {
+                        "changed_players": 7,
+                        "new_injuries": 1,
+                        "injuries_cleared": 0,
+                        "new_suspensions": 0,
+                        "suspensions_cleared": 0,
+                    },
+                },
+            },
+        },
         "world_evolution_thread": _thread(
             fixture_id, complete=not pending, gaps=gaps,
         ),
     }
+    if not pending:
+        result_stage = next(
+            row for row in payload["world_evolution_thread"]["stages"]
+            if row["stage_id"] == "observed_match_result"
+        )
+        result_stage["source_identity"] = _identity(
+            payload["observed_result"]
+        )
+        result_stage["score"] = copy.deepcopy(
+            payload["observed_result"]["score"]
+        )
+        result_stage["outcome"] = payload["observed_result"]["outcome"]
+        result_stage["points_earned"] = payload["observed_result"][
+            "points_earned"
+        ]
+        result_stage["descriptive_only"] = True
+        result_stage.pop("stage_identity")
+        result_stage["stage_identity"] = _identity(result_stage)
+        thread = payload["world_evolution_thread"]
+        thread.pop("thread_identity")
+        thread["thread_identity"] = _identity(thread)
     return _freeze(payload, "entry_identity")
 
 
@@ -183,6 +248,33 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
     ])
 
     navigator = build_manager_world_navigator(season)
+    propagation = {
+        "chapters": 2,
+        "results_available": 2,
+        "outcomes": {"win": 1, "draw": 1, "loss": 0},
+        "points_earned": 4,
+        "persistent_state_chapters": 2,
+        "recovery_complete_chapters": 2,
+        "match_metrics_delta_totals": {
+            "team_fatigue_ema": 0.16,
+            "squad_morale_ema": 0.04,
+            "team_media_pressure": 0.02,
+            "injured_players": 2.0,
+            "suspended_players": 0.0,
+            "unavailable_players": 2.0,
+        },
+        "transition_summary_totals": {
+            "changed_players": 14,
+            "new_injuries": 2,
+            "injuries_cleared": 0,
+            "new_suspensions": 0,
+            "suspensions_cleared": 0,
+        },
+        "descriptive_cooccurrence_only": True,
+        "state_effect_comparison_authorized": False,
+        "outcome_effect_estimate": None,
+        "causal_effect_authorized": False,
+    }
 
     assert navigator["navigation_state"] == "active_manager_world"
     assert navigator["primary_action"]["action_id"] == (
@@ -252,7 +344,9 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
                 "latest_chapter_identity": navigator["history_chapters"][0][
                     "chapter_identity"
                 ],
+                "descriptive_world_after": propagation,
             }],
+            "descriptive_world_after": propagation,
         },
     }
     assert navigator["causal_effect_authorized"] is False
@@ -505,6 +599,31 @@ def test_invalid_action_adoption_partition_and_status_fail_closed_when_rehashed(
     )
     with pytest.raises(ValueError, match="action adoption"):
         build_manager_world_navigator(_season(entries=[unavailable_with_counts]))
+
+
+def test_invalid_descriptive_result_and_world_transition_fail_closed():
+    invalid_result = _entry(1)
+    invalid_result["observed_result"]["points_earned"] = 3
+    invalid_result.pop("entry_identity")
+    invalid_result["entry_identity"] = _identity(invalid_result)
+    with pytest.raises(ValueError, match="chapter facts"):
+        build_manager_world_navigator(_season(entries=[invalid_result]))
+
+    invalid_transition = _entry(2)
+    persistent = next(
+        row for row in invalid_transition["world_evolution_thread"]["stages"]
+        if row["stage_id"] == "persistent_world_state"
+    )
+    persistent["metrics_delta"]["team_fatigue_ema"] = True
+    persistent.pop("stage_identity")
+    persistent["stage_identity"] = _identity(persistent)
+    thread = invalid_transition["world_evolution_thread"]
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    invalid_transition.pop("entry_identity")
+    invalid_transition["entry_identity"] = _identity(invalid_transition)
+    with pytest.raises(ValueError, match="chapter facts"):
+        build_manager_world_navigator(_season(entries=[invalid_transition]))
 
 
 def test_duplicate_historical_gap_fails_closed():

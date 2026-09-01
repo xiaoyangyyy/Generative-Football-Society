@@ -2202,3 +2202,45 @@ realized action change and from event observability. These are simulator-local
 mechanism and provenance facts only: the ledger does not compare scores,
 estimate outcome effects, rank tactics, train a model, execute a match or
 authorize real-football causality.
+
+## 76. V3.58 Descriptive action-to-world propagation
+
+The action-adoption ledger answered whether the world model influenced and
+changed official simulator decisions, but a user still had to leave that
+summary and inspect separate ledger paragraphs to see what the same completed
+world recorded afterward. This preserved evidence integrity but weakened the
+product's central complex-system story: intervention, action adoption, match
+fact and persistent team state remained visually adjacent rather than one
+navigable chapter.
+
+Every historical chapter now projects one identity-sealed
+`descriptive_world_after` record. It joins the already manager-oriented
+descriptive outcome and points to the authoritative post-match team-state
+transition: fatigue, morale, media pressure, availability-count deltas,
+changed players, new and cleared injuries, new and cleared suspensions, and
+whether matchday recovery is complete. The projection validates exact metric
+and summary key sets, finite non-boolean numbers, non-negative integer event
+counts, the outcome-to-points identity, the descriptive-only result boundary,
+result and transition source identities, and transition-status/recovery
+consistency. Recomputed outer hashes cannot legitimize a contradictory result
+or malformed persistent-state projection.
+
+The whole-season action ledger aggregates these facts once overall and once
+inside each canonical action-adoption state. It reports raw chapter coverage,
+win/draw/loss counts, points, summed match-state deltas and transition-event
+counts. Zero evidence remains visible as zero coverage; no missing result or
+state is imputed. The nested record explicitly fixes
+`descriptive_cooccurrence_only`, rejects state-effect comparison, contains no
+outcome estimate and authorizes no causal claim.
+
+Studio extends the existing adoption-state cards and recent world chapters
+rather than adding another dashboard. Each state shows its same-chapter later
+facts and retains the V3.57 identity-bound jump to the most recent matching
+chapter. The interface never ranks states or describes their raw differences
+as effects. This makes the product chain legible from intervention through
+action and into the persistent simulated world while preserving the boundary
+between chronology, co-occurrence and causality.
+
+This stage executes no match, training, formal experiment or provider call.
+It does not repair missing evidence, infer why a result happened, compare
+counterfactual outcomes or transfer simulator observations to real football.

@@ -231,13 +231,20 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-world-action-adoption-metrics"' in document
     assert 'id="manager-world-action-adoption-diagnostics"' in document
     assert 'id="manager-world-action-adoption-states"' in document
+    assert 'id="manager-world-action-propagation-boundary"' in document
     assert "managerWorldInfluencePath.replaceChildren()" in document
     assert "managerWorldGapList.replaceChildren()" in document
     assert "summary.world_model_influence_path||{}" in document
     assert "summary.continuity_gap_counts||[]" in document
     assert "summary.world_model_action_adoption_ledger" in document
     assert "function renderManagerWorldActionAdoptionLedger(" in document
+    assert "function managerWorldPropagationText(" in document
+    assert "renderManagerWorldActionAdoptionLedgerWithoutWorldPropagation" in document
     assert "ledger.state_counts||[]" in document
+    assert "row.descriptive_world_after" in document
+    assert "chapter.descriptive_world_after" in document
+    assert "按采纳状态分层只描述共现" in document
+    assert "不授权状态间效果比较" in document
     assert "diagnosticRows=gapRows.concat(stateRows)" in document
     assert "至少一处局部动作改变" in document
     assert "各项是独立证据覆盖，不是递减漏斗" in document

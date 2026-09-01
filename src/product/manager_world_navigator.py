@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 from typing import Any, Mapping
 
 
@@ -42,6 +43,21 @@ _ACTION_ADOPTION_STATE_ORDER = (
     "not_applicable_stable_mode",
     "evidence_unavailable",
 )
+_WORLD_METRICS = (
+    "team_fatigue_ema",
+    "squad_morale_ema",
+    "team_media_pressure",
+    "injured_players",
+    "suspended_players",
+    "unavailable_players",
+)
+_WORLD_SUMMARY_FIELDS = (
+    "changed_players",
+    "new_injuries",
+    "injuries_cleared",
+    "new_suspensions",
+    "suspensions_cleared",
+)
 _BOUNDARY = (
     "navigation over the current manager intervention session and replayable "
     "completed simulator-world chapters only; navigation state is not an "
@@ -71,6 +87,48 @@ def _identity_matches(payload: Mapping[str, Any], field: str) -> bool:
             key: value for key, value in payload.items() if key != field
         })
     )
+
+
+def _descriptive_world_propagation(
+    chapters: list[dict[str, Any]],
+) -> dict[str, Any]:
+    result_rows = [
+        row["descriptive_world_after"] for row in chapters
+        if row["descriptive_world_after"]["result_available"]
+    ]
+    persistent_rows = [
+        row["descriptive_world_after"] for row in chapters
+        if row["descriptive_world_after"]["persistent_state_available"]
+    ]
+    return {
+        "chapters": len(chapters),
+        "results_available": len(result_rows),
+        "outcomes": {
+            outcome: sum(row["outcome"] == outcome for row in result_rows)
+            for outcome in ("win", "draw", "loss")
+        },
+        "points_earned": sum(row["points_earned"] for row in result_rows),
+        "persistent_state_chapters": len(persistent_rows),
+        "recovery_complete_chapters": sum(
+            row["recovery_complete"] for row in persistent_rows
+        ),
+        "match_metrics_delta_totals": {
+            field: round(sum(
+                row["metrics_delta"][field] for row in persistent_rows
+            ), 6)
+            for field in _WORLD_METRICS
+        },
+        "transition_summary_totals": {
+            field: sum(
+                row["transition_summary"][field] for row in persistent_rows
+            )
+            for field in _WORLD_SUMMARY_FIELDS
+        },
+        "descriptive_cooccurrence_only": True,
+        "state_effect_comparison_authorized": False,
+        "outcome_effect_estimate": None,
+        "causal_effect_authorized": False,
+    }
 
 
 def _primary_action(workflow_state: str) -> dict[str, Any] | None:
@@ -178,6 +236,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("manager world navigator chapter stages are incomplete")
     observed = entry.get("observed_result")
     observed = observed if isinstance(observed, Mapping) else {}
+    result_stage = stage_by_id["observed_match_result"]
     action = stage_by_id["official_world_model_actions"]
     persistent = stage_by_id["persistent_world_state"]
     action_count_fields = (
@@ -201,6 +260,24 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     transition_identity = persistent.get("source_identity")
     gaps = thread.get("continuity_gaps")
     matchday = entry.get("matchday")
+    result_available = bool(observed)
+    score = observed.get("score")
+    outcome = observed.get("outcome")
+    points_earned = observed.get("points_earned")
+    result_source_identity = result_stage.get("source_identity")
+    metrics_delta = persistent.get("metrics_delta")
+    transition_summary = persistent.get("transition_summary")
+    persistent_state_available = transition_identity is not None
+    accounting = entry.get("long_term_accounting")
+    accounting = accounting if isinstance(accounting, Mapping) else {}
+    persistent_source = accounting.get("persistent_team_state_delta")
+    persistent_source = (
+        persistent_source if isinstance(persistent_source, Mapping) else {}
+    )
+    source_match_delta = persistent_source.get("match_delta")
+    source_match_delta = (
+        source_match_delta if isinstance(source_match_delta, Mapping) else {}
+    )
     if (
         isinstance(matchday, bool)
         or not isinstance(matchday, int)
@@ -242,6 +319,86 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         )
         or action_counts["retained_records"]
         > action_counts["source_match_opportunities"]
+        or (
+            result_available
+            and (
+                not isinstance(score, Mapping)
+                or set(score) != {"home", "away"}
+                or any(
+                    isinstance(value, bool)
+                    or not isinstance(value, int)
+                    or value < 0
+                    for value in score.values()
+                )
+                or outcome not in {"win", "draw", "loss"}
+                or isinstance(points_earned, bool)
+                or not isinstance(points_earned, int)
+                or points_earned != {
+                    "win": 3, "draw": 1, "loss": 0,
+                }[outcome]
+                or observed.get("descriptive_only") is not True
+                or result_stage.get("status") != "observed_descriptive"
+                or result_source_identity != _identity(observed)
+                or result_stage.get("score") != score
+                or result_stage.get("outcome") != outcome
+                or result_stage.get("points_earned") != points_earned
+                or result_stage.get("descriptive_only") is not True
+            )
+        )
+        or (
+            not result_available
+            and (
+                result_stage.get("status") != "result_evidence_unavailable"
+                or result_source_identity is not None
+            )
+        )
+        or (
+            persistent_state_available
+            and (
+                persistent.get("status") not in {
+                    "after_recovery_recorded",
+                    "after_match_recorded_recovery_pending",
+                }
+                or not isinstance(metrics_delta, Mapping)
+                or set(metrics_delta) != set(_WORLD_METRICS)
+                or any(
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not math.isfinite(float(value))
+                    for value in metrics_delta.values()
+                )
+                or not isinstance(transition_summary, Mapping)
+                or set(transition_summary) != set(_WORLD_SUMMARY_FIELDS)
+                or any(
+                    isinstance(value, bool)
+                    or not isinstance(value, int)
+                    or value < 0
+                    for value in transition_summary.values()
+                )
+                or persistent.get("recovery_complete") is not (
+                    persistent.get("status") == "after_recovery_recorded"
+                )
+                or persistent_source.get("available") is not True
+                or transition_identity
+                != persistent_source.get("transition_identity")
+                or persistent.get("recovery_complete") is not (
+                    persistent_source.get("recovery_complete") is True
+                )
+                or metrics_delta != source_match_delta.get("metrics_delta")
+                or transition_summary != source_match_delta.get("summary")
+            )
+        )
+        or (
+            not persistent_state_available
+            and (
+                persistent.get("status")
+                != "persistent_state_evidence_unavailable"
+                or metrics_delta is not None
+                or transition_summary is not None
+                or persistent.get("recovery_complete") is not False
+                or persistent_source.get("available") is True
+            )
+        )
         or (
             action_source_identity is not None
             and not _is_identity(action_source_identity)
@@ -318,8 +475,28 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
                 "persistent_world_state",
             )
         },
-        "score": copy.deepcopy(observed.get("score")),
-        "outcome": observed.get("outcome"),
+        "score": copy.deepcopy(score),
+        "outcome": outcome,
+        "descriptive_world_after": {
+            "result_available": result_available,
+            "outcome": outcome if result_available else None,
+            "points_earned": points_earned if result_available else None,
+            "persistent_state_available": persistent_state_available,
+            "recovery_complete": (
+                persistent.get("recovery_complete") is True
+                if persistent_state_available else False
+            ),
+            "metrics_delta": (
+                copy.deepcopy(dict(metrics_delta))
+                if persistent_state_available else None
+            ),
+            "transition_summary": (
+                copy.deepcopy(dict(transition_summary))
+                if persistent_state_available else None
+            ),
+            "descriptive_cooccurrence_only": True,
+            "causal_effect_authorized": False,
+        },
         "locally_attributable_action_changes": local_changes,
         "action_adoption": {
             "state": adoption_state,
@@ -523,10 +700,20 @@ def build_manager_world_navigator(
             ) else None
         ),
         "state_counts": [
-            {"state": state, **adoption_state_facts[state]}
+            {
+                "state": state,
+                **adoption_state_facts[state],
+                "descriptive_world_after": _descriptive_world_propagation([
+                    row for row in all_chapters
+                    if row["action_adoption"]["state"] == state
+                ]),
+            }
             for state in _ACTION_ADOPTION_STATE_ORDER
             if state in adoption_state_facts
         ],
+        "descriptive_world_after": _descriptive_world_propagation(
+            all_chapters
+        ),
     }
     gap_facts: dict[str, dict[str, Any]] = {}
     for chapter in all_chapters:

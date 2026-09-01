@@ -507,3 +507,12 @@ completed ledger entry before updating the season-scoped permalink, rebuilding
 the projections and expanding the complete chapter. These controls are
 read-only; none repairs evidence, reruns a match or turns mechanism
 observability into an outcome-effect claim.
+
+The same action-state rows now continue into the facts recorded later in their
+completed chapters: descriptive win/draw/loss and points, plus post-match
+fatigue, morale, media pressure, availability and injury/suspension changes.
+Recent chapter cards show the same continuation before the full evidence
+timeline is opened. Values are raw coverage and totals; missing chapters are
+not imputed, states are not ranked, and differences between adoption states
+are not treatment effects. The purpose is to make one simulated-world history
+legible, not to claim that the world model caused its result or carryover.
