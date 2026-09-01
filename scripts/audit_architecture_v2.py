@@ -148,6 +148,9 @@ def main() -> int:
     official_action_execution = (
         ROOT / "src/product/world_model_action_execution.py"
     ).read_text(encoding="utf-8")
+    product_reporting = (
+        ROOT / "src/product/reporting.py"
+    ).read_text(encoding="utf-8")
     manager_world_thread = (
         ROOT / "src/product/manager_world_thread.py"
     ).read_text(encoding="utf-8")
@@ -744,6 +747,30 @@ def main() -> int:
                 "不比较比分、不证明战术质量",
             ))
             and "innerHTML" not in web
+        ),
+        "official_action_explanation_unifies_cross_signal_and_reference": (
+            all(token in official_action_execution for token in (
+                'actual not in {"pass", "shot", "cross"}',
+                'and actual != "hold"',
+                '"policy_signal": {',
+                '"probability_policy_version": probability_policy_version',
+                '"reference_action_effect": reference_projection',
+                '"suppression_only"',
+                '"legacy_unclassified"',
+                "world-model official reference action projection is invalid",
+            ))
+            and all(token in product_reporting for token in (
+                'record.get("primary_signal_action")',
+                '"suppression_only": "suppression only; no direct recommendation"',
+                "hold reference received indirect",
+                "Mean direct-recommendation shift",
+                "Mean primary-signal shift",
+            ))
+            and all(token in web for token in (
+                "appendOfficialActionExecutionWithoutPolicySemantics",
+                "example.policy_signal",
+                "reference.received_redistributed_probability",
+            ))
         ),
         "manager_product_exposes_one_replayable_world_evolution_thread": (
             all(token in manager_world_thread for token in (

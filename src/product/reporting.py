@@ -58,6 +58,9 @@ def _optional_finite_float(value: Any) -> float | None:
 
 
 def _dominant_model_action(record: Mapping[str, Any]) -> str:
+    primary = str(record.get("primary_signal_action") or "").lower()
+    if primary in {"pass", "shot", "cross"}:
+        return primary
     adjustments = record.get("model_adjustments") or {}
     if not isinstance(adjustments, Mapping):
         return str(record.get("recommended_action") or "unresolved")
@@ -169,6 +172,9 @@ def _action_influence_panel(
     mean_shift = max(0.0, _finite_float(
         adoption.get("mean_recommended_probability_shift")
     ))
+    mean_primary_shift = max(0.0, _finite_float(
+        adoption.get("mean_primary_signal_probability_shift")
+    ))
     mechanism_state = str(mechanism.get("result_status") or mechanism.get(
         "execution_state", "not registered",
     ))
@@ -203,6 +209,15 @@ def _action_influence_panel(
         team = html.escape(str(record.get("team_id") or "unknown"))
         minute = _finite_float(record.get("t_sec")) / 60.0
         signal_action = _dominant_model_action(record)
+        signal_mode = str(
+            record.get("signal_mode") or "legacy_unclassified"
+        ).lower()
+        signal_mode_label = {
+            "direct_preference": "direct validated preference",
+            "suppression_only": "suppression only; no direct recommendation",
+            "none": "no authorized probability signal",
+            "legacy_unclassified": "legacy signal semantics",
+        }.get(signal_mode, "unknown signal semantics")
         base_probability = record.get("base_probability") or {}
         adjusted_probability = record.get("adjusted_probability") or {}
         adjustments = record.get("model_adjustments") or {}
@@ -219,6 +234,19 @@ def _action_influence_panel(
             if isinstance(adjustments, Mapping) else None
         )
         gate_state, gate_detail = _quality_gate_text(record, signal_action)
+        reference = record.get("reference_action_effect") or {}
+        reference_note = ""
+        if (
+            isinstance(reference, Mapping)
+            and reference.get("action") == "hold"
+            and reference.get("directly_authorized") is False
+            and reference.get("received_redistributed_probability") is True
+        ):
+            reference_note = (
+                '<br><span>hold reference received indirect '
+                f"redistribution {_signed(reference.get('probability_delta'))}; "
+                "not a learned hold recommendation</span>"
+            )
         gate_details = _quality_gate_details(record)
         sampling_uniform = record.get("sampling_uniform")
         draw = _value(sampling_uniform, 3)
@@ -255,6 +283,8 @@ def _action_influence_panel(
             f"<td><b>{html.escape(signal_action)}</b> {_signed(model_adjustment)}<br>"
             f"<span class=\"subtle\">{html.escape(gate_state)}: "
             f"{html.escape(gate_detail)}</span>"
+            f'<br><span>{html.escape(signal_mode_label)}</span>'
+            f'{reference_note}'
             f"<details><summary>all quality gates</summary>{gate_details}</details></td>"
             f"<td>{_percent(base_signal)} &rarr; {_percent(adjusted_signal)}"
             f"<br><span class=\"subtle\">u={draw}</span></td>"
@@ -283,7 +313,8 @@ def _action_influence_panel(
   <div><span class="label">Attribution eligible</span><strong>{eligible}</strong></div>
   <div><span class="label">Counterfactual changes</span><strong>{changed}</strong></div>
   <div><span class="label">Expected changes</span><strong>{expected:.2f}</strong></div>
-  <div><span class="label">Mean probability shift</span><strong>{_percent(mean_shift, 2)}</strong></div>
+  <div><span class="label">Mean direct-recommendation shift</span><strong>{_percent(mean_shift, 2)}</strong></div>
+  <div><span class="label">Mean primary-signal shift</span><strong>{_percent(mean_primary_shift, 2)}</strong></div>
 </div>
 <p class="evidence">{protocol_line}. Expected changes are probability mass, not additional observed outcomes. This panel does not authorize product or academic promotion.</p>
 <p class="evidence">Observed trajectories are linked only by the runtime opportunity identity plus matching action, team and timestamp. Time proximity alone is never treated as a direct match.</p>

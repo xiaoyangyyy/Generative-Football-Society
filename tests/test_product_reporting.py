@@ -54,10 +54,13 @@ def test_research_report_separates_realized_and_expected_changes_and_escapes():
         "counterfactual_action_changes": 2,
         "expected_counterfactual_action_changes": 2.7,
         "mean_recommended_probability_shift": 0.0125,
+        "mean_primary_signal_probability_shift": 0.02,
         "records": [{
             "team_id": "<script>alert(1)</script>",
             "t_sec": 120.0,
             "recommended_action": "pass",
+            "primary_signal_action": "pass",
+            "signal_mode": "direct_preference",
             "model_adjustments": {"pass": 0.125, "hold": 0.0},
             "quality_gates": {"pass": {
                 "open": True, "confidence": 0.8, "certainty": 0.9,
@@ -81,6 +84,9 @@ def test_research_report_separates_realized_and_expected_changes_and_escapes():
     assert "Counterfactual changes</span><strong>2</strong>" in document
     assert "Expected changes</span><strong>2.70</strong>" in document
     assert "Expected changes are probability mass" in document
+    assert "Mean direct-recommendation shift" in document
+    assert "Mean primary-signal shift</span><strong>2.00%" in document
+    assert "direct validated preference" in document
     assert "does not authorize product or academic promotion" in document
     assert "pass &rarr; hold" in document
     assert "80.0% &rarr; 60.0%" in document
@@ -106,6 +112,55 @@ def test_research_report_separates_realized_and_expected_changes_and_escapes():
     assert "<script" not in document
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in document
     assert "<script>alert(1)</script>" not in document
+
+
+def test_report_distinguishes_suppression_from_a_learned_hold_recommendation():
+    adoption = {
+        "available": True,
+        "opportunities": 1,
+        "influenced_opportunities": 1,
+        "attribution_eligible_opportunities": 1,
+        "counterfactual_action_changes": 1,
+        "expected_counterfactual_action_changes": 0.1,
+        "mean_recommended_probability_shift": 0.0,
+        "mean_primary_signal_probability_shift": 0.1,
+        "records": [{
+            "team_id": "Brazil",
+            "t_sec": 180.0,
+            "recommended_action": "none",
+            "primary_signal_action": "pass",
+            "signal_mode": "suppression_only",
+            "model_adjustments": {"pass": -0.2, "hold": 0.0},
+            "quality_gates": {"pass": {
+                "open": True, "confidence": 0.8, "certainty": 0.9,
+            }, "hold": {
+                "open": False,
+                "reason": "reference_action_not_directly_promoted",
+            }},
+            "counterfactual_baseline_action": "pass",
+            "actual_action": "hold",
+            "sampling_uniform": 0.7,
+            "policy_changed_action": True,
+            "attribution_eligible": True,
+            "base_probability": {"pass": 0.7},
+            "adjusted_probability": {"pass": 0.5},
+            "total_variation_distance": 0.2,
+            "reference_action_effect": {
+                "action": "hold",
+                "directly_authorized": False,
+                "received_redistributed_probability": True,
+                "probability_delta": 0.2,
+            },
+        }],
+    }
+
+    document = render_match_html(_report(action_adoption=adoption))
+
+    assert "suppression only; no direct recommendation" in document
+    assert "hold reference received indirect redistribution +0.200" in document
+    assert "not a learned hold recommendation" in document
+    assert "Mean direct-recommendation shift</span><strong>0.00%" in document
+    assert "Mean primary-signal shift</span><strong>10.00%" in document
 
 
 def test_manager_report_renders_frozen_lineup_and_escapes_player_names():

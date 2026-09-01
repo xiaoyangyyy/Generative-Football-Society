@@ -203,6 +203,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "reference.redistribution_opportunities" in document
     assert "reference.mean_probability_gain" in document
     assert "renderActionAdoptionWithoutHoldReference" in document
+    assert "appendOfficialActionExecutionWithoutPolicySemantics" in document
+    assert "example.policy_signal" in document
+    assert "reference.received_redistributed_probability" in document
     assert "mean_applied_authority" in document
     assert "renderActionAdoptionWithoutCurrentCodeEvidence" in document
     assert "mechanism.result_identity_verified" in document

@@ -170,6 +170,135 @@ def test_official_action_execution_projects_only_manager_team_and_local_claim():
     validate_world_model_action_execution(evidence)
 
 
+def test_official_action_execution_accepts_identity_bound_cross_trajectory():
+    report = _report()
+    record = report["layers"]["world_model"]["action_adoption"]["records"][0]
+    record.update({
+        "recommended_action": "cross",
+        "actual_action": "cross",
+    })
+    link = report["replay"]["world_model_action_links"]["links"][0]
+    link.update({
+        "recommended_action": "cross",
+        "actual_action": "cross",
+        "event_type": "cross",
+    })
+
+    evidence = project_world_model_action_execution(
+        report, manager_team="A", expected_match_id="official-1",
+    )
+
+    changed = evidence["examples"][0]
+    assert changed["actual_action"] == "cross"
+    assert changed["runtime_link"] == {
+        "status": "direct_runtime_identity_match",
+        "direct_ball_event_identity": True,
+        "event_type": "cross",
+        "event_clock": "0:12",
+    }
+    validate_world_model_action_execution(evidence)
+
+
+def test_official_action_execution_rejects_cross_as_trajectory_free():
+    report = _report()
+    record = report["layers"]["world_model"]["action_adoption"]["records"][0]
+    record.update({
+        "recommended_action": "cross",
+        "actual_action": "cross",
+    })
+    link = report["replay"]["world_model_action_links"]["links"][0]
+    link.update({
+        "recommended_action": "cross",
+        "actual_action": "cross",
+        "status": "no_ball_trajectory_by_design",
+        "event_type": None,
+        "event_clock": None,
+    })
+    linkage = report["replay"]["world_model_action_links"]
+    linkage.update({
+        "directly_observed": 1,
+        "counterfactual_changed_and_observed": 1,
+        "no_trajectory_by_design": 2,
+    })
+
+    with pytest.raises(ValueError, match="runtime link semantics"):
+        project_world_model_action_execution(
+            report, manager_team="A", expected_match_id="official-1",
+        )
+
+
+def test_official_execution_preserves_suppression_and_hold_reference_semantics():
+    report = _report()
+    adoption = report["layers"]["world_model"]["action_adoption"]
+    adoption.update({
+        "probability_policy_version": "validated_action_simplex_v2",
+        "counterfactual_action_changes": 3,
+        "mean_primary_signal_probability_shift": 0.09,
+    })
+    record = adoption["records"][1]
+    record.update({
+        "recommended_action": "none",
+        "primary_signal_action": "pass",
+        "signal_mode": "suppression_only",
+        "counterfactual_baseline_action": "pass",
+        "policy_changed_action": True,
+        "recommended_probability_delta": 0.0,
+        "primary_signal_probability_delta": -0.09,
+        "reference_action_effect": {
+            "action": "hold",
+            "role": "counterfactual_baseline_only",
+            "directly_authorized": False,
+            "probability_delta": 0.09,
+            "received_redistributed_probability": True,
+            "realized_as_actual_action": True,
+            "policy_changed_to_reference": True,
+        },
+    })
+    link = report["replay"]["world_model_action_links"]["links"][1]
+    link.update({
+        "recommended_action": "none",
+        "counterfactual_baseline_action": "pass",
+        "policy_changed_action": True,
+    })
+
+    evidence = project_world_model_action_execution(
+        report, manager_team="A", expected_match_id="official-1",
+    )
+    example = next(
+        row for row in evidence["examples"]
+        if row["actual_action"] == "hold"
+    )
+
+    assert example["recommended_action"] == "none"
+    assert example["policy_signal"] == {
+        "probability_policy_version": "validated_action_simplex_v2",
+        "mode": "suppression_only",
+        "primary_action": "pass",
+        "primary_probability_delta": -0.09,
+        "direct_recommendation": False,
+    }
+    assert example["reference_action_effect"] == {
+        "available": True,
+        "action": "hold",
+        "role": "counterfactual_baseline_only",
+        "directly_authorized": False,
+        "probability_delta": 0.09,
+        "received_redistributed_probability": True,
+        "realized_as_actual_action": True,
+        "policy_changed_to_reference": True,
+    }
+    validate_world_model_action_execution(evidence)
+
+    tampered = copy.deepcopy(evidence)
+    example = next(
+        row for row in tampered["examples"]
+        if row["actual_action"] == "hold"
+    )
+    example["reference_action_effect"]["directly_authorized"] = True
+    with pytest.raises(ValueError, match="reference action projection"):
+        validate_world_model_action_execution(tampered)
+
+
 def test_official_action_execution_fails_closed_on_source_and_projection_tamper():
     malformed = _report()
     malformed["layers"]["world_model"]["action_adoption"][

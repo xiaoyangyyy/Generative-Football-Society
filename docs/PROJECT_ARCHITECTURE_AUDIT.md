@@ -58,6 +58,9 @@ not quality signals by themselves.
     recommendation. Suppression-driven probability redistribution to hold is
     now measured separately and cannot enter direct action authority or direct
     adoption counts, even if stale evidence attempts to open its gate.
+20. Closed the replay-to-manager execution gap for cross trajectories and
+    projected direct, suppressive and hold-reference signal semantics into one
+    identity-bound official action explanation chain.
 
 ## LLM Scope Decision
 

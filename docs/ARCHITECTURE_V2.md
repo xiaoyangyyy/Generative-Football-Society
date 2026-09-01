@@ -2596,3 +2596,32 @@ recommendation.
 This corrects attribution semantics; it does not add a hold model, establish
 that holding is optimal, or prove downstream outcome improvement. No training,
 match, formal experiment or provider call is executed in this stage.
+
+## 85. V3.67 Unified official action explanation chain
+
+Cross trajectories became replayable in V3.64, but the official manager action
+projection still accepted direct ball-event identity only for pass and shot.
+It simultaneously allowed cross to use the hold-only
+`no_ball_trajectory_by_design` status. A correctly linked official cross could
+therefore be rejected at the product boundary even though the replay layer had
+already verified its identity, action, team and timestamp.
+
+The official projection now accepts pass, shot and cross only through exact
+direct runtime identity links. Hold is the sole trajectory-free action. Tests
+cover both a valid identity-bound cross and a forged trajectory-free cross, so
+the product cannot silently regress to the pre-V3.64 contract.
+
+The projection also carries the V2 policy version, signal mode, primary action,
+primary probability delta and bounded hold-reference effect into each retained
+manager-team example. Current records distinguish direct preference,
+suppression-only and no-signal states. Legacy unversioned reports remain
+readable as explicitly unclassified evidence rather than being reinterpreted.
+The standalone match report and manager timeline render the same distinction:
+probability redistributed to hold is shown as a reference effect, never as a
+learned hold recommendation.
+
+Every projected field remains inside the existing evidence identity and replay
+validator. It proves only official simulator action selection and exact local
+ball-event linkage. It does not convert downstream trajectories, tactics,
+scores or persistent world state into causal outcome claims. This stage runs no
+training, match, formal experiment or provider call.

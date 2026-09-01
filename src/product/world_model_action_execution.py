@@ -97,6 +97,12 @@ def _validate_source_aggregate(
         adoption.get("mean_recommended_probability_shift"),
         name="mean recommended probability shift", maximum=1.0,
     )
+    mean_primary = adoption.get("mean_primary_signal_probability_shift")
+    if mean_primary is not None:
+        _number(
+            mean_primary, name="mean primary signal probability shift",
+            maximum=1.0,
+        )
     if not (
         len(records) <= opportunities
         and influenced <= opportunities
@@ -209,6 +215,9 @@ def project_world_model_action_execution(
     source_opportunities, source_truncated = _validate_source_aggregate(
         adoption, records,
     )
+    probability_policy_version = str(
+        adoption.get("probability_policy_version") or "legacy_unversioned"
+    )[:80]
     replay = report.get("replay")
     replay = replay if isinstance(replay, Mapping) else {}
     links = _validate_links(replay)
@@ -239,12 +248,37 @@ def project_world_model_action_execution(
         }:
             raise ValueError("world-model action attribution flag is invalid")
         recommended = str(raw.get("recommended_action") or "none").lower()
+        primary_signal = str(
+            raw.get("primary_signal_action") or recommended
+        ).lower()
+        signal_mode = str(
+            raw.get("signal_mode") or "legacy_unclassified"
+        ).lower()
         actual = str(raw.get("actual_action") or "none").lower()
         baseline = str(
             raw.get("counterfactual_baseline_action") or "none"
         ).lower()
         if recommended not in _ACTIONS | {"none"}:
             raise ValueError("world-model recommended action is invalid")
+        if primary_signal not in _ACTIONS | {"none"} or signal_mode not in {
+            "direct_preference", "suppression_only", "none",
+            "legacy_unclassified",
+        }:
+            raise ValueError("world-model primary action signal is invalid")
+        if (
+            signal_mode == "direct_preference"
+            and recommended not in {"pass", "shot", "cross"}
+        ) or (
+            signal_mode == "suppression_only"
+            and (
+                recommended != "none"
+                or primary_signal not in {"pass", "shot", "cross"}
+            )
+        ) or (
+            signal_mode == "none"
+            and (recommended != "none" or primary_signal != "none")
+        ):
+            raise ValueError("world-model action signal semantics are invalid")
         if actual not in _ACTIONS | {"none"} or baseline not in _ACTIONS | {"none"}:
             raise ValueError("world-model sampled action is invalid")
         if changed is True and (
@@ -266,6 +300,73 @@ def project_world_model_action_execution(
                 name="recommended probability delta", absolute_maximum=1.0,
             )
         )
+        primary_probability_delta = raw.get(
+            "primary_signal_probability_delta"
+        )
+        primary_probability_delta = (
+            probability_delta
+            if primary_probability_delta is None
+            else _signed_number(
+                primary_probability_delta,
+                name="primary signal probability delta",
+                absolute_maximum=1.0,
+            )
+        )
+        reference = raw.get("reference_action_effect")
+        if reference is not None and not isinstance(reference, Mapping):
+            raise ValueError("world-model reference action effect is invalid")
+        if isinstance(reference, Mapping):
+            reference_delta = _signed_number(
+                reference.get("probability_delta"),
+                name="reference action probability delta",
+                absolute_maximum=1.0,
+            )
+            reference_projection = {
+                "available": True,
+                "action": str(reference.get("action") or "").lower(),
+                "role": str(reference.get("role") or "")[:80],
+                "directly_authorized": reference.get("directly_authorized"),
+                "probability_delta": round(reference_delta, 9),
+                "received_redistributed_probability": reference.get(
+                    "received_redistributed_probability"
+                ),
+                "realized_as_actual_action": reference.get(
+                    "realized_as_actual_action"
+                ),
+                "policy_changed_to_reference": reference.get(
+                    "policy_changed_to_reference"
+                ),
+            }
+            if (
+                reference_projection["action"] != "hold"
+                or reference_projection["role"]
+                != "counterfactual_baseline_only"
+                or reference_projection["directly_authorized"] is not False
+                or any(
+                    not isinstance(reference_projection[key], bool)
+                    for key in (
+                        "received_redistributed_probability",
+                        "realized_as_actual_action",
+                        "policy_changed_to_reference",
+                    )
+                )
+                or reference_projection["realized_as_actual_action"]
+                is not (actual == "hold")
+                or reference_projection["policy_changed_to_reference"]
+                is not (changed is True and actual == "hold")
+            ):
+                raise ValueError("world-model reference action semantics are invalid")
+        else:
+            reference_projection = {
+                "available": False,
+                "action": "hold",
+                "role": "legacy_reference_effect_unavailable",
+                "directly_authorized": False,
+                "probability_delta": None,
+                "received_redistributed_probability": False,
+                "realized_as_actual_action": actual == "hold",
+                "policy_changed_to_reference": changed is True and actual == "hold",
+            }
         total_variation = raw.get("total_variation_distance")
         total_variation = (
             None
@@ -300,12 +401,12 @@ def project_world_model_action_execution(
         if (
             link_status == _DIRECT_LINK
             and (
-                actual not in {"pass", "shot"}
+                actual not in {"pass", "shot", "cross"}
                 or str(link.get("event_type") or "").lower() != actual
             )
         ) or (
             link_status == _NO_TRAJECTORY
-            and actual not in {"hold", "cross"}
+            and actual != "hold"
         ):
             raise ValueError("world-model action runtime link semantics are invalid")
         manager_rows.append({
@@ -326,6 +427,17 @@ def project_world_model_action_execution(
                 round(probability_delta, 9)
                 if probability_delta is not None else None
             ),
+            "policy_signal": {
+                "probability_policy_version": probability_policy_version,
+                "mode": signal_mode,
+                "primary_action": primary_signal,
+                "primary_probability_delta": (
+                    round(primary_probability_delta, 9)
+                    if primary_probability_delta is not None else None
+                ),
+                "direct_recommendation": recommended != "none",
+            },
+            "reference_action_effect": reference_projection,
             "total_variation_distance": (
                 round(total_variation, 9)
                 if total_variation is not None else None
@@ -534,6 +646,50 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
             )
         ):
             raise ValueError("world-model official action example semantics are invalid")
+        policy_signal = row.get("policy_signal")
+        if policy_signal is not None:
+            if (
+                not isinstance(policy_signal, Mapping)
+                or not isinstance(
+                    policy_signal.get("probability_policy_version"), str,
+                )
+                or policy_signal.get("mode") not in {
+                    "direct_preference", "suppression_only", "none",
+                    "legacy_unclassified",
+                }
+                or policy_signal.get("primary_action") not in _ACTIONS | {"none"}
+                or policy_signal.get("direct_recommendation")
+                is not (row.get("recommended_action") != "none")
+            ):
+                raise ValueError(
+                    "world-model official action signal projection is invalid"
+                )
+            primary_delta = policy_signal.get("primary_probability_delta")
+            if primary_delta is not None:
+                _signed_number(
+                    primary_delta, name="projected primary signal delta",
+                    absolute_maximum=1.0,
+                )
+        reference = row.get("reference_action_effect")
+        if reference is not None and (
+            not isinstance(reference, Mapping)
+            or not isinstance(reference.get("available"), bool)
+            or reference.get("action") != "hold"
+            or reference.get("directly_authorized") is not False
+            or not isinstance(
+                reference.get("received_redistributed_probability"), bool,
+            )
+            or reference.get("realized_as_actual_action")
+            is not (row.get("actual_action") == "hold")
+            or reference.get("policy_changed_to_reference")
+            is not (
+                row.get("policy_changed_action") is True
+                and row.get("actual_action") == "hold"
+            )
+        ):
+            raise ValueError(
+                "world-model official reference action projection is invalid"
+            )
         if row.get("policy_changed_action") is True:
             if (
                 row.get("influenced") is not True
