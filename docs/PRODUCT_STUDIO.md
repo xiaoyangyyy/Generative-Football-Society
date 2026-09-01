@@ -537,3 +537,11 @@ identity-bound from the review receipt through the execution trace, world
 thread and historical chapter. They explain the decision context; they are not
 compared with the observed score as forecast accuracy, tactic quality or a
 treatment effect.
+
+Each reviewed trajectory row can now expand the exact bounded fork dossier
+that produced those totals. The dossier preserves the reviewed time, semantic
+evidence state, action/local/descriptive counts, anchor verification and
+shortened source/archive identities. The same dossier appears inside the
+prematch stage of the complete official-world thread, so it remains one
+product flow rather than a detached analysis page. These are simulated roads
+not taken: the UI does not rank them or compare them with the observed score.

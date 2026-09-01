@@ -254,6 +254,13 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "function renderManagerWorldTrajectory(season)" in document
     assert "function renderManagerWorldReviewedFutureContinuity(season)" in document
     assert "appendManagerWorldEvolutionThreadWithoutReviewedFutures" in document
+    assert "function appendReviewedScenarioArchive(" in document
+    assert "appendManagerWorldEvolutionThreadWithoutScenarioArchive" in document
+    assert "renderManagerWorldNavigatorWithoutScenarioArchive" in document
+    assert "reviewed_scenario_archives" in document
+    assert "source_scenario_identity" in document
+    assert "archive_identity" in document
+    assert "不排名、不与观察比分匹配" in document
     assert "future.action_divergence_scenarios" in document
     assert "stage.local_attribution_scenarios" in document
     assert "trajectory_point_identity" not in document

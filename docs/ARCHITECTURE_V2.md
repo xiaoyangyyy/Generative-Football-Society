@@ -2341,3 +2341,46 @@ simulated paths to the observed score as forecast accuracy or treatment effect.
 This stage executes no future generation, match, training, formal study or
 provider call. It introduces no best-time recommendation, outcome comparison,
 score prediction, intervention ranking or real-football causal authority.
+
+## 79. V3.61 Identity-sealed historical fork dossiers
+
+V3.60 retained the aggregate context of a reviewed future set after the
+official world advanced, but still discarded the concrete roads not taken. A
+historical chapter could say that three times were reviewed and two contained
+action divergence without preserving which times, which branch identities or
+which local/descriptive differences produced those totals. This left the
+season trajectory continuous at fixture level but opaque at fork level.
+
+The terminal review trace now derives a bounded `reviewed_scenarios` archive
+from the already validated scenario evidence. It retains exactly the frozen
+2--4 branch times and only compact facts: source scenario identity, time,
+semantic status, eligibility and anchor state, branch-state identity, changed
+and locally attributable action counts, descriptive future-difference count,
+and both causal-denial flags. Mechanism examples remain in their existing
+detailed evidence surface and are not duplicated. Every compact record gets a
+new deterministic `archive_identity`; the enclosing review trace identity
+seals the ordered list.
+
+The canonical prematch world-thread stage copies the archive exactly. The
+navigator then independently validates field closure, finite ordered times,
+minute conversion, source/archive identities, anchor and eligibility
+semantics, count types and bounds, local-attribution semantics, status
+derivation and both causal boundaries. It recomputes all five aggregate counts
+and timing sensitivity from the concrete archive. Consequently, rehashing an
+outer trace or thread cannot make altered aggregate facts consistent with
+unchanged fork records. Aggregate-only legacy reviews must carry an empty
+archive and are never upgraded to scenario evidence.
+
+Official world chapters and identity-bound trajectory points carry the exact
+validated archive. Whole-season counts distinguish retained dossiers from
+identity-verified dossiers. Studio renders the records as progressive details
+inside the existing prematch thread and the matching trajectory row, showing
+the branch minute, semantic status, action/local/descriptive counts, anchor
+verification and shortened source/archive identities. No separate dashboard
+or competing navigation model is introduced.
+
+These dossiers describe simulated roads the official world did not
+simultaneously experience. They are not ranked, matched to the observed score,
+or treated as prediction accuracy, intervention effects, counterfactual truth
+or real-football causality. This stage is code-only and executes no future
+generation, match, training, formal study or external provider call.

@@ -666,6 +666,34 @@ def test_future_reviews_close_to_selection_and_runtime_without_outcome_claim():
     assert terminal["timing_sensitivity_observed"] is True
     assert terminal["ranking_performed"] is False
     assert terminal["best_branch_time"] is None
+    assert terminal["reviewed_scenarios"] == [
+        {
+            "schema_version": 1,
+            "source_scenario_identity": row["scenario_identity"],
+            "branch_at_sec": row["branch_at_sec"],
+            "branch_minute": row["branch_minute"],
+            "future_status": row["future_status"],
+            "eligible": row["eligible"],
+            "anchor_verified": row["anchor_verified"],
+            "branch_state_identity": row["branch_state_identity"],
+            "changed_actions": row["changed_actions"],
+            "locally_attributable_changes": row[
+                "locally_attributable_changes"
+            ],
+            "descriptive_future_difference_count": row[
+                "descriptive_future_difference_count"
+            ],
+            "simulator_local_action_attribution": row[
+                "simulator_local_action_attribution"
+            ],
+            "outcome_causality_authorized": False,
+            "real_football_causality_authorized": False,
+            "archive_identity": terminal["reviewed_scenarios"][index][
+                "archive_identity"
+            ],
+        }
+        for index, row in enumerate(revised["scenario_evidence"])
+    ]
     assert trace["outcome_comparison_performed"] is False
     assert trace["outcome_effect_estimate"] is None
     assert trace["causal_effect_authorized"] is False

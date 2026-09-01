@@ -32,6 +32,34 @@ def _stage(stage_id, status, **facts):
     }, "stage_identity")
 
 
+def _reviewed_scenarios():
+    rows = [
+        (900.0, "no_realized_action_divergence", 0, 0, 0, False, "1"),
+        (1800.0, "local_action_divergence_with_descriptive_future_difference", 1, 1, 1, True, "2"),
+        (2700.0, "local_action_divergence_without_measured_future_difference", 1, 1, 0, True, "3"),
+    ]
+    return [
+        _freeze({
+            "schema_version": 1,
+            "source_scenario_identity": marker * 64,
+            "branch_at_sec": branch,
+            "branch_minute": branch / 60.0,
+            "future_status": status,
+            "eligible": True,
+            "anchor_verified": True,
+            "branch_state_identity": marker * 64,
+            "changed_actions": changed,
+            "locally_attributable_changes": local,
+            "descriptive_future_difference_count": differences,
+            "simulator_local_action_attribution": attributed,
+            "outcome_causality_authorized": False,
+            "real_football_causality_authorized": False,
+        }, "archive_identity")
+        for branch, status, changed, local, differences, attributed, marker
+        in rows
+    ]
+
+
 def _future_trace():
     terminal = {
         "review_identity": "c" * 64,
@@ -50,6 +78,7 @@ def _future_trace():
         "timing_sensitivity_observed": True,
         "ranking_performed": False,
         "best_branch_time": None,
+        "reviewed_scenarios": _reviewed_scenarios(),
     }
     return _freeze({
         "schema_version": 1,
@@ -101,6 +130,7 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             ],
             ranking_performed=False,
             best_branch_time=None,
+            reviewed_scenarios=terminal["reviewed_scenarios"],
             evidence_authority="simulator_mechanism_review_only",
         ),
         _stage("frozen_manager_decision", "frozen"),
@@ -382,7 +412,8 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
         "visible_chapters_with_continuity_gaps": 1,
         "world_model_influence_path": {
             "review_selected": 2,
-            "reviewed_future_scenario_evidence": 2,
+                "reviewed_future_scenario_evidence": 2,
+                "reviewed_future_scenario_archives": 6,
             "reviewed_future_action_divergence": 2,
             "reviewed_future_local_attribution": 2,
             "reviewed_future_timing_sensitivity": 2,
@@ -441,6 +472,8 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
     assert trajectory["reviewed_future_chapters"] == 2
     assert trajectory["reviewed_future_selected_chapters"] == 2
     assert trajectory["scenario_evidence_chapters"] == 2
+    assert trajectory["reviewed_scenario_archives"] == 6
+    assert trajectory["identity_verified_scenario_archives"] == 6
     assert trajectory["reviewed_action_divergence_chapters"] == 2
     assert trajectory["reviewed_timing_sensitivity_chapters"] == 2
     assert trajectory["future_to_outcome_comparison_performed"] is False
@@ -472,6 +505,7 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
         "timing_sensitivity_observed": True,
         "ranking_performed": False,
         "best_branch_time": None,
+        "scenarios": _reviewed_scenarios(),
         "outcome_comparison_performed": False,
         "causal_effect_authorized": False,
     }
@@ -916,6 +950,37 @@ def test_impossible_reviewed_future_partition_fails_closed_when_rehashed():
         build_manager_world_navigator(_season(entries=[boolean_count]))
 
 
+def test_rehashed_reviewed_scenario_time_tamper_fails_closed():
+    entry = _entry(1)
+    trace = entry["future_review_execution_trace"]
+    terminal = trace["terminal_review"]
+    scenario = terminal["reviewed_scenarios"][1]
+    scenario["branch_minute"] = 99.0
+    scenario.pop("archive_identity")
+    scenario["archive_identity"] = _identity(scenario)
+    trace.pop("trace_identity")
+    trace["trace_identity"] = _identity(trace)
+
+    thread = entry["world_evolution_thread"]
+    review_stage = next(
+        row for row in thread["stages"]
+        if row["stage_id"] == "prematch_future_review"
+    )
+    review_stage["source_identity"] = trace["trace_identity"]
+    review_stage["reviewed_scenarios"] = copy.deepcopy(
+        terminal["reviewed_scenarios"]
+    )
+    review_stage.pop("stage_identity")
+    review_stage["stage_identity"] = _identity(review_stage)
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    with pytest.raises(ValueError, match="scenario archive values"):
+        build_manager_world_navigator(_season(entries=[entry]))
+
+
 def test_reviewed_future_descriptive_difference_is_not_a_false_funnel():
     entry = _entry(1)
     trace = entry["future_review_execution_trace"]
@@ -927,6 +992,31 @@ def test_reviewed_future_descriptive_difference_is_not_a_false_funnel():
         "local_attribution_scenarios": 0,
         "descriptive_future_difference_scenarios": 2,
     })
+    replacements = [
+        (False, False, None, "descriptive_only_ineligible", 1, 0, 1),
+        (True, True, "8" * 64,
+         "action_divergence_without_local_attribution", 1, 0, 1),
+        (False, False, None, "descriptive_only_ineligible", 0, 0, 0),
+    ]
+    for scenario, values in zip(
+        terminal["reviewed_scenarios"], replacements, strict=True,
+    ):
+        (
+            eligible, anchor, state_identity, status,
+            changed, local, differences,
+        ) = values
+        scenario.update({
+            "eligible": eligible,
+            "anchor_verified": anchor,
+            "branch_state_identity": state_identity,
+            "future_status": status,
+            "changed_actions": changed,
+            "locally_attributable_changes": local,
+            "descriptive_future_difference_count": differences,
+            "simulator_local_action_attribution": False,
+        })
+        scenario.pop("archive_identity")
+        scenario["archive_identity"] = _identity(scenario)
     trace.pop("trace_identity")
     trace["trace_identity"] = _identity(trace)
     thread = entry["world_evolution_thread"]
@@ -942,6 +1032,9 @@ def test_reviewed_future_descriptive_difference_is_not_a_false_funnel():
         "descriptive_future_difference_scenarios",
     ):
         review_stage[field] = terminal[field]
+    review_stage["reviewed_scenarios"] = copy.deepcopy(
+        terminal["reviewed_scenarios"]
+    )
     review_stage["source_identity"] = trace["trace_identity"]
     review_stage.pop("stage_identity")
     review_stage["stage_identity"] = _identity(review_stage)

@@ -340,6 +340,34 @@ def _future_review_execution_trace(
         for example in (scenario.get("mechanism_examples") or [])
         if isinstance(example, Mapping)
     ]
+    reviewed_scenarios = []
+    for scenario in terminal_scenarios:
+        if not isinstance(scenario, Mapping):
+            raise ValueError("terminal future review scenario is invalid")
+        archived = {
+            "schema_version": 1,
+            "source_scenario_identity": scenario.get("scenario_identity"),
+            "branch_at_sec": scenario.get("branch_at_sec"),
+            "branch_minute": scenario.get("branch_minute"),
+            "future_status": scenario.get("future_status"),
+            "eligible": scenario.get("eligible"),
+            "anchor_verified": scenario.get("anchor_verified"),
+            "branch_state_identity": scenario.get("branch_state_identity"),
+            "changed_actions": scenario.get("changed_actions"),
+            "locally_attributable_changes": scenario.get(
+                "locally_attributable_changes"
+            ),
+            "descriptive_future_difference_count": scenario.get(
+                "descriptive_future_difference_count"
+            ),
+            "simulator_local_action_attribution": scenario.get(
+                "simulator_local_action_attribution"
+            ),
+            "outcome_causality_authorized": False,
+            "real_football_causality_authorized": False,
+        }
+        archived["archive_identity"] = _identity(archived)
+        reviewed_scenarios.append(archived)
     payload = {
         "schema_version": 1,
         "available": True,
@@ -382,6 +410,7 @@ def _future_review_execution_trace(
             ),
             "ranking_performed": evidence_summary.get("ranking_performed"),
             "best_branch_time": evidence_summary.get("best_branch_time"),
+            "reviewed_scenarios": reviewed_scenarios,
         },
         "final_selection": {
             "decision_identity": decision_identity,

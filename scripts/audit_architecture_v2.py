@@ -682,6 +682,9 @@ def main() -> int:
                 '"evidence_level": (',
                 '"fixed_scenario_budget": int(',
                 '"descriptive_future_difference_scenarios": int(',
+                '"source_scenario_identity": scenario.get("scenario_identity")',
+                'archived["archive_identity"] = _identity(archived)',
+                '"reviewed_scenarios": reviewed_scenarios',
             ))
             and all(token in web for token in (
                 "function appendManagerWorldEvolutionThread(",
@@ -740,6 +743,10 @@ def main() -> int:
                 '"reviewed_future_action_divergence"',
                 '"reviewed_future_local_attribution"',
                 '"reviewed_future_timing_sensitivity"',
+                "def _validate_reviewed_scenarios(",
+                '"reviewed_scenario_archives"',
+                '"identity_verified_scenario_archives"',
+                '"scenarios": copy.deepcopy(reviewed_scenarios)',
                 '"trajectory_point_identity"',
                 '"world_change_markers"',
                 '"descriptive_chronology_only": True',

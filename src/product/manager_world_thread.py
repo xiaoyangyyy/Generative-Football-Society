@@ -100,6 +100,9 @@ def build_manager_world_evolution_thread(
         ),
         ranking_performed=terminal_review.get("ranking_performed"),
         best_branch_time=terminal_review.get("best_branch_time"),
+        reviewed_scenarios=copy.deepcopy(
+            terminal_review.get("reviewed_scenarios") or []
+        ),
         evidence_authority="simulator_mechanism_review_only",
     )
     decision_stage = _stage(

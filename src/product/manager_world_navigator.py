@@ -66,6 +66,20 @@ _FUTURE_REVIEW_COUNT_FIELDS = (
     "local_attribution_scenarios",
     "descriptive_future_difference_scenarios",
 )
+_REVIEWED_SCENARIO_FIELDS = {
+    "schema_version", "source_scenario_identity", "branch_at_sec",
+    "branch_minute", "future_status", "eligible", "anchor_verified",
+    "branch_state_identity", "changed_actions",
+    "locally_attributable_changes", "descriptive_future_difference_count",
+    "simulator_local_action_attribution", "outcome_causality_authorized",
+    "real_football_causality_authorized", "archive_identity",
+}
+_REVIEWED_SCENARIO_STATUSES = {
+    "descriptive_only_ineligible", "no_realized_action_divergence",
+    "action_divergence_without_local_attribution",
+    "local_action_divergence_with_descriptive_future_difference",
+    "local_action_divergence_without_measured_future_difference",
+}
 _BOUNDARY = (
     "navigation over the current manager intervention session and replayable "
     "completed simulator-world chapters only; navigation state is not an "
@@ -95,6 +109,126 @@ def _identity_matches(payload: Mapping[str, Any], field: str) -> bool:
             key: value for key, value in payload.items() if key != field
         })
     )
+
+
+def _validate_reviewed_scenarios(
+    scenarios: Any, *, evidence_level: Any,
+    fixed_budget: Any, expected_counts: Mapping[str, Any],
+    expected_timing_sensitivity: Any,
+) -> list[dict[str, Any]]:
+    """Validate the bounded, non-ranked historical fork archive."""
+    if evidence_level == "aggregate_only":
+        if scenarios != []:
+            raise ValueError("aggregate-only future review has scenario archive")
+        return []
+    if (
+        evidence_level != "scenario_evidence"
+        or isinstance(fixed_budget, bool)
+        or not isinstance(fixed_budget, int)
+        or not 2 <= fixed_budget <= 4
+        or not isinstance(scenarios, list)
+        or len(scenarios) != fixed_budget
+    ):
+        raise ValueError("reviewed future scenario archive budget is invalid")
+    prior_time: float | None = None
+    seen_source: set[str] = set()
+    seen_archive: set[str] = set()
+    normalized = []
+    for raw in scenarios:
+        if not isinstance(raw, Mapping) or set(raw) != _REVIEWED_SCENARIO_FIELDS:
+            raise ValueError("reviewed future scenario archive fields are invalid")
+        branch = raw.get("branch_at_sec")
+        minute = raw.get("branch_minute")
+        state_identity = raw.get("branch_state_identity")
+        changed = raw.get("changed_actions")
+        local = raw.get("locally_attributable_changes")
+        differences = raw.get("descriptive_future_difference_count")
+        if (
+            raw.get("schema_version") != 1
+            or not _is_identity(raw.get("source_scenario_identity"))
+            or not _identity_matches(raw, "archive_identity")
+            or raw["source_scenario_identity"] in seen_source
+            or raw["archive_identity"] in seen_archive
+            or isinstance(branch, bool)
+            or not isinstance(branch, (int, float))
+            or not math.isfinite(float(branch))
+            or not 0 <= float(branch) <= 5400
+            or (prior_time is not None and float(branch) <= prior_time)
+            or isinstance(minute, bool)
+            or not isinstance(minute, (int, float))
+            or not math.isfinite(float(minute))
+            or not math.isclose(
+                float(minute), float(branch) / 60.0,
+                rel_tol=0.0, abs_tol=1e-9,
+            )
+            or raw.get("future_status") not in _REVIEWED_SCENARIO_STATUSES
+            or not isinstance(raw.get("eligible"), bool)
+            or not isinstance(raw.get("anchor_verified"), bool)
+            or (raw.get("eligible") and not raw.get("anchor_verified"))
+            or (state_identity is not None and not _is_identity(state_identity))
+            or (raw.get("anchor_verified") and state_identity is None)
+            or any(
+                isinstance(value, bool) or not isinstance(value, int)
+                or not 0 <= value <= 100_000
+                for value in (changed, local, differences)
+            )
+            or local > changed
+            or not isinstance(
+                raw.get("simulator_local_action_attribution"), bool
+            )
+            or (
+                raw.get("simulator_local_action_attribution")
+                and (local == 0 or not raw.get("eligible"))
+            )
+            or raw.get("outcome_causality_authorized") is not False
+            or raw.get("real_football_causality_authorized") is not False
+        ):
+            raise ValueError("reviewed future scenario archive values are invalid")
+        semantic_status = (
+            "descriptive_only_ineligible" if not raw["eligible"] else
+            "no_realized_action_divergence" if changed == 0 else
+            "action_divergence_without_local_attribution"
+            if not raw["simulator_local_action_attribution"] else
+            "local_action_divergence_with_descriptive_future_difference"
+            if differences > 0 else
+            "local_action_divergence_without_measured_future_difference"
+        )
+        if raw["future_status"] != semantic_status:
+            raise ValueError("reviewed future scenario archive semantics are invalid")
+        prior_time = float(branch)
+        seen_source.add(raw["source_scenario_identity"])
+        seen_archive.add(raw["archive_identity"])
+        normalized.append(dict(raw))
+    rebuilt = {
+        "eligible_scenarios": sum(row["eligible"] for row in normalized),
+        "verified_anchor_scenarios": sum(
+            row["anchor_verified"] for row in normalized
+        ),
+        "action_divergence_scenarios": sum(
+            row["changed_actions"] > 0 for row in normalized
+        ),
+        "local_attribution_scenarios": sum(
+            row["simulator_local_action_attribution"] for row in normalized
+        ),
+        "descriptive_future_difference_scenarios": sum(
+            row["descriptive_future_difference_count"] > 0
+            for row in normalized
+        ),
+    }
+    signatures = {
+        (
+            row["future_status"], row["changed_actions"],
+            row["locally_attributable_changes"],
+            row["descriptive_future_difference_count"],
+        )
+        for row in normalized
+    }
+    if (
+        any(rebuilt[field] != expected_counts.get(field) for field in rebuilt)
+        or expected_timing_sensitivity is not (len(signatures) > 1)
+    ):
+        raise ValueError("reviewed future scenario archive aggregate mismatch")
+    return normalized
 
 
 def _descriptive_world_propagation(
@@ -256,6 +390,15 @@ def _season_world_trajectory(
             row["reviewed_future_context"]["evidence_level"]
             == "scenario_evidence"
             for row in reviewed_points
+        ),
+        "reviewed_scenario_archives": sum(
+            len(row["reviewed_future_context"]["scenarios"])
+            for row in reviewed_points
+        ),
+        "identity_verified_scenario_archives": sum(
+            _identity_matches(scenario, "archive_identity")
+            for row in reviewed_points
+            for scenario in row["reviewed_future_context"]["scenarios"]
         ),
         "reviewed_action_divergence_chapters": sum(
             row["reviewed_future_context"][
@@ -438,6 +581,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     review_counts = {
         field: review_stage.get(field) for field in _FUTURE_REVIEW_COUNT_FIELDS
     }
+    reviewed_scenarios = review_stage.get("reviewed_scenarios")
     expected_review_status = (
         "selected_for_fixture"
         if terminal_review.get("linked_to_final_selection") is True
@@ -507,6 +651,8 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
                 != terminal_review.get("evidence_level")
                 or review_stage.get("retained_mechanism_examples")
                 != terminal_review.get("retained_mechanism_examples")
+                or reviewed_scenarios
+                != terminal_review.get("reviewed_scenarios")
                 or any(
                     review_counts[field] != terminal_review.get(field)
                     for field in _FUTURE_REVIEW_COUNT_FIELDS
@@ -566,6 +712,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
                 or review_stage.get("timing_sensitivity_observed") is not None
                 or review_stage.get("ranking_performed") is not None
                 or review_stage.get("best_branch_time") is not None
+                or reviewed_scenarios != []
             )
         )
         or (
@@ -661,6 +808,16 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         or len(gaps) != len(set(gaps))
     ):
         raise ValueError("manager world navigator chapter facts are invalid")
+    if review_available:
+        _validate_reviewed_scenarios(
+            reviewed_scenarios,
+            evidence_level=review_stage.get("evidence_level"),
+            fixed_budget=review_counts["fixed_scenario_budget"],
+            expected_counts=review_counts,
+            expected_timing_sensitivity=review_stage.get(
+                "timing_sensitivity_observed"
+            ),
+        )
     if action_status == "locally_attributable_action_changes_observed":
         adoption_state = "realized_action_change"
     elif action_status == "probability_influence_without_realized_action_change":
@@ -743,6 +900,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
             ),
             "ranking_performed": review_stage.get("ranking_performed"),
             "best_branch_time": review_stage.get("best_branch_time"),
+            "scenarios": copy.deepcopy(reviewed_scenarios),
             "outcome_comparison_performed": False,
             "causal_effect_authorized": False,
         },
@@ -876,6 +1034,10 @@ def build_manager_world_navigator(
         "reviewed_future_scenario_evidence": sum(
             row["reviewed_future_context"]["evidence_level"]
             == "scenario_evidence"
+            for row in all_chapters
+        ),
+        "reviewed_future_scenario_archives": sum(
+            len(row["reviewed_future_context"]["scenarios"])
             for row in all_chapters
         ),
         "reviewed_future_action_divergence": sum(

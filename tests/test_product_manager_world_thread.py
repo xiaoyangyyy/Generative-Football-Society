@@ -18,6 +18,35 @@ def _identity(payload):
     ).encode("utf-8")).hexdigest()
 
 
+def _reviewed_scenarios():
+    rows = [
+        (900.0, "no_realized_action_divergence", 0, 0, 0, False, "1"),
+        (1800.0, "local_action_divergence_with_descriptive_future_difference", 1, 1, 1, True, "2"),
+        (2700.0, "local_action_divergence_without_measured_future_difference", 1, 1, 0, True, "3"),
+    ]
+    scenarios = []
+    for branch, status, changed, local, differences, attributed, marker in rows:
+        payload = {
+            "schema_version": 1,
+            "source_scenario_identity": marker * 64,
+            "branch_at_sec": branch,
+            "branch_minute": branch / 60.0,
+            "future_status": status,
+            "eligible": True,
+            "anchor_verified": True,
+            "branch_state_identity": marker * 64,
+            "changed_actions": changed,
+            "locally_attributable_changes": local,
+            "descriptive_future_difference_count": differences,
+            "simulator_local_action_attribution": attributed,
+            "outcome_causality_authorized": False,
+            "real_football_causality_authorized": False,
+        }
+        payload["archive_identity"] = _identity(payload)
+        scenarios.append(payload)
+    return scenarios
+
+
 def _entry(*, action_available=True, stable=False, review_linked=True):
     action = (
         {
@@ -82,6 +111,7 @@ def _entry(*, action_available=True, stable=False, review_linked=True):
                 "timing_sensitivity_observed": True,
                 "ranking_performed": False,
                 "best_branch_time": None,
+                "reviewed_scenarios": _reviewed_scenarios(),
             },
         },
         "execution": {
@@ -149,6 +179,12 @@ def test_world_evolution_thread_connects_six_stages_without_inventing_causality(
     assert thread["stages"][0]["timing_sensitivity_observed"] is True
     assert thread["stages"][0]["ranking_performed"] is False
     assert thread["stages"][0]["best_branch_time"] is None
+    assert thread["stages"][0]["reviewed_scenarios"] == (
+        entry["future_review_execution_trace"]["terminal_review"][
+            "reviewed_scenarios"
+        ]
+    )
+    assert len(thread["stages"][0]["reviewed_scenarios"]) == 3
     assert thread["stages"][5]["metrics_delta"]["team_fatigue_ema"] == 0.08
     assert [link["status"] for link in thread["links"]] == [
         "identity_bound",
