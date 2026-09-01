@@ -2453,7 +2453,7 @@ validation artifact existed; the implementation did not borrow pass evidence
 to manufacture cross authority. Hold remains the reference continuation action unless a future
 action-specific contract authorizes direct promotion.
 
-Runtime evidence declares `validated_action_simplex_v1`, lists the exact
+Runtime evidence originally declared `validated_action_simplex_v1`, lists the exact
 policy actions admitted for each opportunity and aggregates action-level
 positive/negative guidance, probability movement, applied authority and local
 changes. The compact Studio status preserves this bounded breakdown and shows
@@ -2559,3 +2559,40 @@ physics xG fallback and zero learned shot authority.
 This is a code and evidence-semantics correction only. It performs no training,
 sealed evaluation, match, provider call or promotion, and it makes no claim that
 physics xG is optimal or that a future frozen head will improve match outcomes.
+
+## 84. V3.66 Reference-only hold attribution
+
+Hold is the continuation reference used to ask whether a validated pass, shot
+or cross is better than retaining the ball. It does not currently have an
+independent grouped-heldout validation contract. The V1 simplex correctly left
+its quality gate closed, but a suppression-only signal could still move
+probability mass from pass to hold, label hold as `recommended_action`, and
+count an observed hold as direct adoption. That confused a normalization effect
+with learned hold authority.
+
+`validated_action_simplex_v2` makes the distinction executable. The controller
+admits direct signals only for pass, shot and cross, even if stale or forged
+runtime evidence attempts to open a hold gate. The planner marks hold as
+`counterfactual_reference_only`, with zero direct authorization. A positive
+validated action can still be a direct recommendation. When all model evidence
+is suppressive, `recommended_action` is `none`; the suppressed action remains
+the primary signed signal, while any increased hold probability is recorded as
+an indirect redistribution recipient.
+
+The resolved record and aggregate diagnostics now separate direct adoption from
+the hold reference effect. They retain the hold probability gain, realized hold
+actions and locally changed-to-hold samples without adding any hold entry to the
+action-specific signal breakdown or direct adoption count. Studio preserves and
+shows this compact reference block with an explicit warning that it is not an
+independent learned hold recommendation.
+Internal utility movement behind a closed gate is diagnostic only and no longer
+increments `influenced_opportunities`; influence begins only when the shared
+probability controller accepts a finite, authorized direct signal.
+The legacy mean-recommended-probability metric now accumulates only direct
+positive recommendations. A separate mean-primary-signal metric retains the
+magnitude of both promotion and suppression without relabelling suppression as
+recommendation.
+
+This corrects attribution semantics; it does not add a hold model, establish
+that holding is optimal, or prove downstream outcome improvement. No training,
+match, formal experiment or provider call is executed in this stage.

@@ -267,6 +267,7 @@ def _action_adoption_digest(value: Any) -> dict[str, Any]:
         "counterfactual_change_rate",
         "expected_counterfactual_change_rate",
         "mean_recommended_probability_shift",
+        "mean_primary_signal_probability_shift",
     )
     digest: dict[str, Any] = {
         "reason": value.get("reason"),
@@ -304,6 +305,29 @@ def _action_adoption_digest(value: Any) -> dict[str, Any]:
                 for field in breakdown_fields
             }
     digest["action_signal_breakdown"] = breakdown
+    raw_reference = value.get("reference_action_breakdown") or {}
+    if isinstance(raw_reference, Mapping):
+        digest["reference_action_breakdown"] = {
+            "action": str(raw_reference.get("action") or "hold"),
+            "role": str(
+                raw_reference.get("role") or "counterfactual_baseline_only"
+            ),
+            "direct_signal_opportunities": int(
+                raw_reference.get("direct_signal_opportunities") or 0
+            ),
+            "redistribution_opportunities": int(
+                raw_reference.get("redistribution_opportunities") or 0
+            ),
+            "realized_actions": int(
+                raw_reference.get("realized_actions") or 0
+            ),
+            "counterfactual_changes": int(
+                raw_reference.get("counterfactual_changes") or 0
+            ),
+            "mean_probability_gain": float(
+                raw_reference.get("mean_probability_gain") or 0.0
+            ),
+        }
     return digest
 
 

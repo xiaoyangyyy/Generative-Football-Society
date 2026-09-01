@@ -331,7 +331,8 @@ class _Summary:
             "counterfactual_change_rate": 0.2,
             "expected_counterfactual_change_rate": 0.18,
             "mean_recommended_probability_shift": 0.015,
-            "probability_policy_version": "validated_action_simplex_v1",
+            "mean_primary_signal_probability_shift": 0.019,
+            "probability_policy_version": "validated_action_simplex_v2",
             "action_signal_breakdown": {
                 "pass": {
                     "signal_opportunities": 8,
@@ -353,6 +354,15 @@ class _Summary:
                     "mean_absolute_probability_shift": 0.03,
                     "mean_applied_authority": 0.15,
                 },
+            },
+            "reference_action_breakdown": {
+                "action": "hold",
+                "role": "counterfactual_baseline_only",
+                "direct_signal_opportunities": 0,
+                "redistribution_opportunities": 4,
+                "realized_actions": 3,
+                "counterfactual_changes": 1,
+                "mean_probability_gain": 0.021,
             },
             "records": [
                 {
@@ -938,8 +948,9 @@ def test_studio_match_writes_one_composed_product_report(tmp_path, monkeypatch):
     assert latest_adoption["influenced_opportunities"] == 10
     assert latest_adoption["counterfactual_action_changes"] == 2
     assert latest_adoption["counterfactual_change_rate"] == 0.2
+    assert latest_adoption["mean_primary_signal_probability_shift"] == 0.019
     assert latest_adoption["probability_policy_version"] == (
-        "validated_action_simplex_v1"
+        "validated_action_simplex_v2"
     )
     assert latest_adoption["action_signal_breakdown"]["shot"] == {
         "signal_opportunities": 2,
@@ -950,6 +961,15 @@ def test_studio_match_writes_one_composed_product_report(tmp_path, monkeypatch):
         "mean_probability_delta": 0.03,
         "mean_absolute_probability_shift": 0.03,
         "mean_applied_authority": 0.15,
+    }
+    assert latest_adoption["reference_action_breakdown"] == {
+        "action": "hold",
+        "role": "counterfactual_baseline_only",
+        "direct_signal_opportunities": 0,
+        "redistribution_opportunities": 4,
+        "realized_actions": 3,
+        "counterfactual_changes": 1,
+        "mean_probability_gain": 0.021,
     }
     assert "records" not in latest_adoption
     assert status["runs_total"] == 1

@@ -226,12 +226,19 @@ def action_imagination_adjustments(
     gates = {
         str(action): {
             "open": False,
-            "quality_kind": "shot" if action == "shot" else "pass",
+            "quality_kind": (
+                "reference" if action == "hold" else str(action)
+            ),
             "reason": (
                 "reference_action_not_directly_promoted" if action == "hold"
                 else "no_action_specific_validation"
             ),
             "confidence": 0.0,
+            "authority_type": (
+                "counterfactual_reference_only" if action == "hold"
+                else "action_specific_validation_required"
+            ),
+            "direct_action_authorized": False,
         }
         for action in labels
     }
@@ -270,6 +277,7 @@ def action_imagination_adjustments(
             adjustments["pass"] = adjustment
             gates["pass"].update({
                 "open": True,
+                "direct_action_authorized": True,
                 "reason": "validated_pass_vs_hold_advantage",
                 "pass_value": pass_value,
                 "hold_value": hold_value,
@@ -307,6 +315,9 @@ def action_imagination_adjustments(
         gates["shot"].update({
             **shot_authority,
             "open": bool(shot_authority["authorized"] and shot_confidence > 0.0),
+            "direct_action_authorized": bool(
+                shot_authority["authorized"] and shot_confidence > 0.0
+            ),
             "confidence": shot_confidence,
             "reason": (
                 "validated_shot_vs_continuation_advantage"
@@ -368,6 +379,7 @@ def action_imagination_adjustments(
             adjustments["cross"] = cross_adjustment
             gates["cross"].update({
                 "open": True,
+                "direct_action_authorized": True,
                 "reason": "validated_cross_vs_continuation_advantage",
                 "cross_value": cross_value,
                 "hold_value": hold_value,

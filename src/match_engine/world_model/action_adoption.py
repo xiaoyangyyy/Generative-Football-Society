@@ -8,6 +8,9 @@ import numpy as np
 
 
 _MAX_SAMPLED_RECORDS = 96
+_DIRECTLY_VALIDATED_ACTIONS = frozenset({"pass", "shot", "cross"})
+_REFERENCE_ACTION = "hold"
+_PROBABILITY_POLICY_VERSION = "validated_action_simplex_v2"
 
 
 def mask_infeasible_action_probabilities(
@@ -74,7 +77,11 @@ def mix_direct_action_probabilities(
     signals: list[tuple[int, dict[str, Any], float, float]] = []
     for index, action in enumerate(labels):
         gate = gates.get(str(action)) or {}
-        if str(action) not in feasible or not gate.get("open", False):
+        if (
+            str(action) not in feasible
+            or str(action) not in _DIRECTLY_VALIDATED_ACTIONS
+            or not gate.get("open", False)
+        ):
             continue
         try:
             advantage = float(gate.get("model_advantage", 0.0))
@@ -109,7 +116,7 @@ def mix_direct_action_probabilities(
     mixed = (1.0 - blend_weight) * base + blend_weight * target
     mixed = np.clip(mixed, 0.0, None)
     mixed /= max(1e-12, float(mixed.sum()))
-    record["probability_policy_version"] = "validated_action_simplex_v1"
+    record["probability_policy_version"] = _PROBABILITY_POLICY_VERSION
     record["applied_policy_actions"] = [
         str(labels[index]) for index, _gate, _advantage, _authority in signals
     ]
@@ -119,6 +126,15 @@ def mix_direct_action_probabilities(
         gate["applied_probability_blend_weight"] = float(blend_weight)
         if str(labels[index]) == "pass":
             gate["model_target_pass_probability"] = float(target[index])
+    signal_indices = {item[0] for item in signals}
+    record["redistribution_recipient_actions"] = [
+        str(action) for index, action in enumerate(labels)
+        if (
+            str(action) in feasible
+            and index not in signal_indices
+            and float(mixed[index] - base[index]) > 1e-12
+        )
+    ]
     return mixed
 
 
@@ -144,6 +160,11 @@ def register_action_policy_opportunity(
             "counterfactual_action_changes": 0,
             "expected_counterfactual_action_changes": 0.0,
             "probability_shift_sum": 0.0,
+            "primary_signal_probability_shift_sum": 0.0,
+            "reference_redistribution_opportunities": 0,
+            "reference_realized_actions": 0,
+            "reference_counterfactual_changes": 0,
+            "reference_probability_gain_sum": 0.0,
             "action_signal_breakdown": {}, "records": [],
         }
         state._wm_direct_action_adoption = store
@@ -152,13 +173,11 @@ def register_action_policy_opportunity(
     feasible_indices = [
         index for index, action in enumerate(labels) if action in feasible_actions
     ]
-    changed_indices = [
-        index for index in feasible_indices
-        if abs(float(adjusted[index] - base[index])) > 1e-12
-    ]
     policy_signals: list[tuple[int, float]] = []
     for index in feasible_indices:
         action = str(labels[index])
+        if action not in _DIRECTLY_VALIDATED_ACTIONS:
+            continue
         gate = quality_gates.get(action) or {}
         if not gate.get("open", False):
             continue
@@ -175,44 +194,21 @@ def register_action_policy_opportunity(
             and confidence > 0.0 and certainty > 0.0 and blend > 0.0
         ):
             policy_signals.append((index, advantage))
-    positive_indices = [
-        index for index in changed_indices
-        if float(adjusted[index] - base[index]) > 0.0
-    ]
     positive_policy = [item for item in policy_signals if item[1] > 0.0]
-    negative_policy_indices = {
-        index for index, advantage in policy_signals if advantage < 0.0
-    }
     if positive_policy:
         recommended_index = max(positive_policy, key=lambda item: item[1])[0]
-    elif negative_policy_indices:
-        alternatives = [
-            index for index in feasible_indices
-            if index not in negative_policy_indices
-        ]
-        recommended_index = max(
-            alternatives or feasible_indices, key=lambda index: base[index],
-        )
-    elif positive_indices:
-        recommended_index = max(
-            positive_indices, key=lambda index: adjusted[index] - base[index],
-        )
-    elif changed_indices:
-        unchanged = [
-            index for index in feasible_indices if index not in changed_indices
-        ]
-        recommended_index = max(
-            unchanged or feasible_indices, key=lambda index: base[index],
-        )
     else:
-        recommended_index = (
-            max(feasible_indices, key=lambda index: base[index])
-            if feasible_indices else None
-        )
+        recommended_index = None
+    primary_signal_index = (
+        max(policy_signals, key=lambda item: abs(item[1]))[0]
+        if policy_signals else None
+    )
     recommended = (
         str(labels[recommended_index]) if recommended_index is not None else "none"
     )
-    influenced = bool(changed_indices or policy_signals)
+    # Internal utility movement is diagnostic. An opportunity is influenced
+    # only when the probability controller accepts an authorized direct signal.
+    influenced = bool(policy_signals)
     opportunity_id = (
         f"direct:{team_id}:{float(t_sec):.3f}:{int(store['opportunities'])}"
     )
@@ -221,6 +217,14 @@ def register_action_policy_opportunity(
         "t_sec": float(t_sec),
         "feasible_actions": sorted(str(action) for action in feasible_actions),
         "recommended_action": recommended,
+        "primary_signal_action": (
+            str(labels[primary_signal_index])
+            if primary_signal_index is not None else "none"
+        ),
+        "signal_mode": (
+            "direct_preference" if positive_policy
+            else "suppression_only" if policy_signals else "none"
+        ),
         "base_utilities": {
             str(action): float(base[index]) for index, action in enumerate(labels)
         },
@@ -234,11 +238,16 @@ def register_action_policy_opportunity(
         "quality_gates": quality_gates, "influenced": influenced,
         "base_probability": None, "adjusted_probability": None,
         "recommended_probability_delta": None, "actual_action": None,
+        "primary_signal_probability_delta": None,
         "sampling_uniform": None, "counterfactual_baseline_action": None,
         "policy_changed_action": None,
         "total_variation_distance": None,
-        "probability_policy_version": "validated_action_simplex_v1",
+        "probability_policy_version": _PROBABILITY_POLICY_VERSION,
         "applied_policy_actions": [],
+        "redistribution_recipient_actions": [],
+        "reference_action": _REFERENCE_ACTION,
+        "reference_action_role": "counterfactual_baseline_only",
+        "reference_action_directly_authorized": False,
         "adopted": None, "attribution_eligible": None,
         "resolution": "pending_sample",
     }
@@ -285,8 +294,16 @@ def record_action_policy_sample(
         float(adjusted[recommended_index] - base[recommended_index])
         if recommended_index is not None else 0.0
     )
+    primary_signal = str(record.get("primary_signal_action") or "none")
+    primary_signal_index = (
+        labels.index(primary_signal) if primary_signal in labels else None
+    )
+    primary_signal_delta = (
+        float(adjusted[primary_signal_index] - base[primary_signal_index])
+        if primary_signal_index is not None else 0.0
+    )
     actual = str(actual_action).lower()
-    adopted = actual == recommended
+    adopted = recommended != "none" and actual == recommended
     attribution_eligible = bool(
         record["influenced"] and not externally_overridden and not cointervention
     )
@@ -299,8 +316,22 @@ def record_action_policy_sample(
         and actual != counterfactual
     )
     total_variation = float(0.5 * np.abs(adjusted - base).sum())
+    reference_index = (
+        labels.index(_REFERENCE_ACTION)
+        if _REFERENCE_ACTION in labels else None
+    )
+    reference_delta = (
+        float(adjusted[reference_index] - base[reference_index])
+        if reference_index is not None else 0.0
+    )
+    reference_redistributed = bool(
+        reference_delta > 1e-12
+        and _REFERENCE_ACTION
+        in (record.get("redistribution_recipient_actions") or [])
+    )
     record.update({
         "recommended_probability_delta": delta, "actual_action": actual,
+        "primary_signal_probability_delta": primary_signal_delta,
         "sampling_uniform": (
             float(sampling_uniform) if sampling_uniform is not None else None
         ),
@@ -313,6 +344,17 @@ def record_action_policy_sample(
             else "cointervention_not_attributable" if cointervention
             else "sampled_after_world_model_adjustment"
         ),
+        "reference_action_effect": {
+            "action": _REFERENCE_ACTION,
+            "role": "counterfactual_baseline_only",
+            "directly_authorized": False,
+            "probability_delta": reference_delta,
+            "received_redistributed_probability": reference_redistributed,
+            "realized_as_actual_action": bool(actual == _REFERENCE_ACTION),
+            "policy_changed_to_reference": bool(
+                changed_action and actual == _REFERENCE_ACTION
+            ),
+        },
     })
     store["resolved"] += 1
     store["adopted"] += int(adopted)
@@ -324,7 +366,22 @@ def record_action_policy_sample(
     store.setdefault("expected_counterfactual_action_changes", 0.0)
     if attribution_eligible:
         store["expected_counterfactual_action_changes"] += total_variation
+    # Keep the legacy public metric semantically narrow: it measures only a
+    # direct positive recommendation. Suppression has its own signed signal.
     store["probability_shift_sum"] += abs(delta)
+    store.setdefault("primary_signal_probability_shift_sum", 0.0)
+    store["primary_signal_probability_shift_sum"] += abs(primary_signal_delta)
+    if reference_redistributed:
+        store.setdefault("reference_redistribution_opportunities", 0)
+        store.setdefault("reference_probability_gain_sum", 0.0)
+        store.setdefault("reference_realized_actions", 0)
+        store.setdefault("reference_counterfactual_changes", 0)
+        store["reference_redistribution_opportunities"] += 1
+        store["reference_probability_gain_sum"] += reference_delta
+        store["reference_realized_actions"] += int(actual == _REFERENCE_ACTION)
+        store["reference_counterfactual_changes"] += int(
+            changed_action and actual == _REFERENCE_ACTION
+        )
     breakdown = store.setdefault("action_signal_breakdown", {})
     gates = record.get("quality_gates") or {}
     for action in record.get("applied_policy_actions") or []:
@@ -420,9 +477,20 @@ def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
             "pass_target_changes": 0,
             "pass_target_expected_changes": 0.0,
             "adoption_rate": 0.0,
-            "probability_policy_version": "validated_action_simplex_v1",
+            "probability_policy_version": _PROBABILITY_POLICY_VERSION,
             "action_signal_breakdown": {},
-            "mean_recommended_probability_shift": 0.0, "records": [],
+            "reference_action_breakdown": {
+                "action": _REFERENCE_ACTION,
+                "role": "counterfactual_baseline_only",
+                "direct_signal_opportunities": 0,
+                "redistribution_opportunities": 0,
+                "realized_actions": 0,
+                "counterfactual_changes": 0,
+                "mean_probability_gain": 0.0,
+            },
+            "mean_recommended_probability_shift": 0.0,
+            "mean_primary_signal_probability_shift": 0.0,
+            "records": [],
         }
     resolved = int(store["resolved"])
     action_breakdown = {}
@@ -473,11 +541,31 @@ def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
         "pass_target_expected_changes": float(
             store.get("pass_target_expected_changes", 0.0)
         ),
-        "probability_policy_version": "validated_action_simplex_v1",
+        "probability_policy_version": _PROBABILITY_POLICY_VERSION,
         "action_signal_breakdown": action_breakdown,
+        "reference_action_breakdown": {
+            "action": _REFERENCE_ACTION,
+            "role": "counterfactual_baseline_only",
+            "direct_signal_opportunities": 0,
+            "redistribution_opportunities": int(
+                store.get("reference_redistribution_opportunities", 0)
+            ),
+            "realized_actions": int(store.get("reference_realized_actions", 0)),
+            "counterfactual_changes": int(
+                store.get("reference_counterfactual_changes", 0)
+            ),
+            "mean_probability_gain": float(
+                store.get("reference_probability_gain_sum", 0.0)
+                / max(1, store.get("reference_redistribution_opportunities", 0))
+            ),
+        },
         "adoption_rate": float(store["adopted"] / max(1, resolved)),
         "mean_recommended_probability_shift": float(
             store["probability_shift_sum"] / max(1, resolved)
+        ),
+        "mean_primary_signal_probability_shift": float(
+            store.get("primary_signal_probability_shift_sum", 0.0)
+            / max(1, resolved)
         ),
         "records_retained": len(store["records"]),
         "records_truncated": int(store["opportunities"]) > len(store["records"]),

@@ -199,6 +199,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "evidence?.shot_action_validation||{}" in document
     assert "shot.frozen_head_authorized" in document
     assert "shot.skill_vs_physics_xg_prior" in document
+    assert "reference_action_breakdown" in document
+    assert "reference.redistribution_opportunities" in document
+    assert "reference.mean_probability_gain" in document
+    assert "renderActionAdoptionWithoutHoldReference" in document
     assert "mean_applied_authority" in document
     assert "renderActionAdoptionWithoutCurrentCodeEvidence" in document
     assert "mechanism.result_identity_verified" in document

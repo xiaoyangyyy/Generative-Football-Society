@@ -22,9 +22,13 @@ cross-specific runtime authority and replayable cross trajectories. The current
 v9 checkpoint contains no such cross evidence, so cross authority correctly
 remains zero until a future checkpoint passes the registered grouped-heldout
 gate. M1 remains default-off. See `docs/ACTION_OUTCOME_RESULT_V1.md` and
-`docs/ARCHITECTURE_V2.md` sections 81--83. V3.65 also makes the joint
+`docs/ARCHITECTURE_V2.md` sections 81--84. V3.65 also makes the joint
 world-model shot head diagnostic-only: direct shot authority requires an
 independently sealed frozen head that beats the physics xG prior.
+V3.66 makes hold a strict counterfactual reference action. Probability shifted
+to hold after another validated action is suppressed is reported as indirect
+redistribution, never as an independently learned hold recommendation or
+direct adoption.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

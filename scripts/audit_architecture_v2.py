@@ -321,12 +321,12 @@ def main() -> int:
         ),
         "world_model_action_authority_uses_validated_feasible_simplex": (
             all(token in action_adoption_controller for token in (
-                "validated_action_simplex_v1",
+                "validated_action_simplex_v2",
                 "applied_policy_actions",
                 "action_signal_breakdown",
                 "applied_action_authority",
                 "model_target_action_probability",
-                "if str(action) not in feasible",
+                "str(action) not in feasible",
                 "blend_weight = max(item[3] for item in signals)",
             ))
             and all(token in world_model_planner for token in (
@@ -353,6 +353,34 @@ def main() -> int:
                 "renderActionAdoptionWithoutCurrentCodeEvidence",
                 "mechanism.result_identity_verified",
                 "outcome.result_identity_verified",
+            ))
+        ),
+        "hold_is_reference_only_not_direct_model_authority": (
+            all(token in action_adoption_controller for token in (
+                '_DIRECTLY_VALIDATED_ACTIONS = frozenset({"pass", "shot", "cross"})',
+                '_REFERENCE_ACTION = "hold"',
+                'or str(action) not in _DIRECTLY_VALIDATED_ACTIONS',
+                '"reference_action_directly_authorized": False',
+                '"reference_action_breakdown": {',
+                '"direct_signal_opportunities": 0',
+                'recommended != "none" and actual == recommended',
+                "influenced = bool(policy_signals)",
+                '"mean_primary_signal_probability_shift"',
+            ))
+            and all(token in world_model_planner for token in (
+                '"reference" if action == "hold"',
+                '"counterfactual_reference_only" if action == "hold"',
+                '"direct_action_authorized": False',
+            ))
+            and all(token in workspace for token in (
+                'value.get("reference_action_breakdown")',
+                '"redistribution_opportunities"',
+                '"mean_probability_gain"',
+            ))
+            and all(token in web for token in (
+                "renderActionAdoptionWithoutHoldReference",
+                "reference.redistribution_opportunities",
+                "reference.mean_probability_gain",
             ))
         ),
         "studio_previews_authoritative_decision_effects_without_persistence": (

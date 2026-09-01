@@ -220,7 +220,7 @@ def test_controller_competes_across_validated_actions_on_one_simplex():
         sampling_uniform=0.5, counterfactual_baseline_action="pass",
     )
     audit = direct_action_adoption_diagnostics(state)
-    assert audit["probability_policy_version"] == "validated_action_simplex_v1"
+    assert audit["probability_policy_version"] == "validated_action_simplex_v2"
     assert set(audit["action_signal_breakdown"]) == {"pass", "shot"}
     assert audit["action_signal_breakdown"]["pass"]["negative_guidance"] == 1
     assert audit["action_signal_breakdown"]["shot"]["positive_guidance"] == 1
@@ -422,12 +422,95 @@ def test_shared_uniform_identifies_world_model_changed_action():
     assert baseline_action == "pass"
     assert adjusted_action == "hold"
     audit = direct_action_adoption_diagnostics(state)
+    assert audit["records"][0]["recommended_action"] == "none"
+    assert audit["records"][0]["signal_mode"] == "suppression_only"
+    assert audit["records"][0]["adopted"] is False
     assert audit["counterfactual_action_changes"] == 1
     assert audit["expected_counterfactual_action_changes"] > 0.0
     assert audit["attribution_eligible_opportunities"] == 1
     assert audit["counterfactual_change_rate"] == 1.0
     assert audit["records"][0]["policy_changed_action"] is True
     assert audit["records"][0]["total_variation_distance"] > 0.0
+    assert audit["mean_recommended_probability_shift"] == 0.0
+    assert audit["mean_primary_signal_probability_shift"] > 0.0
+    reference = audit["reference_action_breakdown"]
+    assert reference["role"] == "counterfactual_baseline_only"
+    assert reference["direct_signal_opportunities"] == 0
+    assert reference["redistribution_opportunities"] == 1
+    assert reference["realized_actions"] == 1
+    assert reference["counterfactual_changes"] == 1
+    assert reference["mean_probability_gain"] > 0.0
+
+
+def test_hold_cannot_gain_direct_authority_from_a_forged_open_gate():
+    state = SimpleNamespace()
+    labels = ["pass", "hold"]
+    baseline = np.array([0.5, 0.5], dtype=float)
+    register_action_policy_opportunity(
+        state, team_id="home", t_sec=11.0,
+        feasible_actions=set(labels),
+        base_utilities=[0.0, 0.0],
+        adjusted_utilities=[0.0, 0.35],
+        labels=labels,
+        model_adjustments={"pass": 0.0, "hold": 0.35},
+        quality_gates={
+            "pass": {"open": False},
+            "hold": {
+                "open": True,
+                "decision_confidence": 1.0,
+                "decision_certainty": 1.0,
+                "policy_blend": 0.35,
+                "model_advantage": 0.35,
+            },
+        },
+    )
+
+    adjusted = mix_direct_action_probabilities(
+        state, labels=labels, probabilities=baseline,
+    )
+    record = state._wm_pending_direct_action_adoption
+
+    assert np.array_equal(adjusted, baseline)
+    assert record["recommended_action"] == "none"
+    assert record["primary_signal_action"] == "none"
+    assert record["influenced"] is False
+    assert record["applied_policy_actions"] == []
+    assert record["reference_action_directly_authorized"] is False
+
+
+def test_closed_gate_utility_movement_is_not_reported_as_policy_influence():
+    state = SimpleNamespace()
+    labels = ["pass", "hold"]
+    baseline = np.array([0.5, 0.5], dtype=float)
+    register_action_policy_opportunity(
+        state, team_id="home", t_sec=12.0,
+        feasible_actions=set(labels),
+        base_utilities=[0.0, 0.0],
+        adjusted_utilities=[0.30, 0.0],
+        labels=labels,
+        model_adjustments={"pass": 0.30, "hold": 0.0},
+        quality_gates={
+            "pass": {
+                "open": False,
+                "decision_confidence": 1.0,
+                "decision_certainty": 1.0,
+                "policy_blend": 0.35,
+                "model_advantage": 0.35,
+            },
+            "hold": {"open": False},
+        },
+    )
+
+    adjusted = mix_direct_action_probabilities(
+        state, labels=labels, probabilities=baseline,
+    )
+    audit = direct_action_adoption_diagnostics(state)
+
+    assert np.array_equal(adjusted, baseline)
+    assert audit["opportunities"] == 1
+    assert audit["influenced_opportunities"] == 0
+    assert audit["records"][0]["influenced"] is False
+    assert audit["records"][0]["signal_mode"] == "none"
 
 
 def test_action_engine_resolves_direct_policy_against_actual_sample(monkeypatch):

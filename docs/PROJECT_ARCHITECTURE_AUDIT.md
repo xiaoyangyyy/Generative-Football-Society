@@ -54,6 +54,10 @@ not quality signals by themselves.
 18. Removed direct action authority from the joint shot head. Its development
     quality remains diagnostic, while runtime shot probability falls back to
     physics xG unless an identity-bound frozen head wins on sealed groups.
+19. Made hold a strict counterfactual reference rather than an implicit learned
+    recommendation. Suppression-driven probability redistribution to hold is
+    now measured separately and cannot enter direct action authority or direct
+    adoption counts, even if stale evidence attempts to open its gate.
 
 ## LLM Scope Decision
 
