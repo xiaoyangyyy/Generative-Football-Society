@@ -37,7 +37,10 @@ PLAYABLE_TACTICS: dict[str, dict[str, str]] = {
         "description": "减少横向传递，优先快速向前和直塞。",
     },
 }
-MATCH_EXPERIENCES = {"observational", "tactical_lab", "season_manager"}
+MATCH_EXPERIENCES = {
+    "observational", "tactical_lab", "world_model_lab", "season_manager",
+}
+WORLD_MODEL_POLICIES = {"mode_default", "predict_only", "action_policy"}
 
 
 @dataclass(frozen=True)
@@ -48,6 +51,7 @@ class MatchPlan:
     home_tactic: str = NATIVE_TACTIC
     away_tactic: str = NATIVE_TACTIC
     reuse_last_seed: bool = False
+    world_model_policy: str = "mode_default"
 
     def __post_init__(self) -> None:
         if self.experience not in MATCH_EXPERIENCES:
@@ -59,6 +63,8 @@ class MatchPlan:
                 raise ValueError(f"unsupported {side} tactic")
         if not isinstance(self.reuse_last_seed, bool):
             raise ValueError("reuse_last_seed must be boolean")
+        if self.world_model_policy not in WORLD_MODEL_POLICIES:
+            raise ValueError("unsupported world-model policy")
         interventions = (
             self.home_tactic != NATIVE_TACTIC
             or self.away_tactic != NATIVE_TACTIC
@@ -66,9 +72,20 @@ class MatchPlan:
         if self.experience == "observational" and interventions:
             raise ValueError("observational matches cannot override tactics")
         if self.experience == "observational" and self.reuse_last_seed:
-            raise ValueError("seed reuse is only available in tactical_lab")
+            raise ValueError(
+                "seed reuse is only available in tactical_lab or world_model_lab"
+            )
         if self.experience == "tactical_lab" and not interventions:
             raise ValueError("tactical_lab requires at least one tactical intervention")
+        if self.experience == "world_model_lab":
+            if self.world_model_policy not in {"predict_only", "action_policy"}:
+                raise ValueError(
+                    "world_model_lab requires an explicit world-model policy"
+                )
+        elif self.world_model_policy != "mode_default":
+            raise ValueError(
+                "world-model policy overrides are confined to world_model_lab"
+            )
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any] | None) -> "MatchPlan":
@@ -80,6 +97,7 @@ class MatchPlan:
             home_tactic=raw.get("home_tactic", NATIVE_TACTIC),
             away_tactic=raw.get("away_tactic", NATIVE_TACTIC),
             reuse_last_seed=raw.get("reuse_last_seed", False),
+            world_model_policy=raw.get("world_model_policy", "mode_default"),
         )
 
     def validate_for_mode(self, studio_mode: str, *, context: str = "standalone") -> None:
@@ -87,6 +105,8 @@ class MatchPlan:
             "research", "cognitive",
         }:
             raise ValueError("tactical_lab requires research or cognitive mode")
+        if self.experience == "world_model_lab" and studio_mode != "research":
+            raise ValueError("world_model_lab requires deterministic research mode")
         if self.experience == "season_manager" and context != "season":
             raise ValueError("season_manager is only available inside a season fixture")
 
@@ -94,7 +114,9 @@ class MatchPlan:
     def score_path(self) -> str:
         return (
             "physics_official"
-            if self.experience in {"tactical_lab", "season_manager"}
+            if self.experience in {
+                "tactical_lab", "world_model_lab", "season_manager",
+            }
             else "macro_replay"
         )
 
@@ -105,10 +127,13 @@ class MatchPlan:
             "home_tactic": self.home_tactic,
             "away_tactic": self.away_tactic,
             "reuse_last_seed": self.reuse_last_seed,
+            "world_model_policy": self.world_model_policy,
             "score_path": self.score_path,
             "claim_boundary": (
                 "gameplay intervention only; no causal or real-world claim"
                 if self.experience == "season_manager" else
+                "shared-seed policy contrast only; not a population or real-world causal effect"
+                if self.experience == "world_model_lab" else
                 "single_run_descriptive_only; use a shared-seed pair for tactical attribution"
             ),
         }
@@ -191,6 +216,72 @@ class PairedMatchPlan:
             "claim_boundary": (
                 "single shared-seed contrast for this fixture only; "
                 "not a population effect or significance test"
+            ),
+        }
+
+
+@dataclass(frozen=True)
+class WorldModelForkPlan:
+    """One same-seed predict-only/action-policy product contrast."""
+
+    home_tactic: str
+    away_tactic: str
+    seed: int
+
+    def __post_init__(self) -> None:
+        if (
+            isinstance(self.seed, bool) or not isinstance(self.seed, int)
+            or not 0 <= self.seed <= 2**31 - 1
+        ):
+            raise ValueError("world-model fork seed must be a 32-bit non-negative integer")
+        for side, tactic in (
+            ("home", self.home_tactic), ("away", self.away_tactic),
+        ):
+            if tactic not in PLAYABLE_TACTICS:
+                raise ValueError(f"unsupported {side} tactic")
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "WorldModelForkPlan":
+        if not isinstance(payload, Mapping):
+            raise ValueError("world-model fork plan must be an object")
+        return cls(
+            home_tactic=payload.get("home_tactic", NATIVE_TACTIC),
+            away_tactic=payload.get("away_tactic", NATIVE_TACTIC),
+            seed=payload.get("seed"),
+        )
+
+    def baseline_plan(self) -> MatchPlan:
+        return MatchPlan(
+            experience="world_model_lab",
+            home_tactic=self.home_tactic,
+            away_tactic=self.away_tactic,
+            world_model_policy="predict_only",
+        )
+
+    def treatment_plan(self) -> MatchPlan:
+        return MatchPlan(
+            experience="world_model_lab",
+            home_tactic=self.home_tactic,
+            away_tactic=self.away_tactic,
+            reuse_last_seed=True,
+            world_model_policy="action_policy",
+        )
+
+    def validate_for_mode(self, studio_mode: str) -> None:
+        self.baseline_plan().validate_for_mode(studio_mode)
+        self.treatment_plan().validate_for_mode(studio_mode)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "seed": self.seed,
+            "home_tactic": self.home_tactic,
+            "away_tactic": self.away_tactic,
+            "baseline_policy": "predict_only",
+            "treatment_policy": "action_policy",
+            "claim_boundary": (
+                "single shared-seed simulator policy contrast only; not a population "
+                "effect, significance test, real-football causal effect, or promotion"
             ),
         }
 

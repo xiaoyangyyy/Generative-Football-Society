@@ -2039,7 +2039,9 @@ class ProductWorkspace:
         return seed
 
     @contextmanager
-    def _mode_environment(self) -> Iterator[None]:
+    def _mode_environment(
+        self, *, world_model_policy: str = "mode_default",
+    ) -> Iterator[None]:
         from src.simulation.runtime import environment_override
 
         values = dict(MODE_ENVIRONMENT[self.config.mode])
@@ -2049,6 +2051,12 @@ class ProductWorkspace:
                 evidence.get("world_model_checkpoint")
                 or values.get("MATCH_WM_CHECKPOINT")
             )
+        if world_model_policy == "predict_only":
+            values["MATCH_WM_PLAN"] = "0"
+        elif world_model_policy == "action_policy":
+            values["MATCH_WM_PLAN"] = "1"
+        elif world_model_policy != "mode_default":
+            raise ValueError("unsupported world-model policy override")
         shot_decision = evidence.get("frozen_shot_head") or {}
         shot_artifact = shot_decision.get("promotion_artifact")
         values["MATCH_WM_SHOT_HEAD"] = (
@@ -4804,14 +4812,18 @@ class ProductWorkspace:
         seed: int,
         transaction_id: str | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        """Run one baseline/treatment pair without allowing interleaving."""
+        """Run one isolated baseline/treatment pair without interleaving."""
+        experience = baseline_plan.experience
         if (
-            baseline_plan.experience != "tactical_lab"
-            or treatment_plan.experience != "tactical_lab"
+            experience not in {"tactical_lab", "world_model_lab"}
+            or treatment_plan.experience != experience
             or baseline_plan.score_path != "physics_official"
             or treatment_plan.score_path != "physics_official"
         ):
-            raise ValueError("paired matches require tactical_lab physics plans")
+            raise ValueError(
+                "paired matches require matching tactical_lab or world_model_lab "
+                "physics plans"
+            )
         if baseline_plan.reuse_last_seed:
             raise ValueError("baseline plan cannot reuse a prior seed")
         if not treatment_plan.reuse_last_seed:
@@ -4822,8 +4834,25 @@ class ProductWorkspace:
             if getattr(baseline_plan, f"{side}_tactic")
             != getattr(treatment_plan, f"{side}_tactic")
         ]
-        if len(changed_sides) != 1:
-            raise ValueError("paired matches require exactly one changed tactical side")
+        if experience == "tactical_lab":
+            if len(changed_sides) != 1:
+                raise ValueError(
+                    "paired matches require exactly one changed tactical side"
+                )
+            if (
+                baseline_plan.world_model_policy != "mode_default"
+                or treatment_plan.world_model_policy != "mode_default"
+            ):
+                raise ValueError("tactical pairs cannot alter world-model policy")
+        elif (
+            changed_sides
+            or baseline_plan.world_model_policy != "predict_only"
+            or treatment_plan.world_model_policy != "action_policy"
+        ):
+            raise ValueError(
+                "world-model pairs require fixed tactics and exactly "
+                "predict_only to action_policy"
+            )
         if transaction_id is not None and (
             not isinstance(transaction_id, str)
             or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{2,63}", transaction_id)
@@ -4878,6 +4907,7 @@ class ProductWorkspace:
                                 "home_tactic",
                                 "away_tactic",
                                 "reuse_last_seed",
+                                "world_model_policy",
                                 "score_path",
                             )
                         )
@@ -5082,10 +5112,15 @@ class ProductWorkspace:
                 baseline_record = (session.get("matches") or [{}])[-1]
             baseline_plan = baseline_record.get("match_plan") or {}
             if (
-                baseline_plan.get("experience") != "tactical_lab"
+                baseline_plan.get("experience") != plan.experience
+                or baseline_plan.get("experience") not in {
+                    "tactical_lab", "world_model_lab",
+                }
                 or baseline_plan.get("score_path") != "physics_official"
             ):
-                raise ValueError("paired baseline must be a tactical_lab physics match")
+                raise ValueError(
+                    "paired baseline must use the same paired physics experience"
+                )
             if baseline_record.get("fast") is not fast:
                 raise ValueError("paired baseline must use the same fast configuration")
             if seed_override is not None and seed_override != expected_seed:
@@ -5218,7 +5253,9 @@ class ProductWorkspace:
 
         gateway = None
         calls_before = 0
-        with self._mode_environment():
+        with self._mode_environment(
+            world_model_policy=plan.world_model_policy,
+        ):
             if self.config.mode == "cognitive":
                 from src.simulation.llm_gateway import get_shared_llm_gateway
 

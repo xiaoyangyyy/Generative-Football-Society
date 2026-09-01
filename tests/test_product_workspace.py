@@ -9,7 +9,7 @@ import time
 import pytest
 
 from src.product.workspace import ProductWorkspace, StudioConfig
-from src.product.match_plan import MatchPlan, PLAYABLE_TACTICS
+from src.product.match_plan import MatchPlan, PLAYABLE_TACTICS, WorldModelForkPlan
 from src.product.club_strategy import (
     resolve_fixture_club_strategy,
     strategy_identity,
@@ -923,7 +923,7 @@ def test_workspace_paired_execution_enforces_single_side_physics_contract(
             treatment_plan=joint_treatment,
             seed=7,
         )
-    with pytest.raises(ValueError, match="tactical_lab physics"):
+    with pytest.raises(ValueError, match="matching tactical_lab"):
         workspace.run_paired_matches(
             "Brazil",
             "Argentina",
@@ -932,6 +932,57 @@ def test_workspace_paired_execution_enforces_single_side_physics_contract(
             treatment_plan=joint_treatment,
             seed=7,
         )
+
+
+def test_workspace_world_model_fork_is_atomic_and_changes_only_plan_authority(
+    tmp_path, monkeypatch,
+):
+    _evidence(tmp_path)
+    workspace = ProductWorkspace.create(
+        tmp_path,
+        StudioConfig(name="World Fork", mode="research", seed=11),
+    )
+    fork = WorldModelForkPlan(
+        home_tactic="balanced", away_tactic="low_block_counter", seed=77,
+    )
+    observed = []
+    from src import app
+    from src.simulation.runtime import environment_snapshot
+
+    def fake_match(*args, **kwargs):
+        environment = environment_snapshot()
+        observed.append({
+            "plan": environment.get("MATCH_WM_PLAN"),
+            "checkpoint": environment.get("MATCH_WM_CHECKPOINT"),
+            "home_tactic": kwargs.get("home_tactic"),
+            "away_tactic": kwargs.get("away_tactic"),
+            "seed": kwargs.get("seed"),
+        })
+        return _Summary()
+
+    monkeypatch.setattr(app, "run_micro_match", fake_match)
+    baseline, treatment = workspace.run_paired_matches(
+        "Brazil", "Argentina", fast=True,
+        baseline_plan=fork.baseline_plan(),
+        treatment_plan=fork.treatment_plan(), seed=fork.seed,
+        transaction_id="wm-fork-transaction-001",
+    )
+    assert [row["plan"] for row in observed] == ["0", "1"]
+    assert observed[0]["checkpoint"] == observed[1]["checkpoint"]
+    assert observed[0]["home_tactic"] == observed[1]["home_tactic"] == "balanced"
+    assert observed[0]["away_tactic"] == observed[1]["away_tactic"] == (
+        "low_block_counter"
+    )
+    assert observed[0]["seed"] == observed[1]["seed"] == 77
+    comparison = json.loads(
+        Path(treatment["comparison_path"]).read_text(encoding="utf-8")
+    )
+    assert comparison["intervention"]["scope"] == "world_model_action_policy"
+    assert comparison["eligibility"][
+        "eligible_for_world_model_policy_attribution"
+    ]
+    assert baseline["match_plan"]["world_model_policy"] == "predict_only"
+    assert treatment["match_plan"]["world_model_policy"] == "action_policy"
 
 
 def test_paired_transaction_resumes_after_baseline_without_duplicate(

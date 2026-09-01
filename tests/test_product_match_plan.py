@@ -3,7 +3,9 @@ from types import MethodType, SimpleNamespace
 import pytest
 
 from src.match_engine.tactical_profile import apply_locked_tactical_preset
-from src.product.match_plan import MatchPlan, PairedMatchPlan, playable_tactic_catalog
+from src.product.match_plan import (
+    MatchPlan, PairedMatchPlan, WorldModelForkPlan, playable_tactic_catalog,
+)
 from tests.test_affective_phase1b import _FakeAgent
 
 
@@ -98,6 +100,25 @@ def test_paired_plan_freezes_seed_single_side_and_round_trips():
 def test_paired_plan_rejects_no_change_joint_change_or_invalid_seed(values):
     with pytest.raises(ValueError):
         PairedMatchPlan(**values)
+
+
+def test_world_model_fork_is_a_fixed_tactic_predict_only_policy_pair():
+    plan = WorldModelForkPlan(
+        home_tactic="balanced", away_tactic="low_block_counter", seed=91,
+    )
+    baseline, treatment = plan.baseline_plan(), plan.treatment_plan()
+    assert baseline.experience == treatment.experience == "world_model_lab"
+    assert baseline.world_model_policy == "predict_only"
+    assert treatment.world_model_policy == "action_policy"
+    assert not baseline.reuse_last_seed and treatment.reuse_last_seed
+    assert baseline.home_tactic == treatment.home_tactic == "balanced"
+    assert baseline.away_tactic == treatment.away_tactic == "low_block_counter"
+    assert WorldModelForkPlan.from_payload(plan.as_dict()) == plan
+    plan.validate_for_mode("research")
+    with pytest.raises(ValueError, match="deterministic research mode"):
+        plan.validate_for_mode("cognitive")
+    with pytest.raises(ValueError, match="confined to world_model_lab"):
+        MatchPlan(world_model_policy="action_policy")
 
 
 def test_user_preset_changes_full_vector_and_records_non_llm_source():

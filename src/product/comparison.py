@@ -286,17 +286,39 @@ def build_paired_comparison(
     if not treatment_plan.get("reuse_last_seed"):
         raise PairingError("treatment did not declare shared-seed reuse")
 
+    baseline_experience = str(baseline_plan.get("experience") or "")
+    treatment_experience = str(treatment_plan.get("experience") or "")
+    if baseline_experience != treatment_experience:
+        raise PairingError("paired reports require the same experiment type")
     changed_sides = [
         side for side in ("home", "away")
         if baseline_plan.get(f"{side}_tactic")
         != treatment_plan.get(f"{side}_tactic")
     ]
-    if not changed_sides:
-        raise PairingError("paired reports contain no tactical intervention change")
-    scope = (
-        "single_side_tactical_intervention"
-        if len(changed_sides) == 1 else "joint_tactical_intervention"
-    )
+    if baseline_experience == "tactical_lab":
+        if not changed_sides:
+            raise PairingError(
+                "paired reports contain no tactical intervention change"
+            )
+        scope = (
+            "single_side_tactical_intervention"
+            if len(changed_sides) == 1 else "joint_tactical_intervention"
+        )
+        policy_contract = True
+    elif baseline_experience == "world_model_lab":
+        if changed_sides:
+            raise PairingError("world-model fork must keep both tactics fixed")
+        if (
+            baseline_plan.get("world_model_policy") != "predict_only"
+            or treatment_plan.get("world_model_policy") != "action_policy"
+        ):
+            raise PairingError(
+                "world-model fork must isolate predict_only to action_policy"
+            )
+        scope = "world_model_action_policy"
+        policy_contract = True
+    else:
+        raise PairingError("unsupported paired experiment type")
     same_mode = (
         (baseline.get("studio") or {}).get("mode")
         == (treatment.get("studio") or {}).get("mode")
@@ -321,6 +343,7 @@ def build_paired_comparison(
             _checkpoint_identity(baseline) == _checkpoint_identity(treatment)
         ),
         "provider_determinism_controlled": mode != "cognitive",
+        "intervention_contract_isolated": policy_contract,
     }
     eligible = all(checks.values())
     metrics: dict[str, dict[str, float | None]] = {}
@@ -348,6 +371,7 @@ def build_paired_comparison(
         "treatment": {"match_id": treatment_id, "plan": dict(treatment_plan)},
         "intervention": {
             "scope": scope,
+            "experiment_type": baseline_experience,
             "changed_sides": changed_sides,
             "baseline_tactics": {
                 side: baseline_plan.get(f"{side}_tactic")
@@ -357,15 +381,30 @@ def build_paired_comparison(
                 side: treatment_plan.get(f"{side}_tactic")
                 for side in ("home", "away")
             },
+            "baseline_world_model_policy": baseline_plan.get(
+                "world_model_policy", "mode_default"
+            ),
+            "treatment_world_model_policy": treatment_plan.get(
+                "world_model_policy", "mode_default"
+            ),
         },
         "eligibility": {
-            "eligible_for_tactical_attribution": eligible,
+            "eligible_for_tactical_attribution": (
+                eligible if baseline_experience == "tactical_lab" else False
+            ),
+            "eligible_for_world_model_policy_attribution": (
+                eligible if baseline_experience == "world_model_lab" else False
+            ),
             "checks": checks,
             "failed_checks": [key for key, passed in checks.items() if not passed],
         },
         "metrics": metrics,
         "paired_replay": paired_replay,
         "claim_boundary": (
+            "paired deterministic simulator-policy contrast for this fixture and "
+            "seed only; not a population effect, significance test, real-football "
+            "causal effect, or world-model promotion"
+            if baseline_experience == "world_model_lab" else
             "paired deterministic contrast for this fixture and seed only; "
             "not a population effect, significance test, or general performance claim"
         ),
@@ -550,10 +589,46 @@ def render_paired_comparison_html(comparison: Mapping[str, Any]) -> str:
     fixture = comparison.get("fixture") or {}
     eligibility = comparison.get("eligibility") or {}
     intervention = comparison.get("intervention") or {}
-    eligible = bool(eligibility.get("eligible_for_tactical_attribution"))
+    world_model_fork = intervention.get("scope") == "world_model_action_policy"
+    eligible = bool(
+        eligibility.get("eligible_for_world_model_policy_attribution")
+        if world_model_fork else
+        eligibility.get("eligible_for_tactical_attribution")
+    )
     state = "配对资格通过" if eligible else "仅描述性比较"
     before = intervention.get("baseline_tactics") or {}
     after = intervention.get("treatment_tactics") or {}
+    if world_model_fork:
+        page_title = "世界模型因果分叉"
+        eyebrow = "GFS Football Causal World Lab · shared-seed policy fork"
+        baseline_title = "基线世界"
+        treatment_title = "干预世界"
+        baseline_body = (
+            "世界模型保持加载并预测，但 MATCH_WM_PLAN=0，"
+            "预测不得进入动作策略。"
+        )
+        treatment_body = (
+            "使用同一检查点并设置 MATCH_WM_PLAN=1，"
+            "仅经质量门控的信号可以改变动作概率。"
+        )
+        intervention_explanation = (
+            "唯一计划干预：predict_only → action_policy；球队、战术、"
+            "快速配置、检查点与随机种子保持一致。"
+        )
+    else:
+        page_title = "战术配对比较"
+        eyebrow = "GFS Tactical Lab · shared-seed contrast"
+        baseline_title = "基线战术"
+        treatment_title = "处理战术"
+        baseline_body = (
+            f"主队：{_display_tactic(before.get('home'))}<br>"
+            f"客队：{_display_tactic(before.get('away'))}"
+        )
+        treatment_body = (
+            f"主队：{_display_tactic(after.get('home'))}<br>"
+            f"客队：{_display_tactic(after.get('away'))}"
+        )
+        intervention_explanation = str(intervention.get("scope"))
     metric_rows = []
     for name, values in (comparison.get("metrics") or {}).items():
         values = values or {}
@@ -581,10 +656,10 @@ def render_paired_comparison_html(comparison: Mapping[str, Any]) -> str:
     navigation = " · ".join(report_links)
     replay_panel = _paired_replay_panel(comparison)
     return f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{html.escape(str(fixture.get('home')))} vs {html.escape(str(fixture.get('away')))} · 战术配对比较</title>
+<title>{html.escape(str(fixture.get('home')))} vs {html.escape(str(fixture.get('away')))} · {page_title}</title>
 <style>:root{{--bg:#07111e;--panel:#111d2e;--line:#2a3a51;--ink:#edf4ff;--muted:#a8b6c9;--ok:#65e6b4;--warn:#ffc36a}}*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,sans-serif}}main{{max-width:1180px;margin:auto;padding:32px 20px}}h1{{font-size:clamp(28px,6vw,54px);margin:.2em 0}}.eyebrow,.muted{{color:var(--muted)}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}}.card{{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}}.ok{{color:var(--ok)}}.warn{{color:var(--warn)}}table{{width:100%;border-collapse:collapse}}th,td{{text-align:left;padding:9px;border-bottom:1px solid var(--line)}}.scroll{{overflow:auto}}code{{color:var(--ok)}}.pair-panel-head{{display:flex;justify-content:space-between;gap:12px;align-items:start}}.pair-panel-head h2{{margin:.2em 0}}.pair-badge{{display:inline-block;border:1px solid #42516a;border-radius:999px;padding:2px 8px;color:#cbd7e8;font-size:12px}}.pair-badge.changed{{border-color:var(--ok);color:var(--ok)}}.pair-summary{{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:14px 0}}.pair-summary>div{{display:grid;background:#0a1424;border:1px solid var(--line);border-radius:9px;padding:10px}}.pair-summary strong{{font-size:18px}}.pair-controls{{display:flex;flex-wrap:wrap;gap:7px;border:0;padding:0;margin:0}}.pair-controls legend{{width:100%;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.1em}}.pair-controls>input{{position:absolute;opacity:0;pointer-events:none}}.pair-controls>label{{border:1px solid #42516a;border-radius:999px;padding:6px 10px;cursor:pointer}}.pair-controls>input:focus-visible+label{{outline:3px solid var(--warn);outline-offset:2px}}.pair-controls>input:checked+label{{border-color:var(--ok);color:var(--ok);background:#10281f}}.pair-timeline{{display:flex;gap:5px;overflow:auto;width:100%;padding:12px 2px 5px}}.pair-timeline label{{flex:0 0 auto;min-width:42px;border:1px solid #42516a;border-radius:8px;padding:4px 7px;text-align:center;cursor:pointer;font-size:12px}}.pair-timeline label span{{display:block;color:var(--muted);font-size:10px}}.pair-navigation{{width:100%;margin-top:8px}}.pair-frame{{display:none;align-items:center;justify-content:space-between;gap:12px;background:#0a1424;border:1px solid var(--line);border-radius:10px;padding:10px}}.pair-frame>div{{display:grid;gap:3px;text-align:center;min-width:0}}.pair-frame-center{{flex:1}}.pair-current{{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left}}.pair-current>div{{display:grid;gap:2px;background:#0d192a;border-radius:8px;padding:8px}}.pair-current>div>span{{display:block}}.pair-button{{border:1px solid #42516a;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--ok);white-space:nowrap}}.pair-pitches{{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;margin-top:12px}}.pair-side{{background:#071c19;border:1px solid #285448;border-radius:12px;padding:10px}}.pair-side h3{{margin:0 0 6px}}.pair-side svg{{display:block;width:100%;height:auto}}.pair-pitch{{fill:#0c392d;stroke:#b8d8cd;stroke-width:3}}.pair-marking{{fill:none;stroke:#b8d8cd;stroke-width:3}}.pair-spot{{fill:#b8d8cd}}.pair-event line{{stroke-width:4;stroke-linecap:round;opacity:.42}}.pair-event circle{{opacity:.75}}.pair-home line,.pair-home circle{{stroke:#65e6b4;fill:#65e6b4}}.pair-away line,.pair-away circle{{stroke:#ff9f7a;fill:#ff9f7a}}.pair-shot line{{stroke-width:7;opacity:.85}}.pair-wm-changed line{{filter:drop-shadow(0 0 5px #fff);opacity:1}}#pair-filter-shots:checked~.pair-pitches .pair-event:not(.pair-shot),#pair-filter-wm:checked~.pair-pitches .pair-event:not(.pair-wm-changed){{display:none}}@media(max-width:760px){{th,td{{padding:7px;font-size:12px}}.pair-pitches,.pair-current{{grid-template-columns:1fr}}.pair-frame{{flex-wrap:wrap}}.pair-frame-center{{order:-1;width:100%;flex-basis:100%}}.pair-button{{flex:1;text-align:center}}.pair-panel-head{{display:block}}}}</style></head><body><main>
-<div class="eyebrow">GFS Tactical Lab · shared-seed contrast</div><h1>{html.escape(str(fixture.get('home')))} vs {html.escape(str(fixture.get('away')))}</h1><p>seed <code>{html.escape(str(fixture.get('seed')))}</code> · <strong class="{'ok' if eligible else 'warn'}">{state}</strong></p><p>{navigation}</p>
-<section class="grid"><article class="card"><h2>基线战术</h2><p>主队：{html.escape(_display_tactic(before.get('home')))}<br>客队：{html.escape(_display_tactic(before.get('away')))}</p></article><article class="card"><h2>处理战术</h2><p>主队：{html.escape(_display_tactic(after.get('home')))}<br>客队：{html.escape(_display_tactic(after.get('away')))}</p></article><article class="card"><h2>干预范围</h2><p>{html.escape(str(intervention.get('scope')))}</p></article></section>
+<div class="eyebrow">{eyebrow}</div><h1>{html.escape(str(fixture.get('home')))} vs {html.escape(str(fixture.get('away')))}</h1><p>seed <code>{html.escape(str(fixture.get('seed')))}</code> · <strong class="{'ok' if eligible else 'warn'}">{state}</strong></p><p>{navigation}</p>
+<section class="grid"><article class="card"><h2>{baseline_title}</h2><p>{baseline_body}</p></article><article class="card"><h2>{treatment_title}</h2><p>{treatment_body}</p></article><article class="card"><h2>干预范围</h2><p>{html.escape(intervention_explanation)}</p></article></section>
 <section class="card"><h2>配对资格检查</h2><ul>{check_rows}</ul></section>
 {replay_panel}
 <section class="card"><h2>处理场减去基线场</h2><div class="scroll"><table><thead><tr><th>指标</th><th>基线</th><th>处理</th><th>差值</th></tr></thead><tbody>{''.join(metric_rows)}</tbody></table></div></section>

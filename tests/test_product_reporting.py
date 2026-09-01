@@ -227,6 +227,29 @@ def test_tactical_lab_report_exposes_score_path_seed_and_inference_boundary():
     assert "0001-brazil-vs-argentina" in document
 
 
+def test_world_model_fork_report_exposes_policy_and_pairing_boundary():
+    report = _report()
+    report["fixture"]["seed"] = 91
+    report["match_plan"] = {
+        "experience": "world_model_lab",
+        "home_tactic": "balanced",
+        "away_tactic": "balanced",
+        "world_model_policy": "action_policy",
+        "reuse_last_seed": True,
+        "score_path": "physics_official",
+        "paired_baseline_match_id": "fork-baseline-001",
+    }
+
+    document = render_match_html(report)
+
+    assert 'data-testid="match-plan-panel"' in document
+    assert "世界模型因果分叉" in document
+    assert "干预：质量门控动作策略" in document
+    assert "seed 91" in document
+    assert "全部资格检查通过" in document
+    assert "模拟器内动作策略开关" in document
+
+
 def test_action_replay_is_css_only_filterable_and_escapes_persisted_text():
     report = _report()
     report["replay"] = {

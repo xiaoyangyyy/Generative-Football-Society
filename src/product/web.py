@@ -17,7 +17,9 @@ from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from src.infrastructure import FileLease, LeaseUnavailable
 from src.product.control_plane import ProductControlPlane
-from src.product.match_plan import MatchPlan, PairedMatchPlan, playable_tactic_catalog
+from src.product.match_plan import (
+    MatchPlan, PairedMatchPlan, WorldModelForkPlan, playable_tactic_catalog,
+)
 from src.product.season import ManagerDecision, SeasonPlan
 from src.product.player_promises import PlayerPromisePlan
 from src.product.tactical_study import TacticalStudyPlan
@@ -74,6 +76,16 @@ def _match_capabilities() -> dict[str, Any]:
             "intervention": "exactly_one_tactical_side",
             "score_path": "physics_official",
             "cognitive_claim_boundary": "descriptive_only",
+        },
+        "world_model_fork": {
+            "modes": ["research"],
+            "seed": "explicit_shared_seed",
+            "intervention": "predict_only_to_action_policy",
+            "fixed_controls": [
+                "fixture", "tactics", "fast_configuration", "checkpoint",
+            ],
+            "score_path": "physics_official",
+            "claim_boundary": "single_fixture_seed_simulator_contrast_only",
         },
     }
 
@@ -305,6 +317,11 @@ class ProductWebApp:
         if method == "POST" and path == "/api/v1/paired-matches":
             self._require_csrf(environ)
             return self._queue_paired_match(environ, self._read_json(environ))
+        if method == "POST" and path == "/api/v1/world-model-forks":
+            self._require_csrf(environ)
+            return self._queue_world_model_fork(
+                environ, self._read_json(environ),
+            )
         if method == "POST" and path == "/api/v1/tactical-studies":
             self._require_csrf(environ)
             return self._queue_tactical_study(environ, self._read_json(environ))
@@ -346,6 +363,7 @@ class ProductWebApp:
             return self._artifact_response(path.removeprefix("/artifacts/"))
         if path in {
             "/api/v1/studio", "/api/v1/matches", "/api/v1/paired-matches",
+            "/api/v1/world-model-forks",
             "/api/v1/tactical-studies",
             "/api/v1/seasons", "/api/v1/seasons/next-matchday",
             "/api/v1/seasons/decision",
@@ -513,7 +531,7 @@ class ProductWebApp:
                 "tasks": web_tasks[:20],
                 "evidence_library": {
                     "schema_version": 1, "limit": 50,
-                    "matches": [], "pairs": [], "studies": [],
+                    "matches": [], "pairs": [], "forks": [], "studies": [],
                     "truncated": False,
                 },
             }
@@ -588,7 +606,31 @@ class ProductWebApp:
             library_matches.append(item)
         library_studies = []
         library_pairs = []
+        library_forks = []
         for task in web_tasks:
+            if task.get("kind") == "world_model_fork":
+                request = task.get("request") or {}
+                try:
+                    plan = WorldModelForkPlan.from_payload(
+                        request.get("plan") or {},
+                    )
+                except ValueError:
+                    continue
+                result = task.get("result") or {}
+                library_forks.append({
+                    "task_id": task.get("task_id"),
+                    "home": request.get("home"), "away": request.get("away"),
+                    "seed": plan.seed,
+                    "home_tactic": plan.home_tactic,
+                    "away_tactic": plan.away_tactic,
+                    "state": task.get("state"),
+                    "baseline_match_id": result.get("baseline_match_id"),
+                    "treatment_match_id": result.get("treatment_match_id"),
+                    "baseline_url": result.get("baseline_url"),
+                    "treatment_url": result.get("treatment_url"),
+                    "comparison_url": result.get("comparison_url"),
+                })
+                continue
             if task.get("kind") == "paired_match":
                 request = task.get("request") or {}
                 raw_plan = request.get("plan") or {}
@@ -654,6 +696,7 @@ class ProductWebApp:
                 "schema_version": 1, "limit": 50,
                 "matches": library_matches,
                 "pairs": library_pairs,
+                "forks": library_forks,
                 "studies": library_studies,
                 "truncated": bool(status.get("match_history_truncated"))
                 or task_history_truncated,
@@ -1212,6 +1255,70 @@ class ProductWebApp:
         finally:
             self._mutation_lock.release()
 
+    def _queue_world_model_fork(
+        self, environ: dict[str, Any], payload: dict[str, Any],
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        home = self._text_field(payload, "home", maximum=80)
+        away = self._text_field(payload, "away", maximum=80)
+        if home.casefold() == away.casefold():
+            raise WebRequestError(422, "same_team", "Teams must differ")
+        fast = payload.get("fast", False)
+        if not isinstance(fast, bool):
+            raise WebRequestError(422, "invalid_fast", "fast must be boolean")
+        try:
+            plan = WorldModelForkPlan.from_payload(payload.get("plan"))
+        except ValueError as exc:
+            raise WebRequestError(
+                422, "invalid_world_model_fork", str(exc),
+            ) from exc
+        if not self._mutation_lock.acquire(blocking=False):
+            raise WebRequestError(
+                409, "operation_in_progress", "Another mutation is running",
+            )
+        try:
+            try:
+                workspace = ProductWorkspace.load(self.root)
+            except FileNotFoundError as exc:
+                raise WebRequestError(
+                    404, "studio_missing", "Create a Studio first",
+                ) from exc
+            try:
+                plan.validate_for_mode(workspace.config.mode)
+            except ValueError as exc:
+                raise WebRequestError(
+                    422, "invalid_world_model_fork", str(exc),
+                ) from exc
+            if not workspace.readiness()["ready"]:
+                raise WebRequestError(
+                    409, "world_model_fork_blocked",
+                    "World-model fork blocked by readiness gates",
+                )
+            try:
+                task, created = self.task_queue.submit_world_model_fork(
+                    home, away, fast=fast, plan=plan,
+                    idempotency_key=str(
+                        environ.get("HTTP_IDEMPOTENCY_KEY", "")
+                    ),
+                )
+            except TaskConflict as exc:
+                raise WebRequestError(
+                    409, "idempotency_conflict", str(exc),
+                ) from exc
+            except ValueError as exc:
+                raise WebRequestError(
+                    422, "invalid_idempotency_key", str(exc),
+                ) from exc
+            except RuntimeError as exc:
+                raise WebRequestError(
+                    409, "task_queue_full", "Task queue is full",
+                ) from exc
+            return self._json_response(202 if created else 200, {
+                "schema_version": 1, "created": created,
+                "task": self._task_for_web(task),
+            })
+        finally:
+            self._mutation_lock.release()
+
     @staticmethod
     def _safe_artifact_url(value: Any) -> str | None:
         relative = str(value or "")
@@ -1495,6 +1602,14 @@ _INDEX_HTML = """<!doctype html>
       <label class="check"><input name="fast" type="checkbox" checked>快速模式</label>
       <p id="pair-guidance" class="status">研究模式下，合格单个配对只支持这一固定对阵与 seed 的局部归因，不是总体效应或显著性检验。</p>
       <button type="submit">运行基线与处理配对</button></form></section>
+  <section id="fork-panel" class="wide" data-workspace-area="lab" aria-labelledby="fork-title" hidden><h2 id="fork-title">世界模型因果分叉</h2>
+    <p>自动创建两个严格配对的模拟世界：基线世界加载同一模型但禁止预测进入动作策略；干预世界只打开经过质量门控的动作策略。球队、战术、检查点、快速配置与 seed 全部固定。</p>
+    <form id="fork-form"><div class="row"><label>主队<input name="home" maxlength="80" value="Brazil" required></label><label>客队<input name="away" maxlength="80" value="Argentina" required></label></div>
+      <div class="row"><label>主队固定战术<select name="home_tactic"></select></label><label>客队固定战术<select name="away_tactic"></select></label></div>
+      <label>共享 seed<input name="seed" type="number" min="0" max="2147483647" value="42" required></label>
+      <label class="check"><input name="fast" type="checkbox" checked>快速模式</label>
+      <p id="fork-guidance" class="status">仅研究模式可用。单个分叉证明这一固定模拟局面中策略开关造成的差异，不代表总体效应、真实足球因果关系或模型晋级。</p>
+      <button type="submit">生成两个未来并比较</button></form></section>
   <section id="study-panel" class="wide" data-workspace-area="lab" aria-labelledby="study-title" hidden><h2 id="study-title">固定预算战术研究</h2>
     <p>只在研究模式运行：固定同一对阵与完整种子预算，仅改变一侧战术。预算完成前隐藏全部效应，避免可选停止和挑选结果。</p>
     <form id="study-form"><div class="row">
@@ -1607,8 +1722,8 @@ _INDEX_HTML = """<!doctype html>
     <p id="action-adoption-evidence" class="status"></p>
     <p id="manager-advisor-protocol-evidence" class="status"></p></section>
   <section id="library-panel" class="wide" data-workspace-area="evidence" aria-labelledby="library-title"><div class="panel-head"><div><h2 id="library-title">证据资料库</h2><p id="library-summary" class="status" aria-live="polite" aria-atomic="true">正在读取历史工件……</p></div>
-    <label>筛选<select id="library-filter"><option value="all">全部</option><option value="matches">比赛</option><option value="paired">配对比较</option><option value="studies">固定预算研究</option></select></label></div>
-    <div id="library-list" class="cards" role="list" aria-label="历史比赛、配对比较和战术研究"></div></section>
+    <label>筛选<select id="library-filter"><option value="all">全部</option><option value="matches">比赛</option><option value="forks">因果分叉</option><option value="paired">战术配对</option><option value="studies">固定预算研究</option></select></label></div>
+    <div id="library-list" class="cards" role="list" aria-label="历史比赛、世界模型分叉、配对比较和固定预算研究"></div></section>
   <section id="recovery-panel" class="wide" data-workspace-area="operations" aria-labelledby="recovery-title"><h2 id="recovery-title">恢复中心</h2>
     <p>备份保存在受控部署存储中。恢复前必须校验，并输入完整备份 ID 确认替换当前工作区。</p>
     <div class="toolbar"><button id="create-backup" type="button">创建完整备份</button><span id="recovery-message" class="status" role="status" aria-live="polite" aria-atomic="true"></span></div>
@@ -1627,7 +1742,7 @@ _INDEX_HTML = """<!doctype html>
 <script nonce="__NONCE__">
 const csrf=document.querySelector('meta[name="gfs-csrf"]').content;
 const workspaceNav=document.querySelector('#workspace-nav'),workspaceViewDescription=document.querySelector('#workspace-view-description'),workspaceViewButtons=[...document.querySelectorAll('[data-workspace-view]')],workspaceAreaSections=[...document.querySelectorAll('[data-workspace-area]')],actionPanel=document.querySelector('#action-panel');let currentWorkspaceArea='career',workspaceAreaExplicit=false;
-const cards=document.querySelector('#cards'),setup=document.querySelector('#setup-form'),match=document.querySelector('#match-form'),pairPanel=document.querySelector('#pair-panel'),pairForm=document.querySelector('#pair-form'),studyPanel=document.querySelector('#study-panel'),studyForm=document.querySelector('#study-form'),seasonPanel=document.querySelector('#season-panel'),seasonForm=document.querySelector('#season-form'),seasonSummary=document.querySelector('#season-summary'),matchdayCommand=document.querySelector('#matchday-command-center'),matchdayJourney=document.querySelector('#matchday-journey'),matchdayBriefing=document.querySelector('#matchday-briefing'),matchdayIntelligence=document.querySelector('#matchday-intelligence'),matchdayDebrief=document.querySelector('#matchday-debrief'),matchdayAttribution=document.querySelector('#matchday-attribution'),managerDecisionLedger=document.querySelector('#manager-decision-ledger'),managerDecisionLedgerSummary=document.querySelector('#manager-decision-ledger-summary'),managerDecisionLedgerList=document.querySelector('#manager-decision-ledger-list'),managerDecisionForm=document.querySelector('#manager-decision-form'),managerFixture=document.querySelector('#manager-fixture'),managerTactic=managerDecisionForm.querySelector('[name="tactic"]'),managerRotation=managerDecisionForm.querySelector('[name="rotation"]'),managerManual=document.querySelector('#manager-manual-lineup'),managerSquadStatus=document.querySelector('#manager-squad-status'),managerSquad=document.querySelector('#manager-squad'),managerRules=[...managerDecisionForm.querySelectorAll('.manager-rule')],managerDecisionPreview=document.querySelector('#manager-decision-preview'),managerDecisionSubmit=managerDecisionForm.querySelector('button[type="submit"]'),managerWorldModelAdvice=document.querySelector('#manager-world-model-advice'),managerWorldModelAdviceSummary=document.querySelector('#manager-world-model-advice-summary'),managerWorldModelAdviceCandidates=document.querySelector('#manager-world-model-advice-candidates'),requestManagerAdvice=document.querySelector('#request-manager-advice'),adoptManagerAdvice=document.querySelector('#adopt-manager-advice'),seasonActions=document.querySelector('#season-actions'),playMatchday=document.querySelector('#play-matchday'),seasonStandings=document.querySelector('#season-standings'),seasonFixtures=document.querySelector('#season-fixtures');let activePoll='',restoreTrigger=null,currentSeason=null,managerPreviewTimer=0,managerPreviewSequence=0,managerPreviewBaseRevision=null,currentManagerAdvice=null,managerAdviceIntent=null;
+const cards=document.querySelector('#cards'),setup=document.querySelector('#setup-form'),match=document.querySelector('#match-form'),pairPanel=document.querySelector('#pair-panel'),pairForm=document.querySelector('#pair-form'),forkPanel=document.querySelector('#fork-panel'),forkForm=document.querySelector('#fork-form'),studyPanel=document.querySelector('#study-panel'),studyForm=document.querySelector('#study-form'),seasonPanel=document.querySelector('#season-panel'),seasonForm=document.querySelector('#season-form'),seasonSummary=document.querySelector('#season-summary'),matchdayCommand=document.querySelector('#matchday-command-center'),matchdayJourney=document.querySelector('#matchday-journey'),matchdayBriefing=document.querySelector('#matchday-briefing'),matchdayIntelligence=document.querySelector('#matchday-intelligence'),matchdayDebrief=document.querySelector('#matchday-debrief'),matchdayAttribution=document.querySelector('#matchday-attribution'),managerDecisionLedger=document.querySelector('#manager-decision-ledger'),managerDecisionLedgerSummary=document.querySelector('#manager-decision-ledger-summary'),managerDecisionLedgerList=document.querySelector('#manager-decision-ledger-list'),managerDecisionForm=document.querySelector('#manager-decision-form'),managerFixture=document.querySelector('#manager-fixture'),managerTactic=managerDecisionForm.querySelector('[name="tactic"]'),managerRotation=managerDecisionForm.querySelector('[name="rotation"]'),managerManual=document.querySelector('#manager-manual-lineup'),managerSquadStatus=document.querySelector('#manager-squad-status'),managerSquad=document.querySelector('#manager-squad'),managerRules=[...managerDecisionForm.querySelectorAll('.manager-rule')],managerDecisionPreview=document.querySelector('#manager-decision-preview'),managerDecisionSubmit=managerDecisionForm.querySelector('button[type="submit"]'),managerWorldModelAdvice=document.querySelector('#manager-world-model-advice'),managerWorldModelAdviceSummary=document.querySelector('#manager-world-model-advice-summary'),managerWorldModelAdviceCandidates=document.querySelector('#manager-world-model-advice-candidates'),requestManagerAdvice=document.querySelector('#request-manager-advice'),adoptManagerAdvice=document.querySelector('#adopt-manager-advice'),seasonActions=document.querySelector('#season-actions'),playMatchday=document.querySelector('#play-matchday'),seasonStandings=document.querySelector('#season-standings'),seasonFixtures=document.querySelector('#season-fixtures');let activePoll='',restoreTrigger=null,currentSeason=null,managerPreviewTimer=0,managerPreviewSequence=0,managerPreviewBaseRevision=null,currentManagerAdvice=null,managerAdviceIntent=null;
 const managerCareerContract=document.querySelector('#manager-career-contract'),managerProfilePanel=document.querySelector('#manager-profile'),seasonHistorySummary=document.querySelector('#season-history-summary'),seasonHistory=document.querySelector('#season-history'),seasonObjective=seasonForm.querySelector('[name="manager_objective"]'),seasonPointsTarget=seasonForm.querySelector('[name="manager_points_target"]'),clubResourceSummary=document.querySelector('#club-resource-summary'),clubResourceInputs=[...seasonForm.querySelectorAll('[name^="resource_"]')];let currentCareer=null;
 const managerTeamInput=seasonForm.querySelector('[name="manager_team"]'),recruitmentFieldset=document.querySelector('#recruitment-fieldset'),recruitmentSummary=document.querySelector('#recruitment-summary'),recruitmentRows=[...seasonForm.querySelectorAll('.recruitment-move')];let currentRecruitmentMarket=null,recruitmentRequestTeam='';
 const lifecycleFieldset=document.querySelector('#lifecycle-fieldset'),lifecycleList=document.querySelector('#lifecycle-list'),lifecycleSummary=document.querySelector('#lifecycle-summary');let currentLifecyclePreview=null,lifecycleRequestTeam='';
@@ -1639,11 +1754,12 @@ const releaseSummary=document.querySelector('#release-summary'),releaseGates=doc
 const evidenceKitDownload=document.createElement('a'),evidenceKitRow=document.createElement('p');evidenceKitDownload.id='evidence-kit-download';evidenceKitDownload.href='/api/v1/excellence/evidence-kit.zip';evidenceKitDownload.download='gfs-excellence-evidence-kit-v1.zip';evidenceKitDownload.setAttribute('aria-describedby','release-summary');evidenceKitDownload.textContent='Download template-only evidence kit';evidenceKitRow.append(evidenceKitDownload);releaseSummary.insertAdjacentElement('afterend',evidenceKitRow);
 const message=document.querySelector('#message'),details=document.querySelector('#details'),workflow=document.querySelector('#workflow'),workflowAction=document.querySelector('#workflow-action'),report=document.querySelector('#report-link'),logoutButton=document.querySelector('#logout-button');
 const adoptionSummary=document.querySelector('#action-adoption-summary'),adoptionMetrics=document.querySelector('#action-adoption-metrics'),adoptionEvidence=document.querySelector('#action-adoption-evidence');
-const librarySummary=document.querySelector('#library-summary'),libraryList=document.querySelector('#library-list'),libraryFilter=document.querySelector('#library-filter');let currentLibrary={matches:[],pairs:[],studies:[]};
+const librarySummary=document.querySelector('#library-summary'),libraryList=document.querySelector('#library-list'),libraryFilter=document.querySelector('#library-filter');let currentLibrary={matches:[],pairs:[],forks:[],studies:[]};
 const experienceSelect=match.querySelector('[name="experience"]'),tacticalOptions=document.querySelector('#tactical-options'),homeTactic=match.querySelector('[name="home_tactic"]'),awayTactic=match.querySelector('[name="away_tactic"]'),reuseSeed=match.querySelector('[name="reuse_last_seed"]'),planGuidance=document.querySelector('#match-plan-guidance');let currentMatchCapabilities=null,currentStudioMode='stable';
 const baselineTactic=studyForm.querySelector('[name="baseline_tactic"]'),treatmentTactic=studyForm.querySelector('[name="treatment_tactic"]'),opponentTactic=studyForm.querySelector('[name="opponent_tactic"]');
 const pairBaselineTactic=pairForm.querySelector('[name="baseline_tactic"]'),pairTreatmentTactic=pairForm.querySelector('[name="treatment_tactic"]'),pairOpponentTactic=pairForm.querySelector('[name="opponent_tactic"]');
 const pairGuidance=document.querySelector('#pair-guidance');
+const forkHomeTactic=forkForm.querySelector('[name="home_tactic"]'),forkAwayTactic=forkForm.querySelector('[name="away_tactic"]'),forkGuidance=document.querySelector('#fork-guidance');
 const createBackupButton=document.querySelector('#create-backup'),backupList=document.querySelector('#backup-list'),recoveryMessage=document.querySelector('#recovery-message'),restoreForm=document.querySelector('#restore-form'),selectedBackup=document.querySelector('#selected-backup'),cancelRestore=document.querySelector('#cancel-restore');
 const esc=v=>String(v??'—');
 const workspaceAreaDescriptions={career:'经理生涯 · 赛季、比赛日、阵容与长期俱乐部后果',lab:'比赛实验室 · 隔离的单场、配对与固定预算战术研究',evidence:'证据中心 · 世界模型采用、历史工件与发布门禁',operations:'运维与恢复 · 备份、恢复和原始运行状态'};
@@ -1662,10 +1778,21 @@ function populateTactics(select,tactics){const selected=select.value;select.repl
 function configureMatchPlan(capabilities,mode){currentMatchCapabilities=capabilities||currentMatchCapabilities||{};currentStudioMode=mode||currentStudioMode;populateTactics(homeTactic,currentMatchCapabilities.tactics);populateTactics(awayTactic,currentMatchCapabilities.tactics);const labOption=[...experienceSelect.options].find(option=>option.value==='tactical_lab'),labAllowed=['research','cognitive'].includes(currentStudioMode);labOption.disabled=!labAllowed;if(!labAllowed&&experienceSelect.value==='tactical_lab')experienceSelect.value='observational';const lab=experienceSelect.value==='tactical_lab';if(lab&&homeTactic.value==='team_identity'&&awayTactic.value==='team_identity')homeTactic.value='balanced';tacticalOptions.hidden=!lab;homeTactic.disabled=!lab;awayTactic.disabled=!lab;reuseSeed.disabled=!lab;if(!lab)reuseSeed.checked=false;planGuidance.textContent=lab?'战术实验使用物理比分。单场结果只作描述；复用上一场随机条件后才能进行配对归因。':'原生观赛保留球队自身体系和稳定比分路径。'}
 function configureTacticalStudy(capabilities,mode){const tactics=capabilities?.tactics||[];for(const select of [baselineTactic,treatmentTactic,opponentTactic])populateTactics(select,tactics);if(!baselineTactic.dataset.initialized){baselineTactic.value='balanced';treatmentTactic.value='gegenpress';opponentTactic.value='low_block_counter';baselineTactic.dataset.initialized='true'}studyPanel.hidden=mode!=='research'}
 function configurePairedMatch(capabilities,mode,seed){const tactics=capabilities?.tactics||[];for(const select of [pairBaselineTactic,pairTreatmentTactic,pairOpponentTactic])populateTactics(select,tactics);if(!pairBaselineTactic.dataset.initialized){pairBaselineTactic.value='balanced';pairTreatmentTactic.value='gegenpress';pairOpponentTactic.value='low_block_counter';pairBaselineTactic.dataset.initialized='true'}if(!pairForm.dataset.seedInitialized&&Number.isInteger(Number(seed))){pairForm.querySelector('[name="seed"]').value=String(seed);pairForm.dataset.seedInitialized='true'}pairPanel.hidden=!['research','cognitive'].includes(mode);pairGuidance.textContent=mode==='cognitive'?'认知模式含不受共享 seed 完全控制的供应商输出；配对仅作描述，自动撤销战术归因资格。':'研究模式下，资格检查全部通过的单个配对只支持这一固定对阵与 seed 的局部归因，不是总体效应或显著性检验。'}
+function configureWorldModelFork(capabilities,mode,seed){const tactics=capabilities?.tactics||[];for(const select of [forkHomeTactic,forkAwayTactic])populateTactics(select,tactics);if(!forkForm.dataset.tacticsInitialized){forkHomeTactic.value='balanced';forkAwayTactic.value='low_block_counter';forkForm.dataset.tacticsInitialized='true'}if(!forkForm.dataset.seedInitialized&&Number.isInteger(Number(seed))){forkForm.querySelector('[name="seed"]').value=String(seed);forkForm.dataset.seedInitialized='true'}forkPanel.hidden=mode!=='research';forkGuidance.textContent=mode==='research'?'基线与干预使用同一世界模型检查点；唯一计划差异是 MATCH_WM_PLAN=0 → 1。结果只解释这一固定模拟局面。':'请创建研究模式工作区；稳定模式不加载世界模型，认知模式含无法由共享 seed 完全控制的供应商输出。'}
 function renderActionAdoption(studio){adoptionMetrics.replaceChildren();if(!studio){adoptionSummary.textContent='创建工作区后，这里会显示世界模型对动作选择的实际影响。';adoptionEvidence.textContent='运行观测和机制证据将分别呈现。';return}const mechanism=studio.evidence?.action_adoption_mechanism||{},research=studio.mode!=='stable',latest=studio.last_match||{},adoption=latest.world_model_action_adoption||{};if(!research){adoptionSummary.textContent='稳定模式不启用研究型世界模型动作策略，比赛由稳定模拟器决策。';adoptionMetrics.append(card('策略状态','未启用'),card('最近动作影响','不适用'))}else if(!latest.match_id){adoptionSummary.textContent='动作策略已配置并受质量门控；运行一场比赛后可观察实际影响。';adoptionMetrics.append(card('策略状态','已配置·质量门控'),card('决策机会','尚无比赛'),card('实际动作改变','尚无比赛'))}else{const opportunities=Number(adoption.opportunities||0),influenced=Number(adoption.influenced_opportunities||0),eligible=Number(adoption.attribution_eligible_opportunities||0),changed=Number(adoption.counterfactual_action_changes||0),expected=Number(adoption.expected_counterfactual_action_changes||0),shift=Number(adoption.mean_recommended_probability_shift||0);adoptionSummary.textContent=`最近比赛 ${latest.home} vs ${latest.away}：世界模型在 ${influenced}/${opportunities} 个决策机会中产生非零概率影响。`;adoptionMetrics.append(card('非零影响',`${influenced}/${opportunities}`),card('可归因机会',`${eligible}/${opportunities}`),card('实际动作改变',changed),card('期望动作改变',expected.toFixed(3)),card('平均推荐概率偏移',(shift*100).toFixed(3)+' pp'))}if(mechanism.available){const done=mechanism.runs_executed??0,total=mechanism.fixed_run_budget??'—',state=mechanism.execution_state||mechanism.protocol_state||'unknown',promotion=mechanism.promotion_authorized?'已授权推广':'未授权推广';adoptionEvidence.textContent=`机制证据：${state} · ${done}/${total} 次固定预算运行 · ${promotion}。单场运行观测不等于机制证明。`}else{adoptionEvidence.textContent='机制证据协议缺失；当前只能查看运行观测，不能形成机制结论。'}}
 function artifactLink(label,url){if(!url)return null;const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.textContent=label;return link}
 async function resumeInterruptedTask(taskId,button){button.disabled=true;button.setAttribute('aria-busy','true');announce(message,'正在恢复已持久化的配对事务……');try{const data=await api('/api/v1/tasks/'+encodeURIComponent(taskId)+'/requeue',{method:'POST',body:JSON.stringify({reason:'studio_pair_transaction_resume'})});announce(message,'配对事务已使用原任务身份重新排队。','success');activePoll=data.task.task_id;await pollTask(data.task.task_id)}catch(error){announce(message,error.message,'error',true)}finally{button.disabled=false;button.setAttribute('aria-busy','false')}}
-function renderLibrary(library){currentLibrary=library||{matches:[],pairs:[],studies:[]};libraryList.replaceChildren();const filter=libraryFilter.value,matches=currentLibrary.matches||[],pairs=currentLibrary.pairs||[],studies=currentLibrary.studies||[],visibleMatches=filter==='studies'?[]:filter==='paired'?matches.filter(item=>item.comparison_url&&!pairs.some(pair=>pair.treatment_match_id===item.match_id)):matches,visiblePairs=['matches','studies'].includes(filter)?[]:pairs,visibleStudies=['matches','paired'].includes(filter)?[]:studies;librarySummary.textContent=`${matches.length} 场比赛 · ${pairs.length} 个一键配对事务 · ${matches.filter(item=>item.comparison_url).length} 个比赛级比较 · ${studies.length} 项固定预算研究${currentLibrary.truncated?' · 仅显示最近 50 项':''}`;for(const item of visibleMatches){const node=card(`${item.home} vs ${item.away}`,`${item.score?.home??'—'}–${item.score?.away??'—'}`);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`${item.match_id} · seed ${item.seed} · ${item.experience} · 完整性 ${item.integrity}`;const links=document.createElement('p'),matchLink=artifactLink('比赛复盘',item.dashboard_url),pairLink=artifactLink('配对比较',item.comparison_url);if(matchLink)links.append(matchLink);if(matchLink&&pairLink)links.append(document.createTextNode(' · '));if(pairLink)links.append(pairLink);node.append(meta,links);libraryList.append(node)}for(const item of visiblePairs){const node=card(`${item.home} vs ${item.away}`,item.state);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`共享 seed ${item.seed} · ${item.focus_side} 侧 · ${item.baseline_tactic} → ${item.treatment_tactic}`;const links=document.createElement('p'),base=artifactLink('基线复盘',item.baseline_url),treatment=artifactLink('处理复盘',item.treatment_url),comparison=artifactLink('配对比较',item.comparison_url);for(const link of [base,treatment,comparison]){if(!link)continue;if(links.childNodes.length)links.append(document.createTextNode(' · '));links.append(link)}node.append(meta,links);if(item.state==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='安全恢复配对事务';resume.addEventListener('click',()=>resumeInterruptedTask(item.task_id,resume));node.append(resume)}libraryList.append(node)}for(const item of visibleStudies){const node=card(item.study_id,item.state);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`${item.home} vs ${item.away} · ${item.baseline_tactic} → ${item.treatment_tactic} · ${item.pairs_completed}/${item.fixed_pair_budget} 对${item.analysis_withheld?' · 分析隐藏':''}`;const links=document.createElement('p'),studyLink=artifactLink('研究复盘',item.study_url);if(studyLink)links.append(studyLink);node.append(meta,links);libraryList.append(node)}if(!libraryList.childNodes.length){const empty=document.createElement('p');empty.className='status';empty.textContent='当前筛选下还没有可用证据。';libraryList.append(empty)}}
+function renderLibrary(library){
+  currentLibrary=library||{matches:[],pairs:[],forks:[],studies:[]};libraryList.replaceChildren();
+  const filter=libraryFilter.value,matches=currentLibrary.matches||[],pairs=currentLibrary.pairs||[],forks=currentLibrary.forks||[],studies=currentLibrary.studies||[];
+  const visibleMatches=['paired','forks','studies'].includes(filter)?[]:matches,visiblePairs=['matches','forks','studies'].includes(filter)?[]:pairs,visibleForks=['matches','paired','studies'].includes(filter)?[]:forks,visibleStudies=['matches','paired','forks'].includes(filter)?[]:studies;
+  librarySummary.textContent=`${matches.length} 场比赛 · ${forks.length} 个世界模型分叉 · ${pairs.length} 个战术配对 · ${studies.length} 项固定预算研究${currentLibrary.truncated?' · 仅显示最近 50 项':''}`;
+  for(const item of visibleMatches){const node=card(`${item.home} vs ${item.away}`,`${item.score?.home??'—'}–${item.score?.away??'—'}`);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`${item.match_id} · seed ${item.seed} · ${item.experience} · 完整性 ${item.integrity}`;const links=document.createElement('p'),matchLink=artifactLink('比赛复盘',item.dashboard_url),pairLink=artifactLink('配对比较',item.comparison_url);if(matchLink)links.append(matchLink);if(matchLink&&pairLink)links.append(document.createTextNode(' · '));if(pairLink)links.append(pairLink);node.append(meta,links);libraryList.append(node)}
+  for(const item of visibleForks){const node=card(`${item.home} vs ${item.away}`,item.state);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`共享 seed ${item.seed} · predict_only → action_policy · 战术固定 ${item.home_tactic}/${item.away_tactic}`;const links=document.createElement('p'),base=artifactLink('基线世界',item.baseline_url),treatment=artifactLink('干预世界',item.treatment_url),comparison=artifactLink('分叉比较',item.comparison_url);for(const link of [base,treatment,comparison]){if(!link)continue;if(links.childNodes.length)links.append(document.createTextNode(' · '));links.append(link)}node.append(meta,links);if(item.state==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='安全恢复因果分叉';resume.addEventListener('click',()=>resumeInterruptedTask(item.task_id,resume));node.append(resume)}libraryList.append(node)}
+  for(const item of visiblePairs){const node=card(`${item.home} vs ${item.away}`,item.state);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`共享 seed ${item.seed} · ${item.focus_side} 侧 · ${item.baseline_tactic} → ${item.treatment_tactic}`;const links=document.createElement('p'),base=artifactLink('基线复盘',item.baseline_url),treatment=artifactLink('处理复盘',item.treatment_url),comparison=artifactLink('配对比较',item.comparison_url);for(const link of [base,treatment,comparison]){if(!link)continue;if(links.childNodes.length)links.append(document.createTextNode(' · '));links.append(link)}node.append(meta,links);if(item.state==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='安全恢复配对事务';resume.addEventListener('click',()=>resumeInterruptedTask(item.task_id,resume));node.append(resume)}libraryList.append(node)}
+  for(const item of visibleStudies){const node=card(item.study_id,item.state);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`${item.home} vs ${item.away} · ${item.baseline_tactic} → ${item.treatment_tactic} · ${item.pairs_completed}/${item.fixed_pair_budget} 对${item.analysis_withheld?' · 分析隐藏':''}`;const links=document.createElement('p'),studyLink=artifactLink('研究复盘',item.study_url);if(studyLink)links.append(studyLink);node.append(meta,links);libraryList.append(node)}
+  if(!libraryList.childNodes.length){const empty=document.createElement('p');empty.className='status';empty.textContent='当前筛选下还没有可用证据。';libraryList.append(empty)}
+}
 function lineupRole(lineup,playerId){if((lineup?.starters||[]).includes(playerId))return 'starter';if((lineup?.bench||[]).includes(playerId))return 'bench';return 'reserve'}
 function renderManagerSquad(season,managed){managerSquad.replaceChildren();const squad=season?.manager_squad;if(!squad?.available){managerManual.checked=false;managerManual.disabled=true;managerSquadStatus.textContent=squad?.reason==='roster_unavailable'?'该球队没有可用的球员 roster；本场只能使用球队级自动轮换。':squad?.reason==='roster_missing_goalkeeper'?'该 roster 缺少可信门将数据；为避免伪造角色，本场只启用球队级管理。':'当前伤停与位置覆盖无法组成合法 11 人名单；请先恢复阵容状态。';return}managerManual.disabled=false;const frozen=managed?.manager_decision?.lineup,matchingFrozen=frozen&&managed.manager_decision.rotation===managerRotation.value?frozen:null,suggested=matchingFrozen||squad.automatic?.[managerRotation.value],manual=managerManual.checked;let starters=0,bench=0;for(const player of squad.players||[]){const label=document.createElement('label');label.className='squad-player'+(player.selectable?'':' unavailable');const info=document.createElement('span');info.textContent=`${player.shirt_number??'—'} · ${player.name} · ${player.role}${player.injured?' · 伤病':''}${player.suspended?' · 停赛':''}`;const select=document.createElement('select');select.dataset.playerId=player.player_id;select.setAttribute('aria-label',`${player.name} 的名单角色`);for(const [value,text] of [['reserve','未入选'],['starter','首发'],['bench','替补']]){const option=document.createElement('option');option.value=value;option.textContent=text;select.append(option)}select.value=player.selectable?lineupRole(suggested,player.player_id):'reserve';select.disabled=!manual||!player.selectable;if(select.value==='starter')starters+=1;if(select.value==='bench')bench+=1;select.addEventListener('change',()=>updateManagerSquadCount());label.append(info,select);managerSquad.append(label)}managerSquadStatus.textContent=`${manual?'手动名单':'自动建议'} · ${starters} 人首发 · ${bench} 人替补 · 当前阵型 ${squad.formation||'—'}`}
 function updateManagerSquadCount(){let starters=0,bench=0;for(const select of managerSquad.querySelectorAll('select')){if(select.value==='starter')starters+=1;if(select.value==='bench')bench+=1}managerSquadStatus.textContent=`手动名单 · ${starters} 人首发 · ${bench} 人替补${starters===11&&bench<=12?'':' · 需要恰好 11 名首发且替补不超过 12 人'}`}
@@ -1785,8 +1912,8 @@ function prepareRestore(id,trigger){restoreTrigger=trigger;selectedBackup.textCo
 function renderBackups(data){backupList.replaceChildren();if(!data.backups.length){const empty=document.createElement('p');empty.className='status';empty.textContent='尚无托管备份。';backupList.append(empty);return}for(const backup of data.backups){const item=document.createElement('div');item.className='card';item.setAttribute('role','listitem');const title=document.createElement('strong');title.textContent=backup.backup_id;const meta=document.createElement('p');meta.className='status';meta.textContent=new Date(backup.modified_at).toLocaleString()+' · '+backup.size_bytes+' bytes';const actions=document.createElement('div');actions.className='toolbar';const verify=document.createElement('button');verify.type='button';verify.textContent='校验';verify.setAttribute('aria-label','校验备份 '+backup.backup_id);verify.addEventListener('click',async()=>{verify.disabled=true;setBusy(item,true);try{await api('/api/v1/backups/'+encodeURIComponent(backup.backup_id)+'/verify',{method:'POST'});setRecoveryMessage('备份完整性与语义校验通过。')}catch(e){setRecoveryMessage(e.message,true,true)}finally{verify.disabled=false;setBusy(item,false)}});const restore=document.createElement('button');restore.type='button';restore.className='danger-button';restore.textContent='准备恢复';restore.setAttribute('aria-label','准备恢复备份 '+backup.backup_id);restore.addEventListener('click',()=>prepareRestore(backup.backup_id,restore));actions.append(verify,restore);item.append(title,meta,actions);backupList.append(item)}}
 async function refreshRecovery(){setBusy(backupList,true);try{renderBackups(await api('/api/v1/recovery'))}catch(e){setRecoveryMessage(e.message,true,true)}finally{setBusy(backupList,false)}}
 async function api(path,options={}){const response=await fetch(path,{...options,headers:{'Content-Type':'application/json','X-GFS-CSRF':csrf,...options.headers}});const data=await response.json();if(!response.ok)throw new Error(data.error?.message||'请求失败');return data}
-async function refresh(){try{const data=await api('/api/v1/studio');const mode=data.studio?.mode||'stable';configureMatchPlan(data.match_capabilities,mode);configureTacticalStudy(data.match_capabilities,mode);configurePairedMatch(data.match_capabilities,mode,data.studio?.seed);render(data);renderRelease(data)}catch(e){announce(message,e.message,'error',true)}}
-async function pollTask(id){try{while(true){const data=await api('/api/v1/tasks/'+encodeURIComponent(id)),task=data.task,isStudy=task.kind==='tactical_study',isPair=task.kind==='paired_match',isSeason=task.kind==='season_matchday',progress=task.study_progress;details.textContent=JSON.stringify(data,null,2);if(isStudy&&progress?.pairs_completed!==undefined){announce(message,`战术研究 ${progress.pairs_completed}/${progress.fixed_pair_budget} 对已完成；中期效应保持隐藏。`)}else{announce(message,task.state==='queued'?(isStudy?'战术研究已排队，固定预算尚未开始……':isPair?'配对对决已排队，将连续运行基线与处理场……':isSeason?'赛季比赛日已持久化排队……':'比赛任务已排队……'):(isStudy?'战术研究正在后台运行；预算完成前不展示效应……':isPair?'正在运行共享 seed 的基线与处理场……':isSeason?'正在推进赛季比赛日并结算长期状态……':'比赛正在后台运行……'))}if(task.state==='completed'){announce(message,isStudy?'固定预算研究完成，最终分析现已开放。':isPair?'配对对决完成，三层复盘已开放。':isSeason?'赛季比赛日完成，积分与球队状态已结算。':'比赛完成。','success',true);showReport(task.result?.treatment_url||task.result?.dashboard_url,task.result?.comparison_url,task.result?.study_url,task.result?.baseline_url);await refresh();return}if(['failed','interrupted'].includes(task.state)){announce(message,task.error?.message||'任务中断，可检查状态后重新提交。','error',true);await refresh();return}await new Promise(resolve=>setTimeout(resolve,750))}}catch(e){announce(message,e.message,'error',true)}finally{activePoll=''}}
+async function refresh(){try{const data=await api('/api/v1/studio');const mode=data.studio?.mode||'stable';configureMatchPlan(data.match_capabilities,mode);configureTacticalStudy(data.match_capabilities,mode);configurePairedMatch(data.match_capabilities,mode,data.studio?.seed);configureWorldModelFork(data.match_capabilities,mode,data.studio?.seed);render(data);renderRelease(data)}catch(e){announce(message,e.message,'error',true)}}
+async function pollTask(id){try{while(true){const data=await api('/api/v1/tasks/'+encodeURIComponent(id)),task=data.task,isStudy=task.kind==='tactical_study',isPair=task.kind==='paired_match',isFork=task.kind==='world_model_fork',isSeason=task.kind==='season_matchday',progress=task.study_progress;details.textContent=JSON.stringify(data,null,2);if(isStudy&&progress?.pairs_completed!==undefined){announce(message,`战术研究 ${progress.pairs_completed}/${progress.fixed_pair_budget} 对已完成；中期效应保持隐藏。`)}else{announce(message,task.state==='queued'?(isStudy?'战术研究已排队，固定预算尚未开始……':isFork?'因果分叉已排队，将依次生成预测-only与动作策略世界……':isPair?'配对对决已排队，将连续运行基线与处理场……':isSeason?'赛季比赛日已持久化排队……':'比赛任务已排队……'):(isStudy?'战术研究正在后台运行；预算完成前不展示效应……':isFork?'正在用共享 seed 生成两个世界并核验唯一策略干预……':isPair?'正在运行共享 seed 的基线与处理场……':isSeason?'正在推进赛季比赛日并结算长期状态……':'比赛正在后台运行……'))}if(task.state==='completed'){announce(message,isStudy?'固定预算研究完成，最终分析现已开放。':isFork?'世界模型因果分叉完成，双世界回放与差异链已开放。':isPair?'配对对决完成，三层复盘已开放。':isSeason?'赛季比赛日完成，积分与球队状态已结算。':'比赛完成。','success',true);showReport(task.result?.treatment_url||task.result?.dashboard_url,task.result?.comparison_url,task.result?.study_url,task.result?.baseline_url);await refresh();return}if(['failed','interrupted'].includes(task.state)){announce(message,task.error?.message||'任务中断，可检查状态后重新提交。','error',true);await refresh();return}await new Promise(resolve=>setTimeout(resolve,750))}}catch(e){announce(message,e.message,'error',true)}finally{activePoll=''}}
 async function submit(form,path,payload,headers={}){const button=form.querySelector('button[type="submit"]')||form.querySelector('button');button.disabled=true;setBusy(form,true);announce(message,'正在提交……');report.hidden=true;try{const data=await api(path,{method:'POST',body:JSON.stringify(payload),headers});if(data.task){announce(message,data.created?'任务已持久化排队。':'已返回同一幂等任务。');activePoll=data.task.task_id;await pollTask(data.task.task_id)}else{announce(message,'操作成功。','success',true);await refresh()}}catch(e){announce(message,e.message,'error',true)}finally{button.disabled=false;setBusy(form,false)}}
 const submitWithoutRecruitment=submit;
 submit=(form,path,payload,headers={})=>{if(form===seasonForm&&path==='/api/v1/seasons'){const commitmentForm=new FormData(seasonForm);payload.plan.manager_commitments=payload.plan.manager_team?{schema_version:1,tactic_policy:String(commitmentForm.get('commitment_tactic_policy')||'club_identity'),rotation_policy:String(commitmentForm.get('commitment_rotation_policy')||'share_load')}:null;if(payload?.start_next){try{payload.plan.manager_recruitment=recruitmentPayload();payload.plan.manager_retention=retentionPayload();payload.plan.manager_free_agent=freeAgentPayload();payload.plan.manager_sporting_directive=sportingDirectivePayload()}catch(error){announce(sportingDirectorSummary,error.message,'error',true);return Promise.resolve()}}}return submitWithoutRecruitment(form,path,payload,headers)};
@@ -1831,6 +1958,7 @@ experienceSelect.addEventListener('change',()=>configureMatchPlan(currentMatchCa
 libraryFilter.addEventListener('change',()=>renderLibrary(currentLibrary));
 match.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(match),key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random(),experience=f.get('experience'),plan={experience,home_tactic:experience==='tactical_lab'?f.get('home_tactic'):'team_identity',away_tactic:experience==='tactical_lab'?f.get('away_tactic'):'team_identity',reuse_last_seed:f.get('reuse_last_seed')==='on'};submit(match,'/api/v1/matches',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on',plan},{'Idempotency-Key':key})});
 pairForm.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(pairForm),focus=f.get('focus_side'),baseline=f.get('baseline_tactic'),treatment=f.get('treatment_tactic'),opponent=f.get('opponent_tactic'),plan={seed:Number(f.get('seed')),baseline:{home_tactic:focus==='home'?baseline:opponent,away_tactic:focus==='away'?baseline:opponent},treatment:{home_tactic:focus==='home'?treatment:opponent,away_tactic:focus==='away'?treatment:opponent}},key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random();submit(pairForm,'/api/v1/paired-matches',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on',plan},{'Idempotency-Key':key})});
+forkForm.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(forkForm),plan={seed:Number(f.get('seed')),home_tactic:f.get('home_tactic'),away_tactic:f.get('away_tactic')},key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random();submit(forkForm,'/api/v1/world-model-forks',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on',plan},{'Idempotency-Key':key})});
 studyForm.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(studyForm),focus=f.get('focus_side'),baseline=f.get('baseline_tactic'),treatment=f.get('treatment_tactic'),opponent=f.get('opponent_tactic'),budget=Number(f.get('pair_budget')),start=Number(f.get('seed_start')),seeds=Array.from({length:budget},(_,index)=>start+index),plan={study_id:f.get('study_id'),fixture:{home:f.get('home'),away:f.get('away')},baseline:{home_tactic:focus==='home'?baseline:opponent,away_tactic:focus==='away'?baseline:opponent},treatment:{home_tactic:focus==='home'?treatment:opponent,away_tactic:focus==='away'?treatment:opponent},seeds,fast:f.get('fast')==='on',analysis_plan:{smallest_effect_size:0.05}},key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random();submit(studyForm,'/api/v1/tactical-studies',{plan},{'Idempotency-Key':key})});
 createBackupButton.addEventListener('click',async()=>{createBackupButton.disabled=true;createBackupButton.setAttribute('aria-busy','true');setRecoveryMessage('正在创建并校验备份……');try{await api('/api/v1/backups',{method:'POST'});setRecoveryMessage('备份已创建并通过校验。');await refreshRecovery()}catch(e){setRecoveryMessage(e.message,true,true)}finally{createBackupButton.disabled=false;createBackupButton.setAttribute('aria-busy','false')}});
 restoreForm.addEventListener('submit',async e=>{e.preventDefault();const id=restoreForm.dataset.backupId,f=new FormData(restoreForm),button=restoreForm.querySelector('button[type="submit"]');button.disabled=true;setBusy(restoreForm,true);setRecoveryMessage('正在执行事务恢复……');try{await api('/api/v1/backups/'+encodeURIComponent(id)+'/restore',{method:'POST',body:JSON.stringify({confirmation:f.get('confirmation'),replace:f.get('replace')==='on'})});closeRestore(false);setRecoveryMessage('恢复完成，任务历史已安全重置。',false,true);await Promise.all([refresh(),refreshRecovery()])}catch(error){setRecoveryMessage(error.message,true,true)}finally{button.disabled=false;setBusy(restoreForm,false)}});

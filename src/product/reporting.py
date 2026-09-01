@@ -293,6 +293,9 @@ def _match_plan_panel(report: Mapping[str, Any]) -> str:
     experience = str(plan.get("experience") or "observational")
     home_tactic = str(plan.get("home_tactic") or NATIVE_TACTIC)
     away_tactic = str(plan.get("away_tactic") or NATIVE_TACTIC)
+    world_model_policy = str(
+        plan.get("world_model_policy") or "mode_default"
+    )
 
     def tactic_label(value: str) -> str:
         metadata = PLAYABLE_TACTICS.get(value) or {}
@@ -316,7 +319,21 @@ def _match_plan_panel(report: Mapping[str, Any]) -> str:
             f'<p><a href="{html.escape(comparison_name, quote=True)}">'
             "打开同种子战术配对比较</a></p>"
         )
-    if experience == "tactical_lab":
+    if experience == "world_model_lab":
+        inference = (
+            "本场属于同种子世界模型策略分叉；只有与绑定的另一世界比较，"
+            "且全部资格检查通过，才能归因于模拟器内动作策略开关。"
+        )
+        experience_label = "世界模型因果分叉"
+        policy_label = {
+            "predict_only": "基线：仅预测，不进入动作策略",
+            "action_policy": "干预：质量门控动作策略",
+        }.get(world_model_policy, world_model_policy)
+        policy_card = (
+            '<div><span class="label">世界模型策略</span><strong>'
+            f'{html.escape(policy_label)}</strong></div>'
+        )
+    elif experience == "tactical_lab":
         inference = (
             f"已复用同对阵随机条件（基线 {paired_baseline or '未记录'}）；"
             "需与对应基线报告配对比较，才可讨论战术归因。"
@@ -324,9 +341,11 @@ def _match_plan_panel(report: Mapping[str, Any]) -> str:
             "本场是单次战术运行，只支持描述性复盘，不支持战术因果归因。"
         )
         experience_label = "战术实验室"
+        policy_card = ""
     else:
         inference = "原生观赛不施加玩家战术干预。"
         experience_label = "原生观赛"
+        policy_card = ""
     return f"""<section class="card plan-panel" data-testid="match-plan-panel">
 <div class="panel-head"><div><div class="label">Reproducible match plan</div><h2>比赛方案与推断边界</h2></div><span class="tag">seed {_value(seed, 0)}</span></div>
 <div class="wm-grid">
@@ -334,6 +353,7 @@ def _match_plan_panel(report: Mapping[str, Any]) -> str:
   <div><span class="label">主队战术</span><strong>{tactic_label(home_tactic)}</strong></div>
   <div><span class="label">客队战术</span><strong>{tactic_label(away_tactic)}</strong></div>
   <div><span class="label">正式比分路径</span><strong>{html.escape(score_label)}</strong></div>
+  {policy_card}
 </div>
 <p class="evidence">{html.escape(inference)}</p>{comparison_link}</section>"""
 

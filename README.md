@@ -108,6 +108,15 @@ tasks. Refreshing the page recovers task observation instead of duplicating a
 match; interrupted process state remains visible and is not automatically
 replayed.
 
+The Research Lab also exposes one cohesive world-model causal fork. A single
+request atomically runs a prediction-only baseline (`MATCH_WM_PLAN=0`) and a
+quality-gated action-policy treatment (`MATCH_WM_PLAN=1`) with the fixture,
+tactics, checkpoint, fast/full configuration, and seed held fixed. It returns
+both match reports and one synchronized comparison dashboard through the same
+recoverable task and Evidence Library. This is simulator-local intervention
+evidence for one fixture/seed, not real-football causality, population-level
+efficacy, or permission to promote M1 beyond research-only status.
+
 Authenticated remote deployment is explicit and separate from provider
 credentials. The supplied Compose contract exposes only a Caddy TLS edge and
 keeps GFS on an internal network:

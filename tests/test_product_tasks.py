@@ -420,6 +420,67 @@ def test_worker_executes_one_locked_pair_and_persists_only_artifact_links(
     assert observed["treatment"].reuse_last_seed is True
 
 
+def test_world_model_fork_submission_and_worker_preserve_policy_identity(
+    tmp_path, monkeypatch,
+):
+    matches = tmp_path / "outputs/studio/demo/matches"
+    observed = {}
+
+    class Workspace:
+        config = type("Config", (), {"mode": "research"})()
+
+        def run_paired_matches(
+            self, home, away, *, fast, baseline_plan, treatment_plan, seed,
+            transaction_id,
+        ):
+            observed.update({
+                "baseline": baseline_plan, "treatment": treatment_plan,
+                "seed": seed, "transaction_id": transaction_id,
+            })
+            return ({
+                "match_id": "0001-brazil-vs-argentina",
+                "dashboard_path": str(matches / "0001.html"),
+            }, {
+                "match_id": "0002-brazil-vs-argentina",
+                "fixture": {"home": home, "away": away, "seed": seed},
+                "dashboard_path": str(matches / "0002.html"),
+                "comparison_path": str(matches / "fork.comparison.json"),
+                "comparison_dashboard_path": str(matches / "fork.comparison.html"),
+            })
+
+    monkeypatch.setattr(
+        "src.product.tasks.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    queue = ProductTaskQueue(tmp_path)
+    payload = {
+        "home_tactic": "balanced", "away_tactic": "low_block_counter",
+        "seed": 77,
+    }
+    task, created = queue.submit_world_model_fork(
+        "Brazil", "Argentina", fast=True, plan=payload,
+        idempotency_key="fork-request",
+    )
+    duplicate, duplicate_created = queue.submit_world_model_fork(
+        "Brazil", "Argentina", fast=True, plan=payload,
+        idempotency_key="fork-request",
+    )
+    assert created and not duplicate_created
+    assert duplicate["task_id"] == task["task_id"]
+    assert BackgroundMatchWorker(queue).run_once()
+    completed = queue.get_task(task["task_id"])
+    assert completed["state"] == "completed"
+    assert completed["result"]["fork_id"].endswith(
+        "paired-vs-0001-brazil-vs-argentina"
+    )
+    assert completed["result"]["comparison_dashboard"].endswith(
+        ".comparison.html"
+    )
+    assert observed["baseline"].world_model_policy == "predict_only"
+    assert observed["treatment"].world_model_policy == "action_policy"
+    assert observed["baseline"].home_tactic == observed["treatment"].home_tactic
+    assert observed["transaction_id"] == task["task_id"]
+
+
 def test_tactical_study_submission_is_normalized_and_idempotent(tmp_path):
     queue = ProductTaskQueue(tmp_path)
     task, created = queue.submit_tactical_study(

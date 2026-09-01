@@ -1,5 +1,3 @@
-import copy
-
 import pytest
 
 from src.product.comparison import (
@@ -66,10 +64,14 @@ def test_two_changed_sides_are_labeled_joint_not_individually_attributed():
 def test_structurally_invalid_pair_is_rejected(mutation):
     baseline = _report("m1")
     treatment = _report("m2", tactic="counter_attack", reuse=True, baseline="m1")
-    if mutation == "seed": treatment["fixture"]["seed"] = 78
-    elif mutation == "fixture": treatment["fixture"]["away"] = "France"
-    elif mutation == "baseline_id": treatment["match_plan"]["paired_baseline_match_id"] = "other"
-    else: treatment["match_plan"]["home_tactic"] = "gegenpress"
+    if mutation == "seed":
+        treatment["fixture"]["seed"] = 78
+    elif mutation == "fixture":
+        treatment["fixture"]["away"] = "France"
+    elif mutation == "baseline_id":
+        treatment["match_plan"]["paired_baseline_match_id"] = "other"
+    else:
+        treatment["match_plan"]["home_tactic"] = "gegenpress"
     with pytest.raises(PairingError):
         build_paired_comparison(baseline, treatment)
 
@@ -99,14 +101,16 @@ def test_quality_or_identity_drift_keeps_comparison_but_revokes_attribution(
 ):
     baseline = _report("m1")
     treatment = _report("m2", tactic="counter_attack", reuse=True, baseline="m1")
-    if mutation == "fast": treatment["fixture"]["fast"] = False
-    elif mutation == "integrity": treatment["integrity"]["accepted"] = False
-    elif mutation == "checkpoint": (
+    if mutation == "fast":
+        treatment["fixture"]["fast"] = False
+    elif mutation == "integrity":
+        treatment["integrity"]["accepted"] = False
+    elif mutation == "checkpoint":
         treatment["layers"]["world_model"]["runtime"].update({
             "checkpoint_signature": "sha256:other"
         })
-    )
-    else: treatment["studio"]["mode"] = "cognitive"
+    else:
+        treatment["studio"]["mode"] = "cognitive"
     comparison = build_paired_comparison(baseline, treatment)
     assert not comparison["eligibility"]["eligible_for_tactical_attribution"]
     assert failed_check in comparison["eligibility"]["failed_checks"]
@@ -136,3 +140,48 @@ def test_comparison_html_escapes_fixture_and_renders_eligibility():
     assert "&lt;script&gt;x&lt;/script&gt;" in document
     assert "<script>x</script>" not in document
     assert 'href="m1.html"' in document and 'href="m2.html"' in document
+
+
+def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
+    baseline = _report("m1")
+    treatment = _report("m2", reuse=True, baseline="m1")
+    for report, policy in (
+        (baseline, "predict_only"), (treatment, "action_policy"),
+    ):
+        report["match_plan"].update({
+            "experience": "world_model_lab",
+            "world_model_policy": policy,
+        })
+    treatment["result"]["shots"]["home"] = 10
+    comparison = build_paired_comparison(baseline, treatment)
+    assert comparison["intervention"]["scope"] == "world_model_action_policy"
+    assert comparison["intervention"]["changed_sides"] == []
+    assert comparison["eligibility"][
+        "eligible_for_world_model_policy_attribution"
+    ]
+    assert not comparison["eligibility"]["eligible_for_tactical_attribution"]
+    assert comparison["metrics"]["shots_home"]["delta"] == 2
+    document = render_paired_comparison_html(comparison)
+    assert "世界模型因果分叉" in document
+    assert "基线世界" in document and "干预世界" in document
+    assert "MATCH_WM_PLAN=0" in document and "MATCH_WM_PLAN=1" in document
+    assert "world-model promotion" in document
+
+
+def test_world_model_policy_fork_rejects_tactical_or_policy_cointervention():
+    baseline = _report("m1")
+    treatment = _report("m2", reuse=True, baseline="m1")
+    for report, policy in (
+        (baseline, "predict_only"), (treatment, "action_policy"),
+    ):
+        report["match_plan"].update({
+            "experience": "world_model_lab",
+            "world_model_policy": policy,
+        })
+    treatment["match_plan"]["home_tactic"] = "counter_attack"
+    with pytest.raises(PairingError, match="keep both tactics fixed"):
+        build_paired_comparison(baseline, treatment)
+    treatment["match_plan"]["home_tactic"] = baseline["match_plan"]["home_tactic"]
+    treatment["match_plan"]["world_model_policy"] = "predict_only"
+    with pytest.raises(PairingError, match="predict_only to action_policy"):
+        build_paired_comparison(baseline, treatment)

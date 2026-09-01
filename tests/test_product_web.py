@@ -84,6 +84,16 @@ def test_root_is_accessible_and_hardened(tmp_path):
         "score_path": "physics_official",
         "cognitive_claim_boundary": "descriptive_only",
     }
+    assert capabilities["world_model_fork"] == {
+        "modes": ["research"],
+        "seed": "explicit_shared_seed",
+        "intervention": "predict_only_to_action_policy",
+        "fixed_controls": [
+            "fixture", "tactics", "fast_configuration", "checkpoint",
+        ],
+        "score_path": "physics_official",
+        "claim_boundary": "single_fixture_seed_simulator_contrast_only",
+    }
     assert '<a class="skip" href="#main">' in document
     assert 'id="main"' in document
     assert 'aria-live="polite"' in document
@@ -98,7 +108,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="workspace-nav" class="workspace-nav"' in document
     assert document.count('data-workspace-view=') == 4
     assert 'data-workspace-area="career"' in document
-    assert document.count('data-workspace-area="lab"') == 3
+    assert document.count('data-workspace-area="lab"') == 4
     assert document.count('data-workspace-area="evidence"') == 3
     assert document.count('data-workspace-area="operations"') == 2
     assert "function applyWorkspaceArea(" in document
@@ -291,6 +301,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="pair-panel"' in document
     assert 'id="pair-form"' in document
     assert "configurePairedMatch(data.match_capabilities" in document
+    assert "configureWorldModelFork(data.match_capabilities" in document
+    assert 'id="fork-panel"' in document
+    assert "/api/v1/world-model-forks" in document
+    assert "predict_only → action_policy" in document
     assert "'/api/v1/paired-matches'" in document
     assert "task.kind==='paired_match'" in document
     assert "配对对决完成，三层复盘已开放" in document
@@ -993,6 +1007,53 @@ def test_paired_match_route_rejects_stable_mode(tmp_path, monkeypatch):
     assert app.task_queue.list_tasks() == []
 
 
+def test_world_model_fork_route_is_research_only_and_idempotent(
+    tmp_path, monkeypatch,
+):
+    class FakeWorkspace:
+        config = type("Config", (), {"mode": "research"})()
+
+        def readiness(self):
+            return {"ready": True, "blockers": []}
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: FakeWorkspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    payload = {
+        "home": "Brazil", "away": "Argentina", "fast": True,
+        "plan": {
+            "home_tactic": "balanced", "away_tactic": "low_block_counter",
+            "seed": 77,
+        },
+    }
+    first = _request(
+        app, "POST", "/api/v1/world-model-forks", payload,
+        csrf=app.csrf_token, idempotency_key="fork-web-1",
+    )
+    assert first["status"].startswith("202")
+    assert first["json"]["task"]["kind"] == "world_model_fork"
+    assert first["json"]["task"]["request"]["plan"][
+        "baseline_policy"
+    ] == "predict_only"
+    duplicate = _request(
+        app, "POST", "/api/v1/world-model-forks", payload,
+        csrf=app.csrf_token, idempotency_key="fork-web-1",
+    )
+    assert duplicate["status"].startswith("200")
+    assert duplicate["json"]["task"]["task_id"] == first["json"]["task"][
+        "task_id"
+    ]
+
+    FakeWorkspace.config.mode = "cognitive"
+    rejected = _request(
+        app, "POST", "/api/v1/world-model-forks", payload,
+        csrf=app.csrf_token,
+    )
+    assert rejected["status"].startswith("422")
+    assert rejected["json"]["error"]["code"] == "invalid_world_model_fork"
+
+
 def test_interrupted_pair_requeue_api_preserves_task_identity_and_requires_csrf(
     tmp_path,
 ):
@@ -1224,8 +1285,28 @@ def test_studio_evidence_library_is_safe_bounded_and_effect_free(
             ),
         },
     }
+    fork_task = {
+        "task_id": "c" * 32, "kind": "world_model_fork",
+        "state": "completed",
+        "request": {
+            "home": "Brazil", "away": "Argentina", "fast": True,
+            "plan": {
+                "home_tactic": "balanced",
+                "away_tactic": "low_block_counter", "seed": 88,
+            },
+        },
+        "result": {
+            "baseline_match_id": "wm-base", "treatment_match_id": "wm-policy",
+            "baseline_dashboard": "outputs/studio/demo/matches/wm-base.html",
+            "treatment_dashboard": "outputs/studio/demo/matches/wm-policy.html",
+            "comparison_dashboard": (
+                "outputs/studio/demo/matches/wm-policy.comparison.html"
+            ),
+        },
+    }
     monkeypatch.setattr(
-        app.task_queue, "list_tasks", lambda *, limit=50: [pair_task, task],
+        app.task_queue, "list_tasks",
+        lambda *, limit=50: [pair_task, fork_task, task],
     )
     response = _request(app, path="/api/v1/studio")
     library = response["json"]["evidence_library"]
@@ -1244,6 +1325,12 @@ def test_studio_evidence_library_is_safe_bounded_and_effect_free(
     assert library["pairs"][0]["treatment_url"].endswith("/treat.html")
     assert library["pairs"][0]["comparison_url"].endswith(
         "/treat.comparison.html"
+    )
+    assert library["forks"][0]["seed"] == 88
+    assert library["forks"][0]["home_tactic"] == "balanced"
+    assert library["forks"][0]["baseline_url"].endswith("/wm-base.html")
+    assert library["forks"][0]["comparison_url"].endswith(
+        "/wm-policy.comparison.html"
     )
     serialized = json.dumps(library)
     assert "must-not-cross-library-boundary" not in serialized

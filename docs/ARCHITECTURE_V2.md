@@ -1416,3 +1416,33 @@ protocol, checkpoint, mechanism prerequisite and critical-code identities,
 and compares the replayed decision field-for-field. Evidence Center exposes
 the interval, 30/30 behavior-changing pairs and failed promotion state without
 turning descriptive shot, goal or possession differences into efficacy claims.
+
+## 55. V3.37 User-facing world-model causal fork
+
+Research Lab now turns the previously separate action-policy switch, match
+runner, replay and evidence views into one recoverable product operation. A
+`world_model_fork` task reserves one pair transaction and atomically executes
+two worlds: a prediction-only baseline with `MATCH_WM_PLAN=0`, followed by a
+quality-gated action-policy treatment with `MATCH_WM_PLAN=1`. The fixture,
+home and away tactics, model checkpoint identity, fast/full configuration and
+explicit seed are held fixed. The action-adoption policy is the only permitted
+intervention; tactic drift or the wrong policy transition makes the pair
+ineligible and the comparison builder rejects it.
+
+The pair uses the existing durable task and match ledgers instead of adding a
+second simulation path. Idempotency prevents duplicate submissions, the pair
+transaction preserves baseline/treatment identities across process recovery,
+and the treatment reuses the baseline random seed. Completion exposes three
+safe artifacts through Evidence Library: the baseline report, treatment
+report and synchronized comparison dashboard. Each individual match report
+states its policy role, while the comparison reports eligibility, intervention
+metadata, bounded metric deltas and clock-aligned replays without claiming
+cross-world event correspondence.
+
+This workflow improves intervention visibility, not the sealed research
+decision. One fork supports only simulator-local attribution for its exact
+fixture, tactics, checkpoint and seed after all structural checks pass. Its
+score or metric deltas do not establish population effects, outcome benefit,
+real-football causality, product promotion or academic confirmation. M0 remains
+the stable authority and M1 remains research-only. This architecture change
+requires neither model training nor an external LLM/provider call.
