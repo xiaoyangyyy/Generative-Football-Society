@@ -118,6 +118,24 @@ def main() -> int:
     world_model_planner = (
         ROOT / "src/match_engine/world_model/planner.py"
     ).read_text(encoding="utf-8")
+    cross_validation = (
+        ROOT / "src/match_engine/world_model/cross_validation.py"
+    ).read_text(encoding="utf-8")
+    ball_path_logger = (
+        ROOT / "src/match_engine/ball_path_logger.py"
+    ).read_text(encoding="utf-8")
+    action_codec = (
+        ROOT / "src/match_engine/world_model/action_codec.py"
+    ).read_text(encoding="utf-8")
+    product_replay = (
+        ROOT / "src/product/replay.py"
+    ).read_text(encoding="utf-8")
+    cross_protocol = _read(
+        "data/evaluation/cross_action_validation_protocol_v1.json"
+    )
+    cross_verification = _read(
+        "data/evaluation/cross_action_validation_verification_v1.json"
+    )
     action_engine = (
         ROOT / "src/match_engine/action_engine.py"
     ).read_text(encoding="utf-8")
@@ -899,6 +917,43 @@ def main() -> int:
                 "adoptManagerAdvice.textContent=",
             ))
             and "innerHTML" not in web
+        ),
+        "cross_action_authority_is_distinct_replayable_and_fail_closed": (
+            all(token in cross_validation for token in (
+                "grouped_heldout_simulator_cross_transitions",
+                "same_state_persistence",
+                "CROSS_MIN_SAMPLES = 96",
+                "CROSS_MIN_GROUPS = 6",
+                "CROSS_MIN_SKILL = 0.02",
+                "replay_cross_action_validation",
+            ))
+            and all(token in wm_inference for token in (
+                "self.cross_validation = replay_cross_action_validation(",
+                "self.cross_quality = float(self.cross_validation",
+                'elif kind == "cross":',
+                "quality = self.cross_quality",
+                'quality_kind="cross"',
+            ))
+            and all(token in world_model_planner for token in (
+                "validated_cross_vs_continuation_advantage",
+                "cross_quality_gate_closed",
+                "runtime.score_cross_action(",
+            ))
+            and "def record_cross(" in ball_path_logger
+            and '"type": "cross"' in ball_path_logger
+            and 'if et == "cross":' in action_codec
+            and '"pass", "shot", "cross"' in product_replay
+            and "cross_action_validation = build_cross_action_validation(" in trainer
+            and cross_protocol.get("state") == "registered_validation_contract"
+            and cross_protocol.get("validation", {}).get("external_football_validity") is False
+            and cross_verification.get("status")
+            == "blocked_checkpoint_missing_cross_validation"
+            and cross_verification.get("code_ready") is True
+            and cross_verification.get("cross_planning_authorized") is False
+            and cross_verification.get("runtime_cross_quality") == 0.0
+            and cross_verification.get("training_executed") is False
+            and cross_verification.get("matches_executed") == 0
+            and cross_verification.get("provider_calls_made") is False
         ),
         "formal_experiment_is_preregistered_and_compute_bounded": (
             formal_protocol.get("state") == "preregistered_not_executed"

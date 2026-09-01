@@ -81,6 +81,16 @@ def test_shot_goal_is_real_outcome_not_xg_label():
     assert action[SHOT_GOAL_INDEX] == pytest.approx(1.0)
 
 
+def test_cross_ball_log_event_has_distinct_action_and_landing_target():
+    action = encode_from_ball_log_event({
+        "type": "cross", "land_xy": [0.91, 0.47], "outcome": "HEADER",
+    })
+
+    assert int(np.argmax(action[:6])) == 3
+    assert action[6:8] == pytest.approx([0.91, 0.47])
+    assert action[PASS_OUTCOME_INDEX] == pytest.approx(0.0)
+
+
 def test_observation_weights_prioritize_ball_over_sparse_grids():
     weights = observation_loss_weights()
     assert weights.shape == (OBS_DIM,)

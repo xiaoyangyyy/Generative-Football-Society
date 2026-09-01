@@ -210,7 +210,7 @@ action opportunity
      -> 或明确的 collision / mismatch / missing / truncated 状态
 ```
 
-身份键必须在动作记录侧和球日志侧同时唯一；动作、球队或时间任一不一致都失败关闭。`hold` 与 `cross` 当前没有球轨迹，保留为 `decision_record_only`，不能假装日志缺失；旧日志没有身份键时标记为 legacy，不回退到时间猜测。报告中的世界模型决策行可以跳到通过四重核验的 SVG 轨迹，球场则提供 `WM-linked` 和 `WM changed + observed` 筛选。稳定模式或无动作采用记录的比赛不显示无意义的世界模型筛选。
+身份键必须在动作记录侧和球日志侧同时唯一；动作、球队或时间任一不一致都失败关闭。`hold` 没有球轨迹，保留为 `decision_record_only`；`cross` 从 V3.64 起记录独立球轨迹、落点、争顶结果和状态快照。旧日志没有身份键时标记为 legacy，不回退到时间猜测。报告中的世界模型决策行可以跳到通过四重核验的 SVG 轨迹，球场则提供 `WM-linked`、`WM changed + observed` 和传中专项筛选。稳定模式或无动作采用记录的比赛不显示无意义的世界模型筛选。
 
 “直接身份匹配”只证明两份运行记录描述的是同一次动作，不等于世界模型造成了比赛结果变化。即使某条记录同时满足 `policy_changed_action=true` 与直接轨迹匹配，也只是局部共享随机数反事实与实际执行的可审计贯通；总体机制结论仍必须等待独立固定预算动作采用研究获得显式授权并完整执行。
 
@@ -1818,8 +1818,9 @@ The projection separates three evidence levels:
 3. for pass or shot actions, the decision record matched one exact logged ball
    event by opportunity identity, action, team and timestamp.
 
-Hold and cross can remain direct decision records without a ball trajectory by
-design. Missing or ambiguous event links are counted explicitly. If source
+Hold remains a direct decision record without a ball trajectory by design.
+Cross has a distinct replayable trajectory from V3.64 onward. Missing or
+ambiguous event links are counted explicitly. If source
 records were truncated, manager-team record coverage is marked incomplete
 rather than inferred. Invalid action evidence fails closed inside its own
 subview while valid tactical and instruction execution evidence remains
@@ -2446,10 +2447,10 @@ counterfactual attribution without applying planner utility deltas twice.
 
 Shot planning now exposes its validated shot-versus-continuation advantage,
 context attenuation, certainty and shot-specific blend to that controller.
-An infeasible shot is explicitly closed before scoring. Cross remains closed
-with `no_action_specific_validation` until a suitable validation artifact
-exists; the implementation does not borrow pass evidence to manufacture cross
-authority. Hold remains the reference continuation action unless a future
+An infeasible shot is explicitly closed before scoring. At this stage cross
+remained closed with `no_action_specific_validation` because no suitable
+validation artifact existed; the implementation did not borrow pass evidence
+to manufacture cross authority. Hold remains the reference continuation action unless a future
 action-specific contract authorizes direct promotion.
 
 Runtime evidence declares `validated_action_simplex_v1`, lists the exact
@@ -2473,3 +2474,50 @@ provider call. Existing formal artifacts remain immutable historical records,
 but are not current-code evidence. Broader validated action authority makes
 the new mechanism testable, but does not itself establish effectiveness or
 real-football causality.
+
+## 82. V3.64 Cross-specific evidence and planning authority
+
+V3.63 made the action controller multi-action, but cross still had no learned
+evidence path. Cross execution was absent from ball trajectories, training
+backfill accepted only pass/shot/intercept, online calibration grouped every
+non-shot transition with pass, and the runtime had no cross-specific quality.
+Opening the cross gate in that state would have reused unrelated pass evidence.
+
+Cross now has a closed evidence chain. Executed crosses are logged before the
+pending policy identity is cleared, with crosser, normalized origin and landing
+point, aerial contact, winner, added simulator xG, goal state, trajectory peak
+and flight time. Optional pre/post observations use the same snapshot contract
+as pass and shot. The action codec and ball-log dataset preserve cross as action
+index three, while Studio replay renders it as a distinct dashed trajectory and
+links it to a policy record only by exact opportunity identity, action, team and
+timestamp. Only hold remains trajectory-free by design.
+
+Future training runs compute a grouped-heldout cross validation artifact from
+cross rows in the existing validation split. The registered metric is weighted
+next-observation MSE against same-state persistence. Eligibility requires at
+least 96 cross transitions across six match groups and at least 0.02 skill over
+persistence. Quality is support-adjusted and recomputed from primitive counts
+and losses whenever a checkpoint loads; incomplete, relabelled or tampered
+evidence yields exactly zero authority. The scope is simulator transitions
+only and explicitly carries no external-football validity.
+
+The runtime separates pass, cross and shot online-calibration branches. A valid
+cross checkpoint may compare a learned cross future with the learned hold
+continuation, apply the cross-specific confidence and certainty budget, and
+send the bounded advantage to the shared feasible-action probability simplex.
+Cross does not consume the pass-success head. The blend is independently capped
+by `MATCH_WM_CROSS_BLEND` and remains subordinate to the controller's global
+0.35 ceiling.
+
+`cross_action_validation_protocol_v1.json` and its read-only verifier make the
+current state explicit. The existing v9 candidate hash is valid but its metadata
+predates the cross artifact, so verification reports
+`blocked_checkpoint_missing_cross_validation`, quality 0.0 and no cross
+planning authority. Studio surfaces "unvalidated, zero authority" instead of
+confusing code readiness with evidence readiness. No old checkpoint is upgraded
+and no historical match result is reinterpreted.
+
+This stage executes no training, match, fixed-budget experiment or provider
+call. It completes the code and evidence contract needed for a later checkpoint;
+it does not demonstrate cross prediction skill, behavior change, match-outcome
+improvement or real-football causality.

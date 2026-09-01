@@ -154,6 +154,15 @@ def test_ball_logger_carries_pending_world_model_runtime_identity(monkeypatch):
     assert state.ball_path_log[1]["wm_action_opportunity_id"] == (
         "direct:Brazil:12.000:3"
     )
+    ball_path_logger.record_cross(
+        state, carrier=carrier, landed=np.array([0.9, 0.5]),
+        contact="header", winner=receiver, xg_added=0.08,
+    )
+    assert state.ball_path_log[2]["type"] == "cross"
+    assert state.ball_path_log[2]["wm_action_opportunity_id"] == (
+        "direct:Brazil:12.000:3"
+    )
+    assert state.ball_path_log[2]["winner_id"] == "b"
 
 
 def test_runtime_identity_links_decision_to_exact_observed_action(tmp_path):
@@ -185,6 +194,35 @@ def test_runtime_identity_links_decision_to_exact_observed_action(tmp_path):
         "policy_changed_action"
     ] is True
     assert links["causal_claim_authorized"] is False
+
+
+def test_cross_trajectory_is_replayed_and_identity_linked(tmp_path):
+    identity = "direct:Brazil:22.000:5"
+    path = tmp_path / "outputs/ball_log/cross.jsonl"
+    _write_log(path, [{
+        "type": "cross", "t_sec": 22, "team": "Brazil",
+        "crosser": "A [RW]", "winner": "B [ST]", "kind": "aerial",
+        "from_xy": [0.75, 0.12], "land_xy": [0.91, 0.48],
+        "contact": "header", "xg_added": 0.08, "outcome": "HEADER",
+        "wm_action_opportunity_id": identity,
+    }])
+    replay = build_match_replay(
+        path, root=tmp_path, home="Brazil", away="Argentina",
+    )
+    links = build_world_model_action_links(replay, {
+        "available": True, "records": [{
+            "opportunity_id": identity, "team_id": "Brazil", "t_sec": 22,
+            "recommended_action": "cross", "actual_action": "cross",
+            "counterfactual_baseline_action": "hold",
+            "policy_changed_action": True, "attribution_eligible": True,
+        }],
+    })
+
+    assert replay["events"][0]["type"] == "cross"
+    assert replay["events"][0]["end"] == [0.91, 0.48]
+    assert replay["events"][0]["xg_added"] == 0.08
+    assert links["directly_observed"] == 1
+    assert links["links"][0]["status"] == "direct_runtime_identity_match"
 
 
 def test_linker_fails_closed_for_legacy_collision_and_nontrajectory_actions():

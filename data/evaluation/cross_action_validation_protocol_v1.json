@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-cross-action-planning-authority-v1",
+  "state": "registered_validation_contract",
+  "research_question": "Does the learned transition model predict held-out cross transitions better than same-state persistence with enough match-group support to authorize bounded cross planning?",
+  "claim_scope": "simulator_cross_transition_prediction_only_no_real_football_or_match_outcome_claim",
+  "action": "cross",
+  "validation": {
+    "scope": "grouped_heldout_simulator_cross_transitions",
+    "data_domain": "simulator_transition_rows_only",
+    "external_football_validity": false,
+    "baseline": "same_state_persistence",
+    "metric": "weighted_next_observation_mse",
+    "minimum_samples": 96,
+    "minimum_groups": 6,
+    "minimum_skill_vs_persistence": 0.02,
+    "runtime_minimum_planner_quality": 0.15,
+    "quality_is_recomputed_at_load": true,
+    "tampered_or_incomplete_evidence_fails_closed": true
+  },
+  "candidate": {
+    "checkpoint": "data/world_model/latent_wm_rollout_calibrated_candidate.pt",
+    "checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28"
+  },
+  "required_code_paths": [
+    "src/match_engine/world_model/cross_validation.py",
+    "src/match_engine/world_model/inference.py",
+    "src/match_engine/world_model/planner.py",
+    "src/match_engine/world_model/online_calibration.py",
+    "src/match_engine/world_model/action_codec.py",
+    "src/match_engine/world_model/ball_log_dataset.py",
+    "src/match_engine/action_engine.py",
+    "src/match_engine/ball_path_logger.py",
+    "src/product/replay.py",
+    "scripts/train_world_model.py"
+  ],
+  "promotion_rule": {
+    "cross_authority_requires_current_checkpoint_evidence": true,
+    "missing_evidence_quality": 0.0,
+    "behavior_or_outcome_promotion_requires_separate_preregistered_study": true,
+    "this_protocol_authorizes_training": false,
+    "this_protocol_authorizes_formal_match_runs": false
+  },
+  "current_execution": {
+    "training_executed": false,
+    "matches_executed": 0,
+    "provider_calls_made": false
+  }
+}

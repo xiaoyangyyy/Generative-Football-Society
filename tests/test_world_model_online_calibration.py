@@ -74,6 +74,30 @@ def test_accurate_transition_model_keeps_full_online_trust():
     ] > 0.0
 
 
+def test_cross_calibration_is_isolated_from_pass_branch():
+    calibrator = OnlineTransitionCalibrator(
+        expected_weighted_mse=0.01,
+        expected_weighted_mse_by_branch={"cross": 0.002},
+        min_samples=2,
+    )
+    current = np.zeros(OBS_DIM, dtype=np.float32)
+    actual = np.full(OBS_DIM, 0.1, dtype=np.float32)
+    for _ in range(2):
+        calibrator.observe(
+            action_kind="cross",
+            current_observation=current,
+            predicted_observation=np.full(OBS_DIM, 0.2, dtype=np.float32),
+            actual_observation=actual,
+            predicted_uncertainty=0.2,
+        )
+
+    branches = calibrator.diagnostics()["branches"]
+    assert branches["cross"]["samples"] == 2
+    assert branches["cross"]["expected_weighted_mse"] == 0.002
+    assert branches["pass"]["samples"] == 0
+    assert branches["shot"]["samples"] == 0
+
+
 def test_runtime_confidence_is_only_reduced_and_gate_cannot_reopen():
     cfg = WorldModelConfig(min_planner_quality=0.15)
     model = SimpleNamespace(checkpoint_version=6)

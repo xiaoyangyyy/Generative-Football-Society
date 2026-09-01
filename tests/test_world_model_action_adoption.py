@@ -79,6 +79,29 @@ class _ValidatedShotRuntime:
         return 0.9
 
 
+class _ValidatedCrossRuntime:
+    def __init__(self):
+        self.cfg = SimpleNamespace(
+            planner_blend=0.30,
+            shot_planner_blend=0.25,
+            cross_planner_blend=0.20,
+        )
+        self.last_uncertainty = 0.1
+
+    def encode_state(self, state, *, attacking_home):
+        observation = np.zeros(OBS_DIM, dtype=np.float32)
+        observation[200] = float(state.ball.position[0])
+        observation[-1] = float(attacking_home)
+        return observation
+
+    def planner_confidence(self, observation, kind="general"):
+        return 0.8 if kind == "cross" else 0.0
+
+    def score_cross_action(self, observation, action, *, attacking_home):
+        self.last_uncertainty = 0.1
+        return 0.30 if decode_action_kind(action) == "cross" else 0.0
+
+
 def test_validation_quality_gate_precedes_coverage_discount():
     runtime = object.__new__(WorldModelRuntime)
     runtime.cfg = WorldModelConfig(min_planner_quality=0.15)
@@ -287,7 +310,33 @@ def test_validated_pass_evidence_changes_high_level_utility_and_is_audited(
     assert record["quality_gates"]["pass"]["open"] is True
     assert record["quality_gates"]["pass"]["model_advantage"] == 0.30
     assert record["quality_gates"]["shot"]["reason"] == "action_infeasible"
-    assert record["quality_gates"]["cross"]["reason"] == "no_action_specific_validation"
+    assert record["quality_gates"]["cross"]["reason"] == "action_infeasible"
+
+
+def test_validated_cross_advantage_reaches_probability_controller(monkeypatch):
+    monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
+    monkeypatch.setenv("MATCH_WM_PLAN", "1")
+    state = _planner_state()
+    carrier = SimpleNamespace(team_id="home", position=state.ball.position)
+    labels = ["pass", "shot", "cross", "hold"]
+    utilities = np.array([0.2, -0.1, 0.0, 0.2], dtype=float)
+
+    adjusted_utilities = action_imagination_adjustments(
+        _ValidatedCrossRuntime(), state, carrier, True, utilities, labels,
+        dist_goal=0.5, feasible_actions={"pass", "cross", "hold"},
+    )
+    baseline = np.array([0.40, 0.0, 0.15, 0.45], dtype=float)
+    adjusted = mix_direct_action_probabilities(
+        state, labels=labels, probabilities=baseline,
+    )
+
+    gate = state._wm_pending_direct_action_adoption["quality_gates"]["cross"]
+    assert adjusted_utilities[2] > utilities[2]
+    assert gate["open"] is True
+    assert gate["reason"] == "validated_cross_vs_continuation_advantage"
+    assert gate["model_advantage"] == 0.30
+    assert adjusted[2] > baseline[2]
+    assert gate["model_target_action_probability"] > baseline[2]
 
 
 def test_validated_shot_advantage_reaches_probability_controller(monkeypatch):

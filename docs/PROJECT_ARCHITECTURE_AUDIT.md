@@ -47,6 +47,10 @@ not quality signals by themselves.
 16. Replaced pass-only world-model probability adoption with a validated,
     feasible multi-action simplex; shot receives its own authority evidence,
     while unvalidated cross control remains closed.
+17. Added a cross-specific grouped-heldout validation contract, independent
+    online calibration, bounded planning path, replayable ball trajectory and
+    exact product evidence link. The current checkpoint still has zero cross
+    authority because it predates this evidence contract.
 
 ## LLM Scope Decision
 
@@ -66,8 +70,9 @@ cleaning, or direct unaudited state mutation.
 
 ## Priority Research Queue
 
-1. Collect balanced cross, shot and goal transitions, then validate cross
-   authority and recalibrate the shot branch before broader promotion.
+1. Collect balanced cross, shot and goal transitions; produce a new checkpoint
+   that passes the registered cross gate and recalibrate the shot branch before
+   broader promotion. Do not retrofit authority onto the current v9 checkpoint.
 2. Continue the gradual `SocietyAgent` facade split only when a behavior-preserving boundary is available.
 3. Collect real failed-pass labels for an external completion benchmark.
 4. Split `TournamentManager` into scheduler, match service, standings, narrative orchestration, and repository.

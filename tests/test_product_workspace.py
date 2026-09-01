@@ -105,6 +105,49 @@ def _evidence(root):
     )
 
 
+def test_cross_action_validation_state_is_projected_without_overclaim(tmp_path):
+    _evidence(tmp_path)
+    evaluation = tmp_path / "data/evaluation"
+    (evaluation / "cross_action_validation_protocol_v1.json").write_text(
+        json.dumps({
+            "protocol_id": "gfs-cross-action-planning-authority-v1",
+            "state": "registered_validation_contract",
+            "claim_scope": "simulator_cross_transition_prediction_only",
+            "validation": {
+                "minimum_samples": 96, "minimum_groups": 6,
+                "minimum_skill_vs_persistence": 0.02,
+            },
+        }),
+        encoding="utf-8",
+    )
+    (evaluation / "cross_action_validation_verification_v1.json").write_text(
+        json.dumps({
+            "status": "blocked_checkpoint_missing_cross_validation",
+            "code_ready": True, "checkpoint_identity_verified": True,
+            "cross_planning_authorized": False, "runtime_cross_quality": 0.0,
+            "checkpoint_cross_validation": {
+                "reason": "cross_validation_unavailable",
+            },
+            "training_executed": False, "matches_executed": 0,
+            "provider_calls_made": False,
+        }),
+        encoding="utf-8",
+    )
+
+    evidence = ProductWorkspace.create(
+        tmp_path, StudioConfig(mode="research"),
+    ).evidence()["cross_action_validation"]
+
+    assert evidence["available"] is True
+    assert evidence["code_ready"] is True
+    assert evidence["cross_planning_authorized"] is False
+    assert evidence["runtime_cross_quality"] == 0.0
+    assert evidence["checkpoint_reason"] == "cross_validation_unavailable"
+    assert evidence["training_executed"] is False
+    assert evidence["matches_executed"] == 0
+    assert evidence["provider_calls_made"] is False
+
+
 def _manager_roster(root, team="Brazil"):
     roles = (
         "GK",

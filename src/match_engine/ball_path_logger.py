@@ -202,6 +202,59 @@ def record_shot(
     state.ball_path_log = entries
 
 
+def record_cross(
+    state: "MatchAffectiveState",
+    *,
+    carrier: "PlayerAffectiveState",
+    landed: np.ndarray,
+    contact: str,
+    winner: Optional["PlayerAffectiveState"] = None,
+    xg_added: float = 0.0,
+    goal: bool = False,
+    traj_peak: float = 0.0,
+    traj_tof: float = 0.0,
+    obs_pre: Optional[np.ndarray] = None,
+    obs_post: Optional[np.ndarray] = None,
+) -> None:
+    """Record an executed cross as its own replayable action transition."""
+    if not ball_path_log_enabled():
+        return
+    entries: List[Dict[str, Any]] = getattr(state, "ball_path_log", None) or []
+    if len(entries) >= ball_path_log_max_entries():
+        return
+    outcome = "GOAL" if goal else str(contact or "loose").upper()
+    entry: Dict[str, Any] = {
+        "type": "cross",
+        "t_sec": float(state.clock_seconds),
+        "clock": _clock_label(state.clock_seconds),
+        "team": carrier.team_id,
+        "crosser_id": carrier.player_id,
+        "crosser": _player_label(carrier),
+        "from_xy": [float(carrier.position[0]), float(carrier.position[1])],
+        "land_xy": [float(landed[0]), float(landed[1])],
+        "kind": "aerial",
+        "contact": str(contact or "loose")[:40],
+        "xg_added": round(float(xg_added), 4),
+        "goal": bool(goal),
+        "outcome": outcome,
+        "peak_m": round(float(traj_peak), 3),
+        "tof_s": round(float(traj_tof), 3),
+    }
+    opportunity_id = _world_model_opportunity_id(state)
+    if opportunity_id:
+        entry["wm_action_opportunity_id"] = opportunity_id
+    if winner is not None:
+        entry["winner_id"] = winner.player_id
+        entry["winner"] = _player_label(winner)
+    if ball_log_wm_snapshot_enabled():
+        if obs_pre is not None:
+            entry["obs"] = np.asarray(obs_pre, dtype=np.float32).tolist()
+        if obs_post is not None:
+            entry["next_obs"] = np.asarray(obs_post, dtype=np.float32).tolist()
+    entries.append(entry)
+    state.ball_path_log = entries
+
+
 def format_entry_line(entry: Dict[str, Any]) -> str:
     clk = entry.get("clock", "?")
     if entry.get("type") == "pass":
@@ -227,6 +280,14 @@ def format_entry_line(entry: Dict[str, Any]) -> str:
             f"{entry.get('shooter', '?')}{gk_part} | {_xy(np.array(entry['from_xy']))} "
             f"d={entry.get('dist_norm', 0):.3f} xG={entry.get('xg', 0):.2f} "
             f"h={entry.get('peak_m', 0):.2f}m tof={entry.get('tof_s', 0):.2f}s | **{entry.get('outcome', '')}**"
+        )
+    if entry.get("type") == "cross":
+        winner = entry.get("winner", "loose ball")
+        return (
+            f"{clk} CROSS {entry.get('team', '')} {entry.get('crosser', '?')} "
+            f"to {_xy(np.array(entry['land_xy']))} | {winner} | "
+            f"h={entry.get('peak_m', 0):.2f}m tof={entry.get('tof_s', 0):.2f}s "
+            f"xG+={entry.get('xg_added', 0):.3f} | {entry.get('outcome', '')}"
         )
     return f"{clk} {entry.get('type', 'event')} {entry}"
 

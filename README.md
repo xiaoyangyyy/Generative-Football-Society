@@ -17,8 +17,12 @@ study and changed behavior in all 30 pairs of a 60-run full-match study. It did
 **not** establish outcome improvement. V3.63 replaced that controller with a
 validated feasible multi-action simplex, so those sealed results are retained
 as history but fail current-code identity verification and are not evidence for
-the new controller. M1 remains default-off. See
-`docs/ACTION_OUTCOME_RESULT_V1.md` and `docs/ARCHITECTURE_V2.md` section 81.
+the new controller. V3.64 adds a distinct cross-transition validation contract,
+cross-specific runtime authority and replayable cross trajectories. The current
+v9 checkpoint contains no such cross evidence, so cross authority correctly
+remains zero until a future checkpoint passes the registered grouped-heldout
+gate. M1 remains default-off. See `docs/ACTION_OUTCOME_RESULT_V1.md` and
+`docs/ARCHITECTURE_V2.md` sections 81--82.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

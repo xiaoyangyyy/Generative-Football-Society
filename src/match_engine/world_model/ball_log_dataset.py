@@ -25,7 +25,7 @@ def _load_jsonl_events(path: Path) -> Tuple[Dict[str, Any], List[Dict[str, Any]]
             if i == 0 and "meta" in row:
                 meta = row["meta"]
                 continue
-            if row.get("type") in ("pass", "shot", "intercept"):
+            if row.get("type") in ("pass", "shot", "cross", "intercept"):
                 events.append(row)
     return meta, events
 

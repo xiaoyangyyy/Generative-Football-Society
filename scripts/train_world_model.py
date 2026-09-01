@@ -14,6 +14,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 
+from src.match_engine.world_model.cross_validation import (
+    build_cross_action_validation,
+)
 from src.match_engine.world_model.semantic_event_training import (
     bootstrap_semantic_event_loss,
     bootstrap_semantic_path_loss,
@@ -273,6 +276,7 @@ def main() -> None:
 
     is_pass = (act[:, 0] > 0.5) | (act[:, 4] > 0.5)
     is_shot = act[:, 1] > 0.5
+    is_cross = act[:, 3] > 0.5
     supervised = supervised | is_pass | is_shot
     pass_mask = (supervised & is_pass).astype(np.float32)
     shot_mask = (supervised & is_shot).astype(np.float32)
@@ -868,6 +872,14 @@ def main() -> None:
         )).item())
         pm = pass_mask[val_idx] > 0.5
         sm = shot_mask[val_idx] > 0.5
+        cm = is_cross[val_idx]
+        cross_action_validation = build_cross_action_validation(
+            obs[val_idx][cm],
+            vp.numpy()[cm],
+            nxt[val_idx][cm],
+            obs_weights.numpy(),
+            groups[val_idx][cm],
+        )
         pass_logits = vpass_all[:, :, torch.from_numpy(pm), :].squeeze(-1)
         pass_targets = torch.from_numpy(pass_success[val_idx][pm]).float()
     # Class-balanced training learns a ranking score, not a calibrated probability.
@@ -1003,6 +1015,7 @@ def main() -> None:
         "transition_quality": transition_quality,
         "pass_planner_quality": pass_planner_quality,
         "shot_planner_quality": shot_planner_quality,
+        "cross_action_validation": cross_action_validation,
         "pass_samples": int(pm.sum()),
         "shot_samples": shot_count,
         "shot_goals": shot_goals,

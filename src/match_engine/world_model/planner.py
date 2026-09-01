@@ -320,6 +320,66 @@ def action_imagination_adjustments(
         })
     elif "shot" in labels:
         gates["shot"]["reason"] = "action_infeasible"
+    if "cross" in labels and "cross" in feasible:
+        cross_index = labels.index("cross")
+        observation = runtime.encode_state(state, attacking_home=attacking_home)
+        cross_authority = _planner_authority(
+            runtime, observation, kind="cross",
+        )
+        cross_confidence = float(cross_authority["decision_confidence"])
+        gates["cross"].update({
+            **cross_authority,
+            "confidence": cross_confidence,
+        })
+        if cross_authority["authorized"] and cross_confidence > 0.0:
+            cross_target = np.asarray(state.ball.position, dtype=np.float32).copy()
+            cross_target[0] = 0.90 if attacking_home else 0.10
+            cross_target[1] = 0.50
+            cross_action = encode_high_level_action(
+                "cross", target=cross_target,
+                horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+            )
+            hold_action = encode_high_level_action(
+                "hold", target=np.asarray(state.ball.position),
+                horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
+            )
+            cross_value = float(runtime.score_cross_action(
+                observation, cross_action, attacking_home=attacking_home,
+            ))
+            hold_value = float(runtime.score_cross_action(
+                observation, hold_action, attacking_home=attacking_home,
+            ))
+            cross_certainty = _decision_certainty(runtime)
+            cross_advantage = float(np.clip(
+                cross_value - hold_value, -0.35, 0.35,
+            ))
+            cross_blend = float(getattr(
+                runtime.cfg, "cross_planner_blend", 0.20,
+            ))
+            cross_adjustment = finite_float(
+                cross_blend * cross_confidence * cross_certainty
+                * cross_advantage,
+                0.0,
+            )
+            cross_adjustment = float(np.clip(
+                cross_adjustment, -0.35, 0.35,
+            ))
+            out[cross_index] += cross_adjustment
+            adjustments["cross"] = cross_adjustment
+            gates["cross"].update({
+                "open": True,
+                "reason": "validated_cross_vs_continuation_advantage",
+                "cross_value": cross_value,
+                "hold_value": hold_value,
+                "model_advantage": cross_advantage,
+                "certainty": cross_certainty,
+                "decision_certainty": cross_certainty,
+                "policy_blend": cross_blend,
+            })
+        else:
+            gates["cross"]["reason"] = "cross_quality_gate_closed"
+    elif "cross" in labels:
+        gates["cross"]["reason"] = "action_infeasible"
     from src.match_engine.world_model.action_adoption import (
         register_action_policy_opportunity,
     )

@@ -12,11 +12,15 @@ from src.match_engine.world_model.observation import OBS_DIM
 from src.match_engine.world_model.schema import observation_loss_weights
 
 
-CALIBRATION_BRANCHES = ("general", "pass", "shot")
+CALIBRATION_BRANCHES = ("general", "pass", "cross", "shot")
 
 
 def action_calibration_branch(action_kind: str) -> str:
-    return "shot" if action_kind == "shot" else "pass"
+    if action_kind == "shot":
+        return "shot"
+    if action_kind == "cross":
+        return "cross"
+    return "pass"
 
 
 @dataclass
@@ -37,6 +41,7 @@ class OnlineTransitionCalibrator:
         self,
         *,
         expected_weighted_mse: float,
+        expected_weighted_mse_by_branch: dict[str, float] | None = None,
         min_samples: int = 8,
         ewma_alpha: float = 0.08,
     ) -> None:
@@ -44,6 +49,21 @@ class OnlineTransitionCalibrator:
         self.expected_weighted_mse = (
             max(1e-6, expected) if math.isfinite(expected) else 0.02
         )
+        self.expected_weighted_mse_by_branch = {
+            branch: self.expected_weighted_mse
+            for branch in CALIBRATION_BRANCHES
+        }
+        for branch, value in (expected_weighted_mse_by_branch or {}).items():
+            if branch not in self.expected_weighted_mse_by_branch:
+                continue
+            try:
+                branch_value = float(value)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(branch_value) and branch_value > 0.0:
+                self.expected_weighted_mse_by_branch[branch] = max(
+                    1e-6, branch_value,
+                )
         self.min_samples = max(2, int(min_samples))
         self.ewma_alpha = float(np.clip(ewma_alpha, 0.01, 1.0))
         self._branches = {
@@ -135,7 +155,10 @@ class OnlineTransitionCalibrator:
         state = self._branches.get(branch, self._branches["general"])
         if state.samples < self.min_samples:
             return 1.0
-        error_ratio = state.ewma_error / self.expected_weighted_mse
+        expected = self.expected_weighted_mse_by_branch.get(
+            branch, self.expected_weighted_mse,
+        )
+        error_ratio = state.ewma_error / expected
         error_factor = float(np.clip(
             1.0 / math.sqrt(max(1.0, error_ratio)), 0.25, 1.0,
         ))
@@ -160,13 +183,14 @@ class OnlineTransitionCalibrator:
                 correlation = 0.0
         else:
             correlation = 0.0
+        expected = self.expected_weighted_mse_by_branch[branch]
         return {
             "samples": state.samples,
             "mean_weighted_mse": model,
             "ewma_weighted_mse": state.ewma_error,
-            "expected_weighted_mse": self.expected_weighted_mse,
+            "expected_weighted_mse": expected,
             "error_ratio": (
-                state.ewma_error / self.expected_weighted_mse
+                state.ewma_error / expected
                 if state.samples else 0.0
             ),
             "persistence_weighted_mse": persistence,

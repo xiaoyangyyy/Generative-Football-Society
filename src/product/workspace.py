@@ -1355,6 +1355,12 @@ class ProductWorkspace:
         staged = read("data/evaluation/staged_completion_v1.json")
         phase5 = read("data/evaluation/phase5_research_layer_validation_v1.json")
         action_protocol = read("data/evaluation/action_adoption_protocol_v1.json")
+        cross_protocol = read(
+            "data/evaluation/cross_action_validation_protocol_v1.json"
+        )
+        cross_verification = read(
+            "data/evaluation/cross_action_validation_verification_v1.json"
+        )
         manager_advisor_protocol = read(
             "data/evaluation/manager_advisor_protocol_v1.json"
         )
@@ -1435,6 +1441,44 @@ class ProductWorkspace:
                 "promotion_authorized": bool(
                     mechanism_current
                     and action_decision.get("promotion_authorized", False)
+                ),
+            },
+            "cross_action_validation": {
+                "available": bool(cross_protocol and cross_verification),
+                "protocol_id": cross_protocol.get("protocol_id"),
+                "protocol_state": cross_protocol.get("state"),
+                "status": cross_verification.get("status"),
+                "code_ready": bool(cross_verification.get("code_ready", False)),
+                "checkpoint_identity_verified": bool(
+                    cross_verification.get("checkpoint_identity_verified", False)
+                ),
+                "cross_planning_authorized": bool(
+                    cross_verification.get("cross_planning_authorized", False)
+                ),
+                "runtime_cross_quality": float(
+                    cross_verification.get("runtime_cross_quality", 0.0) or 0.0
+                ),
+                "checkpoint_reason": (
+                    cross_verification.get("checkpoint_cross_validation") or {}
+                ).get("reason"),
+                "minimum_samples": (
+                    cross_protocol.get("validation") or {}
+                ).get("minimum_samples"),
+                "minimum_groups": (
+                    cross_protocol.get("validation") or {}
+                ).get("minimum_groups"),
+                "minimum_skill_vs_persistence": (
+                    cross_protocol.get("validation") or {}
+                ).get("minimum_skill_vs_persistence"),
+                "claim_scope": cross_protocol.get("claim_scope"),
+                "training_executed": bool(
+                    cross_verification.get("training_executed", False)
+                ),
+                "matches_executed": int(
+                    cross_verification.get("matches_executed", 0) or 0
+                ),
+                "provider_calls_made": bool(
+                    cross_verification.get("provider_calls_made", False)
                 ),
             },
             "action_outcome_study": {

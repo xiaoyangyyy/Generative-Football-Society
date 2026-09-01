@@ -299,6 +299,18 @@ class ActionEngine:
                     "cross", carrier.position,
                     horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
                 )
+            from src.match_engine.ball_path_logger import (
+                ball_log_wm_snapshot_enabled,
+                record_cross,
+            )
+
+            cross_observation_pre = None
+            if ball_log_wm_snapshot_enabled():
+                from src.match_engine.world_model.observation import encode_observation
+
+                cross_observation_pre = encode_observation(
+                    state, attacking_home=attacking_home,
+                )
             traj, aerial_out = self.aerial.resolve_cross(state, carrier, rng)
             state.ball.position = aerial_out.landed_xy
             from src.match_engine.aerial_duel import apply_aerial_xg_to_state
@@ -306,12 +318,38 @@ class ActionEngine:
 
             apply_aerial_xg_to_state(state, aerial_out.xg_added, attacking_home, self.cfg)
             events.extend(aerial_goal_events(state, carrier, aerial_out))
+            winner = None
             if aerial_out.winner_id:
                 for p in state.home.players + state.away.players:
                     if p.player_id == aerial_out.winner_id:
+                        winner = p
                         state.ball.possessor_id = p.player_id
                         state.ball.possession_team_id = p.team_id
                         break
+            if getattr(state, "_wm_last_action", None) is not None:
+                state._wm_last_action[6:8] = np.clip(
+                    aerial_out.landed_xy, 0.0, 1.0,
+                )
+            cross_observation_post = None
+            if ball_log_wm_snapshot_enabled():
+                from src.match_engine.world_model.observation import encode_observation
+
+                cross_observation_post = encode_observation(
+                    state, attacking_home=attacking_home,
+                )
+            record_cross(
+                state,
+                carrier=carrier,
+                landed=aerial_out.landed_xy,
+                contact=aerial_out.contact,
+                winner=winner,
+                xg_added=aerial_out.xg_added,
+                goal=aerial_out.goal,
+                traj_peak=float(getattr(traj, "peak_height", 0.0)),
+                traj_tof=float(getattr(traj, "time_of_flight", 0.0)),
+                obs_pre=cross_observation_pre,
+                obs_post=cross_observation_post,
+            )
             record_policy_result("cross")
             return "cross", events
 

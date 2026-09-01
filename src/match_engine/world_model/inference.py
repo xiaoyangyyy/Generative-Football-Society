@@ -37,6 +37,9 @@ from src.match_engine.world_model.state_scales import (
     multiscale_state_forecast,
     semantic_path_statistics,
 )
+from src.match_engine.world_model.cross_validation import (
+    replay_cross_action_validation,
+)
 
 try:
     import torch
@@ -44,6 +47,14 @@ try:
     _TORCH = True
 except ImportError:
     _TORCH = False
+
+
+def _quality_kind_for_action(action_kind: str) -> str:
+    if action_kind == "shot":
+        return "shot"
+    if action_kind == "cross":
+        return "cross"
+    return "pass"
 
 
 class WorldModelRuntime:
@@ -88,6 +99,10 @@ class WorldModelRuntime:
         self.shot_quality = float(
             np.clip(validation.get("shot_planner_quality", self.base_quality), 0.0, 1.0)
         )
+        self.cross_validation = replay_cross_action_validation(
+            validation.get("cross_action_validation")
+        )
+        self.cross_quality = float(self.cross_validation["quality"])
         self.frozen_shot_head = None
         self.shot_probability_source = "joint_world_model_head"
         calibration = validation.get("pass_calibration", {})
@@ -106,6 +121,12 @@ class WorldModelRuntime:
             expected_weighted_mse=float(
                 validation.get("weighted_obs_mse", 0.02)
             ),
+            expected_weighted_mse_by_branch={
+                "cross": self.cross_validation.get(
+                    "model_weighted_mse",
+                    validation.get("weighted_obs_mse", 0.02),
+                ),
+            },
         )
 
     @classmethod
@@ -129,7 +150,8 @@ class WorldModelRuntime:
         print(f"  [WORLD_MODEL] transition={kind} latent={cfg.latent_dim} (meta rows={meta.get('rows', '?')})")
         print(
             f"  [WORLD_MODEL] checkpoint=v{getattr(model, 'checkpoint_version', 2)} "
-            f"quality pass={rt.pass_quality:.3f} shot={rt.shot_quality:.3f} "
+            f"quality pass={rt.pass_quality:.3f} cross={rt.cross_quality:.3f} "
+            f"shot={rt.shot_quality:.3f} "
             f"shot_source={rt.shot_probability_source} "
             f"dynamics_members={model.transition_member_count} "
             f"trained={model.transition_ensemble_trained}"
@@ -282,6 +304,8 @@ class WorldModelRuntime:
         quality = self.base_quality
         if kind == "pass":
             quality = self.pass_quality
+        elif kind == "cross":
+            quality = self.cross_quality
         elif kind == "shot":
             quality = self.shot_quality
         threshold = float(self.cfg.min_planner_quality)
@@ -307,7 +331,7 @@ class WorldModelRuntime:
     ) -> dict[str, float]:
         """Calibrate against the exact transition target used at inference."""
         action_kind = decode_action_kind(action)
-        quality_kind = "shot" if action_kind == "shot" else "pass"
+        quality_kind = _quality_kind_for_action(action_kind)
         output = self.imagine(
             observation, action, carry_hidden=False,
             quality_kind=quality_kind,
@@ -394,7 +418,7 @@ class WorldModelRuntime:
         clean_action = strip_outcome_leakage(np.nan_to_num(
             np.asarray(action, dtype=np.float32), nan=0.0,
         ))
-        quality_kind = "shot" if action_kind == "shot" else "pass"
+        quality_kind = _quality_kind_for_action(action_kind)
         output = self.imagine(
             clean_obs,
             clean_action,
@@ -597,7 +621,7 @@ class WorldModelRuntime:
         conditioned_action[HORIZON_INDEX] = float(np.clip(
             segment_horizon_s / HORIZON_SCALE_SECONDS, 0.0, 1.0,
         ))
-        quality_kind = "shot" if action_kind == "shot" else "pass"
+        quality_kind = _quality_kind_for_action(action_kind)
         output = self.imagine(
             obs,
             conditioned_action,
@@ -1020,6 +1044,42 @@ class WorldModelRuntime:
         intercept_pen = 0.25 * turnover * (1.0 - finite_float(float(out.pass_success), 0.5))
         return finite_float(
             0.45 * state_delta + 0.35 * learned_delta + 0.20 * pass_term - intercept_pen,
+            0.0,
+        )
+
+    def score_cross_action(
+        self,
+        obs: np.ndarray,
+        action: np.ndarray,
+        *,
+        attacking_home: bool,
+    ) -> float:
+        """Score cross and continuation through cross-validated transitions."""
+        obs = np.nan_to_num(
+            np.asarray(obs, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0,
+        )
+        action = np.nan_to_num(
+            np.asarray(action, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0,
+        )
+        out = self.imagine(
+            obs, action, carry_hidden=False, quality_kind="cross",
+        )
+        direction = 1.0 if attacking_home else -1.0
+        next_ball_x = finite_float(float(out.next_obs[200]), 0.5)
+        current_ball_x = finite_float(float(obs[200]), 0.5)
+        state_delta = float(np.clip(
+            direction * (next_ball_x - current_ball_x), -0.5, 0.5,
+        ))
+        learned_delta = float(np.clip(
+            finite_float(out.progress_delta, 0.0), -0.5, 0.5,
+        ))
+        possession_home = float(np.clip(
+            finite_float(float(out.next_obs[209]), 0.5), 0.0, 1.0,
+        ))
+        retention = possession_home if attacking_home else 1.0 - possession_home
+        retention_edge = 2.0 * retention - 1.0
+        return finite_float(
+            0.50 * state_delta + 0.35 * learned_delta + 0.15 * retention_edge,
             0.0,
         )
 

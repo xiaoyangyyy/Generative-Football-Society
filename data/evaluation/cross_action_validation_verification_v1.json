@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_cross_action_planning_authority",
+  "protocol_id": "gfs-cross-action-planning-authority-v1",
+  "status": "blocked_checkpoint_missing_cross_validation",
+  "code_ready": true,
+  "contract_verified": true,
+  "code_paths_verified": true,
+  "checkpoint_identity_verified": true,
+  "checkpoint_cross_validation": {
+    "valid": false,
+    "quality": 0.0,
+    "reason": "cross_validation_unavailable"
+  },
+  "cross_planning_authorized": false,
+  "runtime_cross_quality": 0.0,
+  "claim_scope": "simulator_cross_transition_prediction_only_no_real_football_or_match_outcome_claim",
+  "training_executed": false,
+  "matches_executed": 0,
+  "provider_calls_made": false
+}

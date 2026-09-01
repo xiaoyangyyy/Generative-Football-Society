@@ -170,6 +170,11 @@ def encode_from_ball_log_event(event: Dict[str, Any]) -> np.ndarray:
         elif outcome == "INTERCEPTED":
             a[PASS_OUTCOME_INDEX] = 0.0
         return a
+    if et == "cross":
+        land = np.array(
+            event.get("land_xy", [0.5, 0.5]), dtype=float,
+        )
+        return encode_high_level_action("cross", target=land)
     if et == "intercept":
         xy = np.array(event.get("land_xy", [0.5, 0.5]), dtype=float)
         return encode_intercept_action(xy)

@@ -109,7 +109,7 @@ def _quality_gate_details(record: Mapping[str, Any]) -> str:
 def _action_link_label(status: str) -> str:
     return {
         "direct_runtime_identity_match": "direct runtime identity match",
-        "no_ball_trajectory_by_design": "no trajectory for hold/cross",
+        "no_ball_trajectory_by_design": "no trajectory for hold",
         "legacy_record_without_runtime_identity": "legacy record: no identity key",
         "ambiguous_runtime_identity_collision": "ambiguous identity collision",
         "ambiguous_action_record_identity_collision": "duplicate decision identity",
@@ -517,7 +517,9 @@ def _action_replay_panel(report: Mapping[str, Any]) -> str:
             continue
         start, end = _replay_point(raw.get("start")), _replay_point(raw.get("end"))
         event_type = str(raw.get("type") or "")
-        if start is None or end is None or event_type not in {"pass", "shot"}:
+        if start is None or end is None or event_type not in {
+            "pass", "shot", "cross",
+        }:
             continue
         t_sec = min(8_000.0, max(0.0, _finite_float(raw.get("t_sec"))))
         normalized.append({
@@ -645,12 +647,13 @@ def _action_replay_panel(report: Mapping[str, Any]) -> str:
     )
     return f"""<section id="action-replay-panel" class="card replay-panel" data-testid="action-replay-panel">
 <div class="panel-head"><div><div class="label">Inspectable match evidence</div><h2>Ball-action trajectory replay</h2></div><span class="tag">{retained}/{source} actions</span></div>
-<p class="evidence">Pass and shot trajectories only—not video or full-player tracking. Coordinates are normalized, bounded and clipped defensively; {html.escape(warning)}.</p>
+<p class="evidence">Pass, cross and shot trajectories only—not video or full-player tracking. Coordinates are normalized, bounded and clipped defensively; {html.escape(warning)}.</p>
 {linkage_summary}
 {manager_timeline}
 <fieldset class="replay-filters"><legend>Trajectory filter</legend>
 <input type="radio" name="replay-filter" id="replay-all" checked><label for="replay-all">All</label>
 <input type="radio" name="replay-filter" id="replay-passes"><label for="replay-passes">Passes</label>
+<input type="radio" name="replay-filter" id="replay-crosses"><label for="replay-crosses">Crosses</label>
 <input type="radio" name="replay-filter" id="replay-shots"><label for="replay-shots">Shots</label>
 <input type="radio" name="replay-filter" id="replay-home"><label for="replay-home">{html.escape(home)}</label>
 <input type="radio" name="replay-filter" id="replay-away"><label for="replay-away">{html.escape(away)}</label>
@@ -802,6 +805,7 @@ h1{{font-size:clamp(28px,6vw,58px);margin:0;letter-spacing:-.04em}}h2{{margin:0 
 #wm-filter-changed:checked~.table-wrap tbody tr:not(.decision-changed),#wm-filter-probability:checked~.table-wrap tbody tr:not(.decision-probability),#wm-filter-closed:checked~.table-wrap tbody tr:not(.decision-gate-closed){{display:none}}
 .table-wrap{{overflow:auto}}table{{width:100%;border-collapse:collapse;font-size:13px}}th,td{{text-align:left;padding:9px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}}th{{color:var(--muted);font-weight:600}}td details{{margin-top:5px}}.gate-list{{white-space:normal;min-width:260px;color:var(--muted)}}
 .replay-panel{{margin-top:14px;scroll-margin-top:16px}}.replay-filters{{display:flex;flex-wrap:wrap;gap:7px;border:0;padding:0;margin:14px 0 0}}.replay-filters legend{{width:100%;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.1em}}.replay-filters>input{{position:absolute;opacity:0;pointer-events:none}}.replay-filters>label{{border:1px solid #42516a;border-radius:999px;padding:6px 10px;cursor:pointer}}.replay-filters>input:focus-visible+label{{outline:3px solid var(--warn);outline-offset:2px}}.replay-filters>input:checked+label{{border-color:var(--accent);color:var(--accent);background:#10281f}}.replay-stage{{width:100%;margin-top:12px;background:#071c19;border:1px solid #285448;border-radius:12px;overflow:hidden}}.replay-stage svg{{display:block;width:100%;height:auto}}.pitch{{fill:#0c392d;stroke:#b8d8cd;stroke-width:3}}.marking{{fill:none;stroke:#b8d8cd;stroke-width:3}}.spot{{fill:#b8d8cd}}.replay-event line{{stroke-width:4;stroke-linecap:round;opacity:.43}}.replay-event circle{{stroke:none;opacity:.78}}.replay-home line,.replay-home circle{{stroke:#67e8b5;fill:#67e8b5}}.replay-away line,.replay-away circle{{stroke:#ff9f7a;fill:#ff9f7a}}.replay-neutral line,.replay-neutral circle{{stroke:#d6deeb;fill:#d6deeb}}.replay-shot line{{stroke-width:7;opacity:.84}}.replay-important circle{{stroke:#fff;stroke-width:2;opacity:1}}.replay-wm-linked line{{opacity:.95;filter:drop-shadow(0 0 5px #fff)}}.replay-wm-changed circle{{stroke:#fff;stroke-width:4;r:7px}}.replay-table{{margin-top:12px}}#replay-passes:checked~.replay-stage .replay-event:not(.replay-pass),#replay-shots:checked~.replay-stage .replay-event:not(.replay-shot),#replay-home:checked~.replay-stage .replay-event:not(.replay-home),#replay-away:checked~.replay-stage .replay-event:not(.replay-away),#replay-wm:checked~.replay-stage .replay-event:not(.replay-wm-linked),#replay-wm-changed:checked~.replay-stage .replay-event:not(.replay-wm-changed),#replay-passes:checked~.replay-table tr:not(.replay-pass),#replay-shots:checked~.replay-table tr:not(.replay-shot),#replay-home:checked~.replay-table tr:not(.replay-home),#replay-away:checked~.replay-table tr:not(.replay-away),#replay-wm:checked~.replay-table tr:not(.replay-wm-linked),#replay-wm-changed:checked~.replay-table tr:not(.replay-wm-changed){{display:none}}
+.replay-cross line{{stroke-dasharray:10 5;stroke-width:6}}#replay-crosses:checked~.replay-stage .replay-event:not(.replay-cross),#replay-crosses:checked~.replay-table tr:not(.replay-cross){{display:none}}
 .replay-timeline{{display:flex;gap:5px;overflow:auto;width:100%;padding:12px 2px 5px;scrollbar-color:#42516a transparent}}.replay-timeline label{{flex:0 0 auto;min-width:42px;border:1px solid #42516a;border-radius:8px;padding:4px 7px;text-align:center;cursor:pointer;color:#c6d2e3;font-size:12px}}.replay-timeline label span{{display:block;color:var(--muted);font-size:10px}}.replay-navigation{{width:100%;margin-top:8px}}.sequence-frame{{display:none;align-items:center;justify-content:space-between;gap:12px;background:#0a1424;border:1px solid var(--line);border-radius:10px;padding:10px}}.sequence-frame>div{{display:grid;gap:2px;text-align:center;min-width:0}}.sequence-frame strong,.sequence-frame span{{overflow:hidden;text-overflow:ellipsis}}.sequence-button{{border:1px solid #42516a;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--accent);white-space:nowrap}}.sequence-frame .tag{{justify-self:center;margin-top:3px}}.replay-event{{transition:opacity .12s ease}}
 @media(max-width:650px){{header,.split,.lineup-columns{{display:block}}.lineup-columns>div+div{{margin-top:10px}}.lineup-columns ol,.lineup-columns ul{{columns:1}}.score{{margin-top:20px}}.panel-head{{display:block}}.sequence-frame{{flex-wrap:wrap}}.sequence-frame>div{{order:-1;width:100%}}.sequence-button{{flex:1;text-align:center}}}}
 </style></head><body><main>

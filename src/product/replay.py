@@ -153,7 +153,9 @@ def build_match_replay(
         except (json.JSONDecodeError, TypeError):
             invalid_rows += 1
             continue
-        if not isinstance(raw, Mapping) or raw.get("type") not in {"pass", "shot"}:
+        if not isinstance(raw, Mapping) or raw.get("type") not in {
+            "pass", "shot", "cross",
+        }:
             invalid_rows += 1
             continue
         event_type = str(raw["type"])
@@ -166,6 +168,10 @@ def build_match_replay(
             end, clipped = _point(raw.get("land_xy"))
             actor = _text(raw.get("from"))
             target = _text(raw.get("to"))
+        elif event_type == "cross":
+            end, clipped = _point(raw.get("land_xy"))
+            actor = _text(raw.get("crosser"))
+            target = _text(raw.get("winner")) or _text(raw.get("contact"))
         else:
             team = _text(raw.get("team"))
             goal_x = 1.0 if team == home else 0.0 if team == away else (
@@ -197,6 +203,7 @@ def build_match_replay(
             "outcome": _text(raw.get("outcome"), 40).upper(),
             "p_success": _finite(raw.get("p_success")),
             "xg": _finite(raw.get("xg")),
+            "xg_added": _finite(raw.get("xg_added")),
             "wm_action_opportunity_id": _text(
                 raw.get("wm_action_opportunity_id"), 180,
             ),
@@ -295,13 +302,13 @@ def build_world_model_action_links(
         if identity and record_identity_counts.get(identity, 0) > 1:
             link["status"] = "ambiguous_action_record_identity_collision"
             unresolved_count += 1
-        elif actual in {"hold", "cross"}:
+        elif actual == "hold":
             link.update({
                 "status": "no_ball_trajectory_by_design",
                 "evidence_level": "decision_record_only",
             })
             no_trajectory_count += 1
-        elif actual not in {"pass", "shot"}:
+        elif actual not in {"pass", "shot", "cross"}:
             link["status"] = "unresolved_or_unsupported_action"
             unresolved_count += 1
         elif not identity:

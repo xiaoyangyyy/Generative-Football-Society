@@ -23,6 +23,7 @@ class WorldModelConfig:
     imagination_steps: int = 1
     planner_blend: float = 0.30
     shot_planner_blend: float = 0.25
+    cross_planner_blend: float = 0.20
     residual_scale: float = 0.25
     rollout_residual_blend: float = 1.0
     legacy_quality: float = 0.10
@@ -56,6 +57,7 @@ class WorldModelConfig:
             imagination_steps=env_int(values, "MATCH_WM_IMAGINATION_STEPS", 1),
             planner_blend=env_float(values, "MATCH_WM_PLANNER_BLEND", 0.30),
             shot_planner_blend=env_float(values, "MATCH_WM_SHOT_BLEND", 0.25),
+            cross_planner_blend=env_float(values, "MATCH_WM_CROSS_BLEND", 0.20),
             residual_scale=env_float(values, "MATCH_WM_RESIDUAL_SCALE", 0.25),
             rollout_residual_blend=env_float(
                 values, "MATCH_WM_ROLLOUT_RESIDUAL_BLEND", 1.0,
