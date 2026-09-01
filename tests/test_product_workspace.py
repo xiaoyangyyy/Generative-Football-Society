@@ -94,6 +94,13 @@ def _evidence(root):
                     "checkpoint_sha256": hashlib.sha256(b"model").hexdigest(),
                     "shot_planner_active": False,
                     "shot_fallback": "physics_xg_prior",
+                    "sealed_test": {"shot": {
+                        "samples": 49, "goals": 8,
+                        "model_brier": 0.1275,
+                        "physics_xg_prior_brier": 0.1268,
+                        "skill_vs_physics_xg_prior": -0.005,
+                        "learned_head_active": False,
+                    }},
                 },
                 "live_llm_evidence": {"evaluable": False},
             }
@@ -173,6 +180,24 @@ def test_cross_action_validation_state_is_projected_without_overclaim(tmp_path):
     assert stale["code_ready"] is False
     assert stale["cross_planning_authorized"] is False
     assert stale["runtime_cross_quality"] == 0.0
+
+
+def test_unpromoted_joint_shot_head_is_visible_as_physics_fallback(tmp_path):
+    _evidence(tmp_path)
+    evidence = ProductWorkspace.create(
+        tmp_path, StudioConfig(mode="research"),
+    ).evidence()["shot_action_validation"]
+
+    assert evidence["available"] is True
+    assert evidence["status"] == (
+        "physics_xg_fallback_joint_head_not_authorized"
+    )
+    assert evidence["probability_source"] == "physics_xg_prior"
+    assert evidence["joint_head_authorized"] is False
+    assert evidence["frozen_head_authorized"] is False
+    assert evidence["sealed_samples"] == 49
+    assert evidence["sealed_goals"] == 8
+    assert evidence["skill_vs_physics_xg_prior"] < 0.0
 
 
 def _manager_roster(root, team="Brazil"):

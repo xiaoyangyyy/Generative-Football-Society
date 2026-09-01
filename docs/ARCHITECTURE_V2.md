@@ -2526,3 +2526,36 @@ This stage executes no training, match, fixed-budget experiment or provider
 call. It completes the code and evidence contract needed for a later checkpoint;
 it does not demonstrate cross prediction skill, behavior change, match-outcome
 improvement or real-football causality.
+
+## 83. V3.65 Sealed-only shot action authority
+
+The checkpoint carried a development-split `shot_planner_quality`, while the
+formal sealed evaluation separately showed that its joint shot head was worse
+than the physics xG prior. Runtime happened to keep the current head closed
+because its quality was low, but the implementation still allowed a future
+high development score to authorize the joint head without sealed evidence.
+Its reported probability source also said `joint_world_model_head` even when
+the product decision retained physics xG. This was a latent authority and
+truthfulness defect.
+
+Runtime now preserves `joint_shot_quality` as a diagnostic only and initializes
+authorized `shot_quality` to exactly zero. Without an independently promoted
+`FrozenShotHead`, shot probability is the leakage-stripped action's physics xG
+prior and the source is `physics_xg_prior`. The joint outcome head cannot open
+the shot action gate regardless of its development score. A frozen head can
+replace that fallback only after its existing contract verifies the exact base
+checkpoint, sealed-only samples and goals, proper-score gain over physics xG,
+and an accepted promotion artifact.
+
+The shot scorer now returns an actual goal probability instead of a weighted
+mixture of progress, xG and head probability that downstream code mistakenly
+treated as a probability. Its decision uncertainty comes from the same
+action-specific authority and online-trust path used by the planner. Studio
+projects the sealed sample count, goal count, skill versus physics xG, current
+probability source and frozen-head authority before any match runs. For the
+current candidate this reads 49 sealed shots, eight goals, skill -0.00496,
+physics xG fallback and zero learned shot authority.
+
+This is a code and evidence-semantics correction only. It performs no training,
+sealed evaluation, match, provider call or promotion, and it makes no claim that
+physics xG is optimal or that a future frozen head will improve match outcomes.

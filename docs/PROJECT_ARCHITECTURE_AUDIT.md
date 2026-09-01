@@ -51,6 +51,9 @@ not quality signals by themselves.
     online calibration, bounded planning path, replayable ball trajectory and
     exact product evidence link. The current checkpoint still has zero cross
     authority because it predates this evidence contract.
+18. Removed direct action authority from the joint shot head. Its development
+    quality remains diagnostic, while runtime shot probability falls back to
+    physics xG unless an identity-bound frozen head wins on sealed groups.
 
 ## LLM Scope Decision
 

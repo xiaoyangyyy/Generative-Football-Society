@@ -196,6 +196,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "evidence?.cross_action_validation||{}" in document
     assert "cross.cross_planning_authorized" in document
     assert "cross.runtime_cross_quality" in document
+    assert "evidence?.shot_action_validation||{}" in document
+    assert "shot.frozen_head_authorized" in document
+    assert "shot.skill_vs_physics_xg_prior" in document
     assert "mean_applied_authority" in document
     assert "renderActionAdoptionWithoutCurrentCodeEvidence" in document
     assert "mechanism.result_identity_verified" in document

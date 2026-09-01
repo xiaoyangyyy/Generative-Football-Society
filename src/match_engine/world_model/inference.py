@@ -96,15 +96,19 @@ class WorldModelRuntime:
         self.pass_quality = float(
             np.clip(validation.get("pass_planner_quality", self.base_quality), 0.0, 1.0)
         )
-        self.shot_quality = float(
+        self.joint_shot_quality = float(
             np.clip(validation.get("shot_planner_quality", self.base_quality), 0.0, 1.0)
         )
+        # The joint outcome head is trained and validated inside the backbone
+        # development split.  It is diagnostic only: direct shot authority
+        # requires an independently sealed FrozenShotHead that beats physics xG.
+        self.shot_quality = 0.0
         self.cross_validation = replay_cross_action_validation(
             validation.get("cross_action_validation")
         )
         self.cross_quality = float(self.cross_validation["quality"])
         self.frozen_shot_head = None
-        self.shot_probability_source = "joint_world_model_head"
+        self.shot_probability_source = "physics_xg_prior"
         calibration = validation.get("pass_calibration", {})
         self.pass_calibration_scale = float(calibration.get("scale", 1.0))
         self.pass_calibration_bias = float(calibration.get("bias", 0.0))
@@ -152,6 +156,7 @@ class WorldModelRuntime:
             f"  [WORLD_MODEL] checkpoint=v{getattr(model, 'checkpoint_version', 2)} "
             f"quality pass={rt.pass_quality:.3f} cross={rt.cross_quality:.3f} "
             f"shot={rt.shot_quality:.3f} "
+            f"joint_shot_diagnostic={rt.joint_shot_quality:.3f} "
             f"shot_source={rt.shot_probability_source} "
             f"dynamics_members={model.transition_member_count} "
             f"trained={model.transition_ensemble_trained}"
@@ -1092,8 +1097,6 @@ class WorldModelRuntime:
     ) -> float:
         obs = np.nan_to_num(np.asarray(obs, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)
         action = np.nan_to_num(np.asarray(action, dtype=float), nan=0.0, posinf=1.0, neginf=-1.0)
-        out = self.imagine(obs, action, quality_kind="shot")
-        progress = float(np.clip(finite_float(out.progress_delta, 0.0), -0.5, 0.5))
         xg_prior = float(np.clip(action[13], 0.0, 1.0))
         if self.frozen_shot_head is not None:
             with torch.no_grad():
@@ -1102,8 +1105,13 @@ class WorldModelRuntime:
                 ).squeeze(0).numpy()
             goal_term = self.frozen_shot_head.predict(latent, action)
         else:
-            goal_term = finite_float(float(out.shot_goal_prob), 0.1)
-        return finite_float(0.10 * progress + 0.25 * xg_prior + 0.65 * goal_term, 0.0)
+            goal_term = xg_prior
+        authority = self.planner_authority(obs, kind="shot")
+        self.last_decision_uncertainty = float(np.clip(
+            1.0 - float(authority["decision_confidence"]), 0.0, 1.0,
+        ))
+        self.last_uncertainty = self.last_decision_uncertainty
+        return finite_float(float(np.clip(goal_term, 0.0, 1.0)), xg_prior)
 
     def encode_state(self, state, *, attacking_home: bool | None = None) -> np.ndarray:
         return encode_observation(state, attacking_home=attacking_home, cfg=self.cfg)

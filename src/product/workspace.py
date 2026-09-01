@@ -1426,6 +1426,21 @@ class ProductWorkspace:
             )
         candidate = phase5.get("world_model_candidate") or {}
         live_llm = phase5.get("live_llm_evidence") or {}
+        frozen_shot_decision = read(
+            "data/evaluation/frozen_shot_head_decision.json"
+        )
+        sealed_shot = (candidate.get("sealed_test") or {}).get("shot") or {}
+        frozen_shot_artifact = _artifact_path(
+            self.root, frozen_shot_decision.get("promotion_artifact")
+        )
+        frozen_shot_identity_verified = bool(
+            frozen_shot_decision.get("accepted")
+            and frozen_shot_artifact is not None
+            and frozen_shot_artifact.is_file()
+            and frozen_shot_decision.get("promotion_artifact_sha256")
+            and file_sha256(frozen_shot_artifact)
+            == frozen_shot_decision.get("promotion_artifact_sha256")
+        )
         return {
             "stable_release": release.get("active"),
             "stable_release_manifest": release.get("manifest"),
@@ -1437,7 +1452,34 @@ class ProductWorkspace:
             "world_model_checkpoint_sha256": candidate.get("checkpoint_sha256"),
             "shot_planner_active": candidate.get("shot_planner_active", False),
             "shot_fallback": candidate.get("shot_fallback"),
-            "frozen_shot_head": read("data/evaluation/frozen_shot_head_decision.json"),
+            "frozen_shot_head": frozen_shot_decision,
+            "shot_action_validation": {
+                "available": bool(sealed_shot or frozen_shot_decision),
+                "status": (
+                    "sealed_frozen_head_authorized"
+                    if frozen_shot_identity_verified
+                    else "physics_xg_fallback_joint_head_not_authorized"
+                ),
+                "probability_source": (
+                    "frozen_backbone_shot_head"
+                    if frozen_shot_identity_verified else "physics_xg_prior"
+                ),
+                "joint_head_authorized": False,
+                "frozen_head_authorized": frozen_shot_identity_verified,
+                "sealed_samples": int(sealed_shot.get("samples", 0) or 0),
+                "sealed_goals": int(sealed_shot.get("goals", 0) or 0),
+                "model_brier": sealed_shot.get("model_brier"),
+                "physics_xg_prior_brier": sealed_shot.get(
+                    "physics_xg_prior_brier"
+                ),
+                "skill_vs_physics_xg_prior": sealed_shot.get(
+                    "skill_vs_physics_xg_prior"
+                ),
+                "claim_scope": (
+                    "sealed_simulator_shot_probability_proper_score_only_"
+                    "no_match_outcome_or_real_football_claim"
+                ),
+            },
             "live_llm_evaluable": live_llm.get("evaluable", False),
             "action_adoption_mechanism": {
                 "available": bool(action_protocol),

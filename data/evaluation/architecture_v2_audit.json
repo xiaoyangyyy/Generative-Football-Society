@@ -44,6 +44,7 @@
     "training_requires_explicit_authority": true,
     "training_resume_binds_data_and_code_identity": true,
     "training_stop_forces_exact_checkpoint": true,
+    "unsealed_joint_shot_head_cannot_control_actions": true,
     "wheel_preserves_src_console_namespace": true,
     "world_model_action_authority_uses_validated_feasible_simplex": true,
     "world_model_required_mode_fails_closed": true

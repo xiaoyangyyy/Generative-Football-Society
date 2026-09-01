@@ -986,6 +986,30 @@ def main() -> int:
                 ROOT / "scripts/validate_frozen_shot_head.py"
             ).read_text(encoding="utf-8")
         ),
+        "unsealed_joint_shot_head_cannot_control_actions": (
+            all(token in wm_inference for token in (
+                "self.joint_shot_quality = float(",
+                "self.shot_quality = 0.0",
+                'self.shot_probability_source = "physics_xg_prior"',
+                "goal_term = xg_prior",
+                'self.planner_authority(obs, kind="shot")',
+            ))
+            and candidate.get("shot_planner_active") is False
+            and candidate.get("shot_fallback") == "physics_xg_prior"
+            and (candidate.get("sealed_test") or {}).get("shot", {}).get(
+                "skill_vs_physics_xg_prior", 0.0
+            ) < 0.0
+            and all(token in workspace for token in (
+                '"shot_action_validation": {',
+                '"joint_head_authorized": False',
+                '"physics_xg_fallback_joint_head_not_authorized"',
+            ))
+            and all(token in web for token in (
+                "evidence?.shot_action_validation||{}",
+                "shot.frozen_head_authorized",
+                "shot.skill_vs_physics_xg_prior",
+            ))
+        ),
         "llm_pool_is_config_scoped_and_locked": (
             "dict[LLMGatewayConfig" in gateway and "_GATEWAY_LOCK" in gateway
         ),
