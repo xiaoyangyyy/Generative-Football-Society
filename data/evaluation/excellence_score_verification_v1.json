@@ -239,7 +239,7 @@
     "src/product/control_plane.py": "4cb8d8705ef99bd45d3bd8eca5b9463cef8bdada8268cdbcabeb0f0b08b87ea7",
     "src/product/completion_plan.py": "16579e1fbc4c7c82470eebf6601ad26d2e723020e77f9bfe031f27cd314e4698",
     "src/cli.py": "d8d4381ef94daa459fc3b2af2c7737947f95beb9a15a4e08150879ce6db68529",
-    "src/product/web.py": "7e6d359dbc5786f0e4b4657bb16de5890c4e7a866d8facae08b880040460b95b",
+    "src/product/web.py": "048c237020f71b6a70987134724ca486ce8eed4f1e9f8bca672f8d598a63dc94",
     "src/product/telemetry.py": "d3b7cda8f249da11f0e908d514b70abb8446b94721c33fa2681d5f7e361162a7",
     "scripts/build_excellence_evidence_kit.py": "5c2d1fcb29239153cf5ca1cef483d13c366d5fba60e0d339c2459d8610fc1186",
     "data/evaluation/excellence_evidence_kit_verification_v1.json": "77fb795f2fec61bd2d073d77523b0ceaf4348fa3151c0e1cf90e4d96969e0537",

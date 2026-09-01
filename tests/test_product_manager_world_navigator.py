@@ -68,6 +68,11 @@ def _future_trace():
         "final_decision_identity": "d" * 64,
         "linked_to_final_selection": True,
         "retained_mechanism_examples": 2,
+        "cross_action_mechanism_examples": 1,
+        "direct_preference_mechanism_examples": 1,
+        "suppression_only_mechanism_examples": 1,
+        "hold_reference_redistribution_examples": 1,
+        "nonzero_cross_descriptive_windows": 2,
         "evidence_level": "scenario_evidence",
         "fixed_scenario_budget": 3,
         "eligible_scenarios": 3,
@@ -108,6 +113,21 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             review_identity=terminal["review_identity"],
             retained_mechanism_examples=terminal[
                 "retained_mechanism_examples"
+            ],
+            cross_action_mechanism_examples=terminal[
+                "cross_action_mechanism_examples"
+            ],
+            direct_preference_mechanism_examples=terminal[
+                "direct_preference_mechanism_examples"
+            ],
+            suppression_only_mechanism_examples=terminal[
+                "suppression_only_mechanism_examples"
+            ],
+            hold_reference_redistribution_examples=terminal[
+                "hold_reference_redistribution_examples"
+            ],
+            nonzero_cross_descriptive_windows=terminal[
+                "nonzero_cross_descriptive_windows"
             ],
             review_intent=terminal["intent"],
             evidence_level=terminal["evidence_level"],
@@ -495,6 +515,11 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
             "reviewed_future_action_divergence": 2,
             "reviewed_future_local_attribution": 2,
             "reviewed_future_timing_sensitivity": 2,
+            "reviewed_future_cross_actions": 2,
+            "reviewed_future_direct_preferences": 2,
+            "reviewed_future_suppression_only_signals": 2,
+            "reviewed_future_hold_reference_redistributions": 2,
+            "reviewed_future_nonzero_cross_windows": 4,
             "runtime_tactic_verified": 2,
             "official_action_evidence": 2,
             "chapters_with_local_action_changes": 2,
@@ -553,6 +578,11 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
     assert trajectory["reviewed_world_model_chain_complete"] == 2
     assert trajectory["scenario_evidence_chapters"] == 2
     assert trajectory["reviewed_scenario_archives"] == 6
+    assert trajectory["cross_action_mechanism_examples"] == 2
+    assert trajectory["direct_preference_mechanism_examples"] == 2
+    assert trajectory["suppression_only_mechanism_examples"] == 2
+    assert trajectory["hold_reference_redistribution_examples"] == 2
+    assert trajectory["nonzero_cross_descriptive_windows"] == 4
     assert trajectory["identity_verified_scenario_archives"] == 6
     assert trajectory["reviewed_action_divergence_chapters"] == 2
     assert trajectory["reviewed_timing_sensitivity_chapters"] == 2
@@ -582,6 +612,11 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
         "local_attribution_scenarios": 2,
         "descriptive_future_difference_scenarios": 1,
         "retained_mechanism_examples": 2,
+        "cross_action_mechanism_examples": 1,
+        "direct_preference_mechanism_examples": 1,
+        "suppression_only_mechanism_examples": 1,
+        "hold_reference_redistribution_examples": 1,
+        "nonzero_cross_descriptive_windows": 2,
         "timing_sensitivity_observed": True,
         "ranking_performed": False,
         "best_branch_time": None,
@@ -1025,6 +1060,56 @@ def test_impossible_reviewed_future_partition_fails_closed_when_rehashed():
     boolean_count["entry_identity"] = _identity(boolean_count)
     with pytest.raises(ValueError, match="chapter facts"):
         build_manager_world_navigator(_season(entries=[boolean_count]))
+
+
+def test_historical_action_semantics_are_legacy_safe_and_tamper_evident():
+    fields = (
+        "cross_action_mechanism_examples",
+        "direct_preference_mechanism_examples",
+        "suppression_only_mechanism_examples",
+        "hold_reference_redistribution_examples",
+        "nonzero_cross_descriptive_windows",
+    )
+    legacy = _entry(1)
+    trace = legacy["future_review_execution_trace"]
+    terminal = trace["terminal_review"]
+    stage = next(
+        row for row in legacy["world_evolution_thread"]["stages"]
+        if row["stage_id"] == "prematch_future_review"
+    )
+    for field in fields:
+        terminal.pop(field)
+        stage.pop(field)
+    trace.pop("trace_identity")
+    trace["trace_identity"] = _identity(trace)
+    stage["source_identity"] = trace["trace_identity"]
+    stage.pop("stage_identity")
+    stage["stage_identity"] = _identity(stage)
+    _refresh_review_world_certificate(legacy)
+
+    context = build_manager_world_navigator(
+        _season(entries=[legacy]),
+    )["history_chapters"][0]["reviewed_future_context"]
+    assert {field: context[field] for field in fields} == {
+        field: 0 for field in fields
+    }
+
+    tampered = _entry(2)
+    trace = tampered["future_review_execution_trace"]
+    trace["terminal_review"]["cross_action_mechanism_examples"] = 2
+    trace.pop("trace_identity")
+    trace["trace_identity"] = _identity(trace)
+    stage = next(
+        row for row in tampered["world_evolution_thread"]["stages"]
+        if row["stage_id"] == "prematch_future_review"
+    )
+    stage["source_identity"] = trace["trace_identity"]
+    stage.pop("stage_identity")
+    stage["stage_identity"] = _identity(stage)
+    _refresh_review_world_certificate(tampered)
+
+    with pytest.raises(ValueError, match="chapter facts"):
+        build_manager_world_navigator(_season(entries=[tampered]))
 
 
 def test_rehashed_reviewed_scenario_time_tamper_fails_closed():

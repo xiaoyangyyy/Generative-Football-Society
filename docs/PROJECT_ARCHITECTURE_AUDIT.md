@@ -67,6 +67,9 @@ not quality signals by themselves.
 22. Preserved those action semantics through synchronized comparison totals,
     future-review execution traces, season-level decision summaries, manager
     world threads and Studio, without reclassifying legacy V1 evidence.
+23. Extended the same semantics into identity-bound historical chapters,
+    chronological season trajectories and influence-path totals, with legacy
+    zero normalization and rehashed-tamper rejection.
 
 ## LLM Scope Decision
 

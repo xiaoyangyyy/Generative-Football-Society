@@ -2679,3 +2679,29 @@ These are continuity and observability guarantees, not new model authority.
 Cross windows remain descriptive, hold remains reference-only, and no
 downstream or outcome causal claim is added. No training, match, future
 generation, formal experiment or provider call is executed in this stage.
+
+## 88. V3.70 Historical action-semantic continuity
+
+V3.69 carried cross and policy-signal semantics into each official manager
+world thread, but the season navigator still archived only the generic count
+of retained mechanism examples. Once a completed fixture became a historical
+chapter, cross actions, direct preferences, suppression-only signals,
+hold-reference redistribution and non-zero cross windows disappeared from the
+season trajectory. The history view therefore exposed less evidence than the
+same fixture's live thread.
+
+The navigator now normalizes, validates and identity-binds all five semantic
+counts at the execution-trace-to-thread boundary. Counts must be non-negative,
+must agree across both sources, cannot exceed the retained-example and bounded
+window budgets, and survive into each chapter, chronological trajectory point,
+whole-season trajectory totals and the world-model influence path. A forged
+count still fails after outer identities are recomputed. Historical records
+that genuinely predate the V2 fields normalize missing values to zero; explicit
+invalid values or disagreements do not receive that compatibility treatment.
+
+Studio renders the whole-season totals and the per-match semantic record next
+to the existing reviewed-future chronology. This preserves product continuity
+without ranking interventions or relating the counts to scores. No new action
+authority, downstream causality or real-football claim is introduced. No
+training, match, future generation, formal experiment or provider call is
+executed in this stage.

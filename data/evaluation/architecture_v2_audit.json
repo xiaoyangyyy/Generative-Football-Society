@@ -10,6 +10,7 @@
     "domain_does_not_depend_on_product_or_training": true,
     "formal_experiment_fails_closed_on_identity_or_partial_evidence": true,
     "formal_experiment_is_preregistered_and_compute_bounded": true,
+    "historical_navigator_preserves_v2_action_semantics": true,
     "hold_is_reference_only_not_direct_model_authority": true,
     "infrastructure_has_no_upward_dependencies": true,
     "llm_pool_is_config_scoped_and_locked": true,

@@ -277,6 +277,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "chapter.descriptive_world_after" in document
     assert "function renderManagerWorldTrajectory(season)" in document
     assert "function renderManagerWorldReviewedFutureContinuity(season)" in document
+    assert "renderManagerWorldReviewedFutureContinuityWithoutMechanismSemantics" in document
+    assert "trajectory.cross_action_mechanism_examples" in document
+    assert "future.suppression_only_mechanism_examples" in document
+    assert "future.nonzero_cross_descriptive_windows" in document
     assert "appendManagerWorldEvolutionThreadWithoutReviewedFutures" in document
     assert "function appendReviewedScenarioArchive(" in document
     assert "appendManagerWorldEvolutionThreadWithoutScenarioArchive" in document

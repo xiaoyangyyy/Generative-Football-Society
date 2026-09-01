@@ -66,6 +66,13 @@ _FUTURE_REVIEW_COUNT_FIELDS = (
     "local_attribution_scenarios",
     "descriptive_future_difference_scenarios",
 )
+_FUTURE_MECHANISM_SEMANTIC_FIELDS = (
+    "cross_action_mechanism_examples",
+    "direct_preference_mechanism_examples",
+    "suppression_only_mechanism_examples",
+    "hold_reference_redistribution_examples",
+    "nonzero_cross_descriptive_windows",
+)
 _REVIEWED_SCENARIO_FIELDS = {
     "schema_version", "source_scenario_identity", "branch_at_sec",
     "branch_minute", "future_status", "eligible", "anchor_verified",
@@ -415,6 +422,36 @@ def _season_world_trajectory(
             len(row["reviewed_future_context"]["scenarios"])
             for row in reviewed_points
         ),
+        "cross_action_mechanism_examples": sum(
+            row["reviewed_future_context"][
+                "cross_action_mechanism_examples"
+            ]
+            for row in reviewed_points
+        ),
+        "direct_preference_mechanism_examples": sum(
+            row["reviewed_future_context"][
+                "direct_preference_mechanism_examples"
+            ]
+            for row in reviewed_points
+        ),
+        "suppression_only_mechanism_examples": sum(
+            row["reviewed_future_context"][
+                "suppression_only_mechanism_examples"
+            ]
+            for row in reviewed_points
+        ),
+        "hold_reference_redistribution_examples": sum(
+            row["reviewed_future_context"][
+                "hold_reference_redistribution_examples"
+            ]
+            for row in reviewed_points
+        ),
+        "nonzero_cross_descriptive_windows": sum(
+            row["reviewed_future_context"][
+                "nonzero_cross_descriptive_windows"
+            ]
+            for row in reviewed_points
+        ),
         "identity_verified_scenario_archives": sum(
             _identity_matches(scenario, "archive_identity")
             for row in reviewed_points
@@ -602,6 +639,14 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     review_counts = {
         field: review_stage.get(field) for field in _FUTURE_REVIEW_COUNT_FIELDS
     }
+    review_semantic_counts = {
+        field: review_stage.get(field, 0)
+        for field in _FUTURE_MECHANISM_SEMANTIC_FIELDS
+    }
+    terminal_semantic_counts = {
+        field: terminal_review.get(field, 0)
+        for field in _FUTURE_MECHANISM_SEMANTIC_FIELDS
+    }
     reviewed_scenarios = review_stage.get("reviewed_scenarios")
     review_world = thread.get("review_to_official_world")
     expected_same_match = bool(
@@ -680,6 +725,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
                 != terminal_review.get("evidence_level")
                 or review_stage.get("retained_mechanism_examples")
                 != terminal_review.get("retained_mechanism_examples")
+                or review_semantic_counts != terminal_semantic_counts
                 or reviewed_scenarios
                 != terminal_review.get("reviewed_scenarios")
                 or any(
@@ -710,8 +756,28 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
                         ),
                         review_stage.get("retained_mechanism_examples"),
                         terminal_review.get("retained_mechanism_examples"),
+                        *review_semantic_counts.values(),
+                        *terminal_semantic_counts.values(),
                     )
                 )
+                or review_semantic_counts[
+                    "cross_action_mechanism_examples"
+                ] > review_stage.get("retained_mechanism_examples")
+                or (
+                    review_semantic_counts[
+                        "direct_preference_mechanism_examples"
+                    ]
+                    + review_semantic_counts[
+                        "suppression_only_mechanism_examples"
+                    ]
+                    > review_stage.get("retained_mechanism_examples")
+                )
+                or review_semantic_counts[
+                    "hold_reference_redistribution_examples"
+                ] > review_stage.get("retained_mechanism_examples")
+                or review_semantic_counts[
+                    "nonzero_cross_descriptive_windows"
+                ] > 2 * review_stage.get("retained_mechanism_examples")
                 or review_counts["eligible_scenarios"]
                 > review_counts["fixed_scenario_budget"]
                 or review_counts["verified_anchor_scenarios"]
@@ -737,6 +803,9 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
                 or review_stage.get("review_intent") is not None
                 or review_stage.get("evidence_level") is not None
                 or review_stage.get("retained_mechanism_examples") != 0
+                or any(
+                    value != 0 for value in review_semantic_counts.values()
+                )
                 or any(value != 0 for value in review_counts.values())
                 or review_stage.get("timing_sensitivity_observed") is not None
                 or review_stage.get("ranking_performed") is not None
@@ -988,6 +1057,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
             "retained_mechanism_examples": review_stage.get(
                 "retained_mechanism_examples"
             ),
+            **copy.deepcopy(review_semantic_counts),
             "timing_sensitivity_observed": review_stage.get(
                 "timing_sensitivity_observed"
             ),
@@ -1149,6 +1219,36 @@ def build_manager_world_navigator(
             row["reviewed_future_context"][
                 "timing_sensitivity_observed"
             ] is True
+            for row in all_chapters
+        ),
+        "reviewed_future_cross_actions": sum(
+            row["reviewed_future_context"][
+                "cross_action_mechanism_examples"
+            ]
+            for row in all_chapters
+        ),
+        "reviewed_future_direct_preferences": sum(
+            row["reviewed_future_context"][
+                "direct_preference_mechanism_examples"
+            ]
+            for row in all_chapters
+        ),
+        "reviewed_future_suppression_only_signals": sum(
+            row["reviewed_future_context"][
+                "suppression_only_mechanism_examples"
+            ]
+            for row in all_chapters
+        ),
+        "reviewed_future_hold_reference_redistributions": sum(
+            row["reviewed_future_context"][
+                "hold_reference_redistribution_examples"
+            ]
+            for row in all_chapters
+        ),
+        "reviewed_future_nonzero_cross_windows": sum(
+            row["reviewed_future_context"][
+                "nonzero_cross_descriptive_windows"
+            ]
             for row in all_chapters
         ),
         "runtime_tactic_verified": sum(

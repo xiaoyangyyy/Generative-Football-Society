@@ -1003,6 +1003,32 @@ def main() -> int:
             ))
             and "innerHTML" not in web
         ),
+        "historical_navigator_preserves_v2_action_semantics": (
+            all(token in manager_world_navigator for token in (
+                "_FUTURE_MECHANISM_SEMANTIC_FIELDS = (",
+                '"cross_action_mechanism_examples"',
+                '"direct_preference_mechanism_examples"',
+                '"suppression_only_mechanism_examples"',
+                '"hold_reference_redistribution_examples"',
+                '"nonzero_cross_descriptive_windows"',
+                "review_semantic_counts != terminal_semantic_counts",
+                'review_stage.get(field, 0)',
+                'terminal_review.get(field, 0)',
+                '"reviewed_future_cross_actions"',
+                '"reviewed_future_direct_preferences"',
+                '"reviewed_future_suppression_only_signals"',
+                '"reviewed_future_hold_reference_redistributions"',
+                '"reviewed_future_nonzero_cross_windows"',
+            ))
+            and all(token in web for token in (
+                "renderManagerWorldReviewedFutureContinuityWithoutMechanismSemantics",
+                "trajectory.cross_action_mechanism_examples",
+                "future.direct_preference_mechanism_examples",
+                "future.suppression_only_mechanism_examples",
+                "future.hold_reference_redistribution_examples",
+                "future.nonzero_cross_descriptive_windows",
+            ))
+        ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (
             all(token in decision_advice for token in (
                 "def build_manager_advice_comparison(",
