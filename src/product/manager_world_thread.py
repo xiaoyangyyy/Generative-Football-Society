@@ -226,6 +226,13 @@ def build_manager_world_evolution_thread(
     action_semantics = _official_action_semantic_examples(
         action, retained_records=retained_records,
     )
+    retained_record_semantics = action.get("retained_record_semantics")
+    retained_record_semantics = (
+        copy.deepcopy(dict(retained_record_semantics))
+        if action.get("schema_version") == 2
+        and isinstance(retained_record_semantics, Mapping)
+        else None
+    )
     action_stage = _stage(
         "official_world_model_actions",
         action_status,
@@ -234,6 +241,7 @@ def build_manager_world_evolution_thread(
         team=action.get("team"),
         retained_records=retained_records,
         **action_semantics,
+        retained_record_semantics=retained_record_semantics,
         resolved_action_decisions=int(
             action_counts.get("resolved_action_decisions") or 0
         ),

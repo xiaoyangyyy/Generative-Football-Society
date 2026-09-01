@@ -183,6 +183,29 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             semantic_legacy_unclassified_examples=0,
             semantic_hold_reference_redistribution_examples=1,
             semantic_direct_cross_ball_event_examples=1,
+            retained_record_semantics={
+                "schema_version": 1,
+                "records": 4,
+                "actual_action_counts": {
+                    "hold": 1, "pass": 1, "cross": 1, "shot": 1,
+                    "none": 0,
+                },
+                "primary_signal_action_counts": {
+                    "hold": 0, "pass": 2, "cross": 1, "shot": 0,
+                    "none": 1,
+                },
+                "signal_mode_counts": {
+                    "direct_preference": 1, "suppression_only": 2,
+                    "none": 1, "legacy_unclassified": 0,
+                },
+                "hold_reference_redistribution_records": 1,
+                "direct_cross_ball_event_links": 1,
+                "locally_attributable_cross_changes": 1,
+                "retained_record_coverage_complete": True,
+                "source_manager_record_coverage_complete": True,
+                "full_source_distribution_authorized": True,
+                "outcome_attribution_authorized": False,
+            },
             source_identity="e" * 64,
             match_id="match-1",
         ),
@@ -440,6 +463,10 @@ def _rewrite_action(entry, status, *, source=True, **facts):
     action["status"] = status
     action["source_identity"] = "e" * 64 if source else None
     action.update(facts)
+    # Rewritten historical fixtures exercise V1 compatibility unless a test
+    # deliberately supplies a new internally consistent V2 semantic ledger.
+    if "retained_record_semantics" not in facts:
+        action.pop("retained_record_semantics", None)
     if facts.get("retained_records") == 0:
         action.update({
             "retained_semantic_examples": 0,
@@ -583,6 +610,30 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
                     "any fixture is truncated or lacks semantic examples"
                 ),
             },
+            "retained_record_semantics": {
+                "fixtures_with_v2_semantics": 2,
+                "fixtures_without_v2_semantics": 0,
+                "records": 8,
+                "actual_action_counts": {
+                    "hold": 2, "pass": 2, "cross": 2, "shot": 2,
+                    "none": 0,
+                },
+                "primary_signal_action_counts": {
+                    "hold": 0, "pass": 4, "cross": 2, "shot": 0,
+                    "none": 2,
+                },
+                "signal_mode_counts": {
+                    "direct_preference": 2, "suppression_only": 4,
+                    "none": 2, "legacy_unclassified": 0,
+                },
+                "hold_reference_redistribution_records": 2,
+                "direct_cross_ball_event_links": 2,
+                "locally_attributable_cross_changes": 2,
+                "fixtures_with_full_source_distribution": 2,
+                "all_chapters_have_v2_semantics": True,
+                "full_source_distribution_authorized": True,
+                "outcome_attribution_authorized": False,
+            },
             "influence_rate": 0.75,
             "realized_change_rate_among_influenced": 0.666667,
             "direct_ball_event_link_coverage": 0.666667,
@@ -678,6 +729,27 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
         "semantic_examples_truncated": False,
         "semantic_example_coverage_complete": True,
         "full_record_distribution_authorized": False,
+    }
+    assert first["official_retained_record_semantics"] == {
+        "schema_version": 1,
+        "records": 4,
+        "actual_action_counts": {
+            "hold": 1, "pass": 1, "cross": 1, "shot": 1, "none": 0,
+        },
+        "primary_signal_action_counts": {
+            "hold": 0, "pass": 2, "cross": 1, "shot": 0, "none": 1,
+        },
+        "signal_mode_counts": {
+            "direct_preference": 1, "suppression_only": 2,
+            "none": 1, "legacy_unclassified": 0,
+        },
+        "hold_reference_redistribution_records": 1,
+        "direct_cross_ball_event_links": 1,
+        "locally_attributable_cross_changes": 1,
+        "retained_record_coverage_complete": True,
+        "source_manager_record_coverage_complete": True,
+        "full_source_distribution_authorized": True,
+        "outcome_attribution_authorized": False,
     }
     assert first["cumulative"]["points_earned"] == 1
     assert second["cumulative"]["points_earned"] == 4
@@ -1202,6 +1274,7 @@ def test_historical_official_action_semantics_default_legacy_fields_to_zero():
         "semantic_direct_cross_ball_event_examples",
     ):
         stage.pop(field)
+    stage.pop("retained_record_semantics")
     stage.pop("stage_identity")
     stage["stage_identity"] = _identity(stage)
     thread = entry["world_evolution_thread"]
@@ -1218,6 +1291,26 @@ def test_historical_official_action_semantics_default_legacy_fields_to_zero():
     assert sample["semantic_examples_truncated"] is False
     assert sample["semantic_example_coverage_complete"] is False
     assert sample["semantic_cross_action_examples"] == 0
+    assert sample["retained_record_semantics"] is None
+
+
+def test_rehashed_retained_record_semantic_tamper_fails_closed():
+    entry = _entry(1)
+    stage = next(
+        row for row in entry["world_evolution_thread"]["stages"]
+        if row["stage_id"] == "official_world_model_actions"
+    )
+    stage["retained_record_semantics"]["actual_action_counts"]["cross"] = 2
+    stage.pop("stage_identity")
+    stage["stage_identity"] = _identity(stage)
+    thread = entry["world_evolution_thread"]
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    with pytest.raises(ValueError, match="retained action semantics"):
+        build_manager_world_navigator(_season(entries=[entry]))
 
 
 def test_rehashed_reviewed_scenario_time_tamper_fails_closed():

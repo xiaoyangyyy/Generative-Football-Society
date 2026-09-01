@@ -206,6 +206,13 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "appendOfficialActionExecutionWithoutPolicySemantics" in document
     assert "example.policy_signal" in document
     assert "reference.received_redistributed_probability" in document
+    assert "appendOfficialActionExecutionWithoutRetainedRecordSemantics" in document
+    assert "evidence?.retained_record_semantics" in document
+    assert "function retainedActionSemanticText(" in document
+    assert "semantic.actual_action_counts||{}" in document
+    assert "semantic.primary_signal_action_counts||{}" in document
+    assert "semantic.signal_mode_counts||{}" in document
+    assert "不授权赛果归因" in document
     assert "appendFutureMechanismExamplesWithoutCrossMetrics" in document
     assert "window?.delta?.crosses" in document
     assert "appendFutureMechanismExamplesWithoutPolicySemantics" in document
@@ -277,6 +284,11 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "renderManagerWorldActionAdoptionLedgerWithoutBoundedSemantics" in document
     assert "ledger?.bounded_semantic_examples" in document
     assert "sample.fixtures_with_truncated_examples" in document
+    assert "renderManagerWorldNavigatorWithoutRetainedRecordSemantics" in document
+    assert "world_model_action_adoption_ledger?.retained_record_semantics" in document
+    assert "ledger.fixtures_without_v2_semantics" in document
+    assert "point.official_retained_record_semantics" in document
+    assert "chapter.action_adoption?.retained_record_semantics" in document
     assert "chapter.descriptive_world_after" in document
     assert "function renderManagerWorldTrajectory(season)" in document
     assert "function renderManagerWorldReviewedFutureContinuity(season)" in document
@@ -291,6 +303,8 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "appendManagerWorldEvolutionThreadWithoutOfficialActionSemantics" in document
     assert "stage.retained_semantic_examples" in document
     assert "stage.semantic_direct_cross_ball_event_examples" in document
+    assert "appendManagerWorldEvolutionThreadWithoutRetainedRecordSemantics" in document
+    assert "stage?.retained_record_semantics" in document
     assert "function appendReviewedScenarioArchive(" in document
     assert "appendManagerWorldEvolutionThreadWithoutScenarioArchive" in document
     assert "renderManagerWorldNavigatorWithoutScenarioArchive" in document

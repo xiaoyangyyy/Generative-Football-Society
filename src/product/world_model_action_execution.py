@@ -9,12 +9,18 @@ import math
 from typing import Any, Mapping
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+LEGACY_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSIONS = {LEGACY_SCHEMA_VERSION, SCHEMA_VERSION}
 MAX_SOURCE_RECORDS = 96
 MAX_EXAMPLES = 5
 _ACTIONS = {"hold", "pass", "cross", "shot"}
 _DIRECT_LINK = "direct_runtime_identity_match"
 _NO_TRAJECTORY = "no_ball_trajectory_by_design"
+_SEMANTIC_ACTIONS = ("hold", "pass", "cross", "shot", "none")
+_SIGNAL_MODES = (
+    "direct_preference", "suppression_only", "none", "legacy_unclassified",
+)
 
 
 def _identity(payload: Mapping[str, Any]) -> str:
@@ -69,6 +75,115 @@ def _unavailable(reason: str) -> dict[str, Any]:
         "available": False,
         "reason": reason,
     }
+
+
+def _retained_record_semantics(
+    rows: list[Mapping[str, Any]], *, source_coverage_complete: bool,
+) -> dict[str, Any]:
+    actual = {action: 0 for action in _SEMANTIC_ACTIONS}
+    primary = {action: 0 for action in _SEMANTIC_ACTIONS}
+    modes = {mode: 0 for mode in _SIGNAL_MODES}
+    for row in rows:
+        actual[str(row.get("actual_action") or "none")] += 1
+        signal = row.get("policy_signal")
+        signal = signal if isinstance(signal, Mapping) else {}
+        primary[str(signal.get("primary_action") or "none")] += 1
+        modes[str(signal.get("mode") or "legacy_unclassified")] += 1
+    return {
+        "schema_version": 1,
+        "records": len(rows),
+        "actual_action_counts": actual,
+        "primary_signal_action_counts": primary,
+        "signal_mode_counts": modes,
+        "hold_reference_redistribution_records": sum(
+            isinstance(row.get("reference_action_effect"), Mapping)
+            and row["reference_action_effect"].get(
+                "received_redistributed_probability"
+            ) is True
+            for row in rows
+        ),
+        "direct_cross_ball_event_links": sum(
+            row.get("actual_action") == "cross"
+            and isinstance(row.get("runtime_link"), Mapping)
+            and row["runtime_link"].get("direct_ball_event_identity") is True
+            for row in rows
+        ),
+        "locally_attributable_cross_changes": sum(
+            row.get("actual_action") == "cross"
+            and row.get("simulator_local_action_attribution") is True
+            for row in rows
+        ),
+        "retained_record_coverage_complete": True,
+        "source_manager_record_coverage_complete": source_coverage_complete,
+        "full_source_distribution_authorized": source_coverage_complete,
+        "outcome_attribution_authorized": False,
+    }
+
+
+def _validate_retained_record_semantics(
+    semantics: Any, *, counts: Mapping[str, int],
+) -> None:
+    required = {
+        "schema_version", "records", "actual_action_counts",
+        "primary_signal_action_counts", "signal_mode_counts",
+        "hold_reference_redistribution_records",
+        "direct_cross_ball_event_links",
+        "locally_attributable_cross_changes",
+        "retained_record_coverage_complete",
+        "source_manager_record_coverage_complete",
+        "full_source_distribution_authorized",
+        "outcome_attribution_authorized",
+    }
+    if not isinstance(semantics, Mapping) or set(semantics) != required:
+        raise ValueError("world-model retained action semantics shape is invalid")
+    actual = semantics.get("actual_action_counts")
+    primary = semantics.get("primary_signal_action_counts")
+    modes = semantics.get("signal_mode_counts")
+    if (
+        semantics.get("schema_version") != 1
+        or not isinstance(actual, Mapping)
+        or set(actual) != set(_SEMANTIC_ACTIONS)
+        or not isinstance(primary, Mapping)
+        or set(primary) != set(_SEMANTIC_ACTIONS)
+        or not isinstance(modes, Mapping)
+        or set(modes) != set(_SIGNAL_MODES)
+    ):
+        raise ValueError("world-model retained action semantics partition is invalid")
+    values = [
+        *actual.values(), *primary.values(), *modes.values(),
+        semantics.get("records"),
+        semantics.get("hold_reference_redistribution_records"),
+        semantics.get("direct_cross_ball_event_links"),
+        semantics.get("locally_attributable_cross_changes"),
+    ]
+    if any(
+        isinstance(value, bool) or not isinstance(value, int) or value < 0
+        for value in values
+    ):
+        raise ValueError("world-model retained action semantics counts are invalid")
+    records = counts["records"]
+    if (
+        semantics["records"] != records
+        or sum(actual.values()) != records
+        or sum(primary.values()) != records
+        or sum(modes.values()) != records
+        or semantics["hold_reference_redistribution_records"] > records
+        or semantics["direct_cross_ball_event_links"] > min(
+            actual["cross"], counts["direct_ball_event_links"],
+        )
+        or semantics["locally_attributable_cross_changes"] > min(
+            actual["cross"], counts["locally_attributable_action_changes"],
+        )
+        or semantics.get("retained_record_coverage_complete") is not True
+        or semantics.get("source_manager_record_coverage_complete") is not (
+            counts["source_records_truncated"] is False
+        )
+        or semantics.get("full_source_distribution_authorized") is not (
+            counts["source_records_truncated"] is False
+        )
+        or semantics.get("outcome_attribution_authorized") is not False
+    ):
+        raise ValueError("world-model retained action semantics are invalid")
 
 
 def _validate_source_aggregate(
@@ -520,6 +635,9 @@ def project_world_model_action_execution(
             "source_records_truncated": source_truncated,
             "manager_record_coverage_complete": not source_truncated,
         },
+        "retained_record_semantics": _retained_record_semantics(
+            manager_rows, source_coverage_complete=not source_truncated,
+        ),
         "examples": copy.deepcopy(manager_rows[:MAX_EXAMPLES]),
         "examples_truncated": len(manager_rows) > MAX_EXAMPLES,
         "outcome_comparison_performed": False,
@@ -540,7 +658,7 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
     """Validate a bounded projection without needing the source match report."""
     if not isinstance(evidence, Mapping) or evidence.get(
         "schema_version"
-    ) != SCHEMA_VERSION:
+    ) not in SUPPORTED_SCHEMA_VERSIONS:
         raise ValueError("world-model official action evidence schema is invalid")
     if evidence.get("available") is not True:
         if not isinstance(evidence.get("reason"), str) or not evidence.get("reason"):
@@ -577,6 +695,9 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
         "unresolved_or_missing_ball_event_links", "source_match_opportunities",
     )
     values = {name: _integer(counts.get(name), name=name) for name in names}
+    values["source_records_truncated"] = counts.get(
+        "source_records_truncated"
+    )
     expected_state = (
         "locally_attributable_action_changes_observed"
         if values["locally_attributable_action_changes"] else
@@ -615,6 +736,14 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
         is (not counts.get("source_records_truncated"))
     ):
         raise ValueError("world-model official action evidence counts are invalid")
+    if evidence.get("schema_version") == SCHEMA_VERSION:
+        _validate_retained_record_semantics(
+            evidence.get("retained_record_semantics"), counts=values,
+        )
+    elif "retained_record_semantics" in evidence:
+        raise ValueError(
+            "legacy world-model action evidence cannot claim V2 semantics"
+        )
     seen = set()
     changed_examples = 0
     for row in examples:
@@ -729,6 +858,20 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
         values["locally_attributable_action_changes"], len(examples),
     ):
         raise ValueError("world-model official action example priority is invalid")
+    if (
+        evidence.get("schema_version") == SCHEMA_VERSION
+        and evidence.get("examples_truncated") is False
+        and evidence.get("retained_record_semantics")
+        != _retained_record_semantics(
+            examples,
+            source_coverage_complete=(
+                counts.get("source_records_truncated") is False
+            ),
+        )
+    ):
+        raise ValueError(
+            "world-model retained action semantics disagree with complete examples"
+        )
     frozen = copy.deepcopy(dict(evidence))
     observed = frozen.pop("evidence_identity", None)
     if not isinstance(observed, str) or observed != _identity(frozen):
@@ -736,7 +879,8 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
 
 
 __all__ = [
-    "MAX_EXAMPLES", "SCHEMA_VERSION",
+    "LEGACY_SCHEMA_VERSION", "MAX_EXAMPLES", "SCHEMA_VERSION",
+    "SUPPORTED_SCHEMA_VERSIONS",
     "project_world_model_action_execution",
     "validate_world_model_action_execution",
 ]

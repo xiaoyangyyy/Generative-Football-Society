@@ -137,6 +137,7 @@ def test_official_action_execution_projects_only_manager_team_and_local_claim():
     )
 
     assert evidence["available"] is True
+    assert evidence["schema_version"] == 2
     assert evidence["team"] == "A"
     assert evidence["evidence_state"] == (
         "locally_attributable_action_changes_observed"
@@ -155,6 +156,27 @@ def test_official_action_execution_projects_only_manager_team_and_local_claim():
         "source_match_opportunities": 3,
         "source_records_truncated": False,
         "manager_record_coverage_complete": True,
+    }
+    assert evidence["retained_record_semantics"] == {
+        "schema_version": 1,
+        "records": 2,
+        "actual_action_counts": {
+            "hold": 1, "pass": 1, "cross": 0, "shot": 0, "none": 0,
+        },
+        "primary_signal_action_counts": {
+            "hold": 1, "pass": 1, "cross": 0, "shot": 0, "none": 0,
+        },
+        "signal_mode_counts": {
+            "direct_preference": 0, "suppression_only": 0,
+            "none": 0, "legacy_unclassified": 2,
+        },
+        "hold_reference_redistribution_records": 0,
+        "direct_cross_ball_event_links": 0,
+        "locally_attributable_cross_changes": 0,
+        "retained_record_coverage_complete": True,
+        "source_manager_record_coverage_complete": True,
+        "full_source_distribution_authorized": True,
+        "outcome_attribution_authorized": False,
     }
     assert len(evidence["examples"]) == 2
     changed = evidence["examples"][0]
@@ -196,6 +218,12 @@ def test_official_action_execution_accepts_identity_bound_cross_trajectory():
         "event_type": "cross",
         "event_clock": "0:12",
     }
+    assert evidence["retained_record_semantics"][
+        "actual_action_counts"
+    ]["cross"] == 1
+    assert evidence["retained_record_semantics"][
+        "direct_cross_ball_event_links"
+    ] == 1
     validate_world_model_action_execution(evidence)
 
 
@@ -287,6 +315,14 @@ def test_official_execution_preserves_suppression_and_hold_reference_semantics()
         "realized_as_actual_action": True,
         "policy_changed_to_reference": True,
     }
+    semantics = evidence["retained_record_semantics"]
+    assert semantics["signal_mode_counts"] == {
+        "direct_preference": 0,
+        "suppression_only": 1,
+        "none": 0,
+        "legacy_unclassified": 1,
+    }
+    assert semantics["hold_reference_redistribution_records"] == 1
     validate_world_model_action_execution(evidence)
 
     tampered = copy.deepcopy(evidence)
@@ -322,6 +358,33 @@ def test_official_action_execution_fails_closed_on_source_and_projection_tamper(
     with pytest.raises(ValueError, match="counts are invalid"):
         validate_world_model_action_execution(tampered)
 
+    semantic_tamper = copy.deepcopy(evidence)
+    semantic_tamper["retained_record_semantics"]["actual_action_counts"][
+        "cross"
+    ] = 1
+    semantic_tamper["retained_record_semantics"]["actual_action_counts"][
+        "pass"
+    ] = 0
+    frozen = copy.deepcopy(semantic_tamper)
+    frozen.pop("evidence_identity")
+    semantic_tamper["evidence_identity"] = _identity(frozen)
+    with pytest.raises(ValueError, match="retained action semantics"):
+        validate_world_model_action_execution(semantic_tamper)
+
+    legacy = copy.deepcopy(evidence)
+    legacy["schema_version"] = 1
+    legacy.pop("retained_record_semantics")
+    legacy.pop("evidence_identity")
+    legacy["evidence_identity"] = _identity(legacy)
+    validate_world_model_action_execution(legacy)
+
+    false_legacy = copy.deepcopy(evidence)
+    false_legacy["schema_version"] = 1
+    false_legacy.pop("evidence_identity")
+    false_legacy["evidence_identity"] = _identity(false_legacy)
+    with pytest.raises(ValueError, match="cannot claim V2 semantics"):
+        validate_world_model_action_execution(false_legacy)
+
 
 def test_postmatch_debrief_contains_action_execution_and_isolates_invalid_layer():
     report = _report()
@@ -342,7 +405,7 @@ def test_postmatch_debrief_contains_action_execution_and_isolates_invalid_layer(
     )
     assert isolated["available"] is True
     assert isolated["world_model_action_execution"] == {
-        "schema_version": 1,
+        "schema_version": 2,
         "available": False,
         "reason": "world_model_action_evidence_invalid",
     }
@@ -356,7 +419,7 @@ def test_official_action_execution_preserves_legacy_and_stable_boundaries():
     assert project_world_model_action_execution(
         legacy, manager_team="A", expected_match_id="legacy",
     ) == {
-        "schema_version": 1,
+        "schema_version": 2,
         "available": False,
         "reason": "legacy_report_without_world_model_layer",
     }
@@ -392,6 +455,11 @@ def test_official_action_execution_exposes_truncation_without_false_coverage():
     assert counts["source_records_truncated"] is True
     assert counts["manager_record_coverage_complete"] is False
     assert counts["records"] == 2
+    semantics = evidence["retained_record_semantics"]
+    assert semantics["records"] == 2
+    assert semantics["retained_record_coverage_complete"] is True
+    assert semantics["source_manager_record_coverage_complete"] is False
+    assert semantics["full_source_distribution_authorized"] is False
 
     opponent_only = _report()
     adoption = opponent_only["layers"]["world_model"]["action_adoption"]
@@ -455,6 +523,28 @@ def test_official_action_execution_survives_ledger_and_summary_replay():
     assert summary["manager_action_records_retained"] == 2
     assert summary["locally_attributable_action_changes"] == 1
     assert summary["direct_ball_event_links"] == 1
+    assert summary["retained_record_semantics"] == {
+        "fixtures_with_v2_semantics": 1,
+        "fixtures_without_v2_semantics": 0,
+        "retained_records_with_v2_semantics": 2,
+        "actual_action_counts": {
+            "hold": 1, "pass": 1, "cross": 0, "shot": 0, "none": 0,
+        },
+        "primary_signal_action_counts": {
+            "hold": 1, "pass": 1, "cross": 0, "shot": 0, "none": 0,
+        },
+        "signal_mode_counts": {
+            "direct_preference": 0, "suppression_only": 0,
+            "none": 0, "legacy_unclassified": 2,
+        },
+        "hold_reference_redistribution_records": 0,
+        "direct_cross_ball_event_links": 0,
+        "locally_attributable_cross_changes": 0,
+        "fixtures_with_full_source_distribution": 1,
+        "all_official_evidence_has_v2_semantics": True,
+        "full_source_distribution_authorized": True,
+        "outcome_attribution_authorized": False,
+    }
     assert summary["outcome_effect_estimate"] is None
     assert summary["causal_effect_authorized"] is False
     thread = entry["world_evolution_thread"]
@@ -501,7 +591,7 @@ def test_official_action_execution_survives_ledger_and_summary_replay():
     frozen_ledger = copy.deepcopy(tampered)
     frozen_ledger.pop("ledger_identity")
     tampered["ledger_identity"] = _identity(frozen_ledger)
-    with pytest.raises(ValueError, match="evidence identity mismatch"):
+    with pytest.raises(ValueError, match="semantics disagree"):
         validate_manager_decision_ledger(tampered)
 
     mismatched_debrief = copy.deepcopy(debrief)

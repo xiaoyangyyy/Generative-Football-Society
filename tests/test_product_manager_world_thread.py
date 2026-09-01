@@ -27,7 +27,7 @@ def _reviewed_scenarios():
     scenarios = []
     for branch, status, changed, local, differences, attributed, marker in rows:
         payload = {
-            "schema_version": 1,
+            "schema_version": 2,
             "source_scenario_identity": marker * 64,
             "branch_at_sec": branch,
             "branch_minute": branch / 60.0,
@@ -84,7 +84,7 @@ def _entry(*, action_available=True, stable=False, review_linked=True):
     ]
     action = (
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "available": True,
             "match_id": "match-1",
             "team": "A",
@@ -106,6 +106,29 @@ def _entry(*, action_available=True, stable=False, review_linked=True):
             },
             "examples": action_examples,
             "examples_truncated": False,
+            "retained_record_semantics": {
+                "schema_version": 1,
+                "records": 4,
+                "actual_action_counts": {
+                    "hold": 1, "pass": 1, "cross": 1, "shot": 1,
+                    "none": 0,
+                },
+                "primary_signal_action_counts": {
+                    "hold": 0, "pass": 2, "cross": 1, "shot": 0,
+                    "none": 1,
+                },
+                "signal_mode_counts": {
+                    "direct_preference": 1, "suppression_only": 2,
+                    "none": 1, "legacy_unclassified": 0,
+                },
+                "hold_reference_redistribution_records": 1,
+                "direct_cross_ball_event_links": 1,
+                "locally_attributable_cross_changes": 1,
+                "retained_record_coverage_complete": True,
+                "source_manager_record_coverage_complete": True,
+                "full_source_distribution_authorized": True,
+                "outcome_attribution_authorized": False,
+            },
         }
         if action_available else
         {
@@ -239,6 +262,12 @@ def test_world_evolution_thread_connects_six_stages_without_inventing_causality(
         "semantic_hold_reference_redistribution_examples"
     ] == 1
     assert official["semantic_direct_cross_ball_event_examples"] == 1
+    assert official["retained_record_semantics"][
+        "actual_action_counts"
+    ]["cross"] == 1
+    assert official["retained_record_semantics"][
+        "full_source_distribution_authorized"
+    ] is True
     assert thread["stages"][0]["review_intent"] == "keep_after_review"
     assert thread["stages"][0]["cross_action_mechanism_examples"] == 1
     assert thread["stages"][0]["direct_preference_mechanism_examples"] == 1

@@ -139,6 +139,94 @@ def _identity_matches(payload: Mapping[str, Any], field: str) -> bool:
     )
 
 
+def _normalize_retained_record_semantics(
+    raw: Any, *, action_counts: Mapping[str, int],
+    source_records_truncated: Any,
+) -> dict[str, Any] | None:
+    """Validate V2 full retained-record semantics; keep V1 explicitly absent."""
+    if raw is None:
+        return None
+    required = {
+        "schema_version", "records", "actual_action_counts",
+        "primary_signal_action_counts", "signal_mode_counts",
+        "hold_reference_redistribution_records",
+        "direct_cross_ball_event_links",
+        "locally_attributable_cross_changes",
+        "retained_record_coverage_complete",
+        "source_manager_record_coverage_complete",
+        "full_source_distribution_authorized",
+        "outcome_attribution_authorized",
+    }
+    actions = {"hold", "pass", "cross", "shot", "none"}
+    modes = {
+        "direct_preference", "suppression_only", "none",
+        "legacy_unclassified",
+    }
+    if not isinstance(raw, Mapping) or set(raw) != required:
+        raise ValueError(
+            "manager world navigator retained action semantics shape is invalid"
+        )
+    actual = raw.get("actual_action_counts")
+    primary = raw.get("primary_signal_action_counts")
+    signals = raw.get("signal_mode_counts")
+    if (
+        raw.get("schema_version") != 1
+        or not isinstance(actual, Mapping) or set(actual) != actions
+        or not isinstance(primary, Mapping) or set(primary) != actions
+        or not isinstance(signals, Mapping) or set(signals) != modes
+    ):
+        raise ValueError(
+            "manager world navigator retained action semantics partition is invalid"
+        )
+    counts = [
+        *actual.values(), *primary.values(), *signals.values(),
+        raw.get("records"),
+        raw.get("hold_reference_redistribution_records"),
+        raw.get("direct_cross_ball_event_links"),
+        raw.get("locally_attributable_cross_changes"),
+    ]
+    if any(
+        isinstance(value, bool) or not isinstance(value, int) or value < 0
+        for value in counts
+    ):
+        raise ValueError(
+            "manager world navigator retained action semantics counts are invalid"
+        )
+    if not isinstance(source_records_truncated, bool):
+        raise ValueError(
+            "manager world navigator retained action semantics source "
+            "coverage is invalid"
+        )
+    records = action_counts["retained_records"]
+    source_complete = not source_records_truncated
+    if (
+        raw["records"] != records
+        or sum(actual.values()) != records
+        or sum(primary.values()) != records
+        or sum(signals.values()) != records
+        or raw["hold_reference_redistribution_records"] > records
+        or raw["direct_cross_ball_event_links"] > min(
+            actual["cross"], action_counts["direct_ball_event_links"],
+        )
+        or raw["locally_attributable_cross_changes"] > min(
+            actual["cross"],
+            action_counts["locally_attributable_action_changes"],
+        )
+        or raw.get("retained_record_coverage_complete") is not True
+        or raw.get("source_manager_record_coverage_complete") is not (
+            source_complete
+        )
+        or raw.get("full_source_distribution_authorized") is not (
+            source_complete
+        )
+        or raw.get("outcome_attribution_authorized") is not False
+    ):
+        raise ValueError(
+            "manager world navigator retained action semantics are invalid"
+        )
+    return copy.deepcopy(dict(raw))
+
+
 def _validate_reviewed_scenarios(
     scenarios: Any, *, evidence_level: Any,
     fixed_budget: Any, expected_counts: Mapping[str, Any],
@@ -384,6 +472,9 @@ def _season_world_trajectory(
                 ]["semantic_example_coverage_complete"],
                 "full_record_distribution_authorized": False,
             },
+            "official_retained_record_semantics": copy.deepcopy(
+                chapter["action_adoption"]["retained_record_semantics"]
+            ),
             "locally_attributable_action_changes": local_changes,
             "result_available": world["result_available"],
             "outcome": world["outcome"],
@@ -637,6 +728,11 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     )
     semantic_example_coverage_complete = action.get(
         "semantic_example_coverage_complete", False
+    )
+    retained_record_semantics = _normalize_retained_record_semantics(
+        action.get("retained_record_semantics"),
+        action_counts=action_counts,
+        source_records_truncated=action.get("source_records_truncated"),
     )
     local_changes = action_counts["locally_attributable_action_changes"]
     action_status = action.get("status")
@@ -1169,6 +1265,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
             "semantic_example_coverage_complete": (
                 semantic_example_coverage_complete
             ),
+            "retained_record_semantics": retained_record_semantics,
             "manager_record_coverage_complete": action.get(
                 "manager_record_coverage_complete"
             ),
@@ -1378,6 +1475,18 @@ def build_manager_world_navigator(
         )
         for field in _OFFICIAL_ACTION_SEMANTIC_COUNT_FIELDS
     }
+    full_semantic_rows = [
+        row["action_adoption"]["retained_record_semantics"]
+        for row in all_chapters
+        if isinstance(
+            row["action_adoption"]["retained_record_semantics"], Mapping,
+        )
+    ]
+    semantic_actions = ("hold", "pass", "cross", "shot", "none")
+    semantic_modes = (
+        "direct_preference", "suppression_only", "none",
+        "legacy_unclassified",
+    )
     adoption_state_facts: dict[str, dict[str, Any]] = {}
     for chapter in all_chapters:
         state = chapter["action_adoption"]["state"]
@@ -1434,6 +1543,62 @@ def build_manager_world_navigator(
                 "not a full-record action or signal distribution when any "
                 "fixture is truncated or lacks semantic examples"
             ),
+        },
+        "retained_record_semantics": {
+            "fixtures_with_v2_semantics": len(full_semantic_rows),
+            "fixtures_without_v2_semantics": (
+                len(all_chapters) - len(full_semantic_rows)
+            ),
+            "records": sum(row["records"] for row in full_semantic_rows),
+            "actual_action_counts": {
+                action_name: sum(
+                    row["actual_action_counts"][action_name]
+                    for row in full_semantic_rows
+                )
+                for action_name in semantic_actions
+            },
+            "primary_signal_action_counts": {
+                action_name: sum(
+                    row["primary_signal_action_counts"][action_name]
+                    for row in full_semantic_rows
+                )
+                for action_name in semantic_actions
+            },
+            "signal_mode_counts": {
+                mode: sum(
+                    row["signal_mode_counts"][mode]
+                    for row in full_semantic_rows
+                )
+                for mode in semantic_modes
+            },
+            "hold_reference_redistribution_records": sum(
+                row["hold_reference_redistribution_records"]
+                for row in full_semantic_rows
+            ),
+            "direct_cross_ball_event_links": sum(
+                row["direct_cross_ball_event_links"]
+                for row in full_semantic_rows
+            ),
+            "locally_attributable_cross_changes": sum(
+                row["locally_attributable_cross_changes"]
+                for row in full_semantic_rows
+            ),
+            "fixtures_with_full_source_distribution": sum(
+                row["full_source_distribution_authorized"] is True
+                for row in full_semantic_rows
+            ),
+            "all_chapters_have_v2_semantics": bool(
+                all_chapters and len(full_semantic_rows) == len(all_chapters)
+            ),
+            "full_source_distribution_authorized": bool(
+                all_chapters
+                and len(full_semantic_rows) == len(all_chapters)
+                and all(
+                    row["full_source_distribution_authorized"] is True
+                    for row in full_semantic_rows
+                )
+            ),
+            "outcome_attribution_authorized": False,
         },
         "influence_rate": (
             round(

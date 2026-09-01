@@ -2738,3 +2738,43 @@ The sample cannot establish the full action distribution when any fixture is
 truncated or lacks semantics, and no signal count is compared with scores. No
 training, match, future generation, formal experiment or provider call is
 executed in this stage.
+
+## 90. V3.72 Full retained-record action semantics
+
+V3.71 deliberately treated the at-most-five displayed examples as a bounded
+explanation sample. That boundary was correct, but it also meant the product
+could not answer a separate factual question: across every retained official
+manager action record, which actions occurred and which world-model signal
+mode was present? Increasing the example cap would have mixed explanation
+sampling with statistical accounting and still failed whenever source manager
+records were truncated.
+
+The official action projection is therefore versioned to V2 while retaining
+strict V1 read compatibility. V2 derives a compact aggregate directly from all
+records retained by the official manager-action report, independently of the
+bounded example list. It partitions actual actions and primary signal actions
+across `hold`, `pass`, `cross`, `shot` and `none`; partitions signal modes
+across direct preference, suppression-only, no signal and legacy-unclassified;
+and separately counts hold-reference redistribution, direct cross ball-event
+links and locally attributable cross changes. Every partition must equal the
+retained-record total. Cross-specific counts remain bounded by the corresponding
+official action and identity-link totals.
+
+Coverage semantics remain explicit at both boundaries. The aggregate always
+covers every retained record, but it authorizes a full *source* distribution
+only when the upstream manager record set was not truncated. A V1 payload may
+omit the aggregate; it may not smuggle V2 fields into the legacy schema. When
+the bounded examples happen to cover every retained record, validation
+independently recomputes the aggregate from those examples and requires exact
+agreement. Rehashing an internally inconsistent aggregate therefore still
+fails closed.
+
+The identity-bound aggregate now survives the decision ledger, live world
+thread, historical chapter, chronological trajectory and season action-adoption
+ledger. Studio renders the same distinction in official action details, the
+decision summary, world thread, history cards, trajectory points and season
+totals. Bounded examples remain available for explanation; the V2 aggregate is
+the authoritative retained-record composition. Neither representation grants
+outcome attribution, ranks interventions or establishes real-football effects.
+No training, match, future generation, formal experiment or provider call is
+executed in this stage.

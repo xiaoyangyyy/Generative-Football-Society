@@ -1059,6 +1059,42 @@ def main() -> int:
                 "point.bounded_official_action_semantics",
             ))
         ),
+        "official_action_v2_preserves_full_retained_record_semantics": (
+            all(token in official_action_execution for token in (
+                "SCHEMA_VERSION = 2",
+                "LEGACY_SCHEMA_VERSION = 1",
+                "def _retained_record_semantics(",
+                "def _validate_retained_record_semantics(",
+                '"retained_record_semantics": _retained_record_semantics(',
+                'elif "retained_record_semantics" in evidence:',
+                '"full_source_distribution_authorized"',
+                '"outcome_attribution_authorized": False',
+            ))
+            and all(token in decision_ledger for token in (
+                'evidence["retained_record_semantics"]',
+                '"fixtures_with_v2_semantics"',
+                '"retained_record_semantics": semantic_summary',
+            ))
+            and all(token in manager_world_thread for token in (
+                'action.get("retained_record_semantics")',
+                "retained_record_semantics=retained_record_semantics",
+            ))
+            and all(token in manager_world_navigator for token in (
+                "def _normalize_retained_record_semantics(",
+                '"official_retained_record_semantics"',
+                '"retained_record_semantics": retained_record_semantics',
+                '"fixtures_without_v2_semantics"',
+                '"all_chapters_have_v2_semantics"',
+            ))
+            and all(token in web for token in (
+                "function retainedActionSemanticText(",
+                "appendOfficialActionExecutionWithoutRetainedRecordSemantics",
+                "renderManagerDecisionLedgerWithoutRetainedRecordSemantics",
+                "appendManagerWorldEvolutionThreadWithoutRetainedRecordSemantics",
+                "renderManagerWorldNavigatorWithoutRetainedRecordSemantics",
+                "point.official_retained_record_semantics",
+            ))
+        ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (
             all(token in decision_advice for token in (
                 "def build_manager_advice_comparison(",

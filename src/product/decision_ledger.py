@@ -741,6 +741,73 @@ def world_model_official_action_execution_summary(
         int(row["unresolved_or_missing_ball_event_links"])
         for row in counts
     )
+    semantic_rows = [
+        evidence["retained_record_semantics"]
+        for evidence in evidence_rows
+        if evidence.get("schema_version") == 2
+        and isinstance(evidence.get("retained_record_semantics"), Mapping)
+    ]
+    actual_actions = ("hold", "pass", "cross", "shot", "none")
+    signal_modes = (
+        "direct_preference", "suppression_only", "none",
+        "legacy_unclassified",
+    )
+    semantic_summary = {
+        "fixtures_with_v2_semantics": len(semantic_rows),
+        "fixtures_without_v2_semantics": len(evidence_rows) - len(semantic_rows),
+        "retained_records_with_v2_semantics": sum(
+            int(row["records"]) for row in semantic_rows
+        ),
+        "actual_action_counts": {
+            action: sum(
+                int(row["actual_action_counts"][action])
+                for row in semantic_rows
+            )
+            for action in actual_actions
+        },
+        "primary_signal_action_counts": {
+            action: sum(
+                int(row["primary_signal_action_counts"][action])
+                for row in semantic_rows
+            )
+            for action in actual_actions
+        },
+        "signal_mode_counts": {
+            mode: sum(
+                int(row["signal_mode_counts"][mode])
+                for row in semantic_rows
+            )
+            for mode in signal_modes
+        },
+        "hold_reference_redistribution_records": sum(
+            int(row["hold_reference_redistribution_records"])
+            for row in semantic_rows
+        ),
+        "direct_cross_ball_event_links": sum(
+            int(row["direct_cross_ball_event_links"])
+            for row in semantic_rows
+        ),
+        "locally_attributable_cross_changes": sum(
+            int(row["locally_attributable_cross_changes"])
+            for row in semantic_rows
+        ),
+        "fixtures_with_full_source_distribution": sum(
+            row["full_source_distribution_authorized"] is True
+            for row in semantic_rows
+        ),
+        "all_official_evidence_has_v2_semantics": bool(
+            evidence_rows and len(semantic_rows) == len(evidence_rows)
+        ),
+        "full_source_distribution_authorized": bool(
+            evidence_rows
+            and len(semantic_rows) == len(evidence_rows)
+            and all(
+                row["full_source_distribution_authorized"] is True
+                for row in semantic_rows
+            )
+        ),
+        "outcome_attribution_authorized": False,
+    }
     payload = {
         "schema_version": 1,
         "fixtures_with_official_action_evidence": len(evidence_rows),
@@ -768,6 +835,7 @@ def world_model_official_action_execution_summary(
             for row in counts
         ),
         "unresolved_or_missing_ball_event_links": unresolved,
+        "retained_record_semantics": semantic_summary,
         "direct_ball_event_link_coverage": round(
             direct / max(1, direct + unresolved), 6,
         ),

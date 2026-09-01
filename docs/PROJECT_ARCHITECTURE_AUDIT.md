@@ -73,6 +73,10 @@ not quality signals by themselves.
 24. Added an explicitly bounded official-action semantic ledger across live
     threads, historical chapters and Studio; sample partitions and truncation
     remain distinct from full retained-record totals.
+25. Versioned official action evidence to V2 and added a separately validated
+    full retained-record semantic aggregate. It propagates through decision
+    ledgers, live and historical world views and Studio while preserving V1
+    reads, source-truncation boundaries and the ban on outcome attribution.
 
 ## LLM Scope Decision
 

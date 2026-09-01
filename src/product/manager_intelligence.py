@@ -9,6 +9,7 @@ from typing import Any, Mapping
 
 from src.match_engine.tactical_catalog import TACTICAL_KEYS
 from src.product.world_model_action_execution import (
+    SCHEMA_VERSION as ACTION_EXECUTION_SCHEMA_VERSION,
     project_world_model_action_execution,
 )
 
@@ -378,7 +379,7 @@ def build_postmatch_debrief(
         )
     except ValueError:
         world_model_action_execution = {
-            "schema_version": 1,
+            "schema_version": ACTION_EXECUTION_SCHEMA_VERSION,
             "available": False,
             "reason": "world_model_action_evidence_invalid",
         }
