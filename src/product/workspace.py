@@ -1361,6 +1361,33 @@ class ProductWorkspace:
         cross_verification = read(
             "data/evaluation/cross_action_validation_verification_v1.json"
         )
+        cross_identity_verified = False
+        if cross_protocol and cross_verification:
+            try:
+                cross_protocol_path = (
+                    self.root
+                    / "data/evaluation/cross_action_validation_protocol_v1.json"
+                ).resolve()
+                cross_candidate = cross_protocol.get("candidate") or {}
+                cross_checkpoint = (
+                    self.root / str(cross_candidate.get("checkpoint") or "")
+                ).resolve()
+                cross_code_sha = {}
+                for relative in cross_protocol.get("required_code_paths") or []:
+                    path = (self.root / str(relative)).resolve()
+                    path.relative_to(self.root.resolve())
+                    cross_code_sha[str(relative)] = file_sha256(path)
+                expected_cross_identity = {
+                    "protocol_sha256": file_sha256(cross_protocol_path),
+                    "checkpoint_sha256": file_sha256(cross_checkpoint),
+                    "code_sha256": cross_code_sha,
+                }
+                cross_identity_verified = (
+                    cross_verification.get("execution_identity")
+                    == expected_cross_identity
+                )
+            except (OSError, TypeError, ValueError):
+                cross_identity_verified = False
         manager_advisor_protocol = read(
             "data/evaluation/manager_advisor_protocol_v1.json"
         )
@@ -1445,18 +1472,27 @@ class ProductWorkspace:
             },
             "cross_action_validation": {
                 "available": bool(cross_protocol and cross_verification),
+                "result_identity_verified": cross_identity_verified,
                 "protocol_id": cross_protocol.get("protocol_id"),
                 "protocol_state": cross_protocol.get("state"),
-                "status": cross_verification.get("status"),
-                "code_ready": bool(cross_verification.get("code_ready", False)),
+                "status": (
+                    cross_verification.get("status")
+                    if cross_identity_verified else "stale_current_code_identity"
+                ),
+                "code_ready": bool(
+                    cross_identity_verified
+                    and cross_verification.get("code_ready", False)
+                ),
                 "checkpoint_identity_verified": bool(
                     cross_verification.get("checkpoint_identity_verified", False)
                 ),
                 "cross_planning_authorized": bool(
-                    cross_verification.get("cross_planning_authorized", False)
+                    cross_identity_verified
+                    and cross_verification.get("cross_planning_authorized", False)
                 ),
                 "runtime_cross_quality": float(
                     cross_verification.get("runtime_cross_quality", 0.0) or 0.0
+                    if cross_identity_verified else 0.0
                 ),
                 "checkpoint_reason": (
                     cross_verification.get("checkpoint_cross_validation") or {}

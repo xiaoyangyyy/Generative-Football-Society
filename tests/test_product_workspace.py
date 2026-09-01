@@ -108,22 +108,39 @@ def _evidence(root):
 def test_cross_action_validation_state_is_projected_without_overclaim(tmp_path):
     _evidence(tmp_path)
     evaluation = tmp_path / "data/evaluation"
-    (evaluation / "cross_action_validation_protocol_v1.json").write_text(
-        json.dumps({
+    code_path = tmp_path / "src/cross_authority.py"
+    code_path.parent.mkdir(parents=True)
+    code_path.write_bytes(b"cross authority v1")
+    protocol_path = evaluation / "cross_action_validation_protocol_v1.json"
+    protocol_path.write_text(json.dumps({
             "protocol_id": "gfs-cross-action-planning-authority-v1",
             "state": "registered_validation_contract",
             "claim_scope": "simulator_cross_transition_prediction_only",
+            "candidate": {
+                "checkpoint": (
+                    "data/world_model/latent_wm_rollout_calibrated_candidate.pt"
+                ),
+            },
+            "required_code_paths": ["src/cross_authority.py"],
             "validation": {
                 "minimum_samples": 96, "minimum_groups": 6,
                 "minimum_skill_vs_persistence": 0.02,
             },
-        }),
-        encoding="utf-8",
-    )
+        }), encoding="utf-8")
+    execution_identity = {
+        "protocol_sha256": hashlib.sha256(protocol_path.read_bytes()).hexdigest(),
+        "checkpoint_sha256": hashlib.sha256(b"model").hexdigest(),
+        "code_sha256": {
+            "src/cross_authority.py": hashlib.sha256(
+                code_path.read_bytes()
+            ).hexdigest(),
+        },
+    }
     (evaluation / "cross_action_validation_verification_v1.json").write_text(
         json.dumps({
             "status": "blocked_checkpoint_missing_cross_validation",
             "code_ready": True, "checkpoint_identity_verified": True,
+            "execution_identity": execution_identity,
             "cross_planning_authorized": False, "runtime_cross_quality": 0.0,
             "checkpoint_cross_validation": {
                 "reason": "cross_validation_unavailable",
@@ -134,11 +151,13 @@ def test_cross_action_validation_state_is_projected_without_overclaim(tmp_path):
         encoding="utf-8",
     )
 
-    evidence = ProductWorkspace.create(
+    workspace = ProductWorkspace.create(
         tmp_path, StudioConfig(mode="research"),
-    ).evidence()["cross_action_validation"]
+    )
+    evidence = workspace.evidence()["cross_action_validation"]
 
     assert evidence["available"] is True
+    assert evidence["result_identity_verified"] is True
     assert evidence["code_ready"] is True
     assert evidence["cross_planning_authorized"] is False
     assert evidence["runtime_cross_quality"] == 0.0
@@ -146,6 +165,14 @@ def test_cross_action_validation_state_is_projected_without_overclaim(tmp_path):
     assert evidence["training_executed"] is False
     assert evidence["matches_executed"] == 0
     assert evidence["provider_calls_made"] is False
+
+    code_path.write_bytes(b"cross authority drift")
+    stale = workspace.evidence()["cross_action_validation"]
+    assert stale["result_identity_verified"] is False
+    assert stale["status"] == "stale_current_code_identity"
+    assert stale["code_ready"] is False
+    assert stale["cross_planning_authorized"] is False
+    assert stale["runtime_cross_quality"] == 0.0
 
 
 def _manager_roster(root, team="Brazil"):

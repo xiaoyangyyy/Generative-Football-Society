@@ -2516,6 +2516,11 @@ predates the cross artifact, so verification reports
 planning authority. Studio surfaces "unvalidated, zero authority" instead of
 confusing code readiness with evidence readiness. No old checkpoint is upgraded
 and no historical match result is reinterpreted.
+The verification snapshot seals the protocol, checkpoint and every required
+code file by SHA-256. Studio recomputes that identity before displaying the
+snapshot; any later code drift changes the state to
+`stale_current_code_identity` and forces code readiness, authority and quality
+to fail closed.
 
 This stage executes no training, match, fixed-budget experiment or provider
 call. It completes the code and evidence contract needed for a later checkpoint;

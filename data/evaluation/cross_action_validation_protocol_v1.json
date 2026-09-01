@@ -24,6 +24,7 @@
   },
   "required_code_paths": [
     "src/match_engine/world_model/cross_validation.py",
+    "src/match_engine/world_model/config.py",
     "src/match_engine/world_model/inference.py",
     "src/match_engine/world_model/planner.py",
     "src/match_engine/world_model/online_calibration.py",
@@ -32,7 +33,8 @@
     "src/match_engine/action_engine.py",
     "src/match_engine/ball_path_logger.py",
     "src/product/replay.py",
-    "scripts/train_world_model.py"
+    "scripts/train_world_model.py",
+    "scripts/verify_cross_action_validation.py"
   ],
   "promotion_rule": {
     "cross_authority_requires_current_checkpoint_evidence": true,

@@ -949,6 +949,10 @@ def main() -> int:
             and cross_verification.get("status")
             == "blocked_checkpoint_missing_cross_validation"
             and cross_verification.get("code_ready") is True
+            and set(
+                (cross_verification.get("execution_identity") or {})
+                .get("code_sha256", {})
+            ) == set(cross_protocol.get("required_code_paths") or [])
             and cross_verification.get("cross_planning_authorized") is False
             and cross_verification.get("runtime_cross_quality") == 0.0
             and cross_verification.get("training_executed") is False

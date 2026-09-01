@@ -6,6 +6,24 @@
   "code_ready": true,
   "contract_verified": true,
   "code_paths_verified": true,
+  "execution_identity": {
+    "protocol_sha256": "09b291e0c768e8dba46f7b9f2d70b8cfcbb017547f5e1ea8d40f17312fec758b",
+    "checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28",
+    "code_sha256": {
+      "src/match_engine/world_model/cross_validation.py": "3d17f24662d950298bc28e79c3532253d9b9f199dfb6af21724b7a4ae5c60f8b",
+      "src/match_engine/world_model/config.py": "d43d3ee5d5b02f94099f108f091b00ee7fdaa67a638a58d445180a939cda7bbc",
+      "src/match_engine/world_model/inference.py": "b29214377c1888f5c160059f3ecd275740961e5e6044094b7c7a07a63578a9bd",
+      "src/match_engine/world_model/planner.py": "37c792f4e5d5d01185693ee0a089849845d2bc3b8bed7298efc43f1e6ad572dc",
+      "src/match_engine/world_model/online_calibration.py": "68d27f2c56f5ceaa23a6ec56f48df875a061bf5716c70953f5c009bc434bed91",
+      "src/match_engine/world_model/action_codec.py": "3fcaca251a4b1fab587e22d746b6db181a081b7ad9dde5ec1df546260aa4f418",
+      "src/match_engine/world_model/ball_log_dataset.py": "744901da94e0af0816b56551682c81dc4c62ab7b1a3e15f0e96746327fb2080c",
+      "src/match_engine/action_engine.py": "642e3219551be504afc0fa23e66d51407a274edf0d044e55948473c0760ef9d6",
+      "src/match_engine/ball_path_logger.py": "05d0efd2fcbf682c7f6d047ed996a46490f1e9246bae009acf87007dad956112",
+      "src/product/replay.py": "a113f9fbce1d363884c84536d3600d73060e1790b38c1ffa91961906cd555e7c",
+      "scripts/train_world_model.py": "9a0537e374e1de9c3492f31c072a78cf6987e26682f742a633e27c550b2a9e62",
+      "scripts/verify_cross_action_validation.py": "676c4ef34dc26c6af04a6f511c9c0218619bd2aa95facc47b0691b5e172982f8"
+    }
+  },
   "checkpoint_identity_verified": true,
   "checkpoint_cross_validation": {
     "valid": false,

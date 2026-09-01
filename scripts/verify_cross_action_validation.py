@@ -55,7 +55,20 @@ def verify(root: Path = ROOT) -> dict:
         and validation == expected_contract
     )
     required = [str(value) for value in protocol.get("required_code_paths") or []]
-    code_paths_verified = bool(required) and all((root / value).is_file() for value in required)
+    resolved_root = root.resolve()
+    code_identity = {}
+    code_paths_verified = bool(required)
+    for value in required:
+        path = (root / value).resolve()
+        try:
+            path.relative_to(resolved_root)
+        except ValueError:
+            code_paths_verified = False
+            continue
+        if not path.is_file():
+            code_paths_verified = False
+            continue
+        code_identity[value] = _sha256(path)
     candidate = protocol.get("candidate") or {}
     checkpoint_path = (root / str(candidate.get("checkpoint") or "")).resolve()
     checkpoint_path.relative_to(root.resolve())
@@ -92,6 +105,13 @@ def verify(root: Path = ROOT) -> dict:
         and checkpoint_validation.get("reason") == "cross_validation_unavailable"
         else "blocked_cross_validation_gate"
     )
+    execution_identity = {
+        "protocol_sha256": _sha256(protocol_path),
+        "checkpoint_sha256": (
+            _sha256(checkpoint_path) if checkpoint_path.is_file() else None
+        ),
+        "code_sha256": code_identity,
+    }
     return {
         "schema_version": 1,
         "verification": "gfs_cross_action_planning_authority",
@@ -100,6 +120,7 @@ def verify(root: Path = ROOT) -> dict:
         "code_ready": bool(contract_verified and code_paths_verified),
         "contract_verified": contract_verified,
         "code_paths_verified": code_paths_verified,
+        "execution_identity": execution_identity,
         "checkpoint_identity_verified": checkpoint_identity_verified,
         "checkpoint_cross_validation": checkpoint_validation,
         "cross_planning_authorized": authority,
