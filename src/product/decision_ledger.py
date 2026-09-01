@@ -8,6 +8,7 @@ import json
 from typing import Any, Mapping, Sequence
 
 from src.product.player_promises import player_promise_progress
+from src.product.manager_future_review import validate_manager_future_review
 from src.product.season import ManagerDecision, SeasonPlan, manager_season_profile
 from src.product.season_commitments import commitment_progress_from_evidence
 
@@ -344,6 +345,54 @@ def world_model_advisor_summary(
     return evidence
 
 
+def world_model_future_review_summary(
+    entries: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Summarize explicit future-set interactions without outcome attribution."""
+    reviews = [
+        review
+        for entry in entries
+        for review in (entry.get("world_model_future_reviews") or [])
+        if isinstance(review, Mapping)
+    ]
+    kept = sum(review.get("intent") == "keep_after_review" for review in reviews)
+    revised = sum(
+        review.get("intent") == "revise_after_review" for review in reviews
+    )
+    evidence = {
+        "schema_version": 1,
+        "reviewed_future_sets": len(reviews),
+        "fixtures_with_review": sum(
+            bool(entry.get("world_model_future_reviews")) for entry in entries
+        ),
+        "kept_after_review": kept,
+        "revised_after_review": revised,
+        "decision_change_rate": round(revised / max(1, len(reviews)), 6),
+        "sets_with_action_divergence": sum(
+            int(
+                (review.get("evidence_summary") or {}).get(
+                    "action_divergence_scenarios", 0,
+                )
+            ) > 0
+            for review in reviews
+        ),
+        "sets_with_timing_sensitivity": sum(
+            (review.get("evidence_summary") or {}).get(
+                "timing_sensitivity_observed"
+            ) is True
+            for review in reviews
+        ),
+        "outcome_effect_estimate": None,
+        "causal_effect_authorized": False,
+        "claim_boundary": (
+            "explicit simulator-evidence review and subsequent selection counts "
+            "only; no recommendation quality, score or causal-effect claim"
+        ),
+    }
+    evidence["evidence_identity"] = _identity(evidence)
+    return evidence
+
+
 def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
     """Replay identities and all derived summaries in an exported ledger."""
     if ledger.get("schema_version") != LEDGER_SCHEMA_VERSION:
@@ -390,6 +439,17 @@ def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
         )
         if entry.get("advisor_execution_trace") != expected_trace:
             raise ValueError("manager advisor execution trace replay mismatch")
+        reviews = entry.get("world_model_future_reviews")
+        if not isinstance(reviews, list):
+            raise ValueError("manager future review ledger evidence is invalid")
+        for review in reviews:
+            validate_manager_future_review(
+                review,
+                season_id=str(ledger.get("season_id") or ""),
+                fixture_id=str(entry.get("fixture_id") or ""),
+                matchday=int(entry.get("matchday") or 0),
+                manager_team=str(ledger.get("team") or ""),
+            )
     lifecycle_names = (
         "frozen_awaiting_execution", "executed_with_direct_evidence",
         "executed_evidence_unavailable",
@@ -412,6 +472,7 @@ def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
             6,
         ),
         "world_model_advisor": world_model_advisor_summary(entries),
+        "world_model_future_reviews": world_model_future_review_summary(entries),
     }
     if dict(summary) != expected_summary:
         raise ValueError("manager decision ledger summary replay mismatch")
@@ -572,6 +633,9 @@ def build_manager_decision_ledger(
             "decision_identity": _identity(decision.as_dict()),
             "opponent_preparation": copy.deepcopy(fixture.get("opponent_preparation")),
             "world_model_decision_support": decision_support,
+            "world_model_future_reviews": copy.deepcopy(
+                fixture.get("manager_future_reviews") or []
+            ),
             "advisor_execution_trace": _advisor_execution_trace(
                 decision_support,
                 decision_identity=_identity(decision.as_dict()),
@@ -616,6 +680,9 @@ def build_manager_decision_ledger(
                 6,
             ),
             "world_model_advisor": world_model_advisor_summary(entries),
+            "world_model_future_reviews": world_model_future_review_summary(
+                entries
+            ),
         },
         "claim_boundary": _BOUNDARY,
     }
@@ -627,4 +694,5 @@ def build_manager_decision_ledger(
 __all__ = [
     "LEDGER_SCHEMA_VERSION", "build_manager_decision_ledger",
     "validate_manager_decision_ledger", "world_model_advisor_summary",
+    "world_model_future_review_summary",
 ]

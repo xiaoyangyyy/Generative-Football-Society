@@ -1655,3 +1655,42 @@ not select a best time, predict a score, estimate a population effect, prove
 match-outcome causality or provide real-football coaching advice. This stage
 changes code, tests and zero-execution documentation only; it runs no model
 training, formal experiment, match study or external provider call.
+
+## 62. V3.44 Manager future-review decision loop
+
+The manager bridge previously returned future-set evidence to the career
+screen, but viewing it did not become part of the authoritative decision
+lifecycle. The manager could change a tactic afterward, yet the product could
+not distinguish an ordinary edit from an explicit evidence review. This left
+the world model visible but still disconnected from the final user action.
+
+Studio now records one replayable review receipt when the manager explicitly
+chooses either keep_after_review or revise_after_review. The source must be a
+completed manager-bound future-set task whose full context still matches the
+current season revision and next unstarted fixture. A keep receipt is valid
+only when the final normalized decision identity is unchanged. A revise
+receipt is valid only when it changes. The receipt binds the task, source
+context, original and final decision identities, registered branch times and
+bounded mechanism counts. Best-time recommendation, score prediction,
+outcome-effect estimation, population inference, real-football causality and
+promotion authority remain false.
+
+The update occurs under the existing season lease. Decision normalization,
+lineup validation, club-situation resolution and opponent preparation reuse
+the official manager-decision path. The receipt is appended to the fixture,
+the season revision advances atomically, and the previous future set becomes
+historical. A revised decision may be explored again, producing a new context
+and another receipt; duplicate task or context identities and histories above
+the fixed per-fixture cap fail closed.
+
+Review receipts flow into the existing manager season profile, decision ledger
+and archived season journal. The ledger reports only explicit keep/revise
+counts and whether the reviewed simulator sets contained action divergence or
+timing sensitivity. It never compares those interactions with scores as an
+effect estimate. The task queue remains execution evidence, the persisted
+season remains the sole career authority, and official matchday execution
+remains the only operation that advances competition state.
+
+This stage completes a product interaction loop, not an efficacy result. It
+changes code, tests and zero-execution documentation only and runs no model
+training, formal experiment, match study, human study or provider call.

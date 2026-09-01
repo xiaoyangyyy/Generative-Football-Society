@@ -94,6 +94,9 @@ def main() -> int:
     decision_advice = (
         ROOT / "src/product/decision_advice.py"
     ).read_text(encoding="utf-8")
+    manager_future_review = (
+        ROOT / "src/product/manager_future_review.py"
+    ).read_text(encoding="utf-8")
     manager_advisor_study = (
         ROOT / "scripts/manager_advisor_study.py"
     ).read_text(encoding="utf-8")
@@ -133,6 +136,10 @@ def main() -> int:
     manager_advice_request = workspace[
         workspace.index("def request_manager_decision_advice("):
         workspace.index("def _generate_manager_decision_advice_packet(")
+    ]
+    manager_decision_preview = workspace[
+        workspace.index("def preview_manager_decision("):
+        workspace.index("def manager_future_set_context(")
     ]
 
     registry = _read("data/training/entrypoints.json")
@@ -271,10 +278,8 @@ def main() -> int:
             workspace.count("self._prepare_manager_decision(") >= 2
             and "def preview_manager_decision(" in workspace
             and "season = copy.deepcopy(source)" in workspace
-            and "_atomic_json(self.session_path, session)" not in workspace[
-                workspace.index("def preview_manager_decision("):
-                workspace.index("def request_manager_decision_advice(")
-            ]
+            and "_atomic_json(self.session_path, session)"
+            not in manager_decision_preview
             and all(token in web for token in (
                 'path == "/api/v1/seasons/decision-preview"',
                 "function managerDecisionPayload(includeRevision=false)",
@@ -488,6 +493,43 @@ def main() -> int:
                 "binding.initial_vector",
                 "renderManagerIntelligenceWithoutTacticalBinding",
                 "binding.changed_controls",
+            ))
+        ),
+        "manager_future_review_is_identity_bound_and_non_causal": (
+            all(token in manager_future_review for token in (
+                "def build_manager_future_review(",
+                "def validate_manager_future_review(",
+                '"keep_after_review", "revise_after_review"',
+                '"best_time_recommendation": False',
+                '"match_outcome_causality": False',
+                '"outcome_effect_estimate": None',
+                '"causal_effect_authorized": False',
+                "manager future review identity mismatch",
+            ))
+            and all(token in workspace for token in (
+                "def review_manager_future_set(",
+                "validate_manager_future_context(",
+                "target.setdefault(",
+                "manager_future_reviews",
+                "_atomic_json(self.session_path, session)",
+            ))
+            and "from src.product.tasks" not in workspace
+            and all(token in season for token in (
+                'actual.get("manager_future_reviews")',
+                "validate_manager_future_review(",
+                '"manager_future_reviews": copy.deepcopy(',
+            ))
+            and all(token in decision_ledger for token in (
+                "def world_model_future_review_summary(",
+                '"world_model_future_reviews": copy.deepcopy(',
+                '"causal_effect_authorized": False',
+            ))
+            and all(token in web for token in (
+                "/api/v1/seasons/world-model-future-review",
+                "reviewManagerFutureEvidence",
+                "keep_after_review",
+                "revise_after_review",
+                '"second_persisted_season_state": False',
             ))
         ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (

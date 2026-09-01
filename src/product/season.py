@@ -587,6 +587,39 @@ def validate_season_state(state: Mapping[str, Any]) -> None:
         decision_payload = actual.get("manager_decision")
         advice = actual.get("manager_decision_advice")
         adoption = actual.get("manager_advice_adoption")
+        future_reviews = actual.get("manager_future_reviews")
+        if future_reviews is not None:
+            from src.product.manager_future_review import (
+                MAX_REVIEWS_PER_FIXTURE,
+                validate_manager_future_review,
+            )
+
+            if (
+                not isinstance(future_reviews, list)
+                or not 1 <= len(future_reviews) <= MAX_REVIEWS_PER_FIXTURE
+                or plan.manager_team is None
+                or plan.manager_team not in {
+                    actual.get("home"), actual.get("away"),
+                }
+            ):
+                raise ValueError("manager future review history is invalid")
+            task_ids = set()
+            context_ids = set()
+            for review in future_reviews:
+                validate_manager_future_review(
+                    review,
+                    season_id=str(state.get("season_id") or ""),
+                    fixture_id=str(actual.get("fixture_id") or ""),
+                    matchday=int(actual.get("matchday") or 0),
+                    manager_team=plan.manager_team,
+                )
+                if (
+                    review["task_id"] in task_ids
+                    or review["context_identity"] in context_ids
+                ):
+                    raise ValueError("manager future review is duplicated")
+                task_ids.add(review["task_id"])
+                context_ids.add(review["context_identity"])
         if advice is not None:
             validate_manager_decision_advice(advice)
             expected_seed = (
@@ -657,6 +690,8 @@ def validate_season_state(state: Mapping[str, Any]) -> None:
                 )
         elif adoption is not None:
             raise ValueError("manager advice adoption requires a frozen decision")
+        if future_reviews is not None and decision_payload is None:
+            raise ValueError("manager future review requires a frozen decision")
     for fixture in fixtures:
         stored = fixture.get("opponent_preparation")
         if stored is None:
@@ -951,6 +986,9 @@ def manager_season_profile(state: Mapping[str, Any]) -> dict[str, Any]:
             ),
             "manager_advice_adoption": copy.deepcopy(
                 fixture.get("manager_advice_adoption")
+            ),
+            "manager_future_reviews": copy.deepcopy(
+                fixture.get("manager_future_reviews") or []
             ),
         })
 

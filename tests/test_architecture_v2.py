@@ -24,5 +24,8 @@ def test_architecture_v2_machine_audit_passes():
     assert report["integrity"]["release_artifacts"]["ok"]
     assert report["integrity"]["world_model_identity_chain_verified"]
     assert report["checks"]["studio_exposes_one_guided_end_to_end_workflow"]
+    assert report["checks"][
+        "manager_future_review_is_identity_bound_and_non_causal"
+    ]
     assert report["checks"]["formal_experiment_is_preregistered_and_compute_bounded"]
     assert report["checks"]["formal_experiment_fails_closed_on_identity_or_partial_evidence"]

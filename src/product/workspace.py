@@ -29,6 +29,11 @@ from src.product.manager_future import (
     build_manager_future_context,
     validate_manager_future_context,
 )
+from src.product.manager_future_review import (
+    MAX_REVIEWS_PER_FIXTURE,
+    build_manager_future_review,
+    validate_manager_future_review,
+)
 from src.product.decision_advice import (
     build_manager_advice_adoption,
     build_manager_advice_comparison,
@@ -3323,6 +3328,19 @@ class ProductWorkspace:
                         raise ValueError(
                             "archived manager advice adoption lacks advice evidence"
                         )
+                    future_reviews = entry.get("manager_future_reviews") or []
+                    if not isinstance(future_reviews, list):
+                        raise ValueError(
+                            "archived manager future reviews are invalid"
+                        )
+                    for review in future_reviews:
+                        validate_manager_future_review(
+                            review,
+                            season_id=season_id,
+                            fixture_id=entry["fixture_id"],
+                            matchday=entry["matchday"],
+                            manager_team=plan.manager_team,
+                        )
                     journal_ids.add(entry["fixture_id"])
                     prior_journal_entries.append(entry)
                 expected_commitment_progress = commitment_progress_from_evidence(
@@ -3713,6 +3731,199 @@ class ProductWorkspace:
             if not isinstance(season, Mapping):
                 raise ValueError("studio season has not been created")
             return validate_manager_future_context(context, season)
+
+    def review_manager_future_set(
+        self,
+        *,
+        task_id: str,
+        task_request: Mapping[str, Any],
+        task_result: Mapping[str, Any],
+        intent: str,
+        fixture_id: str,
+        expected_revision: int,
+        final_decision: ManagerDecision | None = None,
+    ) -> dict[str, Any]:
+        """Record an explicit evidence review and atomically freeze its decision."""
+        if self.config.mode != "research":
+            raise ValueError("manager future reviews require research mode")
+        if (
+            isinstance(expected_revision, bool)
+            or not isinstance(expected_revision, int)
+            or expected_revision < 0
+        ):
+            raise ValueError("manager future review revision is invalid")
+        if intent == "keep_after_review":
+            if final_decision is not None:
+                raise ValueError(
+                    "keep-after-review cannot supply a replacement decision"
+                )
+        elif intent == "revise_after_review":
+            if not isinstance(final_decision, ManagerDecision):
+                raise ValueError(
+                    "revise-after-review requires a replacement decision"
+                )
+        else:
+            raise ValueError("manager future review intent is invalid")
+        with FileLease(self.session_lease_path, timeout=30.0):
+            session = self._session()
+            season = session.get("season")
+            if not isinstance(season, dict):
+                raise ValueError("studio season has not been created")
+            target = next(
+                (
+                    row for row in season["fixtures"]
+                    if row["fixture_id"] == fixture_id
+                ),
+                None,
+            )
+            if not isinstance(target, dict):
+                raise ValueError("manager future review fixture is unavailable")
+            reviews = target.get("manager_future_reviews") or []
+            if not isinstance(reviews, list):
+                raise ValueError("manager future review history is invalid")
+            existing = next(
+                (
+                    row for row in reviews
+                    if isinstance(row, Mapping)
+                    and row.get("task_id") == task_id
+                ),
+                None,
+            )
+            if existing is not None:
+                current_payload = target.get("manager_decision")
+                if not isinstance(current_payload, Mapping):
+                    raise ValueError(
+                        "manager future review requires a frozen decision"
+                    )
+                if intent == "keep_after_review":
+                    repeated_final = current_payload
+                else:
+                    preview_season = copy.deepcopy(season)
+                    preview_target = next(
+                        row for row in preview_season["fixtures"]
+                        if row["fixture_id"] == fixture_id
+                    )
+                    preview_target.pop("manager_advice_adoption", None)
+                    repeated_final = self._prepare_manager_decision(
+                        preview_season,
+                        final_decision,
+                        fixture_id=fixture_id,
+                    )["target"]["manager_decision"]
+                repeated = build_manager_future_review(
+                    task_id=task_id,
+                    request=task_request,
+                    result=task_result,
+                    final_decision=repeated_final,
+                    intent=intent,
+                )
+                if repeated != existing:
+                    raise ValueError(
+                        "manager future review task has a conflicting replay"
+                    )
+                return self._season_view(season)
+            if int(season.get("revision", 0)) != expected_revision:
+                raise ValueError(
+                    "manager future review is stale; refresh before recording"
+                )
+            context = validate_manager_future_context(
+                task_request.get("manager_context"), season,
+            )
+            if context["fixture"]["fixture_id"] != fixture_id:
+                raise ValueError("manager future review fixture identity mismatch")
+            expected_artifact = (
+                self.output_root / "fork_sets" / task_id / "result.json"
+            ).resolve()
+            expected_dashboard = expected_artifact.with_name("index.html")
+            raw_artifact = Path(str(
+                task_result.get("fork_set_result") or ""
+            ))
+            raw_dashboard = Path(str(
+                task_result.get("fork_set_dashboard") or ""
+            ))
+            artifact_path = (
+                raw_artifact
+                if raw_artifact.is_absolute()
+                else self.root / raw_artifact
+            ).resolve()
+            dashboard_path = (
+                raw_dashboard
+                if raw_dashboard.is_absolute()
+                else self.root / raw_dashboard
+            ).resolve()
+            if (
+                artifact_path != expected_artifact
+                or dashboard_path != expected_dashboard
+                or not artifact_path.is_file()
+                or not dashboard_path.is_file()
+            ):
+                raise ValueError(
+                    "manager future review artifacts are unavailable"
+                )
+            try:
+                artifact = json.loads(
+                    artifact_path.read_text(encoding="utf-8")
+                )
+            except (OSError, ValueError, TypeError) as exc:
+                raise ValueError(
+                    "manager future review result artifact is invalid"
+                ) from exc
+            fixture = context["fixture"]
+            if (
+                not isinstance(artifact, Mapping)
+                or artifact.get("schema_version") != 1
+                or artifact.get("set_id") != task_id
+                or artifact.get("status") != "complete"
+                or artifact.get("fixture") != {
+                    "home": fixture["home"], "away": fixture["away"],
+                }
+                or artifact.get("source_context") != context
+                or artifact.get("plan") != task_request.get("plan")
+                or artifact.get("aggregate") != task_result.get("aggregate")
+                or artifact.get("claim_authority")
+                != task_result.get("claim_authority")
+            ):
+                raise ValueError(
+                    "manager future review artifact identity mismatch"
+                )
+            if (
+                len(reviews) >= MAX_REVIEWS_PER_FIXTURE
+                or any(
+                    row.get("context_identity") == context["context_identity"]
+                    for row in reviews
+                    if isinstance(row, Mapping)
+                )
+            ):
+                raise ValueError(
+                    "manager future review is duplicated or at capacity"
+                )
+            current_payload = target.get("manager_decision")
+            if not isinstance(current_payload, Mapping):
+                raise ValueError(
+                    "manager future review requires a frozen decision"
+                )
+            if intent == "keep_after_review":
+                selected = ManagerDecision.from_payload(current_payload)
+            else:
+                selected = final_decision
+            target.pop("manager_advice_adoption", None)
+            prepared = self._prepare_manager_decision(
+                season, selected, fixture_id=fixture_id,
+            )
+            target = prepared["target"]
+            receipt = build_manager_future_review(
+                task_id=task_id,
+                request=task_request,
+                result=task_result,
+                final_decision=target["manager_decision"],
+                intent=intent,
+            )
+            target.setdefault("manager_future_reviews", []).append(receipt)
+            season["revision"] = int(season.get("revision", 0)) + 1
+            season["updated_at"] = _now()
+            session["updated_at"] = _now()
+            validate_season_state(season)
+            _atomic_json(self.session_path, session)
+            return self._season_view(season)
 
     def request_manager_decision_advice(
         self,

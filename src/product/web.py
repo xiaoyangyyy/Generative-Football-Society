@@ -132,8 +132,12 @@ def _match_capabilities() -> dict[str, Any]:
             "claim_boundary": "fixed_simulator_timing_set_no_best_time",
             "manager_bridge": {
                 "endpoint": "/api/v1/seasons/world-model-future-set",
+                "review_endpoint": "/api/v1/seasons/world-model-future-review",
                 "requires": "frozen_unstarted_manager_decision",
                 "identity_checks": "before_and_after_task_execution",
+                "review_intents": [
+                    "keep_after_review", "revise_after_review",
+                ],
                 "second_persisted_season_state": False,
             },
         },
@@ -382,6 +386,11 @@ class ProductWebApp:
             return self._queue_manager_world_model_future_set(
                 environ, self._read_json(environ),
             )
+        if method == "POST" and path == "/api/v1/seasons/world-model-future-review":
+            self._require_csrf(environ)
+            return self._review_manager_world_model_future_set(
+                self._read_json(environ),
+            )
         if method == "POST" and path == "/api/v1/tactical-studies":
             self._require_csrf(environ)
             return self._queue_tactical_study(environ, self._read_json(environ))
@@ -426,6 +435,7 @@ class ProductWebApp:
             "/api/v1/world-model-forks",
             "/api/v1/world-model-fork-sets",
             "/api/v1/seasons/world-model-future-set",
+            "/api/v1/seasons/world-model-future-review",
             "/api/v1/tactical-studies",
             "/api/v1/seasons", "/api/v1/seasons/next-matchday",
             "/api/v1/seasons/decision",
@@ -727,6 +737,17 @@ class ProductWebApp:
                     "timing_sensitivity_observed": (
                         aggregate.get("timing_sensitivity_observed") is True
                     ),
+                    "action_divergence_scenarios": _bounded_public_count(
+                        aggregate.get("action_divergence_scenarios", 0)
+                    ),
+                    "local_attribution_scenarios": _bounded_public_count(
+                        aggregate.get("local_attribution_scenarios", 0)
+                    ),
+                    "descriptive_future_difference_scenarios": _bounded_public_count(
+                        aggregate.get(
+                            "descriptive_future_difference_scenarios", 0,
+                        )
+                    ),
                     "ranking_performed": False,
                     "fork_set_url": result.get("fork_set_url"),
                     "manager_context": manager_context,
@@ -876,6 +897,14 @@ class ProductWebApp:
             season_id = str(season.get("season_id") or "")
             season_revision = int(season.get("revision", -1))
             next_fixture = season.get("next_manager_fixture") or {}
+            review_by_task = {
+                review.get("task_id"): review
+                for fixture in season.get("fixtures") or []
+                for review in fixture.get("manager_future_reviews") or []
+                if isinstance(fixture, Mapping)
+                and isinstance(review, Mapping)
+                and isinstance(review.get("task_id"), str)
+            }
             manager_sets = []
             for item in library_fork_sets:
                 context = item.get("manager_context")
@@ -885,6 +914,7 @@ class ProductWebApp:
                     continue
                 manager_sets.append({
                     **item,
+                    "review_receipt": review_by_task.get(item.get("task_id")),
                     "binding_current": bool(
                         context.get("season_revision") == season_revision
                         and context.get("fixture_id")
@@ -1662,6 +1692,78 @@ class ProductWebApp:
         finally:
             self._mutation_lock.release()
 
+    def _review_manager_world_model_future_set(
+        self, payload: dict[str, Any],
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        allowed = {
+            "task_id", "fixture_id", "expected_revision", "intent",
+            "decision",
+        }
+        if set(payload) - allowed:
+            raise WebRequestError(
+                422, "invalid_manager_future_review",
+                "manager future review has unsupported fields",
+            )
+        try:
+            task_id = self._text_field(payload, "task_id", maximum=64)
+            fixture_id = self._text_field(payload, "fixture_id", maximum=32)
+            intent = self._text_field(payload, "intent", maximum=32)
+            expected_revision = payload.get("expected_revision")
+            if (
+                isinstance(expected_revision, bool)
+                or not isinstance(expected_revision, int)
+                or expected_revision < 0
+            ):
+                raise ValueError("manager future review revision is invalid")
+            task = self.task_queue.get_task(task_id)
+            if (
+                task.get("kind") != "world_model_fork_set"
+                or task.get("state") != "completed"
+                or not isinstance(task.get("request"), Mapping)
+                or not isinstance(task.get("result"), Mapping)
+                or not isinstance(
+                    (task.get("request") or {}).get("manager_context"),
+                    Mapping,
+                )
+            ):
+                raise ValueError(
+                    "manager future review requires a completed bound future set"
+                )
+            decision_payload = payload.get("decision")
+            final_decision = None
+            if intent == "revise_after_review":
+                final_decision = ManagerDecision.from_payload(
+                    decision_payload or {}
+                )
+            elif intent == "keep_after_review":
+                if decision_payload is not None:
+                    raise ValueError(
+                        "keep-after-review does not accept a decision payload"
+                    )
+            else:
+                raise ValueError("manager future review intent is invalid")
+            season = ProductWorkspace.load(self.root).review_manager_future_set(
+                task_id=task_id,
+                task_request=task["request"],
+                task_result=task["result"],
+                intent=intent,
+                fixture_id=fixture_id,
+                expected_revision=expected_revision,
+                final_decision=final_decision,
+            )
+        except FileNotFoundError as exc:
+            raise WebRequestError(
+                404, "manager_future_review_source_missing",
+                "Studio or future-set task was not found",
+            ) from exc
+        except ValueError as exc:
+            raise WebRequestError(
+                422, "invalid_manager_future_review", str(exc),
+            ) from exc
+        return self._json_response(200, {
+            "schema_version": 1, "season": season,
+        })
+
     @staticmethod
     def _safe_artifact_url(value: Any) -> str | None:
         relative = str(value or "")
@@ -2339,12 +2441,17 @@ const renderManagerDecisionLedgerWithoutAdvisorEvidence=renderManagerDecisionLed
 renderManagerDecisionLedger=season=>{renderManagerDecisionLedgerWithoutAdvisorEvidence(season);const node=document.querySelector('#manager-advisor-evidence-summary'),evidence=season?.manager_decision_ledger?.summary?.world_model_advisor;if(!evidence||!evidence.advised_decisions){node.textContent='';return}node.textContent=`\u4e16\u754c\u6a21\u578b\u987e\u95ee\uff1a${evidence.advised_decisions}/${evidence.decisions} \u6b21\u51b3\u7b56\u83b7\u5f97\u5efa\u8bae \u00b7 ${evidence.adopted_recommendation} \u6b21\u660e\u786e\u91c7\u7528 \u00b7 ${evidence.reviewed_then_selected} \u6b21\u67e5\u770b\u540e\u81ea\u4e3b\u9009\u62e9 \u00b7 ${evidence.unlinked_advice} \u6b21\u672a\u7ed1\u5b9a\u610f\u56fe \u00b7 \u76f4\u63a5\u6267\u884c\u8bc1\u636e ${Math.round(Number(evidence.direct_execution_coverage||0)*100)}% \u00b7 \u53ea\u63cf\u8ff0\u91c7\u7eb3\u548c\u6267\u884c\uff0c\u4e0d\u4f30\u8ba1\u8d5b\u679c\u56e0\u679c\u6548\u5e94\u3002`};
 const renderManagerDecisionLedgerWithoutExecutionTrace=renderManagerDecisionLedger;
 renderManagerDecisionLedger=season=>{renderManagerDecisionLedgerWithoutExecutionTrace(season);const ledger=season?.manager_decision_ledger,entries=(ledger?.entries||[]).slice(0,6),stateLabels={awaiting_execution:'\u7b49\u5f85\u6bd4\u8d5b\u6267\u884c',evidence_unavailable:'\u8fd0\u884c\u65f6\u7ed1\u5b9a\u8bc1\u636e\u4e0d\u53ef\u7528',recommendation_executed:'\u5efa\u8bae\u5df2\u7ecf\u8fd0\u884c\u65f6\u6267\u884c',reviewed_alternative_executed:'\u5ba1\u9605\u540e\u7684\u66ff\u4ee3\u9009\u62e9\u5df2\u6267\u884c',advised_selection_executed_unlinked:'\u6240\u9009\u6218\u672f\u5df2\u6267\u884c\uff0c\u672a\u7ed1\u5b9a\u91c7\u7528\u610f\u56fe'},controlLabels={pressing_intensity:'\u903c\u62a2',line_height:'\u9632\u7ebf\u9ad8\u5ea6',verticality:'\u7eb5\u5411\u6027',possession_orientation:'\u63a7\u7403',counter_attack:'\u53cd\u51fb',compactness:'\u7d27\u51d1\u5ea6'};for(const [index,row] of entries.entries()){const trace=row.advisor_execution_trace;if(!trace?.available)continue;const host=managerDecisionLedgerList.children[index];if(!host)continue;const details=document.createElement('details'),summary=document.createElement('summary'),runtime=trace.runtime_binding||{};summary.textContent=`\u987e\u95ee\u6267\u884c\u94fe\uff1a${stateLabels[trace.end_to_end_state]||trace.end_to_end_state}`;const chain=document.createElement('p');chain.textContent=`\u5efa\u8bae ${trace.recommendation?.tactic} \u2192 ${trace.interaction?.status==='explicit'?(trace.interaction.intent==='adopt_recommendation'?'\u660e\u786e\u91c7\u7528':'\u5ba1\u9605\u540e\u6539\u9009'):'\u672a\u7ed1\u5b9a\u610f\u56fe'} \u2192 \u51bb\u7ed3 ${trace.selection?.tactic} \u2192 ${runtime.status==='verified'?'\u5f15\u64ce\u5df2\u9a8c\u8bc1':'\u5f15\u64ce\u672a\u9a8c\u8bc1'}`;details.append(summary,chain);const binding=row.execution?.tactical_binding;if(binding?.available){const vector=binding.initial_vector||{},facts=document.createElement('p');facts.textContent=Object.entries(controlLabels).map(([key,label])=>`${label} ${Math.round(Number(vector[key]||0)*100)}%`).join(' \u00b7 ');const drift=document.createElement('p');drift.className='status';drift.textContent=`${binding.binding_kind==='native_team_vector'?'\u7403\u961f\u539f\u751f\u5411\u91cf':'\u9501\u5b9a\u9884\u8bbe'} \u00b7 \u7ec8\u573a\u53d8\u5316 ${binding.changed_controls?.length||0}/22 \u7ef4 \u00b7 \u7ed1\u5b9a ${String(binding.binding_identity||'').slice(0,12)}`;details.append(facts,drift)}const boundary=document.createElement('p');boundary.className='status';boundary.textContent='\u8fd9\u91cc\u8bc1\u660e\u6218\u672f\u8f93\u5165\u786e\u5b9e\u8fdb\u5165\u5f15\u64ce\uff1b\u4e0d\u8bc1\u660e\u5b83\u5bfc\u81f4\u4e86\u6bd4\u5206\u6216\u80dc\u8d1f\u3002';details.append(boundary);host.append(details)}const evidence=ledger?.summary?.world_model_advisor,node=document.querySelector('#manager-advisor-evidence-summary');if(evidence?.advised_decisions)node.textContent+=` \u00b7 \u6218\u672f\u8fd0\u884c\u65f6\u7ed1\u5b9a ${evidence.verified_tactical_bindings||0}/${evidence.executed_advised_decisions||0} \u00b7 \u5efa\u8bae\u76f4\u63a5\u6267\u884c ${evidence.direct_recommendation_executions||0} \u6b21`};
+const renderManagerDecisionLedgerWithoutFutureReviews=renderManagerDecisionLedger;
+renderManagerDecisionLedger=season=>{renderManagerDecisionLedgerWithoutFutureReviews(season);const ledger=season?.manager_decision_ledger,entries=(ledger?.entries||[]).slice(0,6),summary=ledger?.summary?.world_model_future_reviews;if(summary?.reviewed_future_sets){const host=document.querySelector('#manager-decision-ledger-summary');host.textContent+=' \u00b7 \u672a\u6765\u8bc1\u636e\u590d\u6838 '+summary.reviewed_future_sets+' \u6b21\uff08\u4fdd\u7559 '+summary.kept_after_review+' / \u4fee\u6539 '+summary.revised_after_review+'\uff09'}for(const [index,row] of entries.entries()){const reviews=row.world_model_future_reviews||[],host=managerDecisionLedgerList.children[index];if(!host||!reviews.length)continue;const details=document.createElement('details'),heading=document.createElement('summary');heading.textContent='\u4e16\u754c\u6a21\u578b\u672a\u6765\u8bc1\u636e\u590d\u6838 \u00b7 '+reviews.length+' \u6b21';details.append(heading);for(const review of reviews){const evidence=review.evidence_summary||{},line=document.createElement('p');line.className='status';line.textContent=(review.intent==='keep_after_review'?'\u590d\u6838\u540e\u4fdd\u7559':'\u590d\u6838\u540e\u4fee\u6539')+' \u00b7 \u4efb\u52a1 '+String(review.task_id||'').slice(0,12)+' \u00b7 \u52a8\u4f5c\u5206\u53c9\u65f6\u70b9 '+Number(evidence.action_divergence_scenarios||0)+' \u00b7 \u65f6\u95f4\u654f\u611f\u6027 '+(evidence.timing_sensitivity_observed?'\u5df2\u89c2\u5bdf\u5230':'\u672a\u89c2\u5bdf\u5230')+' \u00b7 \u4e0d\u6388\u4e88\u51b3\u7b56\u8d28\u91cf\u6216\u8d5b\u679c\u56e0\u679c';details.append(line)}host.append(details)}};
 const renderManagerIntelligenceWithoutTacticalBinding=renderManagerIntelligence;
 renderManagerIntelligence=(command,configured)=>{renderManagerIntelligenceWithoutTacticalBinding(command,configured);const debrief=command?.postmatch_debrief,binding=debrief?.tactical_binding;if(!configured||!debrief?.available||!binding)return;if(!binding.available){const unavailable=document.createElement('p');unavailable.className='status';unavailable.textContent=`\u6218\u672f\u8fd0\u884c\u65f6\u7ed1\u5b9a\u4e0d\u53ef\u7528\uff1a${binding.reason||'unknown'}`;matchdayAttribution.append(unavailable);return}const vector=binding.initial_vector||{},value=`${binding.applied_tactic} \u00b7 ${binding.binding_kind==='native_team_vector'?'\u539f\u751f\u7403\u961f\u5411\u91cf':'\u9501\u5b9a\u6218\u672f\u9884\u8bbe'} \u00b7 \u903c\u62a2 ${Math.round(Number(vector.pressing_intensity||0)*100)}% \u00b7 \u9632\u7ebf ${Math.round(Number(vector.line_height||0)*100)}% \u00b7 \u7eb5\u5411 ${Math.round(Number(vector.verticality||0)*100)}% \u00b7 \u53d8\u5316 ${binding.changed_controls?.length||0}/22 \u7ef4`,node=card('\u5f15\u64ce\u6218\u672f\u7ed1\u5b9a',value);node.setAttribute('role','listitem');matchdayAttribution.append(node)};
 const renderManagerWorldModelAdviceWithoutStatusReset=renderManagerWorldModelAdvice;
 renderManagerWorldModelAdvice=(...args)=>{managerWorldModelAdviceSummary.className='status';return renderManagerWorldModelAdviceWithoutStatusReset(...args)};
 function renderManagerFutureSets(season,managed){const available=currentStudioMode==='research'&&Boolean(managed?.manager_decision);managerFutureSet.hidden=!available;managerFutureSetList.replaceChildren();if(!available){managerFutureSetSummary.textContent='';return}const sets=season?.manager_future_sets||[];managerFutureSetSummary.textContent=sets.length?`${sets.length} \u4e2a\u8d5b\u524d\u672a\u6765\u5b9e\u9a8c\u5df2\u7ed1\u5b9a\u672c\u8d5b\u5b63\uff1b\u53ea\u6709\u5f53\u524d revision \u7684\u7ed3\u679c\u53ef\u7ee7\u7eed\u7528\u4e8e\u672c\u8f6e\u590d\u76d8\u3002`:'\u51b3\u7b56\u5df2\u51bb\u7ed3\u3002\u53ef\u590d\u7528\u6b63\u5f0f\u5bf9\u9635\u3001seed \u548c\u53cc\u65b9\u5b9e\u9645\u6218\u672f\uff0c\u751f\u6210\u56fa\u5b9a\u591a\u65f6\u70b9\u53cc\u4e16\u754c\u8bc1\u636e\u3002';for(const item of sets){const context=item.manager_context||{},node=card(`\u7b2c ${context.matchday??'?'} \u8f6e \u00b7 ${item.home||'?'} vs ${item.away||'?'}`,item.state),meta=document.createElement('p'),boundary=document.createElement('p'),links=document.createElement('p');node.setAttribute('role','listitem');meta.className='status';meta.textContent=`\u573a\u666f ${item.scenario_id||item.task_id||'?'} \u00b7 \u4e0a\u4e0b\u6587 ${String(context.context_identity||'').slice(0,12)} \u00b7 ${item.binding_current?'\u5f53\u524d\u7ed1\u5b9a':'\u5386\u53f2\u8bc1\u636e'}`;boundary.className='status';boundary.textContent='\u53ea\u63cf\u8ff0\u6a21\u62df\u5668\u5185\u52a8\u4f5c\u4e0e\u672a\u6765\u5dee\u5f02\uff1b\u4e0d\u9884\u6d4b\u6bd4\u5206\u3001\u4e0d\u9009\u62e9\u6700\u4f73\u65f6\u70b9\u3001\u4e0d\u6388\u6743\u8d5b\u679c\u56e0\u679c\u3002';const link=artifactLink('\u6253\u5f00\u8d5b\u524d\u672a\u6765\u5b9e\u9a8c',item.fork_set_url);if(link)links.append(link);node.append(meta,boundary,links);managerFutureSetList.append(node)}}
 async function requestManagerFutureExperiment(){const managed=currentSeason?.next_manager_fixture,values=String(managerFutureSetMinutes.value||'').split(',').map(value=>Number(value.trim())),valid=values.length>=2&&values.length<=4&&values.every((value,index)=>Number.isFinite(value)&&value>=0&&value<=90&&(index===0||value>values[index-1]));if(!managed?.manager_decision){announce(managerFutureSetSummary,'\u8bf7\u5148\u51bb\u7ed3\u672c\u573a\u7ecf\u7406\u51b3\u7b56\u3002','error',true);return}if(!valid){announce(managerFutureSetSummary,'\u8bf7\u8f93\u5165 2\u20134 \u4e2a\u4e25\u683c\u9012\u589e\u4e14\u4f4d\u4e8e 0\u201390 \u7684\u5206\u949f\u3002','error',true);managerFutureSetMinutes.focus();return}requestManagerFutureSet.disabled=true;requestManagerFutureSet.setAttribute('aria-busy','true');announce(managerFutureSetSummary,'\u6b63\u5728\u63d0\u4ea4\u8eab\u4efd\u7ed1\u5b9a\u7684\u8d5b\u524d\u672a\u6765\u5b9e\u9a8c\u2026\u2026');try{const key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random(),data=await api('/api/v1/seasons/world-model-future-set',{method:'POST',headers:{'Idempotency-Key':key},body:JSON.stringify({fixture_id:managed.fixture_id,branch_times_sec:values.map(value=>value*60)})});activePoll=data.task.task_id;await pollTask(data.task.task_id)}catch(error){announce(managerFutureSetSummary,error.message,'error',true)}finally{requestManagerFutureSet.disabled=false;requestManagerFutureSet.setAttribute('aria-busy','false')}}
+async function reviewManagerFutureEvidence(item,intent,button){button.disabled=true;button.setAttribute('aria-busy','true');try{const managed=currentSeason?.next_manager_fixture,payload={task_id:item.task_id,fixture_id:managed?.fixture_id,expected_revision:currentSeason?.revision,intent};if(intent==='revise_after_review'){const decisionPayload=managerDecisionPayload(true);if(decisionPayload.expected_revision!==currentSeason?.revision)throw new Error('\u5f53\u524d\u65b9\u6848\u9884\u89c8\u5df2\u8fc7\u671f\uff0c\u8bf7\u7b49\u5f85\u5237\u65b0\u3002');payload.decision=decisionPayload.decision}announce(managerFutureSetSummary,'\u6b63\u5728\u8bb0\u5f55\u8eab\u4efd\u7ed1\u5b9a\u7684\u590d\u6838\u6536\u636e\u2026\u2026');await api('/api/v1/seasons/world-model-future-review',{method:'POST',body:JSON.stringify(payload)});await refresh()}catch(error){announce(managerFutureSetSummary,error.message,'error',true)}finally{button.disabled=false;button.setAttribute('aria-busy','false')}}
+const renderManagerFutureSetsWithoutReviewActions=renderManagerFutureSets;
+renderManagerFutureSets=(season,managed)=>{renderManagerFutureSetsWithoutReviewActions(season,managed);const sets=season?.manager_future_sets||[],nodes=[...managerFutureSetList.children];for(const [index,item] of sets.entries()){const node=nodes[index],receipt=item.review_receipt;if(!node)continue;const evidence=document.createElement('p');evidence.className='status';evidence.textContent='\u673a\u5236\u8bc1\u636e\uff1a\u52a8\u4f5c\u5206\u53c9 '+Number(item.action_divergence_scenarios||0)+' \u4e2a\u65f6\u70b9 \u00b7 \u5c40\u90e8\u5f52\u56e0 '+Number(item.local_attribution_scenarios||0)+' \u00b7 \u540e\u7eed\u63cf\u8ff0\u5dee\u5f02 '+Number(item.descriptive_future_difference_scenarios||0);node.append(evidence);if(receipt){const reviewed=document.createElement('p');reviewed.className='status';reviewed.textContent=(receipt.intent==='keep_after_review'?'\u7ecf\u7406\u590d\u6838\u540e\u4fdd\u7559\u51b3\u7b56':'\u7ecf\u7406\u590d\u6838\u540e\u4fee\u6539\u51b3\u7b56')+' \u00b7 \u6536\u636e '+String(receipt.review_identity||'').slice(0,12)+' \u00b7 \u4e0d\u4ee3\u8868\u51b3\u7b56\u8d28\u91cf\u6216\u8d5b\u679c\u56e0\u679c';node.append(reviewed);continue}if(item.state!=='completed'||!item.binding_current)continue;const actions=document.createElement('p'),keep=document.createElement('button'),revise=document.createElement('button');keep.type=revise.type='button';keep.textContent='\u590d\u6838\u540e\u4fdd\u7559\u5f53\u524d\u51b3\u7b56';revise.textContent='\u6309\u5f53\u524d\u8868\u5355\u4fee\u6539\u5e76\u8bb0\u5f55\u590d\u6838';keep.addEventListener('click',()=>void reviewManagerFutureEvidence(item,'keep_after_review',keep));revise.addEventListener('click',()=>void reviewManagerFutureEvidence(item,'revise_after_review',revise));actions.append(keep,document.createTextNode(' '),revise);node.append(actions)}};
 const renderSeasonWithoutManagerFutureSets=renderSeason;
 renderSeason=(season,configured,history=[],historySummary={})=>{renderSeasonWithoutManagerFutureSets(season,configured,history,historySummary);renderManagerFutureSets(season,season?.next_manager_fixture)};
 managerManual.addEventListener('change',()=>renderManagerSquad(currentSeason,currentSeason?.next_manager_fixture));

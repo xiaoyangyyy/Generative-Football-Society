@@ -124,8 +124,14 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-future-set"' in document
     assert 'id="request-manager-future-set"' in document
     assert "/api/v1/seasons/world-model-future-set" in document
+    assert "/api/v1/seasons/world-model-future-review" in document
     assert "function renderManagerFutureSets(" in document
     assert "function requestManagerFutureExperiment(" in document
+    assert "function reviewManagerFutureEvidence(" in document
+    assert "renderManagerDecisionLedgerWithoutFutureReviews" in document
+    assert "row.world_model_future_reviews" in document
+    assert "keep_after_review" in document
+    assert "revise_after_review" in document
     assert document.count("const renderLibraryWithoutForkSets=") == 1
     assert "前缀锚点" in document
     assert "确定性重放（非进程快照）" in document
@@ -1192,6 +1198,8 @@ def test_manager_future_set_route_freezes_official_context_and_is_idempotent(
     ).as_dict()
     context = build_manager_future_context(season)
 
+    observed_review = {}
+
     class FakeWorkspace:
         config = type("Config", (), {"mode": "research"})()
 
@@ -1201,6 +1209,13 @@ def test_manager_future_set_route_freezes_official_context_and_is_idempotent(
         def manager_future_set_context(self, *, fixture_id=None):
             assert fixture_id == fixture["fixture_id"]
             return context
+
+        def review_manager_future_set(self, **kwargs):
+            observed_review.update(kwargs)
+            return {
+                "season_id": context["season_id"],
+                "revision": context["season_revision"] + 1,
+            }
 
     monkeypatch.setattr(
         "src.product.web.ProductWorkspace.load", lambda _root: FakeWorkspace(),
@@ -1231,6 +1246,179 @@ def test_manager_future_set_route_freezes_official_context_and_is_idempotent(
     )
     assert duplicate["status"].startswith("200")
     assert duplicate["json"]["task"]["task_id"] == task["task_id"]
+
+    incomplete = _request(
+        app, "POST", "/api/v1/seasons/world-model-future-review", {
+            "task_id": task["task_id"],
+            "fixture_id": fixture["fixture_id"],
+            "expected_revision": context["season_revision"],
+            "intent": "keep_after_review",
+        }, csrf=app.csrf_token,
+    )
+    assert incomplete["status"].startswith("422")
+    assert incomplete["json"]["error"]["code"] == (
+        "invalid_manager_future_review"
+    )
+
+    claimed = app.task_queue.claim_next("review-test-worker")
+    assert claimed["task_id"] == task["task_id"]
+    app.task_queue.complete(
+        task["task_id"], "review-test-worker",
+        {"status": "complete", "manager_context": {}},
+    )
+    review_payload = {
+        "task_id": task["task_id"],
+        "fixture_id": fixture["fixture_id"],
+        "expected_revision": context["season_revision"],
+        "intent": "keep_after_review",
+    }
+    denied_review = _request(
+        app, "POST", "/api/v1/seasons/world-model-future-review",
+        review_payload,
+    )
+    assert denied_review["status"].startswith("403")
+    reviewed = _request(
+        app, "POST", "/api/v1/seasons/world-model-future-review",
+        review_payload, csrf=app.csrf_token,
+    )
+    assert reviewed["status"].startswith("200")
+    assert reviewed["json"]["season"]["revision"] == (
+        context["season_revision"] + 1
+    )
+    assert observed_review["task_id"] == task["task_id"]
+    assert observed_review["intent"] == "keep_after_review"
+    assert observed_review["final_decision"] is None
+
+
+def test_manager_future_review_runs_end_to_end_without_a_second_state(
+    tmp_path, monkeypatch,
+):
+    from src.product.match_plan import WorldModelForkSetPlan
+    from src.product.season import ManagerDecision, SeasonPlan
+    from src.product.workspace import ProductWorkspace, StudioConfig
+
+    workspace = ProductWorkspace.create(
+        tmp_path,
+        StudioConfig(name="Review E2E", mode="research", seed=13),
+    )
+    created = workspace.create_season(
+        SeasonPlan(
+            ("A", "B", "C", "D"), fast=True, manager_team="A",
+        )
+    )
+    fixture_id = created["next_manager_fixture"]["fixture_id"]
+    decided = workspace.set_manager_decision(
+        ManagerDecision(team="A", tactic="gegenpress"),
+        fixture_id=fixture_id,
+    )
+    context = workspace.manager_future_set_context(fixture_id=fixture_id)
+    plan = WorldModelForkSetPlan(
+        context["home_tactic"], context["away_tactic"],
+        context["match_seed"], (1800, 2700),
+    )
+    app = ProductWebApp(tmp_path)
+    task, _ = app.task_queue.submit_world_model_fork_set(
+        context["fixture"]["home"],
+        context["fixture"]["away"],
+        fast=context["fast"],
+        plan=plan,
+        manager_context=context,
+    )
+    aggregate = {
+        "eligible_scenarios": 2,
+        "verified_anchor_scenarios": 2,
+        "action_divergence_scenarios": 1,
+        "local_attribution_scenarios": 1,
+        "descriptive_future_difference_scenarios": 1,
+        "timing_sensitivity_observed": True,
+        "status_counts": {
+            "local_action_divergence_with_descriptive_future_difference": 1,
+            "no_realized_action_divergence": 1,
+        },
+        "ranking_performed": False,
+        "best_branch_time": None,
+    }
+    authority = {
+        "descriptive_simulator_timing_sensitivity": True,
+        "best_time_recommendation": False,
+        "match_outcome_causality": False,
+        "population_inference": False,
+        "real_football_causality": False,
+        "promotion_authorized": False,
+    }
+
+    def execute(_workspace, frozen_plan, **kwargs):
+        root = (
+            workspace.output_root
+            / "fork_sets"
+            / kwargs["set_id"]
+        )
+        root.mkdir(parents=True, exist_ok=True)
+        result_path = root / "result.json"
+        dashboard_path = root / "index.html"
+        artifact = {
+            "schema_version": 1,
+            "set_id": kwargs["set_id"],
+            "status": "complete",
+            "fixture": {
+                "home": kwargs["home"], "away": kwargs["away"],
+            },
+            "source_context": kwargs["source_context"],
+            "plan": frozen_plan.as_dict(),
+            "aggregate": aggregate,
+            "claim_authority": authority,
+        }
+        result_path.write_text(json.dumps(artifact), encoding="utf-8")
+        dashboard_path.write_text("review evidence", encoding="utf-8")
+        return {
+            **artifact,
+            "result_path": str(result_path),
+            "dashboard_path": str(dashboard_path),
+        }
+
+    monkeypatch.setattr(
+        "src.product.world_model_fork_set.execute_world_model_fork_set",
+        execute,
+    )
+    assert BackgroundMatchWorker(
+        app.task_queue, workspace_loader=lambda _root: workspace,
+    ).run_once()
+    completed = app.task_queue.get_task(task["task_id"])
+    assert completed["state"] == "completed"
+
+    response = _request(
+        app, "POST", "/api/v1/seasons/world-model-future-review", {
+            "task_id": task["task_id"],
+            "fixture_id": fixture_id,
+            "expected_revision": decided["revision"],
+            "intent": "keep_after_review",
+        }, csrf=app.csrf_token,
+    )
+    assert response["status"].startswith("200")
+    season = workspace.season_status()
+    receipt = season["next_manager_fixture"]["manager_future_reviews"][0]
+    assert receipt["task_id"] == task["task_id"]
+    assert receipt["intent"] == "keep_after_review"
+    assert season["revision"] == decided["revision"] + 1
+    assert season["manager_decision_ledger"]["summary"][
+        "world_model_future_reviews"
+    ]["reviewed_future_sets"] == 1
+    assert "manager_future_reviews" not in workspace._session()
+    repeated = _request(
+        app, "POST", "/api/v1/seasons/world-model-future-review", {
+            "task_id": task["task_id"],
+            "fixture_id": fixture_id,
+            "expected_revision": decided["revision"],
+            "intent": "keep_after_review",
+        }, csrf=app.csrf_token,
+    )
+    assert repeated["status"].startswith("200")
+    assert repeated["json"]["season"]["revision"] == season["revision"]
+    assert len(
+        workspace.season_status()["next_manager_fixture"][
+            "manager_future_reviews"
+        ]
+    ) == 1
 
 
 def test_tactical_study_route_is_research_only_and_idempotent(

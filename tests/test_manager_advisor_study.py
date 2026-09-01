@@ -13,6 +13,7 @@ from scripts.manager_advisor_study import (
 from src.product.decision_ledger import (
     _advisor_execution_trace,
     world_model_advisor_summary,
+    world_model_future_review_summary,
 )
 
 
@@ -98,6 +99,7 @@ def _ledger(
             lifecycle_state=lifecycle,
             execution=execution,
         )
+        entry['world_model_future_reviews'] = []
         entry['entry_identity'] = _identity({
             key: value for key, value in entry.items()
             if key != 'entry_identity'
@@ -127,6 +129,9 @@ def _ledger(
                 lifecycle["executed_with_direct_evidence"] / max(1, executed), 6,
             ),
             "world_model_advisor": world_model_advisor_summary(entries),
+            "world_model_future_reviews": world_model_future_review_summary(
+                entries,
+            ),
         },
         "claim_boundary": "test ledger",
     }
