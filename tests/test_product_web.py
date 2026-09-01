@@ -226,11 +226,18 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-world-navigator-secondary"' in document
     assert 'id="manager-world-navigator-gaps"' in document
     assert 'id="manager-world-influence-path"' in document
+    assert 'id="manager-world-gap-diagnostics"' in document
+    assert 'id="manager-world-gap-list"' in document
     assert "managerWorldInfluencePath.replaceChildren()" in document
+    assert "managerWorldGapList.replaceChildren()" in document
     assert "summary.world_model_influence_path||{}" in document
+    assert "summary.continuity_gap_counts||[]" in document
     assert "至少一处局部动作改变" in document
     assert "各项是独立证据覆盖，不是递减漏斗" in document
     assert "证据断点章节" in document
+    assert "未来比赛应在最后一次编辑后重新复核并冻结" in document
+    assert "检查比赛是否启用世界模型并保留动作证据身份" in document
+    assert "所有已完成章节均无已声明连续性断点。" in document
     assert "function visibleManagerLedgerEntries(" in document
     assert "node.dataset.fixtureId=String(row.fixture_id||'')" in document
     assert "node.dataset.chapterComplete=" in document

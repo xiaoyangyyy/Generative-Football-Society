@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_evidence_derived_excellence_score",
-  "generated_at": "2026-09-01T16:49:22.693415+00:00",
+  "generated_at": "2026-09-01T17:03:16.808012+00:00",
   "status": "passed_dynamic_scoring",
   "passed": true,
   "scores": {
@@ -239,7 +239,7 @@
     "src/product/control_plane.py": "4cb8d8705ef99bd45d3bd8eca5b9463cef8bdada8268cdbcabeb0f0b08b87ea7",
     "src/product/completion_plan.py": "16579e1fbc4c7c82470eebf6601ad26d2e723020e77f9bfe031f27cd314e4698",
     "src/cli.py": "d8d4381ef94daa459fc3b2af2c7737947f95beb9a15a4e08150879ce6db68529",
-    "src/product/web.py": "6bc63327023a0176e8aacee5ad56b6df295e056e6932cf6a96cbed4e6f7f2fcc",
+    "src/product/web.py": "23a8ae50989f83f6ec69e27e98174367ef0f84d5f07cae1121410f1d4a128778",
     "src/product/telemetry.py": "d3b7cda8f249da11f0e908d514b70abb8446b94721c33fa2681d5f7e361162a7",
     "scripts/build_excellence_evidence_kit.py": "5c2d1fcb29239153cf5ca1cef483d13c366d5fba60e0d339c2459d8610fc1186",
     "data/evaluation/excellence_evidence_kit_verification_v1.json": "77fb795f2fec61bd2d073d77523b0ceaf4348fa3151c0e1cf90e4d96969e0537",

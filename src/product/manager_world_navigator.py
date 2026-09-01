@@ -181,6 +181,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         )
         or not isinstance(gaps, list)
         or any(not isinstance(gap, str) or not gap for gap in gaps)
+        or len(gaps) != len(set(gaps))
     ):
         raise ValueError("manager world navigator chapter facts are invalid")
     payload = {
@@ -271,6 +272,7 @@ def build_manager_world_navigator(
     if (
         not isinstance(current_gaps, list)
         or any(not isinstance(gap, str) or not gap for gap in current_gaps)
+        or len(current_gaps) != len(set(current_gaps))
     ):
         raise ValueError(
             "manager world navigator current continuity gaps are invalid"
@@ -323,6 +325,16 @@ def build_manager_world_navigator(
             for row in all_chapters
         ),
     }
+    gap_counts: dict[str, int] = {}
+    for chapter in all_chapters:
+        for gap in chapter["continuity_gaps"]:
+            gap_counts[gap] = gap_counts.get(gap, 0) + 1
+    continuity_gap_counts = [
+        {"gap": gap, "chapters": count}
+        for gap, count in sorted(
+            gap_counts.items(), key=lambda item: (-item[1], item[0]),
+        )
+    ]
     summary = {
         "completed_world_chapters": len(all_chapters),
         "visible_world_chapters": len(chapters),
@@ -341,6 +353,10 @@ def build_manager_world_navigator(
         "chapters_with_continuity_gaps": sum(
             bool(row["continuity_gaps"]) for row in all_chapters
         ),
+        "chapters_without_continuity_gaps": sum(
+            not row["continuity_gaps"] for row in all_chapters
+        ),
+        "continuity_gap_counts": continuity_gap_counts,
         "visible_official_runtime_chapters": sum(
             row["official_runtime_chain_complete"] for row in chapters
         ),

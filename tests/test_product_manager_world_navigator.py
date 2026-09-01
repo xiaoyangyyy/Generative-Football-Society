@@ -176,6 +176,11 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
         "world_model_runtime_chapters": 2,
         "local_action_changes": 4,
         "chapters_with_continuity_gaps": 1,
+        "chapters_without_continuity_gaps": 1,
+        "continuity_gap_counts": [{
+            "gap": "world_model_action_evidence_unavailable",
+            "chapters": 1,
+        }],
         "visible_official_runtime_chapters": 2,
         "visible_world_model_runtime_chapters": 2,
         "visible_local_action_changes": 4,
@@ -241,6 +246,12 @@ def test_current_continuity_gaps_are_preserved_and_invalid_values_fail_closed():
     with pytest.raises(ValueError, match="current continuity gaps"):
         build_manager_world_navigator(season)
 
+    workspace["continuity_gaps"] = ["duplicate_gap", "duplicate_gap"]
+    workspace.pop("workspace_identity")
+    workspace["workspace_identity"] = _identity(workspace)
+    with pytest.raises(ValueError, match="current continuity gaps"):
+        build_manager_world_navigator(season)
+
 
 def test_completed_season_closes_current_navigation_but_keeps_history():
     navigator = build_manager_world_navigator(
@@ -292,6 +303,37 @@ def test_truncated_old_chapter_is_still_identity_validated():
 
     with pytest.raises(ValueError, match="chapter identity"):
         build_manager_world_navigator(_season(entries=entries))
+
+
+def test_gap_diagnostics_count_chapters_and_sort_deterministically():
+    navigator = build_manager_world_navigator(_season(entries=[
+        _entry(1, gaps=[
+            "z_unknown_gap", "tactical_runtime_binding_unavailable",
+        ]),
+        _entry(2, gaps=["tactical_runtime_binding_unavailable"]),
+        _entry(3, gaps=["observed_result_unavailable"]),
+        _entry(4),
+    ]))
+
+    assert navigator["summary"]["chapters_with_continuity_gaps"] == 3
+    assert navigator["summary"]["chapters_without_continuity_gaps"] == 1
+    assert navigator["summary"]["continuity_gap_counts"] == [
+        {"gap": "tactical_runtime_binding_unavailable", "chapters": 2},
+        {"gap": "observed_result_unavailable", "chapters": 1},
+        {"gap": "z_unknown_gap", "chapters": 1},
+    ]
+
+
+def test_duplicate_historical_gap_fails_closed():
+    season = _season(entries=[_entry(
+        1, gaps=[
+            "observed_result_unavailable",
+            "observed_result_unavailable",
+        ],
+    )])
+
+    with pytest.raises(ValueError, match="chapter facts"):
+        build_manager_world_navigator(season)
 
 
 def test_duplicate_fixture_identity_fails_closed_even_when_rehashed():

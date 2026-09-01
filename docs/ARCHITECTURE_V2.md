@@ -2090,3 +2090,39 @@ This correction improves evidence integrity and makes the world model's actual
 product participation legible. It does not assert that action changes improved
 decisions or scores, rank interventions, run training or matches, or authorize
 real-football causal transfer.
+
+## 73. V3.55 Season evidence-break diagnostics
+
+The influence path made coverage visible but still required users to open
+individual chapters to understand why a chain was incomplete. The navigator
+summary reported only the number of affected chapters, which could not
+distinguish a missing final review from absent runtime action evidence or a
+missing persistent-state snapshot.
+
+The whole-season navigator now aggregates every historical continuity-gap code
+as a chapter count. Counts are ordered by descending affected chapters and then
+by the gap code, giving canonical output independent of input dictionary order.
+The summary also records completed chapters without declared gaps. A chapter
+or current workspace with the same gap repeated twice is rejected, preventing
+one fixture from inflating its diagnostic count.
+
+The existing influence panel contains a progressive-disclosure diagnostic
+rather than another top-level product surface. It localizes the five canonical
+historical gaps:
+
+- final review did not reach the frozen decision;
+- official tactical runtime binding is unavailable;
+- official world-model action evidence is unavailable;
+- the descriptive match result is unavailable;
+- the persistent postmatch or recovery state is unavailable.
+
+Each row reports affected fixtures, preserves the technical gap code and gives
+a bounded inspection suggestion. Unknown future codes remain visible with a
+generic instruction to inspect the chapter evidence timeline; they are never
+dropped or interpreted as a known failure. A completed season with no gaps
+shows an explicit no-declared-gap state.
+
+These diagnostics explain evidence availability, not system effectiveness.
+They do not repair historical evidence automatically, identify a causal fault,
+claim that a complete chain improved the result, execute a match, run training
+or call an external provider.
