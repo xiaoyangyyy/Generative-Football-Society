@@ -697,6 +697,16 @@ def test_future_reviews_close_to_selection_and_runtime_without_outcome_claim():
     assert trace["outcome_comparison_performed"] is False
     assert trace["outcome_effect_estimate"] is None
     assert trace["causal_effect_authorized"] is False
+    pending_certificate = entry["world_evolution_thread"][
+        "review_to_official_world"
+    ]
+    assert pending_certificate["status"] == "awaiting_official_match"
+    assert entry["world_evolution_thread"][
+        "reviewed_world_model_chain_complete"
+    ] is False
+    assert pending_certificate[
+        "scenario_to_runtime_opportunity_matching_performed"
+    ] is False
 
     completed = copy.deepcopy(season)
     completed_fixture = next(
@@ -746,6 +756,12 @@ def test_future_reviews_close_to_selection_and_runtime_without_outcome_claim():
     assert executed_entry["world_evolution_thread"]["stages"][0][
         "action_divergence_scenarios"
     ] == 2
+    assert executed_entry["world_evolution_thread"][
+        "reviewed_world_model_chain_complete"
+    ] is False
+    assert executed_entry["world_evolution_thread"][
+        "review_to_official_world"
+    ]["status"] == "official_action_evidence_unavailable"
     summary = executed["summary"]["world_model_future_review_execution"]
     assert summary["reviewed_selection_runtime_verified"] == 1
     assert summary["outcome_comparison_performed"] is False
@@ -771,6 +787,9 @@ def test_future_reviews_close_to_selection_and_runtime_without_outcome_claim():
     assert superseded_trace["end_to_end_state"] == (
         "terminal_review_superseded_before_execution"
     )
+    assert superseded_entry["world_evolution_thread"][
+        "review_to_official_world"
+    ]["status"] == "review_superseded"
 
     tampered = copy.deepcopy(executed)
     tampered_entry = next(

@@ -264,6 +264,8 @@ def build_manager_world_evolution_thread(
     same_match = bool(
         tactical_status == "runtime_verified"
         and action_available
+        and isinstance(tactical_stage.get("match_id"), str)
+        and bool(tactical_stage.get("match_id"))
         and tactical_stage.get("match_id") == action_stage.get("match_id")
     )
     if same_match:
@@ -357,6 +359,50 @@ def build_manager_world_evolution_thread(
     world_model_runtime_complete = bool(
         official_runtime_complete and action_available and same_match
     )
+    final_decision_identity_bound = review_status == "selected_for_fixture"
+    if review_status == "not_reviewed":
+        review_world_status = "not_reviewed"
+    elif not final_decision_identity_bound:
+        review_world_status = "review_superseded"
+    elif pending:
+        review_world_status = "awaiting_official_match"
+    elif tactical_status != "runtime_verified":
+        review_world_status = "tactical_runtime_binding_unavailable"
+    elif not action_available or not same_match:
+        review_world_status = "official_action_evidence_unavailable"
+    else:
+        review_world_status = "complete"
+    archived_scenarios = terminal_review.get("reviewed_scenarios")
+    archived_scenarios = (
+        archived_scenarios if isinstance(archived_scenarios, list) else []
+    )
+    review_world_certificate = {
+        "schema_version": 1,
+        "status": review_world_status,
+        "review_identity": terminal_review.get("review_identity"),
+        "review_trace_identity": review_trace.get("trace_identity"),
+        "decision_identity": decision_identity,
+        "tactical_binding_identity": binding.get("binding_identity"),
+        "official_action_evidence_identity": action.get("evidence_identity"),
+        "official_match_id": action.get("match_id"),
+        "scenario_archive_count": len(archived_scenarios),
+        "scenario_evidence_retained": bool(archived_scenarios),
+        "final_decision_identity_bound": final_decision_identity_bound,
+        "runtime_tactic_verified": tactical_status == "runtime_verified",
+        "official_action_same_match": same_match,
+        "scenario_to_runtime_opportunity_matching_performed": False,
+        "outcome_comparison_performed": False,
+        "causal_effect_authorized": False,
+        "claim_boundary": (
+            "review identity, final decision, official tactical binding and "
+            "same-match action evidence continuity only; archived simulated "
+            "scenarios are not matched to official runtime opportunities"
+        ),
+    }
+    review_world_certificate["certificate_identity"] = _identity(
+        review_world_certificate
+    )
+    reviewed_world_model_chain_complete = review_world_status == "complete"
     if pending:
         thread_state = "awaiting_official_match"
     elif world_model_runtime_complete:
@@ -376,6 +422,10 @@ def build_manager_world_evolution_thread(
         "continuity_gaps": gaps,
         "official_runtime_chain_complete": official_runtime_complete,
         "world_model_runtime_chain_complete": world_model_runtime_complete,
+        "reviewed_world_model_chain_complete": (
+            reviewed_world_model_chain_complete
+        ),
+        "review_to_official_world": review_world_certificate,
         "outcome_effect_estimate": None,
         "causal_effect_authorized": False,
         "claim_boundary": (
@@ -429,6 +479,22 @@ def manager_world_evolution_summary(
             thread.get("world_model_runtime_chain_complete") is True
             for thread in threads
         ),
+        "reviewed_world_model_chain_complete": sum(
+            thread.get("reviewed_world_model_chain_complete") is True
+            for thread in threads
+        ),
+        "review_to_official_world_status_counts": {
+            status: sum(
+                (thread.get("review_to_official_world") or {}).get("status")
+                == status
+                for thread in threads
+            )
+            for status in (
+                "complete", "awaiting_official_match", "review_superseded",
+                "tactical_runtime_binding_unavailable",
+                "official_action_evidence_unavailable", "not_reviewed",
+            )
+        },
         "review_selected_for_fixture": sum(
             row.get("prematch_future_review", {}).get("status")
             == "selected_for_fixture"

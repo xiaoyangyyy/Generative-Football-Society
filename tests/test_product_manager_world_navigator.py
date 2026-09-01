@@ -134,7 +134,10 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             evidence_authority="simulator_mechanism_review_only",
         ),
         _stage("frozen_manager_decision", "frozen"),
-        _stage("official_tactical_runtime", "runtime_verified"),
+        _stage(
+            "official_tactical_runtime", "runtime_verified",
+            source_identity="b" * 64, match_id="match-1",
+        ),
         _stage(
             "official_world_model_actions",
             "locally_attributable_action_changes_observed",
@@ -151,6 +154,7 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             source_records_truncated=False,
             manager_record_coverage_complete=True,
             source_identity="e" * 64,
+            match_id="match-1",
         ),
         _stage(
             "observed_match_result", "observed_descriptive",
@@ -178,6 +182,25 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             },
         ),
     ]
+    certificate = _freeze({
+        "schema_version": 1,
+        "status": "complete" if complete else "awaiting_official_match",
+        "review_identity": terminal["review_identity"],
+        "review_trace_identity": trace["trace_identity"],
+        "decision_identity": "d" * 64,
+        "tactical_binding_identity": "b" * 64,
+        "official_action_evidence_identity": "e" * 64,
+        "official_match_id": "match-1",
+        "scenario_archive_count": 3,
+        "scenario_evidence_retained": True,
+        "final_decision_identity_bound": True,
+        "runtime_tactic_verified": True,
+        "official_action_same_match": True,
+        "scenario_to_runtime_opportunity_matching_performed": False,
+        "outcome_comparison_performed": False,
+        "causal_effect_authorized": False,
+        "claim_boundary": "test review to official world continuity",
+    }, "certificate_identity")
     return _freeze({
         "schema_version": 1,
         "available": True,
@@ -188,6 +211,8 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
         "continuity_gaps": list(gaps or []),
         "official_runtime_chain_complete": complete,
         "world_model_runtime_chain_complete": complete,
+        "reviewed_world_model_chain_complete": complete,
+        "review_to_official_world": certificate,
         "outcome_effect_estimate": None,
         "causal_effect_authorized": False,
     }, "thread_identity")
@@ -199,6 +224,7 @@ def _entry(index=1, *, pending=False, gaps=None):
         "schema_version": 1,
         "fixture_id": fixture_id,
         "matchday": index,
+        "decision_identity": "d" * 64,
         "lifecycle_state": (
             "frozen_awaiting_execution"
             if pending else "executed_with_direct_evidence"
@@ -321,6 +347,61 @@ def _season(workflow_state="evidence_ready_for_review", entries=None):
     }
 
 
+def _refresh_review_world_certificate(entry):
+    thread = entry["world_evolution_thread"]
+    stages = {row["stage_id"]: row for row in thread["stages"]}
+    review = stages["prematch_future_review"]
+    tactical = stages["official_tactical_runtime"]
+    action = stages["official_world_model_actions"]
+    same_match = bool(
+        tactical["status"] == "runtime_verified"
+        and action["status"] in {
+            "locally_attributable_action_changes_observed",
+            "probability_influence_without_realized_action_change",
+            "no_nonzero_action_influence_observed",
+        }
+        and isinstance(tactical.get("match_id"), str)
+        and bool(tactical.get("match_id"))
+        and tactical.get("match_id") == action.get("match_id")
+    )
+    status = (
+        "not_reviewed" if review["status"] == "not_reviewed" else
+        "review_superseded"
+        if review["status"] != "selected_for_fixture" else
+        "tactical_runtime_binding_unavailable"
+        if tactical["status"] != "runtime_verified" else
+        "official_action_evidence_unavailable"
+        if not same_match else "complete"
+    )
+    certificate = thread["review_to_official_world"]
+    certificate.update({
+        "status": status,
+        "review_identity": review.get("review_identity"),
+        "review_trace_identity": review.get("source_identity"),
+        "decision_identity": entry.get("decision_identity"),
+        "tactical_binding_identity": tactical.get("source_identity"),
+        "official_action_evidence_identity": action.get("source_identity"),
+        "official_match_id": action.get("match_id"),
+        "scenario_archive_count": len(review.get("reviewed_scenarios") or []),
+        "scenario_evidence_retained": bool(
+            review.get("reviewed_scenarios")
+        ),
+        "final_decision_identity_bound": (
+            review["status"] == "selected_for_fixture"
+        ),
+        "runtime_tactic_verified": tactical["status"] == "runtime_verified",
+        "official_action_same_match": same_match,
+    })
+    certificate.pop("certificate_identity")
+    certificate["certificate_identity"] = _identity(certificate)
+    thread["reviewed_world_model_chain_complete"] = status == "complete"
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+    return entry
+
+
 def _rewrite_action(entry, status, *, source=True, **facts):
     action = next(
         row for row in entry["world_evolution_thread"]["stages"]
@@ -331,12 +412,7 @@ def _rewrite_action(entry, status, *, source=True, **facts):
     action.update(facts)
     action.pop("stage_identity")
     action["stage_identity"] = _identity(action)
-    thread = entry["world_evolution_thread"]
-    thread.pop("thread_identity")
-    thread["thread_identity"] = _identity(thread)
-    entry.pop("entry_identity")
-    entry["entry_identity"] = _identity(entry)
-    return entry
+    return _refresh_review_world_certificate(entry)
 
 
 def test_navigator_joins_current_review_and_completed_world_chapters():
@@ -394,6 +470,7 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
         "chapters_truncated": False,
         "official_runtime_chapters": 2,
         "world_model_runtime_chapters": 2,
+        "reviewed_world_model_runtime_chapters": 2,
         "local_action_changes": 4,
         "chapters_with_continuity_gaps": 1,
         "chapters_without_continuity_gaps": 1,
@@ -408,6 +485,7 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
         }],
         "visible_official_runtime_chapters": 2,
         "visible_world_model_runtime_chapters": 2,
+        "visible_reviewed_world_model_runtime_chapters": 2,
         "visible_local_action_changes": 4,
         "visible_chapters_with_continuity_gaps": 1,
         "world_model_influence_path": {
@@ -422,6 +500,7 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
             "chapters_with_local_action_changes": 2,
             "persistent_world_transitions": 2,
             "complete_world_model_runtime_chains": 2,
+            "complete_reviewed_world_model_chains": 2,
         },
         "world_model_action_adoption_ledger": {
             "fixtures_with_action_evidence": 2,
@@ -471,6 +550,7 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
     assert trajectory["persistent_state_chapters"] == 2
     assert trajectory["reviewed_future_chapters"] == 2
     assert trajectory["reviewed_future_selected_chapters"] == 2
+    assert trajectory["reviewed_world_model_chain_complete"] == 2
     assert trajectory["scenario_evidence_chapters"] == 2
     assert trajectory["reviewed_scenario_archives"] == 6
     assert trajectory["identity_verified_scenario_archives"] == 6
@@ -920,10 +1000,7 @@ def test_impossible_reviewed_future_partition_fails_closed_when_rehashed():
     review_stage["action_divergence_scenarios"] = 1
     review_stage.pop("stage_identity")
     review_stage["stage_identity"] = _identity(review_stage)
-    thread.pop("thread_identity")
-    thread["thread_identity"] = _identity(thread)
-    entry.pop("entry_identity")
-    entry["entry_identity"] = _identity(entry)
+    _refresh_review_world_certificate(entry)
 
     with pytest.raises(ValueError, match="chapter facts"):
         build_manager_world_navigator(_season(entries=[entry]))
@@ -978,6 +1055,22 @@ def test_rehashed_reviewed_scenario_time_tamper_fails_closed():
     entry["entry_identity"] = _identity(entry)
 
     with pytest.raises(ValueError, match="scenario archive values"):
+        build_manager_world_navigator(_season(entries=[entry]))
+
+
+def test_rehashed_review_world_certificate_claim_tamper_fails_closed():
+    entry = _entry(1)
+    thread = entry["world_evolution_thread"]
+    certificate = thread["review_to_official_world"]
+    certificate["scenario_to_runtime_opportunity_matching_performed"] = True
+    certificate.pop("certificate_identity")
+    certificate["certificate_identity"] = _identity(certificate)
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    with pytest.raises(ValueError, match="review-world certificate"):
         build_manager_world_navigator(_season(entries=[entry]))
 
 
@@ -1038,10 +1131,7 @@ def test_reviewed_future_descriptive_difference_is_not_a_false_funnel():
     review_stage["source_identity"] = trace["trace_identity"]
     review_stage.pop("stage_identity")
     review_stage["stage_identity"] = _identity(review_stage)
-    thread.pop("thread_identity")
-    thread["thread_identity"] = _identity(thread)
-    entry.pop("entry_identity")
-    entry["entry_identity"] = _identity(entry)
+    _refresh_review_world_certificate(entry)
 
     chapter = build_manager_world_navigator(
         _season(entries=[entry]),

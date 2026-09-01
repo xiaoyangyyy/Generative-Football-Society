@@ -80,6 +80,17 @@ _REVIEWED_SCENARIO_STATUSES = {
     "local_action_divergence_with_descriptive_future_difference",
     "local_action_divergence_without_measured_future_difference",
 }
+_REVIEW_WORLD_CERTIFICATE_FIELDS = {
+    "schema_version", "status", "review_identity", "review_trace_identity",
+    "decision_identity", "tactical_binding_identity",
+    "official_action_evidence_identity", "official_match_id",
+    "scenario_archive_count", "scenario_evidence_retained",
+    "final_decision_identity_bound", "runtime_tactic_verified",
+    "official_action_same_match",
+    "scenario_to_runtime_opportunity_matching_performed",
+    "outcome_comparison_performed", "causal_effect_authorized",
+    "claim_boundary", "certificate_identity",
+}
 _BOUNDARY = (
     "navigation over the current manager intervention session and replayable "
     "completed simulator-world chapters only; navigation state is not an "
@@ -336,6 +347,12 @@ def _season_world_trajectory(
             "reviewed_future_context": copy.deepcopy(
                 chapter["reviewed_future_context"]
             ),
+            "reviewed_world_model_chain_complete": chapter[
+                "reviewed_world_model_chain_complete"
+            ],
+            "review_to_official_world": copy.deepcopy(
+                chapter["review_to_official_world"]
+            ),
             "action_adoption_state": chapter["action_adoption"]["state"],
             "locally_attributable_action_changes": local_changes,
             "result_available": world["result_available"],
@@ -385,6 +402,9 @@ def _season_world_trajectory(
         "reviewed_future_selected_chapters": sum(
             row["reviewed_future_context"]["selected_for_fixture"]
             for row in reviewed_points
+        ),
+        "reviewed_world_model_chain_complete": sum(
+            row["reviewed_world_model_chain_complete"] for row in points
         ),
         "scenario_evidence_chapters": sum(
             row["reviewed_future_context"]["evidence_level"]
@@ -530,6 +550,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     observed = observed if isinstance(observed, Mapping) else {}
     result_stage = stage_by_id["observed_match_result"]
     review_stage = stage_by_id["prematch_future_review"]
+    tactical = stage_by_id["official_tactical_runtime"]
     action = stage_by_id["official_world_model_actions"]
     persistent = stage_by_id["persistent_world_state"]
     action_count_fields = (
@@ -582,6 +603,14 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         field: review_stage.get(field) for field in _FUTURE_REVIEW_COUNT_FIELDS
     }
     reviewed_scenarios = review_stage.get("reviewed_scenarios")
+    review_world = thread.get("review_to_official_world")
+    expected_same_match = bool(
+        tactical.get("status") == "runtime_verified"
+        and action.get("status") in _ACTION_EVIDENCE_STATES
+        and isinstance(tactical.get("match_id"), str)
+        and bool(tactical.get("match_id"))
+        and tactical.get("match_id") == action.get("match_id")
+    )
     expected_review_status = (
         "selected_for_fixture"
         if terminal_review.get("linked_to_final_selection") is True
@@ -818,6 +847,66 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
                 "timing_sensitivity_observed"
             ),
         )
+    if (
+        not isinstance(review_world, Mapping)
+        or set(review_world) != _REVIEW_WORLD_CERTIFICATE_FIELDS
+        or review_world.get("schema_version") != 1
+        or not _identity_matches(review_world, "certificate_identity")
+        or review_world.get("review_identity")
+        != review_stage.get("review_identity")
+        or review_world.get("review_trace_identity")
+        != review_stage.get("source_identity")
+        or review_world.get("decision_identity") != entry.get("decision_identity")
+        or review_world.get("tactical_binding_identity")
+        != tactical.get("source_identity")
+        or review_world.get("official_action_evidence_identity")
+        != action_source_identity
+        or review_world.get("official_match_id") != action.get("match_id")
+        or isinstance(review_world.get("scenario_archive_count"), bool)
+        or not isinstance(review_world.get("scenario_archive_count"), int)
+        or review_world.get("scenario_archive_count")
+        != len(reviewed_scenarios or [])
+        or review_world.get("scenario_evidence_retained") is not bool(
+            reviewed_scenarios
+        )
+        or review_world.get("final_decision_identity_bound") is not (
+            review_stage.get("status") == "selected_for_fixture"
+        )
+        or review_world.get("runtime_tactic_verified") is not (
+            tactical.get("status") == "runtime_verified"
+        )
+        or review_world.get("official_action_same_match") is not (
+            expected_same_match
+        )
+        or review_world.get(
+            "scenario_to_runtime_opportunity_matching_performed"
+        ) is not False
+        or review_world.get("outcome_comparison_performed") is not False
+        or review_world.get("causal_effect_authorized") is not False
+        or not isinstance(review_world.get("claim_boundary"), str)
+        or not review_world.get("claim_boundary")
+    ):
+        raise ValueError(
+            "manager world navigator review-world certificate is invalid"
+        )
+    expected_review_world_status = (
+        "not_reviewed" if not review_available else
+        "review_superseded"
+        if review_stage.get("status") != "selected_for_fixture" else
+        "tactical_runtime_binding_unavailable"
+        if tactical.get("status") != "runtime_verified" else
+        "official_action_evidence_unavailable"
+        if not expected_same_match else "complete"
+    )
+    if (
+        review_world.get("status") != expected_review_world_status
+        or thread.get("reviewed_world_model_chain_complete") is not (
+            expected_review_world_status == "complete"
+        )
+    ):
+        raise ValueError(
+            "manager world navigator review-world continuity is invalid"
+        )
     if action_status == "locally_attributable_action_changes_observed":
         adoption_state = "realized_action_change"
     elif action_status == "probability_influence_without_realized_action_change":
@@ -870,6 +959,10 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         "world_model_runtime_chain_complete": (
             thread.get("world_model_runtime_chain_complete") is True
         ),
+        "reviewed_world_model_chain_complete": (
+            thread.get("reviewed_world_model_chain_complete") is True
+        ),
+        "review_to_official_world": copy.deepcopy(review_world),
         "stage_statuses": {
             stage_id: stage_by_id[stage_id].get("status")
             for stage_id in (
@@ -1079,6 +1172,10 @@ def build_manager_world_navigator(
             row["world_model_runtime_chain_complete"]
             for row in all_chapters
         ),
+        "complete_reviewed_world_model_chains": sum(
+            row["reviewed_world_model_chain_complete"]
+            for row in all_chapters
+        ),
     }
     adoption_totals = {
         field: sum(
@@ -1211,6 +1308,9 @@ def build_manager_world_navigator(
         "world_model_runtime_chapters": sum(
             row["world_model_runtime_chain_complete"] for row in all_chapters
         ),
+        "reviewed_world_model_runtime_chapters": sum(
+            row["reviewed_world_model_chain_complete"] for row in all_chapters
+        ),
         "local_action_changes": sum(
             row["locally_attributable_action_changes"] for row in all_chapters
         ),
@@ -1226,6 +1326,9 @@ def build_manager_world_navigator(
         ),
         "visible_world_model_runtime_chapters": sum(
             row["world_model_runtime_chain_complete"] for row in chapters
+        ),
+        "visible_reviewed_world_model_runtime_chapters": sum(
+            row["reviewed_world_model_chain_complete"] for row in chapters
         ),
         "visible_local_action_changes": sum(
             row["locally_attributable_action_changes"] for row in chapters

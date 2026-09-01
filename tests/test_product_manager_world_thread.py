@@ -159,6 +159,19 @@ def test_world_evolution_thread_connects_six_stages_without_inventing_causality(
     assert thread["thread_state"] == "official_world_evolution_observed"
     assert thread["official_runtime_chain_complete"] is True
     assert thread["world_model_runtime_chain_complete"] is True
+    assert thread["reviewed_world_model_chain_complete"] is True
+    certificate = thread["review_to_official_world"]
+    assert certificate["status"] == "complete"
+    assert certificate["scenario_archive_count"] == 3
+    assert certificate["scenario_evidence_retained"] is True
+    assert certificate["final_decision_identity_bound"] is True
+    assert certificate["runtime_tactic_verified"] is True
+    assert certificate["official_action_same_match"] is True
+    assert certificate[
+        "scenario_to_runtime_opportunity_matching_performed"
+    ] is False
+    assert certificate["outcome_comparison_performed"] is False
+    assert certificate["causal_effect_authorized"] is False
     assert thread["continuity_gaps"] == []
     assert [stage["stage_id"] for stage in thread["stages"]] == [
         "prematch_future_review",
@@ -214,6 +227,10 @@ def test_world_evolution_thread_marks_stable_mode_optional_and_real_breaks():
 
     assert stable["official_runtime_chain_complete"] is True
     assert stable["world_model_runtime_chain_complete"] is False
+    assert stable["reviewed_world_model_chain_complete"] is False
+    assert stable["review_to_official_world"]["status"] == (
+        "official_action_evidence_unavailable"
+    )
     assert stable["thread_state"] == (
         "official_match_observed_action_optional_or_unavailable"
     )
@@ -229,6 +246,23 @@ def test_world_evolution_thread_marks_stable_mode_optional_and_real_breaks():
     ]
     assert broken["links"][0]["status"] == "continuity_broken"
     assert broken["world_model_runtime_chain_complete"] is False
+    assert broken["reviewed_world_model_chain_complete"] is False
+    assert broken["review_to_official_world"]["status"] == (
+        "review_superseded"
+    )
+
+    tactical_missing_entry = _entry()
+    tactical_missing_entry["execution"]["tactical_binding"] = {
+        "available": False,
+        "reason": "binding_not_retained",
+    }
+    tactical_missing = build_manager_world_evolution_thread(
+        tactical_missing_entry
+    )
+    assert tactical_missing["reviewed_world_model_chain_complete"] is False
+    assert tactical_missing["review_to_official_world"]["status"] == (
+        "tactical_runtime_binding_unavailable"
+    )
 
 
 def test_world_evolution_thread_pending_summary_and_rehashed_tamper_fail_closed():
@@ -271,6 +305,15 @@ def test_world_evolution_thread_pending_summary_and_rehashed_tamper_fail_closed(
     assert summary["awaiting_official_match"] == 1
     assert summary["official_runtime_chain_complete"] == 1
     assert summary["world_model_runtime_chain_complete"] == 1
+    assert summary["reviewed_world_model_chain_complete"] == 1
+    assert summary["review_to_official_world_status_counts"] == {
+        "complete": 1,
+        "awaiting_official_match": 0,
+        "review_superseded": 0,
+        "tactical_runtime_binding_unavailable": 0,
+        "official_action_evidence_unavailable": 0,
+        "not_reviewed": 1,
+    }
     assert summary["local_action_changes"] == 2
     assert summary["causal_effect_authorized"] is False
 
@@ -285,4 +328,18 @@ def test_world_evolution_thread_pending_summary_and_rehashed_tamper_fail_closed(
     with pytest.raises(ValueError, match="thread replay mismatch"):
         validate_manager_world_evolution_thread(
             tampered, entry=complete_entry,
+        )
+
+    certificate_tampered = copy.deepcopy(complete)
+    certificate = certificate_tampered["review_to_official_world"]
+    certificate["scenario_to_runtime_opportunity_matching_performed"] = True
+    frozen_certificate = copy.deepcopy(certificate)
+    frozen_certificate.pop("certificate_identity")
+    certificate["certificate_identity"] = _identity(frozen_certificate)
+    frozen_thread = copy.deepcopy(certificate_tampered)
+    frozen_thread.pop("thread_identity")
+    certificate_tampered["thread_identity"] = _identity(frozen_thread)
+    with pytest.raises(ValueError, match="thread replay mismatch"):
+        validate_manager_world_evolution_thread(
+            certificate_tampered, entry=complete_entry,
         )

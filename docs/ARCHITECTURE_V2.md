@@ -2384,3 +2384,44 @@ simultaneously experience. They are not ranked, matched to the observed score,
 or treated as prediction accuracy, intervention effects, counterfactual truth
 or real-football causality. This stage is code-only and executes no future
 generation, match, training, formal study or external provider call.
+
+## 80. V3.62 Review-to-official-world continuity certificate
+
+The prior world thread used `world_model_runtime_chain_complete` to mean that
+an official match retained tactical runtime, world-model action, result and
+persistent-state evidence. That was useful but insufficiently specific: the
+same flag could be true when no prematch future was reviewed, so it could not
+prove that the manager's reviewed intervention was the decision that entered
+the official simulator world.
+
+Every world thread now derives one identity-sealed
+`review_to_official_world` certificate. It binds the terminal review and trace
+identities, final decision identity, tactical binding identity, official
+action-evidence identity, non-empty same-match identity and retained scenario
+count. Its state is exactly one of `complete`, `awaiting_official_match`,
+`review_superseded`, `tactical_runtime_binding_unavailable`,
+`official_action_evidence_unavailable` or `not_reviewed`. The separate
+`reviewed_world_model_chain_complete` flag is true only for `complete`; the
+older runtime flag keeps its narrower official-execution meaning.
+
+The navigator independently validates the certificate's closed field set,
+hash, every source identity, scenario count, boolean semantics and state
+derivation. Two missing match IDs cannot satisfy same-match continuity. The
+certificate is copied into the canonical chapter and trajectory point, while
+season summaries count reviewed-world completion separately from ordinary
+world-model runtime coverage. Rehashed attempts to authorize scenario/runtime
+matching or contradict a source stage fail closed.
+
+Studio shows the certificate inside the existing six-stage world thread,
+beside its trajectory point and as the final evidence-coverage item. This
+closes the product question “did the reviewed decision reach the official
+world?” without inventing a second workflow.
+
+The certificate explicitly fixes
+`scenario_to_runtime_opportunity_matching_performed` to false. Prematch forks
+and official match actions have different trajectory contexts and are not
+declared to be identical opportunities. Complete continuity therefore proves
+identity and runtime adoption only; it is not scenario accuracy, action-level
+forecast validation, score improvement, treatment effect or real-football
+causality. This stage executes no future generation, match, training, formal
+study or provider call.

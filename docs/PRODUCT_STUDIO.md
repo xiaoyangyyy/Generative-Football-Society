@@ -545,3 +545,12 @@ shortened source/archive identities. The same dossier appears inside the
 prematch stage of the complete official-world thread, so it remains one
 product flow rather than a detached analysis page. These are simulated roads
 not taken: the UI does not rank them or compare them with the observed score.
+
+The complete world thread and each trajectory row now also expose a separate
+review-to-official-world certificate. “Complete” means the reviewed final
+decision identity reached an official tactical binding and same-match world-
+model action evidence. Missing review, a later unreviewed edit, missing
+tactical binding and missing action evidence remain distinct states. The
+certificate never claims that a simulated branch opportunity is the same
+action later observed in the official match, and it does not measure outcome
+improvement.

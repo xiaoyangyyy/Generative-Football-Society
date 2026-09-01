@@ -261,6 +261,12 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "source_scenario_identity" in document
     assert "archive_identity" in document
     assert "不排名、不与观察比分匹配" in document
+    assert "function appendReviewWorldContinuity(" in document
+    assert "appendManagerWorldEvolutionThreadWithoutReviewWorldCertificate" in document
+    assert "renderManagerWorldNavigatorWithoutReviewWorldCertificate" in document
+    assert "renderManagerWorldNavigatorWithoutReviewWorldInfluence" in document
+    assert "complete_reviewed_world_model_chains" in document
+    assert "不会把赛前模拟分叉中的机会逐条匹配" in document
     assert "future.action_divergence_scenarios" in document
     assert "stage.local_attribution_scenarios" in document
     assert "trajectory_point_identity" not in document
