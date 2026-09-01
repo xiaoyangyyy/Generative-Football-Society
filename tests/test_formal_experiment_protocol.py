@@ -92,20 +92,15 @@ def test_action_outcome_protocol_binds_confirmed_mechanism():
     assert current["execution_state"] == "completed"
     assert current["completed_runs"] == {"M0": 30, "M1": 30}
     assert current["remaining_runs"] == 0
-    assert current["identity_matches_progress"] is True
+    assert current["identity_matches_progress"] is False
+    assert current["next_action"] == "inspect_identity_drift"
 
 
-def test_action_outcome_result_replays_exactly():
+def test_historical_action_outcome_result_rejects_changed_controller_identity():
     from scripts.verify_action_outcome_result import verify
 
-    result = verify()
-    assert result["passed"] is True
-    assert result["decision"] == "inconclusive_keep_research_only"
-    assert result["promotion_supported"] is False
-    assert result["runs"] == 60
-    assert result["pairs"] == 30
-    assert result["changed_pairs"] == 30
-    assert result["replay_matches"] is True
+    with pytest.raises(ValueError, match="identity"):
+        verify()
 
 
 def test_fixture_stratified_bootstrap_preserves_exact_pairing(monkeypatch):

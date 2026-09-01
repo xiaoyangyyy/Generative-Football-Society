@@ -2425,3 +2425,51 @@ identity and runtime adoption only; it is not scenario accuracy, action-level
 forecast validation, score improvement, treatment effect or real-football
 causality. This stage executes no future generation, match, training, formal
 study or provider call.
+
+## 81. V3.63 Validated multi-action probability authority
+
+The unified match engine has always sampled pass, shot, cross and hold, but the
+direct world-model probability controller previously read only the pass gate.
+Shot imagination could change an auditable planner utility while remaining
+unable to change the actual categorical sampling distribution. This was a
+real authority bottleneck: a four-action engine had a pass-only learned policy
+interface.
+
+The direct controller now operates on the complete feasible-action simplex.
+Every open action-specific gate contributes a finite model advantage and an
+independently bounded authority derived from its policy budget, decision
+confidence and decision certainty. The strongest authorized signal controls
+the overall interpolation budget (still capped at 0.35); relative authorities
+shape a normalized target distribution. A single shared uniform draw continues
+to sample the baseline and treatment distributions, preserving local
+counterfactual attribution without applying planner utility deltas twice.
+
+Shot planning now exposes its validated shot-versus-continuation advantage,
+context attenuation, certainty and shot-specific blend to that controller.
+An infeasible shot is explicitly closed before scoring. Cross remains closed
+with `no_action_specific_validation` until a suitable validation artifact
+exists; the implementation does not borrow pass evidence to manufacture cross
+authority. Hold remains the reference continuation action unless a future
+action-specific contract authorizes direct promotion.
+
+Runtime evidence declares `validated_action_simplex_v1`, lists the exact
+policy actions admitted for each opportunity and aggregates action-level
+positive/negative guidance, probability movement, applied authority and local
+changes. The compact Studio status preserves this bounded breakdown and shows
+per-action signal cards. These are runtime observations, not claims of match-
+outcome improvement.
+
+Changing either the controller or planner invalidates the execution identity
+of the previously sealed mechanism and full-match studies. Studio now replays
+the protocol, checkpoint and every declared code hash before publishing a
+formal result. The old result remains identifiable as historical evidence but
+its statistics, mechanism payload and promotion fields are suppressed for the
+current controller, with `stale_current_code_identity` shown instead. This
+prevents evidence collected for the pass-only controller from being silently
+transferred to the new pass-and-shot authority surface.
+
+This stage is code-only. It runs no training, match, fixed-budget experiment or
+provider call. Existing formal artifacts remain immutable historical records,
+but are not current-code evidence. Broader validated action authority makes
+the new mechanism testable, but does not itself establish effectiveness or
+real-football causality.

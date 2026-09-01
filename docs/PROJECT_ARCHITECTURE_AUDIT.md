@@ -44,6 +44,9 @@ not quality signals by themselves.
 13. Added continuous-time event and hierarchical policy experiment modules.
 14. Added dynamic graph world-model v6 code and uncertainty-driven active sampling.
 15. Fixed away-team coordination reading the home-team internal state.
+16. Replaced pass-only world-model probability adoption with a validated,
+    feasible multi-action simplex; shot receives its own authority evidence,
+    while unvalidated cross control remains closed.
 
 ## LLM Scope Decision
 
@@ -63,7 +66,8 @@ cleaning, or direct unaudited state mutation.
 
 ## Priority Research Queue
 
-1. Collect balanced world-model shot and goal transitions, then recalibrate the shot branch.
+1. Collect balanced cross, shot and goal transitions, then validate cross
+   authority and recalibrate the shot branch before broader promotion.
 2. Continue the gradual `SocietyAgent` facade split only when a behavior-preserving boundary is available.
 3. Collect real failed-pass labels for an external completion benchmark.
 4. Split `TournamentManager` into scheduler, match service, standings, narrative orchestration, and repository.

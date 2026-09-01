@@ -59,6 +59,26 @@ class _RankedPassRuntime(_ValidatedPassRuntime):
         return float(action[6])
 
 
+class _ValidatedShotRuntime:
+    def __init__(self):
+        self.cfg = SimpleNamespace(planner_blend=0.30, shot_planner_blend=0.25)
+        self.last_uncertainty = 0.1
+
+    def encode_state(self, state, *, attacking_home):
+        return np.ones(8, dtype=np.float32)
+
+    def planner_confidence(self, observation, kind="general"):
+        return 0.8 if kind == "shot" else 0.0
+
+    def score_action(self, observation, action):
+        self.last_uncertainty = 0.1
+        return 0.0
+
+    def score_shot_action(self, observation, action, *, attacking_home):
+        self.last_uncertainty = 0.1
+        return 0.9
+
+
 def test_validation_quality_gate_precedes_coverage_discount():
     runtime = object.__new__(WorldModelRuntime)
     runtime.cfg = WorldModelConfig(min_planner_quality=0.15)
@@ -128,6 +148,60 @@ def test_bounded_controller_has_material_effect_after_quality_authorization():
 
     assert adjusted[0] - baseline[0] > 0.08
     assert state._wm_pending_direct_action_adoption["recommended_action"] == "pass"
+
+
+def test_controller_competes_across_validated_actions_on_one_simplex():
+    state = SimpleNamespace()
+    labels = ["pass", "shot", "cross", "hold"]
+    baseline = np.array([0.45, 0.10, 0.0, 0.45], dtype=float)
+    register_action_policy_opportunity(
+        state, team_id="home", t_sec=12.0,
+        feasible_actions={"pass", "shot", "hold"},
+        base_utilities=[0.4, 0.1, 0.0, 0.4],
+        adjusted_utilities=[0.3, 0.3, 0.0, 0.4], labels=labels,
+        model_adjustments={"pass": -0.1, "shot": 0.2, "cross": 0.0, "hold": 0.0},
+        quality_gates={
+            "pass": {
+                "open": True, "decision_confidence": 0.8,
+                "decision_certainty": 0.8, "policy_blend": 0.3,
+                "model_advantage": -0.2,
+            },
+            "shot": {
+                "open": True, "decision_confidence": 0.9,
+                "decision_certainty": 0.8, "policy_blend": 0.25,
+                "model_advantage": 0.3,
+            },
+            "cross": {
+                "open": True, "decision_confidence": 1.0,
+                "decision_certainty": 1.0, "policy_blend": 0.35,
+                "model_advantage": 0.35,
+            },
+            "hold": {"open": False},
+        },
+    )
+
+    adjusted = mix_direct_action_probabilities(
+        state, labels=labels, probabilities=baseline,
+    )
+
+    assert np.isclose(adjusted.sum(), 1.0)
+    assert adjusted[1] > baseline[1]
+    assert adjusted[0] < baseline[0]
+    assert adjusted[2] == 0.0
+    gates = state._wm_pending_direct_action_adoption["quality_gates"]
+    assert gates["shot"]["model_target_action_probability"] > baseline[1]
+    assert "model_target_action_probability" not in gates["cross"]
+    record_action_policy_sample(
+        state, actual_action="shot", labels=labels,
+        base_probabilities=baseline, adjusted_probabilities=adjusted,
+        sampling_uniform=0.5, counterfactual_baseline_action="pass",
+    )
+    audit = direct_action_adoption_diagnostics(state)
+    assert audit["probability_policy_version"] == "validated_action_simplex_v1"
+    assert set(audit["action_signal_breakdown"]) == {"pass", "shot"}
+    assert audit["action_signal_breakdown"]["pass"]["negative_guidance"] == 1
+    assert audit["action_signal_breakdown"]["shot"]["positive_guidance"] == 1
+    assert audit["action_signal_breakdown"]["shot"]["locally_changed_to_action"] == 1
 
 
 def test_world_model_ranks_and_audits_the_executed_pass_target(monkeypatch):
@@ -212,8 +286,34 @@ def test_validated_pass_evidence_changes_high_level_utility_and_is_audited(
     record = audit["records"][0]
     assert record["quality_gates"]["pass"]["open"] is True
     assert record["quality_gates"]["pass"]["model_advantage"] == 0.30
-    assert record["quality_gates"]["shot"]["reason"] == "shot_quality_gate_closed"
+    assert record["quality_gates"]["shot"]["reason"] == "action_infeasible"
     assert record["quality_gates"]["cross"]["reason"] == "no_action_specific_validation"
+
+
+def test_validated_shot_advantage_reaches_probability_controller(monkeypatch):
+    monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
+    monkeypatch.setenv("MATCH_WM_PLAN", "1")
+    state = _planner_state()
+    carrier = SimpleNamespace(team_id="home", position=state.ball.position)
+    labels = ["pass", "shot", "cross", "hold"]
+    utilities = np.array([0.2, 0.0, -0.1, 0.2], dtype=float)
+
+    adjusted_utilities = action_imagination_adjustments(
+        _ValidatedShotRuntime(), state, carrier, True, utilities, labels,
+        dist_goal=0.2, feasible_actions={"pass", "shot", "hold"},
+    )
+    baseline = np.array([0.45, 0.10, 0.0, 0.45], dtype=float)
+    adjusted = mix_direct_action_probabilities(
+        state, labels=labels, probabilities=baseline,
+    )
+
+    gate = state._wm_pending_direct_action_adoption["quality_gates"]["shot"]
+    assert adjusted_utilities[1] > utilities[1]
+    assert gate["open"] is True
+    assert gate["reason"] == "validated_shot_vs_continuation_advantage"
+    assert gate["model_advantage"] > 0.0
+    assert adjusted[1] > baseline[1]
+    assert gate["model_target_action_probability"] > baseline[1]
 
 
 def test_closed_quality_gate_records_opportunity_without_changing_policy(

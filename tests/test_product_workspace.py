@@ -8,7 +8,11 @@ import time
 
 import pytest
 
-from src.product.workspace import ProductWorkspace, StudioConfig
+from src.product.workspace import (
+    ProductWorkspace,
+    StudioConfig,
+    _formal_evidence_identity,
+)
 from src.product.match_plan import MatchPlan, PLAYABLE_TACTICS, WorldModelForkPlan
 from src.product.club_strategy import (
     resolve_fixture_club_strategy,
@@ -232,6 +236,29 @@ class _Summary:
             "counterfactual_change_rate": 0.2,
             "expected_counterfactual_change_rate": 0.18,
             "mean_recommended_probability_shift": 0.015,
+            "probability_policy_version": "validated_action_simplex_v1",
+            "action_signal_breakdown": {
+                "pass": {
+                    "signal_opportunities": 8,
+                    "positive_guidance": 6,
+                    "negative_guidance": 2,
+                    "realized_as_actual_action": 5,
+                    "locally_changed_to_action": 1,
+                    "mean_probability_delta": 0.012,
+                    "mean_absolute_probability_shift": 0.02,
+                    "mean_applied_authority": 0.18,
+                },
+                "shot": {
+                    "signal_opportunities": 2,
+                    "positive_guidance": 2,
+                    "negative_guidance": 0,
+                    "realized_as_actual_action": 1,
+                    "locally_changed_to_action": 1,
+                    "mean_probability_delta": 0.03,
+                    "mean_absolute_probability_shift": 0.03,
+                    "mean_applied_authority": 0.15,
+                },
+            },
             "records": [
                 {
                     "opportunity_id": "direct:Brazil:12.000:0",
@@ -568,7 +595,7 @@ def test_cognitive_readiness_accepts_deepseek_key_and_reports_safe_provider(
     assert "test-deepseek-key" not in json.dumps(readiness)
 
 
-def test_evidence_exposes_confirmed_mechanism_and_inconclusive_outcome(tmp_path):
+def test_evidence_rejects_historical_results_without_current_code_identity(tmp_path):
     _evidence(tmp_path)
     evaluation = tmp_path / "data/evaluation"
     (evaluation / "action_adoption_v1").mkdir(parents=True)
@@ -656,18 +683,69 @@ def test_evidence_exposes_confirmed_mechanism_and_inconclusive_outcome(tmp_path)
         StudioConfig(mode="research"),
     ).evidence()
     mechanism = evidence["action_adoption_mechanism"]
-    assert mechanism["execution_state"] == "mechanism_confirmed"
+    assert mechanism["execution_state"] == "stale_current_code_identity"
+    assert mechanism["historical_result_available"] is True
+    assert mechanism["result_identity_verified"] is False
+    assert mechanism["result_status"] is None
     assert mechanism["runs_executed"] == 24
-    assert mechanism["mechanism"]["realized_counterfactual_action_changes"] == 25
+    assert mechanism["mechanism"] == {}
     assert mechanism["promotion_authorized"] is False
     outcome = evidence["action_outcome_study"]
-    assert outcome["execution_state"] == "inconclusive_keep_research_only"
-    assert outcome["result_status"] == "inconclusive_keep_research_only"
+    assert outcome["execution_state"] == "stale_current_code_identity"
+    assert outcome["historical_result_available"] is True
+    assert outcome["result_identity_verified"] is False
+    assert outcome["result_status"] is None
     assert outcome["runs_executed"] == 60
     assert outcome["fixed_run_budget"] == 60
     assert outcome["promotion_supported"] is False
-    assert outcome["behavior"]["changed_pairs"] == 30
-    assert outcome["promotion_gates"]["minimum_behavior_change_met"] is True
+    assert outcome["behavior"] == {}
+    assert outcome["promotion_gates"] == {}
+
+
+def test_formal_evidence_identity_tracks_exact_protocol_checkpoint_and_code(tmp_path):
+    protocol_path = tmp_path / "data/evaluation/protocol.json"
+    checkpoint_path = tmp_path / "data/world_model/candidate.pt"
+    code_path = tmp_path / "src/controller.py"
+    for path, content in (
+        (checkpoint_path, b"sealed checkpoint"),
+        (code_path, b"controller v1"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+    protocol = {
+        "candidate": {
+            "checkpoint": "data/world_model/candidate.pt",
+            "checkpoint_sha256": digest(checkpoint_path),
+        },
+        "integrity": {"code_identity_files": ["src/controller.py"]},
+    }
+    protocol_path.parent.mkdir(parents=True, exist_ok=True)
+    protocol_path.write_text(json.dumps(protocol), encoding="utf-8")
+    identity = {
+        "protocol_sha256": digest(protocol_path),
+        "checkpoint_sha256": digest(checkpoint_path),
+        "code_sha256": {"src/controller.py": digest(code_path)},
+    }
+    progress = {"execution_identity": identity}
+    decision = {"execution_identity": identity, "status": "complete"}
+
+    verified = _formal_evidence_identity(
+        tmp_path, "data/evaluation/protocol.json",
+        protocol, progress, decision,
+    )
+    code_path.write_bytes(b"controller v2")
+    stale = _formal_evidence_identity(
+        tmp_path, "data/evaluation/protocol.json",
+        protocol, progress, decision,
+    )
+
+    assert verified == {
+        "verified": True, "reason": "current_code_identity_verified",
+    }
+    assert stale == {
+        "verified": False, "reason": "progress_code_identity_stale",
+    }
 
 
 def test_cognitive_readiness_rejects_retired_deepseek_model(tmp_path, monkeypatch):
@@ -765,6 +843,19 @@ def test_studio_match_writes_one_composed_product_report(tmp_path, monkeypatch):
     assert latest_adoption["influenced_opportunities"] == 10
     assert latest_adoption["counterfactual_action_changes"] == 2
     assert latest_adoption["counterfactual_change_rate"] == 0.2
+    assert latest_adoption["probability_policy_version"] == (
+        "validated_action_simplex_v1"
+    )
+    assert latest_adoption["action_signal_breakdown"]["shot"] == {
+        "signal_opportunities": 2,
+        "positive_guidance": 2,
+        "negative_guidance": 0,
+        "realized_as_actual_action": 1,
+        "locally_changed_to_action": 1,
+        "mean_probability_delta": 0.03,
+        "mean_absolute_probability_shift": 0.03,
+        "mean_applied_authority": 0.15,
+    }
     assert "records" not in latest_adoption
     assert status["runs_total"] == 1
     assert status["last_run"]["state"] == "completed"

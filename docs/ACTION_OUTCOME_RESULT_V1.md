@@ -1,5 +1,11 @@
 # World-model action-policy full-match result V1
 
+> Historical evidence notice: this sealed result belongs to the former
+> pass-only action controller. V3.63 changed the controller code identity to a
+> validated feasible multi-action simplex. The result is preserved unchanged
+> but is not current-code evidence and does not verify until a new preregistered
+> study is completed.
+
 ## Question and scope
 
 This study asks whether the mechanism-confirmed M1 action policy improves the

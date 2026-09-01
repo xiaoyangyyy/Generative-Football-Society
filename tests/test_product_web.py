@@ -191,6 +191,12 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="action-adoption-metrics"' in document
     assert 'id="manager-advisor-protocol-evidence"' in document
     assert "renderActionAdoption(" in document
+    assert "renderActionAdoptionWithoutActionSignals" in document
+    assert "adoption.action_signal_breakdown||{}" in document
+    assert "mean_applied_authority" in document
+    assert "renderActionAdoptionWithoutCurrentCodeEvidence" in document
+    assert "mechanism.result_identity_verified" in document
+    assert "outcome.result_identity_verified" in document
     assert "renderActionAdoptionWithoutManagerProtocol" in document
     assert "manager_advisor_adoption" in document
     assert 'name="experience"' in document

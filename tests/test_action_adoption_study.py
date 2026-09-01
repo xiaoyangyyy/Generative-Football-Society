@@ -68,27 +68,23 @@ def _legacy_preexecution_assertions():
     assert current["identity_matches_progress"] is True
 
 
-def test_protocol_is_valid_and_completed_result_is_auditable():
+def test_completed_mechanism_result_is_blocked_after_controller_identity_drift():
     from scripts.verify_action_adoption_result import verify
     report = study.protocol_report()
     current = study.status()
     assert report['passed'] is True
     assert report['ready_to_start'] is True
     assert all(report['checks'].values())
-    assert current['state'] == 'completed'
+    assert current['state'] == 'blocked_identity_drift'
     assert current['completed_runs'] == dict(
         M1_predict_only=12,
         M1_action_policy=12,
     )
     assert current['remaining_runs'] == 0
-    assert current['identity_matches_progress'] is True
-    verification = verify()
-    assert verification['passed'] is True
-    assert verification['status'] == 'mechanism_confirmed'
-    assert verification['runs_executed'] == 24
-    assert verification['decision_replayed'] is True
-    assert verification['exports_verified'] is True
-    assert verification['promotion_authorized'] is False
+    assert current['identity_matches_progress'] is False
+    assert current['next_action'] == 'inspect_identity_drift'
+    with pytest.raises(ValueError, match='identity'):
+        verify()
 def test_execution_requires_exact_explicit_authorization():
     with pytest.raises(PermissionError, match="explicit action-adoption"):
         study.execute(authorization="yes")

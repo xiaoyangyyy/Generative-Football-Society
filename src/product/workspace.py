@@ -270,12 +270,91 @@ def _action_adoption_digest(value: Any) -> dict[str, Any]:
     )
     digest: dict[str, Any] = {
         "reason": value.get("reason"),
+        "probability_policy_version": str(
+            value.get("probability_policy_version") or ""
+        ),
     }
     for field in integer_fields:
         digest[field] = int(value.get(field) or 0)
     for field in float_fields:
         digest[field] = float(value.get(field) or 0.0)
+    raw_breakdown = value.get("action_signal_breakdown") or {}
+    breakdown = {}
+    breakdown_fields = (
+        "signal_opportunities", "positive_guidance", "negative_guidance",
+        "realized_as_actual_action", "locally_changed_to_action",
+        "mean_probability_delta", "mean_absolute_probability_shift",
+        "mean_applied_authority",
+    )
+    if isinstance(raw_breakdown, Mapping):
+        for action in ("pass", "shot", "cross", "hold"):
+            raw = raw_breakdown.get(action)
+            if not isinstance(raw, Mapping):
+                continue
+            breakdown[action] = {
+                field: (
+                    int(raw.get(field) or 0)
+                    if field in {
+                        "signal_opportunities", "positive_guidance",
+                        "negative_guidance", "realized_as_actual_action",
+                        "locally_changed_to_action",
+                    }
+                    else float(raw.get(field) or 0.0)
+                )
+                for field in breakdown_fields
+            }
+    digest["action_signal_breakdown"] = breakdown
     return digest
+
+
+def _formal_evidence_identity(
+    root: Path,
+    protocol_relative: str,
+    protocol: Mapping[str, Any],
+    progress: Mapping[str, Any],
+    decision: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Fail closed when a sealed result does not describe current code."""
+    if not protocol or not decision:
+        return {"verified": False, "reason": "formal_result_unavailable"}
+    candidate = protocol.get("candidate") or {}
+    integrity = protocol.get("integrity") or {}
+    code_files = integrity.get("code_identity_files") or []
+    checkpoint_relative = candidate.get("checkpoint")
+    checkpoint_expected = candidate.get("checkpoint_sha256")
+    if (
+        not isinstance(code_files, list) or not code_files
+        or not checkpoint_relative or not checkpoint_expected
+    ):
+        return {"verified": False, "reason": "identity_contract_missing"}
+    try:
+        resolved_root = root.resolve()
+        protocol_path = (root / protocol_relative).resolve()
+        checkpoint_path = (root / str(checkpoint_relative)).resolve()
+        for path in (protocol_path, checkpoint_path):
+            if not path.is_file() or resolved_root not in path.parents:
+                raise ValueError("identity artifact unavailable or outside root")
+        checkpoint_sha = file_sha256(checkpoint_path)
+        if checkpoint_sha != str(checkpoint_expected):
+            return {"verified": False, "reason": "checkpoint_identity_mismatch"}
+        code_sha = {}
+        for relative in code_files:
+            path = (root / str(relative)).resolve()
+            if not path.is_file() or resolved_root not in path.parents:
+                raise ValueError("code identity artifact unavailable or outside root")
+            code_sha[str(relative)] = file_sha256(path)
+        expected = {
+            "protocol_sha256": file_sha256(protocol_path),
+            "checkpoint_sha256": checkpoint_sha,
+            "code_sha256": code_sha,
+        }
+    except (OSError, TypeError, ValueError):
+        return {"verified": False, "reason": "identity_replay_unavailable"}
+    if progress.get("execution_identity") != expected:
+        return {"verified": False, "reason": "progress_code_identity_stale"}
+    if decision.get("execution_identity") != expected:
+        return {"verified": False, "reason": "decision_code_identity_stale"}
+    return {"verified": True, "reason": "current_code_identity_verified"}
 
 
 def _atomic_json(path: Path, payload: Mapping[str, Any]) -> None:
@@ -1284,6 +1363,34 @@ class ProductWorkspace:
         outcome_protocol = read("data/evaluation/action_outcome_protocol_v1.json")
         outcome_progress = read("data/evaluation/action_outcome_v1/progress.json")
         outcome_decision = read("data/evaluation/action_outcome_v1/decision.json")
+        mechanism_identity = _formal_evidence_identity(
+            self.root,
+            "data/evaluation/action_adoption_protocol_v1.json",
+            action_protocol, action_progress, action_decision,
+        )
+        outcome_identity = _formal_evidence_identity(
+            self.root,
+            "data/evaluation/action_outcome_protocol_v1.json",
+            outcome_protocol, outcome_progress, outcome_decision,
+        )
+        mechanism_current = bool(mechanism_identity["verified"])
+        outcome_current = bool(outcome_identity["verified"])
+        if mechanism_current:
+            mechanism_execution_state = action_decision.get("status")
+        elif action_decision:
+            mechanism_execution_state = "stale_current_code_identity"
+        else:
+            mechanism_execution_state = action_progress.get(
+                "state", "ready_not_started" if action_protocol else "absent",
+            )
+        if outcome_current:
+            outcome_execution_state = outcome_decision.get("decision")
+        elif outcome_decision:
+            outcome_execution_state = "stale_current_code_identity"
+        else:
+            outcome_execution_state = outcome_progress.get(
+                "state", "not_started" if outcome_protocol else "absent",
+            )
         candidate = phase5.get("world_model_candidate") or {}
         live_llm = phase5.get("live_llm_evidence") or {}
         return {
@@ -1301,14 +1408,14 @@ class ProductWorkspace:
             "live_llm_evaluable": live_llm.get("evaluable", False),
             "action_adoption_mechanism": {
                 "available": bool(action_protocol),
+                "historical_result_available": bool(action_decision),
+                "result_identity_verified": mechanism_current,
+                "result_applicable_to_current_code": mechanism_current,
+                "identity_reason": mechanism_identity["reason"],
                 "protocol_id": action_protocol.get("protocol_id"),
                 "claim_scope": action_protocol.get("claim_scope"),
                 "protocol_state": action_protocol.get("state"),
-                "execution_state": action_decision.get("status")
-                or action_progress.get(
-                    "state",
-                    "ready_not_started" if action_protocol else "absent",
-                ),
+                "execution_state": mechanism_execution_state,
                 "runs_executed": sum(
                     len((row or {}).get("rows") or [])
                     for row in (action_progress.get("arms") or {}).values()
@@ -1316,25 +1423,31 @@ class ProductWorkspace:
                 "fixed_run_budget": (
                     (action_protocol.get("design") or {}).get("runs_total")
                 ),
-                "result_status": action_decision.get("status"),
-                "passed": action_decision.get("passed"),
-                "mechanism": dict(action_decision.get("mechanism") or {}),
-                "promotion_authorized": action_decision.get(
-                    "promotion_authorized",
-                    False,
+                "historical_result_status": action_decision.get("status"),
+                "result_status": (
+                    action_decision.get("status") if mechanism_current else None
+                ),
+                "passed": action_decision.get("passed") if mechanism_current else None,
+                "mechanism": (
+                    dict(action_decision.get("mechanism") or {})
+                    if mechanism_current else {}
+                ),
+                "promotion_authorized": bool(
+                    mechanism_current
+                    and action_decision.get("promotion_authorized", False)
                 ),
             },
             "action_outcome_study": {
                 "available": bool(outcome_protocol),
+                "historical_result_available": bool(outcome_decision),
+                "result_identity_verified": outcome_current,
+                "result_applicable_to_current_code": outcome_current,
+                "identity_reason": outcome_identity["reason"],
                 "protocol_id": outcome_protocol.get("protocol_id"),
                 "claim_scope": (
                     "full_match_simulator_outcome_not_real_football_causality"
                 ),
-                "execution_state": outcome_decision.get("decision")
-                or outcome_progress.get(
-                    "state",
-                    "not_started" if outcome_protocol else "absent",
-                ),
+                "execution_state": outcome_execution_state,
                 "runs_executed": sum(
                     len((row or {}).get("rows") or [])
                     for row in (outcome_progress.get("arms") or {}).values()
@@ -1342,18 +1455,33 @@ class ProductWorkspace:
                 "fixed_run_budget": (
                     (outcome_protocol.get("design") or {}).get("runs_total")
                 ),
-                "promotion_supported": outcome_decision.get(
-                    "promotion_supported",
-                    False,
+                "historical_result_status": outcome_decision.get("decision"),
+                "promotion_supported": bool(
+                    outcome_current
+                    and outcome_decision.get("promotion_supported", False)
                 ),
-                "result_status": outcome_decision.get("decision"),
-                "pairs_total": outcome_decision.get("pairs_total"),
-                "primary": dict(outcome_decision.get("primary") or {}),
-                "minimum_meaningful_delta_loss": outcome_decision.get(
-                    "minimum_meaningful_delta_loss"
+                "result_status": (
+                    outcome_decision.get("decision") if outcome_current else None
                 ),
-                "behavior": dict(outcome_decision.get("behavior") or {}),
-                "promotion_gates": dict(outcome_decision.get("promotion_gates") or {}),
+                "pairs_total": (
+                    outcome_decision.get("pairs_total") if outcome_current else None
+                ),
+                "primary": (
+                    dict(outcome_decision.get("primary") or {})
+                    if outcome_current else {}
+                ),
+                "minimum_meaningful_delta_loss": (
+                    outcome_decision.get("minimum_meaningful_delta_loss")
+                    if outcome_current else None
+                ),
+                "behavior": (
+                    dict(outcome_decision.get("behavior") or {})
+                    if outcome_current else {}
+                ),
+                "promotion_gates": (
+                    dict(outcome_decision.get("promotion_gates") or {})
+                    if outcome_current else {}
+                ),
             },
             "manager_advisor_adoption": {
                 "available": bool(manager_advisor_protocol),

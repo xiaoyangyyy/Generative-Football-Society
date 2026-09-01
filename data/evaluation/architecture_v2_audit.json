@@ -44,6 +44,7 @@
     "training_resume_binds_data_and_code_identity": true,
     "training_stop_forces_exact_checkpoint": true,
     "wheel_preserves_src_console_namespace": true,
+    "world_model_action_authority_uses_validated_feasible_simplex": true,
     "world_model_required_mode_fails_closed": true
   },
   "deployment_note": "This mutable development worktree is not itself a newly promoted release; the active frozen release remains the current.json authority.",

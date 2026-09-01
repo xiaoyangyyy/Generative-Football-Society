@@ -11,13 +11,14 @@ The completed formal baseline, seven-variant ablation, retrained-candidate
 decision, and final verification are summarized in
 `docs/FORMAL_RESEARCH_VALIDATION_2026-08.md`.
 
-The newer action-policy study closes one narrower gap: the learned world-model
-signal changed 25 sampled micro-actions in the fixed 24-run mechanism study and
-changed behavior in all 30 pairs of a 60-run full-match study. It did **not**
-establish outcome improvement: the external-loss delta was `-0.0318925`, its
-95% interval crossed zero, and the sealed decision remains
-`inconclusive_keep_research_only`. M1 is still default-off. See
-`docs/ACTION_OUTCOME_RESULT_V1.md`.
+The historical pass-only action-policy controller closed one narrower gap: its
+learned signal changed 25 sampled micro-actions in a fixed 24-run mechanism
+study and changed behavior in all 30 pairs of a 60-run full-match study. It did
+**not** establish outcome improvement. V3.63 replaced that controller with a
+validated feasible multi-action simplex, so those sealed results are retained
+as history but fail current-code identity verification and are not evidence for
+the new controller. M1 remains default-off. See
+`docs/ACTION_OUTCOME_RESULT_V1.md` and `docs/ARCHITECTURE_V2.md` section 81.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
@@ -156,28 +157,30 @@ python scripts/verify_process_recovery.py --out data/evaluation/process_recovery
 This verifies application recovery on a temporary filesystem; it is not a
 container/deployment-volume RPO/RTO claim.
 
-The next confirmatory paper experiment is frozen separately from exploratory
-work. Its default command is read-only:
+The historical confirmatory paper experiment is frozen separately from
+exploratory work. Its default command is read-only:
 
 ```bash
 python scripts/run_formal_experiment.py
 ```
 
-It compares only sealed M0 and M1, caps compute at 30 matched pairs / 60 runs,
-and requires explicit `--execute`. See
+Its frozen design compares only sealed M0 and M1 and caps compute at 30 matched
+pairs / 60 runs. It must not be executed for V3.63; the changed controller
+requires a new preregistered protocol and explicit authority. See
 `docs/FORMAL_EXPERIMENT_PROTOCOL_V2.md`.
 
-The pre-execution paper package is independently auditable without training or
-simulation:
+The historical paper package can be audited without training or simulation:
 
 ```bash
 python scripts/verify_paper_package.py --out data/evaluation/paper_package_verification_v1.json
 python scripts/verify_reproduction_release.py --out data/evaluation/reproduction_release_verification_v1.json
 ```
 
-See `docs/PAPER_DRAFT.md` and `docs/REPRODUCTION_GUIDE.md`. The draft keeps
-all confirmatory result cells unavailable and does not claim independent
-reproduction. The release audit verifies two 64-package hashed reference
+After the V3.63 controller change these commands intentionally fail the formal
+result identity gate until a new protocol is executed; they must not be made to
+pass by rewriting the old experiment identity. See `docs/PAPER_DRAFT.md` and
+`docs/REPRODUCTION_GUIDE.md`. The release audit verifies two 64-package hashed
+reference
 profiles (Python 3.12 Linux deployment and Python 3.13 Windows development),
 deterministic CycloneDX 1.6 SBOMs, an imported local runtime, immutable Python
 and Caddy OCI digests, and a default-deny registry for all known external data

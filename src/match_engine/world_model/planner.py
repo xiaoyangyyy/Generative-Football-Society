@@ -227,7 +227,10 @@ def action_imagination_adjustments(
         str(action): {
             "open": False,
             "quality_kind": "shot" if action == "shot" else "pass",
-            "reason": "no_action_specific_validation",
+            "reason": (
+                "reference_action_not_directly_promoted" if action == "hold"
+                else "no_action_specific_validation"
+            ),
             "confidence": 0.0,
         }
         for action in labels
@@ -278,7 +281,7 @@ def action_imagination_adjustments(
             })
         else:
             gates["pass"]["reason"] = "pass_quality_gate_closed"
-    if "shot" in labels:
+    if "shot" in labels and "shot" in feasible:
         si = labels.index("shot")
         bonus = shot_imagination_bonus(
             runtime, state, carrier, attacking_home, dist_goal=dist_goal
@@ -294,15 +297,29 @@ def action_imagination_adjustments(
             kind="shot",
         )
         shot_confidence = float(shot_authority["decision_confidence"])
+        shot_certainty = _decision_certainty(runtime)
+        shot_blend = float(runtime.cfg.shot_planner_blend)
+        authority_weight = shot_blend * shot_confidence * shot_certainty
+        effective_advantage = (
+            float(np.clip(bonus / authority_weight, -0.35, 0.35))
+            if authority_weight > 1e-12 else 0.0
+        )
         gates["shot"].update({
             **shot_authority,
             "open": bool(shot_authority["authorized"] and shot_confidence > 0.0),
             "confidence": shot_confidence,
             "reason": (
-                "validated_shot_value" if shot_confidence > 0.0
+                "validated_shot_vs_continuation_advantage"
+                if shot_authority["authorized"] and shot_confidence > 0.0
                 else "shot_quality_gate_closed"
             ),
+            "decision_certainty": shot_certainty,
+            "certainty": shot_certainty,
+            "policy_blend": shot_blend,
+            "model_advantage": effective_advantage,
         })
+    elif "shot" in labels:
+        gates["shot"]["reason"] = "action_infeasible"
     from src.match_engine.world_model.action_adoption import (
         register_action_policy_opportunity,
     )

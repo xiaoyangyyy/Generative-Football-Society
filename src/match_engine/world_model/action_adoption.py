@@ -54,52 +54,71 @@ def mix_direct_action_probabilities(
     labels: Sequence[str],
     probabilities: Sequence[float],
 ) -> np.ndarray:
-    """Blend a validated pass-vs-continuation policy into normal sampling."""
-    base = np.asarray(probabilities, dtype=float)
+    """Blend every validated feasible action preference into one simplex.
+
+    Each open action gate contributes an advantage and its own bounded
+    authority. The strongest authority controls the total interpolation
+    budget while relative authorities shape the model target distribution.
+    """
+    base = np.asarray(probabilities, dtype=float).copy()
     record = getattr(state, "_wm_pending_direct_action_adoption", None)
-    if not isinstance(record, dict) or "pass" not in labels:
+    if not isinstance(record, dict) or base.shape != (len(labels),):
         return base
-    gate = (record.get("quality_gates") or {}).get("pass") or {}
-    if not gate.get("open", False):
+    base = np.clip(base, 0.0, None)
+    base_total = float(base.sum())
+    if not np.isfinite(base_total) or base_total <= 0.0:
         return base
-    advantage = float(gate.get("model_advantage", 0.0))
-    confidence = float(gate.get(
-        "decision_confidence", gate.get("confidence", 0.0),
-    ))
-    policy_blend = float(gate.get("policy_blend", 0.0))
-    certainty = float(gate.get(
-        "decision_certainty", gate.get("certainty", confidence),
-    ))
-    reliability = min(confidence, certainty)
-    blend_weight = float(np.clip(policy_blend * reliability, 0.0, 0.35))
-    if blend_weight <= 0.0 or not np.isfinite(advantage):
+    base /= base_total
+    feasible = set(str(action) for action in record.get("feasible_actions", labels))
+    gates = record.get("quality_gates") or {}
+    signals: list[tuple[int, dict[str, Any], float, float]] = []
+    for index, action in enumerate(labels):
+        gate = gates.get(str(action)) or {}
+        if str(action) not in feasible or not gate.get("open", False):
+            continue
+        try:
+            advantage = float(gate.get("model_advantage", 0.0))
+            confidence = float(gate.get(
+                "decision_confidence", gate.get("confidence", 0.0),
+            ))
+            certainty = float(gate.get(
+                "decision_certainty", gate.get("certainty", confidence),
+            ))
+            policy_blend = float(gate.get("policy_blend", 0.0))
+        except (TypeError, ValueError):
+            continue
+        authority = float(np.clip(
+            policy_blend * min(confidence, certainty), 0.0, 0.35,
+        ))
+        if np.isfinite(advantage) and abs(advantage) > 1e-12 and authority > 0.0:
+            signals.append((index, gate, advantage, authority))
+    if not signals:
         return base
-    pass_index = labels.index("pass")
-    base_pass = float(base[pass_index])
-    preference = float(np.tanh(advantage / 0.10))
-    model_pass_probability = float(np.clip(
-        base_pass + (
-            (1.0 - base_pass) * preference
-            if preference >= 0.0 else base_pass * preference
-        ),
-        1e-6,
-        1.0 - 1e-6,
-    ))
-    mixed = base.copy()
-    mixed_pass = (
-        (1.0 - blend_weight) * base_pass
-        + blend_weight * model_pass_probability
-    )
-    remaining_before = max(1e-12, 1.0 - float(base[pass_index]))
-    remaining_after = max(0.0, 1.0 - mixed_pass)
-    for index in range(len(mixed)):
-        if index != pass_index:
-            mixed[index] = float(base[index]) * remaining_after / remaining_before
-    mixed[pass_index] = mixed_pass
-    mixed = np.clip(mixed, 0.0, 1.0)
+
+    blend_weight = max(item[3] for item in signals)
+    log_preference = np.zeros(len(labels), dtype=float)
+    for index, _gate, advantage, authority in signals:
+        log_preference[index] = float(np.clip(
+            (advantage / 0.10) * (authority / blend_weight), -4.0, 4.0,
+        ))
+    target = base * np.exp(log_preference)
+    target_total = float(target.sum())
+    if not np.isfinite(target_total) or target_total <= 0.0:
+        return base
+    target /= target_total
+    mixed = (1.0 - blend_weight) * base + blend_weight * target
+    mixed = np.clip(mixed, 0.0, None)
     mixed /= max(1e-12, float(mixed.sum()))
-    gate["model_target_pass_probability"] = model_pass_probability
-    gate["applied_probability_blend_weight"] = blend_weight
+    record["probability_policy_version"] = "validated_action_simplex_v1"
+    record["applied_policy_actions"] = [
+        str(labels[index]) for index, _gate, _advantage, _authority in signals
+    ]
+    for index, gate, _advantage, authority in signals:
+        gate["model_target_action_probability"] = float(target[index])
+        gate["applied_action_authority"] = float(authority)
+        gate["applied_probability_blend_weight"] = float(blend_weight)
+        if str(labels[index]) == "pass":
+            gate["model_target_pass_probability"] = float(target[index])
     return mixed
 
 
@@ -124,7 +143,8 @@ def register_action_policy_opportunity(
             "attribution_eligible_opportunities": 0,
             "counterfactual_action_changes": 0,
             "expected_counterfactual_action_changes": 0.0,
-            "probability_shift_sum": 0.0, "records": [],
+            "probability_shift_sum": 0.0,
+            "action_signal_breakdown": {}, "records": [],
         }
         state._wm_direct_action_adoption = store
     base = np.asarray(base_utilities, dtype=float)
@@ -217,6 +237,8 @@ def register_action_policy_opportunity(
         "sampling_uniform": None, "counterfactual_baseline_action": None,
         "policy_changed_action": None,
         "total_variation_distance": None,
+        "probability_policy_version": "validated_action_simplex_v1",
+        "applied_policy_actions": [],
         "adopted": None, "attribution_eligible": None,
         "resolution": "pending_sample",
     }
@@ -303,6 +325,32 @@ def record_action_policy_sample(
     if attribution_eligible:
         store["expected_counterfactual_action_changes"] += total_variation
     store["probability_shift_sum"] += abs(delta)
+    breakdown = store.setdefault("action_signal_breakdown", {})
+    gates = record.get("quality_gates") or {}
+    for action in record.get("applied_policy_actions") or []:
+        if action not in labels:
+            continue
+        index = labels.index(action)
+        probability_delta = float(adjusted[index] - base[index])
+        gate = gates.get(action) or {}
+        bucket = breakdown.setdefault(str(action), {
+            "signal_opportunities": 0,
+            "positive_guidance": 0,
+            "negative_guidance": 0,
+            "realized_as_actual_action": 0,
+            "locally_changed_to_action": 0,
+            "probability_delta_sum": 0.0,
+            "absolute_probability_shift_sum": 0.0,
+            "authority_sum": 0.0,
+        })
+        bucket["signal_opportunities"] += 1
+        bucket["positive_guidance"] += int(probability_delta > 1e-12)
+        bucket["negative_guidance"] += int(probability_delta < -1e-12)
+        bucket["realized_as_actual_action"] += int(actual == action)
+        bucket["locally_changed_to_action"] += int(changed_action and actual == action)
+        bucket["probability_delta_sum"] += probability_delta
+        bucket["absolute_probability_shift_sum"] += abs(probability_delta)
+        bucket["authority_sum"] += float(gate.get("applied_action_authority", 0.0))
     state._wm_pending_direct_action_adoption = None
 
 
@@ -372,9 +420,26 @@ def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
             "pass_target_changes": 0,
             "pass_target_expected_changes": 0.0,
             "adoption_rate": 0.0,
+            "probability_policy_version": "validated_action_simplex_v1",
+            "action_signal_breakdown": {},
             "mean_recommended_probability_shift": 0.0, "records": [],
         }
     resolved = int(store["resolved"])
+    action_breakdown = {}
+    for action, raw in (store.get("action_signal_breakdown") or {}).items():
+        count = max(0, int(raw.get("signal_opportunities", 0)))
+        action_breakdown[str(action)] = {
+            **raw,
+            "mean_probability_delta": float(
+                raw.get("probability_delta_sum", 0.0) / max(1, count)
+            ),
+            "mean_absolute_probability_shift": float(
+                raw.get("absolute_probability_shift_sum", 0.0) / max(1, count)
+            ),
+            "mean_applied_authority": float(
+                raw.get("authority_sum", 0.0) / max(1, count)
+            ),
+        }
     return {
         "available": True,
         "opportunities": int(store["opportunities"]),
@@ -408,6 +473,8 @@ def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
         "pass_target_expected_changes": float(
             store.get("pass_target_expected_changes", 0.0)
         ),
+        "probability_policy_version": "validated_action_simplex_v1",
+        "action_signal_breakdown": action_breakdown,
         "adoption_rate": float(store["adopted"] / max(1, resolved)),
         "mean_recommended_probability_shift": float(
             store["probability_shift_sum"] / max(1, resolved)

@@ -35,24 +35,27 @@ records, and calibration reports.
 The frozen M0 evaluation contains 18 full-length simulations and passes the
 repository external observable contract. A prior sealed 18-match M1 review
 found no resolved loss improvement and no behavior change above tolerance.
-The new identity-bound mechanism study completed 24 runs and confirmed 25
-realized micro-action changes across all 12 matched pairs. A separate 60-run,
+The historical pass-only controller completed 24 identity-bound mechanism runs
+and confirmed 25 realized micro-action changes across all 12 matched pairs. A separate 60-run,
 30-pair full-match study then changed behavior in all 30 pairs, but produced an
 M1-minus-M0 external-loss estimate of -0.031893 with a 95% paired interval of
 [-26.061955, 5.137430]. Its external-validity and minimum-effect gates failed.
-The sealed decision is `inconclusive_keep_research_only`; M1 remains
-`research_only_default_off` with no outcome, causal, product or academic
-promotion claim.
+The sealed decision was `inconclusive_keep_research_only`. V3.63 changed the
+controller to a validated feasible multi-action simplex, invalidating the old
+study's current-code identity. Those results remain historical and are not
+transferred to the new controller. M1 remains `research_only_default_off` with
+no outcome, causal, product or academic promotion claim.
 
 ## Risks and limitations
 
 External observations are incomplete proxies with provider-specific clocks,
 labels, sampling, and selection. Calibration against aggregate football
 metrics does not establish realistic trajectories, decisions, psychology, or
-causality. M1 has material compute cost. Current evidence proves action-path
-and full-match behavioral change, but not reliable calibration or outcome
-benefit. LLM outputs can be invalid or nondeterministic and are excluded from
-stable authority.
+causality. M1 has material compute cost. Historical evidence established
+action-path and full-match behavioral change for the prior pass-only
+controller, not for the current V3.63 controller, and never established
+reliable calibration or outcome benefit. LLM outputs can be invalid or
+nondeterministic and are excluded from stable authority.
 
 ## Governance
 

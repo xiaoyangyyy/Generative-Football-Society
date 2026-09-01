@@ -64,21 +64,19 @@ def _comparison_sequence(*results):
     return compare
 
 
-def test_action_replication_v2_is_registered_and_ready_without_execution():
+def test_action_replication_v2_blocks_when_candidate_prerequisite_is_stale():
     report = study.protocol_report()
     current = study.status()
     assert report["passed"] is True
     assert report["ready_to_start"] is True
     assert report["runs_executed"] == 0
     assert all(report["checks"].values())
-    assert current["state"] == "ready_not_started"
+    assert current["state"] == "blocked_prerequisite_identity_drift"
     assert current["branch"] == "variance_diagnosis"
     assert current["remaining_runs"] == 72
     assert current["matches_executed"] == 0
-    assert current["identity_matches_progress"] is True
-    assert current["next_action"] == (
-        "explicitly_authorize_fixed_replication_execution"
-    )
+    assert current["identity_matches_progress"] is False
+    assert current["next_action"] == "preregister_new_candidate_protocol"
     assert current["training_executed"] is False
     assert current["provider_calls_made"] is False
 

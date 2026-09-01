@@ -468,21 +468,26 @@ Use the four-run diagnostic before any fixed-budget study:
 It compares no-advisor, deterministic rule fallback, prediction-only and
 direct-action paths using one shared short fixture per arm. It does not train,
 call a provider, modify formal progress or support an effectiveness claim.
-The explicitly authorized 24-run mechanism study completed on 2026-08-31.
-Its identity-bound decision is `mechanism_confirmed`: 1951 of 1954 action
+The explicitly authorized 24-run mechanism study for the historical pass-only
+controller completed on 2026-08-31. Its frozen identity-bound decision was
+`mechanism_confirmed`: 1951 of 1954 action
 opportunities received non-zero policy influence, 25.246 counterfactual
 changes were expected, 25 were realized, and all 12 matched pairs changed.
-The decision JSON, 24 flat CSV rows and Markdown summary replay through:
+The historical decision JSON, 24 flat CSV rows and Markdown summary were
+originally replayed through:
 
     python scripts/verify_action_adoption_result.py
 
-This confirms the micro-action adoption path. The separate 60-run full-match
+After V3.63 the command correctly reports code-identity drift. This confirmed
+that historical controller's micro-action adoption path; it is not current
+evidence. The separate 60-run full-match
 outcome protocol, `data/evaluation/action_outcome_protocol_v1.json`, also
 completed on 2026-08-31. All 30 matched pairs changed behavior, but the M1-minus-
 M0 external-loss estimate was -0.031893 with a 95% paired interval of
 [-26.061955, 5.137430]. The external-validity and minimum-effect gates failed,
 so the sealed decision is `inconclusive_keep_research_only` and promotion is
-not supported. Replay the result with:
+not supported. Its historical replay command now also fails current-code
+identity by design:
 
     python scripts/verify_action_outcome_result.py
 
@@ -554,3 +559,27 @@ tactical binding and missing action evidence remain distinct states. The
 certificate never claims that a simulated branch opportunity is the same
 action later observed in the official match, and it does not measure outcome
 improvement.
+
+## Action-specific world-model authority
+
+Research mode now reports world-model action control on the same four-action
+surface used by the match engine. Pass and shot may affect the sampling
+distribution only when their own validation gate is open and the action is
+currently feasible. Cross remains visibly unavailable until cross-specific
+validation exists; hold remains the continuation reference rather than an
+implicitly learned recommendation.
+
+The latest-match influence panel adds one compact card per admitted action.
+Each card shows signal opportunities, probability increases versus decreases,
+mean probability movement and mean applied authority. The underlying evidence
+retains the normalized baseline and treatment distributions and the shared
+random draw, so a realized action change can still be isolated locally. These
+cards describe simulator runtime behavior only and do not imply better scores,
+better tactics or real-football causality.
+
+Formal mechanism and full-match evidence is displayed only when its frozen
+protocol, checkpoint and declared code-file hashes reproduce against the
+current checkout. After a controller change, Studio marks the old result as
+`stale_current_code_identity`, keeps its existence visible as history, and
+suppresses its statistics and promotion fields. A new preregistered run is
+required before the changed controller can inherit a formal conclusion.

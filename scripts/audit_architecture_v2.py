@@ -112,6 +112,15 @@ def main() -> int:
     action_adoption_study = (
         ROOT / "scripts/action_adoption_study.py"
     ).read_text(encoding="utf-8")
+    action_adoption_controller = (
+        ROOT / "src/match_engine/world_model/action_adoption.py"
+    ).read_text(encoding="utf-8")
+    world_model_planner = (
+        ROOT / "src/match_engine/world_model/planner.py"
+    ).read_text(encoding="utf-8")
+    action_engine = (
+        ROOT / "src/match_engine/action_engine.py"
+    ).read_text(encoding="utf-8")
     action_adoption_protocol = _read(
         "data/evaluation/action_adoption_protocol_v1.json"
     )
@@ -291,6 +300,42 @@ def main() -> int:
             and action_adoption_protocol.get("current_execution", {}).get(
                 "runs_executed"
             ) == 0
+        ),
+        "world_model_action_authority_uses_validated_feasible_simplex": (
+            all(token in action_adoption_controller for token in (
+                "validated_action_simplex_v1",
+                "applied_policy_actions",
+                "action_signal_breakdown",
+                "applied_action_authority",
+                "model_target_action_probability",
+                "if str(action) not in feasible",
+                "blend_weight = max(item[3] for item in signals)",
+            ))
+            and all(token in world_model_planner for token in (
+                "validated_shot_vs_continuation_advantage",
+                '"model_advantage": effective_advantage',
+                'gates["shot"]["reason"] = "action_infeasible"',
+                '"no_action_specific_validation"',
+            ))
+            and all(token in action_engine for token in (
+                'labels = ["pass", "shot", "cross", "hold"]',
+                "mask_infeasible_action_probabilities(",
+                "mix_direct_action_probabilities(",
+                "sampling_uniform = float(rng.random())",
+                "counterfactual_baseline_action = sample_action_from_uniform(",
+            ))
+            and all(token in workspace for token in (
+                "def _formal_evidence_identity(",
+                '"result_identity_verified": mechanism_current',
+                '"result_identity_verified": outcome_current',
+                '"stale_current_code_identity"',
+                '"result_applicable_to_current_code"',
+            ))
+            and all(token in web for token in (
+                "renderActionAdoptionWithoutCurrentCodeEvidence",
+                "mechanism.result_identity_verified",
+                "outcome.result_identity_verified",
+            ))
         ),
         "studio_previews_authoritative_decision_effects_without_persistence": (
             workspace.count("self._prepare_manager_decision(") >= 2
