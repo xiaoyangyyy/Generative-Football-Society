@@ -22,7 +22,7 @@ cross-specific runtime authority and replayable cross trajectories. The current
 v9 checkpoint contains no such cross evidence, so cross authority correctly
 remains zero until a future checkpoint passes the registered grouped-heldout
 gate. M1 remains default-off. See `docs/ACTION_OUTCOME_RESULT_V1.md` and
-`docs/ARCHITECTURE_V2.md` sections 81--88. V3.65 also makes the joint
+`docs/ARCHITECTURE_V2.md` sections 81--89. V3.65 also makes the joint
 world-model shot head diagnostic-only: direct shot authority requires an
 independently sealed frozen head that beats the physics xG prior.
 V3.66 makes hold a strict counterfactual reference action. Probability shifted
@@ -45,6 +45,10 @@ generic mechanism-example total.
 V3.70 carries those counts through identity-checked historical chapters and
 the chronological season trajectory, with explicit zero normalization for
 legacy records and fail-closed disagreement checks for current evidence.
+V3.71 adds a separate bounded semantic ledger for official-match examples.
+It exposes cross, direct, suppressive and hold-reference evidence while keeping
+sample truncation visible and refusing to treat at most five examples as the
+full distribution of official action decisions.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

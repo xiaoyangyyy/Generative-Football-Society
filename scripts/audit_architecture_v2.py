@@ -1029,6 +1029,36 @@ def main() -> int:
                 "future.nonzero_cross_descriptive_windows",
             ))
         ),
+        "official_action_semantics_are_bounded_not_full_distribution": (
+            all(token in manager_world_thread for token in (
+                "def _official_action_semantic_examples(",
+                '"retained_semantic_examples"',
+                '"semantic_examples_truncated"',
+                '"semantic_example_coverage_complete"',
+                '"semantic_cross_action_examples"',
+                '"semantic_direct_preference_examples"',
+                '"semantic_suppression_only_examples"',
+                '"semantic_hold_reference_redistribution_examples"',
+                '"semantic_direct_cross_ball_event_examples"',
+            ))
+            and all(token in manager_world_navigator for token in (
+                "_OFFICIAL_ACTION_SEMANTIC_COUNT_FIELDS = (",
+                '"bounded_official_action_semantics"',
+                '"bounded_semantic_examples"',
+                '"fixtures_with_complete_coverage"',
+                '"fixtures_with_truncated_examples"',
+                '"full_record_distribution_authorized": False',
+                "retained bounded official-action examples only; counts are ",
+                "not a full-record action or signal distribution when any ",
+            ))
+            and all(token in web for token in (
+                "appendManagerWorldEvolutionThreadWithoutOfficialActionSemantics",
+                "renderManagerWorldActionAdoptionLedgerWithoutBoundedSemantics",
+                "renderManagerWorldReviewedFutureContinuityWithoutOfficialActionSemantics",
+                "sample.semantic_examples_truncated",
+                "point.bounded_official_action_semantics",
+            ))
+        ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (
             all(token in decision_advice for token in (
                 "def build_manager_advice_comparison(",

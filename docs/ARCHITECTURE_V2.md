@@ -2705,3 +2705,36 @@ without ranking interventions or relating the counts to scores. No new action
 authority, downstream causality or real-football claim is introduced. No
 training, match, future generation, formal experiment or provider call is
 executed in this stage.
+
+## 89. V3.71 Bounded official-action semantic ledger
+
+The official action projection already retained policy-signal, cross and hold
+reference semantics on each displayed example. Its world thread and season
+action-adoption ledger nevertheless reduced those examples to generic record,
+influence and identity-link totals. This was especially risky because official
+action evidence retains at most five explanatory examples: treating their
+composition as the distribution of every retained decision would overstate the
+evidence whenever the example list was truncated.
+
+The official world thread now derives a separate bounded-example contract. It
+records the retained semantic-example count, complete-coverage and truncation
+flags, actual cross examples, direct-preference, suppression-only, no-signal
+and legacy-unclassified partitions, hold-reference redistribution, and exact
+direct cross ball-event links. The four signal-mode counts must partition the
+retained semantic examples exactly. Cross and reference counts cannot exceed
+the sample, direct cross links cannot exceed either sampled crosses or all
+direct links, and complete coverage is true only when the sample equals the
+official retained-record count without truncation.
+
+Historical chapters preserve this bounded contract. The season adoption ledger
+aggregates it under `bounded_semantic_examples`, and each chronological point
+retains its own sample and coverage state. Both data and Studio explicitly set
+`full_record_distribution_authorized` to false and label the values as bounded
+samples. The live world thread, season summary and per-match trajectory expose
+the same boundary.
+
+This improves explanation coverage, not action authority or outcome evidence.
+The sample cannot establish the full action distribution when any fixture is
+truncated or lacks semantics, and no signal count is compared with scores. No
+training, match, future generation, formal experiment or provider call is
+executed in this stage.

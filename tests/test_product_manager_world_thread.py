@@ -48,6 +48,40 @@ def _reviewed_scenarios():
 
 
 def _entry(*, action_available=True, stable=False, review_linked=True):
+    action_examples = [
+        {
+            "actual_action": "cross",
+            "policy_signal": {"mode": "direct_preference"},
+            "reference_action_effect": {
+                "received_redistributed_probability": False,
+            },
+            "runtime_link": {"direct_ball_event_identity": True},
+        },
+        {
+            "actual_action": "pass",
+            "policy_signal": {"mode": "suppression_only"},
+            "reference_action_effect": {
+                "received_redistributed_probability": False,
+            },
+            "runtime_link": {"direct_ball_event_identity": True},
+        },
+        {
+            "actual_action": "hold",
+            "policy_signal": {"mode": "suppression_only"},
+            "reference_action_effect": {
+                "received_redistributed_probability": True,
+            },
+            "runtime_link": {"direct_ball_event_identity": False},
+        },
+        {
+            "actual_action": "shot",
+            "policy_signal": {"mode": "none"},
+            "reference_action_effect": {
+                "received_redistributed_probability": False,
+            },
+            "runtime_link": {"direct_ball_event_identity": False},
+        },
+    ]
     action = (
         {
             "schema_version": 1,
@@ -70,6 +104,8 @@ def _entry(*, action_available=True, stable=False, review_linked=True):
                 "source_records_truncated": False,
                 "manager_record_coverage_complete": True,
             },
+            "examples": action_examples,
+            "examples_truncated": False,
         }
         if action_available else
         {
@@ -190,6 +226,19 @@ def test_world_evolution_thread_connects_six_stages_without_inventing_causality(
     assert thread["stages"][3][
         "locally_attributable_action_changes"
     ] == 2
+    official = thread["stages"][3]
+    assert official["retained_semantic_examples"] == 4
+    assert official["semantic_examples_truncated"] is False
+    assert official["semantic_example_coverage_complete"] is True
+    assert official["semantic_cross_action_examples"] == 1
+    assert official["semantic_direct_preference_examples"] == 1
+    assert official["semantic_suppression_only_examples"] == 2
+    assert official["semantic_no_signal_examples"] == 1
+    assert official["semantic_legacy_unclassified_examples"] == 0
+    assert official[
+        "semantic_hold_reference_redistribution_examples"
+    ] == 1
+    assert official["semantic_direct_cross_ball_event_examples"] == 1
     assert thread["stages"][0]["review_intent"] == "keep_after_review"
     assert thread["stages"][0]["cross_action_mechanism_examples"] == 1
     assert thread["stages"][0]["direct_preference_mechanism_examples"] == 1
@@ -231,6 +280,20 @@ def test_world_evolution_thread_connects_six_stages_without_inventing_causality(
     assert thread["causal_effect_authorized"] is False
     assert thread["outcome_effect_estimate"] is None
     validate_manager_world_evolution_thread(thread, entry=entry)
+
+
+def test_official_action_semantics_keep_truncation_distinct_from_coverage():
+    entry = _entry()
+    action = entry["execution"]["world_model_action_execution"]
+    action["examples"] = action["examples"][:3]
+    action["examples_truncated"] = True
+
+    stage = build_manager_world_evolution_thread(entry)["stages"][3]
+
+    assert stage["retained_records"] == 4
+    assert stage["retained_semantic_examples"] == 3
+    assert stage["semantic_examples_truncated"] is True
+    assert stage["semantic_example_coverage_complete"] is False
 
 
 def test_world_evolution_thread_marks_stable_mode_optional_and_real_breaks():

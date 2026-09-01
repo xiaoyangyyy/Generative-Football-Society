@@ -173,6 +173,16 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             source_match_opportunities=4,
             source_records_truncated=False,
             manager_record_coverage_complete=True,
+            retained_semantic_examples=4,
+            semantic_examples_truncated=False,
+            semantic_example_coverage_complete=True,
+            semantic_cross_action_examples=1,
+            semantic_direct_preference_examples=1,
+            semantic_suppression_only_examples=2,
+            semantic_no_signal_examples=1,
+            semantic_legacy_unclassified_examples=0,
+            semantic_hold_reference_redistribution_examples=1,
+            semantic_direct_cross_ball_event_examples=1,
             source_identity="e" * 64,
             match_id="match-1",
         ),
@@ -430,6 +440,19 @@ def _rewrite_action(entry, status, *, source=True, **facts):
     action["status"] = status
     action["source_identity"] = "e" * 64 if source else None
     action.update(facts)
+    if facts.get("retained_records") == 0:
+        action.update({
+            "retained_semantic_examples": 0,
+            "semantic_examples_truncated": False,
+            "semantic_example_coverage_complete": False,
+            "semantic_cross_action_examples": 0,
+            "semantic_direct_preference_examples": 0,
+            "semantic_suppression_only_examples": 0,
+            "semantic_no_signal_examples": 0,
+            "semantic_legacy_unclassified_examples": 0,
+            "semantic_hold_reference_redistribution_examples": 0,
+            "semantic_direct_cross_ball_event_examples": 0,
+        })
     action.pop("stage_identity")
     action["stage_identity"] = _identity(action)
     return _refresh_review_world_certificate(entry)
@@ -541,6 +564,25 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
             "decision_only_no_trajectory": 2,
             "unresolved_ball_event_links": 2,
             "source_match_opportunities": 8,
+            "bounded_semantic_examples": {
+                "fixtures_with_examples": 2,
+                "fixtures_with_complete_coverage": 2,
+                "fixtures_with_truncated_examples": 0,
+                "retained_semantic_examples": 8,
+                "semantic_cross_action_examples": 2,
+                "semantic_direct_preference_examples": 2,
+                "semantic_suppression_only_examples": 4,
+                "semantic_no_signal_examples": 2,
+                "semantic_legacy_unclassified_examples": 0,
+                "semantic_hold_reference_redistribution_examples": 2,
+                "semantic_direct_cross_ball_event_examples": 2,
+                "full_record_distribution_authorized": False,
+                "claim_boundary": (
+                    "retained bounded official-action examples only; counts "
+                    "are not a full-record action or signal distribution when "
+                    "any fixture is truncated or lacks semantic examples"
+                ),
+            },
             "influence_rate": 0.75,
             "realized_change_rate_among_influenced": 0.666667,
             "direct_ball_event_link_coverage": 0.666667,
@@ -623,6 +665,19 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
         "scenarios": _reviewed_scenarios(),
         "outcome_comparison_performed": False,
         "causal_effect_authorized": False,
+    }
+    assert first["bounded_official_action_semantics"] == {
+        "retained_semantic_examples": 4,
+        "semantic_cross_action_examples": 1,
+        "semantic_direct_preference_examples": 1,
+        "semantic_suppression_only_examples": 2,
+        "semantic_no_signal_examples": 1,
+        "semantic_legacy_unclassified_examples": 0,
+        "semantic_hold_reference_redistribution_examples": 1,
+        "semantic_direct_cross_ball_event_examples": 1,
+        "semantic_examples_truncated": False,
+        "semantic_example_coverage_complete": True,
+        "full_record_distribution_authorized": False,
     }
     assert first["cumulative"]["points_earned"] == 1
     assert second["cumulative"]["points_earned"] == 4
@@ -993,6 +1048,22 @@ def test_invalid_action_adoption_partition_and_status_fail_closed_when_rehashed(
     with pytest.raises(ValueError, match="action adoption"):
         build_manager_world_navigator(_season(entries=[unavailable_with_counts]))
 
+    invalid_semantics = _entry(5)
+    action = next(
+        row for row in invalid_semantics["world_evolution_thread"]["stages"]
+        if row["stage_id"] == "official_world_model_actions"
+    )
+    action["semantic_direct_preference_examples"] = 2
+    action.pop("stage_identity")
+    action["stage_identity"] = _identity(action)
+    thread = invalid_semantics["world_evolution_thread"]
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    invalid_semantics.pop("entry_identity")
+    invalid_semantics["entry_identity"] = _identity(invalid_semantics)
+    with pytest.raises(ValueError, match="chapter facts"):
+        build_manager_world_navigator(_season(entries=[invalid_semantics]))
+
 
 def test_invalid_descriptive_result_and_world_transition_fail_closed():
     invalid_result = _entry(1)
@@ -1110,6 +1181,43 @@ def test_historical_action_semantics_are_legacy_safe_and_tamper_evident():
 
     with pytest.raises(ValueError, match="chapter facts"):
         build_manager_world_navigator(_season(entries=[tampered]))
+
+
+def test_historical_official_action_semantics_default_legacy_fields_to_zero():
+    entry = _entry(1)
+    stage = next(
+        row for row in entry["world_evolution_thread"]["stages"]
+        if row["stage_id"] == "official_world_model_actions"
+    )
+    for field in (
+        "retained_semantic_examples",
+        "semantic_examples_truncated",
+        "semantic_example_coverage_complete",
+        "semantic_cross_action_examples",
+        "semantic_direct_preference_examples",
+        "semantic_suppression_only_examples",
+        "semantic_no_signal_examples",
+        "semantic_legacy_unclassified_examples",
+        "semantic_hold_reference_redistribution_examples",
+        "semantic_direct_cross_ball_event_examples",
+    ):
+        stage.pop(field)
+    stage.pop("stage_identity")
+    stage["stage_identity"] = _identity(stage)
+    thread = entry["world_evolution_thread"]
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    sample = build_manager_world_navigator(
+        _season(entries=[entry]),
+    )["history_chapters"][0]["action_adoption"]
+
+    assert sample["retained_semantic_examples"] == 0
+    assert sample["semantic_examples_truncated"] is False
+    assert sample["semantic_example_coverage_complete"] is False
+    assert sample["semantic_cross_action_examples"] == 0
 
 
 def test_rehashed_reviewed_scenario_time_tamper_fails_closed():

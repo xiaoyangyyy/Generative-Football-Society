@@ -274,6 +274,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "renderManagerWorldActionAdoptionLedgerWithoutWorldPropagation" in document
     assert "ledger.state_counts||[]" in document
     assert "row.descriptive_world_after" in document
+    assert "renderManagerWorldActionAdoptionLedgerWithoutBoundedSemantics" in document
+    assert "ledger?.bounded_semantic_examples" in document
+    assert "sample.fixtures_with_truncated_examples" in document
     assert "chapter.descriptive_world_after" in document
     assert "function renderManagerWorldTrajectory(season)" in document
     assert "function renderManagerWorldReviewedFutureContinuity(season)" in document
@@ -281,7 +284,13 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "trajectory.cross_action_mechanism_examples" in document
     assert "future.suppression_only_mechanism_examples" in document
     assert "future.nonzero_cross_descriptive_windows" in document
+    assert "renderManagerWorldReviewedFutureContinuityWithoutOfficialActionSemantics" in document
+    assert "point.bounded_official_action_semantics" in document
+    assert "sample.semantic_example_coverage_complete" in document
     assert "appendManagerWorldEvolutionThreadWithoutReviewedFutures" in document
+    assert "appendManagerWorldEvolutionThreadWithoutOfficialActionSemantics" in document
+    assert "stage.retained_semantic_examples" in document
+    assert "stage.semantic_direct_cross_ball_event_examples" in document
     assert "function appendReviewedScenarioArchive(" in document
     assert "appendManagerWorldEvolutionThreadWithoutScenarioArchive" in document
     assert "renderManagerWorldNavigatorWithoutScenarioArchive" in document

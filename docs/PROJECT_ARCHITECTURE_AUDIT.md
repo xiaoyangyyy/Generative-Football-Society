@@ -70,6 +70,9 @@ not quality signals by themselves.
 23. Extended the same semantics into identity-bound historical chapters,
     chronological season trajectories and influence-path totals, with legacy
     zero normalization and rehashed-tamper rejection.
+24. Added an explicitly bounded official-action semantic ledger across live
+    threads, historical chapters and Studio; sample partitions and truncation
+    remain distinct from full retained-record totals.
 
 ## LLM Scope Decision
 

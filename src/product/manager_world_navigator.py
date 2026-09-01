@@ -73,6 +73,16 @@ _FUTURE_MECHANISM_SEMANTIC_FIELDS = (
     "hold_reference_redistribution_examples",
     "nonzero_cross_descriptive_windows",
 )
+_OFFICIAL_ACTION_SEMANTIC_COUNT_FIELDS = (
+    "retained_semantic_examples",
+    "semantic_cross_action_examples",
+    "semantic_direct_preference_examples",
+    "semantic_suppression_only_examples",
+    "semantic_no_signal_examples",
+    "semantic_legacy_unclassified_examples",
+    "semantic_hold_reference_redistribution_examples",
+    "semantic_direct_cross_ball_event_examples",
+)
 _REVIEWED_SCENARIO_FIELDS = {
     "schema_version", "source_scenario_identity", "branch_at_sec",
     "branch_minute", "future_status", "eligible", "anchor_verified",
@@ -361,6 +371,19 @@ def _season_world_trajectory(
                 chapter["review_to_official_world"]
             ),
             "action_adoption_state": chapter["action_adoption"]["state"],
+            "bounded_official_action_semantics": {
+                **{
+                    field: chapter["action_adoption"][field]
+                    for field in _OFFICIAL_ACTION_SEMANTIC_COUNT_FIELDS
+                },
+                "semantic_examples_truncated": chapter[
+                    "action_adoption"
+                ]["semantic_examples_truncated"],
+                "semantic_example_coverage_complete": chapter[
+                    "action_adoption"
+                ]["semantic_example_coverage_complete"],
+                "full_record_distribution_authorized": False,
+            },
             "locally_attributable_action_changes": local_changes,
             "result_available": world["result_available"],
             "outcome": world["outcome"],
@@ -605,6 +628,16 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     action_counts = {
         field: action.get(field, 0) for field in action_count_fields
     }
+    action_semantic_counts = {
+        field: action.get(field, 0)
+        for field in _OFFICIAL_ACTION_SEMANTIC_COUNT_FIELDS
+    }
+    semantic_examples_truncated = action.get(
+        "semantic_examples_truncated", False
+    )
+    semantic_example_coverage_complete = action.get(
+        "semantic_example_coverage_complete", False
+    )
     local_changes = action_counts["locally_attributable_action_changes"]
     action_status = action.get("status")
     action_source_identity = action.get("source_identity")
@@ -671,6 +704,46 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
             or not isinstance(value, int)
             or value < 0
             for value in action_counts.values()
+        )
+        or any(
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value < 0
+            for value in action_semantic_counts.values()
+        )
+        or not isinstance(semantic_examples_truncated, bool)
+        or not isinstance(semantic_example_coverage_complete, bool)
+        or action_semantic_counts["retained_semantic_examples"]
+        > action_counts["retained_records"]
+        or sum(
+            action_semantic_counts[field] for field in (
+                "semantic_direct_preference_examples",
+                "semantic_suppression_only_examples",
+                "semantic_no_signal_examples",
+                "semantic_legacy_unclassified_examples",
+            )
+        ) != action_semantic_counts["retained_semantic_examples"]
+        or action_semantic_counts["semantic_cross_action_examples"]
+        > action_semantic_counts["retained_semantic_examples"]
+        or action_semantic_counts[
+            "semantic_hold_reference_redistribution_examples"
+        ] > action_semantic_counts["retained_semantic_examples"]
+        or action_semantic_counts[
+            "semantic_direct_cross_ball_event_examples"
+        ] > min(
+            action_semantic_counts["semantic_cross_action_examples"],
+            action_counts["direct_ball_event_links"],
+        )
+        or (
+            semantic_examples_truncated
+            and action_semantic_counts["retained_semantic_examples"]
+            >= action_counts["retained_records"]
+        )
+        or semantic_example_coverage_complete is not bool(
+            action_counts["retained_records"] > 0
+            and action_semantic_counts["retained_semantic_examples"]
+            == action_counts["retained_records"]
+            and not semantic_examples_truncated
         )
         or not isinstance(action.get("manager_record_coverage_complete"), bool)
         or not isinstance(action.get("source_records_truncated"), bool)
@@ -1091,6 +1164,11 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         "action_adoption": {
             "state": adoption_state,
             **copy.deepcopy(action_counts),
+            **copy.deepcopy(action_semantic_counts),
+            "semantic_examples_truncated": semantic_examples_truncated,
+            "semantic_example_coverage_complete": (
+                semantic_example_coverage_complete
+            ),
             "manager_record_coverage_complete": action.get(
                 "manager_record_coverage_complete"
             ),
@@ -1294,6 +1372,12 @@ def build_manager_world_navigator(
             "source_match_opportunities",
         )
     }
+    semantic_sample_totals = {
+        field: sum(
+            row["action_adoption"][field] for row in all_chapters
+        )
+        for field in _OFFICIAL_ACTION_SEMANTIC_COUNT_FIELDS
+    }
     adoption_state_facts: dict[str, dict[str, Any]] = {}
     for chapter in all_chapters:
         state = chapter["action_adoption"]["state"]
@@ -1328,6 +1412,29 @@ def build_manager_world_navigator(
             for row in all_chapters
         ),
         **adoption_totals,
+        "bounded_semantic_examples": {
+            "fixtures_with_examples": sum(
+                row["action_adoption"]["retained_semantic_examples"] > 0
+                for row in all_chapters
+            ),
+            "fixtures_with_complete_coverage": sum(
+                row["action_adoption"][
+                    "semantic_example_coverage_complete"
+                ]
+                for row in all_chapters
+            ),
+            "fixtures_with_truncated_examples": sum(
+                row["action_adoption"]["semantic_examples_truncated"]
+                for row in all_chapters
+            ),
+            **semantic_sample_totals,
+            "full_record_distribution_authorized": False,
+            "claim_boundary": (
+                "retained bounded official-action examples only; counts are "
+                "not a full-record action or signal distribution when any "
+                "fixture is truncated or lacks semantic examples"
+            ),
+        },
         "influence_rate": (
             round(
                 adoption_totals["influenced_decisions"]

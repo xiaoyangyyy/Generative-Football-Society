@@ -30,6 +30,7 @@
     "manager_product_exposes_one_replayable_world_evolution_thread": true,
     "manager_season_has_one_current_and_historical_world_navigator": true,
     "official_action_explanation_unifies_cross_signal_and_reference": true,
+    "official_action_semantics_are_bounded_not_full_distribution": true,
     "official_manager_matches_surface_world_model_action_execution": true,
     "product_does_not_import_training_implementation": true,
     "research_checkpoint_identity_chain_verified": true,

@@ -18,6 +18,60 @@ def _identity(payload: Mapping[str, Any]) -> str:
     ).encode("utf-8")).hexdigest()
 
 
+def _official_action_semantic_examples(
+    action: Mapping[str, Any], *, retained_records: int,
+) -> dict[str, Any]:
+    """Summarize only the bounded official examples, never all records."""
+    raw_examples = action.get("examples")
+    examples = (
+        [row for row in raw_examples if isinstance(row, Mapping)]
+        if isinstance(raw_examples, list) else []
+    )
+    modes = [
+        str((row.get("policy_signal") or {}).get("mode") or "legacy_unclassified")
+        if isinstance(row.get("policy_signal"), Mapping)
+        else "legacy_unclassified"
+        for row in examples
+    ]
+    truncated = action.get("examples_truncated") is True
+    retained = len(examples)
+    return {
+        "retained_semantic_examples": retained,
+        "semantic_examples_truncated": truncated,
+        "semantic_example_coverage_complete": bool(
+            retained_records > 0
+            and retained == retained_records
+            and not truncated
+        ),
+        "semantic_cross_action_examples": sum(
+            row.get("actual_action") == "cross" for row in examples
+        ),
+        "semantic_direct_preference_examples": modes.count(
+            "direct_preference"
+        ),
+        "semantic_suppression_only_examples": modes.count(
+            "suppression_only"
+        ),
+        "semantic_no_signal_examples": modes.count("none"),
+        "semantic_legacy_unclassified_examples": modes.count(
+            "legacy_unclassified"
+        ),
+        "semantic_hold_reference_redistribution_examples": sum(
+            isinstance(row.get("reference_action_effect"), Mapping)
+            and row["reference_action_effect"].get(
+                "received_redistributed_probability"
+            ) is True
+            for row in examples
+        ),
+        "semantic_direct_cross_ball_event_examples": sum(
+            row.get("actual_action") == "cross"
+            and isinstance(row.get("runtime_link"), Mapping)
+            and row["runtime_link"].get("direct_ball_event_identity") is True
+            for row in examples
+        ),
+    }
+
+
 def _stage(stage_id: str, status: str, **facts: Any) -> dict[str, Any]:
     payload = {
         "stage_id": stage_id,
@@ -168,13 +222,18 @@ def build_manager_world_evolution_thread(
     action_counts = (
         action_counts if isinstance(action_counts, Mapping) else {}
     )
+    retained_records = int(action_counts.get("records") or 0)
+    action_semantics = _official_action_semantic_examples(
+        action, retained_records=retained_records,
+    )
     action_stage = _stage(
         "official_world_model_actions",
         action_status,
         source_identity=action.get("evidence_identity"),
         match_id=action.get("match_id"),
         team=action.get("team"),
-        retained_records=int(action_counts.get("records") or 0),
+        retained_records=retained_records,
+        **action_semantics,
         resolved_action_decisions=int(
             action_counts.get("resolved_action_decisions") or 0
         ),
