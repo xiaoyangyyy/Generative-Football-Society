@@ -218,6 +218,9 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
     assert propagation["summary"]["valid_changed_decisions"] == 3
     assert propagation["summary"]["directly_observed_changes"] == 2
     assert propagation["summary"]["locally_attributable_changes"] == 2
+    assert comparison["paired_replay"]["summary"]["crosses"] == {
+        "baseline": 0, "treatment": 1, "delta": 1,
+    }
     future = comparison["counterfactual_future_summary"]
     assert future["status"] == (
         "local_action_divergence_with_descriptive_future_difference"

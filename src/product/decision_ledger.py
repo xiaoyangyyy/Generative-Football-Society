@@ -35,6 +35,50 @@ def _identity(payload: Mapping[str, Any]) -> str:
     ).encode("utf-8")).hexdigest()
 
 
+def _mechanism_semantic_counts(
+    examples: Sequence[Mapping[str, Any]],
+) -> dict[str, int]:
+    """Retain V2 action semantics while accepting sealed V1 examples."""
+    windows: list[Mapping[str, Any]] = []
+    for example in examples:
+        raw_windows = example.get("downstream_windows") or []
+        if isinstance(raw_windows, Mapping):
+            candidates = raw_windows.values()
+        elif isinstance(raw_windows, Sequence) and not isinstance(
+            raw_windows, (str, bytes)
+        ):
+            candidates = raw_windows
+        else:
+            candidates = []
+        windows.extend(
+            window for window in candidates if isinstance(window, Mapping)
+        )
+    return {
+        "cross_action_mechanism_examples": sum(
+            example.get("treatment_action") == "cross" for example in examples
+        ),
+        "direct_preference_mechanism_examples": sum(
+            example.get("signal_mode") == "direct_preference"
+            for example in examples
+        ),
+        "suppression_only_mechanism_examples": sum(
+            example.get("signal_mode") == "suppression_only"
+            for example in examples
+        ),
+        "hold_reference_redistribution_examples": sum(
+            example.get("hold_reference_redistributed") is True
+            for example in examples
+        ),
+        "nonzero_cross_descriptive_windows": sum(
+            isinstance(window.get("delta"), Mapping)
+            and isinstance(window["delta"].get("crosses"), (int, float))
+            and not isinstance(window["delta"].get("crosses"), bool)
+            and window["delta"]["crosses"] != 0
+            for window in windows
+        ),
+    }
+
+
 def _journal(fixtures: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     rows = []
     for fixture in fixtures:
@@ -381,6 +425,7 @@ def _future_review_execution_trace(
             ),
             "linked_to_final_selection": terminal_linked,
             "retained_mechanism_examples": len(mechanism_examples),
+            **_mechanism_semantic_counts(mechanism_examples),
             "evidence_level": (
                 "scenario_evidence"
                 if scenario_evidence_available else "aggregate_only"
@@ -609,6 +654,7 @@ def world_model_future_review_summary(
             for review in reviews
         ),
         "retained_mechanism_examples": len(mechanism_examples),
+        **_mechanism_semantic_counts(mechanism_examples),
         "locally_attributable_mechanism_examples": sum(
             example.get("local_policy_attribution_eligible") is True
             for example in mechanism_examples

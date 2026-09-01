@@ -8,6 +8,7 @@ import pytest
 from src.product.decision_ledger import (
     build_manager_decision_ledger,
     validate_manager_decision_ledger,
+    world_model_future_review_summary,
 )
 from src.product.manager_future import (
     build_manager_future_context,
@@ -70,6 +71,33 @@ def _mechanism_example(index, *, local):
         "downstream_causal_attribution_authorized": False,
     }
     return {**payload, "example_identity": _identity(payload)}
+
+
+def test_future_review_summary_retains_v2_action_semantics():
+    example = {
+        "schema_version": 2,
+        "treatment_action": "cross",
+        "signal_mode": "direct_preference",
+        "hold_reference_redistributed": True,
+        "local_policy_attribution_eligible": True,
+        "downstream_windows": [{
+            "delta": {"crosses": 1},
+        }, {
+            "delta": {"crosses": 0},
+        }],
+    }
+    entries = [{"world_model_future_reviews": [{
+        "intent": "keep_after_review",
+        "scenario_evidence": [{"mechanism_examples": [example]}],
+    }]}]
+
+    summary = world_model_future_review_summary(entries)
+
+    assert summary["cross_action_mechanism_examples"] == 1
+    assert summary["direct_preference_mechanism_examples"] == 1
+    assert summary["suppression_only_mechanism_examples"] == 0
+    assert summary["hold_reference_redistribution_examples"] == 1
+    assert summary["nonzero_cross_descriptive_windows"] == 1
 
 
 def _season_with_decision():

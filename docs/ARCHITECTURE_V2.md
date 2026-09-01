@@ -2654,3 +2654,28 @@ This closes a product continuity gap; it does not claim that a cross caused a
 shot, goal or result. Downstream windows remain shared-clock descriptions only.
 No training, match, future generation, formal experiment or provider call is
 executed in this stage.
+
+## 87. V3.69 Aggregate action-semantic continuity
+
+V3.68 preserved cross and policy-signal semantics inside individual paired
+decisions and future mechanism examples, but two aggregate boundaries still
+discarded them. The synchronized paired-world overview omitted cross from its
+event totals, and the season decision ledger reduced retained mechanisms to a
+generic example count. A product user could therefore inspect one detailed
+record and see a cross or suppressive signal, then lose that distinction in
+the comparison overview, season summary and world-evolution thread.
+
+The paired replay now counts cross independently and its descriptive-window
+table renders the same five metrics carried by the underlying schema. The
+future-review execution trace and season ledger aggregate V2 semantics into
+explicit counts for cross actions, direct-preference signals,
+suppression-only signals, hold-reference redistribution and non-zero cross
+windows. The manager world thread carries those counts forward, and Studio
+shows them in both the season ledger and the prematch review stage. Version-1
+mechanism examples remain valid and contribute zero to fields they never
+recorded; they are not retroactively reclassified.
+
+These are continuity and observability guarantees, not new model authority.
+Cross windows remain descriptive, hold remains reference-only, and no
+downstream or outcome causal claim is added. No training, match, future
+generation, formal experiment or provider call is executed in this stage.

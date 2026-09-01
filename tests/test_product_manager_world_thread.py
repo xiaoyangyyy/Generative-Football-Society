@@ -100,6 +100,11 @@ def _entry(*, action_available=True, stable=False, review_linked=True):
                 ),
                 "linked_to_final_selection": review_linked,
                 "retained_mechanism_examples": 2,
+                "cross_action_mechanism_examples": 1,
+                "direct_preference_mechanism_examples": 1,
+                "suppression_only_mechanism_examples": 1,
+                "hold_reference_redistribution_examples": 1,
+                "nonzero_cross_descriptive_windows": 2,
                 "intent": "keep_after_review",
                 "evidence_level": "scenario_evidence",
                 "fixed_scenario_budget": 3,
@@ -186,6 +191,13 @@ def test_world_evolution_thread_connects_six_stages_without_inventing_causality(
         "locally_attributable_action_changes"
     ] == 2
     assert thread["stages"][0]["review_intent"] == "keep_after_review"
+    assert thread["stages"][0]["cross_action_mechanism_examples"] == 1
+    assert thread["stages"][0]["direct_preference_mechanism_examples"] == 1
+    assert thread["stages"][0]["suppression_only_mechanism_examples"] == 1
+    assert thread["stages"][0][
+        "hold_reference_redistribution_examples"
+    ] == 1
+    assert thread["stages"][0]["nonzero_cross_descriptive_windows"] == 2
     assert thread["stages"][0]["fixed_scenario_budget"] == 3
     assert thread["stages"][0]["action_divergence_scenarios"] == 2
     assert thread["stages"][0]["local_attribution_scenarios"] == 2

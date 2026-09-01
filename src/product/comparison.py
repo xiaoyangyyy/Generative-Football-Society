@@ -216,6 +216,7 @@ def _event_counts(events: list[dict[str, Any]]) -> dict[str, int]:
     return {
         "actions": len(events),
         "passes": sum(event["type"] == "pass" for event in events),
+        "crosses": sum(event["type"] == "cross" for event in events),
         "shots": sum(event["type"] == "shot" for event in events),
         "goals": sum(event["outcome"] == "GOAL" for event in events),
         "wm_changed": sum(bool(event["wm_changed"]) for event in events),
@@ -1272,7 +1273,9 @@ def _policy_propagation_panel(comparison: Mapping[str, Any]) -> str:
                 if not isinstance(delta, Mapping):
                     continue
                 values = []
-                for metric in ("passes", "shots", "goals", "turnovers"):
+                for metric in (
+                    "passes", "crosses", "shots", "goals", "turnovers",
+                ):
                     number = _finite(delta.get(metric))
                     values.append(
                         "—" if number is None else f"{int(number):+d}"
@@ -1283,14 +1286,25 @@ def _policy_propagation_panel(comparison: Mapping[str, Any]) -> str:
                     + "".join(f"<td>{value}</td>" for value in values)
                     + f'<td>{max(0, int(extra or 0))}</td></tr>'
                 )
-        window_table = (
-            '<div class="scroll"><table><thead><tr><th>共享时钟窗口</th>'
-            '<th>传球 Δ</th><th>射门 Δ</th><th>进球 Δ</th>'
-            '<th>丢失球权 Δ</th><th>其他策略改变</th></tr></thead><tbody>'
-            + "".join(window_rows) + "</tbody></table></div>"
-            if window_rows else
-            '<p class="muted">双方回放不足，无法构建后续共享时钟窗口。</p>'
-        )
+        if window_rows:
+            metric_headers = "".join(
+                f"<th>{label}</th>" for label in (
+                    "Passes Δ", "Crosses Δ", "Shots Δ", "Goals Δ",
+                    "Turnovers Δ",
+                )
+            )
+            window_table = (
+                '<div class="scroll"><table><thead><tr>'
+                '<th>Shared-clock window</th>'
+                + metric_headers
+                + '<th>Other policy changes</th></tr></thead><tbody>'
+                + "".join(window_rows)
+                + "</tbody></table></div>"
+            )
+        else:
+            window_table = (
+                '<p class="muted">双方回放不足，无法构建后续共享时钟窗口。</p>'
+            )
         decision_cards.append(
             '<details class="prop-decision"><summary>'
             f'<span>{html.escape(clock)} · {html.escape(team)}</span>'

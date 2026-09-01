@@ -3,6 +3,7 @@
   "architecture": "gfs-layered-product-v2.1",
   "checks": {
     "action_adoption_smoke_is_four_arm_and_zero_training": true,
+    "aggregate_views_preserve_cross_and_v2_action_semantics": true,
     "all_training_entrypoints_are_classified": true,
     "counterfactual_propagation_preserves_cross_and_v2_signal_semantics": true,
     "cross_action_authority_is_distinct_replayable_and_fail_closed": true,

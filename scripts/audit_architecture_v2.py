@@ -726,6 +726,34 @@ def main() -> int:
                 "example.hold_reference_redistributed",
             ))
         ),
+        "aggregate_views_preserve_cross_and_v2_action_semantics": (
+            all(token in product_comparison for token in (
+                '"crosses": sum(event["type"] == "cross"',
+                '"passes", "crosses", "shots", "goals", "turnovers"',
+                '"Crosses Δ"',
+            ))
+            and all(token in decision_ledger for token in (
+                "def _mechanism_semantic_counts(",
+                '"cross_action_mechanism_examples"',
+                '"direct_preference_mechanism_examples"',
+                '"suppression_only_mechanism_examples"',
+                '"hold_reference_redistribution_examples"',
+                '"nonzero_cross_descriptive_windows"',
+            ))
+            and all(token in manager_world_thread for token in (
+                'terminal_review.get("cross_action_mechanism_examples")',
+                'terminal_review.get("direct_preference_mechanism_examples")',
+                'terminal_review.get("suppression_only_mechanism_examples")',
+                'terminal_review.get("hold_reference_redistribution_examples")',
+                'terminal_review.get("nonzero_cross_descriptive_windows")',
+            ))
+            and all(token in web for token in (
+                "renderManagerDecisionLedgerWithoutMechanismSemantics",
+                "appendManagerWorldEvolutionThreadWithoutMechanismSemantics",
+                "evidence.cross_action_mechanism_examples",
+                "stage.nonzero_cross_descriptive_windows",
+            ))
+        ),
         "manager_future_review_closes_to_runtime_selection_without_outcome_claim": (
             all(token in decision_ledger for token in (
                 "def _future_review_execution_trace(",

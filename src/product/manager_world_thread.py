@@ -73,6 +73,21 @@ def build_manager_world_evolution_thread(
         retained_mechanism_examples=int(
             terminal_review.get("retained_mechanism_examples") or 0
         ),
+        cross_action_mechanism_examples=int(
+            terminal_review.get("cross_action_mechanism_examples") or 0
+        ),
+        direct_preference_mechanism_examples=int(
+            terminal_review.get("direct_preference_mechanism_examples") or 0
+        ),
+        suppression_only_mechanism_examples=int(
+            terminal_review.get("suppression_only_mechanism_examples") or 0
+        ),
+        hold_reference_redistribution_examples=int(
+            terminal_review.get("hold_reference_redistribution_examples") or 0
+        ),
+        nonzero_cross_descriptive_windows=int(
+            terminal_review.get("nonzero_cross_descriptive_windows") or 0
+        ),
         review_intent=terminal_review.get("intent"),
         evidence_level=terminal_review.get("evidence_level"),
         fixed_scenario_budget=int(

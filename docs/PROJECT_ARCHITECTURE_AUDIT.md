@@ -64,6 +64,9 @@ not quality signals by themselves.
 21. Extended cross and V2 policy semantics through paired-world propagation and
     versioned future mechanism examples, while preserving V1 replay
     compatibility and the non-causal downstream-window boundary.
+22. Preserved those action semantics through synchronized comparison totals,
+    future-review execution traces, season-level decision summaries, manager
+    world threads and Studio, without reclassifying legacy V1 evidence.
 
 ## LLM Scope Decision
 
