@@ -127,6 +127,9 @@ def main() -> int:
     manager_intervention_workspace = (
         ROOT / "src/product/manager_intervention_workspace.py"
     ).read_text(encoding="utf-8")
+    manager_world_navigator = (
+        ROOT / "src/product/manager_world_navigator.py"
+    ).read_text(encoding="utf-8")
     match_micro_runner = (
         ROOT / "src/match_engine/match_micro_runner.py"
     ).read_text(encoding="utf-8")
@@ -701,6 +704,29 @@ def main() -> int:
                 "经理反事实干预五步流程",
                 "从已验证进度恢复未来生成",
                 "不排名时点、不预测比分",
+            ))
+            and "innerHTML" not in web
+        ),
+        "manager_season_has_one_current_and_historical_world_navigator": (
+            all(token in manager_world_navigator for token in (
+                "def build_manager_world_navigator(",
+                "def validate_manager_world_navigator(",
+                '"current_chapter"',
+                '"history_chapters"',
+                '"primary_action"',
+                '"secondary_actions"',
+                '"outcome_effect_estimate": None',
+                '"causal_effect_authorized": False',
+                "manager world navigator replay mismatch",
+            ))
+            and all(token in web for token in (
+                "build_manager_world_navigator(season)",
+                "validate_manager_world_navigator(",
+                '"manager_world_navigator"',
+                'id="manager-world-navigator"',
+                "function renderManagerWorldNavigator(",
+                "已完成的足球世界章节",
+                "章节完整不代表赛果改善",
             ))
             and "innerHTML" not in web
         ),

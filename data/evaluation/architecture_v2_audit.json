@@ -23,6 +23,7 @@
     "manager_future_review_is_identity_bound_and_non_causal": true,
     "manager_future_scenarios_are_replayable_and_product_visible": true,
     "manager_product_exposes_one_replayable_world_evolution_thread": true,
+    "manager_season_has_one_current_and_historical_world_navigator": true,
     "official_manager_matches_surface_world_model_action_execution": true,
     "product_does_not_import_training_implementation": true,
     "research_checkpoint_identity_chain_verified": true,

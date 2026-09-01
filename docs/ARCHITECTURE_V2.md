@@ -1922,3 +1922,49 @@ This is a workflow-cohesion and product-comprehension improvement. It does not
 rank intervention times, select a tactic, execute a match, predict a score,
 estimate an outcome effect, authorize real-football causality, run training or
 call an external provider.
+
+## 69. V3.51 Season-level manager world navigator
+
+The canonical intervention workspace unified the prematch workflow, while the
+world-evolution thread unified each completed fixture. They still appeared in
+different parts of the manager surface. The product could explain one current
+intervention and one historical match, but it had no canonical answer to three
+basic navigation questions: where the manager is now, what the next action is,
+and which completed simulator worlds can be reopened.
+
+Studio now derives one season-level manager world navigator after both source
+objects have passed their own replay validation. Its current chapter references
+the exact intervention-workspace identity, current fixture, frozen decision,
+five workflow stages, bounded evidence summary and continuity gaps. Exactly one
+primary action is selected from the workflow state: freeze, generate, wait,
+resume, retry, review or advance the official world. Optional exploration and
+official advancement remain explicit secondary actions rather than being
+silently selected.
+
+Every executed manager-ledger entry becomes an immutable historical world
+chapter. A chapter binds the ledger-entry identity, complete world-thread
+identity, all six stage identities, descriptive score, simulator-local action
+change count, persistent state-transition identity and declared continuity
+gaps. Pending execution is represented only by the current chapter and is not
+duplicated in history. History is recent-first and bounded to 64 visible
+chapters while preserving the authoritative completed count and an explicit
+truncation flag.
+
+The navigator verifies the content hashes of its intervention workspace,
+ledger entries, world threads and individual stages before projection. Its own
+identity is then replayed from those sources; rehashing an edited navigation
+result cannot authorize it. The season view and matchday command center expose
+the same navigator identity.
+
+The Web command center now begins with this single navigation entry. It shows
+the current location, ordered active stages, one actionable next-step control
+and recent completed worlds. The control scrolls and focuses the existing
+authoritative form, future-set action, review action, recovery action or
+matchday button; it creates no new mutation route. Detailed prematch evidence
+and postmatch ledgers remain progressive-disclosure layers underneath.
+
+This change joins the product experience across time without joining causal
+claims. A complete chapter means its declared simulator evidence is connected;
+it does not mean that the world model improved the score, that one intervention
+is best, or that the result transfers to real football. No training, match,
+formal experiment, human study or provider call is executed.

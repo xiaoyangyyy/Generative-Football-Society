@@ -2368,6 +2368,30 @@ def test_workspace_season_completes_matchday_with_stable_continuity_ids(
         ]
         is False
     )
+    from src.product.manager_intervention_workspace import (
+        build_manager_intervention_workspace,
+    )
+    from src.product.manager_world_navigator import (
+        build_manager_world_navigator,
+        validate_manager_world_navigator,
+    )
+
+    status["manager_future_sets"] = []
+    status["manager_intervention_workspace"] = (
+        build_manager_intervention_workspace(status, [])
+    )
+    navigator = build_manager_world_navigator(status)
+    assert navigator["primary_action"]["action_id"] == (
+        "freeze_manager_decision"
+    )
+    assert len(navigator["history_chapters"]) == 1
+    assert navigator["history_chapters"][0]["fixture_id"] == (
+        closed["fixture_id"]
+    )
+    assert navigator["history_chapters"][0][
+        "persistent_transition_identity"
+    ] == world_state["transition_identity"]
+    validate_manager_world_navigator(navigator, season=status)
     assert len(closed["decision_identity"]) == 64
     assert len(closed["entry_identity"]) == 64
     assert (

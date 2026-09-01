@@ -1,0 +1,338 @@
+"""Season-level navigation across current intervention and completed worlds."""
+
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+from typing import Any, Mapping
+
+
+SCHEMA_VERSION = 1
+MAX_HISTORY_CHAPTERS = 64
+_WORKFLOW_STATES = {
+    "decision_required",
+    "ready_to_explore",
+    "future_generation_in_progress",
+    "future_generation_interrupted",
+    "future_generation_failed",
+    "evidence_ready_for_review",
+    "review_recorded_decision_refrozen",
+    "season_complete",
+}
+_LIFECYCLE_STATES = {
+    "frozen_awaiting_execution",
+    "executed_with_direct_evidence",
+    "executed_evidence_unavailable",
+}
+_BOUNDARY = (
+    "navigation over the current manager intervention session and replayable "
+    "completed simulator-world chapters only; navigation state is not an "
+    "outcome-effect estimate, intervention ranking or causal conclusion"
+)
+
+
+def _identity(payload: Mapping[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")).hexdigest()
+
+
+def _is_identity(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    )
+
+
+def _identity_matches(payload: Mapping[str, Any], field: str) -> bool:
+    return (
+        _is_identity(payload.get(field))
+        and payload[field] == _identity({
+            key: value for key, value in payload.items() if key != field
+        })
+    )
+
+
+def _primary_action(workflow_state: str) -> dict[str, Any] | None:
+    actions = {
+        "decision_required": (
+            "freeze_manager_decision", "冻结本场经理决策",
+            "manager-decision-form",
+        ),
+        "ready_to_explore": (
+            "request_bounded_futures", "生成身份绑定的有界未来",
+            "request-manager-future-set",
+        ),
+        "future_generation_in_progress": (
+            "wait_for_bounded_futures", "等待固定场景预算完成", None,
+        ),
+        "future_generation_interrupted": (
+            "resume_bounded_futures", "从已验证进度恢复未来生成",
+            "manager-future-set-list",
+        ),
+        "future_generation_failed": (
+            "retry_bounded_futures", "检查失败后重新生成有界未来",
+            "request-manager-future-set",
+        ),
+        "evidence_ready_for_review": (
+            "review_future_evidence", "复核未来证据并保留或修改方案",
+            "manager-future-set-list",
+        ),
+        "review_recorded_decision_refrozen": (
+            "advance_official_world", "推进正式比赛世界",
+            "play-matchday",
+        ),
+    }
+    selected = actions.get(workflow_state)
+    if selected is None:
+        return None
+    action_id, label, target = selected
+    return {
+        "action_id": action_id,
+        "label": label,
+        "target_element_id": target,
+    }
+
+
+def _secondary_actions(
+    workflow_state: str,
+    allowed: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    primary = _primary_action(workflow_state)
+    primary_id = primary.get("action_id") if primary else None
+    candidates = []
+    if allowed.get("request_future_set") is True:
+        candidates.append({
+            "action_id": "request_bounded_futures",
+            "label": "再生成一组有界未来",
+            "target_element_id": "request-manager-future-set",
+        })
+    if allowed.get("review_future_set") is True:
+        candidates.append({
+            "action_id": "review_future_evidence",
+            "label": "复核当前未来证据",
+            "target_element_id": "manager-future-set-list",
+        })
+    if allowed.get("advance_official_match") is True:
+        candidates.append({
+            "action_id": "advance_official_world",
+            "label": "跳过可选探索并推进正式比赛",
+            "target_element_id": "play-matchday",
+        })
+    return [
+        row for row in candidates if row["action_id"] != primary_id
+    ]
+
+
+def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
+    thread = entry.get("world_evolution_thread")
+    if not isinstance(thread, Mapping):
+        raise ValueError("manager world navigator chapter thread is unavailable")
+    if (
+        not _identity_matches(entry, "entry_identity")
+        or not _identity_matches(thread, "thread_identity")
+        or entry.get("fixture_id") != thread.get("fixture_id")
+        or thread.get("causal_effect_authorized") is not False
+        or thread.get("outcome_effect_estimate") is not None
+    ):
+        raise ValueError("manager world navigator chapter identity is invalid")
+    stages = thread.get("stages")
+    if not isinstance(stages, list):
+        raise ValueError("manager world navigator chapter stages are invalid")
+    stage_by_id = {
+        row.get("stage_id"): row
+        for row in stages if isinstance(row, Mapping)
+    }
+    required = {
+        "prematch_future_review",
+        "frozen_manager_decision",
+        "official_tactical_runtime",
+        "official_world_model_actions",
+        "observed_match_result",
+        "persistent_world_state",
+    }
+    if set(stage_by_id) != required or any(
+        not _identity_matches(row, "stage_identity")
+        for row in stage_by_id.values()
+    ):
+        raise ValueError("manager world navigator chapter stages are incomplete")
+    observed = entry.get("observed_result")
+    observed = observed if isinstance(observed, Mapping) else {}
+    action = stage_by_id["official_world_model_actions"]
+    persistent = stage_by_id["persistent_world_state"]
+    local_changes = action.get("locally_attributable_action_changes", 0)
+    transition_identity = persistent.get("source_identity")
+    gaps = thread.get("continuity_gaps")
+    if (
+        isinstance(local_changes, bool)
+        or not isinstance(local_changes, int)
+        or local_changes < 0
+        or (
+            transition_identity is not None
+            and not _is_identity(transition_identity)
+        )
+        or not isinstance(gaps, list)
+        or any(not isinstance(gap, str) or not gap for gap in gaps)
+    ):
+        raise ValueError("manager world navigator chapter facts are invalid")
+    payload = {
+        "fixture_id": entry.get("fixture_id"),
+        "matchday": entry.get("matchday"),
+        "lifecycle_state": entry.get("lifecycle_state"),
+        "source_entry_identity": entry.get("entry_identity"),
+        "source_thread_identity": thread.get("thread_identity"),
+        "thread_state": thread.get("thread_state"),
+        "official_runtime_chain_complete": (
+            thread.get("official_runtime_chain_complete") is True
+        ),
+        "world_model_runtime_chain_complete": (
+            thread.get("world_model_runtime_chain_complete") is True
+        ),
+        "stage_statuses": {
+            stage_id: stage_by_id[stage_id].get("status")
+            for stage_id in (
+                "prematch_future_review",
+                "frozen_manager_decision",
+                "official_tactical_runtime",
+                "official_world_model_actions",
+                "observed_match_result",
+                "persistent_world_state",
+            )
+        },
+        "score": copy.deepcopy(observed.get("score")),
+        "outcome": observed.get("outcome"),
+        "locally_attributable_action_changes": local_changes,
+        "persistent_transition_identity": transition_identity,
+        "continuity_gaps": copy.deepcopy(gaps),
+        "causal_effect_authorized": False,
+    }
+    payload["chapter_identity"] = _identity(payload)
+    return payload
+
+
+def build_manager_world_navigator(
+    season: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Join the current manager session and completed ledger chapters."""
+    season_id = str(season.get("season_id") or "")
+    revision = season.get("revision")
+    workspace = season.get("manager_intervention_workspace")
+    ledger = season.get("manager_decision_ledger")
+    if (
+        not season_id
+        or isinstance(revision, bool)
+        or not isinstance(revision, int)
+        or revision < 0
+        or not isinstance(workspace, Mapping)
+        or not _identity_matches(workspace, "workspace_identity")
+        or workspace.get("season_id") != season_id
+        or workspace.get("season_revision") != revision
+        or not isinstance(ledger, Mapping)
+        or not isinstance(ledger.get("entries"), list)
+    ):
+        raise ValueError("manager world navigator sources are invalid")
+
+    if any(
+        not isinstance(row, Mapping)
+        or row.get("lifecycle_state") not in _LIFECYCLE_STATES
+        for row in ledger["entries"]
+    ):
+        raise ValueError("manager world navigator ledger entries are invalid")
+    completed_entries = [
+        row for row in ledger["entries"]
+        if row.get("lifecycle_state") != "frozen_awaiting_execution"
+    ]
+    selected_entries = list(reversed(
+        completed_entries[-MAX_HISTORY_CHAPTERS:]
+    ))
+    chapters = [_history_chapter(row) for row in selected_entries]
+    workflow_state = str(workspace.get("workflow_state") or "")
+    if workflow_state not in _WORKFLOW_STATES:
+        raise ValueError("manager world navigator workflow state is invalid")
+    allowed = workspace.get("allowed_actions")
+    allowed = allowed if isinstance(allowed, Mapping) else {}
+    current = {
+        "workflow_state": workflow_state,
+        "workspace_identity": workspace.get("workspace_identity"),
+        "fixture": copy.deepcopy(workspace.get("fixture")),
+        "frozen_decision_identity": (
+            (workspace.get("frozen_intervention") or {}).get(
+                "decision_identity"
+            )
+            if isinstance(
+                workspace.get("frozen_intervention"), Mapping,
+            ) else None
+        ),
+        "stages": copy.deepcopy(workspace.get("stages") or []),
+        "evidence_summary": copy.deepcopy(
+            workspace.get("evidence_summary")
+        ),
+        "continuity_gaps": copy.deepcopy(
+            workspace.get("continuity_gaps") or []
+        ),
+    }
+    current["current_chapter_identity"] = _identity(current)
+    primary = _primary_action(workflow_state)
+    summary = {
+        "completed_world_chapters": len(completed_entries),
+        "visible_world_chapters": len(chapters),
+        "chapters_truncated": (
+            len(completed_entries) > MAX_HISTORY_CHAPTERS
+        ),
+        "official_runtime_chapters": sum(
+            row["official_runtime_chain_complete"] for row in chapters
+        ),
+        "world_model_runtime_chapters": sum(
+            row["world_model_runtime_chain_complete"] for row in chapters
+        ),
+        "local_action_changes": sum(
+            row["locally_attributable_action_changes"] for row in chapters
+        ),
+        "chapters_with_continuity_gaps": sum(
+            bool(row["continuity_gaps"]) for row in chapters
+        ),
+    }
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "available": True,
+        "season_id": season_id,
+        "season_revision": revision,
+        "navigation_state": (
+            "season_complete"
+            if workflow_state == "season_complete" else "active_manager_world"
+        ),
+        "current_chapter": current,
+        "primary_action": primary,
+        "secondary_actions": _secondary_actions(
+            workflow_state, allowed,
+        ),
+        "history_chapters": chapters,
+        "summary": summary,
+        "outcome_effect_estimate": None,
+        "causal_effect_authorized": False,
+        "claim_boundary": _BOUNDARY,
+    }
+    payload["navigator_identity"] = _identity(payload)
+    return payload
+
+
+def validate_manager_world_navigator(
+    navigator: Mapping[str, Any],
+    *,
+    season: Mapping[str, Any],
+) -> None:
+    """Replay the navigator from the current session and decision ledger."""
+    expected = build_manager_world_navigator(season)
+    if dict(navigator) != expected:
+        raise ValueError("manager world navigator replay mismatch")
+
+
+__all__ = [
+    "MAX_HISTORY_CHAPTERS",
+    "SCHEMA_VERSION",
+    "build_manager_world_navigator",
+    "validate_manager_world_navigator",
+]

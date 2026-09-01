@@ -128,6 +128,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "/api/v1/seasons/world-model-future-review" in document
     assert "function renderManagerFutureSets(" in document
     assert "function renderManagerInterventionWorkspace(" in document
+    assert "function renderManagerWorldNavigator(" in document
+    assert "已完成的足球世界章节" in document
+    assert "章节完整不代表赛果改善" in document
     assert "经理反事实干预五步流程" in document
     assert "不排名时点、不预测比分" in document
     assert "从已验证进度恢复未来生成" in document
@@ -218,6 +221,8 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "item.dataset.status=status" in document
     assert "item.setAttribute('aria-current','step')" in document
     assert 'id="matchday-command-center"' in document
+    assert 'id="manager-world-navigator"' in document
+    assert 'id="manager-world-navigator-action"' in document
     assert 'id="matchday-journey"' in document
     assert 'id="matchday-briefing"' in document
     assert 'id="matchday-intelligence"' in document
@@ -1466,6 +1471,7 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
     projection = app._studio_status()["studio"]["season"]
     projected_set = projection["manager_future_sets"][0]
     intervention = projection["manager_intervention_workspace"]
+    navigator = projection["manager_world_navigator"]
     assert intervention["workflow_state"] == "evidence_ready_for_review"
     assert intervention["allowed_actions"]["review_future_set"] is True
     assert intervention["stages"][0]["status"] == "decision_frozen"
@@ -1480,6 +1486,18 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
             "manager_intervention_workspace"
         ]["workspace_identity"]
         == intervention["workspace_identity"]
+    )
+    assert navigator["primary_action"]["action_id"] == (
+        "review_future_evidence"
+    )
+    assert navigator["current_chapter"]["workspace_identity"] == (
+        intervention["workspace_identity"]
+    )
+    assert (
+        projection["matchday_command_center"][
+            "manager_world_navigator"
+        ]["navigator_identity"]
+        == navigator["navigator_identity"]
     )
     assert projected_set["scenario_evidence_available"] is True
     assert len(projected_set["scenario_evidence"]) == 2
@@ -1519,6 +1537,7 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
     reviewed_workspace = reviewed_projection[
         "manager_intervention_workspace"
     ]
+    reviewed_navigator = reviewed_projection["manager_world_navigator"]
     assert reviewed_workspace["workflow_state"] == (
         "review_recorded_decision_refrozen"
     )
@@ -1531,6 +1550,10 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
     assert reviewed_workspace["allowed_actions"][
         "advance_official_match"
     ] is True
+    assert reviewed_navigator["primary_action"]["action_id"] == (
+        "advance_official_world"
+    )
+    assert reviewed_navigator["history_chapters"] == []
     assert "manager_future_reviews" not in workspace._session()
     repeated = _request(
         app, "POST", "/api/v1/seasons/world-model-future-review", {
