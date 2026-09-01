@@ -5,6 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 
+from src.product.decision_ledger import (
+    build_manager_decision_ledger,
+    validate_manager_decision_ledger,
+)
 from src.product.manager_future import (
     build_manager_future_context,
     validate_manager_future_context,
@@ -607,3 +611,137 @@ def test_workspace_records_iterative_future_reviews_in_authoritative_season(
             expected_revision=kept["revision"],
         )
     assert workspace.session_path.read_bytes() == frozen
+
+
+def test_future_reviews_close_to_selection_and_runtime_without_outcome_claim():
+    season, fixture = _season_with_decision()
+    context = build_manager_future_context(season)
+    request, result = _task_evidence(context, "futurekeep")
+    kept = build_manager_future_review(
+        task_id="futurekeep",
+        request=request,
+        result=result,
+        final_decision=fixture["manager_decision"],
+        intent="keep_after_review",
+    )
+    season["revision"] += 1
+    revised_context = build_manager_future_context(season)
+    revised_request, revised_result = _task_evidence(
+        revised_context, "futurerevise",
+    )
+    revised_decision = ManagerDecision(
+        team="A", tactic="balanced",
+    ).as_dict()
+    revised = build_manager_future_review(
+        task_id="futurerevise",
+        request=revised_request,
+        result=revised_result,
+        final_decision=revised_decision,
+        intent="revise_after_review",
+    )
+    fixture["manager_decision"] = revised_decision
+    fixture["manager_future_reviews"] = [kept, revised]
+
+    pending = build_manager_decision_ledger(season)
+    entry = next(
+        row for row in pending["entries"]
+        if row["fixture_id"] == fixture["fixture_id"]
+    )
+    trace = entry["future_review_execution_trace"]
+    assert [row["relation_to_final_selection"] for row in trace[
+        "review_chain"
+    ]] == ["followed_by_later_review", "selected_for_fixture"]
+    assert trace["end_to_end_state"] == (
+        "reviewed_selection_awaiting_execution"
+    )
+    assert trace["outcome_comparison_performed"] is False
+    assert trace["outcome_effect_estimate"] is None
+    assert trace["causal_effect_authorized"] is False
+
+    completed = copy.deepcopy(season)
+    completed_fixture = next(
+        row for row in completed["fixtures"]
+        if row["fixture_id"] == fixture["fixture_id"]
+    )
+    completed_fixture["state"] = "completed"
+    completed_fixture["match_id"] = "match-review-runtime"
+    completed_fixture["score"] = {"home": 1, "away": 0}
+    completed_fixture["report"] = "reports/match-review-runtime.json"
+    debrief = {
+        "schema_version": 1,
+        "available": True,
+        "match_id": "match-review-runtime",
+        "team": "A",
+        "decision": revised_decision,
+        "observed_result": {
+            "score": {"home": 1, "away": 0},
+            "descriptive_only": True,
+        },
+        "evidence_grade": "direct_runtime_execution",
+        "causal_outcome_attribution": False,
+        "tactical_binding": {
+            "schema_version": 1,
+            "available": True,
+            "applied_tactic": "balanced",
+            "binding_identity": "a" * 64,
+            "initial_vector_identity": "b" * 64,
+            "changed_controls": [],
+            "final_delta_l1": 0.0,
+        },
+    }
+    executed = build_manager_decision_ledger(
+        completed,
+        execution_by_fixture={fixture["fixture_id"]: debrief},
+    )
+    executed_entry = next(
+        row for row in executed["entries"]
+        if row["fixture_id"] == fixture["fixture_id"]
+    )
+    executed_trace = executed_entry["future_review_execution_trace"]
+    assert executed_trace["end_to_end_state"] == (
+        "reviewed_selection_runtime_verified"
+    )
+    assert executed_trace["runtime_binding"]["status"] == "verified"
+    assert executed_trace["runtime_binding"]["applied_tactic"] == "balanced"
+    summary = executed["summary"]["world_model_future_review_execution"]
+    assert summary["reviewed_selection_runtime_verified"] == 1
+    assert summary["outcome_comparison_performed"] is False
+    assert summary["causal_effect_authorized"] is False
+
+    superseded = copy.deepcopy(season)
+    superseded_fixture = next(
+        row for row in superseded["fixtures"]
+        if row["fixture_id"] == fixture["fixture_id"]
+    )
+    superseded_fixture["manager_decision"] = ManagerDecision(
+        team="A", tactic="direct_vertical",
+    ).as_dict()
+    superseded_ledger = build_manager_decision_ledger(superseded)
+    superseded_entry = next(
+        row for row in superseded_ledger["entries"]
+        if row["fixture_id"] == fixture["fixture_id"]
+    )
+    superseded_trace = superseded_entry["future_review_execution_trace"]
+    assert superseded_trace["review_chain"][-1][
+        "relation_to_final_selection"
+    ] == "superseded_by_unreviewed_edit"
+    assert superseded_trace["end_to_end_state"] == (
+        "terminal_review_superseded_before_execution"
+    )
+
+    tampered = copy.deepcopy(executed)
+    tampered_entry = next(
+        row for row in tampered["entries"]
+        if row["fixture_id"] == fixture["fixture_id"]
+    )
+    tampered_entry["future_review_execution_trace"][
+        "end_to_end_state"
+    ] = "reviewed_selection_awaiting_execution"
+    frozen_entry = copy.deepcopy(tampered_entry)
+    frozen_entry.pop("entry_identity")
+    tampered_entry["entry_identity"] = _identity(frozen_entry)
+    frozen_ledger = copy.deepcopy(tampered)
+    frozen_ledger.pop("ledger_identity")
+    tampered["ledger_identity"] = _identity(frozen_ledger)
+    with pytest.raises(ValueError, match="trace replay mismatch"):
+        validate_manager_decision_ledger(tampered)

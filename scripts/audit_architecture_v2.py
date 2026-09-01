@@ -527,7 +527,7 @@ def main() -> int:
             ))
             and all(token in decision_ledger for token in (
                 "def world_model_future_review_summary(",
-                '"world_model_future_reviews": copy.deepcopy(',
+                '"world_model_future_reviews": future_reviews,',
                 '"causal_effect_authorized": False',
             ))
             and all(token in web for token in (
@@ -592,6 +592,25 @@ def main() -> int:
                 "v3_preserves_bounded_action_mechanism_examples",
             ))
             and "innerHTML" not in web
+        ),
+        "manager_future_review_closes_to_runtime_selection_without_outcome_claim": (
+            all(token in decision_ledger for token in (
+                "def _future_review_execution_trace(",
+                '"followed_by_later_review"',
+                '"selected_for_fixture"',
+                '"superseded_by_unreviewed_edit"',
+                '"reviewed_selection_runtime_verified"',
+                '"outcome_comparison_performed": False',
+                "def world_model_future_review_execution_summary(",
+                '"manager future review execution trace replay mismatch"',
+            ))
+            and all(token in web for token in (
+                "renderManagerDecisionLedgerWithoutFutureReviewExecution",
+                "row.future_review_execution_trace",
+                "trace.runtime_binding.applied_tactic",
+                "不把赛前模拟路径匹配到比分",
+            ))
+            and '"second_persisted_season_state": True' not in web
         ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (
             all(token in decision_advice for token in (

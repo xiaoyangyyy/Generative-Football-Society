@@ -1757,3 +1757,36 @@ ranking a branch time or claiming a downstream causal path. Direct runtime
 identity may authorize only the local sampled-action change; every later
 trajectory and outcome difference remains descriptive. No training, match,
 formal study, human study or provider call is executed by this change.
+
+## 65. V3.47 Future review to official runtime closure
+
+The manager ledger previously retained the reviewed future scenarios and the
+official postmatch tactical binding, but it did not derive one explicit chain
+between them. A user could see both pieces without knowing whether the
+terminal review still matched the final frozen decision, whether another
+review followed it, or whether an ordinary unreviewed edit superseded it.
+
+The ledger now derives a replayable execution trace from the authoritative
+fixture only. Each review is classified as followed by a later review, selected
+for the fixture, or superseded by an unreviewed edit. The terminal review's
+final normalized decision identity must equal the fixture's final decision
+identity before it can enter the execution chain. Pending fixtures remain
+explicitly awaiting execution. For completed fixtures, verification requires
+direct postmatch evidence whose tactical binding reports the same applied
+tactic as the final selection. Missing or mismatched direct evidence remains
+unavailable rather than being inferred from the score.
+
+The trace and its aggregate summary are canonical derived evidence. Ledger
+validation rebuilds both and rejects even rehashed tampering. The manager
+screen renders the review sequence, terminal-selection state and verified
+engine tactic inline with the existing decision journal. It also states the
+boundary at the point of use: the chain does not match a prematch simulated
+path to the observed score, evaluate forecast accuracy, estimate an outcome
+effect or authorize causality.
+
+This completes an instrumentation and product-understanding loop:
+world-model evidence review, explicit user decision, frozen decision identity
+and official runtime tactical adoption. It does not establish that the world
+model improved the decision or the result. The change adds code, tests,
+interface evidence and architecture guards only; it executes no training,
+match study, formal protocol, human study or external provider call.

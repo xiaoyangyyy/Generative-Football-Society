@@ -12,7 +12,9 @@ from scripts.manager_advisor_study import (
 )
 from src.product.decision_ledger import (
     _advisor_execution_trace,
+    _future_review_execution_trace,
     world_model_advisor_summary,
+    world_model_future_review_execution_summary,
     world_model_future_review_summary,
 )
 
@@ -100,6 +102,15 @@ def _ledger(
             execution=execution,
         )
         entry['world_model_future_reviews'] = []
+        entry['future_review_execution_trace'] = (
+            _future_review_execution_trace(
+                [],
+                decision_identity=decision_identity,
+                selected_tactic=tactic,
+                lifecycle_state=lifecycle,
+                execution=execution,
+            )
+        )
         entry['entry_identity'] = _identity({
             key: value for key, value in entry.items()
             if key != 'entry_identity'
@@ -131,6 +142,9 @@ def _ledger(
             "world_model_advisor": world_model_advisor_summary(entries),
             "world_model_future_reviews": world_model_future_review_summary(
                 entries,
+            ),
+            "world_model_future_review_execution": (
+                world_model_future_review_execution_summary(entries)
             ),
         },
         "claim_boundary": "test ledger",

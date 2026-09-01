@@ -217,6 +217,128 @@ def _advisor_execution_trace(
     return payload
 
 
+def _future_review_execution_trace(
+    reviews: Sequence[Mapping[str, Any]], *, decision_identity: str,
+    selected_tactic: str, lifecycle_state: str,
+    execution: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Link the terminal future review to runtime selection, never outcomes."""
+    if not reviews:
+        return {
+            "schema_version": 1, "available": False,
+            "reason": "world_model_future_review_not_available",
+        }
+    chain = []
+    for index, review in enumerate(reviews):
+        terminal = index == len(reviews) - 1
+        final_identity = str(review.get("final_decision_identity") or "")
+        linked = terminal and final_identity == decision_identity
+        chain.append({
+            "review_identity": review.get("review_identity"),
+            "task_id": review.get("task_id"),
+            "intent": review.get("intent"),
+            "final_decision_identity": final_identity,
+            "relation_to_final_selection": (
+                "selected_for_fixture" if linked else
+                "superseded_by_unreviewed_edit" if terminal else
+                "followed_by_later_review"
+            ),
+        })
+    terminal_review = reviews[-1]
+    terminal_linked = (
+        terminal_review.get("final_decision_identity") == decision_identity
+    )
+    binding = execution.get("tactical_binding")
+    binding_available = bool(
+        terminal_linked
+        and execution.get("available") is True
+        and isinstance(binding, Mapping)
+        and binding.get("available") is True
+        and binding.get("applied_tactic") == selected_tactic
+    )
+    if not terminal_linked:
+        end_to_end_state = "terminal_review_superseded_before_execution"
+    elif lifecycle_state == "frozen_awaiting_execution":
+        end_to_end_state = "reviewed_selection_awaiting_execution"
+    elif binding_available:
+        end_to_end_state = "reviewed_selection_runtime_verified"
+    else:
+        end_to_end_state = "reviewed_selection_execution_evidence_unavailable"
+    if binding_available:
+        runtime = {
+            "status": "verified",
+            "match_id": execution.get("match_id"),
+            "applied_tactic": binding.get("applied_tactic"),
+            "binding_identity": binding.get("binding_identity"),
+            "initial_vector_identity": binding.get("initial_vector_identity"),
+        }
+    else:
+        runtime = {
+            "status": (
+                "not_applicable" if not terminal_linked else
+                "awaiting_execution"
+                if lifecycle_state == "frozen_awaiting_execution" else
+                "evidence_unavailable"
+            ),
+            "reason": (
+                "terminal_review_was_superseded"
+                if not terminal_linked else
+                "fixture_not_completed"
+                if lifecycle_state == "frozen_awaiting_execution" else
+                (
+                    binding.get("reason")
+                    or (
+                        "applied_tactic_mismatch"
+                        if binding.get("available") is True
+                        and binding.get("applied_tactic") != selected_tactic
+                        else "tactical_binding_unavailable"
+                    )
+                    if isinstance(binding, Mapping) else
+                    execution.get("reason", "tactical_binding_unavailable")
+                )
+            ),
+        }
+    terminal_scenarios = terminal_review.get("scenario_evidence") or []
+    mechanism_examples = [
+        example
+        for scenario in terminal_scenarios
+        if isinstance(scenario, Mapping)
+        for example in (scenario.get("mechanism_examples") or [])
+        if isinstance(example, Mapping)
+    ]
+    payload = {
+        "schema_version": 1,
+        "available": True,
+        "review_chain": chain,
+        "terminal_review": {
+            "review_identity": terminal_review.get("review_identity"),
+            "task_id": terminal_review.get("task_id"),
+            "intent": terminal_review.get("intent"),
+            "final_decision_identity": terminal_review.get(
+                "final_decision_identity"
+            ),
+            "linked_to_final_selection": terminal_linked,
+            "retained_mechanism_examples": len(mechanism_examples),
+        },
+        "final_selection": {
+            "decision_identity": decision_identity,
+            "tactic": selected_tactic,
+        },
+        "runtime_binding": runtime,
+        "end_to_end_state": end_to_end_state,
+        "outcome_comparison_performed": False,
+        "outcome_effect_estimate": None,
+        "causal_effect_authorized": False,
+        "claim_boundary": (
+            "future-set review history, final frozen decision identity and "
+            "direct tactical runtime binding only; pre-match simulator paths "
+            "are not matched to the observed score or treated as forecasts"
+        ),
+    }
+    payload["trace_identity"] = _identity(payload)
+    return payload
+
+
 def world_model_advisor_summary(
     entries: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
@@ -414,6 +536,51 @@ def world_model_future_review_summary(
     return evidence
 
 
+def world_model_future_review_execution_summary(
+    entries: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Summarize review-to-runtime closure without outcome evaluation."""
+    traces = [
+        row.get("future_review_execution_trace")
+        for row in entries
+        if isinstance(row.get("future_review_execution_trace"), Mapping)
+        and row["future_review_execution_trace"].get("available") is True
+    ]
+    states = (
+        "terminal_review_superseded_before_execution",
+        "reviewed_selection_awaiting_execution",
+        "reviewed_selection_runtime_verified",
+        "reviewed_selection_execution_evidence_unavailable",
+    )
+    counts = {
+        state: sum(trace.get("end_to_end_state") == state for trace in traces)
+        for state in states
+    }
+    executed_linked = (
+        counts["reviewed_selection_runtime_verified"]
+        + counts["reviewed_selection_execution_evidence_unavailable"]
+    )
+    evidence = {
+        "schema_version": 1,
+        "fixtures_with_review_execution_trace": len(traces),
+        **counts,
+        "direct_runtime_binding_coverage": round(
+            counts["reviewed_selection_runtime_verified"]
+            / max(1, executed_linked),
+            6,
+        ),
+        "outcome_comparison_performed": False,
+        "outcome_effect_estimate": None,
+        "causal_effect_authorized": False,
+        "claim_boundary": (
+            "review-to-final-selection and tactical runtime binding coverage "
+            "only; no forecast accuracy, score attribution or causal effect"
+        ),
+    }
+    evidence["evidence_identity"] = _identity(evidence)
+    return evidence
+
+
 def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
     """Replay identities and all derived summaries in an exported ledger."""
     if ledger.get("schema_version") != LEDGER_SCHEMA_VERSION:
@@ -471,6 +638,22 @@ def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
                 matchday=int(entry.get("matchday") or 0),
                 manager_team=str(ledger.get("team") or ""),
             )
+        decision = entry.get("decision")
+        selected_tactic = (
+            str(decision.get("tactic") or "")
+            if isinstance(decision, Mapping) else ""
+        )
+        expected_future_trace = _future_review_execution_trace(
+            reviews,
+            decision_identity=str(entry.get("decision_identity") or ""),
+            selected_tactic=selected_tactic,
+            lifecycle_state=lifecycle_state,
+            execution=execution if isinstance(execution, Mapping) else {},
+        )
+        if entry.get("future_review_execution_trace") != expected_future_trace:
+            raise ValueError(
+                "manager future review execution trace replay mismatch"
+            )
     lifecycle_names = (
         "frozen_awaiting_execution", "executed_with_direct_evidence",
         "executed_evidence_unavailable",
@@ -494,6 +677,9 @@ def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
         ),
         "world_model_advisor": world_model_advisor_summary(entries),
         "world_model_future_reviews": world_model_future_review_summary(entries),
+        "world_model_future_review_execution": (
+            world_model_future_review_execution_summary(entries)
+        ),
     }
     if dict(summary) != expected_summary:
         raise ValueError("manager decision ledger summary replay mismatch")
@@ -644,6 +830,10 @@ def build_manager_decision_ledger(
                 "adoption": copy.deepcopy(adoption),
                 "claim_boundary": advice["claim_boundary"],
             }
+        future_reviews = copy.deepcopy(
+            fixture.get("manager_future_reviews") or []
+        )
+        decision_identity = _identity(decision.as_dict())
         payload = {
             "schema_version": LEDGER_SCHEMA_VERSION,
             "fixture_id": fixture["fixture_id"], "matchday": fixture["matchday"],
@@ -651,15 +841,20 @@ def build_manager_decision_ledger(
             "venue": "home" if home_side else "away",
             "lifecycle_state": lifecycle_state,
             "decision": copy.deepcopy(decision.as_dict()),
-            "decision_identity": _identity(decision.as_dict()),
+            "decision_identity": decision_identity,
             "opponent_preparation": copy.deepcopy(fixture.get("opponent_preparation")),
             "world_model_decision_support": decision_support,
-            "world_model_future_reviews": copy.deepcopy(
-                fixture.get("manager_future_reviews") or []
-            ),
+            "world_model_future_reviews": future_reviews,
             "advisor_execution_trace": _advisor_execution_trace(
                 decision_support,
-                decision_identity=_identity(decision.as_dict()),
+                decision_identity=decision_identity,
+                lifecycle_state=lifecycle_state,
+                execution=execution_view,
+            ),
+            "future_review_execution_trace": _future_review_execution_trace(
+                future_reviews,
+                decision_identity=decision_identity,
+                selected_tactic=decision.tactic,
                 lifecycle_state=lifecycle_state,
                 execution=execution_view,
             ),
@@ -704,6 +899,9 @@ def build_manager_decision_ledger(
             "world_model_future_reviews": world_model_future_review_summary(
                 entries
             ),
+            "world_model_future_review_execution": (
+                world_model_future_review_execution_summary(entries)
+            ),
         },
         "claim_boundary": _BOUNDARY,
     }
@@ -716,4 +914,5 @@ __all__ = [
     "LEDGER_SCHEMA_VERSION", "build_manager_decision_ledger",
     "validate_manager_decision_ledger", "world_model_advisor_summary",
     "world_model_future_review_summary",
+    "world_model_future_review_execution_summary",
 ]
