@@ -1543,3 +1543,39 @@ requires both reports to declare authoritative_tick_v2. Single-match reports,
 the comparison dashboard and Evidence Library show the branch minute and clock
 or prefix-identity evidence. This stage executes no training, formal study or
 external provider call.
+
+## 59. V3.41 Evidence-graded counterfactual future product
+
+The world-model fork previously exposed several correct but separate artifacts:
+pair eligibility, action adoption records, synchronized replay, downstream
+windows and a flat metric table. A user still had to reconstruct the meaning of
+the experiment manually. The comparison contract now emits one versioned
+counterfactual_future_summary that binds the intervention point, baseline and
+treatment identities, complex-system metric layers and claim authority.
+
+The summary presents one intervention and two futures. Its evidence ladder is
+strictly ordered:
+
+1. shared_prefix verifies the identity-bound pre-intervention state and the
+   authoritative_tick_v2 clock;
+2. policy_to_action counts realized, directly observed and locally
+   attributable sampled-action changes;
+3. action_to_trajectory reports whether bounded replay windows exist but
+   always denies downstream causal attribution;
+4. trajectory_to_outcome classifies measured differences as descriptive,
+   absent or incomplete and never promotes them to match-outcome causality.
+
+Metrics are grouped into score, chance creation, possession/progression,
+complex-system state and world-model mechanism layers. Missing values remain
+missing rather than becoming zero. The result distinguishes an ineligible
+comparison, no realized action divergence, an unverified action divergence, a
+locally attributable action with descriptive future differences, and a locally
+attributable action without measured downstream differences.
+
+The comparison dashboard now leads with this unified view before detailed
+propagation and replay. Background tasks retain a bounded digest, and the
+Evidence Library displays the same state while hard-coding match-outcome and
+real-football causality to false. This is still a single fixture/seed simulator
+fork, not a population estimate, real-football causal result or model-promotion
+gate. This stage runs no training, formal experiment, match study or external
+provider call.

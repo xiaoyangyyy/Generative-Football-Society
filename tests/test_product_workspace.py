@@ -1029,10 +1029,25 @@ def test_workspace_world_model_fork_is_atomic_and_changes_only_plan_authority(
         "replay_windows_available": False,
         "decisions_truncated": False,
     }
+    future = comparison["counterfactual_future_summary"]
+    assert future["status"] == (
+        "action_divergence_without_local_attribution"
+    )
+    assert future["intervention_point"]["clock"] == "45:00"
+    assert future["intervention_point"]["anchor_verified"] is True
+    assert future["claim_authority"][
+        "simulator_local_action_attribution"
+    ] is False
+    assert future["claim_authority"]["match_outcome_causality"] is False
     comparison_dashboard = Path(
         treatment["comparison_dashboard_path"]
     ).read_text(encoding="utf-8")
     assert 'data-testid="policy-propagation-panel"' in comparison_dashboard
+    assert (
+        'data-testid="counterfactual-future-summary"'
+        in comparison_dashboard
+    )
+    assert "反事实未来总览" in comparison_dashboard
     assert "直接轨迹未绑定" in comparison_dashboard
     assert "不声称下游因果" in comparison_dashboard
     assert baseline["match_plan"]["world_model_policy"] == "predict_only"

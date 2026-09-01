@@ -207,6 +207,29 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
     assert propagation["summary"]["valid_changed_decisions"] == 2
     assert propagation["summary"]["directly_observed_changes"] == 1
     assert propagation["summary"]["locally_attributable_changes"] == 1
+    future = comparison["counterfactual_future_summary"]
+    assert future["status"] == (
+        "local_action_divergence_with_descriptive_future_difference"
+    )
+    assert [world["policy"] for world in future["worlds"]] == [
+        "predict_only", "action_policy",
+    ]
+    assert future["summary"]["changed_actions"] == 2
+    assert future["summary"]["locally_attributable_actions"] == 1
+    assert future["summary"]["descriptive_outcome_difference_count"] == 1
+    assert future["evidence_ladder"][0] == {
+        "stage": "shared_prefix",
+        "status": "match_start_controlled",
+        "claim_authorized": True,
+    }
+    assert future["claim_authority"] == {
+        "simulator_local_action_attribution": True,
+        "downstream_trajectory_causality": False,
+        "match_outcome_causality": False,
+        "population_effect": False,
+        "real_football_causality": False,
+        "world_model_promotion": False,
+    }
     first = propagation["decisions"][0]
     assert first["local_policy_attribution_eligible"] is True
     assert first["downstream_windows"]["30s"]["delta"] == {
@@ -225,6 +248,9 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
     assert "MATCH_WM_PLAN=0" in document and "MATCH_WM_PLAN=1" in document
     assert "world-model promotion" in document
     assert 'data-testid="policy-propagation-panel"' in document
+    assert 'data-testid="counterfactual-future-summary"' in document
+    assert "反事实未来总览" in document
+    assert "不授权下游赛果因果" in document
     assert "动作分歧与传播链" in document
     assert "hold → pass" in document
     assert "直接轨迹已绑定" in document
@@ -277,6 +303,14 @@ def test_world_model_fork_requires_identical_declared_branch_anchor():
         "eligible_for_world_model_policy_attribution"
     ]
     assert comparison["intervention"]["branch_anchor"]["verified"]
+    point = comparison["counterfactual_future_summary"]["intervention_point"]
+    assert point["requested_sec"] == 2700.0
+    assert point["actual_sec"] == 2700.0
+    assert point["clock"] == "45:00"
+    assert point["clock_contract"] == "authoritative_tick_v2"
+    assert comparison["counterfactual_future_summary"][
+        "evidence_ladder"
+    ][0]["status"] == "verified"
 
     treatment["layers"]["world_model"]["branch_anchor"][
         "state_identity"
@@ -303,6 +337,9 @@ def test_world_model_fork_requires_identical_declared_branch_anchor():
     assert "same_authoritative_product_clock" in comparison[
         "eligibility"
     ]["failed_checks"]
+    assert comparison["counterfactual_future_summary"]["status"] == (
+        "descriptive_only_ineligible"
+    )
 
 
 def test_world_model_propagation_degrades_corrupt_or_duplicate_evidence():
@@ -367,8 +404,15 @@ def test_world_model_propagation_is_bounded_and_no_change_is_explicit():
     assert comparison["policy_propagation"]["status"] == (
         "no_realized_action_changes"
     )
+    assert comparison["counterfactual_future_summary"]["status"] == (
+        "no_realized_action_divergence"
+    )
+    assert comparison["counterfactual_future_summary"]["summary"][
+        "changed_actions"
+    ] == 0
     document = render_paired_comparison_html(comparison)
     assert "没有产生可保留的实际动作改变" in document
+    assert "策略已介入，但动作未分叉" in document
 
     treatment["layers"]["world_model"]["action_adoption"]["records"] = [
         {
@@ -388,3 +432,31 @@ def test_world_model_propagation_is_bounded_and_no_change_is_explicit():
     document = render_paired_comparison_html(comparison)
     assert document.count('class="prop-decision"') == 40
     assert "仅保留最早 40 条" in document
+
+
+def test_counterfactual_future_summary_preserves_missing_metrics():
+    baseline = _report("m1")
+    treatment = _report("m2", reuse=True, baseline="m1")
+    for report, policy in (
+        (baseline, "predict_only"), (treatment, "action_policy"),
+    ):
+        report["match_plan"].update({
+            "experience": "world_model_lab",
+            "world_model_policy": policy,
+        })
+    del treatment["result"]["xg"]["home"]
+
+    future = build_paired_comparison(
+        baseline, treatment,
+    )["counterfactual_future_summary"]
+
+    chance = next(
+        layer for layer in future["layers"]
+        if layer["layer"] == "chance_creation"
+    )
+    assert chance["observed_metric_count"] == 3
+    assert chance["missing_metrics"] == ["xg_home"]
+    assert future["summary"]["missing_outcome_metric_count"] == 1
+    assert future["evidence_ladder"][-1]["status"] == (
+        "incomplete_measurement"
+    )

@@ -457,6 +457,20 @@ def test_world_model_fork_submission_and_worker_preserve_policy_identity(
                     },
                     "downstream_causal_attribution_authorized": False,
                 },
+                "counterfactual_future_summary": {
+                    "available": True,
+                    "status": (
+                        "local_action_divergence_with_"
+                        "descriptive_future_difference"
+                    ),
+                    "summary": {
+                        "descriptive_outcome_difference_count": 4,
+                    },
+                    "claim_authority": {
+                        "simulator_local_action_attribution": True,
+                        "match_outcome_causality": False,
+                    },
+                },
             }), encoding="utf-8")
             return ({
                 "match_id": "0001-brazil-vs-argentina",
@@ -504,6 +518,18 @@ def test_world_model_fork_submission_and_worker_preserve_policy_identity(
         "locally_attributable_changes": 2,
         "replay_windows_available": True,
         "downstream_causal_attribution_authorized": False,
+        "future_summary": {
+            "available": True,
+            "status": (
+                "local_action_divergence_with_"
+                "descriptive_future_difference"
+            ),
+            "changed_actions": 3,
+            "descriptive_outcome_difference_count": 4,
+            "simulator_local_action_attribution": True,
+            "match_outcome_causality": False,
+            "real_football_causality": False,
+        },
     }
     assert observed["baseline"].world_model_policy == "predict_only"
     assert observed["treatment"].world_model_policy == "action_policy"
@@ -525,6 +551,17 @@ def test_world_model_propagation_digest_bounds_corrupt_numbers(tmp_path):
             },
             "downstream_causal_attribution_authorized": True,
         },
+        "counterfactual_future_summary": {
+            "available": "true",
+            "status": {"unexpected": "mapping"},
+            "summary": {
+                "descriptive_outcome_difference_count": float("inf"),
+            },
+            "claim_authority": {
+                "simulator_local_action_attribution": "not-a-boolean",
+                "match_outcome_causality": True,
+            },
+        },
     }), encoding="utf-8")
 
     digest = _world_model_propagation_digest(comparison)
@@ -534,6 +571,16 @@ def test_world_model_propagation_digest_bounds_corrupt_numbers(tmp_path):
     assert digest["locally_attributable_changes"] == 100_000
     assert digest["replay_windows_available"] is False
     assert digest["downstream_causal_attribution_authorized"] is False
+    assert digest["future_summary"][
+        "descriptive_outcome_difference_count"
+    ] == 0
+    assert digest["future_summary"][
+        "simulator_local_action_attribution"
+    ] is False
+    assert digest["future_summary"]["status"] == "unknown_future_status"
+    assert digest["future_summary"]["available"] is False
+    assert digest["future_summary"]["match_outcome_causality"] is False
+    assert digest["future_summary"]["real_football_causality"] is False
     assert len(digest["status"]) <= 80
 
     legacy = tmp_path / "legacy.json"

@@ -97,6 +97,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
             "branch_execution": "identity_bound_deterministic_replay",
             "resume_capability": "deterministic_replay_only",
             "clock_contract": "authoritative_tick_v2",
+            "result_contract": "evidence_graded_counterfactual_future_v1",
             "fixed_controls": [
                 "fixture", "tactics", "fast_configuration", "checkpoint",
                 "clock_contract",
@@ -108,6 +109,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
                 "realized_action_change",
                 "direct_runtime_identity",
                 "descriptive_downstream_windows",
+                "unified_counterfactual_future_summary",
             ],
             "downstream_causal_attribution": False,
             "claim_boundary": "single_fixture_seed_simulator_contrast_only",
@@ -121,6 +123,8 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="adopt-manager-advice"' in document
     assert "前缀锚点" in document
     assert "确定性重放（非进程快照）" in document
+    assert "反事实未来：" in document
+    assert "不授予赛果因果" in document
     assert "/api/v1/seasons/decision-advice" in document
     assert "payload.advice_adoption=" in document
     assert "建议、经理选择和赛果分别取证" in document
@@ -1332,6 +1336,18 @@ def test_studio_evidence_library_is_safe_bounded_and_effect_free(
                 "locally_attributable_changes": 2,
                 "replay_windows_available": True,
                 "downstream_causal_attribution_authorized": False,
+                "future_summary": {
+                    "available": True,
+                    "status": (
+                        "local_action_divergence_with_"
+                        "descriptive_future_difference"
+                    ),
+                    "changed_actions": 4,
+                    "descriptive_outcome_difference_count": 6,
+                    "simulator_local_action_attribution": True,
+                    "match_outcome_causality": False,
+                    "real_football_causality": False,
+                },
             },
         },
     }
@@ -1371,12 +1387,38 @@ def test_studio_evidence_library_is_safe_bounded_and_effect_free(
         "locally_attributable_changes": 2,
         "replay_windows_available": True,
         "downstream_causal_attribution_authorized": False,
+        "future_summary": {
+            "available": True,
+            "status": (
+                "local_action_divergence_with_"
+                "descriptive_future_difference"
+            ),
+            "changed_actions": 4,
+            "descriptive_outcome_difference_count": 6,
+            "simulator_local_action_attribution": True,
+            "match_outcome_causality": False,
+            "real_football_causality": False,
+        },
     }
     serialized = json.dumps(library)
     assert "must-not-cross-library-boundary" not in serialized
     assert "secret_interim_effect" not in serialized
     assert '"seeds"' not in serialized
     assert "javascript:" not in serialized
+
+    fork_task["result"]["propagation"]["future_summary"].update({
+        "available": "true",
+        "status": "forged_causal_success",
+        "match_outcome_causality": True,
+        "real_football_causality": True,
+    })
+    tampered = _request(app, path="/api/v1/studio")["json"][
+        "evidence_library"
+    ]["forks"][0]["propagation"]["future_summary"]
+    assert tampered["status"] == "unknown_future_status"
+    assert tampered["available"] is False
+    assert tampered["match_outcome_causality"] is False
+    assert tampered["real_football_causality"] is False
 
 
 def test_archived_season_journal_links_remain_workspace_scoped(

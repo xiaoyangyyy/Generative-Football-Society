@@ -41,6 +41,34 @@ MAX_PAIRED_REPLAY_EVENTS_PER_SIDE = 240
 MAX_PAIRED_REPLAY_FRAMES = 240
 MAX_POLICY_PROPAGATION_DECISIONS = 40
 POLICY_PROPAGATION_WINDOWS_SECONDS = (30, 120)
+COUNTERFACTUAL_FUTURE_LAYERS: tuple[
+    tuple[str, tuple[str, ...]], ...
+] = (
+    ("score", ("score_home", "score_away")),
+    ("chance_creation", ("xg_home", "xg_away", "shots_home", "shots_away")),
+    (
+        "possession_and_progression",
+        (
+            "possession_home", "possession_away",
+            "passes_home", "passes_away",
+        ),
+    ),
+    (
+        "complex_system_state",
+        (
+            "crowd_field", "coach_stress_home", "coach_stress_away",
+            "tactical_drift_home", "tactical_drift_away",
+        ),
+    ),
+    (
+        "world_model_mechanism",
+        (
+            "wm_action_opportunities", "wm_influenced_opportunities",
+            "wm_counterfactual_changes", "wm_expected_changes",
+            "wm_mean_probability_shift",
+        ),
+    ),
+)
 
 
 def _nested(report: Mapping[str, Any], path: tuple[str, ...]) -> Any:
@@ -480,6 +508,190 @@ def build_world_model_policy_propagation(
     }
 
 
+def build_counterfactual_future_summary(
+    *, baseline_id: str, treatment_id: str,
+    metrics: Mapping[str, Any], propagation: Mapping[str, Any],
+    eligibility: Mapping[str, Any], intervention: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Unify one policy fork into one evidence-graded two-future view."""
+    pair_eligible = bool(
+        eligibility.get("eligible_for_world_model_policy_attribution")
+    )
+    raw_summary = propagation.get("summary") or {}
+    if not isinstance(raw_summary, Mapping):
+        raw_summary = {}
+
+    def count(key: str) -> int:
+        number = _finite(raw_summary.get(key))
+        return max(0, min(100_000, int(number or 0)))
+
+    changed = count("valid_changed_decisions")
+    direct = count("directly_observed_changes")
+    local = count("locally_attributable_changes")
+    replay_available = bool(raw_summary.get("replay_windows_available"))
+    layers = []
+    outcome_differences = 0
+    outcome_missing = 0
+    for layer_id, names in COUNTERFACTUAL_FUTURE_LAYERS:
+        observed, missing = [], []
+        for name in names:
+            values = metrics.get(name)
+            if not isinstance(values, Mapping):
+                missing.append(name)
+                continue
+            before = _finite(values.get("baseline"))
+            after = _finite(values.get("treatment"))
+            delta = _finite(values.get("delta"))
+            if before is None or after is None or delta is None:
+                missing.append(name)
+                continue
+            observed.append({
+                "metric": name, "baseline": before, "treatment": after,
+                "delta": delta,
+                "different": not math.isclose(
+                    delta, 0.0, rel_tol=0.0, abs_tol=1e-12,
+                ),
+            })
+        difference_count = sum(item["different"] for item in observed)
+        if layer_id != "world_model_mechanism":
+            outcome_differences += difference_count
+            outcome_missing += len(missing)
+        layers.append({
+            "layer": layer_id, "observed_metric_count": len(observed),
+            "difference_count": difference_count,
+            "missing_metrics": missing, "metrics": observed,
+        })
+    if not pair_eligible:
+        status = "descriptive_only_ineligible"
+    elif changed == 0:
+        status = "no_realized_action_divergence"
+    elif local == 0:
+        status = "action_divergence_without_local_attribution"
+    elif outcome_differences:
+        status = "local_action_divergence_with_descriptive_future_difference"
+    else:
+        status = "local_action_divergence_without_measured_future_difference"
+    anchor = intervention.get("branch_anchor") or {}
+    if not isinstance(anchor, Mapping):
+        anchor = {}
+    branch_sec = _finite(intervention.get("branch_at_sec"))
+    actual_sec = _finite(anchor.get("actual_sec"))
+    failed_checks = eligibility.get("failed_checks") or []
+    if not isinstance(failed_checks, (list, tuple)):
+        failed_checks = []
+    result = {
+        "schema_version": 1,
+        "available": True,
+        "status": status,
+        "comparison_mode": "single_seed_paired_simulator_fork",
+        "layers": layers,
+        "intervention_point": {
+            "requested_sec": branch_sec,
+            "actual_sec": actual_sec,
+            "anchor_verified": bool(anchor.get("verified")),
+            "clock_contract": _safe_text(
+                anchor.get("clock_contract"), 80,
+            ) or None,
+            "state_identity": (
+                _safe_text(anchor.get("state_identity"), 64) or None
+            ),
+        },
+    }
+    result["intervention_point"]["clock"] = (
+        "%d:%02d" % (int(actual_sec // 60), int(actual_sec % 60))
+        if actual_sec is not None else None
+    )
+    result["worlds"] = [
+        {
+            "id": "baseline", "label": "基线世界",
+            "match_id": baseline_id, "policy": "predict_only",
+        },
+        {
+            "id": "treatment", "label": "干预世界",
+            "match_id": treatment_id, "policy": "action_policy",
+        },
+    ]
+    prefix_verified = bool(
+        anchor.get("verified")
+        and anchor.get("clock_contract") == "authoritative_tick_v2"
+    )
+    match_start_controlled = bool(branch_sec is None and pair_eligible)
+    result["evidence_ladder"] = [
+        {
+            "stage": "shared_prefix",
+            "status": (
+                "verified" if prefix_verified else
+                "match_start_controlled" if match_start_controlled else
+                "not_verified"
+            ),
+            "claim_authorized": bool(
+                prefix_verified or match_start_controlled
+            ),
+        },
+        {
+            "stage": "policy_to_action",
+            "status": (
+                "locally_attributed" if local else
+                "observed_not_attributed" if changed else
+                "no_realized_divergence"
+            ),
+            "changed_actions": changed,
+            "directly_observed": direct,
+            "locally_attributable": local,
+            "claim_authorized": bool(pair_eligible and local),
+        },
+    ]
+    outcome_stage = (
+        "descriptive_difference" if outcome_differences else
+        "no_measured_difference" if outcome_missing == 0 else
+        "incomplete_measurement"
+    )
+    result["evidence_ladder"].extend([
+        {
+            "stage": "action_to_trajectory",
+            "status": (
+                "descriptive_windows_available"
+                if replay_available else "replay_unavailable"
+            ),
+            "claim_authorized": False,
+        },
+        {
+            "stage": "trajectory_to_outcome",
+            "status": outcome_stage,
+            "difference_count": outcome_differences,
+            "missing_metric_count": outcome_missing,
+            "claim_authorized": False,
+        },
+    ])
+    result["summary"] = {
+        "changed_actions": changed,
+        "directly_observed_actions": direct,
+        "locally_attributable_actions": local,
+        "descriptive_outcome_difference_count": outcome_differences,
+        "missing_outcome_metric_count": outcome_missing,
+    }
+    result["eligibility"] = {
+        "pair_eligible": pair_eligible,
+        "failed_checks": [
+            _safe_text(value, 100) for value in failed_checks[:30]
+        ],
+    }
+    result["claim_authority"] = {
+        "simulator_local_action_attribution": bool(pair_eligible and local),
+        "downstream_trajectory_causality": False,
+        "match_outcome_causality": False,
+        "population_effect": False,
+        "real_football_causality": False,
+        "world_model_promotion": False,
+    }
+    result["claim_boundary"] = (
+        "one identity-bound simulator fork can establish a local sampled "
+        "action change when runtime evidence is complete; later trajectory "
+        "and outcome differences remain descriptive"
+    )
+    return result
+
+
 def build_paired_comparison(
     baseline: Mapping[str, Any], treatment: Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -632,7 +844,7 @@ def build_paired_comparison(
             "decisions": [],
         }
     )
-    return {
+    comparison = {
         "schema_version": 1,
         "comparison_id": f"{treatment_id}-paired-vs-{baseline_id}",
         "fixture": {
@@ -664,6 +876,17 @@ def build_paired_comparison(
                 "required": branch_requested,
                 "verified": same_branch_anchor if branch_requested else False,
                 "state_identity": anchor_identity if same_branch_anchor else None,
+                "requested_sec": (
+                    _finite(baseline_anchor.get("requested_sec"))
+                    if branch_requested else None
+                ),
+                "actual_sec": anchor_actual_sec if same_branch_anchor else None,
+                "clock_contract": (
+                    str((baseline.get("simulation_clock") or {}).get(
+                        "contract"
+                    ) or "")
+                    if branch_requested else None
+                ),
                 "resume_capability": "deterministic_replay_only",
             },
         },
@@ -689,6 +912,24 @@ def build_paired_comparison(
             "not a population effect, significance test, or general performance claim"
         ),
     }
+    if baseline_experience == "world_model_lab":
+        comparison["counterfactual_future_summary"] = (
+            build_counterfactual_future_summary(
+                baseline_id=baseline_id,
+                treatment_id=treatment_id,
+                metrics=metrics,
+                propagation=policy_propagation,
+                eligibility=comparison["eligibility"],
+                intervention=comparison["intervention"],
+            )
+        )
+    else:
+        comparison["counterfactual_future_summary"] = {
+            "schema_version": 1,
+            "available": False,
+            "status": "not_world_model_policy_fork",
+        }
+    return comparison
 
 
 def _display_tactic(value: Any) -> str:
@@ -863,6 +1104,77 @@ def _paired_replay_panel(comparison: Mapping[str, Any]) -> str:
 <div class="pair-navigation" aria-live="polite">{''.join(navigation)}</div>
 <div class="pair-pitches"><article class="pair-side pair-side-baseline"><h3>基线场</h3>{_paired_pitch_svg(baseline_events, home=home, label='基线场动作轨迹')}</article><article class="pair-side pair-side-treatment"><h3>处理场</h3>{_paired_pitch_svg(treatment_events, home=home, label='处理场动作轨迹')}</article></div>
 </fieldset><style>{''.join(rules)}</style></section>"""
+
+
+def _counterfactual_future_panel(comparison: Mapping[str, Any]) -> str:
+    future = comparison.get("counterfactual_future_summary") or {}
+    if not isinstance(future, Mapping) or not future.get("available"):
+        return ""
+    summary = future.get("summary") or {}
+    point = future.get("intervention_point") or {}
+    authority = future.get("claim_authority") or {}
+    status_labels = {
+        "descriptive_only_ineligible": "仅描述：配对资格未通过",
+        "no_realized_action_divergence": "策略已介入，但动作未分叉",
+        "action_divergence_without_local_attribution": "动作已分叉，局部归因不足",
+        "local_action_divergence_with_descriptive_future_difference": (
+            "局部动作已归因，后续世界出现描述性差异"
+        ),
+        "local_action_divergence_without_measured_future_difference": (
+            "局部动作已归因，已测后续指标未变化"
+        ),
+    }
+    layer_labels = {
+        "score": "比分",
+        "chance_creation": "机会创造",
+        "possession_and_progression": "控球与推进",
+        "complex_system_state": "复杂系统状态",
+        "world_model_mechanism": "世界模型机制",
+    }
+    layer_cards = []
+    for raw in future.get("layers") or []:
+        if not isinstance(raw, Mapping):
+            continue
+        layer_id = _safe_text(raw.get("layer"), 80)
+        layer_cards.append(
+            '<div><span class="eyebrow">'
+            + html.escape(layer_labels.get(layer_id, layer_id))
+            + '</span><strong>'
+            + html.escape(str(max(0, int(_finite(
+                raw.get("difference_count")
+            ) or 0))))
+            + ' 项差异</strong><span>'
+            + html.escape(str(max(0, int(_finite(
+                raw.get("observed_metric_count")
+            ) or 0))))
+            + ' 项已测</span></div>'
+        )
+    status = _safe_text(future.get("status"), 100)
+    status_label = status_labels.get(status, status or "unknown")
+    clock = _safe_text(point.get("clock"), 20) or "—"
+    changed = max(0, int(_finite(summary.get("changed_actions")) or 0))
+    local = max(
+        0, int(_finite(summary.get("locally_attributable_actions")) or 0),
+    )
+    downstream = max(0, int(_finite(
+        summary.get("descriptive_outcome_difference_count")
+    ) or 0))
+    local_authorized = bool(
+        isinstance(authority, Mapping)
+        and authority.get("simulator_local_action_attribution")
+    )
+    return f"""<section class="card future-summary" data-testid="counterfactual-future-summary">
+<div class="pair-panel-head"><div><span class="eyebrow">One intervention · two futures · graded evidence</span><h2>反事实未来总览</h2></div><span class="pair-badge {'changed' if local_authorized else ''}">{html.escape(status_label)}</span></div>
+<p>在 <strong>{html.escape(clock)}</strong> 从同一已验证前缀分叉：基线世界保持 <code>predict_only</code>，干预世界启用 <code>action_policy</code>。</p>
+<div class="prop-stages">
+<div class="prop-stage"><span>共同过去</span><strong>{'已验证' if point.get('anchor_verified') else '未验证'}</strong><small>{html.escape(str(point.get('clock_contract') or 'clock unknown'))}</small></div>
+<div class="prop-stage"><span>动作分叉</span><strong>{changed} 次</strong><small>{local} 次局部归因</small></div>
+<div class="prop-stage"><span>未来差异</span><strong>{downstream} 项</strong><small>跨复杂系统层的描述性指标</small></div>
+<div class="prop-stage"><span>最高权限</span><strong>{'模拟器局部动作归因' if local_authorized else '配对描述'}</strong><small>不授权下游赛果因果</small></div>
+</div>
+<div class="pair-summary">{''.join(layer_cards)}</div>
+<p class="inference-boundary"><strong>阅读方式：</strong>共同过去和局部动作可以按证据逐级核验；轨迹、比分及复杂系统状态差异只描述这一个 fixture/seed 的两个模拟未来，不是总体效应、真实足球因果或模型晋级证据。</p>
+</section>"""
 
 
 def _policy_propagation_panel(comparison: Mapping[str, Any]) -> str:
@@ -1062,6 +1374,9 @@ def render_paired_comparison_html(comparison: Mapping[str, Any]) -> str:
     propagation_panel = (
         _policy_propagation_panel(comparison) if world_model_fork else ""
     )
+    future_panel = (
+        _counterfactual_future_panel(comparison) if world_model_fork else ""
+    )
     replay_panel = _paired_replay_panel(comparison)
     return f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(str(fixture.get('home')))} vs {html.escape(str(fixture.get('away')))} · {page_title}</title>
@@ -1069,6 +1384,7 @@ def render_paired_comparison_html(comparison: Mapping[str, Any]) -> str:
 <div class="eyebrow">{eyebrow}</div><h1>{html.escape(str(fixture.get('home')))} vs {html.escape(str(fixture.get('away')))}</h1><p>seed <code>{html.escape(str(fixture.get('seed')))}</code> · <strong class="{'ok' if eligible else 'warn'}">{state}</strong></p><p>{navigation}</p>
 <section class="grid"><article class="card"><h2>{baseline_title}</h2><p>{baseline_body}</p></article><article class="card"><h2>{treatment_title}</h2><p>{treatment_body}</p></article><article class="card"><h2>干预范围</h2><p>{html.escape(intervention_explanation)}</p></article></section>
 <section class="card"><h2>配对资格检查</h2><ul>{check_rows}</ul></section>
+{future_panel}
 {propagation_panel}
 {replay_panel}
 <section class="card"><h2>处理场减去基线场</h2><div class="scroll"><table><thead><tr><th>指标</th><th>基线</th><th>处理</th><th>差值</th></tr></thead><tbody>{''.join(metric_rows)}</tbody></table></div></section>

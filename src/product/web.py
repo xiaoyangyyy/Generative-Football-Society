@@ -25,7 +25,10 @@ from src.product.season import ManagerDecision, SeasonPlan
 from src.product.player_promises import PlayerPromisePlan
 from src.product.tactical_study import TacticalStudyPlan
 from src.product.recovery import ProductRecovery
-from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue, TaskConflict
+from src.product.tasks import (
+    COUNTERFACTUAL_FUTURE_STATUSES,
+    BackgroundMatchWorker, ProductTaskQueue, TaskConflict,
+)
 from src.product.telemetry import ProductTelemetry, route_template
 from src.product.web_security import WebAccessPolicy, is_loopback_host
 from src.product.workspace import ProductWorkspace, StudioConfig
@@ -98,6 +101,7 @@ def _match_capabilities() -> dict[str, Any]:
             "branch_execution": "identity_bound_deterministic_replay",
             "resume_capability": "deterministic_replay_only",
             "clock_contract": "authoritative_tick_v2",
+            "result_contract": "evidence_graded_counterfactual_future_v1",
             "fixed_controls": [
                 "fixture", "tactics", "fast_configuration", "checkpoint",
                 "clock_contract",
@@ -109,6 +113,7 @@ def _match_capabilities() -> dict[str, Any]:
                 "realized_action_change",
                 "direct_runtime_identity",
                 "descriptive_downstream_windows",
+                "unified_counterfactual_future_summary",
             ],
             "downstream_causal_attribution": False,
             "claim_boundary": "single_fixture_seed_simulator_contrast_only",
@@ -644,6 +649,15 @@ class ProductWebApp:
                     continue
                 result = task.get("result") or {}
                 raw_propagation = result.get("propagation") or {}
+                raw_future = (
+                    raw_propagation.get("future_summary") or {}
+                    if isinstance(raw_propagation, Mapping) else {}
+                )
+                if not isinstance(raw_future, Mapping):
+                    raw_future = {}
+                future_status = str(raw_future.get("status") or "")
+                if future_status not in COUNTERFACTUAL_FUTURE_STATUSES:
+                    future_status = "unknown_future_status"
                 propagation = (
                     {
                         "available": bool(raw_propagation.get("available")),
@@ -663,6 +677,25 @@ class ProductWebApp:
                             raw_propagation.get("replay_windows_available") is True
                         ),
                         "downstream_causal_attribution_authorized": False,
+                        "future_summary": {
+                            "available": raw_future.get("available") is True,
+                            "status": future_status,
+                            "changed_actions": _bounded_public_count(
+                                raw_future.get("changed_actions")
+                            ),
+                            "descriptive_outcome_difference_count": (
+                                _bounded_public_count(raw_future.get(
+                                    "descriptive_outcome_difference_count"
+                                ))
+                            ),
+                            "simulator_local_action_attribution": (
+                                raw_future.get(
+                                    "simulator_local_action_attribution"
+                                ) is True
+                            ),
+                            "match_outcome_causality": False,
+                            "real_football_causality": False,
+                        },
                         **({
                             "branch_at_sec": raw_propagation.get("branch_at_sec"),
                             "branch_anchor_verified": bool(
@@ -1997,6 +2030,8 @@ renderManagerDecisionPreview=preview=>{renderManagerDecisionPreviewWithoutWorldM
 const forkBranchLabel=document.createElement('label'),forkBranchInput=document.createElement('input');forkBranchLabel.textContent='分叉时间（比赛分钟）';forkBranchInput.name='branch_minute';forkBranchInput.type='number';forkBranchInput.min='0';forkBranchInput.max='90';forkBranchInput.step='0.5';forkBranchInput.value='45';forkBranchInput.required=true;forkBranchLabel.append(forkBranchInput);forkForm.querySelector('.check').before(forkBranchLabel);
 const renderLibraryWithoutBranchIdentity=renderLibrary;
 renderLibrary=library=>{renderLibraryWithoutBranchIdentity(library);const source=library||{matches:[],forks:[]},filter=libraryFilter.value,visibleMatches=['paired','forks','studies'].includes(filter)?[]:(source.matches||[]),visibleForks=['matches','paired','studies'].includes(filter)?[]:(source.forks||[]),hosts=[...libraryList.children].slice(visibleMatches.length,visibleMatches.length+visibleForks.length);for(const [index,item] of visibleForks.entries()){const host=hosts[index];if(!host)continue;const evidence=item.propagation||{},minute=Number(item.branch_at_sec)/60,identity=String(evidence.branch_state_identity||'').slice(0,16),row=document.createElement('p');row.className='status';row.textContent='分叉 '+(Number.isFinite(minute)?minute.toFixed(1):'—')+' 分钟 · 前缀锚点 '+(evidence.branch_anchor_verified?'已验证':'未验证')+' · '+(identity||'无 identity')+' · 确定性重放（非进程快照）';host.append(row)}};
+const renderLibraryWithoutUnifiedFuture=renderLibrary;
+renderLibrary=library=>{renderLibraryWithoutUnifiedFuture(library);const source=library||{matches:[],forks:[]},filter=libraryFilter.value,visibleMatches=['paired','forks','studies'].includes(filter)?[]:(source.matches||[]),visibleForks=['matches','paired','studies'].includes(filter)?[]:(source.forks||[]),hosts=[...libraryList.children].slice(visibleMatches.length,visibleMatches.length+visibleForks.length),labels={descriptive_only_ineligible:'仅描述：资格未通过',no_realized_action_divergence:'策略介入但动作未分叉',action_divergence_without_local_attribution:'动作分叉但局部归因不足',local_action_divergence_with_descriptive_future_difference:'局部动作已归因，未来出现描述性差异',local_action_divergence_without_measured_future_difference:'局部动作已归因，已测未来未变化'};for(const [index,item] of visibleForks.entries()){const host=hosts[index],future=item.propagation?.future_summary;if(!host||!future?.available)continue;const row=document.createElement('p'),local=future.simulator_local_action_attribution?'局部动作归因成立':'不授予局部动作归因';row.className='status';row.textContent='反事实未来：'+(labels[future.status]||future.status)+' · 动作变化 '+Number(future.changed_actions||0)+' · 后续描述差异 '+Number(future.descriptive_outcome_difference_count||0)+' · '+local+' · 不授予赛果因果';host.append(row)}};
 const renderActionAdoptionWithoutManagerProtocol=renderActionAdoption;
 renderActionAdoption=studio=>{renderActionAdoptionWithoutManagerProtocol(studio);const node=document.querySelector('#manager-advisor-protocol-evidence'),protocol=studio?.evidence?.manager_advisor_adoption;if(!protocol?.available){node.textContent=studio?'\u7ecf\u7406\u987e\u95ee\u91c7\u7eb3\u534f\u8bae\u7f3a\u5931\uff1b\u4e0d\u80fd\u5f62\u6210\u91c7\u7eb3\u53d6\u8bc1\u7ed3\u8bba\u3002':'';return}node.textContent=`\u7ecf\u7406\u7ea7\u91c7\u7eb3\u534f\u8bae\uff1a${protocol.protocol_state} \u00b7 \u56fa\u5b9a\u4fe1\u606f\u7a97\u53e3 ${(protocol.fixed_information_windows||[]).join('/')} \u00b7 ${protocol.results_available?'\u5df2\u6709\u7ed3\u679c':'\u5c1a\u65e0\u7ed3\u679c'} \u00b7 \u4e0d\u6388\u6743\u8d5b\u679c\u56e0\u679c\u6216\u4ea7\u54c1/\u8bba\u6587\u664b\u7ea7\u3002`};
 const renderManagerDecisionLedgerWithoutAdvisorEvidence=renderManagerDecisionLedger;

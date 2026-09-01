@@ -29,6 +29,13 @@ TASK_KINDS = {
 TERMINAL_TASK_STATES = {"completed", "failed", "interrupted"}
 MAX_RETAINED_TASKS = 1000
 PRUNE_TO_TASKS = 900
+COUNTERFACTUAL_FUTURE_STATUSES = {
+    "descriptive_only_ineligible",
+    "no_realized_action_divergence",
+    "action_divergence_without_local_attribution",
+    "local_action_divergence_with_descriptive_future_difference",
+    "local_action_divergence_without_measured_future_difference",
+}
 LOGGER = logging.getLogger(__name__)
 
 
@@ -65,9 +72,20 @@ def _world_model_propagation_digest(path: str | Path) -> dict[str, Any]:
         summary = {}
     intervention = payload.get("intervention") or {}
     branch_anchor = intervention.get("branch_anchor") or {}
+    future = payload.get("counterfactual_future_summary") or {}
+    if not isinstance(future, dict):
+        future = {}
+    future_summary = future.get("summary") or {}
+    if not isinstance(future_summary, dict):
+        future_summary = {}
+    future_authority = future.get("claim_authority") or {}
+    if not isinstance(future_authority, dict):
+        future_authority = {}
+    future_status = str(future.get("status") or "")
+    if future_status not in COUNTERFACTUAL_FUTURE_STATUSES:
+        future_status = "unknown_future_status"
 
-    def bounded_count(key: str) -> int:
-        value = summary.get(key)
+    def bounded_value(value: Any) -> int:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             return 0
         number = float(value)
@@ -75,6 +93,9 @@ def _world_model_propagation_digest(path: str | Path) -> dict[str, Any]:
             max(0, min(100_000, int(number)))
             if math.isfinite(number) else 0
         )
+
+    def bounded_count(key: str) -> int:
+        return bounded_value(summary.get(key))
 
     result = {
         "available": True,
@@ -90,6 +111,23 @@ def _world_model_propagation_digest(path: str | Path) -> dict[str, Any]:
             summary.get("replay_windows_available") is True
         ),
         "downstream_causal_attribution_authorized": False,
+        "future_summary": {
+            "available": future.get("available") is True,
+            "status": future_status,
+            "changed_actions": bounded_count("valid_changed_decisions"),
+            "descriptive_outcome_difference_count": (
+                bounded_value(future_summary.get(
+                    "descriptive_outcome_difference_count"
+                ))
+            ),
+            "simulator_local_action_attribution": (
+                future_authority.get(
+                    "simulator_local_action_attribution"
+                ) is True
+            ),
+            "match_outcome_causality": False,
+            "real_football_causality": False,
+        },
     }
     if intervention.get("branch_at_sec") is not None:
         result.update({
