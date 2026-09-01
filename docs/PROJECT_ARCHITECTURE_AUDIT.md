@@ -77,6 +77,10 @@ not quality signals by themselves.
     full retained-record semantic aggregate. It propagates through decision
     ledgers, live and historical world views and Studio while preserving V1
     reads, source-truncation boundaries and the ban on outcome attribution.
+26. Versioned official action evidence to V3 and added complete baseline-to-
+    actual and locally attributable action-transition matrices. The matrices
+    retain V1/V2 read compatibility, fail closed under rehashed tampering and
+    make the world model's concrete simulator-action changes product-visible.
 
 ## LLM Scope Decision
 

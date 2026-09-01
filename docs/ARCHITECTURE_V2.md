@@ -2778,3 +2778,41 @@ the authoritative retained-record composition. Neither representation grants
 outcome attribution, ranks interventions or establishes real-football effects.
 No training, match, future generation, formal experiment or provider call is
 executed in this stage.
+
+## 91. V3.73 Counterfactual action-transition ledger
+
+V3.72 established the composition of every retained official action record,
+but composition alone could still hide the mechanism that matters to a
+manager. Knowing that one pass and one hold occurred does not reveal whether
+the world model changed hold into pass, pass into hold, or changed nothing.
+The decision-ledger UI also read the season summary's retained count from a
+non-existent `records` field instead of
+`retained_records_with_v2_semantics`, causing a valid aggregate to display as
+zero.
+
+Official action evidence is now V3. Its nested retained semantic contract is
+version 2 and adds two complete 5-by-5 matrices over `hold`, `pass`, `cross`,
+`shot` and `none`: all counterfactual-baseline-to-actual transitions, and the
+subset satisfying shared-uniform simulator-local attribution. Matrix totals
+must equal the retained-record and locally attributable change totals,
+respectively. All-transition column marginals must exactly reproduce the
+actual-action partition. Local transitions cannot exceed their corresponding
+all-transition cells, occupy a diagonal cell, or involve the unresolved
+`none` state. These constraints are checked before outer identity verification,
+so recomputing only the envelope hash cannot legitimize a forged matrix.
+
+V1 official evidence remains readable without semantic aggregates. V2 remains
+readable with the V3.72 nested semantic contract and is never reclassified as
+having transition evidence. V3 requires the new matrix contract. Decision
+ledgers and historical navigators aggregate only genuine V3 transition rows,
+publish explicit missing-version counts, and authorize a full source transition
+distribution only when every contributing fixture is V3 and no upstream source
+record was truncated.
+
+Studio now renders non-zero locally attributable transitions in manager terms,
+such as `持球→传球`, in official action details, live threads, history cards and
+trajectory points. The decision summary uses the correct retained-record field
+and separately reports transition-matrix coverage. This identifies how the
+world model changed simulator actions; it does not establish that the change
+improved tactics, scores or real football. No training, match, future
+generation, formal experiment or provider call is executed in this stage.

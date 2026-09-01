@@ -744,7 +744,7 @@ def world_model_official_action_execution_summary(
     semantic_rows = [
         evidence["retained_record_semantics"]
         for evidence in evidence_rows
-        if evidence.get("schema_version") == 2
+        if evidence.get("schema_version") in {2, 3}
         and isinstance(evidence.get("retained_record_semantics"), Mapping)
     ]
     actual_actions = ("hold", "pass", "cross", "shot", "none")
@@ -808,6 +808,49 @@ def world_model_official_action_execution_summary(
         ),
         "outcome_attribution_authorized": False,
     }
+    transition_rows = [
+        row for row in semantic_rows if row.get("schema_version") == 2
+    ]
+    semantic_summary.update({
+        "fixtures_with_v3_transition_semantics": len(transition_rows),
+        "fixtures_without_v3_transition_semantics": (
+            len(evidence_rows) - len(transition_rows)
+        ),
+        "counterfactual_action_transition_counts": {
+            baseline: {
+                actual: sum(
+                    int(row["counterfactual_action_transition_counts"]
+                        [baseline][actual])
+                    for row in transition_rows
+                )
+                for actual in actual_actions
+            }
+            for baseline in actual_actions
+        },
+        "locally_attributable_action_transition_counts": {
+            baseline: {
+                actual: sum(
+                    int(row[
+                        "locally_attributable_action_transition_counts"
+                    ][baseline][actual])
+                    for row in transition_rows
+                )
+                for actual in actual_actions
+            }
+            for baseline in actual_actions
+        },
+        "all_official_evidence_has_v3_transition_semantics": bool(
+            evidence_rows and len(transition_rows) == len(evidence_rows)
+        ),
+        "full_source_transition_distribution_authorized": bool(
+            evidence_rows
+            and len(transition_rows) == len(evidence_rows)
+            and all(
+                row["full_source_distribution_authorized"] is True
+                for row in transition_rows
+            )
+        ),
+    })
     payload = {
         "schema_version": 1,
         "fixtures_with_official_action_evidence": len(evidence_rows),

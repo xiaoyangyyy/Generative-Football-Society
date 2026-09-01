@@ -9,9 +9,12 @@ import math
 from typing import Any, Mapping
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+V2_SCHEMA_VERSION = 2
 LEGACY_SCHEMA_VERSION = 1
-SUPPORTED_SCHEMA_VERSIONS = {LEGACY_SCHEMA_VERSION, SCHEMA_VERSION}
+SUPPORTED_SCHEMA_VERSIONS = {
+    LEGACY_SCHEMA_VERSION, V2_SCHEMA_VERSION, SCHEMA_VERSION,
+}
 MAX_SOURCE_RECORDS = 96
 MAX_EXAMPLES = 5
 _ACTIONS = {"hold", "pass", "cross", "shot"}
@@ -79,6 +82,7 @@ def _unavailable(reason: str) -> dict[str, Any]:
 
 def _retained_record_semantics(
     rows: list[Mapping[str, Any]], *, source_coverage_complete: bool,
+    schema_version: int = 2,
 ) -> dict[str, Any]:
     actual = {action: 0 for action in _SEMANTIC_ACTIONS}
     primary = {action: 0 for action in _SEMANTIC_ACTIONS}
@@ -89,8 +93,8 @@ def _retained_record_semantics(
         signal = signal if isinstance(signal, Mapping) else {}
         primary[str(signal.get("primary_action") or "none")] += 1
         modes[str(signal.get("mode") or "legacy_unclassified")] += 1
-    return {
-        "schema_version": 1,
+    payload = {
+        "schema_version": schema_version,
         "records": len(rows),
         "actual_action_counts": actual,
         "primary_signal_action_counts": primary,
@@ -118,10 +122,32 @@ def _retained_record_semantics(
         "full_source_distribution_authorized": source_coverage_complete,
         "outcome_attribution_authorized": False,
     }
+    if schema_version == 2:
+        transitions = {
+            baseline: {actual_action: 0 for actual_action in _SEMANTIC_ACTIONS}
+            for baseline in _SEMANTIC_ACTIONS
+        }
+        local_transitions = copy.deepcopy(transitions)
+        for row in rows:
+            baseline = str(
+                row.get("counterfactual_baseline_action") or "none"
+            )
+            actual_action = str(row.get("actual_action") or "none")
+            transitions[baseline][actual_action] += 1
+            if row.get("simulator_local_action_attribution") is True:
+                local_transitions[baseline][actual_action] += 1
+        payload.update({
+            "counterfactual_action_transition_counts": transitions,
+            "locally_attributable_action_transition_counts": (
+                local_transitions
+            ),
+        })
+    return payload
 
 
 def _validate_retained_record_semantics(
     semantics: Any, *, counts: Mapping[str, int],
+    expected_schema_version: int,
 ) -> None:
     required = {
         "schema_version", "records", "actual_action_counts",
@@ -134,13 +160,18 @@ def _validate_retained_record_semantics(
         "full_source_distribution_authorized",
         "outcome_attribution_authorized",
     }
+    if expected_schema_version == 2:
+        required.update({
+            "counterfactual_action_transition_counts",
+            "locally_attributable_action_transition_counts",
+        })
     if not isinstance(semantics, Mapping) or set(semantics) != required:
         raise ValueError("world-model retained action semantics shape is invalid")
     actual = semantics.get("actual_action_counts")
     primary = semantics.get("primary_signal_action_counts")
     modes = semantics.get("signal_mode_counts")
     if (
-        semantics.get("schema_version") != 1
+        semantics.get("schema_version") != expected_schema_version
         or not isinstance(actual, Mapping)
         or set(actual) != set(_SEMANTIC_ACTIONS)
         or not isinstance(primary, Mapping)
@@ -162,6 +193,68 @@ def _validate_retained_record_semantics(
     ):
         raise ValueError("world-model retained action semantics counts are invalid")
     records = counts["records"]
+    transitions = semantics.get("counterfactual_action_transition_counts")
+    local_transitions = semantics.get(
+        "locally_attributable_action_transition_counts"
+    )
+    if expected_schema_version == 2:
+        if any(
+            not isinstance(matrix, Mapping)
+            or set(matrix) != set(_SEMANTIC_ACTIONS)
+            or any(
+                not isinstance(row, Mapping)
+                or set(row) != set(_SEMANTIC_ACTIONS)
+                for row in matrix.values()
+            )
+            for matrix in (transitions, local_transitions)
+        ):
+            raise ValueError(
+                "world-model retained action transition shape is invalid"
+            )
+        transition_values = [
+            value for matrix in (transitions, local_transitions)
+            for row in matrix.values() for value in row.values()
+        ]
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) or value < 0
+            for value in transition_values
+        ):
+            raise ValueError(
+                "world-model retained action transition counts are invalid"
+            )
+        if (
+            sum(sum(row.values()) for row in transitions.values()) != records
+            or any(
+                sum(transitions[baseline][action] for baseline in _SEMANTIC_ACTIONS)
+                != actual[action]
+                for action in _SEMANTIC_ACTIONS
+            )
+            or sum(
+                sum(row.values()) for row in local_transitions.values()
+            ) != counts["locally_attributable_action_changes"]
+            or sum(
+                local_transitions[baseline]["cross"]
+                for baseline in _SEMANTIC_ACTIONS
+            ) != semantics["locally_attributable_cross_changes"]
+            or any(
+                local_transitions[baseline][action]
+                > transitions[baseline][action]
+                for baseline in _SEMANTIC_ACTIONS
+                for action in _SEMANTIC_ACTIONS
+            )
+            or any(
+                local_transitions[action][action] != 0
+                for action in _SEMANTIC_ACTIONS
+            )
+            or any(
+                local_transitions["none"][action] != 0
+                or local_transitions[action]["none"] != 0
+                for action in _SEMANTIC_ACTIONS
+            )
+        ):
+            raise ValueError(
+                "world-model retained action transitions are invalid"
+            )
     if (
         semantics["records"] != records
         or sum(actual.values()) != records
@@ -637,6 +730,7 @@ def project_world_model_action_execution(
         },
         "retained_record_semantics": _retained_record_semantics(
             manager_rows, source_coverage_complete=not source_truncated,
+            schema_version=2,
         ),
         "examples": copy.deepcopy(manager_rows[:MAX_EXAMPLES]),
         "examples_truncated": len(manager_rows) > MAX_EXAMPLES,
@@ -736,9 +830,12 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
         is (not counts.get("source_records_truncated"))
     ):
         raise ValueError("world-model official action evidence counts are invalid")
-    if evidence.get("schema_version") == SCHEMA_VERSION:
+    if evidence.get("schema_version") in {V2_SCHEMA_VERSION, SCHEMA_VERSION}:
         _validate_retained_record_semantics(
             evidence.get("retained_record_semantics"), counts=values,
+            expected_schema_version=(
+                2 if evidence.get("schema_version") == SCHEMA_VERSION else 1
+            ),
         )
     elif "retained_record_semantics" in evidence:
         raise ValueError(
@@ -859,13 +956,16 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
     ):
         raise ValueError("world-model official action example priority is invalid")
     if (
-        evidence.get("schema_version") == SCHEMA_VERSION
+        evidence.get("schema_version") in {V2_SCHEMA_VERSION, SCHEMA_VERSION}
         and evidence.get("examples_truncated") is False
         and evidence.get("retained_record_semantics")
         != _retained_record_semantics(
             examples,
             source_coverage_complete=(
                 counts.get("source_records_truncated") is False
+            ),
+            schema_version=(
+                2 if evidence.get("schema_version") == SCHEMA_VERSION else 1
             ),
         )
     ):
@@ -881,6 +981,7 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
 __all__ = [
     "LEGACY_SCHEMA_VERSION", "MAX_EXAMPLES", "SCHEMA_VERSION",
     "SUPPORTED_SCHEMA_VERSIONS",
+    "V2_SCHEMA_VERSION",
     "project_world_model_action_execution",
     "validate_world_model_action_execution",
 ]

@@ -143,7 +143,7 @@ def _normalize_retained_record_semantics(
     raw: Any, *, action_counts: Mapping[str, int],
     source_records_truncated: Any,
 ) -> dict[str, Any] | None:
-    """Validate V2 full retained-record semantics; keep V1 explicitly absent."""
+    """Validate versioned retained semantics; keep legacy absence explicit."""
     if raw is None:
         return None
     required = {
@@ -162,7 +162,19 @@ def _normalize_retained_record_semantics(
         "direct_preference", "suppression_only", "none",
         "legacy_unclassified",
     }
-    if not isinstance(raw, Mapping) or set(raw) != required:
+    semantic_schema_version = raw.get("schema_version") if isinstance(
+        raw, Mapping
+    ) else None
+    if semantic_schema_version == 2:
+        required.update({
+            "counterfactual_action_transition_counts",
+            "locally_attributable_action_transition_counts",
+        })
+    if (
+        semantic_schema_version not in {1, 2}
+        or not isinstance(raw, Mapping)
+        or set(raw) != required
+    ):
         raise ValueError(
             "manager world navigator retained action semantics shape is invalid"
         )
@@ -170,8 +182,7 @@ def _normalize_retained_record_semantics(
     primary = raw.get("primary_signal_action_counts")
     signals = raw.get("signal_mode_counts")
     if (
-        raw.get("schema_version") != 1
-        or not isinstance(actual, Mapping) or set(actual) != actions
+        not isinstance(actual, Mapping) or set(actual) != actions
         or not isinstance(primary, Mapping) or set(primary) != actions
         or not isinstance(signals, Mapping) or set(signals) != modes
     ):
@@ -199,6 +210,64 @@ def _normalize_retained_record_semantics(
         )
     records = action_counts["retained_records"]
     source_complete = not source_records_truncated
+    if semantic_schema_version == 2:
+        transitions = raw.get("counterfactual_action_transition_counts")
+        local_transitions = raw.get(
+            "locally_attributable_action_transition_counts"
+        )
+        if any(
+            not isinstance(matrix, Mapping)
+            or set(matrix) != actions
+            or any(
+                not isinstance(row, Mapping) or set(row) != actions
+                for row in matrix.values()
+            )
+            for matrix in (transitions, local_transitions)
+        ):
+            raise ValueError(
+                "manager world navigator retained action transition shape "
+                "is invalid"
+            )
+        transition_values = [
+            value for matrix in (transitions, local_transitions)
+            for row in matrix.values() for value in row.values()
+        ]
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) or value < 0
+            for value in transition_values
+        ):
+            raise ValueError(
+                "manager world navigator retained action transition counts "
+                "are invalid"
+            )
+        if (
+            sum(sum(row.values()) for row in transitions.values()) != records
+            or any(
+                sum(transitions[baseline][action] for baseline in actions)
+                != actual[action]
+                for action in actions
+            )
+            or sum(
+                sum(row.values()) for row in local_transitions.values()
+            ) != action_counts["locally_attributable_action_changes"]
+            or sum(
+                local_transitions[baseline]["cross"] for baseline in actions
+            ) != raw["locally_attributable_cross_changes"]
+            or any(
+                local_transitions[baseline][action]
+                > transitions[baseline][action]
+                for baseline in actions for action in actions
+            )
+            or any(local_transitions[action][action] != 0 for action in actions)
+            or any(
+                local_transitions["none"][action] != 0
+                or local_transitions[action]["none"] != 0
+                for action in actions
+            )
+        ):
+            raise ValueError(
+                "manager world navigator retained action transitions are invalid"
+            )
     if (
         raw["records"] != records
         or sum(actual.values()) != records
@@ -1482,6 +1551,9 @@ def build_manager_world_navigator(
             row["action_adoption"]["retained_record_semantics"], Mapping,
         )
     ]
+    transition_semantic_rows = [
+        row for row in full_semantic_rows if row.get("schema_version") == 2
+    ]
     semantic_actions = ("hold", "pass", "cross", "shot", "none")
     semantic_modes = (
         "direct_preference", "suppression_only", "none",
@@ -1599,6 +1671,47 @@ def build_manager_world_navigator(
                 )
             ),
             "outcome_attribution_authorized": False,
+            "fixtures_with_v3_transition_semantics": len(
+                transition_semantic_rows
+            ),
+            "fixtures_without_v3_transition_semantics": (
+                len(all_chapters) - len(transition_semantic_rows)
+            ),
+            "counterfactual_action_transition_counts": {
+                baseline: {
+                    actual: sum(
+                        row["counterfactual_action_transition_counts"]
+                        [baseline][actual]
+                        for row in transition_semantic_rows
+                    )
+                    for actual in semantic_actions
+                }
+                for baseline in semantic_actions
+            },
+            "locally_attributable_action_transition_counts": {
+                baseline: {
+                    actual: sum(
+                        row[
+                            "locally_attributable_action_transition_counts"
+                        ][baseline][actual]
+                        for row in transition_semantic_rows
+                    )
+                    for actual in semantic_actions
+                }
+                for baseline in semantic_actions
+            },
+            "all_chapters_have_v3_transition_semantics": bool(
+                all_chapters
+                and len(transition_semantic_rows) == len(all_chapters)
+            ),
+            "full_source_transition_distribution_authorized": bool(
+                all_chapters
+                and len(transition_semantic_rows) == len(all_chapters)
+                and all(
+                    row["full_source_distribution_authorized"] is True
+                    for row in transition_semantic_rows
+                )
+            ),
         },
         "influence_rate": (
             round(

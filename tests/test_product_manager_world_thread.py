@@ -18,6 +18,20 @@ def _identity(payload):
     ).encode("utf-8")).hexdigest()
 
 
+def _action_transition_matrices(multiplier=1):
+    actions = ("hold", "pass", "cross", "shot", "none")
+    all_rows = {baseline: {actual: 0 for actual in actions} for baseline in actions}
+    local_rows = copy.deepcopy(all_rows)
+    for baseline, actual in (
+        ("hold", "pass"), ("pass", "cross"),
+        ("cross", "shot"), ("shot", "hold"),
+    ):
+        all_rows[baseline][actual] = multiplier
+    local_rows["hold"]["pass"] = multiplier
+    local_rows["pass"]["cross"] = multiplier
+    return all_rows, local_rows
+
+
 def _reviewed_scenarios():
     rows = [
         (900.0, "no_realized_action_divergence", 0, 0, 0, False, "1"),
@@ -27,7 +41,7 @@ def _reviewed_scenarios():
     scenarios = []
     for branch, status, changed, local, differences, attributed, marker in rows:
         payload = {
-            "schema_version": 2,
+            "schema_version": 3,
             "source_scenario_identity": marker * 64,
             "branch_at_sec": branch,
             "branch_minute": branch / 60.0,
@@ -107,7 +121,7 @@ def _entry(*, action_available=True, stable=False, review_linked=True):
             "examples": action_examples,
             "examples_truncated": False,
             "retained_record_semantics": {
-                "schema_version": 1,
+                "schema_version": 2,
                 "records": 4,
                 "actual_action_counts": {
                     "hold": 1, "pass": 1, "cross": 1, "shot": 1,
@@ -128,6 +142,12 @@ def _entry(*, action_available=True, stable=False, review_linked=True):
                 "source_manager_record_coverage_complete": True,
                 "full_source_distribution_authorized": True,
                 "outcome_attribution_authorized": False,
+                "counterfactual_action_transition_counts": (
+                    _action_transition_matrices()[0]
+                ),
+                "locally_attributable_action_transition_counts": (
+                    _action_transition_matrices()[1]
+                ),
             },
         }
         if action_available else

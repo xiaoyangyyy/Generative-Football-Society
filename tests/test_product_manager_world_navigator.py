@@ -18,6 +18,20 @@ def _identity(payload):
     ).encode("utf-8")).hexdigest()
 
 
+def _action_transition_matrices(multiplier=1):
+    actions = ("hold", "pass", "cross", "shot", "none")
+    all_rows = {baseline: {actual: 0 for actual in actions} for baseline in actions}
+    local_rows = copy.deepcopy(all_rows)
+    for baseline, actual in (
+        ("hold", "pass"), ("pass", "cross"),
+        ("cross", "shot"), ("shot", "hold"),
+    ):
+        all_rows[baseline][actual] = multiplier
+    local_rows["hold"]["pass"] = multiplier
+    local_rows["pass"]["cross"] = multiplier
+    return all_rows, local_rows
+
+
 def _freeze(payload, field):
     frozen = copy.deepcopy(payload)
     frozen[field] = _identity(frozen)
@@ -184,7 +198,7 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             semantic_hold_reference_redistribution_examples=1,
             semantic_direct_cross_ball_event_examples=1,
             retained_record_semantics={
-                "schema_version": 1,
+                "schema_version": 2,
                 "records": 4,
                 "actual_action_counts": {
                     "hold": 1, "pass": 1, "cross": 1, "shot": 1,
@@ -205,6 +219,12 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
                 "source_manager_record_coverage_complete": True,
                 "full_source_distribution_authorized": True,
                 "outcome_attribution_authorized": False,
+                "counterfactual_action_transition_counts": (
+                    _action_transition_matrices()[0]
+                ),
+                "locally_attributable_action_transition_counts": (
+                    _action_transition_matrices()[1]
+                ),
             },
             source_identity="e" * 64,
             match_id="match-1",
@@ -633,6 +653,16 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
                 "all_chapters_have_v2_semantics": True,
                 "full_source_distribution_authorized": True,
                 "outcome_attribution_authorized": False,
+                "fixtures_with_v3_transition_semantics": 2,
+                "fixtures_without_v3_transition_semantics": 0,
+                "counterfactual_action_transition_counts": (
+                    _action_transition_matrices(2)[0]
+                ),
+                "locally_attributable_action_transition_counts": (
+                    _action_transition_matrices(2)[1]
+                ),
+                "all_chapters_have_v3_transition_semantics": True,
+                "full_source_transition_distribution_authorized": True,
             },
             "influence_rate": 0.75,
             "realized_change_rate_among_influenced": 0.666667,
@@ -731,7 +761,7 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
         "full_record_distribution_authorized": False,
     }
     assert first["official_retained_record_semantics"] == {
-        "schema_version": 1,
+        "schema_version": 2,
         "records": 4,
         "actual_action_counts": {
             "hold": 1, "pass": 1, "cross": 1, "shot": 1, "none": 0,
@@ -750,6 +780,12 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
         "source_manager_record_coverage_complete": True,
         "full_source_distribution_authorized": True,
         "outcome_attribution_authorized": False,
+        "counterfactual_action_transition_counts": (
+            _action_transition_matrices()[0]
+        ),
+        "locally_attributable_action_transition_counts": (
+            _action_transition_matrices()[1]
+        ),
     }
     assert first["cumulative"]["points_earned"] == 1
     assert second["cumulative"]["points_earned"] == 4
@@ -1309,8 +1345,40 @@ def test_rehashed_retained_record_semantic_tamper_fails_closed():
     entry.pop("entry_identity")
     entry["entry_identity"] = _identity(entry)
 
-    with pytest.raises(ValueError, match="retained action semantics"):
+    with pytest.raises(ValueError, match="retained action transitions"):
         build_manager_world_navigator(_season(entries=[entry]))
+
+
+def test_v2_retained_semantics_remain_readable_without_v3_transitions():
+    entry = _entry(1)
+    stage = next(
+        row for row in entry["world_evolution_thread"]["stages"]
+        if row["stage_id"] == "official_world_model_actions"
+    )
+    semantic = stage["retained_record_semantics"]
+    semantic["schema_version"] = 1
+    semantic.pop("counterfactual_action_transition_counts")
+    semantic.pop("locally_attributable_action_transition_counts")
+    stage.pop("stage_identity")
+    stage["stage_identity"] = _identity(stage)
+    thread = entry["world_evolution_thread"]
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    navigator = build_manager_world_navigator(_season(entries=[entry]))
+    retained = navigator["history_chapters"][0]["action_adoption"][
+        "retained_record_semantics"
+    ]
+    aggregate = navigator["summary"][
+        "world_model_action_adoption_ledger"
+    ]["retained_record_semantics"]
+    assert retained["schema_version"] == 1
+    assert aggregate["fixtures_with_v2_semantics"] == 1
+    assert aggregate["fixtures_with_v3_transition_semantics"] == 0
+    assert aggregate["fixtures_without_v3_transition_semantics"] == 1
+    assert aggregate["full_source_transition_distribution_authorized"] is False
 
 
 def test_rehashed_reviewed_scenario_time_tamper_fails_closed():
@@ -1526,5 +1594,5 @@ def test_unknown_workflow_lifecycle_and_invalid_action_count_fail_closed():
     thread["thread_identity"] = _identity(thread)
     entry.pop("entry_identity")
     entry["entry_identity"] = _identity(entry)
-    with pytest.raises(ValueError, match="chapter facts"):
+    with pytest.raises(ValueError, match="retained action transitions"):
         build_manager_world_navigator(bad_count)

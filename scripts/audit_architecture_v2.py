@@ -1061,7 +1061,8 @@ def main() -> int:
         ),
         "official_action_v2_preserves_full_retained_record_semantics": (
             all(token in official_action_execution for token in (
-                "SCHEMA_VERSION = 2",
+                "SCHEMA_VERSION = 3",
+                "V2_SCHEMA_VERSION = 2",
                 "LEGACY_SCHEMA_VERSION = 1",
                 "def _retained_record_semantics(",
                 "def _validate_retained_record_semantics(",
@@ -1093,6 +1094,35 @@ def main() -> int:
                 "appendManagerWorldEvolutionThreadWithoutRetainedRecordSemantics",
                 "renderManagerWorldNavigatorWithoutRetainedRecordSemantics",
                 "point.official_retained_record_semantics",
+            ))
+        ),
+        "official_action_v3_preserves_counterfactual_transition_matrix": (
+            all(token in official_action_execution for token in (
+                '"counterfactual_action_transition_counts"',
+                '"locally_attributable_action_transition_counts"',
+                "world-model retained action transition shape is invalid",
+                "world-model retained action transitions are invalid",
+                "expected_schema_version=(",
+            ))
+            and all(token in decision_ledger for token in (
+                '"fixtures_with_v3_transition_semantics"',
+                '"all_official_evidence_has_v3_transition_semantics"',
+                '"full_source_transition_distribution_authorized"',
+            ))
+            and all(token in manager_world_navigator for token in (
+                "transition_semantic_rows = [",
+                '"counterfactual_action_transition_counts": {',
+                '"locally_attributable_action_transition_counts": {',
+                '"all_chapters_have_v3_transition_semantics"',
+                '"full_source_transition_distribution_authorized"',
+            ))
+            and all(token in web for token in (
+                "retainedActionSemanticTextWithoutTransitions",
+                "semantic?.locally_attributable_action_transition_counts",
+                "semantic.retained_records_with_v2_semantics",
+                "semantic.fixtures_with_v3_transition_semantics",
+                "ledger.fixtures_without_v3_transition_semantics",
+                "世界模型局部动作转移",
             ))
         ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (

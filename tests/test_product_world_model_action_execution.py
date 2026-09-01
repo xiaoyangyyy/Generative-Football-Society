@@ -137,7 +137,7 @@ def test_official_action_execution_projects_only_manager_team_and_local_claim():
     )
 
     assert evidence["available"] is True
-    assert evidence["schema_version"] == 2
+    assert evidence["schema_version"] == 3
     assert evidence["team"] == "A"
     assert evidence["evidence_state"] == (
         "locally_attributable_action_changes_observed"
@@ -158,7 +158,7 @@ def test_official_action_execution_projects_only_manager_team_and_local_claim():
         "manager_record_coverage_complete": True,
     }
     assert evidence["retained_record_semantics"] == {
-        "schema_version": 1,
+        "schema_version": 2,
         "records": 2,
         "actual_action_counts": {
             "hold": 1, "pass": 1, "cross": 0, "shot": 0, "none": 0,
@@ -177,6 +177,20 @@ def test_official_action_execution_projects_only_manager_team_and_local_claim():
         "source_manager_record_coverage_complete": True,
         "full_source_distribution_authorized": True,
         "outcome_attribution_authorized": False,
+        "counterfactual_action_transition_counts": {
+            "hold": {"hold": 1, "pass": 1, "cross": 0, "shot": 0, "none": 0},
+            "pass": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "cross": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "shot": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "none": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+        },
+        "locally_attributable_action_transition_counts": {
+            "hold": {"hold": 0, "pass": 1, "cross": 0, "shot": 0, "none": 0},
+            "pass": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "cross": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "shot": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "none": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+        },
     }
     assert len(evidence["examples"]) == 2
     changed = evidence["examples"][0]
@@ -368,8 +382,44 @@ def test_official_action_execution_fails_closed_on_source_and_projection_tamper(
     frozen = copy.deepcopy(semantic_tamper)
     frozen.pop("evidence_identity")
     semantic_tamper["evidence_identity"] = _identity(frozen)
-    with pytest.raises(ValueError, match="retained action semantics"):
+    with pytest.raises(ValueError, match="retained action transition"):
         validate_world_model_action_execution(semantic_tamper)
+
+    # Tamper the nested identity-bound matrix and recompute only the envelope.
+    transition_tamper = copy.deepcopy(evidence)
+    transition_tamper["retained_record_semantics"][
+        "locally_attributable_action_transition_counts"
+    ]["hold"]["pass"] = 0
+    frozen = copy.deepcopy(transition_tamper)
+    frozen.pop("evidence_identity")
+    transition_tamper["evidence_identity"] = _identity(frozen)
+    with pytest.raises(ValueError, match="retained action transitions"):
+        validate_world_model_action_execution(transition_tamper)
+
+    v2 = copy.deepcopy(evidence)
+    v2["schema_version"] = 2
+    v2["retained_record_semantics"]["schema_version"] = 1
+    v2["retained_record_semantics"].pop(
+        "counterfactual_action_transition_counts"
+    )
+    v2["retained_record_semantics"].pop(
+        "locally_attributable_action_transition_counts"
+    )
+    v2.pop("evidence_identity")
+    v2["evidence_identity"] = _identity(v2)
+    validate_world_model_action_execution(v2)
+
+    v2_tamper = copy.deepcopy(v2)
+    v2_tamper["retained_record_semantics"][
+        "primary_signal_action_counts"
+    ]["hold"] = 0
+    v2_tamper["retained_record_semantics"][
+        "primary_signal_action_counts"
+    ]["none"] = 1
+    v2_tamper.pop("evidence_identity")
+    v2_tamper["evidence_identity"] = _identity(v2_tamper)
+    with pytest.raises(ValueError, match="disagree with complete examples"):
+        validate_world_model_action_execution(v2_tamper)
 
     legacy = copy.deepcopy(evidence)
     legacy["schema_version"] = 1
@@ -405,7 +455,7 @@ def test_postmatch_debrief_contains_action_execution_and_isolates_invalid_layer(
     )
     assert isolated["available"] is True
     assert isolated["world_model_action_execution"] == {
-        "schema_version": 2,
+        "schema_version": 3,
         "available": False,
         "reason": "world_model_action_evidence_invalid",
     }
@@ -419,7 +469,7 @@ def test_official_action_execution_preserves_legacy_and_stable_boundaries():
     assert project_world_model_action_execution(
         legacy, manager_team="A", expected_match_id="legacy",
     ) == {
-        "schema_version": 2,
+        "schema_version": 3,
         "available": False,
         "reason": "legacy_report_without_world_model_layer",
     }
@@ -544,6 +594,24 @@ def test_official_action_execution_survives_ledger_and_summary_replay():
         "all_official_evidence_has_v2_semantics": True,
         "full_source_distribution_authorized": True,
         "outcome_attribution_authorized": False,
+        "fixtures_with_v3_transition_semantics": 1,
+        "fixtures_without_v3_transition_semantics": 0,
+        "counterfactual_action_transition_counts": {
+            "hold": {"hold": 1, "pass": 1, "cross": 0, "shot": 0, "none": 0},
+            "pass": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "cross": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "shot": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "none": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+        },
+        "locally_attributable_action_transition_counts": {
+            "hold": {"hold": 0, "pass": 1, "cross": 0, "shot": 0, "none": 0},
+            "pass": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "cross": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "shot": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+            "none": {"hold": 0, "pass": 0, "cross": 0, "shot": 0, "none": 0},
+        },
+        "all_official_evidence_has_v3_transition_semantics": True,
+        "full_source_transition_distribution_authorized": True,
     }
     assert summary["outcome_effect_estimate"] is None
     assert summary["causal_effect_authorized"] is False

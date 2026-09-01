@@ -212,6 +212,12 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "semantic.actual_action_counts||{}" in document
     assert "semantic.primary_signal_action_counts||{}" in document
     assert "semantic.signal_mode_counts||{}" in document
+    assert "retainedActionSemanticTextWithoutTransitions" in document
+    assert "semantic?.locally_attributable_action_transition_counts" in document
+    assert "世界模型局部动作转移" in document
+    assert "semantic.retained_records_with_v2_semantics" in document
+    assert "semantic.fixtures_with_v3_transition_semantics" in document
+    assert "semantic.full_source_transition_distribution_authorized" in document
     assert "不授权赛果归因" in document
     assert "appendFutureMechanismExamplesWithoutCrossMetrics" in document
     assert "window?.delta?.crosses" in document
@@ -286,7 +292,8 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "sample.fixtures_with_truncated_examples" in document
     assert "renderManagerWorldNavigatorWithoutRetainedRecordSemantics" in document
     assert "world_model_action_adoption_ledger?.retained_record_semantics" in document
-    assert "ledger.fixtures_without_v2_semantics" in document
+    assert "ledger.fixtures_without_v3_transition_semantics" in document
+    assert "ledger.full_source_transition_distribution_authorized" in document
     assert "point.official_retained_record_semantics" in document
     assert "chapter.action_adoption?.retained_record_semantics" in document
     assert "chapter.descriptive_world_after" in document
