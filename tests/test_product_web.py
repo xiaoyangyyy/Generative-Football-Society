@@ -245,7 +245,12 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "function managerNavigationTarget(" in document
     assert "function activateManagerNavigationTarget(" in document
     assert "function openManagerWorldChapter(" in document
+    assert "function navigateManagerWorldChapter(" in document
     assert "function restoreManagerWorldChapterLocation(" in document
+    assert "row.latest_fixture_id===fixtureId&&row.latest_chapter_identity===expectedChapterIdentity" in document
+    assert "断点诊断绑定的世界章节已过期或不可用。" in document
+    assert "打开最近受影响章节 · 第 " in document
+    assert "open.dataset.chapterIdentity=chapterIdentity" in document
     assert "selectedRef?.seasonId===season?.season_id" in document
     assert "history.pushState({seasonId,worldChapter:fixtureId}" in document
     assert "window.addEventListener('popstate'" in document

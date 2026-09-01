@@ -180,6 +180,11 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
         "continuity_gap_counts": [{
             "gap": "world_model_action_evidence_unavailable",
             "chapters": 1,
+            "latest_fixture_id": "md02-fx01",
+            "latest_matchday": 2,
+            "latest_chapter_identity": navigator["history_chapters"][0][
+                "chapter_identity"
+            ],
         }],
         "visible_official_runtime_chapters": 2,
         "visible_world_model_runtime_chapters": 2,
@@ -317,10 +322,32 @@ def test_gap_diagnostics_count_chapters_and_sort_deterministically():
 
     assert navigator["summary"]["chapters_with_continuity_gaps"] == 3
     assert navigator["summary"]["chapters_without_continuity_gaps"] == 1
+    identities = {
+        row["fixture_id"]: row["chapter_identity"]
+        for row in navigator["history_chapters"]
+    }
     assert navigator["summary"]["continuity_gap_counts"] == [
-        {"gap": "tactical_runtime_binding_unavailable", "chapters": 2},
-        {"gap": "observed_result_unavailable", "chapters": 1},
-        {"gap": "z_unknown_gap", "chapters": 1},
+        {
+            "gap": "tactical_runtime_binding_unavailable",
+            "chapters": 2,
+            "latest_fixture_id": "md02-fx01",
+            "latest_matchday": 2,
+            "latest_chapter_identity": identities["md02-fx01"],
+        },
+        {
+            "gap": "observed_result_unavailable",
+            "chapters": 1,
+            "latest_fixture_id": "md03-fx01",
+            "latest_matchday": 3,
+            "latest_chapter_identity": identities["md03-fx01"],
+        },
+        {
+            "gap": "z_unknown_gap",
+            "chapters": 1,
+            "latest_fixture_id": "md01-fx01",
+            "latest_matchday": 1,
+            "latest_chapter_identity": identities["md01-fx01"],
+        },
     ]
 
 
@@ -331,6 +358,17 @@ def test_duplicate_historical_gap_fails_closed():
             "observed_result_unavailable",
         ],
     )])
+
+    with pytest.raises(ValueError, match="chapter facts"):
+        build_manager_world_navigator(season)
+
+
+def test_invalid_historical_matchday_fails_closed_even_when_rehashed():
+    season = _season(entries=[_entry(1)])
+    entry = season["manager_decision_ledger"]["entries"][0]
+    entry["matchday"] = True
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
 
     with pytest.raises(ValueError, match="chapter facts"):
         build_manager_world_navigator(season)

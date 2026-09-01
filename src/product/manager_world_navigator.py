@@ -167,8 +167,12 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     action_source_identity = action.get("source_identity")
     transition_identity = persistent.get("source_identity")
     gaps = thread.get("continuity_gaps")
+    matchday = entry.get("matchday")
     if (
-        isinstance(local_changes, bool)
+        isinstance(matchday, bool)
+        or not isinstance(matchday, int)
+        or matchday < 1
+        or isinstance(local_changes, bool)
         or not isinstance(local_changes, int)
         or local_changes < 0
         or (
@@ -186,7 +190,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("manager world navigator chapter facts are invalid")
     payload = {
         "fixture_id": entry.get("fixture_id"),
-        "matchday": entry.get("matchday"),
+        "matchday": matchday,
         "lifecycle_state": entry.get("lifecycle_state"),
         "source_entry_identity": entry.get("entry_identity"),
         "source_thread_identity": thread.get("thread_identity"),
@@ -325,14 +329,30 @@ def build_manager_world_navigator(
             for row in all_chapters
         ),
     }
-    gap_counts: dict[str, int] = {}
+    gap_facts: dict[str, dict[str, Any]] = {}
     for chapter in all_chapters:
         for gap in chapter["continuity_gaps"]:
-            gap_counts[gap] = gap_counts.get(gap, 0) + 1
+            facts = gap_facts.setdefault(gap, {
+                "chapters": 0,
+                "latest_fixture_id": None,
+                "latest_matchday": 0,
+                "latest_chapter_identity": None,
+            })
+            facts["chapters"] += 1
+            current_key = (
+                facts["latest_matchday"],
+                str(facts["latest_fixture_id"] or ""),
+            )
+            chapter_key = (chapter["matchday"], chapter["fixture_id"])
+            if chapter_key > current_key:
+                facts["latest_fixture_id"] = chapter["fixture_id"]
+                facts["latest_matchday"] = chapter["matchday"]
+                facts["latest_chapter_identity"] = chapter["chapter_identity"]
     continuity_gap_counts = [
-        {"gap": gap, "chapters": count}
-        for gap, count in sorted(
-            gap_counts.items(), key=lambda item: (-item[1], item[0]),
+        {"gap": gap, **facts}
+        for gap, facts in sorted(
+            gap_facts.items(),
+            key=lambda item: (-item[1]["chapters"], item[0]),
         )
     ]
     summary = {

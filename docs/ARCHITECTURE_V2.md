@@ -2126,3 +2126,32 @@ These diagnostics explain evidence availability, not system effectiveness.
 They do not repair historical evidence automatically, identify a causal fault,
 claim that a complete chain improved the result, execute a match, run training
 or call an external provider.
+
+## 74. V3.56 Evidence-break to chapter navigation
+
+The season diagnostic identified break types and inspection guidance but left
+users to search the historical ledger manually. This was especially poor for a
+rare older break outside the recent-six cards: the system knew the affected
+chapter identity but did not expose a direct evidence path.
+
+Each aggregated gap now binds its most recent affected fixture, matchday and
+canonical chapter identity. Selection is deterministic by matchday and fixture
+identifier rather than relying on map order. Historical matchday values are
+validated as positive integers before they may participate in this binding.
+The full navigator identity seals the diagnostic count and its chapter target.
+
+Every diagnostic row exposes an “open most recent affected chapter” button with
+an explicit accessible name. Before navigation, the browser verifies both:
+
+1. the fixture still exists as a completed decision-ledger entry;
+2. the navigator summary still contains the exact fixture and chapter-identity
+   binding supplied by the diagnostic.
+
+If either check fails, navigation stops with visible stale-binding feedback.
+When both pass, the existing season-and-fixture URL fragment is written, the
+ledger and navigator are rebuilt from current state, and the selected chapter's
+full progressive evidence is expanded and focused. This also works when the
+target lies outside the default recent history window.
+
+The action is read-only. It does not mutate a decision, repair a break, rerun a
+match, infer a cause, train a model or call an external provider.
