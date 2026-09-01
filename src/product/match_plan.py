@@ -312,6 +312,82 @@ class WorldModelForkPlan:
         }
 
 
+@dataclass(frozen=True)
+class WorldModelForkSetPlan:
+    """A fixed set of branch-time contrasts under identical controls."""
+
+    home_tactic: str
+    away_tactic: str
+    seed: int
+    branch_times_sec: tuple[float, ...] = (1800.0, 2700.0, 3600.0)
+
+    def __post_init__(self) -> None:
+        WorldModelForkPlan(
+            home_tactic=self.home_tactic,
+            away_tactic=self.away_tactic,
+            seed=self.seed,
+        )
+        raw = tuple(self.branch_times_sec)
+        if not 2 <= len(raw) <= 4:
+            raise ValueError("world-model fork set requires 2 to 4 branch times")
+        normalized: list[float] = []
+        for value in raw:
+            if (
+                isinstance(value, bool) or not isinstance(value, (int, float))
+                or not math.isfinite(float(value))
+                or not 0.0 <= float(value) <= 5400.0
+            ):
+                raise ValueError("fork-set branch times must be between 0 and 5400 seconds")
+            normalized.append(float(value))
+        if normalized != sorted(normalized) or len(set(normalized)) != len(normalized):
+            raise ValueError("fork-set branch times must be unique and increasing")
+        object.__setattr__(self, "branch_times_sec", tuple(normalized))
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "WorldModelForkSetPlan":
+        if not isinstance(payload, Mapping):
+            raise ValueError("world-model fork set plan must be an object")
+        return cls(
+            home_tactic=payload.get("home_tactic", NATIVE_TACTIC),
+            away_tactic=payload.get("away_tactic", NATIVE_TACTIC),
+            seed=payload.get("seed"),
+            branch_times_sec=tuple(payload.get("branch_times_sec") or ()),
+        )
+
+    def fork_plan(self, branch_at_sec: float) -> WorldModelForkPlan:
+        if float(branch_at_sec) not in self.branch_times_sec:
+            raise ValueError("branch time is outside the frozen fork set")
+        return WorldModelForkPlan(
+            home_tactic=self.home_tactic,
+            away_tactic=self.away_tactic,
+            seed=self.seed,
+            branch_at_sec=float(branch_at_sec),
+        )
+
+    def validate_for_mode(self, studio_mode: str) -> None:
+        for branch_at_sec in self.branch_times_sec:
+            self.fork_plan(branch_at_sec).validate_for_mode(studio_mode)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "seed": self.seed,
+            "home_tactic": self.home_tactic,
+            "away_tactic": self.away_tactic,
+            "branch_times_sec": list(self.branch_times_sec),
+            "fixed_scenario_budget": len(self.branch_times_sec),
+            "baseline_policy": "predict_only",
+            "treatment_policy": "action_policy",
+            "analysis_policy": "descriptive_timing_sensitivity_no_ranking",
+            "claim_boundary": (
+                "fixed fixture, seed, tactics, checkpoint and branch-time set; "
+                "simulator contrasts only, with no best-time recommendation, "
+                "population inference, outcome causality, real-football causality, "
+                "or promotion authorization"
+            ),
+        }
+
+
 def playable_tactic_catalog() -> list[dict[str, str]]:
     return [
         {"id": tactic_id, **metadata}

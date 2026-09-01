@@ -1579,3 +1579,43 @@ real-football causality to false. This is still a single fixture/seed simulator
 fork, not a population estimate, real-football causal result or model-promotion
 gate. This stage runs no training, formal experiment, match study or external
 provider call.
+
+## 60. V3.42 Fixed-budget multi-timepoint future set
+
+The product previously stopped at one branch time and one pair of futures.
+That made local evidence inspectable, but it did not let a user see whether
+world-model action adoption was sensitive to when it entered the same match.
+Studio now composes the existing identity-bound fork into a fixed set of two
+to four increasing, unique branch times. The default set is minute 30, 45 and
+60. Fixture, seed, both tactics, fast configuration, checkpoint, baseline
+policy and treatment policy remain fixed across every scenario.
+
+This feature deliberately does not modify the frozen action-adoption engine,
+planner, maximum 0.35 probability blend or any sealed protocol identity. Each
+scenario is still the same predict-only versus action-policy contrast and must
+pass the existing authoritative-clock, shared-prefix and comparison checks.
+The additional dimension is branch time only.
+
+WorldModelForkSetPlan freezes the complete scenario budget before execution.
+The persistent worker writes a protocol and a fail-closed progress ledger,
+uses stable transaction identities per branch, and resumes only a valid prefix
+of the registered times. Interim analysis is null and interim ranking is never
+disclosed. Artifact paths must resolve inside the current Studio match output;
+seed, policy assignment, both fixed tactics, branch order and eligibility are
+revalidated before aggregation. Completed results also reject modified claim
+authority, branch identity or any attempt to authorize an outcome claim.
+
+The final report counts eligible anchors, realized action-divergence scenarios,
+locally attributable actions and descriptive future differences. It may state
+that the measured signatures vary across the registered times. It does not
+rank times, select a best intervention time, perform significance testing or
+authorize match-outcome causality, population inference, real-football
+causality or model promotion.
+
+Studio exposes this as one coherent future workbench rather than another
+simulation engine. The form preregisters branch minutes, the background task
+shows completed scenarios without effects or ranking, and the Evidence Library
+opens one aggregate dashboard with links back to every two-world comparison.
+The original single-fork API remains available for compatibility and focused
+debugging. This stage changes code and product contracts only; it executes no
+training, formal protocol, product match study or external provider call.

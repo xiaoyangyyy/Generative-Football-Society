@@ -19,7 +19,8 @@ from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 from src.infrastructure import FileLease, LeaseUnavailable
 from src.product.control_plane import ProductControlPlane
 from src.product.match_plan import (
-    MatchPlan, PairedMatchPlan, WorldModelForkPlan, playable_tactic_catalog,
+    MatchPlan, PairedMatchPlan, WorldModelForkPlan, WorldModelForkSetPlan,
+    playable_tactic_catalog,
 )
 from src.product.season import ManagerDecision, SeasonPlan
 from src.product.player_promises import PlayerPromisePlan
@@ -117,6 +118,18 @@ def _match_capabilities() -> dict[str, Any]:
             ],
             "downstream_causal_attribution": False,
             "claim_boundary": "single_fixture_seed_simulator_contrast_only",
+        },
+        "world_model_fork_set": {
+            "modes": ["research"],
+            "scenario_budget": {"min": 2, "max": 4, "default": 3},
+            "default_branch_times_seconds": [1800, 2700, 3600],
+            "fixed_controls": [
+                "fixture", "seed", "tactics", "fast_configuration",
+                "checkpoint", "policy_pair",
+            ],
+            "interim_ranking": "withheld_and_never_performed",
+            "result_contract": "descriptive_timing_sensitivity_v1",
+            "claim_boundary": "fixed_simulator_timing_set_no_best_time",
         },
     }
 
@@ -353,6 +366,11 @@ class ProductWebApp:
             return self._queue_world_model_fork(
                 environ, self._read_json(environ),
             )
+        if method == "POST" and path == "/api/v1/world-model-fork-sets":
+            self._require_csrf(environ)
+            return self._queue_world_model_fork_set(
+                environ, self._read_json(environ),
+            )
         if method == "POST" and path == "/api/v1/tactical-studies":
             self._require_csrf(environ)
             return self._queue_tactical_study(environ, self._read_json(environ))
@@ -395,6 +413,7 @@ class ProductWebApp:
         if path in {
             "/api/v1/studio", "/api/v1/matches", "/api/v1/paired-matches",
             "/api/v1/world-model-forks",
+            "/api/v1/world-model-fork-sets",
             "/api/v1/tactical-studies",
             "/api/v1/seasons", "/api/v1/seasons/next-matchday",
             "/api/v1/seasons/decision",
@@ -562,7 +581,8 @@ class ProductWebApp:
                 "tasks": web_tasks[:20],
                 "evidence_library": {
                     "schema_version": 1, "limit": 50,
-                    "matches": [], "pairs": [], "forks": [], "studies": [],
+                    "matches": [], "pairs": [], "forks": [],
+                    "fork_sets": [], "studies": [],
                     "truncated": False,
                 },
             }
@@ -638,7 +658,36 @@ class ProductWebApp:
         library_studies = []
         library_pairs = []
         library_forks = []
+        library_fork_sets = []
         for task in web_tasks:
+            if task.get("kind") == "world_model_fork_set":
+                request = task.get("request") or {}
+                try:
+                    plan = WorldModelForkSetPlan.from_payload(
+                        request.get("plan") or {},
+                    )
+                except ValueError:
+                    continue
+                result = task.get("result") or {}
+                progress = task.get("fork_set_progress") or {}
+                aggregate = result.get("aggregate") or {}
+                library_fork_sets.append({
+                    "task_id": task.get("task_id"),
+                    "home": request.get("home"), "away": request.get("away"),
+                    "seed": plan.seed,
+                    "branch_times_sec": list(plan.branch_times_sec),
+                    "home_tactic": plan.home_tactic,
+                    "away_tactic": plan.away_tactic,
+                    "state": task.get("state"),
+                    "scenarios_completed": progress.get("scenarios_completed", 0),
+                    "fixed_scenario_budget": len(plan.branch_times_sec),
+                    "timing_sensitivity_observed": (
+                        aggregate.get("timing_sensitivity_observed") is True
+                    ),
+                    "ranking_performed": False,
+                    "fork_set_url": result.get("fork_set_url"),
+                })
+                continue
             if task.get("kind") == "world_model_fork":
                 request = task.get("request") or {}
                 try:
@@ -791,6 +840,7 @@ class ProductWebApp:
                 "matches": library_matches,
                 "pairs": library_pairs,
                 "forks": library_forks,
+                "fork_sets": library_fork_sets,
                 "studies": library_studies,
                 "truncated": bool(status.get("match_history_truncated"))
                 or task_history_truncated,
@@ -1413,6 +1463,70 @@ class ProductWebApp:
         finally:
             self._mutation_lock.release()
 
+    def _queue_world_model_fork_set(
+        self, environ: dict[str, Any], payload: dict[str, Any],
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        home = self._text_field(payload, "home", maximum=80)
+        away = self._text_field(payload, "away", maximum=80)
+        if home.casefold() == away.casefold():
+            raise WebRequestError(422, "same_team", "Teams must differ")
+        fast = payload.get("fast", False)
+        if not isinstance(fast, bool):
+            raise WebRequestError(422, "invalid_fast", "fast must be boolean")
+        try:
+            plan = WorldModelForkSetPlan.from_payload(payload.get("plan"))
+        except ValueError as exc:
+            raise WebRequestError(
+                422, "invalid_world_model_fork_set", str(exc),
+            ) from exc
+        if not self._mutation_lock.acquire(blocking=False):
+            raise WebRequestError(
+                409, "operation_in_progress", "Another mutation is running",
+            )
+        try:
+            try:
+                workspace = ProductWorkspace.load(self.root)
+            except FileNotFoundError as exc:
+                raise WebRequestError(
+                    404, "studio_missing", "Create a Studio first",
+                ) from exc
+            try:
+                plan.validate_for_mode(workspace.config.mode)
+            except ValueError as exc:
+                raise WebRequestError(
+                    422, "invalid_world_model_fork_set", str(exc),
+                ) from exc
+            if not workspace.readiness()["ready"]:
+                raise WebRequestError(
+                    409, "world_model_fork_set_blocked",
+                    "World-model fork set blocked by readiness gates",
+                )
+            try:
+                task, created = self.task_queue.submit_world_model_fork_set(
+                    home, away, fast=fast, plan=plan,
+                    idempotency_key=str(
+                        environ.get("HTTP_IDEMPOTENCY_KEY", "")
+                    ),
+                )
+            except TaskConflict as exc:
+                raise WebRequestError(
+                    409, "idempotency_conflict", str(exc),
+                ) from exc
+            except ValueError as exc:
+                raise WebRequestError(
+                    422, "invalid_idempotency_key", str(exc),
+                ) from exc
+            except RuntimeError as exc:
+                raise WebRequestError(
+                    409, "task_queue_full", "Task queue is full",
+                ) from exc
+            return self._json_response(202 if created else 200, {
+                "schema_version": 1, "created": created,
+                "task": self._task_for_web(task),
+            })
+        finally:
+            self._mutation_lock.release()
+
     @staticmethod
     def _safe_artifact_url(value: Any) -> str | None:
         relative = str(value or "")
@@ -1434,6 +1548,7 @@ class ProductWebApp:
             ("treatment_dashboard", "treatment_url"),
             ("comparison_dashboard", "comparison_url"),
             ("study_dashboard", "study_url"),
+            ("fork_set_dashboard", "fork_set_url"),
         ):
             dashboard_url = ProductWebApp._safe_artifact_url(result.get(field))
             if dashboard_url:
@@ -1479,6 +1594,47 @@ class ProductWebApp:
                     payload["study_progress"] = {
                         "state": "invalid_progress",
                         "analysis_withheld": True,
+                    }
+        if payload.get("kind") == "world_model_fork_set":
+            plan_payload = ((payload.get("request") or {}).get("plan") or {})
+            try:
+                validated_plan = WorldModelForkSetPlan.from_payload(plan_payload)
+                budget = len(validated_plan.branch_times_sec)
+                if payload.get("state") == "queued":
+                    payload["fork_set_progress"] = {
+                        "state": "queued", "scenarios_completed": 0,
+                        "fixed_scenario_budget": budget,
+                        "ranking_withheld": True,
+                    }
+                    return payload
+                workspace = ProductWorkspace.load(self.root)
+                progress_path = (
+                    workspace.output_root / "fork_sets"
+                    / str(payload.get("task_id")) / "progress.json"
+                )
+                progress = json.loads(progress_path.read_text(encoding="utf-8"))
+                completed = int(progress.get("scenarios_completed", 0))
+                reported_budget = int(progress.get("fixed_scenario_budget", 0))
+                if (
+                    progress.get("analysis") is not None
+                    or progress.get("interim_ranking_disclosed") is not False
+                    or not 0 <= completed <= reported_budget
+                    or reported_budget != budget
+                ):
+                    raise ValueError("invalid public fork-set progress")
+                payload["fork_set_progress"] = {
+                    "state": str(progress.get("state") or "unknown"),
+                    "scenarios_completed": completed,
+                    "fixed_scenario_budget": reported_budget,
+                    "ranking_withheld": True,
+                }
+            except (
+                OSError, ValueError, TypeError, AttributeError,
+                json.JSONDecodeError,
+            ):
+                if payload.get("state") != "queued":
+                    payload["fork_set_progress"] = {
+                        "state": "invalid_progress", "ranking_withheld": True,
                     }
         return payload
 
@@ -1697,13 +1853,13 @@ _INDEX_HTML = """<!doctype html>
       <p id="pair-guidance" class="status">研究模式下，合格单个配对只支持这一固定对阵与 seed 的局部归因，不是总体效应或显著性检验。</p>
       <button type="submit">运行基线与处理配对</button></form></section>
   <section id="fork-panel" class="wide" data-workspace-area="lab" aria-labelledby="fork-title" hidden><h2 id="fork-title">世界模型因果分叉</h2>
-    <p>自动创建两个严格配对的模拟世界：基线世界加载同一模型但禁止预测进入动作策略；干预世界只打开经过质量门控的动作策略。球队、战术、检查点、快速配置与 seed 全部固定。</p>
-    <form id="fork-form"><div class="row"><label>主队<input name="home" maxlength="80" value="Brazil" required></label><label>客队<input name="away" maxlength="80" value="Argentina" required></label></div>
+    <p>在同一对阵、seed、战术、检查点与快速配置下，按预注册的多个比赛时点分别创建 predict-only 与 action-policy 两个未来，观察动作采用何时真正传导为可见差异。</p>
+    <form id="fork-form" data-single-fork-endpoint="/api/v1/world-model-forks"><div class="row"><label>主队<input name="home" maxlength="80" value="Brazil" required></label><label>客队<input name="away" maxlength="80" value="Argentina" required></label></div>
       <div class="row"><label>主队固定战术<select name="home_tactic"></select></label><label>客队固定战术<select name="away_tactic"></select></label></div>
       <label>共享 seed<input name="seed" type="number" min="0" max="2147483647" value="42" required></label>
       <label class="check"><input name="fast" type="checkbox" checked>快速模式</label>
-      <p id="fork-guidance" class="status">仅研究模式可用。单个分叉证明这一固定模拟局面中策略开关造成的差异，不代表总体效应、真实足球因果关系或模型晋级。</p>
-      <button type="submit">生成两个未来并比较</button></form></section>
+      <p id="fork-guidance" class="status">仅研究模式可用。完整固定预算完成前不做排序；最终只报告模拟器内时间敏感性，不推荐最佳时点。</p>
+      <button type="submit">生成多时点未来集</button></form></section>
   <section id="study-panel" class="wide" data-workspace-area="lab" aria-labelledby="study-title" hidden><h2 id="study-title">固定预算战术研究</h2>
     <p>只在研究模式运行：固定同一对阵与完整种子预算，仅改变一侧战术。预算完成前隐藏全部效应，避免可选停止和挑选结果。</p>
     <form id="study-form"><div class="row">
@@ -1872,7 +2028,7 @@ function populateTactics(select,tactics){const selected=select.value;select.repl
 function configureMatchPlan(capabilities,mode){currentMatchCapabilities=capabilities||currentMatchCapabilities||{};currentStudioMode=mode||currentStudioMode;populateTactics(homeTactic,currentMatchCapabilities.tactics);populateTactics(awayTactic,currentMatchCapabilities.tactics);const labOption=[...experienceSelect.options].find(option=>option.value==='tactical_lab'),labAllowed=['research','cognitive'].includes(currentStudioMode);labOption.disabled=!labAllowed;if(!labAllowed&&experienceSelect.value==='tactical_lab')experienceSelect.value='observational';const lab=experienceSelect.value==='tactical_lab';if(lab&&homeTactic.value==='team_identity'&&awayTactic.value==='team_identity')homeTactic.value='balanced';tacticalOptions.hidden=!lab;homeTactic.disabled=!lab;awayTactic.disabled=!lab;reuseSeed.disabled=!lab;if(!lab)reuseSeed.checked=false;planGuidance.textContent=lab?'战术实验使用物理比分。单场结果只作描述；复用上一场随机条件后才能进行配对归因。':'原生观赛保留球队自身体系和稳定比分路径。'}
 function configureTacticalStudy(capabilities,mode){const tactics=capabilities?.tactics||[];for(const select of [baselineTactic,treatmentTactic,opponentTactic])populateTactics(select,tactics);if(!baselineTactic.dataset.initialized){baselineTactic.value='balanced';treatmentTactic.value='gegenpress';opponentTactic.value='low_block_counter';baselineTactic.dataset.initialized='true'}studyPanel.hidden=mode!=='research'}
 function configurePairedMatch(capabilities,mode,seed){const tactics=capabilities?.tactics||[];for(const select of [pairBaselineTactic,pairTreatmentTactic,pairOpponentTactic])populateTactics(select,tactics);if(!pairBaselineTactic.dataset.initialized){pairBaselineTactic.value='balanced';pairTreatmentTactic.value='gegenpress';pairOpponentTactic.value='low_block_counter';pairBaselineTactic.dataset.initialized='true'}if(!pairForm.dataset.seedInitialized&&Number.isInteger(Number(seed))){pairForm.querySelector('[name="seed"]').value=String(seed);pairForm.dataset.seedInitialized='true'}pairPanel.hidden=!['research','cognitive'].includes(mode);pairGuidance.textContent=mode==='cognitive'?'认知模式含不受共享 seed 完全控制的供应商输出；配对仅作描述，自动撤销战术归因资格。':'研究模式下，资格检查全部通过的单个配对只支持这一固定对阵与 seed 的局部归因，不是总体效应或显著性检验。'}
-function configureWorldModelFork(capabilities,mode,seed){const tactics=capabilities?.tactics||[];for(const select of [forkHomeTactic,forkAwayTactic])populateTactics(select,tactics);if(!forkForm.dataset.tacticsInitialized){forkHomeTactic.value='balanced';forkAwayTactic.value='low_block_counter';forkForm.dataset.tacticsInitialized='true'}if(!forkForm.dataset.seedInitialized&&Number.isInteger(Number(seed))){forkForm.querySelector('[name="seed"]').value=String(seed);forkForm.dataset.seedInitialized='true'}forkPanel.hidden=mode!=='research';forkGuidance.textContent=mode==='research'?'基线与干预使用同一世界模型检查点；唯一计划差异是 MATCH_WM_PLAN=0 → 1。结果只解释这一固定模拟局面。':'请创建研究模式工作区；稳定模式不加载世界模型，认知模式含无法由共享 seed 完全控制的供应商输出。'}
+function configureWorldModelFork(capabilities,mode,seed){const tactics=capabilities?.tactics||[];for(const select of [forkHomeTactic,forkAwayTactic])populateTactics(select,tactics);if(!forkForm.dataset.tacticsInitialized){forkHomeTactic.value='balanced';forkAwayTactic.value='low_block_counter';forkForm.dataset.tacticsInitialized='true'}if(!forkForm.dataset.seedInitialized&&Number.isInteger(Number(seed))){forkForm.querySelector('[name="seed"]').value=String(seed);forkForm.dataset.seedInitialized='true'}forkPanel.hidden=mode!=='research';forkGuidance.textContent=mode==='research'?'固定多个分叉时点；每个时点只改变 MATCH_WM_PLAN=0 → 1。完整预算后仅报告模拟器内时间敏感性，不挑选最佳时点。':'请创建研究模式工作区；稳定模式不加载世界模型，认知模式含无法由共享 seed 完全控制的供应商输出。'}
 function renderActionAdoption(studio){adoptionMetrics.replaceChildren();if(!studio){adoptionSummary.textContent='创建工作区后，这里会显示世界模型对动作选择的实际影响。';adoptionEvidence.textContent='运行观测和机制证据将分别呈现。';return}const mechanism=studio.evidence?.action_adoption_mechanism||{},research=studio.mode!=='stable',latest=studio.last_match||{},adoption=latest.world_model_action_adoption||{};if(!research){adoptionSummary.textContent='稳定模式不启用研究型世界模型动作策略，比赛由稳定模拟器决策。';adoptionMetrics.append(card('策略状态','未启用'),card('最近动作影响','不适用'))}else if(!latest.match_id){adoptionSummary.textContent='动作策略已配置并受质量门控；运行一场比赛后可观察实际影响。';adoptionMetrics.append(card('策略状态','已配置·质量门控'),card('决策机会','尚无比赛'),card('实际动作改变','尚无比赛'))}else{const opportunities=Number(adoption.opportunities||0),influenced=Number(adoption.influenced_opportunities||0),eligible=Number(adoption.attribution_eligible_opportunities||0),changed=Number(adoption.counterfactual_action_changes||0),expected=Number(adoption.expected_counterfactual_action_changes||0),shift=Number(adoption.mean_recommended_probability_shift||0);adoptionSummary.textContent=`最近比赛 ${latest.home} vs ${latest.away}：世界模型在 ${influenced}/${opportunities} 个决策机会中产生非零概率影响。`;adoptionMetrics.append(card('非零影响',`${influenced}/${opportunities}`),card('可归因机会',`${eligible}/${opportunities}`),card('实际动作改变',changed),card('期望动作改变',expected.toFixed(3)),card('平均推荐概率偏移',(shift*100).toFixed(3)+' pp'))}if(mechanism.available){const done=mechanism.runs_executed??0,total=mechanism.fixed_run_budget??'—',state=mechanism.execution_state||mechanism.protocol_state||'unknown',promotion=mechanism.promotion_authorized?'已授权推广':'未授权推广';adoptionEvidence.textContent=`机制证据：${state} · ${done}/${total} 次固定预算运行 · ${promotion}。单场运行观测不等于机制证明。`}else{adoptionEvidence.textContent='机制证据协议缺失；当前只能查看运行观测，不能形成机制结论。'}}
 function artifactLink(label,url){if(!url)return null;const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.textContent=label;return link}
 async function resumeInterruptedTask(taskId,button){button.disabled=true;button.setAttribute('aria-busy','true');announce(message,'正在恢复已持久化的配对事务……');try{const data=await api('/api/v1/tasks/'+encodeURIComponent(taskId)+'/requeue',{method:'POST',body:JSON.stringify({reason:'studio_pair_transaction_resume'})});announce(message,'配对事务已使用原任务身份重新排队。','success');activePoll=data.task.task_id;await pollTask(data.task.task_id)}catch(error){announce(message,error.message,'error',true)}finally{button.disabled=false;button.setAttribute('aria-busy','false')}}
@@ -2007,7 +2163,7 @@ function renderBackups(data){backupList.replaceChildren();if(!data.backups.lengt
 async function refreshRecovery(){setBusy(backupList,true);try{renderBackups(await api('/api/v1/recovery'))}catch(e){setRecoveryMessage(e.message,true,true)}finally{setBusy(backupList,false)}}
 async function api(path,options={}){const response=await fetch(path,{...options,headers:{'Content-Type':'application/json','X-GFS-CSRF':csrf,...options.headers}});const data=await response.json();if(!response.ok)throw new Error(data.error?.message||'请求失败');return data}
 async function refresh(){try{const data=await api('/api/v1/studio');const mode=data.studio?.mode||'stable';configureMatchPlan(data.match_capabilities,mode);configureTacticalStudy(data.match_capabilities,mode);configurePairedMatch(data.match_capabilities,mode,data.studio?.seed);configureWorldModelFork(data.match_capabilities,mode,data.studio?.seed);render(data);renderRelease(data)}catch(e){announce(message,e.message,'error',true)}}
-async function pollTask(id){try{while(true){const data=await api('/api/v1/tasks/'+encodeURIComponent(id)),task=data.task,isStudy=task.kind==='tactical_study',isPair=task.kind==='paired_match',isFork=task.kind==='world_model_fork',isSeason=task.kind==='season_matchday',progress=task.study_progress;details.textContent=JSON.stringify(data,null,2);if(isStudy&&progress?.pairs_completed!==undefined){announce(message,`战术研究 ${progress.pairs_completed}/${progress.fixed_pair_budget} 对已完成；中期效应保持隐藏。`)}else{announce(message,task.state==='queued'?(isStudy?'战术研究已排队，固定预算尚未开始……':isFork?'因果分叉已排队，将依次生成预测-only与动作策略世界……':isPair?'配对对决已排队，将连续运行基线与处理场……':isSeason?'赛季比赛日已持久化排队……':'比赛任务已排队……'):(isStudy?'战术研究正在后台运行；预算完成前不展示效应……':isFork?'正在用共享 seed 生成两个世界并核验唯一策略干预……':isPair?'正在运行共享 seed 的基线与处理场……':isSeason?'正在推进赛季比赛日并结算长期状态……':'比赛正在后台运行……'))}if(task.state==='completed'){announce(message,isStudy?'固定预算研究完成，最终分析现已开放。':isFork?'世界模型因果分叉完成，双世界回放与差异链已开放。':isPair?'配对对决完成，三层复盘已开放。':isSeason?'赛季比赛日完成，积分与球队状态已结算。':'比赛完成。','success',true);showReport(task.result?.treatment_url||task.result?.dashboard_url,task.result?.comparison_url,task.result?.study_url,task.result?.baseline_url);await refresh();return}if(['failed','interrupted'].includes(task.state)){announce(message,task.error?.message||'任务中断，可检查状态后重新提交。','error',true);await refresh();return}await new Promise(resolve=>setTimeout(resolve,750))}}catch(e){announce(message,e.message,'error',true)}finally{activePoll=''}}
+async function pollTask(id){try{while(true){const data=await api('/api/v1/tasks/'+encodeURIComponent(id)),task=data.task,isStudy=task.kind==='tactical_study',isPair=task.kind==='paired_match',isFork=task.kind==='world_model_fork',isForkSet=task.kind==='world_model_fork_set',isSeason=task.kind==='season_matchday',progress=task.study_progress||task.fork_set_progress;details.textContent=JSON.stringify(data,null,2);if(isForkSet&&progress?.scenarios_completed!==undefined){announce(message,`未来集 ${progress.scenarios_completed}/${progress.fixed_scenario_budget} 个场景已完成；不披露中期排名。`)}else if(isStudy&&progress?.pairs_completed!==undefined){announce(message,`战术研究 ${progress.pairs_completed}/${progress.fixed_pair_budget} 对已完成；中期效应保持隐藏。`)}else{announce(message,task.state==='queued'?(isStudy?'战术研究已排队，固定预算尚未开始……':isForkSet?'多时点未来集已排队，固定场景预算尚未开始……':isFork?'因果分叉已排队，将依次生成预测-only与动作策略世界……':isPair?'配对对决已排队，将连续运行基线与处理场……':isSeason?'赛季比赛日已持久化排队……':'比赛任务已排队……'):(isStudy?'战术研究正在后台运行；预算完成前不展示效应……':isForkSet?'正在生成固定多时点未来集；完成前不做排名……':isFork?'正在用共享 seed 生成两个世界并核验唯一策略干预……':isPair?'正在运行共享 seed 的基线与处理场……':isSeason?'正在推进赛季比赛日并结算长期状态……':'比赛正在后台运行……'))}if(task.state==='completed'){announce(message,isStudy?'固定预算研究完成，最终分析现已开放。':isForkSet?'多时点未来集完成，时间敏感性报告已开放。':isFork?'世界模型因果分叉完成，双世界回放与差异链已开放。':isPair?'配对对决完成，三层复盘已开放。':isSeason?'赛季比赛日完成，积分与球队状态已结算。':'比赛完成。','success',true);showReport(task.result?.treatment_url||task.result?.dashboard_url,task.result?.comparison_url,task.result?.study_url||task.result?.fork_set_url,task.result?.baseline_url);await refresh();return}if(['failed','interrupted'].includes(task.state)){announce(message,task.error?.message||'任务中断，可检查状态后重新提交。','error',true);await refresh();return}await new Promise(resolve=>setTimeout(resolve,750))}}catch(e){announce(message,e.message,'error',true)}finally{activePoll=''}}
 async function submit(form,path,payload,headers={}){const button=form.querySelector('button[type="submit"]')||form.querySelector('button');button.disabled=true;setBusy(form,true);announce(message,'正在提交……');report.hidden=true;try{const data=await api(path,{method:'POST',body:JSON.stringify(payload),headers});if(data.task){announce(message,data.created?'任务已持久化排队。':'已返回同一幂等任务。');activePoll=data.task.task_id;await pollTask(data.task.task_id)}else{announce(message,'操作成功。','success',true);await refresh()}}catch(e){announce(message,e.message,'error',true)}finally{button.disabled=false;setBusy(form,false)}}
 const submitWithoutRecruitment=submit;
 submit=(form,path,payload,headers={})=>{if(form===seasonForm&&path==='/api/v1/seasons'){const commitmentForm=new FormData(seasonForm);payload.plan.manager_commitments=payload.plan.manager_team?{schema_version:1,tactic_policy:String(commitmentForm.get('commitment_tactic_policy')||'club_identity'),rotation_policy:String(commitmentForm.get('commitment_rotation_policy')||'share_load')}:null;if(payload?.start_next){try{payload.plan.manager_recruitment=recruitmentPayload();payload.plan.manager_retention=retentionPayload();payload.plan.manager_free_agent=freeAgentPayload();payload.plan.manager_sporting_directive=sportingDirectivePayload()}catch(error){announce(sportingDirectorSummary,error.message,'error',true);return Promise.resolve()}}}return submitWithoutRecruitment(form,path,payload,headers)};
@@ -2027,11 +2183,13 @@ const renderActionAdoptionWithoutFormalEvidence=renderActionAdoption;
 renderActionAdoption=studio=>{renderActionAdoptionWithoutFormalEvidence(studio);if(!studio)return;const evidence=studio.evidence||{},mechanism=evidence.action_adoption_mechanism||{},outcome=evidence.action_outcome_study||{},parts=[];if(mechanism.available){const label=mechanism.result_status==='mechanism_confirmed'?'动作采纳机制已确认':mechanism.execution_state||mechanism.protocol_state||'unknown',formal=mechanism.mechanism||{},changed=Number(formal.realized_counterfactual_action_changes||0),opportunities=Number(formal.action_opportunities||0);parts.push(`机制：${label} · ${mechanism.runs_executed??0}/${mechanism.fixed_run_budget??'—'} 次运行 · ${changed}/${opportunities} 次实际反事实动作变化`)}if(outcome.available){const state=outcome.result_status||outcome.execution_state||'not_started',promotion=outcome.promotion_supported?'结果门支持晋级':'结果门未支持晋级',primary=outcome.primary||{},behavior=outcome.behavior||{},delta=Number(primary.point_delta),low=Number(primary.ci95_low),high=Number(primary.ci95_high),effect=Number.isFinite(delta)&&Number.isFinite(low)&&Number.isFinite(high)?` · 损失差 ${delta.toFixed(3)} · 95% CI [${low.toFixed(3)}, ${high.toFixed(3)}]`:'',changed=Number.isFinite(Number(behavior.changed_pairs))?` · 行为变化 ${behavior.changed_pairs}/${outcome.pairs_total??'—'} 对`:'';parts.push(`全长度结果：${state} · ${outcome.runs_executed??0}/${outcome.fixed_run_budget??'—'} 次运行${effect}${changed} · ${promotion}`)}if(parts.length)adoptionEvidence.textContent=parts.join('；')+'。世界模型已改变完整比赛行为，但本次结果不确定，未证明赛果改善或真实足球因果效应。'};
 const renderManagerDecisionPreviewWithoutWorldModelComparison=renderManagerDecisionPreview;
 renderManagerDecisionPreview=preview=>{renderManagerDecisionPreviewWithoutWorldModelComparison(preview);adoptManagerAdvice.textContent='\u91c7\u7528\u6a21\u578b\u5efa\u8bae';const advice=preview?.world_model_advice,comparison=advice?.comparison;if(!comparison)return;const authority=comparison.authority||{},exploratory=authority.level==='exploratory_only',heading=document.createElement('h4');heading.textContent='\u4e16\u754c\u6a21\u578b\u5efa\u8bae vs \u5f53\u524d\u9009\u62e9';if(exploratory)adoptManagerAdvice.textContent='\u5ba1\u9605\u540e\u91c7\u7528\u63a2\u7d22\u5efa\u8bae';const signed=(value,digits=3)=>`${Number(value||0)>=0?'+':''}${Number(value||0).toFixed(digits)}`,deltas=comparison.recommended_minus_selected||{},events=deltas.event_probabilities||{},facts=document.createElement('div');facts.className='cards';facts.setAttribute('role','list');facts.setAttribute('aria-label','\u4e16\u754c\u6a21\u578b\u5efa\u8bae\u4e0e\u5f53\u524d\u6218\u672f\u7684\u77ed\u89c6\u91ce\u4ee3\u7406\u5dee\u5f02');const reasonLabels={low_model_confidence:'\u6a21\u578b\u7f6e\u4fe1\u5ea6\u4f4e',low_historical_trust:'\u5386\u53f2\u4fe1\u4efb\u4f4e',narrow_top_two_margin:'\u524d\u4e24\u540d\u5dee\u8ddd\u5c0f',insufficient_history:'\u5386\u53f2\u6837\u672c\u4e0d\u8db3',low_authority_guidance:'\u4f4e\u6743\u5a01\u5f15\u5bfc'},reasons=(authority.reasons||[]).map(reason=>reasonLabels[reason]||reason).join(' / ')||'\u5df2\u8fbe\u6709\u754c\u5ba1\u9605\u663e\u793a\u95e8\u69db';for(const [label,value] of [['\u663e\u793a\u6743\u5a01',`${exploratory?'\u4ec5\u63a2\u7d22':'\u6709\u754c\u5ba1\u9605'} \u00b7 ${reasons}`],['\u6218\u672f\u6392\u540d',`\u5efa\u8bae ${comparison.recommended_tactic} #${comparison.recommended_rank} / \u5f53\u524d ${comparison.selected_tactic} #${comparison.selected_rank}`],['\u98ce\u9669\u8c03\u6574\u503c\u5dee',signed(deltas.risk_adjusted_value)],['\u7f6e\u4fe1 / \u4e0d\u786e\u5b9a\u6027',`${signed(deltas.effective_confidence)} / ${signed(deltas.uncertainty)}`],['\u75b2\u52b3 / \u7ed3\u6784\u98ce\u9669',`${signed(deltas.fatigue_cost_proxy)} / ${signed(deltas.structural_risk_proxy)}`],['\u4e8b\u4ef6\u5206\u5e03\u5dee',`\u4fdd\u6301 ${signed(Number(events.retain||0)*100,1)}pp / \u4e22\u5931 ${signed(Number(events.turnover||0)*100,1)}pp / \u5c04\u95e8 ${signed(Number(events.shot||0)*100,1)}pp`]]){const node=card(label,value);node.setAttribute('role','listitem');facts.append(node)}const boundary=document.createElement('p');boundary.className='status';boundary.textContent=`${advice.current?'\u5f53\u524d\u5efa\u8bae\u8eab\u4efd\u6709\u6548':'\u5efa\u8bae\u5df2\u8fc7\u671f\uff0c\u4e0d\u53ef\u7ed1\u5b9a\u91c7\u7528'}\u3002\u6b63\u503c\u8868\u793a\u63a8\u8350\u6218\u672f\u51cf\u53bb\u5f53\u524d\u6218\u672f\uff1b\u8fd9\u4e9b\u662f\u77ed\u89c6\u91ce\u6a21\u62df\u5668\u4ee3\u7406\u5dee\u5f02\uff0c\u4e0d\u662f\u6bd4\u5206\u3001\u80dc\u7387\u6216\u56e0\u679c\u4f30\u8ba1\u3002`;managerDecisionPreview.append(heading,facts,boundary)};
-const forkBranchLabel=document.createElement('label'),forkBranchInput=document.createElement('input');forkBranchLabel.textContent='分叉时间（比赛分钟）';forkBranchInput.name='branch_minute';forkBranchInput.type='number';forkBranchInput.min='0';forkBranchInput.max='90';forkBranchInput.step='0.5';forkBranchInput.value='45';forkBranchInput.required=true;forkBranchLabel.append(forkBranchInput);forkForm.querySelector('.check').before(forkBranchLabel);
+const forkBranchLabel=document.createElement('label'),forkBranchInput=document.createElement('input');forkBranchLabel.textContent='预注册分叉分钟（2–4 个，逗号分隔）';forkBranchInput.name='branch_minutes';forkBranchInput.type='text';forkBranchInput.inputMode='decimal';forkBranchInput.pattern='[0-9., ]+';forkBranchInput.value='30,45,60';forkBranchInput.required=true;forkBranchLabel.append(forkBranchInput);forkForm.querySelector('.check').before(forkBranchLabel);
 const renderLibraryWithoutBranchIdentity=renderLibrary;
 renderLibrary=library=>{renderLibraryWithoutBranchIdentity(library);const source=library||{matches:[],forks:[]},filter=libraryFilter.value,visibleMatches=['paired','forks','studies'].includes(filter)?[]:(source.matches||[]),visibleForks=['matches','paired','studies'].includes(filter)?[]:(source.forks||[]),hosts=[...libraryList.children].slice(visibleMatches.length,visibleMatches.length+visibleForks.length);for(const [index,item] of visibleForks.entries()){const host=hosts[index];if(!host)continue;const evidence=item.propagation||{},minute=Number(item.branch_at_sec)/60,identity=String(evidence.branch_state_identity||'').slice(0,16),row=document.createElement('p');row.className='status';row.textContent='分叉 '+(Number.isFinite(minute)?minute.toFixed(1):'—')+' 分钟 · 前缀锚点 '+(evidence.branch_anchor_verified?'已验证':'未验证')+' · '+(identity||'无 identity')+' · 确定性重放（非进程快照）';host.append(row)}};
 const renderLibraryWithoutUnifiedFuture=renderLibrary;
 renderLibrary=library=>{renderLibraryWithoutUnifiedFuture(library);const source=library||{matches:[],forks:[]},filter=libraryFilter.value,visibleMatches=['paired','forks','studies'].includes(filter)?[]:(source.matches||[]),visibleForks=['matches','paired','studies'].includes(filter)?[]:(source.forks||[]),hosts=[...libraryList.children].slice(visibleMatches.length,visibleMatches.length+visibleForks.length),labels={descriptive_only_ineligible:'仅描述：资格未通过',no_realized_action_divergence:'策略介入但动作未分叉',action_divergence_without_local_attribution:'动作分叉但局部归因不足',local_action_divergence_with_descriptive_future_difference:'局部动作已归因，未来出现描述性差异',local_action_divergence_without_measured_future_difference:'局部动作已归因，已测未来未变化'};for(const [index,item] of visibleForks.entries()){const host=hosts[index],future=item.propagation?.future_summary;if(!host||!future?.available)continue;const row=document.createElement('p'),local=future.simulator_local_action_attribution?'局部动作归因成立':'不授予局部动作归因';row.className='status';row.textContent='反事实未来：'+(labels[future.status]||future.status)+' · 动作变化 '+Number(future.changed_actions||0)+' · 后续描述差异 '+Number(future.descriptive_outcome_difference_count||0)+' · '+local+' · 不授予赛果因果';host.append(row)}};
+const renderLibraryWithoutForkSets=renderLibrary;
+renderLibrary=library=>{renderLibraryWithoutForkSets(library);const source=library||{},sets=source.fork_sets||[],filter=libraryFilter.value;if(!['all','forks'].includes(filter))return;if(sets.length)librarySummary.textContent+=' · '+sets.length+' 个多时点未来集';for(const item of sets){const node=card(${item.home} vs ,item.state);node.setAttribute('role','listitem');const minutes=(item.branch_times_sec||[]).map(value=>(Number(value)/60).toFixed(1)).join(' / '),progress=document.createElement('p'),boundary=document.createElement('p'),links=document.createElement('p');progress.className='status';progress.textContent=固定 seed  · 分叉分钟  · / 个场景完成;boundary.className='status';boundary.textContent=item.state==='completed'?时间敏感性 · 未执行最佳时点排名 · 不授予赛果或现实足球因果:'完整预算完成前不披露场景排名或最佳时点';const link=artifactLink('打开多时点未来集',item.fork_set_url);if(link)links.append(link);if(item.state==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='安全恢复未来集';resume.addEventListener('click',()=>resumeInterruptedTask(item.task_id,resume));node.append(progress,boundary,links,resume)}else node.append(progress,boundary,links);libraryList.append(node)}};
 const renderActionAdoptionWithoutManagerProtocol=renderActionAdoption;
 renderActionAdoption=studio=>{renderActionAdoptionWithoutManagerProtocol(studio);const node=document.querySelector('#manager-advisor-protocol-evidence'),protocol=studio?.evidence?.manager_advisor_adoption;if(!protocol?.available){node.textContent=studio?'\u7ecf\u7406\u987e\u95ee\u91c7\u7eb3\u534f\u8bae\u7f3a\u5931\uff1b\u4e0d\u80fd\u5f62\u6210\u91c7\u7eb3\u53d6\u8bc1\u7ed3\u8bba\u3002':'';return}node.textContent=`\u7ecf\u7406\u7ea7\u91c7\u7eb3\u534f\u8bae\uff1a${protocol.protocol_state} \u00b7 \u56fa\u5b9a\u4fe1\u606f\u7a97\u53e3 ${(protocol.fixed_information_windows||[]).join('/')} \u00b7 ${protocol.results_available?'\u5df2\u6709\u7ed3\u679c':'\u5c1a\u65e0\u7ed3\u679c'} \u00b7 \u4e0d\u6388\u6743\u8d5b\u679c\u56e0\u679c\u6216\u4ea7\u54c1/\u8bba\u6587\u664b\u7ea7\u3002`};
 const renderManagerDecisionLedgerWithoutAdvisorEvidence=renderManagerDecisionLedger;
@@ -2057,7 +2215,7 @@ experienceSelect.addEventListener('change',()=>configureMatchPlan(currentMatchCa
 libraryFilter.addEventListener('change',()=>renderLibrary(currentLibrary));
 match.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(match),key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random(),experience=f.get('experience'),plan={experience,home_tactic:experience==='tactical_lab'?f.get('home_tactic'):'team_identity',away_tactic:experience==='tactical_lab'?f.get('away_tactic'):'team_identity',reuse_last_seed:f.get('reuse_last_seed')==='on'};submit(match,'/api/v1/matches',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on',plan},{'Idempotency-Key':key})});
 pairForm.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(pairForm),focus=f.get('focus_side'),baseline=f.get('baseline_tactic'),treatment=f.get('treatment_tactic'),opponent=f.get('opponent_tactic'),plan={seed:Number(f.get('seed')),baseline:{home_tactic:focus==='home'?baseline:opponent,away_tactic:focus==='away'?baseline:opponent},treatment:{home_tactic:focus==='home'?treatment:opponent,away_tactic:focus==='away'?treatment:opponent}},key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random();submit(pairForm,'/api/v1/paired-matches',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on',plan},{'Idempotency-Key':key})});
-forkForm.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(forkForm),plan={seed:Number(f.get('seed')),home_tactic:f.get('home_tactic'),away_tactic:f.get('away_tactic'),branch_at_sec:Number(f.get('branch_minute'))*60},key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random();submit(forkForm,'/api/v1/world-model-forks',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on',plan},{'Idempotency-Key':key})});
+forkForm.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(forkForm),minutes=String(f.get('branch_minutes')||'').split(',').map(value=>Number(value.trim())),plan={seed:Number(f.get('seed')),home_tactic:f.get('home_tactic'),away_tactic:f.get('away_tactic'),branch_times_sec:minutes.map(value=>value*60)},key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random();submit(forkForm,'/api/v1/world-model-fork-sets',{home:f.get('home'),away:f.get('away'),fast:f.get('fast')==='on',plan},{'Idempotency-Key':key})});
 studyForm.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(studyForm),focus=f.get('focus_side'),baseline=f.get('baseline_tactic'),treatment=f.get('treatment_tactic'),opponent=f.get('opponent_tactic'),budget=Number(f.get('pair_budget')),start=Number(f.get('seed_start')),seeds=Array.from({length:budget},(_,index)=>start+index),plan={study_id:f.get('study_id'),fixture:{home:f.get('home'),away:f.get('away')},baseline:{home_tactic:focus==='home'?baseline:opponent,away_tactic:focus==='away'?baseline:opponent},treatment:{home_tactic:focus==='home'?treatment:opponent,away_tactic:focus==='away'?treatment:opponent},seeds,fast:f.get('fast')==='on',analysis_plan:{smallest_effect_size:0.05}},key=globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random();submit(studyForm,'/api/v1/tactical-studies',{plan},{'Idempotency-Key':key})});
 createBackupButton.addEventListener('click',async()=>{createBackupButton.disabled=true;createBackupButton.setAttribute('aria-busy','true');setRecoveryMessage('正在创建并校验备份……');try{await api('/api/v1/backups',{method:'POST'});setRecoveryMessage('备份已创建并通过校验。');await refreshRecovery()}catch(e){setRecoveryMessage(e.message,true,true)}finally{createBackupButton.disabled=false;createBackupButton.setAttribute('aria-busy','false')}});
 restoreForm.addEventListener('submit',async e=>{e.preventDefault();const id=restoreForm.dataset.backupId,f=new FormData(restoreForm),button=restoreForm.querySelector('button[type="submit"]');button.disabled=true;setBusy(restoreForm,true);setRecoveryMessage('正在执行事务恢复……');try{await api('/api/v1/backups/'+encodeURIComponent(id)+'/restore',{method:'POST',body:JSON.stringify({confirmation:f.get('confirmation'),replace:f.get('replace')==='on'})});closeRestore(false);setRecoveryMessage('恢复完成，任务历史已安全重置。',false,true);await Promise.all([refresh(),refreshRecovery()])}catch(error){setRecoveryMessage(error.message,true,true)}finally{button.disabled=false;setBusy(restoreForm,false)}});

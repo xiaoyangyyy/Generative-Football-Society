@@ -15,7 +15,9 @@ from typing import Any, Callable
 
 from src.infrastructure import FileLease
 from src.product.telemetry import ProductTelemetry
-from src.product.match_plan import MatchPlan, PairedMatchPlan, WorldModelForkPlan
+from src.product.match_plan import (
+    MatchPlan, PairedMatchPlan, WorldModelForkPlan, WorldModelForkSetPlan,
+)
 from src.product.tactical_study import TacticalStudyPlan
 from src.product.workspace import ProductWorkspace, _atomic_json, _now
 
@@ -23,7 +25,8 @@ from src.product.workspace import ProductWorkspace, _atomic_json, _now
 TASK_SCHEMA_VERSION = 1
 TASK_STATES = {"queued", "running", "completed", "failed", "interrupted"}
 TASK_KINDS = {
-    "match", "paired_match", "world_model_fork", "tactical_study",
+    "match", "paired_match", "world_model_fork", "world_model_fork_set",
+    "tactical_study",
     "season_matchday",
 }
 TERMINAL_TASK_STATES = {"completed", "failed", "interrupted"}
@@ -560,6 +563,84 @@ class ProductTaskQueue:
             )
             return public, True
 
+    def submit_world_model_fork_set(
+        self, home: str, away: str, *, fast: bool,
+        plan: WorldModelForkSetPlan | dict[str, Any],
+        idempotency_key: str = "",
+    ) -> tuple[dict[str, Any], bool]:
+        for side, value in (("home", home), ("away", away)):
+            if (
+                not isinstance(value, str) or not value.strip()
+                or len(value.strip()) > 80
+                or any(ord(char) < 32 for char in value)
+            ):
+                raise ValueError(f"invalid {side} team")
+        home, away = home.strip(), away.strip()
+        if home.casefold() == away.casefold():
+            raise ValueError("home and away teams must differ")
+        if not isinstance(fast, bool):
+            raise ValueError("fast must be boolean")
+        normalized = (
+            plan if isinstance(plan, WorldModelForkSetPlan)
+            else WorldModelForkSetPlan.from_payload(plan)
+        )
+        request = {
+            "home": home, "away": away, "fast": fast,
+            "plan": normalized.as_dict(),
+        }
+        idempotency_hash = self._idempotency_hash(idempotency_key)
+        with FileLease(self.lease_path, timeout=5.0):
+            payload = self._load()
+            if idempotency_hash:
+                for task in payload["tasks"]:
+                    if task.get("idempotency_hash") != idempotency_hash:
+                        continue
+                    if (
+                        task.get("kind") != "world_model_fork_set"
+                        or task.get("request") != request
+                    ):
+                        raise TaskConflict(
+                            "idempotency key was already used for a different fork set"
+                        )
+                    public = _public_task(task)
+                    self.telemetry.try_record(
+                        "task_submitted", task_id=public["task_id"],
+                        created=False, fast=fast,
+                    )
+                    return public, False
+            if len(payload["tasks"]) >= MAX_RETAINED_TASKS:
+                removable = sum(
+                    task.get("state") in TERMINAL_TASK_STATES
+                    for task in payload["tasks"]
+                )
+                remove_count = min(
+                    removable, len(payload["tasks"]) - PRUNE_TO_TASKS,
+                )
+                retained = []
+                for task in payload["tasks"]:
+                    if remove_count and task.get("state") in TERMINAL_TASK_STATES:
+                        remove_count -= 1
+                        continue
+                    retained.append(task)
+                payload["tasks"] = retained
+            if len(payload["tasks"]) >= MAX_RETAINED_TASKS:
+                raise RuntimeError("product task queue is full")
+            task = {
+                "task_id": uuid.uuid4().hex,
+                "kind": "world_model_fork_set",
+                "state": "queued", "created_at": _now(),
+                "updated_at": _now(), "attempt": 0,
+                "request": request, "idempotency_hash": idempotency_hash,
+            }
+            payload["tasks"].append(task)
+            self._write(payload)
+            public = _public_task(task)
+            self.telemetry.try_record(
+                "task_submitted", task_id=public["task_id"],
+                created=True, fast=fast,
+            )
+            return public, True
+
     def list_tasks(self, *, limit: int = 50) -> list[dict[str, Any]]:
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
             raise ValueError("task limit must be between 1 and 500")
@@ -739,6 +820,30 @@ class BackgroundMatchWorker:
                     "study_dashboard": self._relative(
                         self.queue.root, study["dashboard_path"],
                     ),
+                }
+            elif task.get("kind") == "world_model_fork_set":
+                from src.product.world_model_fork_set import (
+                    execute_world_model_fork_set,
+                )
+
+                plan = WorldModelForkSetPlan.from_payload(request["plan"])
+                plan.validate_for_mode(workspace.config.mode)
+                fork_set = execute_world_model_fork_set(
+                    workspace, plan, set_id=str(task["task_id"]),
+                    home=str(request["home"]), away=str(request["away"]),
+                    fast=bool(request["fast"]),
+                )
+                result = {
+                    "fork_set_id": str(task["task_id"]),
+                    "status": fork_set["status"],
+                    "fork_set_result": self._relative(
+                        self.queue.root, fork_set["result_path"],
+                    ),
+                    "fork_set_dashboard": self._relative(
+                        self.queue.root, fork_set["dashboard_path"],
+                    ),
+                    "aggregate": fork_set["aggregate"],
+                    "claim_authority": fork_set["claim_authority"],
                 }
             elif task.get("kind") == "season_matchday":
                 season = workspace.play_next_matchday(

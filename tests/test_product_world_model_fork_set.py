@@ -1,0 +1,241 @@
+import json
+from types import SimpleNamespace
+
+import pytest
+
+from src.product.match_plan import WorldModelForkSetPlan
+from src.product.world_model_fork_set import (
+    aggregate_fork_set,
+    execute_world_model_fork_set,
+    render_fork_set_html,
+)
+from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue, TaskConflict
+
+
+def _comparison(plan, branch, *, changed=1, local=1, differences=1):
+    status = (
+        "local_action_divergence_with_descriptive_future_difference"
+        if local and differences else
+        "local_action_divergence_without_measured_future_difference"
+        if local else
+        "no_realized_action_divergence"
+    )
+    return {
+        "fixture": {"home": "Brazil", "away": "Argentina", "seed": plan.seed},
+        "eligibility": {
+            "eligible_for_world_model_policy_attribution": True,
+        },
+        "intervention": {
+            "scope": "world_model_action_policy",
+            "changed_sides": [],
+            "baseline_policy": "predict_only",
+            "treatment_policy": "action_policy",
+            "baseline_tactics": {
+                "home": plan.home_tactic, "away": plan.away_tactic,
+            },
+            "treatment_tactics": {
+                "home": plan.home_tactic, "away": plan.away_tactic,
+            },
+            "branch_at_sec": branch,
+            "branch_anchor": {
+                "verified": True, "state_identity": "a" * 64,
+            },
+        },
+        "policy_propagation": {
+            "available": True,
+            "summary": {
+                "valid_changed_decisions": changed,
+                "locally_attributable_changes": local,
+            },
+        },
+        "counterfactual_future_summary": {
+            "available": True, "status": status,
+            "summary": {
+                "descriptive_outcome_difference_count": differences,
+            },
+            "claim_authority": {
+                "simulator_local_action_attribution": bool(local),
+            },
+        },
+    }
+
+
+def test_fork_set_plan_is_fixed_ordered_and_research_only():
+    plan = WorldModelForkSetPlan(
+        "balanced", "low_block_counter", 42, (1800, 2700, 3600),
+    )
+    assert plan.as_dict()["fixed_scenario_budget"] == 3
+    assert plan.as_dict()["analysis_policy"] == (
+        "descriptive_timing_sensitivity_no_ranking"
+    )
+    assert plan.fork_plan(2700).treatment_plan().world_model_policy == "action_policy"
+    plan.validate_for_mode("research")
+    with pytest.raises(ValueError, match="research mode"):
+        plan.validate_for_mode("stable")
+    with pytest.raises(ValueError, match="unique and increasing"):
+        WorldModelForkSetPlan("balanced", "balanced", 1, (2700, 1800))
+    with pytest.raises(ValueError, match="2 to 4"):
+        WorldModelForkSetPlan("balanced", "balanced", 1, (2700,))
+
+
+def test_aggregate_reports_timing_sensitivity_without_ranking_or_causal_upgrade():
+    plan = WorldModelForkSetPlan("balanced", "low_block_counter", 42, (1800, 2700))
+    result = aggregate_fork_set(plan, [
+        _comparison(plan, 1800, changed=0, local=0, differences=0),
+        _comparison(plan, 2700, changed=2, local=1, differences=3),
+    ])
+    assert result["aggregate"]["timing_sensitivity_observed"] is True
+    assert result["aggregate"]["ranking_performed"] is False
+    assert result["aggregate"]["best_branch_time"] is None
+    assert result["claim_authority"] == {
+        "descriptive_simulator_timing_sensitivity": True,
+        "best_time_recommendation": False,
+        "match_outcome_causality": False,
+        "population_inference": False,
+        "real_football_causality": False,
+        "promotion_authorized": False,
+    }
+    result.update({
+        "fixture": {"home": "Brazil", "away": "Argentina"},
+        "fixed_scenario_budget": 2, "scenarios_completed": 2,
+        "claim_boundary": plan.as_dict()["claim_boundary"],
+    })
+    document = render_fork_set_html(result)
+    assert "多时点未来分叉" in document
+    assert "系统没有挑选最佳时点" in document
+
+
+def test_aggregate_rejects_tampered_seed_tactics_or_order():
+    plan = WorldModelForkSetPlan("balanced", "low_block_counter", 42, (1800, 2700))
+    first = _comparison(plan, 1800)
+    second = _comparison(plan, 2700)
+    first["fixture"]["seed"] = 43
+    with pytest.raises(ValueError, match="frozen world-model policy contrast"):
+        aggregate_fork_set(plan, [first, second])
+    first = _comparison(plan, 1800)
+    first["intervention"]["treatment_tactics"]["home"] = "gegenpress"
+    with pytest.raises(ValueError, match="frozen world-model policy contrast"):
+        aggregate_fork_set(plan, [first, second])
+    with pytest.raises(ValueError, match="frozen branch order"):
+        aggregate_fork_set(plan, [second, _comparison(plan, 1800)])
+
+    first = _comparison(plan, 1800)
+    first["intervention"]["branch_anchor"]["state_identity"] = "not-a-hash"
+    first["policy_propagation"]["summary"][
+        "valid_changed_decisions"
+    ] = float("nan")
+    result = aggregate_fork_set(plan, [first, second])
+    assert result["rows"][0]["eligible"] is False
+    assert result["rows"][0]["future_status"] == "descriptive_only_ineligible"
+    assert result["rows"][0]["changed_actions"] == 0
+
+
+class _Workspace:
+    def __init__(self, root, *, fail_after=None):
+        self.root = root
+        self.output_root = root / "outputs/studio/demo"
+        self.config = SimpleNamespace(mode="research")
+        self.fail_after = fail_after
+        self.calls = []
+
+    def run_paired_matches(
+        self, home, away, *, fast, baseline_plan, treatment_plan, seed,
+        transaction_id,
+    ):
+        if self.fail_after is not None and len(self.calls) >= self.fail_after:
+            raise RuntimeError("simulated interruption")
+        branch = treatment_plan.world_model_branch_at_sec
+        self.calls.append(branch)
+        matches = self.output_root / "matches"
+        matches.mkdir(parents=True, exist_ok=True)
+        comparison = matches / f"{transaction_id}.comparison.json"
+        comparison.write_text(json.dumps(
+            _comparison(
+                WorldModelForkSetPlan(
+                    baseline_plan.home_tactic, baseline_plan.away_tactic,
+                    seed, (1800, 2700, 3600),
+                ),
+                branch, changed=int(branch // 900), local=1, differences=1,
+            )
+        ), encoding="utf-8")
+        comparison.with_suffix(".html").write_text("comparison", encoding="utf-8")
+        return ({
+            "match_id": f"base-{transaction_id}",
+        }, {
+            "match_id": f"treat-{transaction_id}",
+            "comparison_path": str(comparison),
+        })
+
+
+def test_execute_fork_set_resumes_fixed_prefix_and_rejects_result_claim_tamper(tmp_path):
+    plan = WorldModelForkSetPlan(
+        "balanced", "low_block_counter", 42, (1800, 2700, 3600),
+    )
+    first = _Workspace(tmp_path, fail_after=1)
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        execute_world_model_fork_set(
+            first, plan, set_id="task123", home="Brazil", away="Argentina",
+            fast=True,
+        )
+    progress_path = first.output_root / "fork_sets/task123/progress.json"
+    progress = json.loads(progress_path.read_text(encoding="utf-8"))
+    assert progress["scenarios_completed"] == 1
+    assert progress["interim_ranking_disclosed"] is False
+    assert progress["analysis"] is None
+
+    resumed = _Workspace(tmp_path)
+    result = execute_world_model_fork_set(
+        resumed, plan, set_id="task123", home="Brazil", away="Argentina",
+        fast=True,
+    )
+    assert resumed.calls == [2700.0, 3600.0]
+    assert result["status"] == "complete"
+    assert result["aggregate"]["ranking_performed"] is False
+    assert result["dashboard_path"].endswith("index.html")
+
+    result_path = first.output_root / "fork_sets/task123/result.json"
+    tampered = json.loads(result_path.read_text(encoding="utf-8"))
+    tampered["claim_authority"]["match_outcome_causality"] = True
+    result_path.write_text(json.dumps(tampered), encoding="utf-8")
+    with pytest.raises(ValueError, match="result identity"):
+        execute_world_model_fork_set(
+            resumed, plan, set_id="task123", home="Brazil", away="Argentina",
+            fast=True,
+        )
+
+
+def test_fork_set_task_is_idempotent_and_worker_publishes_only_bounded_claims(tmp_path):
+    workspace = _Workspace(tmp_path)
+    queue = ProductTaskQueue(tmp_path)
+    plan = WorldModelForkSetPlan(
+        "balanced", "low_block_counter", 42, (1800, 2700, 3600),
+    )
+    task, created = queue.submit_world_model_fork_set(
+        "Brazil", "Argentina", fast=True, plan=plan,
+        idempotency_key="fixed-future-set",
+    )
+    duplicate, duplicate_created = queue.submit_world_model_fork_set(
+        "Brazil", "Argentina", fast=True, plan=plan,
+        idempotency_key="fixed-future-set",
+    )
+    assert created is True and duplicate_created is False
+    assert duplicate["task_id"] == task["task_id"]
+    with pytest.raises(TaskConflict):
+        queue.submit_world_model_fork_set(
+            "Brazil", "Argentina", fast=True,
+            plan=WorldModelForkSetPlan(
+                "balanced", "low_block_counter", 42, (1200, 2400),
+            ),
+            idempotency_key="fixed-future-set",
+        )
+    assert BackgroundMatchWorker(
+        queue, workspace_loader=lambda _root: workspace,
+    ).run_once()
+    completed = queue.get_task(task["task_id"])
+    assert completed["state"] == "completed"
+    assert completed["result"]["aggregate"]["ranking_performed"] is False
+    assert completed["result"]["claim_authority"]["promotion_authorized"] is False
+    assert completed["result"]["fork_set_dashboard"].endswith(
+        "/fork_sets/" + task["task_id"] + "/index.html"
+    )
+    assert str(tmp_path) not in str(completed)

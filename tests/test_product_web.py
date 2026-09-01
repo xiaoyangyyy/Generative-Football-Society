@@ -330,6 +330,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "configureWorldModelFork(data.match_capabilities" in document
     assert 'id="fork-panel"' in document
     assert "/api/v1/world-model-forks" in document
+    assert "/api/v1/world-model-fork-sets" in document
+    assert "forkBranchInput.name='branch_minutes'" in document
+    assert "task.kind==='world_model_fork_set'" in document
     assert "predict_only → action_policy" in document
     assert "'/api/v1/paired-matches'" in document
     assert "task.kind==='paired_match'" in document
@@ -1105,6 +1108,58 @@ def test_interrupted_pair_requeue_api_preserves_task_identity_and_requires_csrf(
     }, csrf=app.csrf_token)
     assert repeated["status"].startswith("409")
     assert repeated["json"]["error"]["code"] == "task_not_interrupted"
+
+
+def test_world_model_fork_set_route_is_research_only_fixed_and_idempotent(
+    tmp_path, monkeypatch,
+):
+    class FakeWorkspace:
+        config = type("Config", (), {"mode": "research"})()
+
+        def readiness(self):
+            return {"ready": True, "blockers": []}
+
+    monkeypatch.setattr(
+        "src.product.web.ProductWorkspace.load", lambda _root: FakeWorkspace(),
+    )
+    app = ProductWebApp(tmp_path)
+    payload = {
+        "home": "Brazil", "away": "Argentina", "fast": True,
+        "plan": {
+            "home_tactic": "balanced",
+            "away_tactic": "low_block_counter",
+            "seed": 77,
+            "branch_times_sec": [1800, 2700, 3600],
+        },
+    }
+    first = _request(
+        app, "POST", "/api/v1/world-model-fork-sets", payload,
+        csrf=app.csrf_token, idempotency_key="fork-set-web-1",
+    )
+    assert first["status"].startswith("202")
+    task = first["json"]["task"]
+    assert task["kind"] == "world_model_fork_set"
+    assert task["request"]["plan"]["fixed_scenario_budget"] == 3
+    assert task["fork_set_progress"] == {
+        "state": "queued", "scenarios_completed": 0,
+        "fixed_scenario_budget": 3, "ranking_withheld": True,
+    }
+    duplicate = _request(
+        app, "POST", "/api/v1/world-model-fork-sets", payload,
+        csrf=app.csrf_token, idempotency_key="fork-set-web-1",
+    )
+    assert duplicate["status"].startswith("200")
+    assert duplicate["json"]["task"]["task_id"] == task["task_id"]
+
+    FakeWorkspace.config.mode = "stable"
+    rejected = _request(
+        app, "POST", "/api/v1/world-model-fork-sets", payload,
+        csrf=app.csrf_token,
+    )
+    assert rejected["status"].startswith("422")
+    assert rejected["json"]["error"]["code"] == (
+        "invalid_world_model_fork_set"
+    )
 
 
 def test_tactical_study_route_is_research_only_and_idempotent(
