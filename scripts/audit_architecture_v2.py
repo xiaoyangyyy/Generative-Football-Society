@@ -552,7 +552,7 @@ def main() -> int:
                 "project_fork_set_scenario_evidence(fork_set)",
             ))
             and all(token in manager_future_review for token in (
-                "REVIEW_SCHEMA_VERSION = 2",
+                "REVIEW_SCHEMA_VERSION = 3",
                 'payload["scenario_evidence"] = scenarios',
                 "manager future review scenario aggregate is inconsistent",
             ))
@@ -563,6 +563,35 @@ def main() -> int:
                 "scenario.scenario_identity",
                 "时点之间不排名",
             ))
+        ),
+        "manager_future_action_examples_are_bounded_and_non_causal": (
+            all(token in world_model_fork_set for token in (
+                "MAX_SCENARIO_MECHANISM_EXAMPLES = 3",
+                "MECHANISM_WINDOW_SECONDS = (30, 120)",
+                "def _project_mechanism_examples(",
+                "def _validate_mechanism_examples(",
+                '"downstream_causal_attribution_authorized": False',
+                '"causal_effect_authorized": False',
+                "future-set mechanism window identity mismatch",
+                "future-set mechanism example identity mismatch",
+            ))
+            and all(token in manager_future_review for token in (
+                "REVIEW_SCHEMA_VERSION = 3",
+                "manager future review scenario version mismatch",
+            ))
+            and all(token in decision_ledger for token in (
+                '"retained_mechanism_examples": len(mechanism_examples)',
+                '"locally_attributable_mechanism_examples": sum(',
+                '"examples_with_descriptive_windows": sum(',
+            ))
+            and all(token in web for token in (
+                "function appendFutureMechanismExamples(",
+                "renderManagerFutureSetsWithoutMechanismExamples",
+                "renderManagerDecisionLedgerWithoutMechanismExamples",
+                "不授予下游因果",
+                "v3_preserves_bounded_action_mechanism_examples",
+            ))
+            and "innerHTML" not in web
         ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (
             all(token in decision_advice for token in (

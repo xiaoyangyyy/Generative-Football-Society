@@ -27,6 +27,47 @@ from src.product.world_model_fork_set import (
 )
 
 
+def _identity(payload):
+    return hashlib.sha256(json.dumps(
+        payload, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"), allow_nan=False,
+    ).encode("utf-8")).hexdigest()
+
+
+def _mechanism_example(index, *, local):
+    windows = []
+    for duration in (30, 120):
+        window = {
+            "schema_version": 1,
+            "window_sec": duration,
+            "delta": {
+                "actions": 0,
+                "passes": -1 if duration == 30 else 1,
+                "shots": 1,
+                "goals": 0,
+                "turnovers": 1,
+            },
+            "additional_policy_changes": index,
+            "causal_effect_authorized": False,
+        }
+        windows.append({**window, "window_identity": _identity(window)})
+    payload = {
+        "schema_version": 1,
+        "opportunity_identity": format(index + 100, "064x"),
+        "team": "A",
+        "t_sec": float(1810 + index),
+        "clock": f"30:{10 + index:02d}",
+        "baseline_action": "hold",
+        "treatment_action": "pass",
+        "recommended_action": "pass",
+        "directly_observed": True,
+        "local_policy_attribution_eligible": local,
+        "downstream_windows": windows,
+        "downstream_causal_attribution_authorized": False,
+    }
+    return {**payload, "example_identity": _identity(payload)}
+
+
 def _season_with_decision():
     season = new_season_state(
         SeasonPlan(
@@ -100,8 +141,10 @@ def _task_evidence(context, task_id="future123", workspace=None):
             "promotion_authorized": False,
         },
     }
-    rows = [
-        {
+    rows = []
+    for index, branch in enumerate(plan.branch_times_sec):
+        changed = index < 2
+        row = {
             "branch_at_sec": float(branch),
             "branch_minute": float(branch) / 60.0,
             "future_status": (
@@ -114,15 +157,19 @@ def _task_evidence(context, task_id="future123", workspace=None):
             "eligible": True,
             "branch_anchor_verified": True,
             "branch_state_identity": format(index + 1, "064x"),
-            "changed_actions": 1 if index < 2 else 0,
+            "changed_actions": 1 if changed else 0,
             "locally_attributable_changes": 1 if index == 0 else 0,
             "descriptive_future_difference_count": 1 if index == 0 else 0,
             "simulator_local_action_attribution": index == 0,
             "outcome_causality": False,
             "real_football_causality": False,
         }
-        for index, branch in enumerate(plan.branch_times_sec)
-    ]
+        row["mechanism_examples"] = (
+            [_mechanism_example(index, local=index == 0)]
+            if changed else []
+        )
+        row["mechanism_examples_truncated"] = False
+        rows.append(row)
     result["scenario_evidence"] = project_fork_set_scenario_evidence({
         "plan": plan.as_dict(), "rows": rows,
     })
@@ -321,8 +368,12 @@ def test_manager_future_review_receipt_distinguishes_keep_and_revise():
         manager_team="A",
     )
     assert kept["decision_changed"] is False
-    assert kept["schema_version"] == 2
+    assert kept["schema_version"] == 3
     assert len(kept["scenario_evidence"]) == 3
+    assert kept["scenario_evidence"][0]["schema_version"] == 2
+    assert kept["scenario_evidence"][0]["mechanism_examples"][0][
+        "baseline_action"
+    ] == "hold"
     assert kept["evidence_summary"]["ranking_performed"] is False
     assert kept["claim_authority"]["match_outcome_causality"] is False
     legacy = copy.deepcopy(kept)
@@ -340,9 +391,28 @@ def test_manager_future_review_receipt_distinguishes_keep_and_revise():
         matchday=fixture["matchday"],
         manager_team="A",
     )
+    version_two = copy.deepcopy(kept)
+    for scenario in version_two["scenario_evidence"]:
+        scenario.pop("mechanism_examples")
+        scenario.pop("mechanism_examples_truncated")
+        scenario.pop("scenario_identity")
+        scenario["schema_version"] = 1
+        scenario["scenario_identity"] = _identity(scenario)
+    version_two.pop("review_identity")
+    version_two["schema_version"] = 2
+    version_two["review_identity"] = _identity(version_two)
+    validate_manager_future_review(
+        version_two,
+        season_id=season["season_id"],
+        fixture_id=fixture["fixture_id"],
+        matchday=fixture["matchday"],
+        manager_team="A",
+    )
     scenario_tamper = copy.deepcopy(kept)
-    scenario_tamper["scenario_evidence"][0]["changed_actions"] = 2
-    with pytest.raises(ValueError, match="scenario evidence identity"):
+    scenario_tamper["scenario_evidence"][0]["mechanism_examples"][0][
+        "baseline_action"
+    ] = "shot"
+    with pytest.raises(ValueError, match="mechanism example identity"):
         validate_manager_future_review(
             scenario_tamper,
             season_id=season["season_id"],
@@ -371,11 +441,10 @@ def test_manager_future_review_receipt_distinguishes_keep_and_revise():
     second = inconsistent["scenario_evidence"][1]
     second["changed_actions"] = 0
     second["future_status"] = "no_realized_action_divergence"
+    second["mechanism_examples"] = []
+    second["mechanism_examples_truncated"] = False
     second.pop("scenario_identity")
-    second["scenario_identity"] = hashlib.sha256(json.dumps(
-        second, ensure_ascii=False, sort_keys=True,
-        separators=(",", ":"), allow_nan=False,
-    ).encode("utf-8")).hexdigest()
+    second["scenario_identity"] = _identity(second)
     with pytest.raises(ValueError, match="scenario aggregate is inconsistent"):
         build_manager_future_review(
             task_id="future123",
@@ -457,6 +526,9 @@ def test_workspace_records_iterative_future_reviews_in_authoritative_season(
     assert summary["reviewed_future_sets"] == 1
     assert summary["kept_after_review"] == 1
     assert summary["causal_effect_authorized"] is False
+    assert summary["retained_mechanism_examples"] == 2
+    assert summary["locally_attributable_mechanism_examples"] == 1
+    assert summary["examples_with_descriptive_windows"] == 2
     replayed = workspace.review_manager_future_set(
         task_id="keep123",
         task_request=request,

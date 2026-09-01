@@ -16,7 +16,9 @@ from src.product.world_model_fork_set import (
 from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue, TaskConflict
 
 
-def _comparison(plan, branch, *, changed=1, local=1, differences=1):
+def _comparison(
+    plan, branch, *, changed=1, local=1, differences=1, detailed=False,
+):
     status = (
         "local_action_divergence_with_descriptive_future_difference"
         if local and differences else
@@ -24,7 +26,7 @@ def _comparison(plan, branch, *, changed=1, local=1, differences=1):
         if local else
         "no_realized_action_divergence"
     )
-    return {
+    comparison = {
         "fixture": {"home": "Brazil", "away": "Argentina", "seed": plan.seed},
         "eligibility": {
             "eligible_for_world_model_policy_attribution": True,
@@ -62,6 +64,39 @@ def _comparison(plan, branch, *, changed=1, local=1, differences=1):
             },
         },
     }
+    if detailed:
+        decisions = []
+        for index in range(changed):
+            decisions.append({
+                "opportunity_id": f"future:{branch}:{index}",
+                "team": "Brazil",
+                "t_sec": float(branch + 10 + index),
+                "clock": (
+                    f"{int((branch + 10 + index) // 60)}:"
+                    f"{int((branch + 10 + index) % 60):02d}"
+                ),
+                "baseline_action": "hold",
+                "treatment_action": "pass",
+                "recommended_action": "pass",
+                "directly_observed": True,
+                "local_policy_attribution_eligible": index < local,
+                "downstream_windows": {
+                    f"{duration}s": {
+                        "delta": {
+                            "actions": 0, "passes": -1, "shots": 1,
+                            "goals": 0, "turnovers": 1,
+                        },
+                        "additional_policy_changes": index,
+                        "causal_attribution_authorized": False,
+                    }
+                    for duration in (30, 120)
+                },
+            })
+        comparison["policy_propagation"]["summary"].update({
+            "decisions_truncated": False,
+        })
+        comparison["policy_propagation"]["decisions"] = decisions
+    return comparison
 
 
 def test_fork_set_plan_is_fixed_ordered_and_research_only():
@@ -153,6 +188,82 @@ def test_aggregate_rejects_tampered_seed_tactics_or_order():
     assert result["rows"][0]["eligible"] is False
     assert result["rows"][0]["future_status"] == "descriptive_only_ineligible"
     assert result["rows"][0]["changed_actions"] == 0
+
+
+def test_scenario_v2_exposes_bounded_action_chain_and_windows():
+    plan = WorldModelForkSetPlan(
+        "balanced", "low_block_counter", 42, (1800, 2700),
+    )
+    result = aggregate_fork_set(plan, [
+        _comparison(
+            plan, 1800, changed=1, local=1,
+            differences=1, detailed=True,
+        ),
+        _comparison(
+            plan, 2700, changed=1, local=0,
+            differences=0, detailed=True,
+        ),
+    ])
+    scenarios = project_fork_set_scenario_evidence({
+        "plan": plan.as_dict(), "rows": result["rows"],
+    })
+    first = scenarios[0]
+    assert first["schema_version"] == 2
+    assert first["mechanism_examples_truncated"] is False
+    example = first["mechanism_examples"][0]
+    assert example["baseline_action"] == "hold"
+    assert example["treatment_action"] == "pass"
+    assert example["local_policy_attribution_eligible"] is True
+    assert [row["window_sec"] for row in example["downstream_windows"]] == [
+        30, 120,
+    ]
+    assert example["downstream_windows"][0]["delta"]["shots"] == 1
+    assert example["downstream_windows"][0][
+        "causal_effect_authorized"
+    ] is False
+
+    tampered = json.loads(json.dumps(scenarios))
+    tampered[0]["mechanism_examples"][0]["downstream_windows"][0][
+        "delta"
+    ]["goals"] = 1
+    with pytest.raises(ValueError, match="window identity mismatch"):
+        validate_fork_set_scenario_evidence(
+            tampered, plan.branch_times_sec,
+        )
+
+    same_time = _comparison(
+        plan, 1800, changed=2, local=1,
+        differences=1, detailed=True,
+    )
+    same_time["policy_propagation"]["decisions"][1]["t_sec"] = 1810.0
+    same_time["policy_propagation"]["decisions"][1]["clock"] = "30:10"
+    same_time_result = aggregate_fork_set(plan, [
+        same_time,
+        _comparison(
+            plan, 2700, changed=1, local=0,
+            differences=0, detailed=True,
+        ),
+    ])
+    same_time_scenarios = project_fork_set_scenario_evidence({
+        "plan": plan.as_dict(), "rows": same_time_result["rows"],
+    })
+    assert len(same_time_scenarios[0]["mechanism_examples"]) == 2
+
+    invalid_additional = _comparison(
+        plan, 1800, changed=1, local=1,
+        differences=1, detailed=True,
+    )
+    invalid_additional["policy_propagation"]["decisions"][0][
+        "downstream_windows"
+    ]["30s"]["additional_policy_changes"] = "unknown"
+    with pytest.raises(ValueError, match="additional changes"):
+        aggregate_fork_set(plan, [
+            invalid_additional,
+            _comparison(
+                plan, 2700, changed=1, local=0,
+                differences=0, detailed=True,
+            ),
+        ])
 
 
 class _Workspace:

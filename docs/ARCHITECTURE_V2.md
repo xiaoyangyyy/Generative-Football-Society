@@ -1726,3 +1726,34 @@ introduced.
 This is a product observability and evidence-continuity improvement. It does
 not add training, execute matches or formal studies, estimate decision quality,
 or upgrade simulator differences into match-outcome or real-football causality.
+
+## 64. V3.46 Concrete world-model action mechanism cards
+
+Per-timepoint evidence made the future set visible inside the manager journey,
+but a count such as one changed action was still abstract. The official paired
+comparison already retained the concrete policy-propagation record, including
+the team, authoritative match clock, baseline sampled action, action-policy
+sampled action, model recommendation, direct runtime observation and local
+attribution eligibility. It also retained same-clock 30-second and 120-second
+event-count windows.
+
+Newly generated scenario evidence is version 2 and carries at most the first
+three changed-action examples per branch. Opportunity identifiers are hashed
+instead of exposed. Each example and each downstream window has its own
+canonical identity. Windows contain bounded deltas for actions, passes, shots,
+goals and turnovers plus the number of other policy changes in the window.
+They always set causal authority to false. Truncation is explicit and must
+agree with the total changed-action count.
+
+Manager review receipt version 3 requires version 2 scenarios. Existing v1
+aggregate-only and v2 per-timepoint receipts remain valid, and mixed versions
+fail closed. The current manager future card and archived decision ledger use
+safe DOM text nodes to show action transitions such as hold to pass and the
+bounded descriptive windows. The ledger summary counts retained examples,
+locally attributable examples and examples with descriptive windows.
+
+This closes another product-explanation gap without selecting an action,
+ranking a branch time or claiming a downstream causal path. Direct runtime
+identity may authorize only the local sampled-action change; every later
+trajectory and outcome difference remains descriptive. No training, match,
+formal study, human study or provider call is executed by this change.

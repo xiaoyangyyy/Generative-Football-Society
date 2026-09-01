@@ -23,6 +23,11 @@ FUTURE_SET_SCENARIO_STATUSES = {
     "local_action_divergence_with_descriptive_future_difference",
     "local_action_divergence_without_measured_future_difference",
 }
+MAX_SCENARIO_MECHANISM_EXAMPLES = 3
+MECHANISM_WINDOW_SECONDS = (30, 120)
+MECHANISM_WINDOW_METRICS = (
+    "actions", "passes", "shots", "goals", "turnovers",
+)
 
 
 def _identity(payload: Mapping[str, Any]) -> str:
@@ -65,6 +70,256 @@ def _bounded_count(value: Any) -> int:
     return max(0, min(100_000, int(number))) if math.isfinite(number) else 0
 
 
+def _safe_text(value: Any, maximum: int) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    if (
+        not normalized
+        or len(normalized) > maximum
+        or any(ord(char) < 32 for char in normalized)
+    ):
+        return None
+    return normalized
+
+
+def _bounded_signed_count(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    number = float(value)
+    if not math.isfinite(number) or not number.is_integer():
+        return None
+    return max(-100_000, min(100_000, int(number)))
+
+
+def _validate_mechanism_examples(
+    examples: Any, *, changed_actions: int,
+) -> list[dict[str, Any]]:
+    if (
+        not isinstance(examples, list)
+        or len(examples) > MAX_SCENARIO_MECHANISM_EXAMPLES
+        or len(examples) > changed_actions
+    ):
+        raise ValueError("future-set mechanism example budget is invalid")
+    required = {
+        "schema_version", "opportunity_identity", "team", "t_sec", "clock",
+        "baseline_action", "treatment_action", "recommended_action",
+        "directly_observed", "local_policy_attribution_eligible",
+        "downstream_windows", "downstream_causal_attribution_authorized",
+        "example_identity",
+    }
+    window_required = {
+        "schema_version", "window_sec", "delta",
+        "additional_policy_changes", "causal_effect_authorized",
+        "window_identity",
+    }
+    validated = []
+    prior_t_sec: float | None = None
+    seen_opportunities: set[str] = set()
+    for raw in examples:
+        if not isinstance(raw, Mapping) or set(raw) != required:
+            raise ValueError("future-set mechanism example fields are invalid")
+        t_sec = raw.get("t_sec")
+        team = _safe_text(raw.get("team"), 80)
+        baseline = _safe_text(raw.get("baseline_action"), 40)
+        treatment = _safe_text(raw.get("treatment_action"), 40)
+        recommended = raw.get("recommended_action")
+        if recommended is not None:
+            recommended = _safe_text(recommended, 40)
+        opportunity_identity = raw.get("opportunity_identity")
+        clock = raw.get("clock")
+        if (
+            raw.get("schema_version") != 1
+            or not isinstance(opportunity_identity, str)
+            or re.fullmatch(r"[0-9a-f]{64}", opportunity_identity) is None
+            or team is None
+            or isinstance(t_sec, bool)
+            or not isinstance(t_sec, (int, float))
+            or not math.isfinite(float(t_sec))
+            or not 0 <= float(t_sec) <= 8000
+            or clock != (
+                f"{int(float(t_sec) // 60)}:"
+                f"{int(float(t_sec) % 60):02d}"
+            )
+            or baseline is None
+            or treatment is None
+            or baseline == treatment
+            or (
+                raw.get("recommended_action") is not None
+                and recommended is None
+            )
+            or not isinstance(raw.get("directly_observed"), bool)
+            or not isinstance(
+                raw.get("local_policy_attribution_eligible"), bool,
+            )
+            or (
+                raw.get("local_policy_attribution_eligible")
+                and not raw.get("directly_observed")
+            )
+            or raw.get("downstream_causal_attribution_authorized") is not False
+        ):
+            raise ValueError("future-set mechanism example values are invalid")
+        normalized_t_sec = float(t_sec)
+        if (
+            opportunity_identity in seen_opportunities
+            or (
+                prior_t_sec is not None
+                and normalized_t_sec < prior_t_sec
+            )
+        ):
+            raise ValueError("future-set mechanism examples are not ordered")
+        seen_opportunities.add(opportunity_identity)
+        prior_t_sec = normalized_t_sec
+        windows = raw.get("downstream_windows")
+        if not isinstance(windows, list) or len(windows) not in {0, 2}:
+            raise ValueError("future-set mechanism windows are invalid")
+        expected_windows = (
+            list(MECHANISM_WINDOW_SECONDS) if windows else []
+        )
+        for index, window in enumerate(windows):
+            if not isinstance(window, Mapping) or set(window) != window_required:
+                raise ValueError("future-set mechanism window fields are invalid")
+            delta = window.get("delta")
+            if (
+                window.get("schema_version") != 1
+                or window.get("window_sec") != expected_windows[index]
+                or not isinstance(delta, Mapping)
+                or set(delta) != set(MECHANISM_WINDOW_METRICS)
+                or any(
+                    isinstance(value, bool)
+                    or not isinstance(value, int)
+                    or not -100_000 <= value <= 100_000
+                    for value in delta.values()
+                )
+                or isinstance(window.get("additional_policy_changes"), bool)
+                or not isinstance(window.get("additional_policy_changes"), int)
+                or not 0 <= window["additional_policy_changes"] <= 100_000
+                or window.get("causal_effect_authorized") is not False
+            ):
+                raise ValueError("future-set mechanism window values are invalid")
+            frozen_window = dict(window)
+            observed_window = frozen_window.pop("window_identity", None)
+            if observed_window != _identity(frozen_window):
+                raise ValueError("future-set mechanism window identity mismatch")
+        frozen = dict(raw)
+        observed = frozen.pop("example_identity", None)
+        if observed != _identity(frozen):
+            raise ValueError("future-set mechanism example identity mismatch")
+        validated.append(dict(raw))
+    return validated
+
+
+def _project_mechanism_examples(
+    propagation: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], bool]:
+    decisions = propagation.get("decisions")
+    summary = propagation.get("summary")
+    if not isinstance(decisions, list) or not isinstance(summary, Mapping):
+        raise ValueError("future-set mechanism source is invalid")
+    examples = []
+    for raw in decisions[:MAX_SCENARIO_MECHANISM_EXAMPLES]:
+        if not isinstance(raw, Mapping):
+            raise ValueError("future-set mechanism decision is invalid")
+        opportunity = _safe_text(raw.get("opportunity_id"), 160)
+        team = _safe_text(raw.get("team"), 80)
+        baseline = _safe_text(raw.get("baseline_action"), 40)
+        treatment = _safe_text(raw.get("treatment_action"), 40)
+        recommended = raw.get("recommended_action")
+        recommended = (
+            _safe_text(recommended, 40) if recommended is not None else None
+        )
+        t_sec = raw.get("t_sec")
+        if (
+            opportunity is None
+            or team is None
+            or baseline is None
+            or treatment is None
+            or baseline == treatment
+            or (
+                raw.get("recommended_action") is not None
+                and recommended is None
+            )
+            or isinstance(t_sec, bool)
+            or not isinstance(t_sec, (int, float))
+            or not math.isfinite(float(t_sec))
+            or not 0 <= float(t_sec) <= 8000
+        ):
+            raise ValueError("future-set mechanism decision values are invalid")
+        windows_source = raw.get("downstream_windows")
+        windows = []
+        if windows_source:
+            if not isinstance(windows_source, Mapping):
+                raise ValueError("future-set mechanism window source is invalid")
+            for duration in MECHANISM_WINDOW_SECONDS:
+                source = windows_source.get(f"{duration}s")
+                delta_source = (
+                    source.get("delta") if isinstance(source, Mapping) else None
+                )
+                if not isinstance(delta_source, Mapping):
+                    raise ValueError("future-set mechanism window delta is invalid")
+                delta = {}
+                for metric in MECHANISM_WINDOW_METRICS:
+                    value = _bounded_signed_count(delta_source.get(metric))
+                    if value is None:
+                        raise ValueError(
+                            "future-set mechanism window metric is invalid"
+                        )
+                    delta[metric] = value
+                raw_additional = source.get("additional_policy_changes")
+                if (
+                    isinstance(raw_additional, bool)
+                    or not isinstance(raw_additional, (int, float))
+                    or not math.isfinite(float(raw_additional))
+                    or not float(raw_additional).is_integer()
+                    or float(raw_additional) < 0
+                ):
+                    raise ValueError(
+                        "future-set mechanism additional changes are invalid"
+                    )
+                additional = min(100_000, int(raw_additional))
+                window_payload = {
+                    "schema_version": 1,
+                    "window_sec": duration,
+                    "delta": delta,
+                    "additional_policy_changes": additional,
+                    "causal_effect_authorized": False,
+                }
+                windows.append({
+                    **window_payload,
+                    "window_identity": _identity(window_payload),
+                })
+        payload = {
+            "schema_version": 1,
+            "opportunity_identity": hashlib.sha256(
+                opportunity.encode("utf-8")
+            ).hexdigest(),
+            "team": team,
+            "t_sec": float(t_sec),
+            "clock": (
+                f"{int(float(t_sec) // 60)}:"
+                f"{int(float(t_sec) % 60):02d}"
+            ),
+            "baseline_action": baseline,
+            "treatment_action": treatment,
+            "recommended_action": recommended,
+            "directly_observed": raw.get("directly_observed") is True,
+            "local_policy_attribution_eligible": (
+                raw.get("local_policy_attribution_eligible") is True
+            ),
+            "downstream_windows": windows,
+            "downstream_causal_attribution_authorized": False,
+        }
+        examples.append({
+            **payload, "example_identity": _identity(payload),
+        })
+    changed = _bounded_count(summary.get("valid_changed_decisions"))
+    _validate_mechanism_examples(examples, changed_actions=changed)
+    return examples, bool(
+        summary.get("decisions_truncated") is True
+        or changed > len(examples)
+    )
+
+
 def validate_fork_set_scenario_evidence(
     scenarios: Any, branch_times_sec: Any,
 ) -> list[dict[str, Any]]:
@@ -91,7 +346,7 @@ def validate_fork_set_scenario_evidence(
         or len(scenarios) != len(expected_times)
     ):
         raise ValueError("future-set scenario evidence budget is invalid")
-    required = {
+    base_required = {
         "schema_version", "branch_at_sec", "branch_minute",
         "future_status", "eligible", "anchor_verified",
         "branch_state_identity",
@@ -103,14 +358,26 @@ def validate_fork_set_scenario_evidence(
     }
     normalized = []
     for index, raw in enumerate(scenarios):
-        if not isinstance(raw, Mapping) or set(raw) != required:
+        schema_version = raw.get("schema_version") if isinstance(
+            raw, Mapping,
+        ) else None
+        required = (
+            base_required | {
+                "mechanism_examples", "mechanism_examples_truncated",
+            }
+            if schema_version == 2 else base_required
+        )
+        if (
+            not isinstance(raw, Mapping)
+            or schema_version not in {1, 2}
+            or set(raw) != required
+        ):
             raise ValueError("future-set scenario evidence fields are invalid")
         branch = raw.get("branch_at_sec")
         minute = raw.get("branch_minute")
         state_identity = raw.get("branch_state_identity")
         if (
-            raw.get("schema_version") != 1
-            or isinstance(branch, bool)
+            isinstance(branch, bool)
             or not isinstance(branch, (int, float))
             or not math.isfinite(float(branch))
             or float(branch) != expected_times[index]
@@ -176,6 +443,31 @@ def validate_fork_set_scenario_evidence(
             or status != semantic_status
         ):
             raise ValueError("future-set scenario evidence semantics are invalid")
+        if schema_version == 2:
+            examples = _validate_mechanism_examples(
+                raw.get("mechanism_examples"), changed_actions=changed,
+            )
+            truncated = raw.get("mechanism_examples_truncated")
+            if (
+                not isinstance(truncated, bool)
+                or truncated is not (changed > len(examples))
+                or sum(
+                    row["local_policy_attribution_eligible"]
+                    for row in examples
+                ) > local
+                or (
+                    local_authorized
+                    and not truncated
+                    and local > 0
+                    and not any(
+                        row["local_policy_attribution_eligible"]
+                        for row in examples
+                    )
+                )
+            ):
+                raise ValueError(
+                    "future-set mechanism example summary is invalid"
+                )
         frozen = dict(raw)
         observed = frozen.pop("scenario_identity")
         if (
@@ -285,6 +577,27 @@ def project_fork_set_scenario_evidence(
             "outcome_causality_authorized": False,
             "real_football_causality_authorized": False,
         }
+        has_examples = "mechanism_examples" in row
+        has_truncation = "mechanism_examples_truncated" in row
+        if has_examples is not has_truncation:
+            raise ValueError(
+                "future-set scenario mechanism source is incomplete"
+            )
+        if has_examples:
+            examples = _validate_mechanism_examples(
+                row.get("mechanism_examples"),
+                changed_actions=payload["changed_actions"],
+            )
+            truncated = row.get("mechanism_examples_truncated")
+            if not isinstance(truncated, bool):
+                raise ValueError(
+                    "future-set scenario mechanism truncation is invalid"
+                )
+            payload.update({
+                "schema_version": 2,
+                "mechanism_examples": examples,
+                "mechanism_examples_truncated": truncated,
+            })
         scenarios.append({
             **payload, "scenario_identity": _identity(payload),
         })
@@ -349,7 +662,7 @@ def _row(plan: WorldModelForkSetPlan, comparison: Mapping[str, Any]) -> dict[str
         if differences > 0 else
         "local_action_divergence_without_measured_future_difference"
     )
-    return {
+    row = {
         "branch_at_sec": float(branch),
         "branch_minute": float(branch) / 60.0,
         "eligible": eligible,
@@ -363,6 +676,16 @@ def _row(plan: WorldModelForkSetPlan, comparison: Mapping[str, Any]) -> dict[str
         "outcome_causality": False,
         "real_football_causality": False,
     }
+    if (
+        isinstance(propagation.get("decisions"), list)
+        and isinstance(propagation.get("summary"), Mapping)
+    ):
+        examples, truncated = _project_mechanism_examples(propagation)
+        row.update({
+            "mechanism_examples": examples,
+            "mechanism_examples_truncated": truncated,
+        })
+    return row
 
 
 def aggregate_fork_set(

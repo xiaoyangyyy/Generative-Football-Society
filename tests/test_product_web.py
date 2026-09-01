@@ -131,6 +131,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "renderManagerDecisionLedgerWithoutFutureReviews" in document
     assert "renderManagerDecisionLedgerWithoutFutureScenarioEvidence" in document
     assert "renderManagerFutureSetsWithoutScenarioEvidence" in document
+    assert "function appendFutureMechanismExamples(" in document
+    assert "renderManagerFutureSetsWithoutMechanismExamples" in document
+    assert "renderManagerDecisionLedgerWithoutMechanismExamples" in document
+    assert "已封存的具体动作采用链" in document
     assert "scenario.scenario_identity" in document
     assert "已封存的分叉机制链" in document
     assert "row.world_model_future_reviews" in document
@@ -1360,6 +1364,69 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
         root.mkdir(parents=True, exist_ok=True)
         result_path = root / "result.json"
         dashboard_path = root / "index.html"
+        def identity(payload):
+            return hashlib.sha256(json.dumps(
+                payload, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"), allow_nan=False,
+            ).encode("utf-8")).hexdigest()
+
+        rows = []
+        for index, branch in enumerate(frozen_plan.branch_times_sec):
+            examples = []
+            if index == 0:
+                windows = []
+                for duration in (30, 120):
+                    window = {
+                        "schema_version": 1,
+                        "window_sec": duration,
+                        "delta": {
+                            "actions": 0, "passes": -1, "shots": 1,
+                            "goals": 0, "turnovers": 1,
+                        },
+                        "additional_policy_changes": 0,
+                        "causal_effect_authorized": False,
+                    }
+                    windows.append({
+                        **window, "window_identity": identity(window),
+                    })
+                example = {
+                    "schema_version": 1,
+                    "opportunity_identity": "a" * 64,
+                    "team": "A",
+                    "t_sec": 1810.0,
+                    "clock": "30:10",
+                    "baseline_action": "hold",
+                    "treatment_action": "pass",
+                    "recommended_action": "pass",
+                    "directly_observed": True,
+                    "local_policy_attribution_eligible": True,
+                    "downstream_windows": windows,
+                    "downstream_causal_attribution_authorized": False,
+                }
+                examples.append({
+                    **example, "example_identity": identity(example),
+                })
+            rows.append({
+                "branch_at_sec": float(branch),
+                "branch_minute": float(branch) / 60.0,
+                "future_status": (
+                    "local_action_divergence_with_descriptive_future_difference"
+                    if index == 0 else "no_realized_action_divergence"
+                ),
+                "eligible": True,
+                "branch_anchor_verified": True,
+                "branch_state_identity": format(index + 1, "064x"),
+                "changed_actions": 1 if index == 0 else 0,
+                "locally_attributable_changes": 1 if index == 0 else 0,
+                "descriptive_future_difference_count": (
+                    1 if index == 0 else 0
+                ),
+                "simulator_local_action_attribution": index == 0,
+                "outcome_causality": False,
+                "real_football_causality": False,
+                "mechanism_examples": examples,
+                "mechanism_examples_truncated": False,
+            })
         artifact = {
             "schema_version": 1,
             "set_id": kwargs["set_id"],
@@ -1369,28 +1436,7 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
             },
             "source_context": kwargs["source_context"],
             "plan": frozen_plan.as_dict(),
-            "rows": [
-                {
-                    "branch_at_sec": float(branch),
-                    "branch_minute": float(branch) / 60.0,
-                    "future_status": (
-                        "local_action_divergence_with_descriptive_future_difference"
-                        if index == 0 else "no_realized_action_divergence"
-                    ),
-                    "eligible": True,
-                    "branch_anchor_verified": True,
-                    "branch_state_identity": format(index + 1, "064x"),
-                    "changed_actions": 1 if index == 0 else 0,
-                    "locally_attributable_changes": 1 if index == 0 else 0,
-                    "descriptive_future_difference_count": (
-                        1 if index == 0 else 0
-                    ),
-                    "simulator_local_action_attribution": index == 0,
-                    "outcome_causality": False,
-                    "real_football_causality": False,
-                }
-                for index, branch in enumerate(frozen_plan.branch_times_sec)
-            ],
+            "rows": rows,
             "aggregate": aggregate,
             "claim_authority": authority,
         }
@@ -1419,6 +1465,9 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
     assert projected_set["scenario_evidence"][0][
         "simulator_local_action_attribution"
     ] is True
+    assert projected_set["scenario_evidence"][0]["mechanism_examples"][0][
+        "treatment_action"
+    ] == "pass"
 
     response = _request(
         app, "POST", "/api/v1/seasons/world-model-future-review", {
@@ -1433,12 +1482,18 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
     receipt = season["next_manager_fixture"]["manager_future_reviews"][0]
     assert receipt["task_id"] == task["task_id"]
     assert receipt["intent"] == "keep_after_review"
-    assert receipt["schema_version"] == 2
+    assert receipt["schema_version"] == 3
     assert len(receipt["scenario_evidence"]) == 2
+    assert receipt["scenario_evidence"][0]["mechanism_examples"][0][
+        "downstream_windows"
+    ][0]["window_sec"] == 30
     assert season["revision"] == decided["revision"] + 1
     assert season["manager_decision_ledger"]["summary"][
         "world_model_future_reviews"
     ]["reviewed_future_sets"] == 1
+    assert season["manager_decision_ledger"]["summary"][
+        "world_model_future_reviews"
+    ]["retained_mechanism_examples"] == 1
     assert "manager_future_reviews" not in workspace._session()
     repeated = _request(
         app, "POST", "/api/v1/seasons/world-model-future-review", {

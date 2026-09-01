@@ -359,6 +359,18 @@ def world_model_future_review_summary(
     revised = sum(
         review.get("intent") == "revise_after_review" for review in reviews
     )
+    scenarios = [
+        scenario
+        for review in reviews
+        for scenario in (review.get("scenario_evidence") or [])
+        if isinstance(scenario, Mapping)
+    ]
+    mechanism_examples = [
+        example
+        for scenario in scenarios
+        for example in (scenario.get("mechanism_examples") or [])
+        if isinstance(example, Mapping)
+    ]
     evidence = {
         "schema_version": 1,
         "reviewed_future_sets": len(reviews),
@@ -381,6 +393,15 @@ def world_model_future_review_summary(
                 "timing_sensitivity_observed"
             ) is True
             for review in reviews
+        ),
+        "retained_mechanism_examples": len(mechanism_examples),
+        "locally_attributable_mechanism_examples": sum(
+            example.get("local_policy_attribution_eligible") is True
+            for example in mechanism_examples
+        ),
+        "examples_with_descriptive_windows": sum(
+            bool(example.get("downstream_windows"))
+            for example in mechanism_examples
         ),
         "outcome_effect_estimate": None,
         "causal_effect_authorized": False,
