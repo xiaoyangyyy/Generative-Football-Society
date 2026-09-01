@@ -1446,3 +1446,31 @@ score or metric deltas do not establish population effects, outcome benefit,
 real-football causality, product promotion or academic confirmation. M0 remains
 the stable authority and M1 remains research-only. This architecture change
 requires neither model training nor an external LLM/provider call.
+
+## 56. V3.38 Identity-bound policy propagation explorer
+
+The causal-fork comparison now stores a bounded `policy_propagation` object
+instead of asking the interface to infer a story from final score deltas. It
+joins a realized action-adoption record to treatment replay only by the exact
+runtime `opportunity_id`, team and timestamp. Duplicate identities, malformed
+records, a missing replay or a failed pair-eligibility check revoke local
+attribution rather than being repaired by time proximity. At most 40 valid
+changed decisions are retained for presentation, while the summary preserves
+the complete valid count and reports truncation, malformed records and
+duplicate identities explicitly.
+
+For every retained decision, the explorer displays the counterfactual
+baseline action, sampled treatment action and direct-execution state. When
+both replays are available it also compares passes, shots, goals, turnovers
+and total actions in fixed 30-second and 120-second ranges beginning at the
+decision clock. It counts any additional policy changes inside each range.
+These windows align time only: they never match events across diverged worlds,
+and `downstream_causal_attribution_authorized` is therefore always false.
+
+The persistent task stores only a bounded propagation digest. Evidence
+Library shows changed, directly observed and locally attributable counts and
+links to the full comparison artifact; it does not copy decision records into
+the general Studio status response. Legacy or damaged comparisons degrade to
+an explicit unavailable state. The product can therefore show where the
+world model visibly entered play without converting downstream descriptive
+movement into an unsupported causal chain or changing the sealed M0/M1 gate.

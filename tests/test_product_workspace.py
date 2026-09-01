@@ -981,6 +981,25 @@ def test_workspace_world_model_fork_is_atomic_and_changes_only_plan_authority(
     assert comparison["eligibility"][
         "eligible_for_world_model_policy_attribution"
     ]
+    assert comparison["policy_propagation"]["status"] == (
+        "changed_actions_not_directly_observed"
+    )
+    assert comparison["policy_propagation"]["summary"] == {
+        "valid_changed_decisions": 1,
+        "retained_changed_decisions": 1,
+        "directly_observed_changes": 0,
+        "locally_attributable_changes": 0,
+        "invalid_changed_records": 0,
+        "duplicate_opportunity_ids": 0,
+        "replay_windows_available": False,
+        "decisions_truncated": False,
+    }
+    comparison_dashboard = Path(
+        treatment["comparison_dashboard_path"]
+    ).read_text(encoding="utf-8")
+    assert 'data-testid="policy-propagation-panel"' in comparison_dashboard
+    assert "直接轨迹未绑定" in comparison_dashboard
+    assert "不声称下游因果" in comparison_dashboard
     assert baseline["match_plan"]["world_model_policy"] == "predict_only"
     assert treatment["match_plan"]["world_model_policy"] == "action_policy"
 

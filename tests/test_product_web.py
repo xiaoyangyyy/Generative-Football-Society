@@ -88,12 +88,19 @@ def test_root_is_accessible_and_hardened(tmp_path):
         "modes": ["research"],
         "seed": "explicit_shared_seed",
         "intervention": "predict_only_to_action_policy",
-        "fixed_controls": [
-            "fixture", "tactics", "fast_configuration", "checkpoint",
-        ],
-        "score_path": "physics_official",
-        "claim_boundary": "single_fixture_seed_simulator_contrast_only",
-    }
+            "fixed_controls": [
+                "fixture", "tactics", "fast_configuration", "checkpoint",
+            ],
+            "score_path": "physics_official",
+            "evidence_chain": [
+                "isolated_policy_assignment",
+                "realized_action_change",
+                "direct_runtime_identity",
+                "descriptive_downstream_windows",
+            ],
+            "downstream_causal_attribution": False,
+            "claim_boundary": "single_fixture_seed_simulator_contrast_only",
+        }
     assert '<a class="skip" href="#main">' in document
     assert 'id="main"' in document
     assert 'aria-live="polite"' in document
@@ -147,7 +154,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "reuseSeed.disabled=!lab" in document
     assert "configureMatchPlan(data.match_capabilities" in document
     assert "战术实验使用物理比分" in document
-    assert "打开同种子战术配对比较" in document
+    assert "打开双世界/战术配对比较" in document
+    assert "分叉传播与对比" in document
+    assert "下游窗口仅描述" in document
     assert "s?.last_match?.comparison_url" in document
     assert "action_adoption_mechanism" in document
     assert "promotion_authorized" in document
@@ -1302,6 +1311,15 @@ def test_studio_evidence_library_is_safe_bounded_and_effect_free(
             "comparison_dashboard": (
                 "outputs/studio/demo/matches/wm-policy.comparison.html"
             ),
+            "propagation": {
+                "available": True,
+                "status": "direct_action_changes_observed",
+                "changed_decisions": 4,
+                "directly_observed_changes": 3,
+                "locally_attributable_changes": 2,
+                "replay_windows_available": True,
+                "downstream_causal_attribution_authorized": False,
+            },
         },
     }
     monkeypatch.setattr(
@@ -1332,6 +1350,15 @@ def test_studio_evidence_library_is_safe_bounded_and_effect_free(
     assert library["forks"][0]["comparison_url"].endswith(
         "/wm-policy.comparison.html"
     )
+    assert library["forks"][0]["propagation"] == {
+        "available": True,
+        "status": "direct_action_changes_observed",
+        "changed_decisions": 4,
+        "directly_observed_changes": 3,
+        "locally_attributable_changes": 2,
+        "replay_windows_available": True,
+        "downstream_causal_attribution_authorized": False,
+    }
     serialized = json.dumps(library)
     assert "must-not-cross-library-boundary" not in serialized
     assert "secret_interim_effect" not in serialized

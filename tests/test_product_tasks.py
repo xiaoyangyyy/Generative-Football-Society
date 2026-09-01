@@ -1,10 +1,16 @@
+import json
 import threading
 
 import pytest
 
 from src.product.match_plan import MatchPlan, PairedMatchPlan
 from src.product.tactical_study import TacticalStudyPlan
-from src.product.tasks import BackgroundMatchWorker, ProductTaskQueue, TaskConflict
+from src.product.tasks import (
+    BackgroundMatchWorker,
+    ProductTaskQueue,
+    TaskConflict,
+    _world_model_propagation_digest,
+)
 
 
 def test_idempotent_concurrent_submission_persists_exactly_one_task(tmp_path):
@@ -437,6 +443,21 @@ def test_world_model_fork_submission_and_worker_preserve_policy_identity(
                 "baseline": baseline_plan, "treatment": treatment_plan,
                 "seed": seed, "transaction_id": transaction_id,
             })
+            matches.mkdir(parents=True, exist_ok=True)
+            comparison_path = matches / "fork.comparison.json"
+            comparison_path.write_text(json.dumps({
+                "policy_propagation": {
+                    "available": True,
+                    "status": "direct_action_changes_observed",
+                    "summary": {
+                        "valid_changed_decisions": 3,
+                        "directly_observed_changes": 2,
+                        "locally_attributable_changes": 2,
+                        "replay_windows_available": True,
+                    },
+                    "downstream_causal_attribution_authorized": False,
+                },
+            }), encoding="utf-8")
             return ({
                 "match_id": "0001-brazil-vs-argentina",
                 "dashboard_path": str(matches / "0001.html"),
@@ -444,7 +465,7 @@ def test_world_model_fork_submission_and_worker_preserve_policy_identity(
                 "match_id": "0002-brazil-vs-argentina",
                 "fixture": {"home": home, "away": away, "seed": seed},
                 "dashboard_path": str(matches / "0002.html"),
-                "comparison_path": str(matches / "fork.comparison.json"),
+                "comparison_path": str(comparison_path),
                 "comparison_dashboard_path": str(matches / "fork.comparison.html"),
             })
 
@@ -475,10 +496,52 @@ def test_world_model_fork_submission_and_worker_preserve_policy_identity(
     assert completed["result"]["comparison_dashboard"].endswith(
         ".comparison.html"
     )
+    assert completed["result"]["propagation"] == {
+        "available": True,
+        "status": "direct_action_changes_observed",
+        "changed_decisions": 3,
+        "directly_observed_changes": 2,
+        "locally_attributable_changes": 2,
+        "replay_windows_available": True,
+        "downstream_causal_attribution_authorized": False,
+    }
     assert observed["baseline"].world_model_policy == "predict_only"
     assert observed["treatment"].world_model_policy == "action_policy"
     assert observed["baseline"].home_tactic == observed["treatment"].home_tactic
     assert observed["transaction_id"] == task["task_id"]
+
+
+def test_world_model_propagation_digest_bounds_corrupt_numbers(tmp_path):
+    comparison = tmp_path / "comparison.json"
+    comparison.write_text(json.dumps({
+        "policy_propagation": {
+            "available": True,
+            "status": {"unexpected": "mapping"},
+            "summary": {
+                "valid_changed_decisions": float("nan"),
+                "directly_observed_changes": float("inf"),
+                "locally_attributable_changes": 999_999,
+                "replay_windows_available": "not-a-boolean",
+            },
+            "downstream_causal_attribution_authorized": True,
+        },
+    }), encoding="utf-8")
+
+    digest = _world_model_propagation_digest(comparison)
+
+    assert digest["changed_decisions"] == 0
+    assert digest["directly_observed_changes"] == 0
+    assert digest["locally_attributable_changes"] == 100_000
+    assert digest["replay_windows_available"] is False
+    assert digest["downstream_causal_attribution_authorized"] is False
+    assert len(digest["status"]) <= 80
+
+    legacy = tmp_path / "legacy.json"
+    legacy.write_text("{}", encoding="utf-8")
+    assert _world_model_propagation_digest(legacy) == {
+        "available": False,
+        "status": "legacy_comparison_without_propagation",
+    }
 
 
 def test_tactical_study_submission_is_normalized_and_idempotent(tmp_path):

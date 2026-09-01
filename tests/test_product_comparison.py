@@ -40,6 +40,19 @@ def _report(match_id, *, tactic="gegenpress", reuse=False, baseline=None):
     }
 
 
+def _replay_event(
+    t_sec, *, event_type="pass", outcome="COMPLETE", link=None,
+):
+    event = {
+        "type": event_type, "team": "Brazil", "actor": "A",
+        "target": "B", "kind": "ground", "outcome": outcome,
+        "t_sec": t_sec, "start": [0.2, 0.3], "end": [0.6, 0.4],
+    }
+    if link is not None:
+        event["world_model_link"] = link
+    return event
+
+
 def test_same_seed_single_side_pair_is_eligible_but_seed_local_only():
     baseline = _report("m1")
     treatment = _report("m2", tactic="counter_attack", reuse=True, baseline="m1")
@@ -153,6 +166,34 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
             "world_model_policy": policy,
         })
     treatment["result"]["shots"]["home"] = 10
+    treatment["layers"]["world_model"]["action_adoption"]["records"] = [
+        {
+            "opportunity_id": "direct:Brazil:12.000:0",
+            "team_id": "Brazil", "t_sec": 12,
+            "counterfactual_baseline_action": "hold",
+            "actual_action": "pass", "recommended_action": "pass",
+            "policy_changed_action": True, "attribution_eligible": True,
+        },
+        {
+            "opportunity_id": "direct:Brazil:25.000:1",
+            "team_id": "Brazil", "t_sec": 25,
+            "counterfactual_baseline_action": "pass",
+            "actual_action": "hold", "recommended_action": "hold",
+            "policy_changed_action": True, "attribution_eligible": True,
+        },
+    ]
+    baseline["replay"] = {"available": True, "events": [
+        _replay_event(12), _replay_event(20),
+        _replay_event(80, event_type="shot", outcome="SAVED"),
+    ]}
+    treatment["replay"] = {"available": True, "events": [
+        _replay_event(12, link={
+            "opportunity_id": "direct:Brazil:12.000:0",
+            "policy_changed_action": True,
+        }),
+        _replay_event(18, event_type="shot", outcome="GOAL"),
+        _replay_event(50),
+    ]}
     comparison = build_paired_comparison(baseline, treatment)
     assert comparison["intervention"]["scope"] == "world_model_action_policy"
     assert comparison["intervention"]["changed_sides"] == []
@@ -161,11 +202,34 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
     ]
     assert not comparison["eligibility"]["eligible_for_tactical_attribution"]
     assert comparison["metrics"]["shots_home"]["delta"] == 2
+    propagation = comparison["policy_propagation"]
+    assert propagation["status"] == "direct_action_changes_observed"
+    assert propagation["summary"]["valid_changed_decisions"] == 2
+    assert propagation["summary"]["directly_observed_changes"] == 1
+    assert propagation["summary"]["locally_attributable_changes"] == 1
+    first = propagation["decisions"][0]
+    assert first["local_policy_attribution_eligible"] is True
+    assert first["downstream_windows"]["30s"]["delta"] == {
+        "actions": 0, "passes": -1, "shots": 1,
+        "goals": 1, "turnovers": 0,
+    }
+    assert first["downstream_windows"]["30s"][
+        "additional_policy_changes"
+    ] == 1
+    assert first["downstream_windows"]["30s"][
+        "causal_attribution_authorized"
+    ] is False
     document = render_paired_comparison_html(comparison)
     assert "世界模型因果分叉" in document
     assert "基线世界" in document and "干预世界" in document
     assert "MATCH_WM_PLAN=0" in document and "MATCH_WM_PLAN=1" in document
     assert "world-model promotion" in document
+    assert 'data-testid="policy-propagation-panel"' in document
+    assert "动作分歧与传播链" in document
+    assert "hold → pass" in document
+    assert "直接轨迹已绑定" in document
+    assert "越过“运行轨迹”后不自动继承因果资格" in document
+    assert "只比较两场在同一比赛时钟区间内的事件计数" in document
 
 
 def test_world_model_policy_fork_rejects_tactical_or_policy_cointervention():
@@ -185,3 +249,88 @@ def test_world_model_policy_fork_rejects_tactical_or_policy_cointervention():
     treatment["match_plan"]["world_model_policy"] = "predict_only"
     with pytest.raises(PairingError, match="predict_only to action_policy"):
         build_paired_comparison(baseline, treatment)
+
+
+def test_world_model_propagation_degrades_corrupt_or_duplicate_evidence():
+    baseline = _report("m1")
+    treatment = _report("m2", reuse=True, baseline="m1")
+    for report, policy in (
+        (baseline, "predict_only"), (treatment, "action_policy"),
+    ):
+        report["match_plan"].update({
+            "experience": "world_model_lab",
+            "world_model_policy": policy,
+        })
+    treatment["layers"]["world_model"]["action_adoption"]["records"] = [
+        {
+            "opportunity_id": "duplicate",
+            "team_id": "Brazil", "t_sec": 10,
+            "counterfactual_baseline_action": "hold<script>",
+            "actual_action": "pass", "policy_changed_action": True,
+            "attribution_eligible": True,
+        },
+        {
+            "opportunity_id": "duplicate",
+            "team_id": "Brazil", "t_sec": 11,
+            "counterfactual_baseline_action": "hold",
+            "actual_action": "pass", "policy_changed_action": True,
+            "attribution_eligible": True,
+        },
+        {"policy_changed_action": True, "t_sec": "bad"},
+        "corrupt",
+    ]
+    treatment["replay"] = {"available": True, "events": [
+        _replay_event(10, event_type="shot", link={
+            "opportunity_id": "duplicate", "policy_changed_action": True,
+        }),
+    ]}
+    comparison = build_paired_comparison(baseline, treatment)
+    propagation = comparison["policy_propagation"]
+    assert propagation["summary"]["valid_changed_decisions"] == 1
+    assert propagation["summary"]["duplicate_opportunity_ids"] == 1
+    assert propagation["summary"]["invalid_changed_records"] == 1
+    assert propagation["summary"]["directly_observed_changes"] == 0
+    assert propagation["summary"]["locally_attributable_changes"] == 0
+    assert propagation["downstream_causal_attribution_authorized"] is False
+    document = render_paired_comparison_html(comparison)
+    assert "双方回放不足" in document
+    assert "局部归因 0" in document
+    assert "hold&lt;script&gt; → pass" in document
+    assert "<script>" not in document
+
+
+def test_world_model_propagation_is_bounded_and_no_change_is_explicit():
+    baseline = _report("m1")
+    treatment = _report("m2", reuse=True, baseline="m1")
+    for report, policy in (
+        (baseline, "predict_only"), (treatment, "action_policy"),
+    ):
+        report["match_plan"].update({
+            "experience": "world_model_lab",
+            "world_model_policy": policy,
+        })
+    comparison = build_paired_comparison(baseline, treatment)
+    assert comparison["policy_propagation"]["status"] == (
+        "no_realized_action_changes"
+    )
+    document = render_paired_comparison_html(comparison)
+    assert "没有产生可保留的实际动作改变" in document
+
+    treatment["layers"]["world_model"]["action_adoption"]["records"] = [
+        {
+            "opportunity_id": f"changed-{index}",
+            "team_id": "Brazil", "t_sec": index,
+            "counterfactual_baseline_action": "hold",
+            "actual_action": "pass", "policy_changed_action": True,
+            "attribution_eligible": True,
+        }
+        for index in range(45)
+    ]
+    comparison = build_paired_comparison(baseline, treatment)
+    summary = comparison["policy_propagation"]["summary"]
+    assert summary["valid_changed_decisions"] == 45
+    assert summary["retained_changed_decisions"] == 40
+    assert summary["decisions_truncated"] is True
+    document = render_paired_comparison_html(comparison)
+    assert document.count('class="prop-decision"') == 40
+    assert "仅保留最早 40 条" in document

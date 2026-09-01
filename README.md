@@ -117,6 +117,13 @@ recoverable task and Evidence Library. This is simulator-local intervention
 evidence for one fixture/seed, not real-football causality, population-level
 efficacy, or permission to promote M1 beyond research-only status.
 
+The comparison dashboard separates four evidence stages: isolated policy
+assignment, realized sampled-action changes, direct runtime-identity links,
+and 30/120-second shared-clock event windows. Only a uniquely linked local
+action can inherit simulator-policy attribution. Later pass, shot, goal, and
+turnover deltas remain descriptive because the trajectories have diverged and
+additional policy changes may occur inside a window.
+
 Authenticated remote deployment is explicit and separate from provider
 credentials. The supplied Compose contract exposes only a Caddy TLS edge and
 keeps GFS on an internal network:

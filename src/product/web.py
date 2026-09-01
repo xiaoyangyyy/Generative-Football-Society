@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import json
 import logging
+import math
 import re
 import secrets
 import threading
@@ -43,6 +44,13 @@ STATUS_TEXT = {
     426: "Upgrade Required", 429: "Too Many Requests",
     503: "Service Unavailable",
 }
+
+
+def _bounded_public_count(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0
+    number = float(value)
+    return max(0, min(100_000, int(number))) if math.isfinite(number) else 0
 
 
 def _match_capabilities() -> dict[str, Any]:
@@ -85,6 +93,13 @@ def _match_capabilities() -> dict[str, Any]:
                 "fixture", "tactics", "fast_configuration", "checkpoint",
             ],
             "score_path": "physics_official",
+            "evidence_chain": [
+                "isolated_policy_assignment",
+                "realized_action_change",
+                "direct_runtime_identity",
+                "descriptive_downstream_windows",
+            ],
+            "downstream_causal_attribution": False,
             "claim_boundary": "single_fixture_seed_simulator_contrast_only",
         },
     }
@@ -617,6 +632,30 @@ class ProductWebApp:
                 except ValueError:
                     continue
                 result = task.get("result") or {}
+                raw_propagation = result.get("propagation") or {}
+                propagation = (
+                    {
+                        "available": bool(raw_propagation.get("available")),
+                        "status": str(
+                            raw_propagation.get("status") or "unknown"
+                        )[:80],
+                        "changed_decisions": _bounded_public_count(
+                            raw_propagation.get("changed_decisions"),
+                        ),
+                        "directly_observed_changes": _bounded_public_count(
+                            raw_propagation.get("directly_observed_changes"),
+                        ),
+                        "locally_attributable_changes": _bounded_public_count(
+                            raw_propagation.get("locally_attributable_changes"),
+                        ),
+                        "replay_windows_available": bool(
+                            raw_propagation.get("replay_windows_available") is True
+                        ),
+                        "downstream_causal_attribution_authorized": False,
+                    }
+                    if isinstance(raw_propagation, Mapping) else
+                    {"available": False, "status": "unavailable"}
+                )
                 library_forks.append({
                     "task_id": task.get("task_id"),
                     "home": request.get("home"), "away": request.get("away"),
@@ -629,6 +668,7 @@ class ProductWebApp:
                     "baseline_url": result.get("baseline_url"),
                     "treatment_url": result.get("treatment_url"),
                     "comparison_url": result.get("comparison_url"),
+                    "propagation": propagation,
                 })
                 continue
             if task.get("kind") == "paired_match":
@@ -1773,7 +1813,7 @@ function announce(node,text,kind='status',focus=false){node.className='status '+
 function setBusy(node,busy){node.setAttribute('aria-busy',busy?'true':'false')}
 function card(label,value){const el=document.createElement('div');el.className='card';const a=document.createElement('span');a.className='label';a.textContent=label;const b=document.createElement('strong');b.className='value';b.textContent=esc(value);el.append(a,b);return el}
 function renderRelease(data){releaseGates.replaceChildren();const cp=data.control_plane||data.studio?.control_plane||{},release=cp.release,ex=cp.excellence||{};if(!release){releaseSummary.textContent='发布状态尚不可用。';return}const product=release.scores?.product??ex.tracks?.product?.score??'—',academic=release.scores?.academic??ex.tracks?.academic?.score??'—',plan=release.completion_plan||{},actions=new Map((plan.steps||[]).map(step=>[step.gate_id,step])),kit=plan.evidence_kit?.ready?'就绪':'待检查';releaseSummary.textContent=`产品 ${product}/100 · 学术 ${academic}/100 · 代码契约${release.code_ready?'通过':'未通过'} · 最终发布${release.release_ready?'就绪':'未就绪'} · 证据包${kit} · ${release.open_gate_count} 个开放门禁 · 下一步 ${plan.recommended_gate_id||'无'}`;for(const gate of release.gates||[]){const action=actions.get(gate.id),state=gate.passed?'通过':action?.state||'待完成',detail=action&&!gate.passed?`${state} · 责任角色 ${action.operator}`:state,item=card(gate.label,detail);item.setAttribute('role','listitem');item.dataset.gateId=gate.id;if(action)item.dataset.actionState=action.state;releaseGates.append(item)}}
-function showReport(url,comparisonUrl,studyUrl,baselineUrl){report.replaceChildren();if(!url&&!comparisonUrl&&!studyUrl&&!baselineUrl){report.hidden=true;return}const links=[[baselineUrl,'打开配对基线（新窗口）'],[url,'打开比赛/处理场仪表板（新窗口）'],[comparisonUrl,'打开同种子战术配对比较（新窗口）'],[studyUrl,'打开固定预算战术研究（新窗口）']];for(const [href,label] of links){if(!href)continue;if(report.childNodes.length)report.append(document.createTextNode(' · '));const link=document.createElement('a');link.href=href;link.target='_blank';link.rel='noopener';link.textContent=label;report.append(link)}report.hidden=false}
+function showReport(url,comparisonUrl,studyUrl,baselineUrl){report.replaceChildren();if(!url&&!comparisonUrl&&!studyUrl&&!baselineUrl){report.hidden=true;return}const links=[[baselineUrl,'打开配对基线（新窗口）'],[url,'打开比赛/处理场仪表板（新窗口）'],[comparisonUrl,'打开双世界/战术配对比较（新窗口）'],[studyUrl,'打开固定预算战术研究（新窗口）']];for(const [href,label] of links){if(!href)continue;if(report.childNodes.length)report.append(document.createTextNode(' · '));const link=document.createElement('a');link.href=href;link.target='_blank';link.rel='noopener';link.textContent=label;report.append(link)}report.hidden=false}
 function populateTactics(select,tactics){const selected=select.value;select.replaceChildren();for(const tactic of tactics||[]){const option=document.createElement('option');option.value=tactic.id;option.textContent=tactic.label;option.title=tactic.description||'';select.append(option)}if([...select.options].some(option=>option.value===selected))select.value=selected}
 function configureMatchPlan(capabilities,mode){currentMatchCapabilities=capabilities||currentMatchCapabilities||{};currentStudioMode=mode||currentStudioMode;populateTactics(homeTactic,currentMatchCapabilities.tactics);populateTactics(awayTactic,currentMatchCapabilities.tactics);const labOption=[...experienceSelect.options].find(option=>option.value==='tactical_lab'),labAllowed=['research','cognitive'].includes(currentStudioMode);labOption.disabled=!labAllowed;if(!labAllowed&&experienceSelect.value==='tactical_lab')experienceSelect.value='observational';const lab=experienceSelect.value==='tactical_lab';if(lab&&homeTactic.value==='team_identity'&&awayTactic.value==='team_identity')homeTactic.value='balanced';tacticalOptions.hidden=!lab;homeTactic.disabled=!lab;awayTactic.disabled=!lab;reuseSeed.disabled=!lab;if(!lab)reuseSeed.checked=false;planGuidance.textContent=lab?'战术实验使用物理比分。单场结果只作描述；复用上一场随机条件后才能进行配对归因。':'原生观赛保留球队自身体系和稳定比分路径。'}
 function configureTacticalStudy(capabilities,mode){const tactics=capabilities?.tactics||[];for(const select of [baselineTactic,treatmentTactic,opponentTactic])populateTactics(select,tactics);if(!baselineTactic.dataset.initialized){baselineTactic.value='balanced';treatmentTactic.value='gegenpress';opponentTactic.value='low_block_counter';baselineTactic.dataset.initialized='true'}studyPanel.hidden=mode!=='research'}
@@ -1788,7 +1828,7 @@ function renderLibrary(library){
   const visibleMatches=['paired','forks','studies'].includes(filter)?[]:matches,visiblePairs=['matches','forks','studies'].includes(filter)?[]:pairs,visibleForks=['matches','paired','studies'].includes(filter)?[]:forks,visibleStudies=['matches','paired','forks'].includes(filter)?[]:studies;
   librarySummary.textContent=`${matches.length} 场比赛 · ${forks.length} 个世界模型分叉 · ${pairs.length} 个战术配对 · ${studies.length} 项固定预算研究${currentLibrary.truncated?' · 仅显示最近 50 项':''}`;
   for(const item of visibleMatches){const node=card(`${item.home} vs ${item.away}`,`${item.score?.home??'—'}–${item.score?.away??'—'}`);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`${item.match_id} · seed ${item.seed} · ${item.experience} · 完整性 ${item.integrity}`;const links=document.createElement('p'),matchLink=artifactLink('比赛复盘',item.dashboard_url),pairLink=artifactLink('配对比较',item.comparison_url);if(matchLink)links.append(matchLink);if(matchLink&&pairLink)links.append(document.createTextNode(' · '));if(pairLink)links.append(pairLink);node.append(meta,links);libraryList.append(node)}
-  for(const item of visibleForks){const node=card(`${item.home} vs ${item.away}`,item.state);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`共享 seed ${item.seed} · predict_only → action_policy · 战术固定 ${item.home_tactic}/${item.away_tactic}`;const links=document.createElement('p'),base=artifactLink('基线世界',item.baseline_url),treatment=artifactLink('干预世界',item.treatment_url),comparison=artifactLink('分叉比较',item.comparison_url);for(const link of [base,treatment,comparison]){if(!link)continue;if(links.childNodes.length)links.append(document.createTextNode(' · '));links.append(link)}node.append(meta,links);if(item.state==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='安全恢复因果分叉';resume.addEventListener('click',()=>resumeInterruptedTask(item.task_id,resume));node.append(resume)}libraryList.append(node)}
+  for(const item of visibleForks){const node=card(`${item.home} vs ${item.away}`,item.state);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`共享 seed ${item.seed} · predict_only → action_policy · 战术固定 ${item.home_tactic}/${item.away_tactic}`;const propagation=document.createElement('p'),evidence=item.propagation||{};propagation.className='status';propagation.textContent=evidence.available?`传播证据：${Number(evidence.changed_decisions||0)} 次动作改变 · ${Number(evidence.directly_observed_changes||0)} 次直接观察 · ${Number(evidence.locally_attributable_changes||0)} 次局部归因；下游窗口仅描述`:(item.state==='completed'?`传播证据不可用：${evidence.status||'unknown'}`:'传播证据将在双世界完成后生成');const links=document.createElement('p'),base=artifactLink('基线世界',item.baseline_url),treatment=artifactLink('干预世界',item.treatment_url),comparison=artifactLink('分叉传播与对比',item.comparison_url);for(const link of [base,treatment,comparison]){if(!link)continue;if(links.childNodes.length)links.append(document.createTextNode(' · '));links.append(link)}node.append(meta,propagation,links);if(item.state==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='安全恢复因果分叉';resume.addEventListener('click',()=>resumeInterruptedTask(item.task_id,resume));node.append(resume)}libraryList.append(node)}
   for(const item of visiblePairs){const node=card(`${item.home} vs ${item.away}`,item.state);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`共享 seed ${item.seed} · ${item.focus_side} 侧 · ${item.baseline_tactic} → ${item.treatment_tactic}`;const links=document.createElement('p'),base=artifactLink('基线复盘',item.baseline_url),treatment=artifactLink('处理复盘',item.treatment_url),comparison=artifactLink('配对比较',item.comparison_url);for(const link of [base,treatment,comparison]){if(!link)continue;if(links.childNodes.length)links.append(document.createTextNode(' · '));links.append(link)}node.append(meta,links);if(item.state==='interrupted'){const resume=document.createElement('button');resume.type='button';resume.textContent='安全恢复配对事务';resume.addEventListener('click',()=>resumeInterruptedTask(item.task_id,resume));node.append(resume)}libraryList.append(node)}
   for(const item of visibleStudies){const node=card(item.study_id,item.state);node.setAttribute('role','listitem');const meta=document.createElement('p');meta.className='status';meta.textContent=`${item.home} vs ${item.away} · ${item.baseline_tactic} → ${item.treatment_tactic} · ${item.pairs_completed}/${item.fixed_pair_budget} 对${item.analysis_withheld?' · 分析隐藏':''}`;const links=document.createElement('p'),studyLink=artifactLink('研究复盘',item.study_url);if(studyLink)links.append(studyLink);node.append(meta,links);libraryList.append(node)}
   if(!libraryList.childNodes.length){const empty=document.createElement('p');empty.className='status';empty.textContent='当前筛选下还没有可用证据。';libraryList.append(empty)}

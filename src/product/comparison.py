@@ -39,6 +39,8 @@ METRICS: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 MAX_PAIRED_REPLAY_EVENTS_PER_SIDE = 240
 MAX_PAIRED_REPLAY_FRAMES = 240
+MAX_POLICY_PROPAGATION_DECISIONS = 40
+POLICY_PROPAGATION_WINDOWS_SECONDS = (30, 120)
 
 
 def _nested(report: Mapping[str, Any], path: tuple[str, ...]) -> Any:
@@ -111,6 +113,9 @@ def _bounded_replay_side(
         wm_changed = bool(wm_link.get("policy_changed_action")) or bool(
             raw.get("wm_changed")
         )
+        opportunity_id = _safe_text(
+            wm_link.get("opportunity_id") or raw.get("opportunity_id"), 160,
+        )
         events.append({
             "source_index": len(events), "t_sec": t_sec,
             "clock": f"{int(t_sec // 60)}:{int(t_sec % 60):02d}",
@@ -121,6 +126,7 @@ def _bounded_replay_side(
             "outcome": _safe_text(raw.get("outcome"), 40).upper(),
             "start": start, "end": end,
             "wm_linked": wm_linked, "wm_changed": wm_changed,
+            "opportunity_id": opportunity_id,
         })
     events.sort(key=lambda event: (event["t_sec"], event["source_index"]))
     for index, event in enumerate(events):
@@ -256,6 +262,219 @@ def _checkpoint_identity(report: Mapping[str, Any]) -> str:
     )
 
 
+def _events_in_window(
+    events: list[dict[str, Any]], *, start: float, end: float,
+) -> dict[str, int]:
+    selected = [
+        event for event in events
+        if start <= float(event["t_sec"]) <= end
+    ]
+    return {
+        "actions": len(selected),
+        "passes": sum(event["type"] == "pass" for event in selected),
+        "shots": sum(event["type"] == "shot" for event in selected),
+        "goals": sum(event["outcome"] == "GOAL" for event in selected),
+        "turnovers": sum(
+            event["outcome"] in {"INCOMPLETE", "INTERCEPTED", "LOST"}
+            for event in selected
+        ),
+    }
+
+
+def _window_contrast(
+    baseline_events: list[dict[str, Any]],
+    treatment_events: list[dict[str, Any]],
+    *, start: float, duration: int,
+) -> dict[str, Any]:
+    end = min(8_000.0, start + duration)
+    baseline = _events_in_window(baseline_events, start=start, end=end)
+    treatment = _events_in_window(treatment_events, start=start, end=end)
+    return {
+        "start_t_sec": start,
+        "end_t_sec": end,
+        "baseline": baseline,
+        "treatment": treatment,
+        "delta": {
+            metric: treatment[metric] - baseline[metric]
+            for metric in baseline
+        },
+    }
+
+
+def _runtime_event_matches_action(event: Mapping[str, Any], action: str) -> bool:
+    normalized = action.strip().lower()
+    expected_event_type = {
+        "pass": "pass",
+        "shot": "shot",
+        "shoot": "shot",
+    }.get(normalized)
+    return bool(
+        expected_event_type
+        and event.get("type") == expected_event_type
+    )
+
+
+def build_world_model_policy_propagation(
+    baseline: Mapping[str, Any],
+    treatment: Mapping[str, Any],
+    *, home: str,
+    away: str,
+    pair_eligible: bool,
+) -> dict[str, Any]:
+    """Trace local policy changes and bounded downstream descriptions.
+
+    Direct runtime identity may support attribution of the local sampled action.
+    Later event windows are deliberately descriptive because trajectories have
+    diverged and more than one policy intervention may occur.
+    """
+    adoption = _nested(treatment, ("layers", "world_model", "action_adoption"))
+    raw_records = adoption.get("records") if isinstance(adoption, Mapping) else []
+    if not isinstance(raw_records, (list, tuple)):
+        raw_records = []
+    changed_records = []
+    invalid_records = 0
+    seen_opportunities: set[str] = set()
+    duplicate_opportunities: set[str] = set()
+    for raw in raw_records:
+        if not isinstance(raw, Mapping) or not raw.get("policy_changed_action"):
+            continue
+        opportunity_id = _safe_text(raw.get("opportunity_id"), 160)
+        team = _safe_text(raw.get("team_id"))
+        t_sec = _finite(raw.get("t_sec"))
+        baseline_action = _safe_text(
+            raw.get("counterfactual_baseline_action"), 40,
+        )
+        treatment_action = _safe_text(raw.get("actual_action"), 40)
+        if (
+            not opportunity_id
+            or team not in {home, away}
+            or t_sec is None
+            or not baseline_action
+            or not treatment_action
+        ):
+            invalid_records += 1
+            continue
+        if opportunity_id in seen_opportunities:
+            duplicate_opportunities.add(opportunity_id)
+            continue
+        seen_opportunities.add(opportunity_id)
+        changed_records.append({
+            "opportunity_id": opportunity_id,
+            "team": team,
+            "t_sec": min(8_000.0, max(0.0, t_sec)),
+            "baseline_action": baseline_action,
+            "treatment_action": treatment_action,
+            "recommended_action": _safe_text(
+                raw.get("recommended_action"), 40,
+            ),
+            "record_attribution_eligible": bool(
+                raw.get("attribution_eligible")
+            ),
+        })
+    changed_records.sort(
+        key=lambda row: (row["t_sec"], row["opportunity_id"]),
+    )
+    total_valid_changes = len(changed_records)
+    changed_records = changed_records[:MAX_POLICY_PROPAGATION_DECISIONS]
+
+    baseline_side = _bounded_replay_side(baseline, home=home, away=away)
+    treatment_side = _bounded_replay_side(treatment, home=home, away=away)
+    replay_available = bool(
+        baseline_side.get("available") and treatment_side.get("available")
+    )
+    baseline_events = baseline_side.get("events") or []
+    treatment_events = treatment_side.get("events") or []
+    linked_events: dict[str, list[dict[str, Any]]] = {}
+    for event in treatment_events:
+        opportunity_id = str(event.get("opportunity_id") or "")
+        if opportunity_id:
+            linked_events.setdefault(opportunity_id, []).append(event)
+
+    decisions = []
+    direct_observations = 0
+    locally_attributable = 0
+    for record in changed_records:
+        direct_matches = linked_events.get(record["opportunity_id"], [])
+        direct_event = direct_matches[0] if len(direct_matches) == 1 else None
+        directly_observed = bool(
+            direct_event
+            and direct_event.get("wm_changed")
+            and direct_event.get("team") == record["team"]
+            and abs(float(direct_event["t_sec"]) - record["t_sec"]) <= 1e-6
+            and _runtime_event_matches_action(
+                direct_event, record["treatment_action"],
+            )
+        )
+        local_eligible = bool(
+            pair_eligible
+            and record["record_attribution_eligible"]
+            and directly_observed
+            and record["opportunity_id"] not in duplicate_opportunities
+        )
+        direct_observations += int(directly_observed)
+        locally_attributable += int(local_eligible)
+        windows = {}
+        if replay_available:
+            for duration in POLICY_PROPAGATION_WINDOWS_SECONDS:
+                window = _window_contrast(
+                    baseline_events,
+                    treatment_events,
+                    start=record["t_sec"],
+                    duration=duration,
+                )
+                window["additional_policy_changes"] = sum(
+                    other["opportunity_id"] != record["opportunity_id"]
+                    and record["t_sec"] <= other["t_sec"] <= window["end_t_sec"]
+                    for other in changed_records
+                )
+                window["causal_attribution_authorized"] = False
+                windows[f"{duration}s"] = window
+        decisions.append({
+            **record,
+            "clock": f'{int(record["t_sec"] // 60)}:'
+            f'{int(record["t_sec"] % 60):02d}',
+            "directly_observed": directly_observed,
+            "observed_event_index": (
+                direct_event.get("event_index") if directly_observed else None
+            ),
+            "local_policy_attribution_eligible": local_eligible,
+            "downstream_windows": windows,
+        })
+    status = (
+        "no_realized_action_changes"
+        if total_valid_changes == 0 else
+        "direct_action_changes_observed"
+        if direct_observations else
+        "changed_actions_not_directly_observed"
+    )
+    return {
+        "schema_version": 1,
+        "available": True,
+        "status": status,
+        "summary": {
+            "valid_changed_decisions": total_valid_changes,
+            "retained_changed_decisions": len(decisions),
+            "directly_observed_changes": direct_observations,
+            "locally_attributable_changes": locally_attributable,
+            "invalid_changed_records": invalid_records,
+            "duplicate_opportunity_ids": len(duplicate_opportunities),
+            "replay_windows_available": replay_available,
+            "decisions_truncated": total_valid_changes > len(decisions),
+        },
+        "decisions": decisions,
+        "local_action_attribution_authorized": bool(locally_attributable),
+        "downstream_causal_attribution_authorized": False,
+        "window_alignment_rule": (
+            "same match-clock ranges only; no cross-world event correspondence"
+        ),
+        "claim_boundary": (
+            "direct runtime identity can attribute an individual sampled action "
+            "to the simulator policy switch; subsequent window deltas remain "
+            "descriptive and do not establish a causal path to match outcomes"
+        ),
+    }
+
+
 def build_paired_comparison(
     baseline: Mapping[str, Any], treatment: Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -360,6 +579,22 @@ def build_paired_comparison(
     paired_replay = build_synchronized_paired_replay(
         baseline, treatment, home=ordered_fixture[0], away=ordered_fixture[1],
     )
+    policy_propagation = (
+        build_world_model_policy_propagation(
+            baseline,
+            treatment,
+            home=ordered_fixture[0],
+            away=ordered_fixture[1],
+            pair_eligible=eligible,
+        )
+        if baseline_experience == "world_model_lab" else
+        {
+            "schema_version": 1,
+            "available": False,
+            "status": "not_world_model_policy_fork",
+            "decisions": [],
+        }
+    )
     return {
         "schema_version": 1,
         "comparison_id": f"{treatment_id}-paired-vs-{baseline_id}",
@@ -400,6 +635,7 @@ def build_paired_comparison(
         },
         "metrics": metrics,
         "paired_replay": paired_replay,
+        "policy_propagation": policy_propagation,
         "claim_boundary": (
             "paired deterministic simulator-policy contrast for this fixture and "
             "seed only; not a population effect, significance test, real-football "
@@ -585,6 +821,118 @@ def _paired_replay_panel(comparison: Mapping[str, Any]) -> str:
 </fieldset><style>{''.join(rules)}</style></section>"""
 
 
+def _policy_propagation_panel(comparison: Mapping[str, Any]) -> str:
+    propagation = comparison.get("policy_propagation") or {}
+    if not isinstance(propagation, Mapping) or not propagation.get("available"):
+        reason = _safe_text(
+            propagation.get("status") if isinstance(propagation, Mapping)
+            else "invalid_propagation_evidence",
+        )
+        return f"""<section class="card propagation" data-testid="policy-propagation-panel">
+<h2>动作分歧与传播链</h2><p class="muted">传播证据不可用：{html.escape(reason or 'unknown')}。双世界指标仍可独立查看。</p></section>"""
+    summary = propagation.get("summary") or {}
+    if not isinstance(summary, Mapping):
+        summary = {}
+
+    def count(key: str) -> int:
+        value = _finite(summary.get(key))
+        return max(0, min(100_000, int(value or 0)))
+
+    changed = count("valid_changed_decisions")
+    direct = count("directly_observed_changes")
+    attributable = count("locally_attributable_changes")
+    replay_windows = bool(summary.get("replay_windows_available"))
+    eligibility = comparison.get("eligibility") or {}
+    pair_eligible = bool(
+        isinstance(eligibility, Mapping)
+        and eligibility.get("eligible_for_world_model_policy_attribution")
+    )
+    stage_cards = (
+        '<div class="prop-stage"><span>1 · 策略分配</span><strong>'
+        f'{"隔离检查通过" if pair_eligible else "仅描述"}</strong>'
+        '<small>同队、同战术、同 seed、同检查点</small></div>'
+        '<div class="prop-stage"><span>2 · 局部动作</span>'
+        f'<strong>{changed} 次改变</strong><small>同一随机抽样下的实际动作分歧</small></div>'
+        '<div class="prop-stage"><span>3 · 运行轨迹</span>'
+        f'<strong>{direct} 次直接观察</strong><small>{attributable} 次满足局部归因资格</small></div>'
+        '<div class="prop-stage"><span>4 · 后续传播</span>'
+        f'<strong>{"窗口可查看" if replay_windows else "回放不足"}</strong>'
+        '<small>只按共享时钟描述，不声称下游因果</small></div>'
+    )
+    raw_decisions = propagation.get("decisions") or []
+    if not isinstance(raw_decisions, (list, tuple)):
+        raw_decisions = []
+    decision_cards = []
+    for raw in raw_decisions[:MAX_POLICY_PROPAGATION_DECISIONS]:
+        if not isinstance(raw, Mapping):
+            continue
+        clock = _safe_text(raw.get("clock"), 20) or "—"
+        team = _safe_text(raw.get("team")) or "unknown"
+        before = _safe_text(raw.get("baseline_action"), 40) or "unknown"
+        after = _safe_text(raw.get("treatment_action"), 40) or "unknown"
+        direct_label = (
+            "直接轨迹已绑定" if raw.get("directly_observed")
+            else "直接轨迹未绑定"
+        )
+        local_label = (
+            "局部归因合格" if raw.get("local_policy_attribution_eligible")
+            else "仅记录动作分歧"
+        )
+        window_rows = []
+        windows = raw.get("downstream_windows") or {}
+        if isinstance(windows, Mapping):
+            for label in ("30s", "120s"):
+                window = windows.get(label)
+                if not isinstance(window, Mapping):
+                    continue
+                delta = window.get("delta")
+                if not isinstance(delta, Mapping):
+                    continue
+                values = []
+                for metric in ("passes", "shots", "goals", "turnovers"):
+                    number = _finite(delta.get(metric))
+                    values.append(
+                        "—" if number is None else f"{int(number):+d}"
+                    )
+                extra = _finite(window.get("additional_policy_changes"))
+                window_rows.append(
+                    f'<tr><td>+{html.escape(label)}</td>'
+                    + "".join(f"<td>{value}</td>" for value in values)
+                    + f'<td>{max(0, int(extra or 0))}</td></tr>'
+                )
+        window_table = (
+            '<div class="scroll"><table><thead><tr><th>共享时钟窗口</th>'
+            '<th>传球 Δ</th><th>射门 Δ</th><th>进球 Δ</th>'
+            '<th>丢失球权 Δ</th><th>其他策略改变</th></tr></thead><tbody>'
+            + "".join(window_rows) + "</tbody></table></div>"
+            if window_rows else
+            '<p class="muted">双方回放不足，无法构建后续共享时钟窗口。</p>'
+        )
+        decision_cards.append(
+            '<details class="prop-decision"><summary>'
+            f'<span>{html.escape(clock)} · {html.escape(team)}</span>'
+            f'<strong>{html.escape(before)} → {html.escape(after)}</strong>'
+            f'<small>{direct_label} · {local_label}</small></summary>'
+            f'{window_table}<p class="muted">窗口从该决策时刻开始；其中可能包含其他策略改变，'
+            '只比较两场在同一比赛时钟区间内的事件计数，不匹配跨世界事件。</p></details>'
+        )
+    if not decision_cards:
+        decision_cards.append(
+            '<p class="muted">本次共享随机条件下没有产生可保留的实际动作改变。'
+            '这仍是有效结果：策略概率发生影响并不保证跨过抽样边界。</p>'
+        )
+    truncation = (
+        '<p class="muted">动作改变记录超过页面上限，仅保留最早 40 条；汇总仍使用全部有效记录。</p>'
+        if summary.get("decisions_truncated") else ""
+    )
+    boundary = _safe_text(propagation.get("claim_boundary"), 500)
+    return f"""<section class="card propagation" data-testid="policy-propagation-panel">
+<div class="pair-panel-head"><div><span class="eyebrow">Policy → action → trajectory → outcome</span><h2>动作分歧与传播链</h2></div><span class="pair-badge changed">局部归因 {attributable}</span></div>
+<p class="muted">这条链把已证明的局部动作改变与后续描述性差异分开显示；越过“运行轨迹”后不自动继承因果资格。</p>
+<div class="prop-stages">{stage_cards}</div><div class="prop-decisions">{''.join(decision_cards)}</div>{truncation}
+<p class="inference-boundary"><strong>推断边界：</strong>{html.escape(boundary)}</p></section>"""
+
+
 def render_paired_comparison_html(comparison: Mapping[str, Any]) -> str:
     fixture = comparison.get("fixture") or {}
     eligibility = comparison.get("eligibility") or {}
@@ -654,13 +1002,17 @@ def render_paired_comparison_html(comparison: Mapping[str, Any]) -> str:
                 f'<a href="{html.escape(filename, quote=True)}">{label}</a>'
             )
     navigation = " · ".join(report_links)
+    propagation_panel = (
+        _policy_propagation_panel(comparison) if world_model_fork else ""
+    )
     replay_panel = _paired_replay_panel(comparison)
     return f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(str(fixture.get('home')))} vs {html.escape(str(fixture.get('away')))} · {page_title}</title>
-<style>:root{{--bg:#07111e;--panel:#111d2e;--line:#2a3a51;--ink:#edf4ff;--muted:#a8b6c9;--ok:#65e6b4;--warn:#ffc36a}}*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,sans-serif}}main{{max-width:1180px;margin:auto;padding:32px 20px}}h1{{font-size:clamp(28px,6vw,54px);margin:.2em 0}}.eyebrow,.muted{{color:var(--muted)}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}}.card{{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}}.ok{{color:var(--ok)}}.warn{{color:var(--warn)}}table{{width:100%;border-collapse:collapse}}th,td{{text-align:left;padding:9px;border-bottom:1px solid var(--line)}}.scroll{{overflow:auto}}code{{color:var(--ok)}}.pair-panel-head{{display:flex;justify-content:space-between;gap:12px;align-items:start}}.pair-panel-head h2{{margin:.2em 0}}.pair-badge{{display:inline-block;border:1px solid #42516a;border-radius:999px;padding:2px 8px;color:#cbd7e8;font-size:12px}}.pair-badge.changed{{border-color:var(--ok);color:var(--ok)}}.pair-summary{{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:14px 0}}.pair-summary>div{{display:grid;background:#0a1424;border:1px solid var(--line);border-radius:9px;padding:10px}}.pair-summary strong{{font-size:18px}}.pair-controls{{display:flex;flex-wrap:wrap;gap:7px;border:0;padding:0;margin:0}}.pair-controls legend{{width:100%;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.1em}}.pair-controls>input{{position:absolute;opacity:0;pointer-events:none}}.pair-controls>label{{border:1px solid #42516a;border-radius:999px;padding:6px 10px;cursor:pointer}}.pair-controls>input:focus-visible+label{{outline:3px solid var(--warn);outline-offset:2px}}.pair-controls>input:checked+label{{border-color:var(--ok);color:var(--ok);background:#10281f}}.pair-timeline{{display:flex;gap:5px;overflow:auto;width:100%;padding:12px 2px 5px}}.pair-timeline label{{flex:0 0 auto;min-width:42px;border:1px solid #42516a;border-radius:8px;padding:4px 7px;text-align:center;cursor:pointer;font-size:12px}}.pair-timeline label span{{display:block;color:var(--muted);font-size:10px}}.pair-navigation{{width:100%;margin-top:8px}}.pair-frame{{display:none;align-items:center;justify-content:space-between;gap:12px;background:#0a1424;border:1px solid var(--line);border-radius:10px;padding:10px}}.pair-frame>div{{display:grid;gap:3px;text-align:center;min-width:0}}.pair-frame-center{{flex:1}}.pair-current{{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left}}.pair-current>div{{display:grid;gap:2px;background:#0d192a;border-radius:8px;padding:8px}}.pair-current>div>span{{display:block}}.pair-button{{border:1px solid #42516a;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--ok);white-space:nowrap}}.pair-pitches{{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;margin-top:12px}}.pair-side{{background:#071c19;border:1px solid #285448;border-radius:12px;padding:10px}}.pair-side h3{{margin:0 0 6px}}.pair-side svg{{display:block;width:100%;height:auto}}.pair-pitch{{fill:#0c392d;stroke:#b8d8cd;stroke-width:3}}.pair-marking{{fill:none;stroke:#b8d8cd;stroke-width:3}}.pair-spot{{fill:#b8d8cd}}.pair-event line{{stroke-width:4;stroke-linecap:round;opacity:.42}}.pair-event circle{{opacity:.75}}.pair-home line,.pair-home circle{{stroke:#65e6b4;fill:#65e6b4}}.pair-away line,.pair-away circle{{stroke:#ff9f7a;fill:#ff9f7a}}.pair-shot line{{stroke-width:7;opacity:.85}}.pair-wm-changed line{{filter:drop-shadow(0 0 5px #fff);opacity:1}}#pair-filter-shots:checked~.pair-pitches .pair-event:not(.pair-shot),#pair-filter-wm:checked~.pair-pitches .pair-event:not(.pair-wm-changed){{display:none}}@media(max-width:760px){{th,td{{padding:7px;font-size:12px}}.pair-pitches,.pair-current{{grid-template-columns:1fr}}.pair-frame{{flex-wrap:wrap}}.pair-frame-center{{order:-1;width:100%;flex-basis:100%}}.pair-button{{flex:1;text-align:center}}.pair-panel-head{{display:block}}}}</style></head><body><main>
+<style>:root{{--bg:#07111e;--panel:#111d2e;--line:#2a3a51;--ink:#edf4ff;--muted:#a8b6c9;--ok:#65e6b4;--warn:#ffc36a}}*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,sans-serif}}main{{max-width:1180px;margin:auto;padding:32px 20px}}h1{{font-size:clamp(28px,6vw,54px);margin:.2em 0}}.eyebrow,.muted{{color:var(--muted)}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}}.card{{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}}.ok{{color:var(--ok)}}.warn{{color:var(--warn)}}table{{width:100%;border-collapse:collapse}}th,td{{text-align:left;padding:9px;border-bottom:1px solid var(--line)}}.scroll{{overflow:auto}}code{{color:var(--ok)}}.pair-panel-head{{display:flex;justify-content:space-between;gap:12px;align-items:start}}.pair-panel-head h2{{margin:.2em 0}}.pair-badge{{display:inline-block;border:1px solid #42516a;border-radius:999px;padding:2px 8px;color:#cbd7e8;font-size:12px}}.pair-badge.changed{{border-color:var(--ok);color:var(--ok)}}.pair-summary{{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:14px 0}}.pair-summary>div{{display:grid;background:#0a1424;border:1px solid var(--line);border-radius:9px;padding:10px}}.pair-summary strong{{font-size:18px}}.prop-stages{{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}}.prop-stage{{display:grid;gap:4px;background:#0a1424;border:1px solid var(--line);border-radius:10px;padding:12px;position:relative}}.prop-stage:not(:last-child)::after{{content:'→';position:absolute;right:-12px;top:32%;z-index:2;color:var(--ok)}}.prop-stage span,.prop-stage small{{color:var(--muted)}}.prop-decision{{border:1px solid var(--line);border-radius:10px;margin:8px 0;background:#0a1424}}.prop-decision summary{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;cursor:pointer;padding:12px}}.prop-decision summary small{{color:var(--muted)}}.prop-decision .scroll,.prop-decision>p{{margin:0 12px 12px}}.inference-boundary{{border-left:3px solid var(--warn);padding-left:12px;color:var(--muted)}}.pair-controls{{display:flex;flex-wrap:wrap;gap:7px;border:0;padding:0;margin:0}}.pair-controls legend{{width:100%;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.1em}}.pair-controls>input{{position:absolute;opacity:0;pointer-events:none}}.pair-controls>label{{border:1px solid #42516a;border-radius:999px;padding:6px 10px;cursor:pointer}}.pair-controls>input:focus-visible+label{{outline:3px solid var(--warn);outline-offset:2px}}.pair-controls>input:checked+label{{border-color:var(--ok);color:var(--ok);background:#10281f}}.pair-timeline{{display:flex;gap:5px;overflow:auto;width:100%;padding:12px 2px 5px}}.pair-timeline label{{flex:0 0 auto;min-width:42px;border:1px solid #42516a;border-radius:8px;padding:4px 7px;text-align:center;cursor:pointer;font-size:12px}}.pair-timeline label span{{display:block;color:var(--muted);font-size:10px}}.pair-navigation{{width:100%;margin-top:8px}}.pair-frame{{display:none;align-items:center;justify-content:space-between;gap:12px;background:#0a1424;border:1px solid var(--line);border-radius:10px;padding:10px}}.pair-frame>div{{display:grid;gap:3px;text-align:center;min-width:0}}.pair-frame-center{{flex:1}}.pair-current{{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left}}.pair-current>div{{display:grid;gap:2px;background:#0d192a;border-radius:8px;padding:8px}}.pair-current>div>span{{display:block}}.pair-button{{border:1px solid #42516a;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--ok);white-space:nowrap}}.pair-pitches{{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;margin-top:12px}}.pair-side{{background:#071c19;border:1px solid #285448;border-radius:12px;padding:10px}}.pair-side h3{{margin:0 0 6px}}.pair-side svg{{display:block;width:100%;height:auto}}.pair-pitch{{fill:#0c392d;stroke:#b8d8cd;stroke-width:3}}.pair-marking{{fill:none;stroke:#b8d8cd;stroke-width:3}}.pair-spot{{fill:#b8d8cd}}.pair-event line{{stroke-width:4;stroke-linecap:round;opacity:.42}}.pair-event circle{{opacity:.75}}.pair-home line,.pair-home circle{{stroke:#65e6b4;fill:#65e6b4}}.pair-away line,.pair-away circle{{stroke:#ff9f7a;fill:#ff9f7a}}.pair-shot line{{stroke-width:7;opacity:.85}}.pair-wm-changed line{{filter:drop-shadow(0 0 5px #fff);opacity:1}}#pair-filter-shots:checked~.pair-pitches .pair-event:not(.pair-shot),#pair-filter-wm:checked~.pair-pitches .pair-event:not(.pair-wm-changed){{display:none}}@media(max-width:760px){{th,td{{padding:7px;font-size:12px}}.pair-pitches,.pair-current,.prop-stages,.prop-decision summary{{grid-template-columns:1fr}}.prop-stage:not(:last-child)::after{{content:'↓';right:50%;top:auto;bottom:-17px}}.pair-frame{{flex-wrap:wrap}}.pair-frame-center{{order:-1;width:100%;flex-basis:100%}}.pair-button{{flex:1;text-align:center}}.pair-panel-head{{display:block}}}}</style></head><body><main>
 <div class="eyebrow">{eyebrow}</div><h1>{html.escape(str(fixture.get('home')))} vs {html.escape(str(fixture.get('away')))}</h1><p>seed <code>{html.escape(str(fixture.get('seed')))}</code> · <strong class="{'ok' if eligible else 'warn'}">{state}</strong></p><p>{navigation}</p>
 <section class="grid"><article class="card"><h2>{baseline_title}</h2><p>{baseline_body}</p></article><article class="card"><h2>{treatment_title}</h2><p>{treatment_body}</p></article><article class="card"><h2>干预范围</h2><p>{html.escape(intervention_explanation)}</p></article></section>
 <section class="card"><h2>配对资格检查</h2><ul>{check_rows}</ul></section>
+{propagation_panel}
 {replay_panel}
 <section class="card"><h2>处理场减去基线场</h2><div class="scroll"><table><thead><tr><th>指标</th><th>基线</th><th>处理</th><th>差值</th></tr></thead><tbody>{''.join(metric_rows)}</tbody></table></div></section>
 <section class="card"><h2>推断边界</h2><p class="muted">{html.escape(str(comparison.get('claim_boundary') or ''))}</p></section>

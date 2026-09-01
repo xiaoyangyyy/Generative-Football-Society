@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import socket
 import threading
 import uuid
@@ -39,6 +40,54 @@ def _public_task(task: dict[str, Any]) -> dict[str, Any]:
     return {
         key: value for key, value in task.items()
         if key not in {"idempotency_hash", "worker_id"}
+    }
+
+
+def _world_model_propagation_digest(path: str | Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return {
+            "available": False,
+            "status": "comparison_propagation_unavailable",
+        }
+    propagation = (
+        payload.get("policy_propagation")
+        if isinstance(payload, dict) else None
+    )
+    if not isinstance(propagation, dict) or not propagation.get("available"):
+        return {
+            "available": False,
+            "status": "legacy_comparison_without_propagation",
+        }
+    summary = propagation.get("summary") or {}
+    if not isinstance(summary, dict):
+        summary = {}
+
+    def bounded_count(key: str) -> int:
+        value = summary.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return 0
+        number = float(value)
+        return (
+            max(0, min(100_000, int(number)))
+            if math.isfinite(number) else 0
+        )
+
+    return {
+        "available": True,
+        "status": str(propagation.get("status") or "unknown")[:80],
+        "changed_decisions": bounded_count("valid_changed_decisions"),
+        "directly_observed_changes": bounded_count(
+            "directly_observed_changes"
+        ),
+        "locally_attributable_changes": bounded_count(
+            "locally_attributable_changes"
+        ),
+        "replay_windows_available": bool(
+            summary.get("replay_windows_available") is True
+        ),
+        "downstream_causal_attribution_authorized": False,
     }
 
 
@@ -694,6 +743,10 @@ class BackgroundMatchWorker:
                         treatment["comparison_dashboard_path"],
                     ),
                 }
+                if is_world_model_fork:
+                    result["propagation"] = _world_model_propagation_digest(
+                        treatment["comparison_path"]
+                    )
             else:
                 report = workspace.run_match(
                     str(request["home"]), str(request["away"]),
