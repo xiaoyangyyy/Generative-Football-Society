@@ -527,3 +527,13 @@ Missing evidence is never interpolated. Change markers identify recorded
 events and gaps only; they are not inferred turning points, effect estimates
 or causal explanations. Opening a row uses the same stale-safe permalink and
 full-ledger expansion as the existing diagnostics.
+
+Reviewed multi-timepoint futures now remain visible after the official world
+advances. The prematch stage and its season-trajectory row show whether the
+manager kept or revised the frozen selection, how many registered branch times
+were usable, how many produced action divergence and local attribution, and
+whether descriptive timing sensitivity was observed. The same values are
+identity-bound from the review receipt through the execution trace, world
+thread and historical chapter. They explain the decision context; they are not
+compared with the observed score as forecast accuracy, tactic quality or a
+treatment effect.

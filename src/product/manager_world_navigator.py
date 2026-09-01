@@ -58,6 +58,14 @@ _WORLD_SUMMARY_FIELDS = (
     "new_suspensions",
     "suspensions_cleared",
 )
+_FUTURE_REVIEW_COUNT_FIELDS = (
+    "fixed_scenario_budget",
+    "eligible_scenarios",
+    "verified_anchor_scenarios",
+    "action_divergence_scenarios",
+    "local_attribution_scenarios",
+    "descriptive_future_difference_scenarios",
+)
 _BOUNDARY = (
     "navigation over the current manager intervention session and replayable "
     "completed simulator-world chapters only; navigation state is not an "
@@ -191,6 +199,9 @@ def _season_world_trajectory(
             "fixture_id": chapter["fixture_id"],
             "matchday": chapter["matchday"],
             "chapter_identity": chapter["chapter_identity"],
+            "reviewed_future_context": copy.deepcopy(
+                chapter["reviewed_future_context"]
+            ),
             "action_adoption_state": chapter["action_adoption"]["state"],
             "locally_attributable_action_changes": local_changes,
             "result_available": world["result_available"],
@@ -226,15 +237,42 @@ def _season_world_trajectory(
         point["trajectory_point_identity"] = _identity(point)
         points.append(point)
     visible = points[-MAX_HISTORY_CHAPTERS:]
+    reviewed_points = [
+        row for row in points
+        if row["reviewed_future_context"]["available"]
+    ]
     return {
         "total_points": len(points),
         "visible_points": len(visible),
         "points_truncated": len(points) > MAX_HISTORY_CHAPTERS,
         "results_available": cumulative_results,
         "persistent_state_chapters": cumulative_persistent,
+        "reviewed_future_chapters": len(reviewed_points),
+        "reviewed_future_selected_chapters": sum(
+            row["reviewed_future_context"]["selected_for_fixture"]
+            for row in reviewed_points
+        ),
+        "scenario_evidence_chapters": sum(
+            row["reviewed_future_context"]["evidence_level"]
+            == "scenario_evidence"
+            for row in reviewed_points
+        ),
+        "reviewed_action_divergence_chapters": sum(
+            row["reviewed_future_context"][
+                "action_divergence_scenarios"
+            ] > 0
+            for row in reviewed_points
+        ),
+        "reviewed_timing_sensitivity_chapters": sum(
+            row["reviewed_future_context"][
+                "timing_sensitivity_observed"
+            ] is True
+            for row in reviewed_points
+        ),
         "points": visible,
         "descriptive_chronology_only": True,
         "missing_evidence_imputed": False,
+        "future_to_outcome_comparison_performed": False,
         "turning_point_inference_authorized": False,
         "outcome_effect_estimate": None,
         "causal_effect_authorized": False,
@@ -320,6 +358,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         not _identity_matches(entry, "entry_identity")
         or not _identity_matches(thread, "thread_identity")
         or entry.get("fixture_id") != thread.get("fixture_id")
+        or not isinstance(entry.get("future_review_execution_trace"), Mapping)
         or thread.get("causal_effect_authorized") is not False
         or thread.get("outcome_effect_estimate") is not None
     ):
@@ -347,6 +386,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     observed = entry.get("observed_result")
     observed = observed if isinstance(observed, Mapping) else {}
     result_stage = stage_by_id["observed_match_result"]
+    review_stage = stage_by_id["prematch_future_review"]
     action = stage_by_id["official_world_model_actions"]
     persistent = stage_by_id["persistent_world_state"]
     action_count_fields = (
@@ -387,6 +427,22 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     source_match_delta = persistent_source.get("match_delta")
     source_match_delta = (
         source_match_delta if isinstance(source_match_delta, Mapping) else {}
+    )
+    review_trace = entry.get("future_review_execution_trace")
+    review_trace = review_trace if isinstance(review_trace, Mapping) else {}
+    terminal_review = review_trace.get("terminal_review")
+    terminal_review = (
+        terminal_review if isinstance(terminal_review, Mapping) else {}
+    )
+    review_available = review_trace.get("available") is True
+    review_counts = {
+        field: review_stage.get(field) for field in _FUTURE_REVIEW_COUNT_FIELDS
+    }
+    expected_review_status = (
+        "selected_for_fixture"
+        if terminal_review.get("linked_to_final_selection") is True
+        else "superseded_before_execution"
+        if review_available else "not_reviewed"
     )
     if (
         isinstance(matchday, bool)
@@ -429,6 +485,89 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         )
         or action_counts["retained_records"]
         > action_counts["source_match_opportunities"]
+        or (
+            review_available
+            and (
+                not _identity_matches(review_trace, "trace_identity")
+                or review_stage.get("status") != expected_review_status
+                or review_stage.get("source_identity")
+                != review_trace.get("trace_identity")
+                or review_trace.get("outcome_comparison_performed") is not False
+                or review_trace.get("outcome_effect_estimate") is not None
+                or review_trace.get("causal_effect_authorized") is not False
+                or review_stage.get("review_identity")
+                != terminal_review.get("review_identity")
+                or not _is_identity(terminal_review.get("review_identity"))
+                or not isinstance(
+                    terminal_review.get("linked_to_final_selection"), bool,
+                )
+                or review_stage.get("review_intent")
+                != terminal_review.get("intent")
+                or review_stage.get("evidence_level")
+                != terminal_review.get("evidence_level")
+                or review_stage.get("retained_mechanism_examples")
+                != terminal_review.get("retained_mechanism_examples")
+                or any(
+                    review_counts[field] != terminal_review.get(field)
+                    for field in _FUTURE_REVIEW_COUNT_FIELDS
+                )
+                or review_stage.get("timing_sensitivity_observed")
+                is not terminal_review.get("timing_sensitivity_observed")
+                or review_stage.get("ranking_performed") is not False
+                or terminal_review.get("ranking_performed") is not False
+                or review_stage.get("best_branch_time") is not None
+                or terminal_review.get("best_branch_time") is not None
+                or terminal_review.get("intent") not in {
+                    "keep_after_review", "revise_after_review",
+                }
+                or terminal_review.get("evidence_level") not in {
+                    "scenario_evidence", "aggregate_only",
+                }
+                or any(
+                    isinstance(value, bool)
+                    or not isinstance(value, int)
+                    or value < 0
+                    for value in (
+                        *review_counts.values(),
+                        *(
+                            terminal_review.get(field)
+                            for field in _FUTURE_REVIEW_COUNT_FIELDS
+                        ),
+                        review_stage.get("retained_mechanism_examples"),
+                        terminal_review.get("retained_mechanism_examples"),
+                    )
+                )
+                or review_counts["eligible_scenarios"]
+                > review_counts["fixed_scenario_budget"]
+                or review_counts["verified_anchor_scenarios"]
+                > review_counts["fixed_scenario_budget"]
+                or review_counts["eligible_scenarios"]
+                > review_counts["verified_anchor_scenarios"]
+                or review_counts["local_attribution_scenarios"]
+                > review_counts["action_divergence_scenarios"]
+                or not isinstance(
+                    review_stage.get("timing_sensitivity_observed"), bool,
+                )
+            )
+        )
+        or (
+            not review_available
+            and (
+                review_trace.get("available") is not False
+                or not isinstance(review_trace.get("reason"), str)
+                or not review_trace.get("reason")
+                or review_stage.get("status") != "not_reviewed"
+                or review_stage.get("source_identity") is not None
+                or review_stage.get("review_identity") is not None
+                or review_stage.get("review_intent") is not None
+                or review_stage.get("evidence_level") is not None
+                or review_stage.get("retained_mechanism_examples") != 0
+                or any(value != 0 for value in review_counts.values())
+                or review_stage.get("timing_sensitivity_observed") is not None
+                or review_stage.get("ranking_performed") is not None
+                or review_stage.get("best_branch_time") is not None
+            )
+        )
         or (
             result_available
             and (
@@ -587,6 +726,26 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         },
         "score": copy.deepcopy(score),
         "outcome": outcome,
+        "reviewed_future_context": {
+            "available": review_available,
+            "selected_for_fixture": (
+                review_stage.get("status") == "selected_for_fixture"
+            ),
+            "review_identity": review_stage.get("review_identity"),
+            "intent": review_stage.get("review_intent"),
+            "evidence_level": review_stage.get("evidence_level"),
+            **copy.deepcopy(review_counts),
+            "retained_mechanism_examples": review_stage.get(
+                "retained_mechanism_examples"
+            ),
+            "timing_sensitivity_observed": review_stage.get(
+                "timing_sensitivity_observed"
+            ),
+            "ranking_performed": review_stage.get("ranking_performed"),
+            "best_branch_time": review_stage.get("best_branch_time"),
+            "outcome_comparison_performed": False,
+            "causal_effect_authorized": False,
+        },
         "descriptive_world_after": {
             "result_available": result_available,
             "outcome": outcome if result_available else None,
@@ -668,7 +827,10 @@ def build_manager_world_navigator(
         row for row in ledger["entries"]
         if row.get("lifecycle_state") != "frozen_awaiting_execution"
     ]
-    all_chapters = [_history_chapter(row) for row in completed_entries]
+    all_chapters = sorted(
+        (_history_chapter(row) for row in completed_entries),
+        key=lambda row: (row["matchday"], row["fixture_id"]),
+    )
     chapters = list(reversed(all_chapters[-MAX_HISTORY_CHAPTERS:]))
     world_trajectory = _season_world_trajectory(all_chapters)
     workflow_state = str(workspace.get("workflow_state") or "")
@@ -709,6 +871,29 @@ def build_manager_world_navigator(
         "review_selected": sum(
             row["stage_statuses"]["prematch_future_review"]
             == "selected_for_fixture"
+            for row in all_chapters
+        ),
+        "reviewed_future_scenario_evidence": sum(
+            row["reviewed_future_context"]["evidence_level"]
+            == "scenario_evidence"
+            for row in all_chapters
+        ),
+        "reviewed_future_action_divergence": sum(
+            row["reviewed_future_context"][
+                "action_divergence_scenarios"
+            ] > 0
+            for row in all_chapters
+        ),
+        "reviewed_future_local_attribution": sum(
+            row["reviewed_future_context"][
+                "local_attribution_scenarios"
+            ] > 0
+            for row in all_chapters
+        ),
+        "reviewed_future_timing_sensitivity": sum(
+            row["reviewed_future_context"][
+                "timing_sensitivity_observed"
+            ] is True
             for row in all_chapters
         ),
         "runtime_tactic_verified": sum(

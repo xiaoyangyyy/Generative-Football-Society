@@ -2290,3 +2290,54 @@ synchronized between the full ledger, recent chapter cards and trajectory.
 This stage is code-only. It executes no match, model training, formal study or
 external provider call, and it does not claim that a temporal association is a
 world-model effect or a real-football causal relation.
+
+## 78. V3.60 Reviewed futures carried into the official world
+
+The counterfactual workbench could generate and review fixed-budget,
+multi-timepoint simulator futures, and the official world thread could prove
+that a reviewed selection reached runtime. However, the hand-off collapsed the
+reviewed evidence to a boolean-like state and a mechanism-example count. Once
+the official match became a historical chapter, users could no longer see how
+many branch times were eligible, whether actions diverged, whether local
+attribution existed, whether descriptive downstream windows differed, whether
+timing sensitivity was observed, or whether the manager kept or revised the
+selection. The product therefore still separated "possible futures" from the
+world that actually continued.
+
+The terminal future-review execution trace now carries the validated review
+intent, evidence level, fixed scenario budget, eligible and verified anchors,
+action-divergence scenarios, locally attributable scenarios, descriptive
+future-difference scenarios, timing-sensitivity observation and the explicit
+no-ranking result. These fields are copied only from a validated review receipt
+and are sealed by the trace identity. The prematch stage of the canonical world
+thread copies the same facts, and its stage and thread identities seal the
+review-to-world hand-off.
+
+The season navigator independently checks the trace identity, exact trace-to-
+stage equality, non-negative integer counts, fixed-budget bounds, eligible
+anchor coverage and the local-attribution subset of action divergence.
+Descriptive future difference remains an independent observation, matching the
+source scenario contract instead of being forced into a false funnel. A
+rehashed trace and rehashed thread cannot authorize an impossible partition.
+Each official chapter and trajectory point then retains one
+`reviewed_future_context`. Whole-season trajectory totals distinguish
+reviewed chapters, reviews selected for the fixture, retained per-scenario
+evidence, reviewed action divergence and reviewed timing sensitivity.
+
+This audit also corrected a temporal-window defect. The authoritative decision
+ledger is latest-first, while early navigator code implicitly treated its input
+as chronological before taking a bounded slice. All completed chapters are now
+sorted by matchday and fixture identity before recent-history truncation,
+aggregation and trajectory construction. Tests reverse the source ledger and
+prove that the same latest 64 chapters and chronological trajectory survive.
+
+Studio displays reviewed branch facts inside the existing prematch world-thread
+stage and beside the corresponding official trajectory point. The influence
+path reports their fixture-level coverage as independent evidence counts. A
+dedicated boundary states that this continuity records what the manager saw,
+whether the decision changed and whether it reached runtime; it does not match
+simulated paths to the observed score as forecast accuracy or treatment effect.
+
+This stage executes no future generation, match, training, formal study or
+provider call. It introduces no best-time recommendation, outcome comparison,
+score prediction, intervention ranking or real-football causal authority.

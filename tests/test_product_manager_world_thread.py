@@ -71,6 +71,17 @@ def _entry(*, action_available=True, stable=False, review_linked=True):
                 ),
                 "linked_to_final_selection": review_linked,
                 "retained_mechanism_examples": 2,
+                "intent": "keep_after_review",
+                "evidence_level": "scenario_evidence",
+                "fixed_scenario_budget": 3,
+                "eligible_scenarios": 3,
+                "verified_anchor_scenarios": 3,
+                "action_divergence_scenarios": 2,
+                "local_attribution_scenarios": 2,
+                "descriptive_future_difference_scenarios": 1,
+                "timing_sensitivity_observed": True,
+                "ranking_performed": False,
+                "best_branch_time": None,
             },
         },
         "execution": {
@@ -131,6 +142,13 @@ def test_world_evolution_thread_connects_six_stages_without_inventing_causality(
     assert thread["stages"][3][
         "locally_attributable_action_changes"
     ] == 2
+    assert thread["stages"][0]["review_intent"] == "keep_after_review"
+    assert thread["stages"][0]["fixed_scenario_budget"] == 3
+    assert thread["stages"][0]["action_divergence_scenarios"] == 2
+    assert thread["stages"][0]["local_attribution_scenarios"] == 2
+    assert thread["stages"][0]["timing_sensitivity_observed"] is True
+    assert thread["stages"][0]["ranking_performed"] is False
+    assert thread["stages"][0]["best_branch_time"] is None
     assert thread["stages"][5]["metrics_delta"]["team_fatigue_ema"] == 0.08
     assert [link["status"] for link in thread["links"]] == [
         "identity_bound",

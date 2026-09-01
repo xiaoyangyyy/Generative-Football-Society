@@ -326,6 +326,13 @@ def _future_review_execution_trace(
             ),
         }
     terminal_scenarios = terminal_review.get("scenario_evidence") or []
+    evidence_summary = terminal_review.get("evidence_summary")
+    evidence_summary = (
+        evidence_summary if isinstance(evidence_summary, Mapping) else {}
+    )
+    scenario_evidence_available = isinstance(
+        terminal_review.get("scenario_evidence"), list,
+    )
     mechanism_examples = [
         example
         for scenario in terminal_scenarios
@@ -346,6 +353,35 @@ def _future_review_execution_trace(
             ),
             "linked_to_final_selection": terminal_linked,
             "retained_mechanism_examples": len(mechanism_examples),
+            "evidence_level": (
+                "scenario_evidence"
+                if scenario_evidence_available else "aggregate_only"
+            ),
+            "fixed_scenario_budget": int(
+                evidence_summary.get("fixed_scenario_budget") or 0
+            ),
+            "eligible_scenarios": int(
+                evidence_summary.get("eligible_scenarios") or 0
+            ),
+            "verified_anchor_scenarios": int(
+                evidence_summary.get("verified_anchor_scenarios") or 0
+            ),
+            "action_divergence_scenarios": int(
+                evidence_summary.get("action_divergence_scenarios") or 0
+            ),
+            "local_attribution_scenarios": int(
+                evidence_summary.get("local_attribution_scenarios") or 0
+            ),
+            "descriptive_future_difference_scenarios": int(
+                evidence_summary.get(
+                    "descriptive_future_difference_scenarios"
+                ) or 0
+            ),
+            "timing_sensitivity_observed": evidence_summary.get(
+                "timing_sensitivity_observed"
+            ),
+            "ranking_performed": evidence_summary.get("ranking_performed"),
+            "best_branch_time": evidence_summary.get("best_branch_time"),
         },
         "final_selection": {
             "decision_identity": decision_identity,

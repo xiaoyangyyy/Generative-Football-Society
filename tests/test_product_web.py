@@ -235,9 +235,14 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-world-trajectory"' in document
     assert 'id="manager-world-trajectory-list"' in document
     assert 'id="manager-world-trajectory-boundary"' in document
+    assert 'id="manager-world-future-continuity-boundary"' in document
     assert "managerWorldInfluencePath.replaceChildren()" in document
     assert "managerWorldGapList.replaceChildren()" in document
     assert "summary.world_model_influence_path||{}" in document
+    assert "reviewed_future_scenario_evidence" in document
+    assert "reviewed_future_action_divergence" in document
+    assert "reviewed_future_local_attribution" in document
+    assert "reviewed_future_timing_sensitivity" in document
     assert "summary.continuity_gap_counts||[]" in document
     assert "summary.world_model_action_adoption_ledger" in document
     assert "function renderManagerWorldActionAdoptionLedger(" in document
@@ -247,6 +252,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "row.descriptive_world_after" in document
     assert "chapter.descriptive_world_after" in document
     assert "function renderManagerWorldTrajectory(season)" in document
+    assert "function renderManagerWorldReviewedFutureContinuity(season)" in document
+    assert "appendManagerWorldEvolutionThreadWithoutReviewedFutures" in document
+    assert "future.action_divergence_scenarios" in document
+    assert "stage.local_attribution_scenarios" in document
     assert "trajectory_point_identity" not in document
     assert "row.fixture_id===fixtureId&&row.chapter_identity===expectedChapterIdentity" in document
     assert "turning_point_inference_authorized" not in document

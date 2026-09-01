@@ -32,9 +32,77 @@ def _stage(stage_id, status, **facts):
     }, "stage_identity")
 
 
+def _future_trace():
+    terminal = {
+        "review_identity": "c" * 64,
+        "task_id": "future1",
+        "intent": "keep_after_review",
+        "final_decision_identity": "d" * 64,
+        "linked_to_final_selection": True,
+        "retained_mechanism_examples": 2,
+        "evidence_level": "scenario_evidence",
+        "fixed_scenario_budget": 3,
+        "eligible_scenarios": 3,
+        "verified_anchor_scenarios": 3,
+        "action_divergence_scenarios": 2,
+        "local_attribution_scenarios": 2,
+        "descriptive_future_difference_scenarios": 1,
+        "timing_sensitivity_observed": True,
+        "ranking_performed": False,
+        "best_branch_time": None,
+    }
+    return _freeze({
+        "schema_version": 1,
+        "available": True,
+        "review_chain": [],
+        "terminal_review": terminal,
+        "final_selection": {
+            "decision_identity": "d" * 64,
+            "tactic": "balanced",
+        },
+        "runtime_binding": {"status": "verified"},
+        "end_to_end_state": "reviewed_selection_runtime_verified",
+        "outcome_comparison_performed": False,
+        "outcome_effect_estimate": None,
+        "causal_effect_authorized": False,
+        "claim_boundary": "test reviewed future execution trace",
+    }, "trace_identity")
+
+
 def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
+    trace = _future_trace()
+    terminal = trace["terminal_review"]
     stages = [
-        _stage("prematch_future_review", "selected_for_fixture"),
+        _stage(
+            "prematch_future_review", "selected_for_fixture",
+            source_identity=trace["trace_identity"],
+            review_identity=terminal["review_identity"],
+            retained_mechanism_examples=terminal[
+                "retained_mechanism_examples"
+            ],
+            review_intent=terminal["intent"],
+            evidence_level=terminal["evidence_level"],
+            fixed_scenario_budget=terminal["fixed_scenario_budget"],
+            eligible_scenarios=terminal["eligible_scenarios"],
+            verified_anchor_scenarios=terminal[
+                "verified_anchor_scenarios"
+            ],
+            action_divergence_scenarios=terminal[
+                "action_divergence_scenarios"
+            ],
+            local_attribution_scenarios=terminal[
+                "local_attribution_scenarios"
+            ],
+            descriptive_future_difference_scenarios=terminal[
+                "descriptive_future_difference_scenarios"
+            ],
+            timing_sensitivity_observed=terminal[
+                "timing_sensitivity_observed"
+            ],
+            ranking_performed=False,
+            best_branch_time=None,
+            evidence_authority="simulator_mechanism_review_only",
+        ),
         _stage("frozen_manager_decision", "frozen"),
         _stage("official_tactical_runtime", "runtime_verified"),
         _stage(
@@ -140,6 +208,7 @@ def _entry(index=1, *, pending=False, gaps=None):
         "world_evolution_thread": _thread(
             fixture_id, complete=not pending, gaps=gaps,
         ),
+        "future_review_execution_trace": _future_trace(),
     }
     if not pending:
         result_stage = next(
@@ -313,6 +382,10 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
         "visible_chapters_with_continuity_gaps": 1,
         "world_model_influence_path": {
             "review_selected": 2,
+            "reviewed_future_scenario_evidence": 2,
+            "reviewed_future_action_divergence": 2,
+            "reviewed_future_local_attribution": 2,
+            "reviewed_future_timing_sensitivity": 2,
             "runtime_tactic_verified": 2,
             "official_action_evidence": 2,
             "chapters_with_local_action_changes": 2,
@@ -365,6 +438,12 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
     assert trajectory["points_truncated"] is False
     assert trajectory["results_available"] == 2
     assert trajectory["persistent_state_chapters"] == 2
+    assert trajectory["reviewed_future_chapters"] == 2
+    assert trajectory["reviewed_future_selected_chapters"] == 2
+    assert trajectory["scenario_evidence_chapters"] == 2
+    assert trajectory["reviewed_action_divergence_chapters"] == 2
+    assert trajectory["reviewed_timing_sensitivity_chapters"] == 2
+    assert trajectory["future_to_outcome_comparison_performed"] is False
     assert trajectory["descriptive_chronology_only"] is True
     assert trajectory["missing_evidence_imputed"] is False
     assert trajectory["turning_point_inference_authorized"] is False
@@ -377,6 +456,25 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
         row["chapter_identity"] for row in navigator["history_chapters"]
         if row["fixture_id"] == "md01-fx01"
     )
+    assert first["reviewed_future_context"] == {
+        "available": True,
+        "selected_for_fixture": True,
+        "review_identity": "c" * 64,
+        "intent": "keep_after_review",
+        "evidence_level": "scenario_evidence",
+        "fixed_scenario_budget": 3,
+        "eligible_scenarios": 3,
+        "verified_anchor_scenarios": 3,
+        "action_divergence_scenarios": 2,
+        "local_attribution_scenarios": 2,
+        "descriptive_future_difference_scenarios": 1,
+        "retained_mechanism_examples": 2,
+        "timing_sensitivity_observed": True,
+        "ranking_performed": False,
+        "best_branch_time": None,
+        "outcome_comparison_performed": False,
+        "causal_effect_authorized": False,
+    }
     assert first["cumulative"]["points_earned"] == 1
     assert second["cumulative"]["points_earned"] == 4
     assert second["cumulative"][
@@ -577,6 +675,24 @@ def test_history_is_recent_first_and_explicitly_bounded():
     assert trajectory["points"][0]["cumulative"]["points_earned"] == 4
 
 
+def test_history_order_and_window_do_not_depend_on_source_ledger_order():
+    entries = [
+        _entry(index) for index in range(1, MAX_HISTORY_CHAPTERS + 3)
+    ]
+
+    navigator = build_manager_world_navigator(
+        _season(entries=list(reversed(entries))),
+    )
+
+    assert navigator["history_chapters"][0]["matchday"] == (
+        MAX_HISTORY_CHAPTERS + 2
+    )
+    assert navigator["history_chapters"][-1]["matchday"] == 3
+    assert [
+        row["matchday"] for row in navigator["world_trajectory"]["points"]
+    ] == list(range(3, MAX_HISTORY_CHAPTERS + 3))
+
+
 def test_truncated_old_chapter_is_still_identity_validated():
     entries = [
         _entry(index) for index in range(1, MAX_HISTORY_CHAPTERS + 3)
@@ -752,6 +868,97 @@ def test_invalid_descriptive_result_and_world_transition_fail_closed():
     invalid_transition["entry_identity"] = _identity(invalid_transition)
     with pytest.raises(ValueError, match="chapter facts"):
         build_manager_world_navigator(_season(entries=[invalid_transition]))
+
+
+def test_impossible_reviewed_future_partition_fails_closed_when_rehashed():
+    entry = _entry(1)
+    trace = entry["future_review_execution_trace"]
+    terminal = trace["terminal_review"]
+    terminal["action_divergence_scenarios"] = 1
+    trace.pop("trace_identity")
+    trace["trace_identity"] = _identity(trace)
+    thread = entry["world_evolution_thread"]
+    review_stage = next(
+        row for row in thread["stages"]
+        if row["stage_id"] == "prematch_future_review"
+    )
+    review_stage["source_identity"] = trace["trace_identity"]
+    review_stage["action_divergence_scenarios"] = 1
+    review_stage.pop("stage_identity")
+    review_stage["stage_identity"] = _identity(review_stage)
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    with pytest.raises(ValueError, match="chapter facts"):
+        build_manager_world_navigator(_season(entries=[entry]))
+
+    boolean_count = _entry(2)
+    trace = boolean_count["future_review_execution_trace"]
+    trace["terminal_review"]["eligible_scenarios"] = True
+    trace.pop("trace_identity")
+    trace["trace_identity"] = _identity(trace)
+    thread = boolean_count["world_evolution_thread"]
+    review_stage = next(
+        row for row in thread["stages"]
+        if row["stage_id"] == "prematch_future_review"
+    )
+    review_stage["source_identity"] = trace["trace_identity"]
+    review_stage["eligible_scenarios"] = 1
+    review_stage.pop("stage_identity")
+    review_stage["stage_identity"] = _identity(review_stage)
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    boolean_count.pop("entry_identity")
+    boolean_count["entry_identity"] = _identity(boolean_count)
+    with pytest.raises(ValueError, match="chapter facts"):
+        build_manager_world_navigator(_season(entries=[boolean_count]))
+
+
+def test_reviewed_future_descriptive_difference_is_not_a_false_funnel():
+    entry = _entry(1)
+    trace = entry["future_review_execution_trace"]
+    terminal = trace["terminal_review"]
+    terminal.update({
+        "eligible_scenarios": 1,
+        "verified_anchor_scenarios": 1,
+        "action_divergence_scenarios": 2,
+        "local_attribution_scenarios": 0,
+        "descriptive_future_difference_scenarios": 2,
+    })
+    trace.pop("trace_identity")
+    trace["trace_identity"] = _identity(trace)
+    thread = entry["world_evolution_thread"]
+    review_stage = next(
+        row for row in thread["stages"]
+        if row["stage_id"] == "prematch_future_review"
+    )
+    for field in (
+        "eligible_scenarios",
+        "verified_anchor_scenarios",
+        "action_divergence_scenarios",
+        "local_attribution_scenarios",
+        "descriptive_future_difference_scenarios",
+    ):
+        review_stage[field] = terminal[field]
+    review_stage["source_identity"] = trace["trace_identity"]
+    review_stage.pop("stage_identity")
+    review_stage["stage_identity"] = _identity(review_stage)
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    chapter = build_manager_world_navigator(
+        _season(entries=[entry]),
+    )["history_chapters"][0]
+    assert chapter["reviewed_future_context"][
+        "descriptive_future_difference_scenarios"
+    ] == 2
+    assert chapter["reviewed_future_context"][
+        "local_attribution_scenarios"
+    ] == 0
 
 
 def test_duplicate_historical_gap_fails_closed():

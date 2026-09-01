@@ -73,6 +73,33 @@ def build_manager_world_evolution_thread(
         retained_mechanism_examples=int(
             terminal_review.get("retained_mechanism_examples") or 0
         ),
+        review_intent=terminal_review.get("intent"),
+        evidence_level=terminal_review.get("evidence_level"),
+        fixed_scenario_budget=int(
+            terminal_review.get("fixed_scenario_budget") or 0
+        ),
+        eligible_scenarios=int(
+            terminal_review.get("eligible_scenarios") or 0
+        ),
+        verified_anchor_scenarios=int(
+            terminal_review.get("verified_anchor_scenarios") or 0
+        ),
+        action_divergence_scenarios=int(
+            terminal_review.get("action_divergence_scenarios") or 0
+        ),
+        local_attribution_scenarios=int(
+            terminal_review.get("local_attribution_scenarios") or 0
+        ),
+        descriptive_future_difference_scenarios=int(
+            terminal_review.get(
+                "descriptive_future_difference_scenarios"
+            ) or 0
+        ),
+        timing_sensitivity_observed=terminal_review.get(
+            "timing_sensitivity_observed"
+        ),
+        ranking_performed=terminal_review.get("ranking_performed"),
+        best_branch_time=terminal_review.get("best_branch_time"),
         evidence_authority="simulator_mechanism_review_only",
     )
     decision_stage = _stage(

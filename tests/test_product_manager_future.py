@@ -654,6 +654,18 @@ def test_future_reviews_close_to_selection_and_runtime_without_outcome_claim():
     assert trace["end_to_end_state"] == (
         "reviewed_selection_awaiting_execution"
     )
+    terminal = trace["terminal_review"]
+    assert terminal["intent"] == "revise_after_review"
+    assert terminal["evidence_level"] == "scenario_evidence"
+    assert terminal["fixed_scenario_budget"] == 3
+    assert terminal["eligible_scenarios"] == 3
+    assert terminal["verified_anchor_scenarios"] == 3
+    assert terminal["action_divergence_scenarios"] == 2
+    assert terminal["local_attribution_scenarios"] == 1
+    assert terminal["descriptive_future_difference_scenarios"] == 1
+    assert terminal["timing_sensitivity_observed"] is True
+    assert terminal["ranking_performed"] is False
+    assert terminal["best_branch_time"] is None
     assert trace["outcome_comparison_performed"] is False
     assert trace["outcome_effect_estimate"] is None
     assert trace["causal_effect_authorized"] is False
@@ -703,6 +715,9 @@ def test_future_reviews_close_to_selection_and_runtime_without_outcome_claim():
     )
     assert executed_trace["runtime_binding"]["status"] == "verified"
     assert executed_trace["runtime_binding"]["applied_tactic"] == "balanced"
+    assert executed_entry["world_evolution_thread"]["stages"][0][
+        "action_divergence_scenarios"
+    ] == 2
     summary = executed["summary"]["world_model_future_review_execution"]
     assert summary["reviewed_selection_runtime_verified"] == 1
     assert summary["outcome_comparison_performed"] is False
