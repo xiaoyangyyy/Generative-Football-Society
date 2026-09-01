@@ -25,8 +25,11 @@ FUTURE_SET_SCENARIO_STATUSES = {
 }
 MAX_SCENARIO_MECHANISM_EXAMPLES = 3
 MECHANISM_WINDOW_SECONDS = (30, 120)
-MECHANISM_WINDOW_METRICS = (
+MECHANISM_WINDOW_METRICS_V1 = (
     "actions", "passes", "shots", "goals", "turnovers",
+)
+MECHANISM_WINDOW_METRICS = (
+    "actions", "passes", "crosses", "shots", "goals", "turnovers",
 )
 
 
@@ -101,12 +104,17 @@ def _validate_mechanism_examples(
         or len(examples) > changed_actions
     ):
         raise ValueError("future-set mechanism example budget is invalid")
-    required = {
+    required_v1 = {
         "schema_version", "opportunity_identity", "team", "t_sec", "clock",
         "baseline_action", "treatment_action", "recommended_action",
         "directly_observed", "local_policy_attribution_eligible",
         "downstream_windows", "downstream_causal_attribution_authorized",
         "example_identity",
+    }
+    required_v2 = required_v1 | {
+        "probability_policy_version", "signal_mode",
+        "primary_signal_action", "hold_reference_redistributed",
+        "hold_reference_probability_delta",
     }
     window_required = {
         "schema_version", "window_sec", "delta",
@@ -117,7 +125,11 @@ def _validate_mechanism_examples(
     prior_t_sec: float | None = None
     seen_opportunities: set[str] = set()
     for raw in examples:
-        if not isinstance(raw, Mapping) or set(raw) != required:
+        if not isinstance(raw, Mapping):
+            raise ValueError("future-set mechanism example fields are invalid")
+        example_schema = raw.get("schema_version")
+        expected_fields = required_v2 if example_schema == 2 else required_v1
+        if set(raw) != expected_fields:
             raise ValueError("future-set mechanism example fields are invalid")
         t_sec = raw.get("t_sec")
         team = _safe_text(raw.get("team"), 80)
@@ -128,8 +140,13 @@ def _validate_mechanism_examples(
             recommended = _safe_text(recommended, 40)
         opportunity_identity = raw.get("opportunity_identity")
         clock = raw.get("clock")
+        signal_mode = raw.get("signal_mode")
+        primary_signal = raw.get("primary_signal_action")
+        policy_version = raw.get("probability_policy_version")
+        hold_redistributed = raw.get("hold_reference_redistributed")
+        hold_delta = raw.get("hold_reference_probability_delta")
         if (
-            raw.get("schema_version") != 1
+            example_schema not in {1, 2}
             or not isinstance(opportunity_identity, str)
             or re.fullmatch(r"[0-9a-f]{64}", opportunity_identity) is None
             or team is None
@@ -157,6 +174,54 @@ def _validate_mechanism_examples(
                 and not raw.get("directly_observed")
             )
             or raw.get("downstream_causal_attribution_authorized") is not False
+            or (
+                example_schema == 2
+                and (
+                    _safe_text(policy_version, 80) is None
+                    or signal_mode not in {
+                        "direct_preference", "suppression_only", "none",
+                        "legacy_unclassified",
+                    }
+                    or primary_signal not in {
+                        "hold", "pass", "cross", "shot", "none",
+                    }
+                    or (
+                        signal_mode == "direct_preference"
+                        and (
+                            recommended not in {"pass", "cross", "shot"}
+                            or primary_signal not in {"pass", "cross", "shot"}
+                        )
+                    )
+                    or (
+                        signal_mode == "suppression_only"
+                        and (
+                            recommended not in {None, "none"}
+                            or primary_signal not in {"pass", "cross", "shot"}
+                        )
+                    )
+                    or (
+                        signal_mode == "none"
+                        and (
+                            recommended not in {None, "none"}
+                            or primary_signal != "none"
+                        )
+                    )
+                    or not isinstance(hold_redistributed, bool)
+                    or (
+                        hold_delta is not None
+                        and (
+                            isinstance(hold_delta, bool)
+                            or not isinstance(hold_delta, (int, float))
+                            or not math.isfinite(float(hold_delta))
+                            or abs(float(hold_delta)) > 1.0
+                        )
+                    )
+                    or (
+                        hold_redistributed
+                        and (hold_delta is None or float(hold_delta) <= 0.0)
+                    )
+                )
+            )
         ):
             raise ValueError("future-set mechanism example values are invalid")
         normalized_t_sec = float(t_sec)
@@ -180,11 +245,15 @@ def _validate_mechanism_examples(
             if not isinstance(window, Mapping) or set(window) != window_required:
                 raise ValueError("future-set mechanism window fields are invalid")
             delta = window.get("delta")
+            expected_metrics = (
+                MECHANISM_WINDOW_METRICS
+                if example_schema == 2 else MECHANISM_WINDOW_METRICS_V1
+            )
             if (
-                window.get("schema_version") != 1
+                window.get("schema_version") != example_schema
                 or window.get("window_sec") != expected_windows[index]
                 or not isinstance(delta, Mapping)
-                or set(delta) != set(MECHANISM_WINDOW_METRICS)
+                or set(delta) != set(expected_metrics)
                 or any(
                     isinstance(value, bool)
                     or not isinstance(value, int)
@@ -229,6 +298,32 @@ def _project_mechanism_examples(
             _safe_text(recommended, 40) if recommended is not None else None
         )
         t_sec = raw.get("t_sec")
+        policy_version = (
+            _safe_text(raw.get("probability_policy_version"), 80)
+            or "legacy_unversioned"
+        )
+        signal_mode = (
+            _safe_text(raw.get("signal_mode"), 40)
+            or "legacy_unclassified"
+        )
+        primary_signal = (
+            _safe_text(raw.get("primary_signal_action"), 40)
+            or recommended or "none"
+        )
+        hold_redistributed = (
+            raw.get("hold_reference_redistributed") is True
+        )
+        hold_delta = raw.get("hold_reference_probability_delta")
+        hold_delta = (
+            float(hold_delta)
+            if (
+                not isinstance(hold_delta, bool)
+                and isinstance(hold_delta, (int, float))
+                and math.isfinite(float(hold_delta))
+                and abs(float(hold_delta)) <= 1.0
+            )
+            else None
+        )
         if (
             opportunity is None
             or team is None
@@ -243,6 +338,38 @@ def _project_mechanism_examples(
             or not isinstance(t_sec, (int, float))
             or not math.isfinite(float(t_sec))
             or not 0 <= float(t_sec) <= 8000
+            or signal_mode not in {
+                "direct_preference", "suppression_only", "none",
+                "legacy_unclassified",
+            }
+            or primary_signal not in {
+                "hold", "pass", "cross", "shot", "none",
+            }
+            or (
+                signal_mode == "direct_preference"
+                and (
+                    recommended not in {"pass", "cross", "shot"}
+                    or primary_signal not in {"pass", "cross", "shot"}
+                )
+            )
+            or (
+                signal_mode == "suppression_only"
+                and (
+                    recommended not in {None, "none"}
+                    or primary_signal not in {"pass", "cross", "shot"}
+                )
+            )
+            or (
+                signal_mode == "none"
+                and (
+                    recommended not in {None, "none"}
+                    or primary_signal != "none"
+                )
+            )
+            or (
+                hold_redistributed
+                and (hold_delta is None or hold_delta <= 0.0)
+            )
         ):
             raise ValueError("future-set mechanism decision values are invalid")
         windows_source = raw.get("downstream_windows")
@@ -278,7 +405,7 @@ def _project_mechanism_examples(
                     )
                 additional = min(100_000, int(raw_additional))
                 window_payload = {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "window_sec": duration,
                     "delta": delta,
                     "additional_policy_changes": additional,
@@ -289,7 +416,7 @@ def _project_mechanism_examples(
                     "window_identity": _identity(window_payload),
                 })
         payload = {
-            "schema_version": 1,
+            "schema_version": 2,
             "opportunity_identity": hashlib.sha256(
                 opportunity.encode("utf-8")
             ).hexdigest(),
@@ -302,6 +429,11 @@ def _project_mechanism_examples(
             "baseline_action": baseline,
             "treatment_action": treatment,
             "recommended_action": recommended,
+            "probability_policy_version": policy_version,
+            "signal_mode": signal_mode,
+            "primary_signal_action": primary_signal,
+            "hold_reference_redistributed": hold_redistributed,
+            "hold_reference_probability_delta": hold_delta,
             "directly_observed": raw.get("directly_observed") is True,
             "local_policy_attribution_eligible": (
                 raw.get("local_policy_attribution_eligible") is True

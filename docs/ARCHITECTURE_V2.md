@@ -2625,3 +2625,32 @@ validator. It proves only official simulator action selection and exact local
 ball-event linkage. It does not convert downstream trajectories, tactics,
 scores or persistent world state into causal outcome claims. This stage runs no
 training, match, formal experiment or provider call.
+
+## 86. V3.68 Cross-aware counterfactual propagation
+
+The replay and official execution paths recognized cross after V3.67, but the
+paired-world comparison still filtered replay events to pass and shot. Its
+runtime matcher also lacked cross, and descriptive future windows folded no
+cross count into their action summaries. A cross could therefore be directly
+observed in an official report and disappear when the same evidence entered a
+multi-time future set.
+
+Paired comparison now retains pass, shot and cross events, matches cross by the
+same opportunity identity, team, timestamp and action contract, and counts
+`crosses` separately from `passes` in every 30- and 120-second descriptive
+window. Tests establish that an identity-bound cross receives simulator-local
+attribution and contributes one cross to the downstream window without
+granting that window causal status.
+
+Mechanism examples and their windows now use nested schema version 2. V2 adds
+the cross metric plus probability-policy version, signal mode, primary signal,
+and bounded hold-reference redistribution fields to the hashed example.
+Validation still accepts version-1 examples with the original five window
+metrics, so persisted historical future reviews remain replayable. New Studio
+views surface non-zero cross windows and use the same direct-preference,
+suppression-only and reference-only vocabulary as official match review.
+
+This closes a product continuity gap; it does not claim that a cross caused a
+shot, goal or result. Downstream windows remain shared-clock descriptions only.
+No training, match, future generation, formal experiment or provider call is
+executed in this stage.

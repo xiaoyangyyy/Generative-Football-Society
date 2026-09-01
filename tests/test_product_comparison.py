@@ -181,6 +181,13 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
             "actual_action": "hold", "recommended_action": "hold",
             "policy_changed_action": True, "attribution_eligible": True,
         },
+        {
+            "opportunity_id": "direct:Brazil:30.000:2",
+            "team_id": "Brazil", "t_sec": 30,
+            "counterfactual_baseline_action": "hold",
+            "actual_action": "cross", "recommended_action": "cross",
+            "policy_changed_action": True, "attribution_eligible": True,
+        },
     ]
     baseline["replay"] = {"available": True, "events": [
         _replay_event(12), _replay_event(20),
@@ -192,6 +199,10 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
             "policy_changed_action": True,
         }),
         _replay_event(18, event_type="shot", outcome="GOAL"),
+        _replay_event(30, event_type="cross", link={
+            "opportunity_id": "direct:Brazil:30.000:2",
+            "policy_changed_action": True,
+        }),
         _replay_event(50),
     ]}
     comparison = build_paired_comparison(baseline, treatment)
@@ -204,9 +215,9 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
     assert comparison["metrics"]["shots_home"]["delta"] == 2
     propagation = comparison["policy_propagation"]
     assert propagation["status"] == "direct_action_changes_observed"
-    assert propagation["summary"]["valid_changed_decisions"] == 2
-    assert propagation["summary"]["directly_observed_changes"] == 1
-    assert propagation["summary"]["locally_attributable_changes"] == 1
+    assert propagation["summary"]["valid_changed_decisions"] == 3
+    assert propagation["summary"]["directly_observed_changes"] == 2
+    assert propagation["summary"]["locally_attributable_changes"] == 2
     future = comparison["counterfactual_future_summary"]
     assert future["status"] == (
         "local_action_divergence_with_descriptive_future_difference"
@@ -214,8 +225,8 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
     assert [world["policy"] for world in future["worlds"]] == [
         "predict_only", "action_policy",
     ]
-    assert future["summary"]["changed_actions"] == 2
-    assert future["summary"]["locally_attributable_actions"] == 1
+    assert future["summary"]["changed_actions"] == 3
+    assert future["summary"]["locally_attributable_actions"] == 2
     assert future["summary"]["descriptive_outcome_difference_count"] == 1
     assert future["evidence_ladder"][0] == {
         "stage": "shared_prefix",
@@ -233,15 +244,22 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
     first = propagation["decisions"][0]
     assert first["local_policy_attribution_eligible"] is True
     assert first["downstream_windows"]["30s"]["delta"] == {
-        "actions": 0, "passes": -1, "shots": 1,
+        "actions": 1, "passes": -1, "crosses": 1, "shots": 1,
         "goals": 1, "turnovers": 0,
     }
     assert first["downstream_windows"]["30s"][
         "additional_policy_changes"
-    ] == 1
+    ] == 2
     assert first["downstream_windows"]["30s"][
         "causal_attribution_authorized"
     ] is False
+    cross = next(
+        row for row in propagation["decisions"]
+        if row["treatment_action"] == "cross"
+    )
+    assert cross["directly_observed"] is True
+    assert cross["local_policy_attribution_eligible"] is True
+    assert cross["observed_event_index"] is not None
     document = render_paired_comparison_html(comparison)
     assert "世界模型因果分叉" in document
     assert "基线世界" in document and "干预世界" in document

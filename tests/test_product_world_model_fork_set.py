@@ -78,12 +78,18 @@ def _comparison(
                 "baseline_action": "hold",
                 "treatment_action": "pass",
                 "recommended_action": "pass",
+                "probability_policy_version": "validated_action_simplex_v2",
+                "signal_mode": "direct_preference",
+                "primary_signal_action": "pass",
+                "hold_reference_redistributed": False,
+                "hold_reference_probability_delta": 0.0,
                 "directly_observed": True,
                 "local_policy_attribution_eligible": index < local,
                 "downstream_windows": {
                     f"{duration}s": {
                         "delta": {
-                            "actions": 0, "passes": -1, "shots": 1,
+                            "actions": 0, "passes": -1, "crosses": 1,
+                            "shots": 1,
                             "goals": 0, "turnovers": 1,
                         },
                         "additional_policy_changes": index,
@@ -211,13 +217,22 @@ def test_scenario_v2_exposes_bounded_action_chain_and_windows():
     assert first["schema_version"] == 2
     assert first["mechanism_examples_truncated"] is False
     example = first["mechanism_examples"][0]
+    assert example["schema_version"] == 2
     assert example["baseline_action"] == "hold"
     assert example["treatment_action"] == "pass"
+    assert example["probability_policy_version"] == (
+        "validated_action_simplex_v2"
+    )
+    assert example["signal_mode"] == "direct_preference"
+    assert example["primary_signal_action"] == "pass"
+    assert example["hold_reference_redistributed"] is False
     assert example["local_policy_attribution_eligible"] is True
     assert [row["window_sec"] for row in example["downstream_windows"]] == [
         30, 120,
     ]
     assert example["downstream_windows"][0]["delta"]["shots"] == 1
+    assert example["downstream_windows"][0]["delta"]["crosses"] == 1
+    assert example["downstream_windows"][0]["schema_version"] == 2
     assert example["downstream_windows"][0][
         "causal_effect_authorized"
     ] is False
@@ -229,6 +244,16 @@ def test_scenario_v2_exposes_bounded_action_chain_and_windows():
     with pytest.raises(ValueError, match="window identity mismatch"):
         validate_fork_set_scenario_evidence(
             tampered, plan.branch_times_sec,
+        )
+
+    invalid_signal = json.loads(json.dumps(scenarios))
+    invalid_signal[0]["mechanism_examples"][0].update({
+        "signal_mode": "suppression_only",
+        "recommended_action": "pass",
+    })
+    with pytest.raises(ValueError, match="example values"):
+        validate_fork_set_scenario_evidence(
+            invalid_signal, plan.branch_times_sec,
         )
 
     same_time = _comparison(

@@ -4,6 +4,7 @@
   "checks": {
     "action_adoption_smoke_is_four_arm_and_zero_training": true,
     "all_training_entrypoints_are_classified": true,
+    "counterfactual_propagation_preserves_cross_and_v2_signal_semantics": true,
     "cross_action_authority_is_distinct_replayable_and_fail_closed": true,
     "domain_does_not_depend_on_product_or_training": true,
     "formal_experiment_fails_closed_on_identity_or_partial_evidence": true,

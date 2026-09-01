@@ -206,6 +206,11 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "appendOfficialActionExecutionWithoutPolicySemantics" in document
     assert "example.policy_signal" in document
     assert "reference.received_redistributed_probability" in document
+    assert "appendFutureMechanismExamplesWithoutCrossMetrics" in document
+    assert "window?.delta?.crosses" in document
+    assert "appendFutureMechanismExamplesWithoutPolicySemantics" in document
+    assert "example.hold_reference_redistributed" in document
+    assert "example.primary_signal_action" in document
     assert "mean_applied_authority" in document
     assert "renderActionAdoptionWithoutCurrentCodeEvidence" in document
     assert "mechanism.result_identity_verified" in document

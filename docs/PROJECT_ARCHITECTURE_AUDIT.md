@@ -61,6 +61,9 @@ not quality signals by themselves.
 20. Closed the replay-to-manager execution gap for cross trajectories and
     projected direct, suppressive and hold-reference signal semantics into one
     identity-bound official action explanation chain.
+21. Extended cross and V2 policy semantics through paired-world propagation and
+    versioned future mechanism examples, while preserving V1 replay
+    compatibility and the non-causal downstream-window boundary.
 
 ## LLM Scope Decision
 

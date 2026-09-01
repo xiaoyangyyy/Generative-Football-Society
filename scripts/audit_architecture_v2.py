@@ -100,6 +100,9 @@ def main() -> int:
     world_model_fork_set = (
         ROOT / "src/product/world_model_fork_set.py"
     ).read_text(encoding="utf-8")
+    product_comparison = (
+        ROOT / "src/product/comparison.py"
+    ).read_text(encoding="utf-8")
     product_tasks = (
         ROOT / "src/product/tasks.py"
     ).read_text(encoding="utf-8")
@@ -698,6 +701,30 @@ def main() -> int:
                 "v3_preserves_bounded_action_mechanism_examples",
             ))
             and "innerHTML" not in web
+        ),
+        "counterfactual_propagation_preserves_cross_and_v2_signal_semantics": (
+            all(token in product_comparison for token in (
+                'event_type not in {"pass", "shot", "cross"}',
+                '"crosses": sum(event["type"] == "cross"',
+                '"cross": "cross"',
+                '"probability_policy_version": _safe_text(',
+                '"hold_reference_redistributed": bool(',
+                '"hold_reference_probability_delta": (',
+            ))
+            and all(token in world_model_fork_set for token in (
+                "MECHANISM_WINDOW_METRICS_V1 = (",
+                '"actions", "passes", "crosses", "shots"',
+                "example_schema not in {1, 2}",
+                '"probability_policy_version", "signal_mode"',
+                '"hold_reference_redistributed"',
+                '"schema_version": 2',
+            ))
+            and all(token in web for token in (
+                "appendFutureMechanismExamplesWithoutCrossMetrics",
+                "window?.delta?.crosses",
+                "appendFutureMechanismExamplesWithoutPolicySemantics",
+                "example.hold_reference_redistributed",
+            ))
         ),
         "manager_future_review_closes_to_runtime_selection_without_outcome_claim": (
             all(token in decision_ledger for token in (

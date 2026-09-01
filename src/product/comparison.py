@@ -132,7 +132,7 @@ def _bounded_replay_side(
         start, end = _replay_point(raw.get("start")), _replay_point(raw.get("end"))
         t_sec = _finite(raw.get("t_sec"))
         if (
-            event_type not in {"pass", "shot"}
+            event_type not in {"pass", "shot", "cross"}
             or team not in {home, away}
             or start is None or end is None or t_sec is None
         ):
@@ -305,6 +305,7 @@ def _events_in_window(
     return {
         "actions": len(selected),
         "passes": sum(event["type"] == "pass" for event in selected),
+        "crosses": sum(event["type"] == "cross" for event in selected),
         "shots": sum(event["type"] == "shot" for event in selected),
         "goals": sum(event["outcome"] == "GOAL" for event in selected),
         "turnovers": sum(
@@ -338,6 +339,7 @@ def _runtime_event_matches_action(event: Mapping[str, Any], action: str) -> bool
     normalized = action.strip().lower()
     expected_event_type = {
         "pass": "pass",
+        "cross": "cross",
         "shot": "shot",
         "shoot": "shot",
     }.get(normalized)
@@ -399,6 +401,31 @@ def build_world_model_policy_propagation(
             "treatment_action": treatment_action,
             "recommended_action": _safe_text(
                 raw.get("recommended_action"), 40,
+            ),
+            "probability_policy_version": _safe_text(
+                adoption.get("probability_policy_version")
+                if isinstance(adoption, Mapping) else None,
+                80,
+            ) or "legacy_unversioned",
+            "signal_mode": (
+                _safe_text(raw.get("signal_mode"), 40)
+                or "legacy_unclassified"
+            ),
+            "primary_signal_action": (
+                _safe_text(raw.get("primary_signal_action"), 40)
+                or _safe_text(raw.get("recommended_action"), 40)
+                or "none"
+            ),
+            "hold_reference_redistributed": bool(
+                isinstance(raw.get("reference_action_effect"), Mapping)
+                and raw["reference_action_effect"].get(
+                    "received_redistributed_probability"
+                ) is True
+            ),
+            "hold_reference_probability_delta": (
+                _finite(raw["reference_action_effect"].get("probability_delta"))
+                if isinstance(raw.get("reference_action_effect"), Mapping)
+                else None
             ),
             "record_attribution_eligible": bool(
                 raw.get("attribution_eligible")
