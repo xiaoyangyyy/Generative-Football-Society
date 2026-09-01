@@ -164,12 +164,17 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     action = stage_by_id["official_world_model_actions"]
     persistent = stage_by_id["persistent_world_state"]
     local_changes = action.get("locally_attributable_action_changes", 0)
+    action_source_identity = action.get("source_identity")
     transition_identity = persistent.get("source_identity")
     gaps = thread.get("continuity_gaps")
     if (
         isinstance(local_changes, bool)
         or not isinstance(local_changes, int)
         or local_changes < 0
+        or (
+            action_source_identity is not None
+            and not _is_identity(action_source_identity)
+        )
         or (
             transition_identity is not None
             and not _is_identity(transition_identity)
@@ -205,6 +210,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         "score": copy.deepcopy(observed.get("score")),
         "outcome": observed.get("outcome"),
         "locally_attributable_action_changes": local_changes,
+        "official_action_evidence_identity": action_source_identity,
         "persistent_transition_identity": transition_identity,
         "continuity_gaps": copy.deepcopy(gaps),
         "causal_effect_authorized": False,
@@ -254,10 +260,8 @@ def build_manager_world_navigator(
         row for row in ledger["entries"]
         if row.get("lifecycle_state") != "frozen_awaiting_execution"
     ]
-    selected_entries = list(reversed(
-        completed_entries[-MAX_HISTORY_CHAPTERS:]
-    ))
-    chapters = [_history_chapter(row) for row in selected_entries]
+    all_chapters = [_history_chapter(row) for row in completed_entries]
+    chapters = list(reversed(all_chapters[-MAX_HISTORY_CHAPTERS:]))
     workflow_state = str(workspace.get("workflow_state") or "")
     if workflow_state not in _WORKFLOW_STATES:
         raise ValueError("manager world navigator workflow state is invalid")
@@ -291,24 +295,65 @@ def build_manager_world_navigator(
     }
     current["current_chapter_identity"] = _identity(current)
     primary = _primary_action(workflow_state)
+    influence_path = {
+        "review_selected": sum(
+            row["stage_statuses"]["prematch_future_review"]
+            == "selected_for_fixture"
+            for row in all_chapters
+        ),
+        "runtime_tactic_verified": sum(
+            row["stage_statuses"]["official_tactical_runtime"]
+            == "runtime_verified"
+            for row in all_chapters
+        ),
+        "official_action_evidence": sum(
+            row["official_action_evidence_identity"] is not None
+            for row in all_chapters
+        ),
+        "chapters_with_local_action_changes": sum(
+            row["locally_attributable_action_changes"] > 0
+            for row in all_chapters
+        ),
+        "persistent_world_transitions": sum(
+            row["persistent_transition_identity"] is not None
+            for row in all_chapters
+        ),
+        "complete_world_model_runtime_chains": sum(
+            row["world_model_runtime_chain_complete"]
+            for row in all_chapters
+        ),
+    }
     summary = {
-        "completed_world_chapters": len(completed_entries),
+        "completed_world_chapters": len(all_chapters),
         "visible_world_chapters": len(chapters),
         "chapters_truncated": (
-            len(completed_entries) > MAX_HISTORY_CHAPTERS
+            len(all_chapters) > MAX_HISTORY_CHAPTERS
         ),
         "official_runtime_chapters": sum(
-            row["official_runtime_chain_complete"] for row in chapters
+            row["official_runtime_chain_complete"] for row in all_chapters
         ),
         "world_model_runtime_chapters": sum(
-            row["world_model_runtime_chain_complete"] for row in chapters
+            row["world_model_runtime_chain_complete"] for row in all_chapters
         ),
         "local_action_changes": sum(
-            row["locally_attributable_action_changes"] for row in chapters
+            row["locally_attributable_action_changes"] for row in all_chapters
         ),
         "chapters_with_continuity_gaps": sum(
+            bool(row["continuity_gaps"]) for row in all_chapters
+        ),
+        "visible_official_runtime_chapters": sum(
+            row["official_runtime_chain_complete"] for row in chapters
+        ),
+        "visible_world_model_runtime_chapters": sum(
+            row["world_model_runtime_chain_complete"] for row in chapters
+        ),
+        "visible_local_action_changes": sum(
+            row["locally_attributable_action_changes"] for row in chapters
+        ),
+        "visible_chapters_with_continuity_gaps": sum(
             bool(row["continuity_gaps"]) for row in chapters
         ),
+        "world_model_influence_path": influence_path,
     }
     payload = {
         "schema_version": SCHEMA_VERSION,

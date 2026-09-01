@@ -2045,3 +2045,48 @@ This stage makes the complex-system navigation contract complete and
 shareable. It does not create a second state authority, add a mutation route,
 run training or matches, call a provider, estimate outcome effects, or claim
 that a navigable chapter proves intervention quality.
+
+## 72. V3.54 Whole-season validation and influence-path coverage
+
+The season navigator retained at most 64 historical chapters. Its first
+implementation projected and identity-checked only that retained window, while
+the completed count included every ledger entry. It also labelled runtime-chain
+and local-action totals without stating that those values came only from the
+visible window. A corrupted older entry could therefore remain outside
+navigator validation, and a long season could present window counts as if they
+were season totals.
+
+The navigator now projects and validates every completed ledger chapter before
+applying the history limit. Entry, thread, six stage and action-evidence
+identities are checked for old and recent fixtures alike. Only after this
+validation does the product reverse and retain the most recent 64 chapters for
+navigation. A test tampers with the oldest chapter beyond the retained window
+and verifies that construction still fails closed.
+
+Summary fields now have explicit scopes. Completed chapters, official runtime
+chains, complete world-model runtime chains, local action changes and
+continuity-gap chapters are whole-season totals. Parallel visible-prefixed
+fields describe the retained 64-chapter navigation window. Truncation remains
+explicit and the navigator identity seals both scopes.
+
+The same validated whole-season chapters derive a six-part world-model
+influence path:
+
+1. a prematch review entered the final fixture selection;
+2. the selected tactic was verified in the official runtime;
+3. official world-model action evidence was retained;
+4. at least one simulator-local action change was observed;
+5. a persistent world-state transition was retained;
+6. the complete world-model runtime chain was connected.
+
+The Web command center presents every item against the same completed-fixture
+denominator. These are independent evidence-coverage counts, not a monotonic
+funnel: a persistent team-state transition is an official simulator fact and
+is not attributed to the world model merely because both occur in one chapter.
+The panel also surfaces the total number of chapters with declared continuity
+gaps.
+
+This correction improves evidence integrity and makes the world model's actual
+product participation legible. It does not assert that action changes improved
+decisions or scores, rank interventions, run training or matches, or authorize
+real-football causal transfer.

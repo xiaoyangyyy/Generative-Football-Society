@@ -225,6 +225,12 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-world-navigator-action"' in document
     assert 'id="manager-world-navigator-secondary"' in document
     assert 'id="manager-world-navigator-gaps"' in document
+    assert 'id="manager-world-influence-path"' in document
+    assert "managerWorldInfluencePath.replaceChildren()" in document
+    assert "summary.world_model_influence_path||{}" in document
+    assert "至少一处局部动作改变" in document
+    assert "各项是独立证据覆盖，不是递减漏斗" in document
+    assert "证据断点章节" in document
     assert "function visibleManagerLedgerEntries(" in document
     assert "node.dataset.fixtureId=String(row.fixture_id||'')" in document
     assert "node.dataset.chapterComplete=" in document

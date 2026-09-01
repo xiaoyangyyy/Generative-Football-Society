@@ -41,6 +41,7 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             "official_world_model_actions",
             "locally_attributable_action_changes_observed",
             locally_attributable_action_changes=2,
+            source_identity="e" * 64,
         ),
         _stage("observed_match_result", "observed_descriptive"),
         _stage(
@@ -175,6 +176,18 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
         "world_model_runtime_chapters": 2,
         "local_action_changes": 4,
         "chapters_with_continuity_gaps": 1,
+        "visible_official_runtime_chapters": 2,
+        "visible_world_model_runtime_chapters": 2,
+        "visible_local_action_changes": 4,
+        "visible_chapters_with_continuity_gaps": 1,
+        "world_model_influence_path": {
+            "review_selected": 2,
+            "runtime_tactic_verified": 2,
+            "official_action_evidence": 2,
+            "chapters_with_local_action_changes": 2,
+            "persistent_world_transitions": 2,
+            "complete_world_model_runtime_chains": 2,
+        },
     }
     assert navigator["causal_effect_authorized"] is False
     assert navigator["outcome_effect_estimate"] is None
@@ -256,6 +269,29 @@ def test_history_is_recent_first_and_explicitly_bounded():
     assert navigator["summary"]["completed_world_chapters"] == (
         MAX_HISTORY_CHAPTERS + 1
     )
+    assert navigator["summary"]["official_runtime_chapters"] == (
+        MAX_HISTORY_CHAPTERS + 1
+    )
+    assert navigator["summary"]["visible_official_runtime_chapters"] == (
+        MAX_HISTORY_CHAPTERS
+    )
+    assert navigator["summary"]["local_action_changes"] == (
+        2 * (MAX_HISTORY_CHAPTERS + 1)
+    )
+    assert navigator["summary"]["visible_local_action_changes"] == (
+        2 * MAX_HISTORY_CHAPTERS
+    )
+
+
+def test_truncated_old_chapter_is_still_identity_validated():
+    entries = [
+        _entry(index) for index in range(1, MAX_HISTORY_CHAPTERS + 3)
+    ]
+    oldest_thread = entries[0]["world_evolution_thread"]
+    oldest_thread["world_model_runtime_chain_complete"] = False
+
+    with pytest.raises(ValueError, match="chapter identity"):
+        build_manager_world_navigator(_season(entries=entries))
 
 
 def test_duplicate_fixture_identity_fails_closed_even_when_rehashed():
