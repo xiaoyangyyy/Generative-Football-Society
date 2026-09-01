@@ -263,6 +263,14 @@ def build_manager_world_navigator(
         raise ValueError("manager world navigator workflow state is invalid")
     allowed = workspace.get("allowed_actions")
     allowed = allowed if isinstance(allowed, Mapping) else {}
+    current_gaps = workspace.get("continuity_gaps")
+    if (
+        not isinstance(current_gaps, list)
+        or any(not isinstance(gap, str) or not gap for gap in current_gaps)
+    ):
+        raise ValueError(
+            "manager world navigator current continuity gaps are invalid"
+        )
     current = {
         "workflow_state": workflow_state,
         "workspace_identity": workspace.get("workspace_identity"),
@@ -279,9 +287,7 @@ def build_manager_world_navigator(
         "evidence_summary": copy.deepcopy(
             workspace.get("evidence_summary")
         ),
-        "continuity_gaps": copy.deepcopy(
-            workspace.get("continuity_gaps") or []
-        ),
+        "continuity_gaps": copy.deepcopy(current_gaps),
     }
     current["current_chapter_identity"] = _identity(current)
     primary = _primary_action(workflow_state)

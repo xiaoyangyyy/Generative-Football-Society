@@ -223,12 +223,27 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="matchday-command-center"' in document
     assert 'id="manager-world-navigator"' in document
     assert 'id="manager-world-navigator-action"' in document
+    assert 'id="manager-world-navigator-secondary"' in document
+    assert 'id="manager-world-navigator-gaps"' in document
     assert "function visibleManagerLedgerEntries(" in document
     assert "node.dataset.fixtureId=String(row.fixture_id||'')" in document
+    assert "node.dataset.chapterComplete=" in document
     assert "打开完整世界章节" in document
-    assert "item.dataset.fixtureId===open.dataset.fixtureId" in document
+    assert "function managerNavigationTarget(" in document
+    assert "function activateManagerNavigationTarget(" in document
+    assert "function openManagerWorldChapter(" in document
+    assert "function restoreManagerWorldChapterLocation(" in document
+    assert "selectedRef?.seasonId===season?.season_id" in document
+    assert "history.pushState({seasonId,worldChapter:fixtureId}" in document
+    assert "window.addEventListener('popstate'" in document
+    assert "renderManagerDecisionLedger(currentSeason);renderManagerWorldNavigator(currentSeason)" in document
+    assert "navigator.secondary_actions||[]" in document
+    assert "当前会话连续性断点：" in document
+    assert "世界章节链接格式无效" in document
+    assert "该世界章节链接属于另一个赛季" in document
+    assert "!target.closest('[hidden]')" in document
     assert "for(const detail of target.querySelectorAll('details'))" in document
-    assert "当前下一步控件不可用，请刷新赛季状态。" in document
+    assert "当前导航目标不可用，请刷新赛季状态。" in document
     assert 'id="matchday-journey"' in document
     assert 'id="matchday-briefing"' in document
     assert 'id="matchday-intelligence"' in document

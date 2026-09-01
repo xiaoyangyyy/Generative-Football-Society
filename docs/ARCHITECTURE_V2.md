@@ -1999,3 +1999,49 @@ The navigator remains read-only and reuses existing mutation controls.
 This is navigation integrity, accessibility and product-cohesion work. It does
 not run training, generate futures, execute matches, estimate intervention
 effects or strengthen any causal claim.
+
+## 71. V3.53 Complete navigation contract and world-chapter permalinks
+
+The navigator projection already exposed optional secondary actions and current
+workspace continuity gaps, but the first browser integration consumed only the
+primary action. That made the canonical state richer than the visible product:
+users could not see the explicit choice between further bounded exploration and
+advancing the official world, and current evidence discontinuities disappeared
+at the navigation boundary.
+
+The command center now renders every projected secondary action in a labelled
+control group while keeping exactly one visually dominant primary action. Both
+paths use one target resolver. It accepts only an existing, enabled control
+outside a hidden subtree, resolves container targets to an enabled interactive
+descendant, scrolls and focuses that control, and announces a failure when no
+safe target exists. The current intervention chapter also displays either its
+declared continuity gaps or an explicit no-known-gap state.
+
+Completed world chapters now have reloadable browser locations. Opening a
+chapter writes a URL fragment bound to both the canonical season identifier and
+fixture identifier, expands all progressive evidence sections, marks the
+ledger card as the current location and updates each history button's pressed
+state. Page refresh and browser history traversal restore the same chapter.
+History traversal rebuilds both the ledger and navigator from the current
+season projection before resolving the fragment, so moving between two older
+chapters outside the recent-six window remains reversible.
+The resolver compares decoded identifiers as strings and never interpolates
+them into a CSS selector.
+
+Permalinks remain valid after a chapter falls outside the default recent-six
+view: the selected completed ledger entry is added to the visible projection
+without displacing the current frozen decision or recent history. A link from
+another season, an unknown fixture, an overlong or malformed fragment, and a
+pending decision all fail closed with visible feedback. Ledger cards therefore
+carry separate fixture-identity and completed-chapter markers.
+
+The navigator builder now also validates the current workspace continuity-gap
+list instead of merely copying it. Tests cover preservation, invalid values,
+secondary-action uniqueness and non-empty targets. Architecture audit tokens
+require the server projection, safe target resolver, season-bound URL state and
+cross-season rejection to remain connected.
+
+This stage makes the complex-system navigation contract complete and
+shareable. It does not create a second state authority, add a mutation route,
+run training or matches, call a provider, estimate outcome effects, or claim
+that a navigable chapter proves intervention quality.

@@ -200,6 +200,33 @@ def test_navigator_exposes_exactly_one_primary_next_action(state, action):
     assert action not in {
         row["action_id"] for row in navigator["secondary_actions"]
     }
+    assert len({
+        row["action_id"] for row in navigator["secondary_actions"]
+    }) == len(navigator["secondary_actions"])
+    assert all(
+        row["target_element_id"]
+        for row in navigator["secondary_actions"]
+    )
+
+
+def test_current_continuity_gaps_are_preserved_and_invalid_values_fail_closed():
+    season = _season()
+    workspace = season["manager_intervention_workspace"]
+    workspace["continuity_gaps"] = ["future_set_projection_drift"]
+    workspace.pop("workspace_identity")
+    workspace["workspace_identity"] = _identity(workspace)
+
+    navigator = build_manager_world_navigator(season)
+
+    assert navigator["current_chapter"]["continuity_gaps"] == [
+        "future_set_projection_drift"
+    ]
+
+    workspace["continuity_gaps"] = ["future_set_projection_drift", ""]
+    workspace.pop("workspace_identity")
+    workspace["workspace_identity"] = _identity(workspace)
+    with pytest.raises(ValueError, match="current continuity gaps"):
+        build_manager_world_navigator(season)
 
 
 def test_completed_season_closes_current_navigation_but_keeps_history():

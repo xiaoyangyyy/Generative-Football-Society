@@ -718,6 +718,7 @@ def main() -> int:
                 '"outcome_effect_estimate": None',
                 '"causal_effect_authorized": False',
                 "fixture identities are invalid or duplicate",
+                "current continuity gaps are invalid",
                 "manager world navigator replay mismatch",
             ))
             and all(token in web for token in (
@@ -728,8 +729,16 @@ def main() -> int:
                 "function renderManagerWorldNavigator(",
                 "function visibleManagerLedgerEntries(",
                 "node.dataset.fixtureId",
+                "node.dataset.chapterComplete",
                 "打开完整世界章节",
-                "当前下一步控件不可用",
+                "navigator.secondary_actions||[]",
+                "function managerNavigationTarget(",
+                "function openManagerWorldChapter(",
+                "history.pushState({seasonId,worldChapter:fixtureId}",
+                "renderManagerDecisionLedger(currentSeason);renderManagerWorldNavigator(currentSeason)",
+                "世界章节链接格式无效",
+                "该世界章节链接属于另一个赛季",
+                "当前导航目标不可用",
                 "已完成的足球世界章节",
                 "章节完整不代表赛果改善",
             ))
