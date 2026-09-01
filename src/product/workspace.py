@@ -2041,6 +2041,7 @@ class ProductWorkspace:
     @contextmanager
     def _mode_environment(
         self, *, world_model_policy: str = "mode_default",
+        world_model_branch_at_sec: float | None = None,
     ) -> Iterator[None]:
         from src.simulation.runtime import environment_override
 
@@ -2057,6 +2058,10 @@ class ProductWorkspace:
             values["MATCH_WM_PLAN"] = "1"
         elif world_model_policy != "mode_default":
             raise ValueError("unsupported world-model policy override")
+        if world_model_branch_at_sec is not None:
+            branch_value = str(float(world_model_branch_at_sec))
+            values["MATCH_WM_BRANCH_AT_SEC"] = branch_value
+            values["MATCH_WM_PLAN_START_SEC"] = branch_value
         shot_decision = evidence.get("frozen_shot_head") or {}
         shot_artifact = shot_decision.get("promotion_artifact")
         values["MATCH_WM_SHOT_HEAD"] = (
@@ -4848,6 +4853,8 @@ class ProductWorkspace:
             changed_sides
             or baseline_plan.world_model_policy != "predict_only"
             or treatment_plan.world_model_policy != "action_policy"
+            or baseline_plan.world_model_branch_at_sec
+            != treatment_plan.world_model_branch_at_sec
         ):
             raise ValueError(
                 "world-model pairs require fixed tactics and exactly "
@@ -4908,6 +4915,7 @@ class ProductWorkspace:
                                 "away_tactic",
                                 "reuse_last_seed",
                                 "world_model_policy",
+                                "world_model_branch_at_sec",
                                 "score_path",
                             )
                         )
@@ -5255,6 +5263,7 @@ class ProductWorkspace:
         calls_before = 0
         with self._mode_environment(
             world_model_policy=plan.world_model_policy,
+            world_model_branch_at_sec=plan.world_model_branch_at_sec,
         ):
             if self.config.mode == "cognitive":
                 from src.simulation.llm_gateway import get_shared_llm_gateway
@@ -5409,6 +5418,7 @@ class ProductWorkspace:
                     or {},
                     "decision_adoption": raw.get("world_model_decision_adoption") or {},
                     "action_adoption": action_adoption,
+                    "branch_anchor": raw.get("world_model_branch_anchor") or {},
                     "action_adoption_mechanism": evidence_snapshot.get(
                         "action_adoption_mechanism"
                     )
@@ -5453,6 +5463,11 @@ class ProductWorkspace:
             "cognitive",
         } and not observed_world_model.get("loaded"):
             integrity_blockers.append("required_world_model_not_observed")
+        if (
+            plan.world_model_branch_at_sec is not None
+            and not bool((raw.get("world_model_branch_anchor") or {}).get("available"))
+        ):
+            integrity_blockers.append("world_model_branch_anchor_missing")
         expected_runtime_signature = "sha256:" + str(
             evidence_snapshot.get("world_model_checkpoint_sha256") or ""
         )

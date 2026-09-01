@@ -113,12 +113,23 @@ def test_world_model_fork_is_a_fixed_tactic_predict_only_policy_pair():
     assert not baseline.reuse_last_seed and treatment.reuse_last_seed
     assert baseline.home_tactic == treatment.home_tactic == "balanced"
     assert baseline.away_tactic == treatment.away_tactic == "low_block_counter"
+    assert baseline.world_model_branch_at_sec == 2700.0
+    assert treatment.world_model_branch_at_sec == 2700.0
     assert WorldModelForkPlan.from_payload(plan.as_dict()) == plan
     plan.validate_for_mode("research")
     with pytest.raises(ValueError, match="deterministic research mode"):
         plan.validate_for_mode("cognitive")
     with pytest.raises(ValueError, match="confined to world_model_lab"):
         MatchPlan(world_model_policy="action_policy")
+
+
+@pytest.mark.parametrize("branch", [-1, 5401, float("nan"), True])
+def test_world_model_fork_rejects_invalid_branch_time(branch):
+    with pytest.raises(ValueError, match="branch time"):
+        WorldModelForkPlan(
+            home_tactic="balanced", away_tactic="low_block_counter",
+            seed=91, branch_at_sec=branch,
+        )
 
 
 def test_user_preset_changes_full_vector_and_records_non_llm_source():

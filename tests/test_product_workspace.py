@@ -252,6 +252,13 @@ class _Summary:
             ],
         }
     )
+    world_model_branch_anchor: dict = field(default_factory=lambda: {
+        "available": True,
+        "requested_sec": 2700.0,
+        "actual_sec": 2700.0,
+        "state_identity": "a" * 64,
+        "resume_capability": "deterministic_replay_only",
+    })
     world_model_runtime: dict = field(
         default_factory=lambda: {
             "loaded": True,
@@ -954,6 +961,8 @@ def test_workspace_world_model_fork_is_atomic_and_changes_only_plan_authority(
         observed.append({
             "plan": environment.get("MATCH_WM_PLAN"),
             "checkpoint": environment.get("MATCH_WM_CHECKPOINT"),
+            "branch_at": environment.get("MATCH_WM_BRANCH_AT_SEC"),
+            "plan_start": environment.get("MATCH_WM_PLAN_START_SEC"),
             "home_tactic": kwargs.get("home_tactic"),
             "away_tactic": kwargs.get("away_tactic"),
             "seed": kwargs.get("seed"),
@@ -969,6 +978,8 @@ def test_workspace_world_model_fork_is_atomic_and_changes_only_plan_authority(
     )
     assert [row["plan"] for row in observed] == ["0", "1"]
     assert observed[0]["checkpoint"] == observed[1]["checkpoint"]
+    assert [row["branch_at"] for row in observed] == ["2700.0", "2700.0"]
+    assert [row["plan_start"] for row in observed] == ["2700.0", "2700.0"]
     assert observed[0]["home_tactic"] == observed[1]["home_tactic"] == "balanced"
     assert observed[0]["away_tactic"] == observed[1]["away_tactic"] == (
         "low_block_counter"
@@ -981,6 +992,7 @@ def test_workspace_world_model_fork_is_atomic_and_changes_only_plan_authority(
     assert comparison["eligibility"][
         "eligible_for_world_model_policy_attribution"
     ]
+    assert comparison["intervention"]["branch_anchor"]["verified"]
     assert comparison["policy_propagation"]["status"] == (
         "changed_actions_not_directly_observed"
     )

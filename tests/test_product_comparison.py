@@ -251,6 +251,41 @@ def test_world_model_policy_fork_rejects_tactical_or_policy_cointervention():
         build_paired_comparison(baseline, treatment)
 
 
+def test_world_model_fork_requires_identical_declared_branch_anchor():
+    baseline = _report("m1")
+    treatment = _report("m2", reuse=True, baseline="m1")
+    for report, policy in (
+        (baseline, "predict_only"), (treatment, "action_policy"),
+    ):
+        report["match_plan"].update({
+            "experience": "world_model_lab",
+            "world_model_policy": policy,
+            "world_model_branch_at_sec": 2700.0,
+        })
+        report["layers"]["world_model"]["branch_anchor"] = {
+            "available": True,
+            "requested_sec": 2700.0,
+            "actual_sec": 2700.0,
+            "state_identity": "a" * 64,
+        }
+    comparison = build_paired_comparison(baseline, treatment)
+    assert comparison["eligibility"][
+        "eligible_for_world_model_policy_attribution"
+    ]
+    assert comparison["intervention"]["branch_anchor"]["verified"]
+
+    treatment["layers"]["world_model"]["branch_anchor"][
+        "state_identity"
+    ] = "b" * 64
+    comparison = build_paired_comparison(baseline, treatment)
+    assert not comparison["eligibility"][
+        "eligible_for_world_model_policy_attribution"
+    ]
+    assert "same_pre_intervention_branch_anchor" in comparison[
+        "eligibility"
+    ]["failed_checks"]
+
+
 def test_world_model_propagation_degrades_corrupt_or_duplicate_evidence():
     baseline = _report("m1")
     treatment = _report("m2", reuse=True, baseline="m1")

@@ -88,12 +88,16 @@ def test_root_is_accessible_and_hardened(tmp_path):
         "modes": ["research"],
         "seed": "explicit_shared_seed",
         "intervention": "predict_only_to_action_policy",
+            "branch_time_seconds": {"min": 0, "max": 5400, "default": 2700},
+            "branch_execution": "identity_bound_deterministic_replay",
+            "resume_capability": "deterministic_replay_only",
             "fixed_controls": [
                 "fixture", "tactics", "fast_configuration", "checkpoint",
             ],
             "score_path": "physics_official",
             "evidence_chain": [
                 "isolated_policy_assignment",
+                "identical_pre_intervention_branch_anchor",
                 "realized_action_change",
                 "direct_runtime_identity",
                 "descriptive_downstream_windows",

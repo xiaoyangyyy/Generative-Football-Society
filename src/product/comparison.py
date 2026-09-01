@@ -62,6 +62,11 @@ def _finite(value: Any) -> float | None:
     return number if math.isfinite(number) else None
 
 
+def _branch_anchor(report: Mapping[str, Any]) -> Mapping[str, Any]:
+    anchor = _nested(report, ("layers", "world_model", "branch_anchor"))
+    return anchor if isinstance(anchor, Mapping) else {}
+
+
 def _safe_text(value: Any, maximum: int = 100) -> str:
     text = str(value or "").strip()
     return "".join(char for char in text if ord(char) >= 32)[:maximum]
@@ -534,6 +539,10 @@ def build_paired_comparison(
             raise PairingError(
                 "world-model fork must isolate predict_only to action_policy"
             )
+        baseline_branch = _finite(baseline_plan.get("world_model_branch_at_sec"))
+        treatment_branch = _finite(treatment_plan.get("world_model_branch_at_sec"))
+        if baseline_branch != treatment_branch:
+            raise PairingError("world-model fork must use the same branch time")
         scope = "world_model_action_policy"
         policy_contract = True
     else:
@@ -543,6 +552,24 @@ def build_paired_comparison(
         == (treatment.get("studio") or {}).get("mode")
     )
     mode = str((treatment.get("studio") or {}).get("mode") or "unknown")
+    baseline_anchor = _branch_anchor(baseline)
+    treatment_anchor = _branch_anchor(treatment)
+    branch_requested = (
+        baseline_experience == "world_model_lab"
+        and _finite(baseline_plan.get("world_model_branch_at_sec")) is not None
+    )
+    anchor_identity = str(baseline_anchor.get("state_identity") or "")
+    anchor_actual_sec = _finite(baseline_anchor.get("actual_sec"))
+    same_branch_anchor = (
+        bool(baseline_anchor.get("available"))
+        and bool(treatment_anchor.get("available"))
+        and bool(anchor_identity)
+        and anchor_identity == str(treatment_anchor.get("state_identity") or "")
+        and _finite(baseline_anchor.get("requested_sec"))
+        == _finite(treatment_anchor.get("requested_sec"))
+        and anchor_actual_sec is not None
+        and anchor_actual_sec == _finite(treatment_anchor.get("actual_sec"))
+    )
     checks = {
         "same_ordered_fixture": True,
         "same_seed": True,
@@ -564,6 +591,8 @@ def build_paired_comparison(
         "provider_determinism_controlled": mode != "cognitive",
         "intervention_contract_isolated": policy_contract,
     }
+    if branch_requested:
+        checks["same_pre_intervention_branch_anchor"] = same_branch_anchor
     eligible = all(checks.values())
     metrics: dict[str, dict[str, float | None]] = {}
     for metric, path in METRICS:
@@ -622,6 +651,13 @@ def build_paired_comparison(
             "treatment_world_model_policy": treatment_plan.get(
                 "world_model_policy", "mode_default"
             ),
+            "branch_at_sec": baseline_plan.get("world_model_branch_at_sec"),
+            "branch_anchor": {
+                "required": branch_requested,
+                "verified": same_branch_anchor if branch_requested else False,
+                "state_identity": anchor_identity if same_branch_anchor else None,
+                "resume_capability": "deterministic_replay_only",
+            },
         },
         "eligibility": {
             "eligible_for_tactical_attribution": (
@@ -977,6 +1013,19 @@ def render_paired_comparison_html(comparison: Mapping[str, Any]) -> str:
             f"客队：{_display_tactic(after.get('away'))}"
         )
         intervention_explanation = str(intervention.get("scope"))
+    if world_model_fork:
+        anchor = intervention.get("branch_anchor") or {}
+        branch_sec = _finite(intervention.get("branch_at_sec"))
+        branch_minute = branch_sec / 60.0 if branch_sec is not None else None
+        anchor_state = "verified" if anchor.get("verified") else "not verified"
+        identity = _safe_text(anchor.get("state_identity"), 64)
+        branch_label = f"minute {branch_minute:g}" if branch_minute is not None else "match start"
+        intervention_explanation = (
+            f"{intervention_explanation} Branch at {branch_label}; "
+            f"pre-intervention anchor {anchor_state}"
+            f"{f'; identity {identity[:16]}' if identity else ''}. "
+            "Execution uses deterministic replay, not a serialized process resume."
+        )
     metric_rows = []
     for name, values in (comparison.get("metrics") or {}).items():
         values = values or {}

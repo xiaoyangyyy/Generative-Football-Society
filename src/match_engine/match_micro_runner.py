@@ -557,7 +557,7 @@ def _build_micro_match_summary(
     *,
     state, cfg, passing, shots, aerial, player_tracker,
     cognitive_bus, cognitive_executor, continuous_clock, subtick_queue,
-    wm_runtime, manager_runtimes, tactical_execution,
+    wm_runtime, manager_runtimes, tactical_execution, branch_anchor,
     packets, timeline, n_ticks, strictness_sum, poss_home_ticks,
     phi_sum_h, phi_sum_a, emo_home, emo_away, eff_h, eff_a,
     final_gh, final_ga, physics_gh, physics_ga, xg_supplement_meta,
@@ -684,6 +684,7 @@ def _build_micro_match_summary(
         ),
         world_model_decision_adoption=decision_adoption_diagnostics(state),
         world_model_action_adoption=direct_action_adoption_diagnostics(state),
+        world_model_branch_anchor=branch_anchor,
         world_model_runtime={
             "loaded": wm_runtime is not None,
             "checkpoint_signature": (
@@ -1165,6 +1166,15 @@ def run_match_micro_simulation(
     wm_recorder = getattr(home_agent, "_wm_recorder", None) or getattr(away_agent, "_wm_recorder", None)
     state._wm_recorder = wm_recorder
     wm_cfg = wm_runtime.cfg if wm_runtime is not None else None
+    from src.match_engine.world_model.config import world_model_branch_at_sec
+
+    branch_at_sec = world_model_branch_at_sec()
+    branch_anchor: Dict[str, Any] = {
+        "schema_version": 1,
+        "available": False,
+        "reason": "no_branch_requested",
+        "resume_capability": "deterministic_replay_only",
+    }
 
     for tick in range(n_ticks):
         t0 = tick * dt
@@ -1197,11 +1207,28 @@ def run_match_micro_simulation(
         poss_home_ticks += possession_tick
         phi_sum_h += phi_home
         phi_sum_a += phi_away
-        _execute_tick_actions(
-            state=state, cfg=cfg, tick_events=tick_events,
-            player_tracker=player_tracker, shots=shots, actions=actions,
-            passing=passing, mod_home=mod_home, mod_away=mod_away, rng=rng,
-        )
+        if (
+            branch_at_sec is not None
+            and not branch_anchor.get("available")
+            and t1 >= branch_at_sec
+        ):
+            from src.match_engine.branch_anchor import capture_branch_anchor
+
+            branch_anchor = capture_branch_anchor(
+                state, rng, requested_sec=branch_at_sec, actual_sec=t1, tick=tick,
+                event_cursor=ev_idx, passing=passing, shots=shots,
+                aerial=aerial, player_tracker=player_tracker,
+                continuous_clock=continuous_clock, subtick_queue=subtick_queue,
+                manager_runtimes=manager_runtimes,
+            )
+        from src.match_engine.world_model.config import world_model_plan_clock
+
+        with world_model_plan_clock(t1):
+            _execute_tick_actions(
+                state=state, cfg=cfg, tick_events=tick_events,
+                player_tracker=player_tracker, shots=shots, actions=actions,
+                passing=passing, mod_home=mod_home, mod_away=mod_away, rng=rng,
+            )
         player_tracker.tick_minutes(state, dt)
         sub_notes = maybe_apply_substitutions(
             state, t1, rng, player_tracker, subs_done=subs_done,
@@ -1248,7 +1275,7 @@ def run_match_micro_simulation(
         cognitive_executor=cognitive_executor,
         continuous_clock=continuous_clock, subtick_queue=subtick_queue,
         wm_runtime=wm_runtime, manager_runtimes=manager_runtimes,
-        tactical_execution=tactical_execution,
+        tactical_execution=tactical_execution, branch_anchor=branch_anchor,
         packets=packets, timeline=timeline, n_ticks=n_ticks,
         strictness_sum=strictness_sum, poss_home_ticks=poss_home_ticks,
         phi_sum_h=phi_sum_h, phi_sum_a=phi_sum_a,

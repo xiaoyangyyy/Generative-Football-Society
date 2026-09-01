@@ -63,6 +63,8 @@ def _world_model_propagation_digest(path: str | Path) -> dict[str, Any]:
     summary = propagation.get("summary") or {}
     if not isinstance(summary, dict):
         summary = {}
+    intervention = payload.get("intervention") or {}
+    branch_anchor = intervention.get("branch_anchor") or {}
 
     def bounded_count(key: str) -> int:
         value = summary.get(key)
@@ -74,7 +76,7 @@ def _world_model_propagation_digest(path: str | Path) -> dict[str, Any]:
             if math.isfinite(number) else 0
         )
 
-    return {
+    result = {
         "available": True,
         "status": str(propagation.get("status") or "unknown")[:80],
         "changed_decisions": bounded_count("valid_changed_decisions"),
@@ -89,6 +91,15 @@ def _world_model_propagation_digest(path: str | Path) -> dict[str, Any]:
         ),
         "downstream_causal_attribution_authorized": False,
     }
+    if intervention.get("branch_at_sec") is not None:
+        result.update({
+            "branch_at_sec": intervention.get("branch_at_sec"),
+            "branch_anchor_verified": bool(branch_anchor.get("verified")),
+            "branch_state_identity": str(
+                branch_anchor.get("state_identity") or ""
+            )[:64],
+        })
+    return result
 
 
 class ProductTaskQueue:

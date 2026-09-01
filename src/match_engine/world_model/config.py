@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Any, Mapping
 
 from src.simulation.runtime import environment_snapshot, env_bool, env_float, env_int
+
+
+_PLAN_CLOCK_SECONDS: ContextVar[float | None] = ContextVar(
+    "world_model_plan_clock_seconds", default=None,
+)
 
 
 @dataclass
@@ -80,13 +87,52 @@ def world_model_required() -> bool:
     return env_bool(environment_snapshot(), "MATCH_WORLD_MODEL_REQUIRED", False)
 
 
-def world_model_plan_enabled() -> bool:
+def world_model_plan_start_sec() -> float:
+    raw = environment_snapshot().get("MATCH_WM_PLAN_START_SEC", "0").strip()
+    try:
+        value = float(raw or 0.0)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("MATCH_WM_PLAN_START_SEC must be a finite number") from exc
+    if not 0.0 <= value <= 5400.0:
+        raise ValueError("MATCH_WM_PLAN_START_SEC must be between 0 and 5400")
+    return value
+
+
+def world_model_branch_at_sec() -> float | None:
+    raw = environment_snapshot().get("MATCH_WM_BRANCH_AT_SEC", "").strip()
+    if not raw:
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("MATCH_WM_BRANCH_AT_SEC must be a finite number") from exc
+    if not 0.0 <= value <= 5400.0:
+        raise ValueError("MATCH_WM_BRANCH_AT_SEC must be between 0 and 5400")
+    return value
+
+
+def world_model_plan_enabled(state: Any | None = None) -> bool:
     if not world_model_enabled():
         return False
     raw = environment_snapshot().get("MATCH_WM_PLAN", "").strip().lower()
     if raw in ("0", "false", "no", "off"):
         return False
+    clock = (
+        float(getattr(state, "clock_seconds", 0.0))
+        if state is not None else _PLAN_CLOCK_SECONDS.get()
+    )
+    if clock is not None:
+        return clock >= world_model_plan_start_sec()
     return True
+
+
+@contextmanager
+def world_model_plan_clock(clock_seconds: float):
+    token = _PLAN_CLOCK_SECONDS.set(float(clock_seconds))
+    try:
+        yield
+    finally:
+        _PLAN_CLOCK_SECONDS.reset(token)
 
 
 def world_model_record_enabled() -> bool:

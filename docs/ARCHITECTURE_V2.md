@@ -1474,3 +1474,39 @@ the general Studio status response. Legacy or damaged comparisons degrade to
 an explicit unavailable state. The product can therefore show where the
 world model visibly entered play without converting downstream descriptive
 movement into an unsupported causal chain or changing the sealed M0/M1 gate.
+
+## 57. V3.39 Selectable in-match deterministic branch anchor
+
+The world-model fork is no longer restricted to a whole-match policy contrast.
+The user selects a match minute. Both worlds replay the same fixture, tactics,
+checkpoint and seed with action authority disabled before that point. The
+treatment enables the quality-gated policy only when the simulated clock
+reaches the selected time; the baseline remains prediction-only throughout.
+All four planner entry points receive the live match state and enforce the
+same delayed-activation boundary.
+
+Immediately before actions execute on the first eligible tick, the micro
+runner creates a canonical SHA-256 branch identity. Its scope includes the
+observable match state, NumPy generator state, scheduled-event cursor,
+passing/shot/aerial statistics, player statistics and substitutions,
+continuous/subtick diagnostics, and manager-rule runtimes. Each individual
+report stores this anchor. A paired comparison with a declared branch time is
+eligible for simulator-local policy attribution only if both anchors are
+present, refer to the same requested time and have the exact same identity.
+Missing or modified evidence fails closed as
+same_pre_intervention_branch_anchor=false.
+
+This is intentionally a deterministic replay anchor, not a serialized Python
+process checkpoint. The current monolithic engine also owns mutable state in
+sub-engines, queues and cognitive runtimes, so pretending that
+MatchAffectiveState alone can be resumed would create a false checkpoint.
+The product and comparison artifact expose deterministic_replay_only as the
+resume capability. A future process-level snapshot may optimize replay, but it
+must first serialize and restore every decision-relevant mutable component and
+prove equivalence against this identity-bound replay contract.
+
+The Web workflow provides a 0--90 minute selector (45 minutes by default),
+persists seconds in WorldModelForkPlan, and includes branch verification in
+the bounded task/evidence digest. This stage changes code and product
+evidence only: it does not train a model, execute the sealed formal protocol,
+call an external provider, or revise the existing research-only M1 decision.
