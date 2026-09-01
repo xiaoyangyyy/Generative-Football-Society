@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_code_only_reproduction_release_contract",
-  "generated_at": "2026-09-01T15:49:30.150260+00:00",
+  "generated_at": "2026-09-01T16:11:03.740997+00:00",
   "status": "passed_code_contract",
   "passed": true,
   "release_ready": false,
@@ -159,7 +159,7 @@
     "docs/EXCELLENCE_EVIDENCE_KIT.md": "f0d3022f19c6a0c358d996da592e99b3984c1816861400b0537ebbd9d43c56a1",
     "src/product/control_plane.py": "4cb8d8705ef99bd45d3bd8eca5b9463cef8bdada8268cdbcabeb0f0b08b87ea7",
     "src/cli.py": "d8d4381ef94daa459fc3b2af2c7737947f95beb9a15a4e08150879ce6db68529",
-    "src/product/web.py": "ffd502b448b50c445fc76f5322058fc7e25f9f33467891193305f16596832ce1",
+    "src/product/web.py": "a46958e73bfc67bf6f6b5b1eb41acc81829f3b975f5d82ee49c5d0b3d7a27422",
     "src/product/telemetry.py": "d3b7cda8f249da11f0e908d514b70abb8446b94721c33fa2681d5f7e361162a7",
     "data/evaluation/security_closure_protocol_v1.json": "42dce899c298ff5d00a24651c930c984700ca97952bb856375b828ffbe02d75e",
     "docs/SECURITY_CREDENTIAL_CLOSURE.md": "71c966156c4ddb8c7580a5943693417536995093f03dab62b134f9b27b7d2844",

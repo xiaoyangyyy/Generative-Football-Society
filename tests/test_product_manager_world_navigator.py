@@ -231,6 +231,17 @@ def test_history_is_recent_first_and_explicitly_bounded():
     )
 
 
+def test_duplicate_fixture_identity_fails_closed_even_when_rehashed():
+    first = _entry(1)
+    duplicate = copy.deepcopy(first)
+    duplicate["matchday"] = 2
+    duplicate.pop("entry_identity")
+    duplicate["entry_identity"] = _identity(duplicate)
+
+    with pytest.raises(ValueError, match="invalid or duplicate"):
+        build_manager_world_navigator(_season(entries=[first, duplicate]))
+
+
 def test_rehashed_navigation_or_source_thread_tamper_fails_closed():
     season = _season(entries=[_entry(1)])
     navigator = build_manager_world_navigator(season)

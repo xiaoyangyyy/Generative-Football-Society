@@ -1968,3 +1968,34 @@ claims. A complete chapter means its declared simulator evidence is connected;
 it does not mean that the world model improved the score, that one intervention
 is best, or that the result transfers to real football. No training, match,
 formal experiment, human study or provider call is executed.
+
+## 70. V3.52 Actionable and conflict-safe world chapter navigation
+
+The season navigator initially described recent completed worlds, but the
+decision ledger rendered the earliest six entries. A recent navigation chapter
+could therefore have no visible detailed target, and index-based enhancement
+layers could attach evidence to the wrong fixture after the display order
+changed.
+
+The browser now derives every ledger layer from one visibility function:
+the current frozen decision, if present, followed by the six most recent
+completed fixtures in reverse chronological order. Each rendered ledger card
+receives the exact fixture identity as a data attribute and a programmatic
+focus target. All later evidence layers consume the same ordered projection,
+so their child-card alignment no longer depends on a separate slice.
+
+Each visible history chapter now offers an explicit “open complete world
+chapter” action. It resolves a card by exact fixture-identity equality without
+constructing a CSS selector, expands its progressive evidence sections, scrolls
+to it and transfers keyboard focus. If the authoritative card or the current
+primary-action target is absent, disabled or has no actionable descendant, the
+interface announces an error instead of silently doing nothing.
+
+The Python projection also rejects empty or duplicate fixture identities before
+constructing history. This prevents two canonical-looking chapters from
+competing for one browser target even if an edited ledger entry was rehashed.
+The navigator remains read-only and reuses existing mutation controls.
+
+This is navigation integrity, accessibility and product-cohesion work. It does
+not run training, generate futures, execute matches, estimate intervention
+effects or strengthen any causal claim.

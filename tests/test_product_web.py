@@ -223,6 +223,12 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="matchday-command-center"' in document
     assert 'id="manager-world-navigator"' in document
     assert 'id="manager-world-navigator-action"' in document
+    assert "function visibleManagerLedgerEntries(" in document
+    assert "node.dataset.fixtureId=String(row.fixture_id||'')" in document
+    assert "打开完整世界章节" in document
+    assert "item.dataset.fixtureId===open.dataset.fixtureId" in document
+    assert "for(const detail of target.querySelectorAll('details'))" in document
+    assert "当前下一步控件不可用，请刷新赛季状态。" in document
     assert 'id="matchday-journey"' in document
     assert 'id="matchday-briefing"' in document
     assert 'id="matchday-intelligence"' in document

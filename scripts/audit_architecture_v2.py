@@ -717,6 +717,7 @@ def main() -> int:
                 '"secondary_actions"',
                 '"outcome_effect_estimate": None',
                 '"causal_effect_authorized": False',
+                "fixture identities are invalid or duplicate",
                 "manager world navigator replay mismatch",
             ))
             and all(token in web for token in (
@@ -725,6 +726,10 @@ def main() -> int:
                 '"manager_world_navigator"',
                 'id="manager-world-navigator"',
                 "function renderManagerWorldNavigator(",
+                "function visibleManagerLedgerEntries(",
+                "node.dataset.fixtureId",
+                "打开完整世界章节",
+                "当前下一步控件不可用",
                 "已完成的足球世界章节",
                 "章节完整不代表赛果改善",
             ))

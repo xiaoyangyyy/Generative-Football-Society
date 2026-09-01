@@ -241,6 +241,15 @@ def build_manager_world_navigator(
         for row in ledger["entries"]
     ):
         raise ValueError("manager world navigator ledger entries are invalid")
+    fixture_ids = [row.get("fixture_id") for row in ledger["entries"]]
+    if (
+        any(not isinstance(fixture_id, str) or not fixture_id
+            for fixture_id in fixture_ids)
+        or len(fixture_ids) != len(set(fixture_ids))
+    ):
+        raise ValueError(
+            "manager world navigator fixture identities are invalid or duplicate"
+        )
     completed_entries = [
         row for row in ledger["entries"]
         if row.get("lifecycle_state") != "frozen_awaiting_execution"
