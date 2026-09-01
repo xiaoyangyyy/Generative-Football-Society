@@ -18,6 +18,10 @@ from src.product.decision_ledger import (
     world_model_future_review_summary,
     world_model_official_action_execution_summary,
 )
+from src.product.manager_world_thread import (
+    build_manager_world_evolution_thread,
+    manager_world_evolution_summary,
+)
 
 
 def _identity(payload):
@@ -112,6 +116,9 @@ def _ledger(
                 execution=execution,
             )
         )
+        entry['world_evolution_thread'] = (
+            build_manager_world_evolution_thread(entry)
+        )
         entry['entry_identity'] = _identity({
             key: value for key, value in entry.items()
             if key != 'entry_identity'
@@ -150,6 +157,7 @@ def _ledger(
             "world_model_official_action_execution": (
                 world_model_official_action_execution_summary(entries)
             ),
+            "manager_world_evolution": manager_world_evolution_summary(entries),
         },
         "claim_boundary": "test ledger",
     }

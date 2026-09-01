@@ -2338,6 +2338,36 @@ def test_workspace_season_completes_matchday_with_stable_continuity_ids(
     assert state_delta["recovery_complete"] is True
     assert state_delta["transition_identity"] == world_state["transition_identity"]
     assert state_delta["match_delta"]["metrics_delta"]["team_fatigue_ema"] == 0
+    world_thread = closed["world_evolution_thread"]
+    assert [stage["stage_id"] for stage in world_thread["stages"]] == [
+        "prematch_future_review",
+        "frozen_manager_decision",
+        "official_tactical_runtime",
+        "official_world_model_actions",
+        "observed_match_result",
+        "persistent_world_state",
+    ]
+    assert world_thread["official_runtime_chain_complete"] is False
+    assert "tactical_runtime_binding_unavailable" in (
+        world_thread["continuity_gaps"]
+    )
+    assert "world_model_action_evidence_unavailable" in (
+        world_thread["continuity_gaps"]
+    )
+    assert (
+        world_thread["stages"][-1]["source_identity"]
+        == world_state["transition_identity"]
+    )
+    assert (
+        world_thread["links"][-1]["link_type"]
+        == "authoritative_engine_state_transition"
+    )
+    assert (
+        world_thread["links"][-1][
+            "manager_or_action_policy_effect_authorized"
+        ]
+        is False
+    )
     assert len(closed["decision_identity"]) == 64
     assert len(closed["entry_identity"]) == 64
     assert (

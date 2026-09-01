@@ -121,6 +121,9 @@ def main() -> int:
     official_action_execution = (
         ROOT / "src/product/world_model_action_execution.py"
     ).read_text(encoding="utf-8")
+    manager_world_thread = (
+        ROOT / "src/product/manager_world_thread.py"
+    ).read_text(encoding="utf-8")
     match_micro_runner = (
         ROOT / "src/match_engine/match_micro_runner.py"
     ).read_text(encoding="utf-8")
@@ -642,6 +645,35 @@ def main() -> int:
                 "renderManagerDecisionLedgerWithoutOfficialActionExecution",
                 "renderManagerIntelligenceWithoutOfficialActionExecution",
                 "不比较比分、不证明战术质量",
+            ))
+            and "innerHTML" not in web
+        ),
+        "manager_product_exposes_one_replayable_world_evolution_thread": (
+            all(token in manager_world_thread for token in (
+                "def build_manager_world_evolution_thread(",
+                "def validate_manager_world_evolution_thread(",
+                "def manager_world_evolution_summary(",
+                '"prematch_future_review"',
+                '"frozen_manager_decision"',
+                '"official_tactical_runtime"',
+                '"official_world_model_actions"',
+                '"observed_match_result"',
+                '"persistent_world_state"',
+                '"same_match_context_not_causal_direction"',
+                "downstream_result_attribution_authorized=False",
+                '"causal_effect_authorized": False',
+                "manager world evolution thread replay mismatch",
+            ))
+            and all(token in decision_ledger for token in (
+                "build_manager_world_evolution_thread(payload)",
+                "validate_manager_world_evolution_thread(thread, entry=entry)",
+                '"manager_world_evolution": manager_world_evolution_summary(entries)',
+            ))
+            and all(token in web for token in (
+                "function appendManagerWorldEvolutionThread(",
+                "renderManagerDecisionLedgerWithoutWorldEvolutionThread",
+                "renderManagerIntelligenceWithoutWorldEvolutionThread",
+                "同场出现不等于因果",
             ))
             and "innerHTML" not in web
         ),

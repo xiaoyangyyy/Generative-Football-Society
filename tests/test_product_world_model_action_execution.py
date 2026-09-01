@@ -328,7 +328,35 @@ def test_official_action_execution_survives_ledger_and_summary_replay():
     assert summary["direct_ball_event_links"] == 1
     assert summary["outcome_effect_estimate"] is None
     assert summary["causal_effect_authorized"] is False
+    thread = entry["world_evolution_thread"]
+    assert thread["stages"][3]["stage_id"] == (
+        "official_world_model_actions"
+    )
+    assert thread["stages"][3][
+        "locally_attributable_action_changes"
+    ] == 1
+    assert thread["links"][2]["status"] == "evidence_unavailable"
+    assert "tactical_runtime_binding_unavailable" in thread[
+        "continuity_gaps"
+    ]
     validate_manager_decision_ledger(ledger)
+
+    thread_tamper = copy.deepcopy(ledger)
+    thread_entry = next(
+        row for row in thread_tamper["entries"]
+        if row["fixture_id"] == fixture["fixture_id"]
+    )
+    thread_entry["world_evolution_thread"]["links"][2][
+        "status"
+    ] = "caused_world_model_actions"
+    frozen_entry = copy.deepcopy(thread_entry)
+    frozen_entry.pop("entry_identity")
+    thread_entry["entry_identity"] = _identity(frozen_entry)
+    frozen_ledger = copy.deepcopy(thread_tamper)
+    frozen_ledger.pop("ledger_identity")
+    thread_tamper["ledger_identity"] = _identity(frozen_ledger)
+    with pytest.raises(ValueError, match="thread replay mismatch"):
+        validate_manager_decision_ledger(thread_tamper)
 
     tampered = copy.deepcopy(ledger)
     tampered_entry = next(
@@ -346,3 +374,43 @@ def test_official_action_execution_survives_ledger_and_summary_replay():
     tampered["ledger_identity"] = _identity(frozen_ledger)
     with pytest.raises(ValueError, match="evidence identity mismatch"):
         validate_manager_decision_ledger(tampered)
+
+    mismatched_debrief = copy.deepcopy(debrief)
+    action = mismatched_debrief["world_model_action_execution"]
+    action["team"] = "B"
+    frozen_action = copy.deepcopy(action)
+    frozen_action.pop("evidence_identity")
+    action["evidence_identity"] = _identity(frozen_action)
+    mismatched = build_manager_decision_ledger(
+        season,
+        execution_by_fixture={fixture["fixture_id"]: mismatched_debrief},
+    )
+    mismatch_entry = next(
+        row for row in mismatched["entries"]
+        if row["fixture_id"] == fixture["fixture_id"]
+    )
+    assert mismatch_entry["lifecycle_state"] == (
+        "executed_evidence_unavailable"
+    )
+    assert mismatch_entry["execution"]["reason"] == (
+        "world_model_action_execution_identity_mismatch"
+    )
+
+    invalid_debrief = copy.deepcopy(debrief)
+    invalid_debrief["world_model_action_execution"]["examples"][0][
+        "actual_action"
+    ] = "shot"
+    invalid = build_manager_decision_ledger(
+        season,
+        execution_by_fixture={fixture["fixture_id"]: invalid_debrief},
+    )
+    invalid_entry = next(
+        row for row in invalid["entries"]
+        if row["fixture_id"] == fixture["fixture_id"]
+    )
+    assert invalid_entry["lifecycle_state"] == (
+        "executed_evidence_unavailable"
+    )
+    assert invalid_entry["execution"]["reason"] == (
+        "world_model_action_execution_invalid"
+    )

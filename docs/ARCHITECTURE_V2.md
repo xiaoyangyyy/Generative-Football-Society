@@ -1835,3 +1835,46 @@ authorized.
 This stage connects already existing official runtime behavior to the unified
 manager product. It adds no second state and executes no training, match,
 formal experiment, human study or external provider call.
+
+## 67. V3.49 Unified manager world-evolution thread
+
+The manager product had accumulated the correct evidence components but still
+presented them as separate cards: prematch future review, frozen decision,
+tactical runtime binding, official world-model action records, observed match
+result and persistent world-state transition. A user had to infer the ordering
+and, more dangerously, could mistake co-occurrence for a causal edge.
+
+Every managed-fixture ledger entry now derives one six-stage world-evolution
+thread from those existing authoritative components. Each stage and each of
+the five connecting links has a canonical identity. Ledger validation rebuilds
+the complete thread, including link status, from the source fields and rejects
+even a rehashed edited thread. No second journal or mutable world state is
+introduced.
+
+The links deliberately have different meanings:
+
+1. future review to frozen decision is an identity binding or an explicit
+   continuity break;
+2. frozen decision to tactical runtime is an official engine binding;
+3. tactical runtime and world-model actions share an official match context,
+   with no asserted causal direction between them;
+4. world-model actions link only to locally attributed sampled-action changes
+   and exact retained ball-event identities;
+5. the observed match links to the persisted simulator state transition, not
+   to a claim that the manager decision or action policy caused the score.
+
+Pending fixtures, stable-mode non-applicability, legacy reports, missing action
+records and missing persistent state remain distinct states. The thread records
+continuity gaps instead of silently skipping them. It reports both an official
+runtime-chain completeness flag and a stricter world-model runtime-chain flag;
+neither is an efficacy metric.
+
+The current matchday debrief and historical decision journal render the same
+ordered timeline. Users can now follow one world from evidence review through
+execution and into persistent fatigue, morale, injury and suspension state
+without navigating independent research panels.
+
+This stage reduces product fragmentation and clarifies the complex-system
+experience. It does not execute training, matches, formal experiments, human
+studies or provider calls, and it does not estimate score improvement or
+real-football causality.

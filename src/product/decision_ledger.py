@@ -7,8 +7,13 @@ import hashlib
 import json
 from typing import Any, Mapping, Sequence
 
-from src.product.player_promises import player_promise_progress
 from src.product.manager_future_review import validate_manager_future_review
+from src.product.manager_world_thread import (
+    build_manager_world_evolution_thread,
+    manager_world_evolution_summary,
+    validate_manager_world_evolution_thread,
+)
+from src.product.player_promises import player_promise_progress
 from src.product.season import ManagerDecision, SeasonPlan, manager_season_profile
 from src.product.season_commitments import commitment_progress_from_evidence
 from src.product.world_model_action_execution import (
@@ -116,6 +121,25 @@ def _execution_view(
             "schema_version": 1, "available": False,
             "reason": "execution_identity_or_boundary_mismatch",
         }
+    action_execution = debrief.get("world_model_action_execution")
+    if isinstance(action_execution, Mapping):
+        try:
+            validate_world_model_action_execution(action_execution)
+        except ValueError:
+            return {
+                "schema_version": 1,
+                "available": False,
+                "reason": "world_model_action_execution_invalid",
+            }
+        if action_execution.get("available") is True and (
+            action_execution.get("match_id") != fixture.get("match_id")
+            or action_execution.get("team") != team
+        ):
+            return {
+                "schema_version": 1,
+                "available": False,
+                "reason": "world_model_action_execution_identity_mismatch",
+            }
     return copy.deepcopy(dict(debrief))
 
 
@@ -728,6 +752,10 @@ def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
             raise ValueError(
                 "manager future review execution trace replay mismatch"
             )
+        thread = entry.get("world_evolution_thread")
+        if not isinstance(thread, Mapping):
+            raise ValueError("manager world evolution thread is unavailable")
+        validate_manager_world_evolution_thread(thread, entry=entry)
     lifecycle_names = (
         "frozen_awaiting_execution", "executed_with_direct_evidence",
         "executed_evidence_unavailable",
@@ -757,6 +785,7 @@ def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
         "world_model_official_action_execution": (
             world_model_official_action_execution_summary(entries)
         ),
+        "manager_world_evolution": manager_world_evolution_summary(entries),
     }
     if dict(summary) != expected_summary:
         raise ValueError("manager decision ledger summary replay mismatch")
@@ -950,6 +979,9 @@ def build_manager_decision_ledger(
             "report": fixture.get("report"), "dashboard": fixture.get("dashboard"),
             "claim_boundary": _BOUNDARY,
         }
+        payload["world_evolution_thread"] = (
+            build_manager_world_evolution_thread(payload)
+        )
         payload["entry_identity"] = _identity(payload)
         entries.append(payload)
         if completed:
@@ -982,6 +1014,7 @@ def build_manager_decision_ledger(
             "world_model_official_action_execution": (
                 world_model_official_action_execution_summary(entries)
             ),
+            "manager_world_evolution": manager_world_evolution_summary(entries),
         },
         "claim_boundary": _BOUNDARY,
     }
@@ -996,4 +1029,5 @@ __all__ = [
     "world_model_future_review_summary",
     "world_model_future_review_execution_summary",
     "world_model_official_action_execution_summary",
+    "manager_world_evolution_summary",
 ]
