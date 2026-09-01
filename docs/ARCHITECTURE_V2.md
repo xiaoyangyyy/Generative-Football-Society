@@ -2244,3 +2244,49 @@ between chronology, co-occurrence and causality.
 This stage executes no match, training, formal experiment or provider call.
 It does not repair missing evidence, infer why a result happened, compare
 counterfactual outcomes or transfer simulator observations to real football.
+
+## 77. V3.59 Identity-bound season world trajectory
+
+The previous world navigator exposed recent chapters and whole-season totals,
+but not the temporal path between them. A manager could inspect individual
+matches or grouped action-adoption states without seeing how verified results,
+local action changes and persistent team-state transitions accumulated across
+the season. That kept the product legible as evidence infrastructure but made
+the continuous football world feel unnecessarily fragmented.
+
+The navigator now deterministically replays every completed decision-ledger
+chapter into one chronological trajectory. Ordering uses matchday and fixture
+identity, completed matchdays must be unique, and every visible point binds the
+source fixture and canonical chapter identity. Each point preserves the action
+adoption state, locally attributable simulator action changes, descriptive
+result and points, recovery status, exact match-state deltas, transition-event
+counts and explicit evidence coverage. It also carries season-to-date totals
+for known results, points, persistent-state chapters, action changes, metrics
+and transition events. Floating totals are rounded after every accumulation so
+the replay identity remains deterministic.
+
+The trajectory retains at most the same 64 recent points as chapter history,
+but cumulative values are calculated from all completed chapters before that
+display window is applied. The response declares the total and visible point
+counts and whether truncation occurred. A missing result or persistent-state
+record is never filled from a neighbour: the corresponding point is marked
+unavailable, coverage does not advance, and `missing_evidence_imputed` remains
+false.
+
+Deterministic world-change markers make visible where the record contains a
+local action change, new injury, new suspension, recovery still pending or an
+evidence gap. These markers are observations, not an automatically inferred
+turning point. Both the trajectory and every identity-sealed point explicitly
+disable turning-point inference and causal authorization, and the trajectory
+contains no outcome-effect estimate.
+
+Studio renders the chronology inside the existing season-world navigator as a
+progressive list. Each row shows same-match facts beside season-to-date totals
+and uses the existing completed-fixture permalink flow. Before opening a row,
+the browser verifies the exact fixture-and-chapter identity against the current
+trajectory, so a stale or substituted binding fails closed. Selection state is
+synchronized between the full ledger, recent chapter cards and trajectory.
+
+This stage is code-only. It executes no match, model training, formal study or
+external provider call, and it does not claim that a temporal association is a
+world-model effect or a real-football causal relation.

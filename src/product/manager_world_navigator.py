@@ -131,6 +131,116 @@ def _descriptive_world_propagation(
     }
 
 
+def _season_world_trajectory(
+    chapters: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build a bounded chronology with whole-season descriptive cumulatives."""
+    ordered = sorted(
+        chapters, key=lambda row: (row["matchday"], row["fixture_id"]),
+    )
+    matchdays = [row["matchday"] for row in ordered]
+    if len(matchdays) != len(set(matchdays)):
+        raise ValueError(
+            "manager world navigator completed matchdays are duplicate"
+        )
+    cumulative_metrics = {field: 0.0 for field in _WORLD_METRICS}
+    cumulative_transitions = {
+        field: 0 for field in _WORLD_SUMMARY_FIELDS
+    }
+    cumulative_points = 0
+    cumulative_results = 0
+    cumulative_persistent = 0
+    cumulative_action_changes = 0
+    points: list[dict[str, Any]] = []
+    for sequence, chapter in enumerate(ordered, start=1):
+        world = chapter["descriptive_world_after"]
+        if world["result_available"]:
+            cumulative_results += 1
+            cumulative_points += world["points_earned"]
+        if world["persistent_state_available"]:
+            cumulative_persistent += 1
+            for field in _WORLD_METRICS:
+                cumulative_metrics[field] = round(
+                    cumulative_metrics[field]
+                    + world["metrics_delta"][field], 6,
+                )
+            for field in _WORLD_SUMMARY_FIELDS:
+                cumulative_transitions[field] += (
+                    world["transition_summary"][field]
+                )
+        local_changes = chapter["locally_attributable_action_changes"]
+        cumulative_action_changes += local_changes
+        markers = []
+        if local_changes:
+            markers.append("local_action_change")
+        if not world["result_available"]:
+            markers.append("result_evidence_unavailable")
+        if not world["persistent_state_available"]:
+            markers.append("persistent_state_evidence_unavailable")
+        elif not world["recovery_complete"]:
+            markers.append("recovery_pending")
+        if world["persistent_state_available"]:
+            if world["transition_summary"]["new_injuries"]:
+                markers.append("new_injury")
+            if world["transition_summary"]["new_suspensions"]:
+                markers.append("new_suspension")
+        if chapter["continuity_gaps"]:
+            markers.append("continuity_gap")
+        point = {
+            "sequence": sequence,
+            "fixture_id": chapter["fixture_id"],
+            "matchday": chapter["matchday"],
+            "chapter_identity": chapter["chapter_identity"],
+            "action_adoption_state": chapter["action_adoption"]["state"],
+            "locally_attributable_action_changes": local_changes,
+            "result_available": world["result_available"],
+            "outcome": world["outcome"],
+            "points_earned": world["points_earned"],
+            "persistent_state_available": world[
+                "persistent_state_available"
+            ],
+            "recovery_complete": world["recovery_complete"],
+            "match_metrics_delta": copy.deepcopy(world["metrics_delta"]),
+            "match_transition_summary": copy.deepcopy(
+                world["transition_summary"]
+            ),
+            "cumulative": {
+                "results_available": cumulative_results,
+                "points_earned": cumulative_points,
+                "persistent_state_chapters": cumulative_persistent,
+                "locally_attributable_action_changes": (
+                    cumulative_action_changes
+                ),
+                "match_metrics_delta_totals": copy.deepcopy(
+                    cumulative_metrics
+                ),
+                "transition_summary_totals": copy.deepcopy(
+                    cumulative_transitions
+                ),
+            },
+            "world_change_markers": markers,
+            "descriptive_chronology_only": True,
+            "turning_point_inference_authorized": False,
+            "causal_effect_authorized": False,
+        }
+        point["trajectory_point_identity"] = _identity(point)
+        points.append(point)
+    visible = points[-MAX_HISTORY_CHAPTERS:]
+    return {
+        "total_points": len(points),
+        "visible_points": len(visible),
+        "points_truncated": len(points) > MAX_HISTORY_CHAPTERS,
+        "results_available": cumulative_results,
+        "persistent_state_chapters": cumulative_persistent,
+        "points": visible,
+        "descriptive_chronology_only": True,
+        "missing_evidence_imputed": False,
+        "turning_point_inference_authorized": False,
+        "outcome_effect_estimate": None,
+        "causal_effect_authorized": False,
+    }
+
+
 def _primary_action(workflow_state: str) -> dict[str, Any] | None:
     actions = {
         "decision_required": (
@@ -560,6 +670,7 @@ def build_manager_world_navigator(
     ]
     all_chapters = [_history_chapter(row) for row in completed_entries]
     chapters = list(reversed(all_chapters[-MAX_HISTORY_CHAPTERS:]))
+    world_trajectory = _season_world_trajectory(all_chapters)
     workflow_state = str(workspace.get("workflow_state") or "")
     if workflow_state not in _WORKFLOW_STATES:
         raise ValueError("manager world navigator workflow state is invalid")
@@ -793,6 +904,7 @@ def build_manager_world_navigator(
             workflow_state, allowed,
         ),
         "history_chapters": chapters,
+        "world_trajectory": world_trajectory,
         "summary": summary,
         "outcome_effect_estimate": None,
         "causal_effect_authorized": False,

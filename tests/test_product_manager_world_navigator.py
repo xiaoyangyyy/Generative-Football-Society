@@ -354,6 +354,125 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
     validate_manager_world_navigator(navigator, season=season)
 
 
+def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
+    navigator = build_manager_world_navigator(_season(entries=[
+        _entry(2), _entry(1),
+    ]))
+
+    trajectory = navigator["world_trajectory"]
+    assert trajectory["total_points"] == 2
+    assert trajectory["visible_points"] == 2
+    assert trajectory["points_truncated"] is False
+    assert trajectory["results_available"] == 2
+    assert trajectory["persistent_state_chapters"] == 2
+    assert trajectory["descriptive_chronology_only"] is True
+    assert trajectory["missing_evidence_imputed"] is False
+    assert trajectory["turning_point_inference_authorized"] is False
+    assert trajectory["outcome_effect_estimate"] is None
+    assert trajectory["causal_effect_authorized"] is False
+    first, second = trajectory["points"]
+    assert [first["matchday"], second["matchday"]] == [1, 2]
+    assert [first["sequence"], second["sequence"]] == [1, 2]
+    assert first["chapter_identity"] == next(
+        row["chapter_identity"] for row in navigator["history_chapters"]
+        if row["fixture_id"] == "md01-fx01"
+    )
+    assert first["cumulative"]["points_earned"] == 1
+    assert second["cumulative"]["points_earned"] == 4
+    assert second["cumulative"][
+        "locally_attributable_action_changes"
+    ] == 4
+    assert second["cumulative"]["match_metrics_delta_totals"][
+        "team_fatigue_ema"
+    ] == 0.16
+    assert second["cumulative"]["transition_summary_totals"][
+        "new_injuries"
+    ] == 2
+    assert first["world_change_markers"] == [
+        "local_action_change", "new_injury",
+    ]
+    assert first["descriptive_chronology_only"] is True
+    assert first["turning_point_inference_authorized"] is False
+    assert first["causal_effect_authorized"] is False
+    assert _identity({
+        key: value for key, value in first.items()
+        if key != "trajectory_point_identity"
+    }) == first["trajectory_point_identity"]
+
+
+def test_world_trajectory_marks_missing_evidence_without_imputation():
+    unavailable = _entry(2, gaps=[
+        "observed_result_unavailable",
+        "persistent_world_state_unavailable",
+    ])
+    unavailable["lifecycle_state"] = "executed_evidence_unavailable"
+    unavailable["observed_result"] = None
+    persistent_source = unavailable["long_term_accounting"][
+        "persistent_team_state_delta"
+    ]
+    persistent_source.update({
+        "available": False,
+        "transition_identity": None,
+        "recovery_complete": False,
+        "match_delta": None,
+    })
+    thread = unavailable["world_evolution_thread"]
+    thread["official_runtime_chain_complete"] = False
+    thread["world_model_runtime_chain_complete"] = False
+    result = next(
+        row for row in thread["stages"]
+        if row["stage_id"] == "observed_match_result"
+    )
+    result.clear()
+    result.update({
+        "stage_id": "observed_match_result",
+        "status": "result_evidence_unavailable",
+        "source_identity": None,
+    })
+    result["stage_identity"] = _identity(result)
+    persistent = next(
+        row for row in thread["stages"]
+        if row["stage_id"] == "persistent_world_state"
+    )
+    persistent.clear()
+    persistent.update({
+        "stage_id": "persistent_world_state",
+        "status": "persistent_state_evidence_unavailable",
+        "source_identity": None,
+        "recovery_complete": False,
+        "metrics_delta": None,
+        "transition_summary": None,
+    })
+    persistent["stage_identity"] = _identity(persistent)
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    unavailable.pop("entry_identity")
+    unavailable["entry_identity"] = _identity(unavailable)
+
+    trajectory = build_manager_world_navigator(_season(entries=[
+        _entry(1), unavailable,
+    ]))["world_trajectory"]
+    missing = trajectory["points"][1]
+    assert trajectory["results_available"] == 1
+    assert trajectory["persistent_state_chapters"] == 1
+    assert missing["result_available"] is False
+    assert missing["points_earned"] is None
+    assert missing["persistent_state_available"] is False
+    assert missing["match_metrics_delta"] is None
+    assert missing["match_transition_summary"] is None
+    assert missing["cumulative"]["points_earned"] == 1
+    assert missing["cumulative"]["persistent_state_chapters"] == 1
+    assert missing["cumulative"]["match_metrics_delta_totals"][
+        "team_fatigue_ema"
+    ] == 0.08
+    assert missing["world_change_markers"] == [
+        "local_action_change",
+        "result_evidence_unavailable",
+        "persistent_state_evidence_unavailable",
+        "continuity_gap",
+    ]
+
+
 @pytest.mark.parametrize(
     ("state", "action"),
     [
@@ -447,6 +566,15 @@ def test_history_is_recent_first_and_explicitly_bounded():
     assert navigator["summary"]["visible_local_action_changes"] == (
         2 * MAX_HISTORY_CHAPTERS
     )
+    trajectory = navigator["world_trajectory"]
+    assert trajectory["points_truncated"] is True
+    assert trajectory["total_points"] == MAX_HISTORY_CHAPTERS + 1
+    assert trajectory["visible_points"] == MAX_HISTORY_CHAPTERS
+    assert trajectory["points"][0]["sequence"] == 2
+    assert trajectory["points"][-1]["sequence"] == (
+        MAX_HISTORY_CHAPTERS + 1
+    )
+    assert trajectory["points"][0]["cumulative"]["points_earned"] == 4
 
 
 def test_truncated_old_chapter_is_still_identity_validated():
@@ -658,6 +786,19 @@ def test_duplicate_fixture_identity_fails_closed_even_when_rehashed():
 
     with pytest.raises(ValueError, match="invalid or duplicate"):
         build_manager_world_navigator(_season(entries=[first, duplicate]))
+
+
+def test_duplicate_completed_matchday_fails_closed_even_when_rehashed():
+    first = _entry(1)
+    duplicate_matchday = _entry(2)
+    duplicate_matchday["matchday"] = 1
+    duplicate_matchday.pop("entry_identity")
+    duplicate_matchday["entry_identity"] = _identity(duplicate_matchday)
+
+    with pytest.raises(ValueError, match="completed matchdays are duplicate"):
+        build_manager_world_navigator(
+            _season(entries=[first, duplicate_matchday]),
+        )
 
 
 def test_rehashed_navigation_or_source_thread_tamper_fails_closed():

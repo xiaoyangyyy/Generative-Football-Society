@@ -516,3 +516,14 @@ timeline is opened. Values are raw coverage and totals; missing chapters are
 not imputed, states are not ranked, and differences between adoption states
 are not treatment effects. The purpose is to make one simulated-world history
 legible, not to claim that the world model caused its result or carryover.
+
+The same panel also provides a chronological season world trajectory. Every
+visible row is bound to its source fixture and canonical world-chapter
+identity, and combines that match's adoption state, result, persistent-state
+delta and deterministic change markers with season-to-date known points,
+state coverage and local action changes. The window is bounded to 64 recent
+chapters, while cumulative values still begin at the first completed chapter.
+Missing evidence is never interpolated. Change markers identify recorded
+events and gaps only; they are not inferred turning points, effect estimates
+or causal explanations. Opening a row uses the same stale-safe permalink and
+full-ledger expansion as the existing diagnostics.
