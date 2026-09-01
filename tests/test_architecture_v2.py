@@ -36,5 +36,8 @@ def test_architecture_v2_machine_audit_passes():
     assert report["checks"][
         "manager_future_review_closes_to_runtime_selection_without_outcome_claim"
     ]
+    assert report["checks"][
+        "official_manager_matches_surface_world_model_action_execution"
+    ]
     assert report["checks"]["formal_experiment_is_preregistered_and_compute_bounded"]
     assert report["checks"]["formal_experiment_fails_closed_on_identity_or_partial_evidence"]

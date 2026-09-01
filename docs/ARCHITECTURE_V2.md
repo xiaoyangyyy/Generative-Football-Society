@@ -1790,3 +1790,48 @@ and official runtime tactical adoption. It does not establish that the world
 model improved the decision or the result. The change adds code, tests,
 interface evidence and architecture guards only; it executes no training,
 match study, formal protocol, human study or external provider call.
+
+## 66. V3.48 Official-match world-model action execution
+
+Research and cognitive manager matches already ran the quality-gated
+world-model action policy. Their full match reports retained the probability
+adjustments, shared sampling uniform, baseline counterfactual action, sampled
+action and exact ball-event identity links. However, those facts were visible
+only in the standalone match report and latest-match research panel. The
+manager postmatch debrief and historical decision ledger did not consume them,
+so the official career surface still could not answer whether the world model
+changed an action during the manager's match.
+
+A new bounded projection reads the authoritative match report and keeps only
+the manager team's retained records. It validates aggregate hierarchy,
+truncation semantics, unique opportunity identities, action vocabulary,
+shared-uniform changed-action semantics and all replay-link counters. Raw
+opportunity identifiers are replaced by match-and-team-bound hashes. At most
+five examples are retained, prioritized by realized action change, nonzero
+influence and probability distance.
+
+The projection separates three evidence levels:
+
+1. the action policy changed a sampling probability;
+2. under the same sampling uniform, the adjusted policy selected a different
+   action, permitting simulator-local action attribution;
+3. for pass or shot actions, the decision record matched one exact logged ball
+   event by opportunity identity, action, team and timestamp.
+
+Hold and cross can remain direct decision records without a ball trajectory by
+design. Missing or ambiguous event links are counted explicitly. If source
+records were truncated, manager-team record coverage is marked incomplete
+rather than inferred. Invalid action evidence fails closed inside its own
+subview while valid tactical and instruction execution evidence remains
+available.
+
+The postmatch debrief now carries this projection. The decision ledger
+validates its canonical identity, derives cross-fixture counts and shows the
+same bounded examples in the current matchday and historical journal. This is
+still not an outcome result: no score comparison, tactic-quality estimate,
+trajectory attribution, population inference or real-football causal claim is
+authorized.
+
+This stage connects already existing official runtime behavior to the unified
+manager product. It adds no second state and executes no training, match,
+formal experiment, human study or external provider call.

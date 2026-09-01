@@ -118,6 +118,9 @@ def main() -> int:
     manager_intelligence = (
         ROOT / "src/product/manager_intelligence.py"
     ).read_text(encoding="utf-8")
+    official_action_execution = (
+        ROOT / "src/product/world_model_action_execution.py"
+    ).read_text(encoding="utf-8")
     match_micro_runner = (
         ROOT / "src/match_engine/match_micro_runner.py"
     ).read_text(encoding="utf-8")
@@ -611,6 +614,36 @@ def main() -> int:
                 "不把赛前模拟路径匹配到比分",
             ))
             and '"second_persisted_season_state": True' not in web
+        ),
+        "official_manager_matches_surface_world_model_action_execution": (
+            all(token in official_action_execution for token in (
+                "def project_world_model_action_execution(",
+                "def validate_world_model_action_execution(",
+                "MAX_EXAMPLES = 5",
+                '"locally_attributable_action_changes_observed"',
+                '"direct_ball_event_identity"',
+                '"outcome_comparison_performed": False',
+                '"causal_effect_authorized": False',
+                "world-model official action evidence identity mismatch",
+            ))
+            and all(token in manager_intelligence for token in (
+                "project_world_model_action_execution(",
+                '"world_model_action_execution": world_model_action_execution',
+                '"world_model_action_evidence_invalid"',
+            ))
+            and all(token in decision_ledger for token in (
+                "validate_world_model_action_execution(action_execution)",
+                "def world_model_official_action_execution_summary(",
+                '"world_model_official_action_execution": (',
+                '"outcome_effect_estimate": None',
+            ))
+            and all(token in web for token in (
+                "function appendOfficialActionExecution(",
+                "renderManagerDecisionLedgerWithoutOfficialActionExecution",
+                "renderManagerIntelligenceWithoutOfficialActionExecution",
+                "不比较比分、不证明战术质量",
+            ))
+            and "innerHTML" not in web
         ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (
             all(token in decision_advice for token in (

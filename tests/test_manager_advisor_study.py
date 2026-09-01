@@ -16,6 +16,7 @@ from src.product.decision_ledger import (
     world_model_advisor_summary,
     world_model_future_review_execution_summary,
     world_model_future_review_summary,
+    world_model_official_action_execution_summary,
 )
 
 
@@ -145,6 +146,9 @@ def _ledger(
             ),
             "world_model_future_review_execution": (
                 world_model_future_review_execution_summary(entries)
+            ),
+            "world_model_official_action_execution": (
+                world_model_official_action_execution_summary(entries)
             ),
         },
         "claim_boundary": "test ledger",

@@ -8,6 +8,9 @@ import math
 from typing import Any, Mapping
 
 from src.match_engine.tactical_catalog import TACTICAL_KEYS
+from src.product.world_model_action_execution import (
+    project_world_model_action_execution,
+)
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -367,6 +370,18 @@ def build_postmatch_debrief(
             "schema_version": 1, "available": False,
             "reason": "tactical_execution_binding_mismatch",
         }
+    try:
+        world_model_action_execution = project_world_model_action_execution(
+            report,
+            manager_team=manager_team,
+            expected_match_id=expected_match_id,
+        )
+    except ValueError:
+        world_model_action_execution = {
+            "schema_version": 1,
+            "available": False,
+            "reason": "world_model_action_evidence_invalid",
+        }
     return {
         "schema_version": 1,
         "available": True,
@@ -400,6 +415,7 @@ def build_postmatch_debrief(
             ],
         },
         "tactical_binding": tactical_binding,
+        "world_model_action_execution": world_model_action_execution,
         "observed_result": {
             "score": {
                 "home": max(0, int(_finite(score.get("home")))),
@@ -410,7 +426,8 @@ def build_postmatch_debrief(
         "evidence_grade": "direct_runtime_execution",
         "causal_outcome_attribution": False,
         "claim_boundary": (
-            "engine effects and instruction execution are direct runtime facts; "
-            "one observed result cannot establish that the decision caused the outcome"
+            "engine effects, instruction execution and bounded world-model action "
+            "records are direct runtime facts; one observed result cannot establish "
+            "that the decision or action policy caused the outcome"
         ),
     }

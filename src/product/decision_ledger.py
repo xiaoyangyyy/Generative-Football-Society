@@ -11,6 +11,9 @@ from src.product.player_promises import player_promise_progress
 from src.product.manager_future_review import validate_manager_future_review
 from src.product.season import ManagerDecision, SeasonPlan, manager_season_profile
 from src.product.season_commitments import commitment_progress_from_evidence
+from src.product.world_model_action_execution import (
+    validate_world_model_action_execution,
+)
 
 
 LEDGER_SCHEMA_VERSION = 1
@@ -581,6 +584,71 @@ def world_model_future_review_execution_summary(
     return evidence
 
 
+def world_model_official_action_execution_summary(
+    entries: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Summarize retained official action execution without outcome claims."""
+    evidence_rows = []
+    for row in entries:
+        execution = row.get("execution")
+        evidence = (
+            execution.get("world_model_action_execution")
+            if isinstance(execution, Mapping) else None
+        )
+        if isinstance(evidence, Mapping) and evidence.get("available") is True:
+            evidence_rows.append(evidence)
+    counts = [
+        evidence["retained_record_evidence"]
+        for evidence in evidence_rows
+    ]
+    direct = sum(int(row["direct_ball_event_links"]) for row in counts)
+    unresolved = sum(
+        int(row["unresolved_or_missing_ball_event_links"])
+        for row in counts
+    )
+    payload = {
+        "schema_version": 1,
+        "fixtures_with_official_action_evidence": len(evidence_rows),
+        "fixtures_with_complete_manager_record_coverage": sum(
+            row.get("manager_record_coverage_complete") is True
+            for row in counts
+        ),
+        "fixtures_with_local_action_changes": sum(
+            int(row["locally_attributable_action_changes"]) > 0
+            for row in counts
+        ),
+        "manager_action_records_retained": sum(
+            int(row["records"]) for row in counts
+        ),
+        "influenced_action_decisions": sum(
+            int(row["influenced_decisions"]) for row in counts
+        ),
+        "locally_attributable_action_changes": sum(
+            int(row["locally_attributable_action_changes"])
+            for row in counts
+        ),
+        "direct_ball_event_links": direct,
+        "changed_direct_ball_event_links": sum(
+            int(row["changed_direct_ball_event_links"])
+            for row in counts
+        ),
+        "unresolved_or_missing_ball_event_links": unresolved,
+        "direct_ball_event_link_coverage": round(
+            direct / max(1, direct + unresolved), 6,
+        ),
+        "outcome_comparison_performed": False,
+        "outcome_effect_estimate": None,
+        "causal_effect_authorized": False,
+        "claim_boundary": (
+            "retained official-match manager-team action decisions and exact "
+            "ball-event identity links only; no score, outcome or real-football "
+            "causal effect"
+        ),
+    }
+    payload["evidence_identity"] = _identity(payload)
+    return payload
+
+
 def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
     """Replay identities and all derived summaries in an exported ledger."""
     if ledger.get("schema_version") != LEDGER_SCHEMA_VERSION:
@@ -619,6 +687,12 @@ def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
             and execution_available
         ):
             raise ValueError("manager decision lifecycle/execution mismatch")
+        action_execution = (
+            execution.get("world_model_action_execution")
+            if isinstance(execution, Mapping) else None
+        )
+        if action_execution is not None:
+            validate_world_model_action_execution(action_execution)
         expected_trace = _advisor_execution_trace(
             support if isinstance(support, Mapping) else {},
             decision_identity=str(entry.get("decision_identity") or ""),
@@ -679,6 +753,9 @@ def validate_manager_decision_ledger(ledger: Mapping[str, Any]) -> None:
         "world_model_future_reviews": world_model_future_review_summary(entries),
         "world_model_future_review_execution": (
             world_model_future_review_execution_summary(entries)
+        ),
+        "world_model_official_action_execution": (
+            world_model_official_action_execution_summary(entries)
         ),
     }
     if dict(summary) != expected_summary:
@@ -902,6 +979,9 @@ def build_manager_decision_ledger(
             "world_model_future_review_execution": (
                 world_model_future_review_execution_summary(entries)
             ),
+            "world_model_official_action_execution": (
+                world_model_official_action_execution_summary(entries)
+            ),
         },
         "claim_boundary": _BOUNDARY,
     }
@@ -915,4 +995,5 @@ __all__ = [
     "validate_manager_decision_ledger", "world_model_advisor_summary",
     "world_model_future_review_summary",
     "world_model_future_review_execution_summary",
+    "world_model_official_action_execution_summary",
 ]
