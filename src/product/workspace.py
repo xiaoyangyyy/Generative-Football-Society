@@ -180,6 +180,7 @@ PRODUCT_MODES = ("stable", "research", "cognitive")
 ACTIVE_RUN_STATES = {"running", "finalizing"}
 MODE_ENVIRONMENT = {
     "stable": {
+        "MATCH_AUTHORITATIVE_TICK_CLOCK": "1",
         "MATCH_WORLD_MODEL": "0",
         "MATCH_WM_PLAN": "0",
         "MATCH_WORLD_MODEL_REQUIRED": "0",
@@ -189,6 +190,7 @@ MODE_ENVIRONMENT = {
         "MATCH_BALL_LOG_TXT": "0",
     },
     "research": {
+        "MATCH_AUTHORITATIVE_TICK_CLOCK": "1",
         "MATCH_WORLD_MODEL": "1",
         "MATCH_WM_PLAN": "1",
         "MATCH_WORLD_MODEL_REQUIRED": "1",
@@ -199,6 +201,7 @@ MODE_ENVIRONMENT = {
         "MATCH_WM_CHECKPOINT": "data/world_model/latent_wm_rollout_calibrated_candidate.pt",
     },
     "cognitive": {
+        "MATCH_AUTHORITATIVE_TICK_CLOCK": "1",
         "MATCH_WORLD_MODEL": "1",
         "MATCH_WM_PLAN": "1",
         "MATCH_WORLD_MODEL_REQUIRED": "1",
@@ -5452,6 +5455,7 @@ class ProductWorkspace:
                 },
             },
             "timeline": raw.get("timeline_snippet") or [],
+            "simulation_clock": raw.get("simulation_clock") or {},
             "replay": replay,
             "artifacts": {"ball_log": ball_log_reference},
             "evidence_snapshot": evidence_snapshot,
@@ -5468,6 +5472,10 @@ class ProductWorkspace:
             and not bool((raw.get("world_model_branch_anchor") or {}).get("available"))
         ):
             integrity_blockers.append("world_model_branch_anchor_missing")
+        if not bool((raw.get("simulation_clock") or {}).get(
+            "authoritative_tick_clock"
+        )):
+            integrity_blockers.append("authoritative_product_clock_not_observed")
         expected_runtime_signature = "sha256:" + str(
             evidence_snapshot.get("world_model_checkpoint_sha256") or ""
         )

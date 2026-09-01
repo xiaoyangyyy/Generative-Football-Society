@@ -1510,3 +1510,36 @@ persists seconds in WorldModelForkPlan, and includes branch verification in
 the bounded task/evidence digest. This stage changes code and product
 evidence only: it does not train a model, execute the sealed formal protocol,
 call an external provider, or revise the existing research-only M1 decision.
+
+## 58. V3.40 Versioned authoritative product clock
+
+The in-match fork audit exposed a pre-existing clock ownership ambiguity. The
+micro runner assigned the end of a tick before calling the affective engine,
+while the affective engine also advanced state.clock_seconds by dt. The
+result was a one-tick offset for actions, cooldowns, world-model observations
+and logs whenever affective dynamics were active; disabled affective dynamics
+followed a different clock path.
+
+Studio now explicitly sets MATCH_AUTHORITATIVE_TICK_CLOCK=1. Under the
+authoritative_tick_v2 contract, the runner presents the start of the interval
+to integration, then normalizes the state to the exact interval end before
+manager rules, action sampling, adoption records, cognitive processing and
+world-model completion. Thus a 30-second fast run exposes action boundaries at
+30, 60, 90 and 120 seconds, and a policy scheduled for 60 seconds is disabled
+at 30 and enabled at 60. Each match report stores both the logical duration and
+final state clock. Studio integrity fails closed if this contract is missing.
+
+The legacy path remains legacy_affective_offset_v1 when the explicit product
+environment flag is absent. This is deliberate compatibility, not endorsement:
+the completed frozen studies did not bind the micro runner in their historical
+code-identity list, so globally changing their runtime semantics or rewriting
+their stored hashes would be scientifically misleading. New Studio product
+runs use V2, while prior sealed results retain their original interpretation
+and research-only decision. A future confirmatory protocol must bind the clock
+contract and runner identity before collecting new evidence.
+
+The branch hash includes the clock contract, and paired attribution additionally
+requires both reports to declare authoritative_tick_v2. Single-match reports,
+the comparison dashboard and Evidence Library show the branch minute and clock
+or prefix-identity evidence. This stage executes no training, formal study or
+external provider call.

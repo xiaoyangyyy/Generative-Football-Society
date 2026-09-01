@@ -235,9 +235,14 @@ def test_world_model_fork_report_exposes_policy_and_pairing_boundary():
         "home_tactic": "balanced",
         "away_tactic": "balanced",
         "world_model_policy": "action_policy",
+        "world_model_branch_at_sec": 2700.0,
         "reuse_last_seed": True,
         "score_path": "physics_official",
         "paired_baseline_match_id": "fork-baseline-001",
+    }
+    report["simulation_clock"] = {
+        "contract": "authoritative_tick_v2",
+        "authoritative_tick_clock": True,
     }
 
     document = render_match_html(report)
@@ -246,6 +251,9 @@ def test_world_model_fork_report_exposes_policy_and_pairing_boundary():
     assert "世界模型因果分叉" in document
     assert "干预：质量门控动作策略" in document
     assert "seed 91" in document
+    assert "Branch minute" in document and "45" in document
+    assert "Clock contract" in document
+    assert "authoritative_tick_v2" in document
     assert "全部资格检查通过" in document
     assert "模拟器内动作策略开关" in document
 

@@ -296,6 +296,7 @@ class MicroMatchSummary:
     world_model_action_adoption: Dict[str, Any] = field(default_factory=dict)
     world_model_branch_anchor: Dict[str, Any] = field(default_factory=dict)
     world_model_runtime: Dict[str, Any] = field(default_factory=dict)
+    simulation_clock: Dict[str, Any] = field(default_factory=dict)
     continuity_state: Dict[str, Any] = field(default_factory=dict)
     manager_effects: Dict[str, Any] = field(default_factory=dict)
     in_match_management: Dict[str, Any] = field(default_factory=dict)

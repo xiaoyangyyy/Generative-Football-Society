@@ -52,6 +52,7 @@ def _anchored_summary(seed=7):
     with environment_override({
         "MATCH_WORLD_MODEL": "0",
         "MATCH_WM_BRANCH_AT_SEC": "60",
+        "MATCH_AUTHORITATIVE_TICK_CLOCK": "1",
     }):
         return run_match_micro_simulation(
             _FakeAgent("Brazil"), _FakeAgent("Argentina"),
@@ -67,6 +68,12 @@ def test_deterministic_replay_produces_identical_pre_intervention_anchor():
     assert left.world_model_branch_anchor["available"]
     assert left.world_model_branch_anchor["requested_sec"] == 60.0
     assert left.world_model_branch_anchor["actual_sec"] == 60.0
+    assert left.world_model_branch_anchor["engine_state_clock_sec"] == 60.0
+    assert left.world_model_branch_anchor["clock_contract"] == (
+        "authoritative_tick_v2"
+    )
+    assert left.simulation_clock["authoritative_tick_clock"]
+    assert left.simulation_clock["final_state_clock_sec"] == 120.0
     assert left.world_model_branch_anchor["resume_capability"] == (
         "deterministic_replay_only"
     )
@@ -79,3 +86,42 @@ def test_different_seed_changes_branch_identity():
     assert _anchored_summary(7).world_model_branch_anchor["state_identity"] != (
         _anchored_summary(8).world_model_branch_anchor["state_identity"]
     )
+
+
+def test_runner_exposes_exact_tick_clock_and_delayed_policy_to_actions(
+    monkeypatch, tmp_path,
+):
+    observed = []
+
+    def record_action_boundary(**kwargs):
+        observed.append((
+            float(kwargs["state"].clock_seconds),
+            world_model_plan_enabled(),
+        ))
+
+    monkeypatch.setattr(
+        "src.match_engine.match_micro_runner._execute_tick_actions",
+        record_action_boundary,
+    )
+    with environment_override({
+        "MATCH_WORLD_MODEL": "1",
+        "MATCH_WORLD_MODEL_REQUIRED": "0",
+        "MATCH_WM_CHECKPOINT": str(tmp_path / "missing.pt"),
+        "MATCH_WM_PLAN": "1",
+        "MATCH_WM_PLAN_START_SEC": "60",
+        "MATCH_WM_BRANCH_AT_SEC": "60",
+        "MATCH_AUTHORITATIVE_TICK_CLOCK": "1",
+    }):
+        summary = run_match_micro_simulation(
+            _FakeAgent("Brazil"), _FakeAgent("Argentina"),
+            goals_home=0, goals_away=0, xg_home=1.0, xg_away=0.8,
+            config=MicroMatchConfig.fast_demo(), seed=9,
+            writeback_agents=False, match_seconds=120.0,
+            base_dir=tmp_path,
+        )
+    assert observed == [
+        (30.0, False), (60.0, True), (90.0, True), (120.0, True),
+    ]
+    assert summary.world_model_branch_anchor["actual_sec"] == 60.0
+    assert summary.simulation_clock["final_logical_sec"] == 120.0
+    assert summary.simulation_clock["final_state_clock_sec"] == 120.0

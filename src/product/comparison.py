@@ -593,6 +593,14 @@ def build_paired_comparison(
     }
     if branch_requested:
         checks["same_pre_intervention_branch_anchor"] = same_branch_anchor
+        baseline_clock = baseline.get("simulation_clock") or {}
+        treatment_clock = treatment.get("simulation_clock") or {}
+        checks["same_authoritative_product_clock"] = (
+            baseline_clock.get("contract") == "authoritative_tick_v2"
+            and treatment_clock.get("contract") == "authoritative_tick_v2"
+            and bool(baseline_clock.get("authoritative_tick_clock"))
+            and bool(treatment_clock.get("authoritative_tick_clock"))
+        )
     eligible = all(checks.values())
     metrics: dict[str, dict[str, float | None]] = {}
     for metric, path in METRICS:

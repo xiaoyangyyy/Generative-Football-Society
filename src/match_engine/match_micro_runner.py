@@ -558,6 +558,7 @@ def _build_micro_match_summary(
     state, cfg, passing, shots, aerial, player_tracker,
     cognitive_bus, cognitive_executor, continuous_clock, subtick_queue,
     wm_runtime, manager_runtimes, tactical_execution, branch_anchor,
+    clock_contract, logical_duration,
     packets, timeline, n_ticks, strictness_sum, poss_home_ticks,
     phi_sum_h, phi_sum_a, emo_home, emo_away, eff_h, eff_a,
     final_gh, final_ga, physics_gh, physics_ga, xg_supplement_meta,
@@ -685,6 +686,15 @@ def _build_micro_match_summary(
         world_model_decision_adoption=decision_adoption_diagnostics(state),
         world_model_action_adoption=direct_action_adoption_diagnostics(state),
         world_model_branch_anchor=branch_anchor,
+        simulation_clock={
+            "schema_version": 1,
+            "contract": clock_contract,
+            "authoritative_tick_clock": (
+                clock_contract == "authoritative_tick_v2"
+            ),
+            "final_logical_sec": float(logical_duration),
+            "final_state_clock_sec": float(state.clock_seconds),
+        },
         world_model_runtime={
             "loaded": wm_runtime is not None,
             "checkpoint_signature": (
@@ -1167,8 +1177,16 @@ def run_match_micro_simulation(
     state._wm_recorder = wm_recorder
     wm_cfg = wm_runtime.cfg if wm_runtime is not None else None
     from src.match_engine.world_model.config import world_model_branch_at_sec
+    from src.simulation.runtime import environment_snapshot, env_bool
 
     branch_at_sec = world_model_branch_at_sec()
+    authoritative_clock = env_bool(
+        environment_snapshot(), "MATCH_AUTHORITATIVE_TICK_CLOCK", False,
+    )
+    clock_contract = (
+        "authoritative_tick_v2" if authoritative_clock
+        else "legacy_affective_offset_v1"
+    )
     branch_anchor: Dict[str, Any] = {
         "schema_version": 1,
         "available": False,
@@ -1179,7 +1197,7 @@ def run_match_micro_simulation(
     for tick in range(n_ticks):
         t0 = tick * dt
         t1 = t0 + dt
-        state.clock_seconds = t1
+        state.clock_seconds = t0 if authoritative_clock else t1
         _begin_world_model_tick(
             state, dt=dt, wm_recorder=wm_recorder,
             wm_runtime=wm_runtime, wm_cfg=wm_cfg,
@@ -1195,6 +1213,8 @@ def run_match_micro_simulation(
             xg_swing_home=xg_swing_home, referee_strictness=ref_strict,
             drama_score=drama_score, aerial=aerial, rng=rng,
         )
+        if authoritative_clock:
+            state.clock_seconds = t1
         for runtime in manager_runtimes.values():
             timeline.extend(runtime.step(
                 state, clock_sec=t1, tracker=player_tracker,
@@ -1215,7 +1235,8 @@ def run_match_micro_simulation(
             from src.match_engine.branch_anchor import capture_branch_anchor
 
             branch_anchor = capture_branch_anchor(
-                state, rng, requested_sec=branch_at_sec, actual_sec=t1, tick=tick,
+                state, rng, requested_sec=branch_at_sec, actual_sec=t1,
+                clock_contract=clock_contract, tick=tick,
                 event_cursor=ev_idx, passing=passing, shots=shots,
                 aerial=aerial, player_tracker=player_tracker,
                 continuous_clock=continuous_clock, subtick_queue=subtick_queue,
@@ -1276,6 +1297,7 @@ def run_match_micro_simulation(
         continuous_clock=continuous_clock, subtick_queue=subtick_queue,
         wm_runtime=wm_runtime, manager_runtimes=manager_runtimes,
         tactical_execution=tactical_execution, branch_anchor=branch_anchor,
+        clock_contract=clock_contract, logical_duration=duration,
         packets=packets, timeline=timeline, n_ticks=n_ticks,
         strictness_sum=strictness_sum, poss_home_ticks=poss_home_ticks,
         phi_sum_h=phi_sum_h, phi_sum_a=phi_sum_a,

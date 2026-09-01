@@ -268,6 +268,10 @@ def test_world_model_fork_requires_identical_declared_branch_anchor():
             "actual_sec": 2700.0,
             "state_identity": "a" * 64,
         }
+        report["simulation_clock"] = {
+            "contract": "authoritative_tick_v2",
+            "authoritative_tick_clock": True,
+        }
     comparison = build_paired_comparison(baseline, treatment)
     assert comparison["eligibility"][
         "eligible_for_world_model_policy_attribution"
@@ -282,6 +286,21 @@ def test_world_model_fork_requires_identical_declared_branch_anchor():
         "eligible_for_world_model_policy_attribution"
     ]
     assert "same_pre_intervention_branch_anchor" in comparison[
+        "eligibility"
+    ]["failed_checks"]
+
+    treatment["layers"]["world_model"]["branch_anchor"][
+        "state_identity"
+    ] = "a" * 64
+    treatment["simulation_clock"] = {
+        "contract": "legacy_affective_offset_v1",
+        "authoritative_tick_clock": False,
+    }
+    comparison = build_paired_comparison(baseline, treatment)
+    assert not comparison["eligibility"][
+        "eligible_for_world_model_policy_attribution"
+    ]
+    assert "same_authoritative_product_clock" in comparison[
         "eligibility"
     ]["failed_checks"]
 

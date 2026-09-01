@@ -77,6 +77,11 @@ def test_root_is_accessible_and_hardened(tmp_path):
     capabilities = _request(
         ProductWebApp(tmp_path), path="/api/v1/studio"
     )["json"]["match_capabilities"]
+    assert capabilities["simulation_clock"] == {
+        "contract": "authoritative_tick_v2",
+        "legacy_contract": "legacy_affective_offset_v1",
+        "studio_requires_authoritative": True,
+    }
     assert capabilities["paired_match"] == {
         "modes": ["research", "cognitive"],
         "seed": "explicit_shared_seed",
@@ -91,8 +96,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
             "branch_time_seconds": {"min": 0, "max": 5400, "default": 2700},
             "branch_execution": "identity_bound_deterministic_replay",
             "resume_capability": "deterministic_replay_only",
+            "clock_contract": "authoritative_tick_v2",
             "fixed_controls": [
                 "fixture", "tactics", "fast_configuration", "checkpoint",
+                "clock_contract",
             ],
             "score_path": "physics_official",
             "evidence_chain": [
@@ -112,6 +119,8 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-world-model-advice"' in document
     assert 'id="request-manager-advice"' in document
     assert 'id="adopt-manager-advice"' in document
+    assert "前缀锚点" in document
+    assert "确定性重放（非进程快照）" in document
     assert "/api/v1/seasons/decision-advice" in document
     assert "payload.advice_adoption=" in document
     assert "建议、经理选择和赛果分别取证" in document

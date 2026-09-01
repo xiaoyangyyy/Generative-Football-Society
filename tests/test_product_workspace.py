@@ -266,6 +266,13 @@ class _Summary:
             "shot_probability_source": "physics_xg_prior",
         }
     )
+    simulation_clock: dict = field(default_factory=lambda: {
+        "schema_version": 1,
+        "contract": "authoritative_tick_v2",
+        "authoritative_tick_clock": True,
+        "final_logical_sec": 5400.0,
+        "final_state_clock_sec": 5400.0,
+    })
     cognitive_triggers: list = field(default_factory=list)
     cognitive_plans: list = field(default_factory=list)
     cognitive_tier_usage: dict = field(default_factory=dict)
@@ -485,6 +492,22 @@ def test_report_rejects_runtime_checkpoint_identity_mismatch(tmp_path, monkeypat
     report = workspace.run_match("Brazil", "Argentina", fast=True)
     assert not report["integrity"]["accepted"]
     assert "world_model_runtime_identity_mismatch" in report["integrity"]["blockers"]
+
+
+def test_report_rejects_missing_authoritative_product_clock(tmp_path, monkeypatch):
+    _evidence(tmp_path)
+    workspace = ProductWorkspace.create(tmp_path, StudioConfig(mode="research"))
+    from src import app
+
+    monkeypatch.setattr(
+        app, "run_micro_match",
+        lambda *args, **kwargs: _Summary(simulation_clock={}),
+    )
+    report = workspace.run_match("Brazil", "Argentina", fast=True)
+    assert not report["integrity"]["accepted"]
+    assert "authoritative_product_clock_not_observed" in (
+        report["integrity"]["blockers"]
+    )
 
 
 def test_accepted_shot_head_requires_exact_promoted_artifact_identity(tmp_path):

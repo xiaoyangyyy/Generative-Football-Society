@@ -47,6 +47,16 @@ def _finite_float(value: Any, default: float = 0.0) -> float:
     return number if math.isfinite(number) else default
 
 
+def _optional_finite_float(value: Any) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
 def _dominant_model_action(record: Mapping[str, Any]) -> str:
     adjustments = record.get("model_adjustments") or {}
     if not isinstance(adjustments, Mapping):
@@ -296,6 +306,10 @@ def _match_plan_panel(report: Mapping[str, Any]) -> str:
     world_model_policy = str(
         plan.get("world_model_policy") or "mode_default"
     )
+    branch_at_sec = _optional_finite_float(
+        plan.get("world_model_branch_at_sec")
+    )
+    simulation_clock = report.get("simulation_clock") or {}
 
     def tactic_label(value: str) -> str:
         metadata = PLAYABLE_TACTICS.get(value) or {}
@@ -333,6 +347,17 @@ def _match_plan_panel(report: Mapping[str, Any]) -> str:
             '<div><span class="label">世界模型策略</span><strong>'
             f'{html.escape(policy_label)}</strong></div>'
         )
+        if branch_at_sec is not None:
+            branch_minute = branch_at_sec / 60.0
+            clock_contract = str(
+                simulation_clock.get("contract") or "not reported"
+            )
+            policy_card += (
+                '<div><span class="label">Branch minute</span><strong>'
+                f'{branch_minute:g}</strong></div>'
+                '<div><span class="label">Clock contract</span><strong>'
+                f'{html.escape(clock_contract)}</strong></div>'
+            )
     elif experience == "tactical_lab":
         inference = (
             f"已复用同对阵随机条件（基线 {paired_baseline or '未记录'}）；"
