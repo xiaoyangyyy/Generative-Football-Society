@@ -25,6 +25,23 @@ _LIFECYCLE_STATES = {
     "executed_with_direct_evidence",
     "executed_evidence_unavailable",
 }
+_ACTION_EVIDENCE_STATES = {
+    "locally_attributable_action_changes_observed",
+    "probability_influence_without_realized_action_change",
+    "no_nonzero_action_influence_observed",
+}
+_COMPLETED_ACTION_STATES = _ACTION_EVIDENCE_STATES | {
+    "not_applicable_stable_mode",
+    "legacy_evidence_unavailable",
+    "action_evidence_unavailable",
+}
+_ACTION_ADOPTION_STATE_ORDER = (
+    "realized_action_change",
+    "probability_influence_only",
+    "no_nonzero_influence",
+    "not_applicable_stable_mode",
+    "evidence_unavailable",
+)
 _BOUNDARY = (
     "navigation over the current manager intervention session and replayable "
     "completed simulator-world chapters only; navigation state is not an "
@@ -163,7 +180,23 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     observed = observed if isinstance(observed, Mapping) else {}
     action = stage_by_id["official_world_model_actions"]
     persistent = stage_by_id["persistent_world_state"]
-    local_changes = action.get("locally_attributable_action_changes", 0)
+    action_count_fields = (
+        "retained_records",
+        "resolved_action_decisions",
+        "influenced_decisions",
+        "attribution_eligible_decisions",
+        "locally_attributable_action_changes",
+        "direct_ball_event_links",
+        "changed_direct_ball_event_links",
+        "decision_only_no_trajectory",
+        "unresolved_ball_event_links",
+        "source_match_opportunities",
+    )
+    action_counts = {
+        field: action.get(field, 0) for field in action_count_fields
+    }
+    local_changes = action_counts["locally_attributable_action_changes"]
+    action_status = action.get("status")
     action_source_identity = action.get("source_identity")
     transition_identity = persistent.get("source_identity")
     gaps = thread.get("continuity_gaps")
@@ -172,9 +205,43 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         isinstance(matchday, bool)
         or not isinstance(matchday, int)
         or matchday < 1
-        or isinstance(local_changes, bool)
-        or not isinstance(local_changes, int)
-        or local_changes < 0
+        or any(
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value < 0
+            for value in action_counts.values()
+        )
+        or not isinstance(action.get("manager_record_coverage_complete"), bool)
+        or not isinstance(action.get("source_records_truncated"), bool)
+        or (
+            action_status in _ACTION_EVIDENCE_STATES
+            and action.get("manager_record_coverage_complete") is not (
+                not action.get("source_records_truncated")
+            )
+        )
+        or action_counts["influenced_decisions"]
+        > action_counts["retained_records"]
+        or action_counts["locally_attributable_action_changes"]
+        > action_counts["attribution_eligible_decisions"]
+        or action_counts["locally_attributable_action_changes"]
+        > action_counts["influenced_decisions"]
+        or action_counts["attribution_eligible_decisions"]
+        > action_counts["retained_records"]
+        or action_counts["resolved_action_decisions"]
+        > action_counts["retained_records"]
+        or action_counts["direct_ball_event_links"]
+        > action_counts["retained_records"]
+        or action_counts["changed_direct_ball_event_links"] > min(
+            action_counts["direct_ball_event_links"], local_changes,
+        )
+        or (
+            action_counts["direct_ball_event_links"]
+            + action_counts["decision_only_no_trajectory"]
+            + action_counts["unresolved_ball_event_links"]
+            != action_counts["retained_records"]
+        )
+        or action_counts["retained_records"]
+        > action_counts["source_match_opportunities"]
         or (
             action_source_identity is not None
             and not _is_identity(action_source_identity)
@@ -188,6 +255,45 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         or len(gaps) != len(set(gaps))
     ):
         raise ValueError("manager world navigator chapter facts are invalid")
+    if action_status == "locally_attributable_action_changes_observed":
+        adoption_state = "realized_action_change"
+    elif action_status == "probability_influence_without_realized_action_change":
+        adoption_state = "probability_influence_only"
+    elif action_status == "no_nonzero_action_influence_observed":
+        adoption_state = "no_nonzero_influence"
+    elif action_status == "not_applicable_stable_mode":
+        adoption_state = "not_applicable_stable_mode"
+    else:
+        adoption_state = "evidence_unavailable"
+    if (
+        action_status not in _COMPLETED_ACTION_STATES
+        or (action_status in _ACTION_EVIDENCE_STATES)
+        is not (action_source_identity is not None)
+        or (
+            action_status not in _ACTION_EVIDENCE_STATES
+            and (
+                any(action_counts.values())
+                or action.get("manager_record_coverage_complete") is not False
+                or action.get("source_records_truncated") is not False
+            )
+        )
+        or (
+            action_status == "locally_attributable_action_changes_observed"
+            and local_changes < 1
+        )
+        or (
+            action_status == "probability_influence_without_realized_action_change"
+            and (
+                action_counts["influenced_decisions"] < 1
+                or local_changes != 0
+            )
+        )
+        or (
+            action_status == "no_nonzero_action_influence_observed"
+            and action_counts["influenced_decisions"] != 0
+        )
+    ):
+        raise ValueError("manager world navigator action adoption is invalid")
     payload = {
         "fixture_id": entry.get("fixture_id"),
         "matchday": matchday,
@@ -215,6 +321,16 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         "score": copy.deepcopy(observed.get("score")),
         "outcome": observed.get("outcome"),
         "locally_attributable_action_changes": local_changes,
+        "action_adoption": {
+            "state": adoption_state,
+            **copy.deepcopy(action_counts),
+            "manager_record_coverage_complete": action.get(
+                "manager_record_coverage_complete"
+            ),
+            "source_records_truncated": action.get(
+                "source_records_truncated"
+            ),
+        },
         "official_action_evidence_identity": action_source_identity,
         "persistent_transition_identity": transition_identity,
         "continuity_gaps": copy.deepcopy(gaps),
@@ -329,6 +445,89 @@ def build_manager_world_navigator(
             for row in all_chapters
         ),
     }
+    adoption_totals = {
+        field: sum(
+            row["action_adoption"][field] for row in all_chapters
+        )
+        for field in (
+            "retained_records",
+            "resolved_action_decisions",
+            "influenced_decisions",
+            "attribution_eligible_decisions",
+            "locally_attributable_action_changes",
+            "direct_ball_event_links",
+            "changed_direct_ball_event_links",
+            "decision_only_no_trajectory",
+            "unresolved_ball_event_links",
+            "source_match_opportunities",
+        )
+    }
+    adoption_state_facts: dict[str, dict[str, Any]] = {}
+    for chapter in all_chapters:
+        state = chapter["action_adoption"]["state"]
+        facts = adoption_state_facts.setdefault(state, {
+            "chapters": 0,
+            "latest_fixture_id": None,
+            "latest_matchday": 0,
+            "latest_chapter_identity": None,
+        })
+        facts["chapters"] += 1
+        current_key = (
+            facts["latest_matchday"], str(facts["latest_fixture_id"] or ""),
+        )
+        chapter_key = (chapter["matchday"], chapter["fixture_id"])
+        if chapter_key > current_key:
+            facts["latest_fixture_id"] = chapter["fixture_id"]
+            facts["latest_matchday"] = chapter["matchday"]
+            facts["latest_chapter_identity"] = chapter["chapter_identity"]
+    action_adoption_ledger = {
+        "fixtures_with_action_evidence": sum(
+            row["official_action_evidence_identity"] is not None
+            for row in all_chapters
+        ),
+        "fixtures_with_complete_record_coverage": sum(
+            row["official_action_evidence_identity"] is not None
+            and row["action_adoption"]["manager_record_coverage_complete"]
+            for row in all_chapters
+        ),
+        "fixtures_with_incomplete_record_coverage": sum(
+            row["official_action_evidence_identity"] is not None
+            and not row["action_adoption"]["manager_record_coverage_complete"]
+            for row in all_chapters
+        ),
+        **adoption_totals,
+        "influence_rate": (
+            round(
+                adoption_totals["influenced_decisions"]
+                / adoption_totals["retained_records"], 6,
+            )
+            if adoption_totals["retained_records"] else None
+        ),
+        "realized_change_rate_among_influenced": (
+            round(
+                adoption_totals["locally_attributable_action_changes"]
+                / adoption_totals["influenced_decisions"], 6,
+            )
+            if adoption_totals["influenced_decisions"] else None
+        ),
+        "direct_ball_event_link_coverage": (
+            round(
+                adoption_totals["direct_ball_event_links"] / (
+                    adoption_totals["direct_ball_event_links"]
+                    + adoption_totals["unresolved_ball_event_links"]
+                ), 6,
+            )
+            if (
+                adoption_totals["direct_ball_event_links"]
+                + adoption_totals["unresolved_ball_event_links"]
+            ) else None
+        ),
+        "state_counts": [
+            {"state": state, **adoption_state_facts[state]}
+            for state in _ACTION_ADOPTION_STATE_ORDER
+            if state in adoption_state_facts
+        ],
+    }
     gap_facts: dict[str, dict[str, Any]] = {}
     for chapter in all_chapters:
         for gap in chapter["continuity_gaps"]:
@@ -390,6 +589,7 @@ def build_manager_world_navigator(
             bool(row["continuity_gaps"]) for row in chapters
         ),
         "world_model_influence_path": influence_path,
+        "world_model_action_adoption_ledger": action_adoption_ledger,
     }
     payload = {
         "schema_version": SCHEMA_VERSION,

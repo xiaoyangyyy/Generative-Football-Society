@@ -29,10 +29,16 @@ def _entry(*, action_available=True, stable=False, review_linked=True):
             "evidence_identity": "e" * 64,
             "retained_record_evidence": {
                 "records": 4,
+                "resolved_action_decisions": 4,
                 "influenced_decisions": 3,
+                "attribution_eligible_decisions": 3,
                 "locally_attributable_action_changes": 2,
                 "direct_ball_event_links": 2,
+                "changed_direct_ball_event_links": 2,
+                "decision_only_no_trajectory": 1,
                 "unresolved_or_missing_ball_event_links": 1,
+                "source_match_opportunities": 4,
+                "source_records_truncated": False,
                 "manager_record_coverage_complete": True,
             },
         }

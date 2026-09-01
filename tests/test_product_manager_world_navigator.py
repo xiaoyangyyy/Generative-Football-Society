@@ -40,7 +40,18 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
         _stage(
             "official_world_model_actions",
             "locally_attributable_action_changes_observed",
+            retained_records=4,
+            resolved_action_decisions=4,
+            influenced_decisions=3,
+            attribution_eligible_decisions=3,
             locally_attributable_action_changes=2,
+            direct_ball_event_links=2,
+            changed_direct_ball_event_links=2,
+            decision_only_no_trajectory=1,
+            unresolved_ball_event_links=1,
+            source_match_opportunities=4,
+            source_records_truncated=False,
+            manager_record_coverage_complete=True,
             source_identity="e" * 64,
         ),
         _stage("observed_match_result", "observed_descriptive"),
@@ -146,6 +157,24 @@ def _season(workflow_state="evidence_ready_for_review", entries=None):
     }
 
 
+def _rewrite_action(entry, status, *, source=True, **facts):
+    action = next(
+        row for row in entry["world_evolution_thread"]["stages"]
+        if row["stage_id"] == "official_world_model_actions"
+    )
+    action["status"] = status
+    action["source_identity"] = "e" * 64 if source else None
+    action.update(facts)
+    action.pop("stage_identity")
+    action["stage_identity"] = _identity(action)
+    thread = entry["world_evolution_thread"]
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+    return entry
+
+
 def test_navigator_joins_current_review_and_completed_world_chapters():
     season = _season(entries=[
         _entry(1),
@@ -197,6 +226,33 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
             "chapters_with_local_action_changes": 2,
             "persistent_world_transitions": 2,
             "complete_world_model_runtime_chains": 2,
+        },
+        "world_model_action_adoption_ledger": {
+            "fixtures_with_action_evidence": 2,
+            "fixtures_with_complete_record_coverage": 2,
+            "fixtures_with_incomplete_record_coverage": 0,
+            "retained_records": 8,
+            "resolved_action_decisions": 8,
+            "influenced_decisions": 6,
+            "attribution_eligible_decisions": 6,
+            "locally_attributable_action_changes": 4,
+            "direct_ball_event_links": 4,
+            "changed_direct_ball_event_links": 4,
+            "decision_only_no_trajectory": 2,
+            "unresolved_ball_event_links": 2,
+            "source_match_opportunities": 8,
+            "influence_rate": 0.75,
+            "realized_change_rate_among_influenced": 0.666667,
+            "direct_ball_event_link_coverage": 0.666667,
+            "state_counts": [{
+                "state": "realized_action_change",
+                "chapters": 2,
+                "latest_fixture_id": "md02-fx01",
+                "latest_matchday": 2,
+                "latest_chapter_identity": navigator["history_chapters"][0][
+                    "chapter_identity"
+                ],
+            }],
         },
     }
     assert navigator["causal_effect_authorized"] is False
@@ -349,6 +405,106 @@ def test_gap_diagnostics_count_chapters_and_sort_deterministically():
             "latest_chapter_identity": identities["md01-fx01"],
         },
     ]
+
+
+def test_action_adoption_ledger_distinguishes_probability_and_realized_states():
+    probability_only = _rewrite_action(
+        _entry(2),
+        "probability_influence_without_realized_action_change",
+        locally_attributable_action_changes=0,
+        changed_direct_ball_event_links=0,
+        source_records_truncated=True,
+        manager_record_coverage_complete=False,
+    )
+    no_influence = _rewrite_action(
+        _entry(3),
+        "no_nonzero_action_influence_observed",
+        influenced_decisions=0,
+        locally_attributable_action_changes=0,
+        changed_direct_ball_event_links=0,
+    )
+    unavailable = _rewrite_action(
+        _entry(4), "action_evidence_unavailable", source=False,
+        retained_records=0,
+        resolved_action_decisions=0,
+        influenced_decisions=0,
+        attribution_eligible_decisions=0,
+        locally_attributable_action_changes=0,
+        direct_ball_event_links=0,
+        changed_direct_ball_event_links=0,
+        decision_only_no_trajectory=0,
+        unresolved_ball_event_links=0,
+        source_match_opportunities=0,
+        source_records_truncated=False,
+        manager_record_coverage_complete=False,
+    )
+    navigator = build_manager_world_navigator(_season(entries=[
+        _entry(1), probability_only, no_influence, unavailable,
+    ]))
+
+    ledger = navigator["summary"]["world_model_action_adoption_ledger"]
+    assert ledger["fixtures_with_action_evidence"] == 3
+    assert ledger["fixtures_with_complete_record_coverage"] == 2
+    assert ledger["fixtures_with_incomplete_record_coverage"] == 1
+    assert ledger["retained_records"] == 12
+    assert ledger["influenced_decisions"] == 6
+    assert ledger["locally_attributable_action_changes"] == 2
+    assert ledger["influence_rate"] == 0.5
+    assert ledger["realized_change_rate_among_influenced"] == 0.333333
+    assert [row["state"] for row in ledger["state_counts"]] == [
+        "realized_action_change",
+        "probability_influence_only",
+        "no_nonzero_influence",
+        "evidence_unavailable",
+    ]
+    assert all(
+        row["latest_chapter_identity"] in {
+            chapter["chapter_identity"]
+            for chapter in navigator["history_chapters"]
+        }
+        for row in ledger["state_counts"]
+    )
+
+
+def test_invalid_action_adoption_partition_and_status_fail_closed_when_rehashed():
+    invalid_partition = _rewrite_action(
+        _entry(1),
+        "locally_attributable_action_changes_observed",
+        direct_ball_event_links=3,
+    )
+    with pytest.raises(ValueError, match="chapter facts"):
+        build_manager_world_navigator(_season(entries=[invalid_partition]))
+
+    contradictory_status = _rewrite_action(
+        _entry(2),
+        "probability_influence_without_realized_action_change",
+    )
+    with pytest.raises(ValueError, match="action adoption"):
+        build_manager_world_navigator(_season(entries=[contradictory_status]))
+
+    unknown_status = _rewrite_action(
+        _entry(3), "silently_adopted", source=False,
+        retained_records=0,
+        resolved_action_decisions=0,
+        influenced_decisions=0,
+        attribution_eligible_decisions=0,
+        locally_attributable_action_changes=0,
+        direct_ball_event_links=0,
+        changed_direct_ball_event_links=0,
+        decision_only_no_trajectory=0,
+        unresolved_ball_event_links=0,
+        source_match_opportunities=0,
+        source_records_truncated=False,
+        manager_record_coverage_complete=False,
+    )
+    with pytest.raises(ValueError, match="action adoption"):
+        build_manager_world_navigator(_season(entries=[unknown_status]))
+
+    unavailable_with_counts = _rewrite_action(
+        _entry(4), "action_evidence_unavailable", source=False,
+    )
+    with pytest.raises(ValueError, match="action adoption"):
+        build_manager_world_navigator(_season(entries=[unavailable_with_counts]))
 
 
 def test_duplicate_historical_gap_fails_closed():

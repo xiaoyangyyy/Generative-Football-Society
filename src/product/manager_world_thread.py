@@ -130,8 +130,14 @@ def build_manager_world_evolution_thread(
         match_id=action.get("match_id"),
         team=action.get("team"),
         retained_records=int(action_counts.get("records") or 0),
+        resolved_action_decisions=int(
+            action_counts.get("resolved_action_decisions") or 0
+        ),
         influenced_decisions=int(
             action_counts.get("influenced_decisions") or 0
+        ),
+        attribution_eligible_decisions=int(
+            action_counts.get("attribution_eligible_decisions") or 0
         ),
         locally_attributable_action_changes=int(
             action_counts.get("locally_attributable_action_changes") or 0
@@ -139,8 +145,20 @@ def build_manager_world_evolution_thread(
         direct_ball_event_links=int(
             action_counts.get("direct_ball_event_links") or 0
         ),
+        changed_direct_ball_event_links=int(
+            action_counts.get("changed_direct_ball_event_links") or 0
+        ),
+        decision_only_no_trajectory=int(
+            action_counts.get("decision_only_no_trajectory") or 0
+        ),
         unresolved_ball_event_links=int(
             action_counts.get("unresolved_or_missing_ball_event_links") or 0
+        ),
+        source_match_opportunities=int(
+            action_counts.get("source_match_opportunities") or 0
+        ),
+        source_records_truncated=(
+            action_counts.get("source_records_truncated") is True
         ),
         manager_record_coverage_complete=(
             action_counts.get("manager_record_coverage_complete") is True

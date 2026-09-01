@@ -2155,3 +2155,50 @@ target lies outside the default recent history window.
 
 The action is read-only. It does not mutate a decision, repair a break, rerun a
 match, infer a cause, train a model or call an external provider.
+
+## 75. V3.57 Whole-season world-model action-adoption ledger
+
+The influence path established whether world-model evidence reached each
+completed fixture, but it still compressed the decisive mechanism to one
+number: local action changes. That did not reveal the denominator of retained
+manager-team decisions, how often the model changed action probabilities,
+whether a changed sample was realized, or how much evidence reached an exact
+ball-event identity. A complete chain could therefore remain legible while the
+world model's practical action adoption was still opaque.
+
+The official world-evolution thread now retains the complete bounded action
+accounting needed by the product: retained and resolved decisions,
+non-zero-probability influence, attribution-eligible decisions, locally
+attributable changes, direct and changed ball-event links, decision-only
+records, unresolved links, source opportunities and truncation state. These
+facts are copied from validated official-match evidence and sealed into the
+stage, thread, ledger entry, chapter and navigator identities. The navigator
+rejects negative or boolean counts, impossible subsets, a broken event-link
+partition, retained records beyond source opportunities, contradictory
+evidence states, and an inconsistent coverage/truncation flag even when outer
+identities have been recomputed.
+
+Every completed chapter receives one descriptive action-adoption state:
+
+- a shared-randomness local action change was realized;
+- probabilities changed but the sampled action did not;
+- no non-zero action influence was observed;
+- stable mode made the action layer inapplicable; or
+- official action evidence was unavailable.
+
+The whole-season ledger reports the authoritative record totals, evidence and
+coverage fixture counts, influence rate, realized-change rate among influenced
+decisions, and resolvable ball-event link coverage. A zero denominator remains
+`null` rather than being presented as zero performance. State rows are ordered
+canonically and bind their most recent fixture, matchday and chapter identity.
+The browser joins those bindings with the existing continuity-gap bindings and
+uses the same completed-fixture, current-identity, permalink, rebuild, expand
+and focus contract for drill-down. A stale state diagnostic therefore cannot
+open a chapter merely because its fixture identifier still exists.
+
+The account appears inside the existing season-world panel instead of creating
+a detached analytics page. It distinguishes probability influence from a
+realized action change and from event observability. These are simulator-local
+mechanism and provenance facts only: the ledger does not compare scores,
+estimate outcome effects, rank tactics, train a model, execute a match or
+authorize real-football causality.

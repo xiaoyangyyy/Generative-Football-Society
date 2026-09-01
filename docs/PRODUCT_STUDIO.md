@@ -489,3 +489,21 @@ not supported. Replay the result with:
 Evidence Center reports the mechanism and outcome layers separately. The
 product may say that M1 changes simulated actions and full-match behavior; it
 must not claim reliable outcome improvement or real-football causality.
+
+## Season world navigation and action adoption
+
+The matchday command center keeps one current intervention chapter and a
+replayable history of completed official-world chapters. Its influence path
+shows fixture-level evidence coverage, while the adjacent whole-season action
+adoption ledger exposes the underlying official manager-team decision counts:
+retained opportunities, non-zero probability influence, shared-randomness
+local action changes, exact ball-event links, unresolved links and record
+coverage. Probability influence and realized action changes are deliberately
+separate states.
+
+Each evidence-break or adoption-state diagnostic links to its most recent
+identity-bound chapter. Studio verifies the current diagnostic binding and the
+completed ledger entry before updating the season-scoped permalink, rebuilding
+the projections and expanding the complete chapter. These controls are
+read-only; none repairs evidence, reruns a match or turns mechanism
+observability into an outcome-effect claim.

@@ -228,10 +228,17 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-world-influence-path"' in document
     assert 'id="manager-world-gap-diagnostics"' in document
     assert 'id="manager-world-gap-list"' in document
+    assert 'id="manager-world-action-adoption-metrics"' in document
+    assert 'id="manager-world-action-adoption-diagnostics"' in document
+    assert 'id="manager-world-action-adoption-states"' in document
     assert "managerWorldInfluencePath.replaceChildren()" in document
     assert "managerWorldGapList.replaceChildren()" in document
     assert "summary.world_model_influence_path||{}" in document
     assert "summary.continuity_gap_counts||[]" in document
+    assert "summary.world_model_action_adoption_ledger" in document
+    assert "function renderManagerWorldActionAdoptionLedger(" in document
+    assert "ledger.state_counts||[]" in document
+    assert "diagnosticRows=gapRows.concat(stateRows)" in document
     assert "至少一处局部动作改变" in document
     assert "各项是独立证据覆盖，不是递减漏斗" in document
     assert "证据断点章节" in document
@@ -248,7 +255,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "function navigateManagerWorldChapter(" in document
     assert "function restoreManagerWorldChapterLocation(" in document
     assert "row.latest_fixture_id===fixtureId&&row.latest_chapter_identity===expectedChapterIdentity" in document
-    assert "断点诊断绑定的世界章节已过期或不可用。" in document
+    assert "诊断绑定的世界章节已过期或不可用。" in document
     assert "打开最近受影响章节 · 第 " in document
     assert "open.dataset.chapterIdentity=chapterIdentity" in document
     assert "selectedRef?.seasonId===season?.season_id" in document

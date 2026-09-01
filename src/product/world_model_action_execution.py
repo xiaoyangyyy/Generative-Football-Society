@@ -478,6 +478,8 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
         values["locally_attributable_action_changes"]
         <= values["attribution_eligible_decisions"]
         <= values["records"]
+        and values["locally_attributable_action_changes"]
+        <= values["influenced_decisions"]
         and values["influenced_decisions"] <= values["records"]
         and values["resolved_action_decisions"] <= values["records"]
         and values["direct_ball_event_links"] <= values["records"]
