@@ -81,6 +81,10 @@ not quality signals by themselves.
     actual and locally attributable action-transition matrices. The matrices
     retain V1/V2 read compatibility, fail closed under rehashed tampering and
     make the world model's concrete simulator-action changes product-visible.
+27. Stratified same-chapter world facts by locally attributable action
+    transition, with explicit overlapping membership, V1/V2 absence, source
+    coverage and hard bans on ranking, cross-stratum effects and outcome
+    attribution.
 
 ## LLM Scope Decision
 

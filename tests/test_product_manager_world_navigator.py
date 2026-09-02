@@ -678,6 +678,59 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
                 "descriptive_world_after": propagation,
             }],
             "descriptive_world_after": propagation,
+            "local_transition_descriptive_propagation": {
+                "schema_version": 1,
+                "fixtures_with_v3_transition_semantics": 2,
+                "fixtures_without_v3_transition_semantics": 0,
+                "strata_count": 2,
+                "strata": [
+                    {
+                        "transition_id": "hold_to_pass",
+                        "counterfactual_baseline_action": "hold",
+                        "actual_action": "pass",
+                        "transition_occurrences": 2,
+                        "chapters": 2,
+                        "chapters_with_other_local_transitions": 2,
+                        "latest_fixture_id": "md02-fx01",
+                        "latest_matchday": 2,
+                        "latest_chapter_identity": navigator[
+                            "history_chapters"
+                        ][0]["chapter_identity"],
+                        "full_source_transition_distribution_authorized": True,
+                        "descriptive_world_after": propagation,
+                        "chapter_membership_mutually_exclusive": False,
+                        "cross_stratum_comparison_authorized": False,
+                        "outcome_attribution_authorized": False,
+                    },
+                    {
+                        "transition_id": "pass_to_cross",
+                        "counterfactual_baseline_action": "pass",
+                        "actual_action": "cross",
+                        "transition_occurrences": 2,
+                        "chapters": 2,
+                        "chapters_with_other_local_transitions": 2,
+                        "latest_fixture_id": "md02-fx01",
+                        "latest_matchday": 2,
+                        "latest_chapter_identity": navigator[
+                            "history_chapters"
+                        ][0]["chapter_identity"],
+                        "full_source_transition_distribution_authorized": True,
+                        "descriptive_world_after": propagation,
+                        "chapter_membership_mutually_exclusive": False,
+                        "cross_stratum_comparison_authorized": False,
+                        "outcome_attribution_authorized": False,
+                    },
+                ],
+                "chapter_membership_mutually_exclusive": False,
+                "cross_stratum_comparison_authorized": False,
+                "outcome_attribution_authorized": False,
+                "claim_boundary": (
+                    "same-chapter descriptive cooccurrence after simulator-"
+                    "local action transitions; chapters may enter multiple "
+                    "strata; no transition effect, ranking, score causality "
+                    "or real-football claim"
+                ),
+            },
         },
     }
     assert navigator["causal_effect_authorized"] is False
@@ -859,9 +912,10 @@ def test_world_trajectory_marks_missing_evidence_without_imputation():
     unavailable.pop("entry_identity")
     unavailable["entry_identity"] = _identity(unavailable)
 
-    trajectory = build_manager_world_navigator(_season(entries=[
+    navigator = build_manager_world_navigator(_season(entries=[
         _entry(1), unavailable,
-    ]))["world_trajectory"]
+    ]))
+    trajectory = navigator["world_trajectory"]
     missing = trajectory["points"][1]
     assert trajectory["results_available"] == 1
     assert trajectory["persistent_state_chapters"] == 1
@@ -881,6 +935,16 @@ def test_world_trajectory_marks_missing_evidence_without_imputation():
         "persistent_state_evidence_unavailable",
         "continuity_gap",
     ]
+    strata = navigator["summary"][
+        "world_model_action_adoption_ledger"
+    ]["local_transition_descriptive_propagation"]["strata"]
+    assert len(strata) == 2
+    assert all(row["chapters"] == 2 for row in strata)
+    assert all(
+        row["descriptive_world_after"]["results_available"] == 1
+        and row["descriptive_world_after"]["persistent_state_chapters"] == 1
+        for row in strata
+    )
 
 
 @pytest.mark.parametrize(
@@ -1379,6 +1443,45 @@ def test_v2_retained_semantics_remain_readable_without_v3_transitions():
     assert aggregate["fixtures_with_v3_transition_semantics"] == 0
     assert aggregate["fixtures_without_v3_transition_semantics"] == 1
     assert aggregate["full_source_transition_distribution_authorized"] is False
+    propagation = navigator["summary"][
+        "world_model_action_adoption_ledger"
+    ]["local_transition_descriptive_propagation"]
+    assert propagation["fixtures_with_v3_transition_semantics"] == 0
+    assert propagation["fixtures_without_v3_transition_semantics"] == 1
+    assert propagation["strata"] == []
+    assert propagation["cross_stratum_comparison_authorized"] is False
+
+
+def test_transition_propagation_preserves_incomplete_source_coverage():
+    entry = _entry(1)
+    stage = next(
+        row for row in entry["world_evolution_thread"]["stages"]
+        if row["stage_id"] == "official_world_model_actions"
+    )
+    stage["source_records_truncated"] = True
+    stage["manager_record_coverage_complete"] = False
+    semantic = stage["retained_record_semantics"]
+    semantic["source_manager_record_coverage_complete"] = False
+    semantic["full_source_distribution_authorized"] = False
+    stage.pop("stage_identity")
+    stage["stage_identity"] = _identity(stage)
+    thread = entry["world_evolution_thread"]
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    propagation = build_manager_world_navigator(
+        _season(entries=[entry])
+    )["summary"]["world_model_action_adoption_ledger"][
+        "local_transition_descriptive_propagation"
+    ]
+    assert propagation["fixtures_with_v3_transition_semantics"] == 1
+    assert len(propagation["strata"]) == 2
+    assert all(
+        row["full_source_transition_distribution_authorized"] is False
+        for row in propagation["strata"]
+    )
 
 
 def test_rehashed_reviewed_scenario_time_tamper_fails_closed():

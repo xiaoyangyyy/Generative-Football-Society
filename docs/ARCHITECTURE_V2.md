@@ -2816,3 +2816,29 @@ and separately reports transition-matrix coverage. This identifies how the
 world model changed simulator actions; it does not establish that the change
 improved tactics, scores or real football. No training, match, future
 generation, formal experiment or provider call is executed in this stage.
+
+## 92. V3.74 Transition-stratified descriptive world propagation
+
+V3.73 made local baseline-to-actual action changes explicit, while the season
+navigator still exposed later match and persistent-state facts only by generic
+adoption state. A manager could see `持球→传球` and separately see fatigue,
+morale, injuries and the score, but could not navigate the seasons in which
+that specific local transition occurred.
+
+The navigator now derives a transition-stratified propagation ledger from
+identity-validated V3 chapters. Each non-zero locally attributable transition
+records its occurrence count, distinct source chapters, latest chapter
+identity, source-transition coverage and the same-chapter descriptive facts:
+available outcomes and points, persistent-state coverage, recovery completion,
+metric deltas and injury/suspension summaries. V1 and V2 chapters contribute
+to explicit missing-V3 coverage, never to invented transition strata.
+
+The strata are intentionally not cohorts or experimental arms. One chapter may
+contain several distinct local transitions and therefore enter several strata;
+the ledger counts and exposes that overlap. It forbids cross-stratum effect
+comparison, transition ranking and outcome attribution. Studio repeats these
+boundaries, renders the descriptive facts for each transition and links to the
+latest identity-bound world chapter. The feature answers “what was observed in
+the same chapter after this simulator-local transition?”, not “what effect did
+this transition cause?”. No training, match, future generation, formal
+experiment or provider call is executed in this stage.

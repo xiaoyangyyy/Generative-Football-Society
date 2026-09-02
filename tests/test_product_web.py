@@ -294,6 +294,13 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "world_model_action_adoption_ledger?.retained_record_semantics" in document
     assert "ledger.fixtures_without_v3_transition_semantics" in document
     assert "ledger.full_source_transition_distribution_authorized" in document
+    assert "function renderManagerWorldTransitionPropagation(" in document
+    assert "local_transition_descriptive_propagation" in document
+    assert "renderManagerWorldNavigatorWithoutTransitionPropagation" in document
+    assert "row.descriptive_world_after" in document
+    assert "row.chapters_with_other_local_transitions" in document
+    assert "分层可重叠" in document
+    assert "不排名、不比较效果、不归因赛果" in document
     assert "point.official_retained_record_semantics" in document
     assert "chapter.action_adoption?.retained_record_semantics" in document
     assert "chapter.descriptive_world_after" in document

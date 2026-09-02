@@ -1125,6 +1125,25 @@ def main() -> int:
                 "世界模型局部动作转移",
             ))
         ),
+        "local_action_transitions_have_noncausal_world_propagation_ledger": (
+            all(token in manager_world_navigator for token in (
+                "def _local_transition_descriptive_propagation(",
+                '"chapters_with_other_local_transitions"',
+                '"chapter_membership_mutually_exclusive": False',
+                '"cross_stratum_comparison_authorized": False',
+                '"local_transition_descriptive_propagation": (',
+                "chapters may enter multiple strata; no transition ",
+                "effect, ranking, score causality or real-football claim",
+            ))
+            and all(token in web for token in (
+                "function renderManagerWorldTransitionPropagation(",
+                "local_transition_descriptive_propagation",
+                "renderManagerWorldNavigatorWithoutTransitionPropagation",
+                "row.chapters_with_other_local_transitions",
+                "分层可重叠",
+                "不排名、不比较效果、不归因赛果",
+            ))
+        ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (
             all(token in decision_advice for token in (
                 "def build_manager_advice_comparison(",

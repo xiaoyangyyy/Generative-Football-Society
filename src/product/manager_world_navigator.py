@@ -458,6 +458,93 @@ def _descriptive_world_propagation(
     }
 
 
+def _local_transition_descriptive_propagation(
+    chapters: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Stratify same-chapter facts by V3 local action transition."""
+    actions = ("hold", "pass", "cross", "shot", "none")
+    v3_chapters = [
+        chapter for chapter in chapters
+        if isinstance(
+            chapter["action_adoption"].get("retained_record_semantics"),
+            Mapping,
+        )
+        and chapter["action_adoption"]["retained_record_semantics"].get(
+            "schema_version"
+        ) == 2
+    ]
+    memberships: dict[tuple[str, str], list[tuple[dict[str, Any], int]]] = {}
+    chapter_transition_counts: dict[str, int] = {}
+    for chapter in v3_chapters:
+        matrix = chapter["action_adoption"]["retained_record_semantics"][
+            "locally_attributable_action_transition_counts"
+        ]
+        present = 0
+        for baseline in actions:
+            for actual in actions:
+                occurrences = matrix[baseline][actual]
+                if occurrences:
+                    memberships.setdefault((baseline, actual), []).append(
+                        (chapter, occurrences)
+                    )
+                    present += 1
+        chapter_transition_counts[chapter["fixture_id"]] = present
+    strata = []
+    for (baseline, actual), rows in memberships.items():
+        source_chapters = [chapter for chapter, _ in rows]
+        latest = max(
+            source_chapters,
+            key=lambda row: (row["matchday"], row["fixture_id"]),
+        )
+        strata.append({
+            "transition_id": f"{baseline}_to_{actual}",
+            "counterfactual_baseline_action": baseline,
+            "actual_action": actual,
+            "transition_occurrences": sum(count for _, count in rows),
+            "chapters": len(source_chapters),
+            "chapters_with_other_local_transitions": sum(
+                chapter_transition_counts[chapter["fixture_id"]] > 1
+                for chapter in source_chapters
+            ),
+            "latest_fixture_id": latest["fixture_id"],
+            "latest_matchday": latest["matchday"],
+            "latest_chapter_identity": latest["chapter_identity"],
+            "full_source_transition_distribution_authorized": all(
+                chapter["action_adoption"]["retained_record_semantics"][
+                    "full_source_distribution_authorized"
+                ] is True
+                for chapter in source_chapters
+            ),
+            "descriptive_world_after": _descriptive_world_propagation(
+                source_chapters
+            ),
+            "chapter_membership_mutually_exclusive": False,
+            "cross_stratum_comparison_authorized": False,
+            "outcome_attribution_authorized": False,
+        })
+    strata.sort(key=lambda row: (
+        -row["transition_occurrences"],
+        row["counterfactual_baseline_action"], row["actual_action"],
+    ))
+    return {
+        "schema_version": 1,
+        "fixtures_with_v3_transition_semantics": len(v3_chapters),
+        "fixtures_without_v3_transition_semantics": (
+            len(chapters) - len(v3_chapters)
+        ),
+        "strata_count": len(strata),
+        "strata": strata,
+        "chapter_membership_mutually_exclusive": False,
+        "cross_stratum_comparison_authorized": False,
+        "outcome_attribution_authorized": False,
+        "claim_boundary": (
+            "same-chapter descriptive cooccurrence after simulator-local action "
+            "transitions; chapters may enter multiple strata; no transition "
+            "effect, ranking, score causality or real-football claim"
+        ),
+    }
+
+
 def _season_world_trajectory(
     chapters: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -1753,6 +1840,9 @@ def build_manager_world_navigator(
         ],
         "descriptive_world_after": _descriptive_world_propagation(
             all_chapters
+        ),
+        "local_transition_descriptive_propagation": (
+            _local_transition_descriptive_propagation(all_chapters)
         ),
     }
     gap_facts: dict[str, dict[str, Any]] = {}
