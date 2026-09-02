@@ -2105,6 +2105,18 @@ _INDEX_HTML = """<!doctype html>
     .standings { width:100%; border-collapse:collapse; margin-top:1rem }
     .standings th,.standings td { padding:.55rem; border-bottom:1px solid var(--line); text-align:right }
     .standings th:nth-child(2),.standings td:nth-child(2) { text-align:left }
+    .transition-map-panel { margin:1rem 0; padding:1rem; border:1px solid var(--line);
+      border-radius:12px; background:#0c1210 }
+    .transition-map-panel h6 { margin:.1rem 0 .45rem; font-size:1rem }
+    .transition-map-scroll { max-width:100%; overflow-x:auto; border:1px solid var(--line);
+      border-radius:10px; background:#090d0c }
+    .transition-map-scroll:focus-visible { outline:3px solid var(--warn); outline-offset:3px }
+    .transition-map { width:100%; min-width:610px; border-collapse:collapse; font-variant-numeric:tabular-nums }
+    .transition-map caption { padding:.7rem; color:var(--muted); text-align:left }
+    .transition-map th,.transition-map td { padding:.65rem .75rem; border:1px solid var(--line); text-align:center }
+    .transition-map thead th,.transition-map tbody th { color:var(--muted); background:#111916 }
+    .transition-map td[data-active="true"] { color:#07100c; background:var(--accent); font-weight:800 }
+    .transition-map td[data-diagonal="true"] { color:var(--muted); background:#101513 }
     .squad-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:.55rem; margin:.75rem 0 }
     .squad-player { display:grid; grid-template-columns:1fr auto; align-items:center; gap:.6rem; padding:.55rem; border:1px solid var(--line); border-radius:9px }
     .squad-player.unavailable { opacity:.65 }
@@ -2119,7 +2131,8 @@ _INDEX_HTML = """<!doctype html>
       .workspace-nav .status { flex-basis:100%; text-align:left } }
     @media(prefers-reduced-motion:no-preference){ section { animation:rise .45s ease both }
       @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}} }
-    @media(forced-colors:active){ section,.card,input,select,button { border:1px solid CanvasText }
+    @media(forced-colors:active){ section,.card,input,select,button,.transition-map-panel,
+      .transition-map-scroll,.transition-map th,.transition-map td { border:1px solid CanvasText }
       .skip:focus { border:2px solid CanvasText } }
   </style>
 </head>
@@ -2198,6 +2211,18 @@ _INDEX_HTML = """<!doctype html>
           <h5 id="manager-world-action-adoption-title">整赛季动作采纳账本</h5>
           <div id="manager-world-action-adoption-metrics" class="cards" role="list" aria-labelledby="manager-world-action-adoption-title"></div>
           <p id="manager-world-action-adoption-summary" class="status"></p>
+          <div id="manager-world-action-transition-map" class="transition-map-panel" aria-labelledby="manager-world-action-transition-map-title" hidden>
+            <h6 id="manager-world-action-transition-map-title">世界模型动作转移地图</h6>
+            <p id="manager-world-action-transition-map-summary" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+            <div id="manager-world-action-transition-map-scroll" class="transition-map-scroll" role="region" aria-labelledby="manager-world-action-transition-map-title" tabindex="0">
+              <table id="manager-world-action-transition-table" class="transition-map">
+                <caption>局部可归因动作转移次数；行是反事实基准动作，列是正式采用动作。</caption>
+                <thead><tr><th scope="col">基准 → 采用</th><th scope="col">持球</th><th scope="col">传球</th><th scope="col">传中</th><th scope="col">射门</th><th scope="col">无动作</th></tr></thead>
+                <tbody id="manager-world-action-transition-table-body"></tbody>
+              </table>
+            </div>
+            <p class="status">矩阵只呈现共享随机数下的模拟器局部动作改变；零表示在已有 V3 证据中未观察到该转移，不代表真实足球中不存在。它不授权动作排名、跨格效果比较或赛果因果。</p>
+          </div>
           <details id="manager-world-action-adoption-diagnostics" hidden>
             <summary>按采纳状态检查世界章节</summary>
             <div id="manager-world-action-adoption-states" class="cards" role="list" aria-label="世界模型动作采纳状态"></div>
@@ -2345,6 +2370,7 @@ const cards=document.querySelector('#cards'),setup=document.querySelector('#setu
 const managerCareerContract=document.querySelector('#manager-career-contract'),managerProfilePanel=document.querySelector('#manager-profile'),seasonHistorySummary=document.querySelector('#season-history-summary'),seasonHistory=document.querySelector('#season-history'),seasonObjective=seasonForm.querySelector('[name="manager_objective"]'),seasonPointsTarget=seasonForm.querySelector('[name="manager_points_target"]'),clubResourceSummary=document.querySelector('#club-resource-summary'),clubResourceInputs=[...seasonForm.querySelectorAll('[name^="resource_"]')];let currentCareer=null;
 const managerWorldNavigator=document.querySelector('#manager-world-navigator'),managerWorldNavigatorSummary=document.querySelector('#manager-world-navigator-summary'),managerWorldNavigatorCurrent=document.querySelector('#manager-world-navigator-current'),managerWorldInfluencePath=document.querySelector('#manager-world-influence-path'),managerWorldGapDiagnostics=document.querySelector('#manager-world-gap-diagnostics'),managerWorldGapSummary=document.querySelector('#manager-world-gap-summary'),managerWorldGapList=document.querySelector('#manager-world-gap-list'),managerWorldNavigatorAction=document.querySelector('#manager-world-navigator-action'),managerWorldNavigatorSecondary=document.querySelector('#manager-world-navigator-secondary'),managerWorldNavigatorGaps=document.querySelector('#manager-world-navigator-gaps'),managerWorldNavigatorHistory=document.querySelector('#manager-world-navigator-history');
 const managerWorldActionAdoptionMetrics=document.querySelector('#manager-world-action-adoption-metrics'),managerWorldActionAdoptionSummary=document.querySelector('#manager-world-action-adoption-summary'),managerWorldActionAdoptionDiagnostics=document.querySelector('#manager-world-action-adoption-diagnostics'),managerWorldActionAdoptionStates=document.querySelector('#manager-world-action-adoption-states');
+const managerWorldActionTransitionMap=document.querySelector('#manager-world-action-transition-map'),managerWorldActionTransitionMapSummary=document.querySelector('#manager-world-action-transition-map-summary'),managerWorldActionTransitionTable=document.querySelector('#manager-world-action-transition-table'),managerWorldActionTransitionTableBody=document.querySelector('#manager-world-action-transition-table-body');
 const managerWorldTrajectory=document.querySelector('#manager-world-trajectory'),managerWorldTrajectorySummary=document.querySelector('#manager-world-trajectory-summary'),managerWorldTrajectoryList=document.querySelector('#manager-world-trajectory-list');
 const managerTeamInput=seasonForm.querySelector('[name="manager_team"]'),recruitmentFieldset=document.querySelector('#recruitment-fieldset'),recruitmentSummary=document.querySelector('#recruitment-summary'),recruitmentRows=[...seasonForm.querySelectorAll('.recruitment-move')];let currentRecruitmentMarket=null,recruitmentRequestTeam='';
 const lifecycleFieldset=document.querySelector('#lifecycle-fieldset'),lifecycleList=document.querySelector('#lifecycle-list'),lifecycleSummary=document.querySelector('#lifecycle-summary');let currentLifecyclePreview=null,lifecycleRequestTeam='';
@@ -2660,6 +2686,9 @@ renderManagerWorldNavigator=season=>{renderManagerWorldNavigatorWithoutRetainedR
 function renderManagerWorldTransitionPropagation(season){const propagation=season?.manager_world_navigator?.summary?.world_model_action_adoption_ledger?.local_transition_descriptive_propagation;if(!propagation)return;const rows=propagation.strata||[],labels={hold:'持球',pass:'传球',cross:'传中',shot:'射门',none:'无动作'};managerWorldActionAdoptionSummary.textContent+=' · 动作转移后续事实 '+Number(rows.length)+' 组 · V3覆盖 '+Number(propagation.fixtures_with_v3_transition_semantics||0)+' 场 · 分层可重叠 · 禁止跨层效果比较';for(const row of rows){const before=labels[row.counterfactual_baseline_action]||row.counterfactual_baseline_action,after=labels[row.actual_action]||row.actual_action,node=card(before+'→'+after,Number(row.transition_occurrences||0)+' 次局部转移 · '+Number(row.chapters||0)+' 个世界章节'),world=document.createElement('p'),boundary=document.createElement('p'),open=document.createElement('button');node.setAttribute('role','listitem');world.className=boundary.className='status';world.textContent=managerWorldPropagationText(row.descriptive_world_after);boundary.textContent='同章描述性共现 · '+Number(row.chapters_with_other_local_transitions||0)+' 个章节还含其他转移 · '+(row.full_source_transition_distribution_authorized?'源转移记录覆盖完整':'源转移记录可能截断')+' · 不排名、不比较效果、不归因赛果';open.type='button';open.className='secondary';open.textContent='打开最近该转移章节 · 第 '+Number(row.latest_matchday||0)+' 轮';open.dataset.fixtureId=String(row.latest_fixture_id||'');open.dataset.chapterIdentity=String(row.latest_chapter_identity||'');open.disabled=!open.dataset.fixtureId||!/^[0-9a-f]{64}$/.test(open.dataset.chapterIdentity);open.addEventListener('click',()=>navigateManagerWorldChapter(open.dataset.fixtureId,open.dataset.chapterIdentity));node.append(world,boundary,open);managerWorldActionAdoptionStates.append(node)}}
 const renderManagerWorldNavigatorWithoutTransitionPropagation=renderManagerWorldNavigator;
 renderManagerWorldNavigator=season=>{renderManagerWorldNavigatorWithoutTransitionPropagation(season);renderManagerWorldTransitionPropagation(season)};
+function renderManagerWorldActionTransitionMap(season){managerWorldActionTransitionMap.hidden=true;managerWorldActionTransitionMapSummary.textContent='';managerWorldActionTransitionTableBody.replaceChildren();managerWorldActionTransitionTable.hidden=false;const navigator=season?.manager_world_navigator,summary=navigator?.summary||{},completed=Number(summary.completed_world_chapters||0);if(!navigator?.available||!completed)return;managerWorldActionTransitionMap.hidden=false;const semantic=summary.world_model_action_adoption_ledger?.retained_record_semantics,v3=Number(semantic?.fixtures_with_v3_transition_semantics||0),missing=Number(semantic?.fixtures_without_v3_transition_semantics||0),matrix=semantic?.locally_attributable_action_transition_counts;if(!matrix||!v3){managerWorldActionTransitionTable.hidden=true;managerWorldActionTransitionMapSummary.textContent='尚无 V3 动作转移证据 · 已完成 '+completed+' 场 · 旧版或缺失矩阵 '+Math.max(missing,completed)+' 场。这里显示的是证据缺口，不是“世界模型没有改变动作”。';return}const actions=['hold','pass','cross','shot','none'],labels={hold:'持球',pass:'传球',cross:'传中',shot:'射门',none:'无动作'};let total=0;for(const before of actions){const row=document.createElement('tr'),heading=document.createElement('th');heading.scope='row';heading.textContent=labels[before];row.append(heading);for(const after of actions){const cell=document.createElement('td'),count=Number(matrix?.[before]?.[after]||0);total+=count;cell.textContent=String(count);cell.dataset.active=String(count>0);cell.dataset.diagonal=String(before===after);cell.setAttribute('aria-label',labels[before]+'转为'+labels[after]+'：'+count+' 次');row.append(cell)}managerWorldActionTransitionTableBody.append(row)}const sourceCoverage=semantic.full_source_transition_distribution_authorized?'全部源转移记录覆盖完整':'全源分布未授权（含旧版证据或源记录截断）';managerWorldActionTransitionMapSummary.textContent='V3 转移矩阵 '+v3+' / '+completed+' 场 · 旧版或缺失 '+missing+' 场 · 局部动作改变 '+total+' 次 · '+sourceCoverage+'。矩阵格是计数，不是效果值。'}
+const renderManagerWorldNavigatorWithoutActionTransitionMap=renderManagerWorldNavigator;
+renderManagerWorldNavigator=season=>{renderManagerWorldNavigatorWithoutActionTransitionMap(season);renderManagerWorldActionTransitionMap(season)};
 managerWorldNavigatorAction.addEventListener('click',()=>activateManagerNavigationTarget(managerWorldNavigatorAction.dataset.target));
 window.addEventListener('popstate',()=>{if(currentSeason){renderManagerDecisionLedger(currentSeason);renderManagerWorldNavigator(currentSeason)}else restoreManagerWorldChapterLocation()});
 const renderSeasonWithoutManagerFutureSets=renderSeason;

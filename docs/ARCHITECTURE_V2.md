@@ -2842,3 +2842,30 @@ latest identity-bound world chapter. The feature answers “what was observed in
 the same chapter after this simulator-local transition?”, not “what effect did
 this transition cause?”. No training, match, future generation, formal
 experiment or provider call is executed in this stage.
+
+## 93. V3.75 Accessible manager action-transition map
+
+V3.73 and V3.74 made action transitions queryable and connected them to later
+world facts, but Studio still presented the mechanism primarily as prose and a
+sequence of cards. That made a complete action policy difficult to scan and
+made legacy absence easy to confuse with an observed zero.
+
+Studio now renders the locally attributable baseline-to-actual matrix as an
+accessible 5-by-5 table. Row headers are counterfactual baseline actions,
+column headers are officially adopted actions, every cell has a spoken label,
+and non-zero cells receive a redundant visual emphasis without relying on
+color alone for their value. The table sits in a keyboard-focusable horizontal
+scroll region so its full structure remains usable on narrow screens and under
+zoom. Rendering uses only `createElement`, `textContent` and attributes; no
+evidence value enters HTML parsing.
+
+The map is shown only for completed manager-world chapters. If completed
+chapters lack V3 matrices, Studio hides the empty table and says that evidence
+is unavailable rather than claiming zero action influence. With V3 evidence it
+reports covered fixtures, legacy or missing fixtures, local-transition count
+and whether the source distribution is complete. A displayed zero therefore
+means “not observed inside available V3 evidence”; it never means impossible,
+ineffective or absent in real football. The matrix remains descriptive and
+does not authorize action ranking, cross-cell effect comparison, score
+attribution or real-football causality. No training, match, future generation,
+formal experiment or provider call is executed in this stage.

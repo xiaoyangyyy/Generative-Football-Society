@@ -18,6 +18,7 @@
     "local_action_transitions_have_noncausal_world_propagation_ledger": true,
     "managed_fixtures_bind_three_phase_world_state_evidence": true,
     "manager_action_adoption_uses_identity_bound_world_model_advice": true,
+    "manager_action_transition_matrix_is_accessible_and_honest": true,
     "manager_advice_execution_trace_is_runtime_bound_and_non_causal": true,
     "manager_advice_inference_uses_optimistic_short_leases": true,
     "manager_advice_preview_is_confidence_aware_and_non_causal": true,

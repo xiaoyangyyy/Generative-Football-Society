@@ -63,6 +63,10 @@ V3.74 connects each locally attributable transition to same-chapter descriptive
 match and persistent-state facts. Transition strata may overlap, preserve
 source coverage and historical absence, and are explicitly barred from effect
 comparison, ranking or outcome attribution.
+V3.75 turns those transition totals into an accessible, horizontally responsive
+5-by-5 manager-facing map. It exposes V3 and legacy coverage beside the matrix,
+uses an explicit unavailable state instead of treating missing evidence as zero,
+and keeps every cell a descriptive count rather than an effect estimate.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

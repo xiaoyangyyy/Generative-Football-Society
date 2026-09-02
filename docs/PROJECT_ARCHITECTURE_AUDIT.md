@@ -85,6 +85,9 @@ not quality signals by themselves.
     transition, with explicit overlapping membership, V1/V2 absence, source
     coverage and hard bans on ranking, cross-stratum effects and outcome
     attribution.
+28. Added an accessible, responsive 5-by-5 action-transition map to the manager
+    world navigator. It distinguishes observed zeros from unavailable legacy
+    evidence, publishes source coverage and renders only with safe DOM APIs.
 
 ## LLM Scope Decision
 

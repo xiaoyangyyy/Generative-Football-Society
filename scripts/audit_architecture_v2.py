@@ -1144,6 +1144,24 @@ def main() -> int:
                 "不排名、不比较效果、不归因赛果",
             ))
         ),
+        "manager_action_transition_matrix_is_accessible_and_honest": (
+            all(token in web for token in (
+                'id="manager-world-action-transition-map"',
+                'id="manager-world-action-transition-map-summary"',
+                'id="manager-world-action-transition-table"',
+                'id="manager-world-action-transition-table-body"',
+                'role="region" aria-labelledby="manager-world-action-transition-map-title"',
+                "function renderManagerWorldActionTransitionMap(season)",
+                "semantic?.locally_attributable_action_transition_counts",
+                "semantic?.fixtures_without_v3_transition_semantics",
+                "managerWorldActionTransitionTableBody.replaceChildren()",
+                "managerWorldActionTransitionTable.hidden=true",
+                "这里显示的是证据缺口，不是“世界模型没有改变动作”",
+                "矩阵格是计数，不是效果值",
+                "renderManagerWorldNavigatorWithoutActionTransitionMap",
+                ".transition-map-scroll { max-width:100%; overflow-x:auto",
+            ))
+        ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (
             all(token in decision_advice for token in (
                 "def build_manager_advice_comparison(",

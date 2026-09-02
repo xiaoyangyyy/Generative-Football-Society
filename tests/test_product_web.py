@@ -534,6 +534,45 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "innerHTML" not in document
 
 
+def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+
+    assert response["status"].startswith("200")
+    assert 'id="manager-world-action-transition-map"' in document
+    assert 'aria-labelledby="manager-world-action-transition-map-title"' in document
+    assert 'id="manager-world-action-transition-map-summary"' in document
+    assert 'role="region" aria-labelledby="manager-world-action-transition-map-title" tabindex="0"' in document
+    assert 'id="manager-world-action-transition-table"' in document
+    assert 'id="manager-world-action-transition-table-body"' in document
+    assert "行是反事实基准动作，列是正式采用动作" in document
+    assert document.count('<th scope="col">') >= 6
+    assert ".transition-map-scroll { max-width:100%; overflow-x:auto" in document
+    assert '.transition-map td[data-active="true"]' in document
+    assert "function renderManagerWorldActionTransitionMap(season)" in document
+    assert "renderManagerWorldNavigatorWithoutActionTransitionMap" in document
+
+    renderer = document.split(
+        "function renderManagerWorldActionTransitionMap(season)", 1
+    )[1].split(
+        "const renderManagerWorldNavigatorWithoutActionTransitionMap", 1
+    )[0]
+    assert "managerWorldActionTransitionTableBody.replaceChildren()" in renderer
+    assert "managerWorldActionTransitionTable.hidden=true" in renderer
+    assert "尚无 V3 动作转移证据" in renderer
+    assert "这里显示的是证据缺口，不是“世界模型没有改变动作”" in renderer
+    assert "semantic?.fixtures_without_v3_transition_semantics" in renderer
+    assert "semantic?.locally_attributable_action_transition_counts" in renderer
+    assert "semantic.full_source_transition_distribution_authorized" in renderer
+    assert "const actions=['hold','pass','cross','shot','none']" in renderer
+    assert "document.createElement('tr')" in renderer
+    assert "document.createElement('td')" in renderer
+    assert "heading.scope='row'" in renderer
+    assert "cell.textContent=String(count)" in renderer
+    assert "cell.setAttribute('aria-label'" in renderer
+    assert "innerHTML" not in renderer
+
+
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
     response = _request(ProductWebApp(tmp_path), path="/healthz")
     assert response["json"] == {
