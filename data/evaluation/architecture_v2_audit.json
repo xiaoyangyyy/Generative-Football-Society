@@ -55,6 +55,7 @@
     "studio_uses_context_local_configuration": true,
     "tournament_resume_binds_portable_run_input_identity": true,
     "tournament_resume_binds_random_world_identity": true,
+    "tournament_resume_restores_dynamic_world_and_receipted_reflection": true,
     "training_attempts_are_distinguishable": true,
     "training_has_exclusive_process_lease": true,
     "training_lifecycle_has_no_domain_or_product_dependencies": true,

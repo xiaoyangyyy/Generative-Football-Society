@@ -226,6 +226,12 @@ def main() -> int:
     tournament_runtime = (
         ROOT / "src/simulation/tournament_2026.py"
     ).read_text(encoding="utf-8")
+    tournament_world_state = (
+        ROOT / "src/simulation/world_state.py"
+    ).read_text(encoding="utf-8")
+    roster_loader = (
+        ROOT / "src/data_engine/roster_loader.py"
+    ).read_text(encoding="utf-8")
     season = (ROOT / "src/product/season.py").read_text(encoding="utf-8")
     cli = (ROOT / "src/cli.py").read_text(encoding="utf-8")
     formal_runner = (
@@ -1450,7 +1456,7 @@ def main() -> int:
         ),
         "tournament_resume_binds_random_world_identity": (
             all(token in tournament_checkpoint for token in (
-                "CHECKPOINT_VERSION = 3",
+                "CHECKPOINT_VERSION = 4",
                 'RANDOM_WORLD_CONTRACT = "identity_scoped_rng_v1"',
                 "def _content_sha256(",
                 "Tournament checkpoint content integrity mismatch",
@@ -1510,6 +1516,50 @@ def main() -> int:
                 "def _require_run_identity(",
                 "checkpoint_run_identity(ckpt) != self.run_identity_sha256",
             ))
+        ),
+        "tournament_resume_restores_dynamic_world_and_receipted_reflection": (
+            all(token in tournament_world_state for token in (
+                "WORLD_STATE_VERSION = 1",
+                "AGENT_REQUIRED_FIELDS",
+                "AGENT_REBUILT_FIELDS",
+                "Unclassified mutable Agent fields",
+                "def snapshot_world_state(",
+                "def restore_world_state(",
+                "Validate every live identity before mutating any in-memory world object",
+                "manager.dialogue_engine.topic_market",
+                "manager.narrative_event_bus.history",
+            ))
+            and all(token in tournament_checkpoint for token in (
+                "CHECKPOINT_VERSION = 4",
+                '"world_state": validate_world_state(world_state)',
+                '"reflection_journal": validate_reflection_journal(reflection_journal)',
+                "def validate_reflection_world_consistency(",
+                "Applied reflection is missing from Agent state",
+                "def _directory_sha256(",
+                '"data/persistence/world_model_fusion.jsonl"',
+                '"data/persistence/tactical_counterfactuals.jsonl"',
+                "Tournament checkpoint V3 lacks dynamic world state",
+            ))
+            and all(token in tournament_runtime for token in (
+                "world_state=snapshot_world_state(self)",
+                'ckpt["world_state"]',
+                "Persist the provider result before it can mutate the world",
+                "agent.request_reflection_payload(llm)",
+                'journal["applied"].append(operation_id)',
+                "def _record_final_result(",
+            ))
+            and all(token in agent for token in (
+                "def request_reflection_payload(",
+                "def apply_reflection_payload(",
+                'record.get("operation_id") == operation_id',
+                "Reflection response must be a JSON object",
+            ))
+            and all(token in roster_loader for token in (
+                "def _sanitize_roster_numerics(",
+                "Treat legacy NaN/Infinity observations as absent",
+                "def _finite(",
+            ))
+            and "math.isfinite(float(dynamics[key]))" in world_runner
         ),
         "stable_release_pointer_identity_verified": release_pointer_ok,
         "stable_release_artifact_chain_verified": bool(release_artifacts.get("ok")),

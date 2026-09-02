@@ -15,7 +15,7 @@ not quality signals by themselves.
 | Entity priors | Continuous player/coach/team fields with football-semantic role axes | Useful and interpretable | Fit coefficients to held-out player/event data instead of hand tuning |
 | Tournament | Official group schedule and constrained R32 builder; stable named seeds | Correct simulation path | Encode the final FIFA bracket table once officially fixed |
 | Randomness | Stable BLAKE2-derived identity streams across match, scoring, referee, social, wear, carryover, agents, brackets and legacy journeys | Strong runtime contract with machine-enforced global-draw ban | Add matched-seed intervention invariance checks as new stochastic subsystems appear |
-| Persistence | Atomic checkpoint V3 binds portable run inputs, random world and evolving carryover | Strong fail-closed input/state boundary | Snapshot full Agent/social state and dynamic caches; make winner reflection transactional |
+| Persistence | Checkpoint V4 binds inputs/randomness, snapshots causal Agent/social state, receipts reflection, and hashes evolving files/cache trees | Strong crash-consistent in-memory restore with fail-closed external drift | Add a multi-file write-ahead transaction for automatic external-state rollback; obtain provider idempotency guarantees |
 | Macro scoring | Coupled intensity dynamics; xG fused before a single goal observation | Coherent research model | Replace Euler heuristic with fitted state-space point process |
 | Micro engine | Spatial fields, action selection, pass/shot/aerial physics and affective coupling | Rich but heuristic | Establish explicit SI/normalized unit contract and fit jointly to event data |
 | World model | v7 deployed plus evidence-gated v8 frame candidates; v8.9 strict SkillCorner/StatsBomb temporal LODO | Modular and empirically guarded | Beat the continuous-time baseline before any v8 promotion |
@@ -121,6 +121,17 @@ not quality signals by themselves.
     hashes every supplemental runtime value, never persists credential fields, and rejects
     any drift before provider resolution or match mutation. Mutable carryover
     is verified against the exact checkpoint that references it.
+36. Upgraded tournament checkpoints to V4 with a versioned snapshot of all
+    initialized mutable Agent fields plus optional match fields, dynamic coach
+    adaptations, social posts, dialogue topic market and narrative history.
+    Restore validates every Agent/random/coach identity before mutating memory.
+    Reflection now persists a parsed response receipt before applying a
+    deterministic operation, reuses that receipt after a crash and records
+    application exactly once. Completed finals reconstruct champion state on
+    the skip path. Carryover, fusion history, counterfactual evidence and an
+    enabled cognitive cache tree are checkpoint-bound. Roster loading removes
+    non-finite observations and incomplete team dynamics fall back to the
+    status-derived vector instead of entering match math as NaN or false zeros.
 
 ## LLM Scope Decision
 

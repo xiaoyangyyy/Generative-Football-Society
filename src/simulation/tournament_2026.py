@@ -27,8 +27,13 @@ from src.simulation.tournament_checkpoint import (
     checkpoint_root_seed,
     checkpoint_run_identity,
     load_checkpoint,
+    new_reflection_journal,
     restore_r32_fixtures,
     save_checkpoint,
+    validate_reflection_journal,
+)
+from src.simulation.world_state import (
+    preflight_world_state, restore_world_state, snapshot_world_state,
 )
 from src.simulation.venue_policy import resolve_match_venue
 from src.simulation.tactics_sync import apply_coach_tactics_from_llm
@@ -92,6 +97,7 @@ class TournamentManager(TournamentMatchMixin):
         self.ko_round: str | None = None
         self.ko_fixture_index = 0
         self.post_group_reflection_done = False
+        self.reflection_journal = new_reflection_journal()
 
         self.referee_policy = RefereePolicy(
             profiles=referee_profiles or RefereePolicy().profiles,
@@ -121,19 +127,52 @@ class TournamentManager(TournamentMatchMixin):
             return int(goals_home), int(goals_away)
         return int(goals_away), int(goals_home)
 
-    def _reflection_with_retry(self, agent, llm, attempts: int = 6) -> None:
-        for i in range(attempts):
-            try:
-                agent.perform_reflection(llm)
-                return
-            except Exception as exc:
-                wait = min(24.0, 2.0 * (2 ** i))
-                print(
-                    f"  [REFLECTION] {agent.name} attempt {i + 1}/{attempts} failed: {exc} "
-                    f"(retry in {wait:.0f}s)"
+    def _reflection_with_retry(
+        self, agent, llm, operation_id: str, attempts: int = 6,
+    ) -> None:
+        if (
+            not isinstance(operation_id, str)
+            or not operation_id
+            or len(operation_id) > 512
+        ):
+            raise ValueError("Invalid reflection operation ID")
+        journal = validate_reflection_journal(self.reflection_journal)
+        if operation_id in journal["applied"]:
+            return
+        receipt = journal["receipts"].get(operation_id)
+        if receipt is None:
+            for i in range(attempts):
+                try:
+                    payload = agent.request_reflection_payload(llm)
+                    encoded = json.dumps(
+                        payload, ensure_ascii=False, allow_nan=False,
+                    ).encode("utf-8")
+                    if len(encoded) > 256 * 1024:
+                        raise ValueError("Reflection response exceeds 256 KiB")
+                    break
+                except Exception as exc:
+                    wait = min(24.0, 2.0 * (2 ** i))
+                    print(
+                        f"  [REFLECTION] {agent.name} attempt {i + 1}/{attempts} "
+                        f"failed: {exc} (retry in {wait:.0f}s)"
+                    )
+                    if i + 1 < attempts:
+                        time.sleep(wait)
+            else:
+                raise RuntimeError(
+                    f"Reflection failed for {agent.name} after {attempts} attempts"
                 )
-                time.sleep(wait)
-        raise RuntimeError(f"Reflection failed for {agent.name} after {attempts} attempts")
+            receipt = {"agent": agent.name, "payload": payload}
+            journal["receipts"][operation_id] = receipt
+            # Persist the provider result before it can mutate the world.
+            self._save_checkpoint()
+        if receipt["agent"] != agent.name:
+            raise ValueError("Reflection receipt agent identity mismatch")
+        agent.apply_reflection_payload(
+            receipt["payload"], operation_id=operation_id,
+        )
+        journal["applied"].append(operation_id)
+        self._save_checkpoint()
 
     def _save_checkpoint(self) -> None:
         self._require_run_identity()
@@ -153,6 +192,8 @@ class TournamentManager(TournamentMatchMixin):
             run_identity_sha256=self.run_identity_sha256,
             match_results=self.match_results,
             post_group_reflection_done=self.post_group_reflection_done,
+            world_state=snapshot_world_state(self),
+            reflection_journal=self.reflection_journal,
         )
 
     def _restore_from_checkpoint(self, ckpt: dict) -> None:
@@ -166,6 +207,9 @@ class TournamentManager(TournamentMatchMixin):
             raise ValueError(
                 "Tournament checkpoint run identity does not match the current runtime"
             )
+        # Keep the existing manager untouched when live world identities disagree.
+        preflight_world_state(self, ckpt["world_state"])
+        journal = validate_reflection_journal(ckpt["reflection_journal"])
         self.standings = ckpt.get("standings", self.standings)
         self.qualified_teams = ckpt.get("qualified_teams", [])
         self.phase = ckpt.get("phase", "group")
@@ -177,6 +221,8 @@ class TournamentManager(TournamentMatchMixin):
         self.final_result = ckpt.get("final_result", {})
         self.match_index = int(ckpt.get("match_index", 0))
         self.post_group_reflection_done = bool(ckpt.get("post_group_reflection_done", False))
+        self.reflection_journal = journal
+        restore_world_state(self, ckpt["world_state"])
         print(
             f"[CHECKPOINT] Resumed phase={self.phase} matches_done={len(self.completed_matches)} "
             f"qualified={len(self.qualified_teams)}"
@@ -208,7 +254,10 @@ class TournamentManager(TournamentMatchMixin):
         if not self.post_group_reflection_done:
             print("\n" + "*"*60 + "\n[V13 GLOBAL SUMMIT] Teams performing deep reflection...\n" + "*"*60)
             for t_name in self.qualified_teams:
-                self._reflection_with_retry(self.world.agents[t_name], llm)
+                self._reflection_with_retry(
+                    self.world.agents[t_name], llm,
+                    f"post_group:{t_name}",
+                )
             self.post_group_reflection_done = True
             self._save_checkpoint()
 
@@ -336,6 +385,13 @@ class TournamentManager(TournamentMatchMixin):
             if mk in self.completed_matches:
                 winner = self.match_results.get(mk)
                 if winner:
+                    self._record_final_result(
+                        round_name, t1=t1, t2=t2, winner=winner,
+                    )
+                    self._reflection_with_retry(
+                        self.world.agents[winner], llm,
+                        f"knockout:{mk}:{winner}",
+                    )
                     print(f"  [SKIP] {t1} vs {t2} (checkpoint) → {winner}")
                     next_round.append(winner)
                     continue
@@ -351,8 +407,16 @@ class TournamentManager(TournamentMatchMixin):
                 fixture_seed=fixture_seed,
             )
             next_round.append(winner)
-            if round_name == "Final":
-                runner_up = t2 if winner == t1 else t1
-                self.final_result = {"champion": winner, "runner_up": runner_up}
-            self._reflection_with_retry(self.world.agents[winner], llm)
+            self._record_final_result(
+                round_name, t1=t1, t2=t2, winner=winner,
+            )
+            self._reflection_with_retry(
+                self.world.agents[winner], llm,
+                f"knockout:{mk}:{winner}",
+            )
         self.qualified_teams = next_round
+
+    def _record_final_result(self, round_name, *, t1, t2, winner):
+        if round_name == "Final":
+            runner_up = t2 if winner == t1 else t1
+            self.final_result = {"champion": winner, "runner_up": runner_up}

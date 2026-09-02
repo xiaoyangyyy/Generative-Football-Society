@@ -24,6 +24,22 @@ from src.simulation.tournament_checkpoint import (
 RUN_IDENTITY = "a" * 64
 
 
+def _checkpoint_v4_state():
+    return {
+        "world_state": {
+            "schema_version": 1,
+            "current_date": "2026-01-01T00:00:00",
+            "feed_posts": [],
+            "agents": {},
+            "dialogue": {"market_step": 0, "topic_market": {}},
+            "narrative_history": [],
+        },
+        "reflection_journal": {
+            "schema_version": 1, "receipts": {}, "applied": [],
+        },
+    }
+
+
 def test_named_streams_are_stable_and_isolated():
     assert derive_seed(42, "match", "A", "B") == derive_seed(42, "match", "A", "B")
     assert derive_seed(42, "match", "A", "B") != derive_seed(42, "match", "B", "A")
@@ -238,6 +254,7 @@ def test_checkpoint_round_trip_and_version_validation(tmp_path):
         group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=3,
         root_seed=91, run_identity_sha256=RUN_IDENTITY,
+        **_checkpoint_v4_state(),
     )
     save_checkpoint(str(tmp_path), **kwargs)
     loaded = load_checkpoint(str(tmp_path))
@@ -259,6 +276,7 @@ def test_checkpoint_rejects_content_tampering_and_unsafe_v1(tmp_path):
         group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=3,
         root_seed=91, run_identity_sha256=RUN_IDENTITY,
+        **_checkpoint_v4_state(),
     )
     save_checkpoint(str(tmp_path), **kwargs)
     path = tmp_path / "data" / "persistence" / "tournament_checkpoint.json"
@@ -278,6 +296,11 @@ def test_checkpoint_rejects_content_tampering_and_unsafe_v1(tmp_path):
     with pytest.raises(ValueError, match="lacks full run identity"):
         load_checkpoint(str(tmp_path))
 
+    payload["version"] = 3
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="lacks dynamic world state"):
+        load_checkpoint(str(tmp_path))
+
 
 def test_resume_seed_comes_from_checkpoint_and_conflicts_fail(tmp_path, monkeypatch):
     from src import app
@@ -287,6 +310,7 @@ def test_resume_seed_comes_from_checkpoint_and_conflicts_fail(tmp_path, monkeypa
         group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=0,
         root_seed=91, run_identity_sha256=RUN_IDENTITY,
+        **_checkpoint_v4_state(),
     )
     save_checkpoint(str(tmp_path), **kwargs)
     monkeypatch.setenv("GFS_SEED", "999")
@@ -330,6 +354,7 @@ def test_manager_rejects_checkpoint_for_another_random_world(tmp_path):
         group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=0,
         root_seed=91, run_identity_sha256=RUN_IDENTITY,
+        **_checkpoint_v4_state(),
     )
     save_checkpoint(str(tmp_path), **kwargs)
     checkpoint = load_checkpoint(str(tmp_path))
@@ -362,6 +387,7 @@ def test_resume_rejects_valid_but_different_run_identity(tmp_path):
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=0,
         root_seed=91,
         run_identity_sha256=original["run_identity_sha256"],
+        **_checkpoint_v4_state(),
     )
     save_checkpoint(str(tmp_path), **kwargs)
     app._verify_tournament_resume_identity(
@@ -451,6 +477,7 @@ def test_checkpoint_binds_evolving_carryover_state(tmp_path):
         group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=0,
         root_seed=91, run_identity_sha256=RUN_IDENTITY,
+        **_checkpoint_v4_state(),
     )
     save_checkpoint(str(tmp_path), **kwargs)
     assert load_checkpoint(str(tmp_path))["state_artifacts"]

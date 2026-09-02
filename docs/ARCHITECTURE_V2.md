@@ -3130,3 +3130,73 @@ writeable cognitive cache directories are not yet one atomic snapshot. Until
 that later contract exists, V3 prevents silent input drift and detects known
 carryover divergence; it does not authorize an exact-continuation claim for
 every optional subsystem.
+
+## 101. V3.83 Dynamic-world recovery and receipted reflection
+
+Checkpoint V4 adds the missing simulation-owned dynamic state. The snapshot
+contains every initialized mutable Agent field (latent psychology, affect,
+memory layers, beliefs, decision history, governance, physical readiness and
+tactical controls), optional match-created tactical/narrative state, dynamic
+coach preset adaptations, the social post graph, dialogue topic market and
+narrative-event history. Static priors, source data, model services and loaded
+world-model objects are deliberately rebuilt from the immutable inputs already
+bound by manifest V2 rather than serialized as opaque Python objects.
+
+Snapshot values use a narrow tagged JSON codec for finite scalars, mappings,
+lists, tuples, NumPy arrays, `PsychologicalState` and `NarrativeEvent`. Unknown
+dataclasses, non-string mapping keys, non-finite floats, malformed tags,
+missing core Agent fields or a changed Agent/random/coach identity fail closed.
+Reserved codec keys inside ordinary mappings are escaped rather than
+reinterpreted, ndarray dtypes are restricted to JSON-safe numeric/boolean
+forms, and checkpoint documents are capped at 64 MiB.
+Restore performs a complete live-identity and optional-field-presence preflight
+before changing the world date, feed or any Agent, preventing a half-restored
+in-memory process.
+
+Reflection is now a two-phase simulation transaction. The provider request is
+parsed and bounded to 256 KiB without changing Agent state. Its receipt is
+checkpointed first; only then is the response applied under a stable operation
+ID. The resulting meta-proposal identity is deterministic, the Agent audit
+guards against repeat application, and the operation is checkpointed as
+applied. If the process stops after the receipt commit but before application,
+resume uses the receipt and makes no second provider request. Parse errors are
+no longer swallowed as false success. Group-stage operations are keyed by team;
+knockout operations are keyed by match and winner. The completed-match skip
+path runs any missing winner reflection and reconstructs a final result that
+could otherwise be lost between the match checkpoint and the next statement.
+Checkpoint validation also cross-checks every receipt, applied marker and
+Agent audit: unknown owners, missing audits, premature mutation, duplicate
+operation IDs and audit entries without a durable receipt are rejected. Each
+receipt is capped at 256 KiB and the journal at 16 MiB.
+
+The causal external-state set now includes squad carryover, persistent
+world-model fusion history, tactical counterfactual evidence and, when
+cognition is enabled, the complete cognitive cache directory tree. Files are
+content-hashed; directory identity hashes relative file names and contents and
+rejects symlinks. Their exact set and digest are verified at checkpoint load.
+These histories influence later match planning, so treating them as incidental
+logs would make resume semantically incorrect.
+
+The real roster audit exposed one pre-existing non-standard `NaN` observation
+set in the South Africa data. The source artifact is retained unchanged.
+`load_roster_json()` now treats NaN/Infinity as absent observations while
+preserving legitimate JSON nulls, and every match ability conversion has a
+finite fallback. A team-dynamics vector is attached only when all five causal
+components are present and finite; otherwise the established status-derived
+vector is used. This prevents both NaN propagation and the misleading partial
+vector whose missing attack/defence fields would previously become zeros.
+
+The boundary is crash-consistent for checkpoint-owned in-memory state and
+fail-closed for external files. It is not yet an atomic multi-file database:
+if carryover, fusion history or a cache file is durably advanced but the next
+checkpoint is not, resume refuses the mismatch rather than automatically
+rolling the file back. Also, without provider-supported idempotency there is an
+unavoidable narrow uncertainty window between receiving a response and
+durably saving its receipt; V4 guarantees no repeat call after the receipt is
+committed, not universal exactly-once billing. Those are explicit later
+operations gates, not hidden claims.
+
+No training, tournament, formal experiment or provider call is executed in
+this stage. The real-world snapshot check only constructed and serialized the
+333-Agent initial world. Therefore V3.83 improves recovery correctness and data
+safety but adds no model-quality, action-effect or outcome evidence.

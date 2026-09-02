@@ -107,6 +107,16 @@ secret-filtered, value-hashed runtime option set. Identity drift fails before pr
 resolution or match mutation; V1/V2 checkpoints remain inspectable but cannot
 be guessed into a current run. Evolving carryover is bound separately by each
 checkpoint; complete Agent/social-state snapshots remain a later gate.
+V3.83 closes that in-memory gate with checkpoint V4: mutable Agent psychology,
+memory, beliefs, tactics, coach adaptations, the social feed, topic market and
+narrative history are versioned and restored only after a full identity
+preflight. Reflection is a receipted two-phase operation, so a persisted model
+response is replayed without a second provider call and cannot be applied
+twice; skipped finals also reconstruct their champion record. Carryover,
+fusion history, counterfactual evidence and enabled cognitive caches are bound
+as evolving external state. A legacy roster `NaN` can no longer enter match
+math: non-finite observations become missing fields and incomplete team
+dynamics use the status-derived fallback.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

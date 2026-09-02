@@ -410,8 +410,7 @@ class SocietyAgent(
         }
 
 
-    def perform_reflection(self, llm):
-        print(f"\n  [V13 SUMMIT] {self.name}: Reflecting on the momentum and power...")
+    def _reflection_context_payload(self):
         memory_context = self.retrieve_memory_context_display(top_k=8)
         stage_hint = self.decision_memory[-1].get("stage") if self.decision_memory else None
         style_hint = self.decision_memory[-1].get("opponent_style") if self.decision_memory else None
@@ -421,11 +420,16 @@ class SocietyAgent(
             current_stage=stage_hint,
             current_opponent_style=style_hint,
         )
-        reflection_payload = {
+        return memory_context, {
             "high_salience_memory": memory_context,
             "similar_decision_outcomes": similar_decisions,
             "current_controls": self.tactical_controls,
         }
+
+    def request_reflection_payload(self, llm):
+        """Request and parse a reflection without mutating agent state."""
+        print(f"\n  [V13 SUMMIT] {self.name}: Reflecting on the momentum and power...")
+        memory_context, reflection_payload = self._reflection_context_payload()
         verdict_str = llm.perform_agent_reflection(
             self.name,
             self.momentum,
@@ -433,22 +437,40 @@ class SocietyAgent(
             self.roles["Icon"]["patience"],
             memory_context=json.dumps(reflection_payload, ensure_ascii=False),
         )
-        try:
-            data = json.loads(verdict_str)
-            self.apply_llm_reflection(data)
-            self._register_memory_event(
-                content=f"Reflection update: {self.reflection_diary[:160]}",
-                layer="procedural",
-                importance=8.0,
-                emotion=self._emotion_scalar(),
-                event_type="reflection_update",
-                tags=["reflection"],
-                write_temperature=1.25,
-                metadata={"latest_reflection_audit": self.llm_reflection_audit[-1] if self.llm_reflection_audit else {}},
-            )
-            self.consolidate_memories()
-        except Exception as e:
-            print(f"  [ERROR] Reflection parsing failed for {self.name}: {e}")
+        data = json.loads(verdict_str)
+        if not isinstance(data, dict):
+            raise ValueError("Reflection response must be a JSON object")
+        return data
+
+    def apply_reflection_payload(self, data, *, operation_id=None):
+        """Apply one parsed reflection exactly once for a durable operation ID."""
+        if not isinstance(data, dict):
+            raise TypeError("Reflection payload must be a mapping")
+        if operation_id:
+            previous = next((
+                record for record in self.llm_reflection_audit
+                if isinstance(record, dict)
+                and record.get("operation_id") == operation_id
+            ), None)
+            if previous is not None:
+                return previous
+        audit = self.apply_llm_reflection(data, operation_id=operation_id)
+        self._register_memory_event(
+            content=f"Reflection update: {self.reflection_diary[:160]}",
+            layer="procedural",
+            importance=8.0,
+            emotion=self._emotion_scalar(),
+            event_type="reflection_update",
+            tags=["reflection"],
+            write_temperature=1.25,
+            metadata={"latest_reflection_audit": audit},
+        )
+        self.consolidate_memories()
+        return audit
+
+    def perform_reflection(self, llm, *, operation_id=None):
+        data = self.request_reflection_payload(llm)
+        return self.apply_reflection_payload(data, operation_id=operation_id)
 
     def ingest_micro_cognitive_memory(self, cognitive_plans: list, team_name: str = "") -> None:
         """Absorb in-match System 2 narratives into episodic memory for cross-match continuity."""
@@ -476,10 +498,12 @@ class SocietyAgent(
                 metadata={"trigger": trig, "applied": rec.get("applied", False)},
             )
 
-    def apply_llm_reflection(self, reflection):
+    def apply_llm_reflection(self, reflection, *, operation_id=None):
         from src.simulation.meta_learning import MetaLearningController
 
-        audit_log = MetaLearningController().apply(self, reflection)
+        audit_log = MetaLearningController().apply(
+            self, reflection, operation_id=operation_id,
+        )
         self.llm_reflection_audit.append(audit_log)
         return audit_log
 

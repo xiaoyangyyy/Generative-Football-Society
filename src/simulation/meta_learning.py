@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import hashlib
 import json
 from pathlib import Path
 import uuid
@@ -81,7 +82,10 @@ class MetaLearningController:
         with self.audit_path.open("a", encoding="utf-8", newline="\n") as handle:
             handle.write(json.dumps(record, sort_keys=True) + "\n")
 
-    def propose(self, agent: Any, reflection: dict[str, Any] | None) -> MetaProposal:
+    def propose(
+        self, agent: Any, reflection: dict[str, Any] | None, *,
+        operation_id: str | None = None,
+    ) -> MetaProposal:
         reflection = reflection or {}
         if reflection.get("uses_sealed_data"):
             raise ValueError("sealed data cannot be used for meta-adaptation")
@@ -119,8 +123,14 @@ class MetaLearningController:
             bounded = spec.max_delta * float(np.tanh(proposed / spec.max_delta))
             after = float(np.clip(before + bounded * confidence * evidence_factor, spec.low, spec.high))
             changes[key] = {"before": before, "after": after, "delta": after - before}
+        proposal_id = (
+            hashlib.sha256(
+                f"reflection:{agent.name}:{operation_id}".encode("utf-8")
+            ).hexdigest()[:32]
+            if operation_id else uuid.uuid4().hex
+        )
         proposal = MetaProposal(
-            proposal_id=uuid.uuid4().hex,
+            proposal_id=proposal_id,
             agent=str(agent.name),
             reflection=str(reflection.get("reflection", reflection.get("diary", ""))),
             evidence_ids=verified,
@@ -184,12 +194,15 @@ class MetaLearningController:
         self._audit(proposal, "rejected")
         return proposal
 
-    def apply(self, agent: Any, reflection: dict[str, Any] | None) -> dict[str, Any]:
+    def apply(
+        self, agent: Any, reflection: dict[str, Any] | None, *,
+        operation_id: str | None = None,
+    ) -> dict[str, Any]:
         """Compatibility entry point implemented through the canonical proposal path."""
         reflection = reflection or {}
         diary = str(reflection.get("reflection", reflection.get("diary", "")))
         agent.reflection_diary = diary
-        proposal = self.propose(agent, reflection)
+        proposal = self.propose(agent, reflection, operation_id=operation_id)
         self.commit(agent, proposal)
         requested_evidence = [str(value) for value in reflection.get("evidence_memory_ids", [])]
         applied = {
@@ -210,6 +223,7 @@ class MetaLearningController:
         }
         return {
             "agent": agent.name,
+            "operation_id": operation_id,
             "reflection": diary,
             "proposal_id": proposal.proposal_id,
             "proposal_status": proposal.status,

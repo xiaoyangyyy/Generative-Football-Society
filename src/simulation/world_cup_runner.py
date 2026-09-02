@@ -1,4 +1,5 @@
 import json
+import math
 import os
 
 from src.data_engine.loader import load_data
@@ -18,11 +19,22 @@ from src.simulation.tournament_2026 import TournamentManager
 
 def _attach_team_dynamics_from_rosters(base_dir: str, agents: dict) -> None:
     from src.simulation.squad_registry import load_effective_roster
+    from src.memory_engine.macro_goal_dynamics import TEAM_STATE_KEYS
 
     for team_name, agent in agents.items():
         roster = load_effective_roster(base_dir, team_name)
-        if roster and roster.get("team_dynamics"):
-            agent.team_dynamics = dict(roster["team_dynamics"])
+        dynamics = roster.get("team_dynamics") if roster else None
+        if not isinstance(dynamics, dict) or not all(
+            key in dynamics
+            and isinstance(dynamics[key], (int, float))
+            and not isinstance(dynamics[key], bool)
+            and math.isfinite(float(dynamics[key]))
+            for key in TEAM_STATE_KEYS
+        ):
+            continue
+        agent.team_dynamics = {
+            key: float(dynamics[key]) for key in TEAM_STATE_KEYS
+        }
 
 
 def build_world_and_tournament(

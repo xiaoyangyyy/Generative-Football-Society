@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 from pathlib import Path
@@ -27,27 +28,80 @@ def roster_path_for_team(base_dir: str, team_name: str) -> str:
 def load_roster_json(path: str) -> Optional[Dict[str, Any]]:
     if not os.path.exists(path):
         return None
+    if os.path.getsize(path) > 32 * 1024 * 1024:
+        raise ValueError("roster document is oversized")
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        payload = json.load(f)
+    if not isinstance(payload, dict):
+        raise ValueError("roster document must be a JSON object")
+    return _sanitize_roster_numerics(payload)
+
+
+_NONFINITE = object()
+
+
+def _finite_or_missing(value: Any) -> Any:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return value
+    return value if math.isfinite(float(value)) else _NONFINITE
+
+
+def _drop_nonfinite_fields(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            str(key): cleaned
+            for key, item in value.items()
+            if (cleaned := _drop_nonfinite_fields(item)) is not _NONFINITE
+        }
+    if isinstance(value, list):
+        return [
+            None if cleaned is _NONFINITE else cleaned
+            for item in value
+            for cleaned in [_drop_nonfinite_fields(item)]
+        ]
+    return _finite_or_missing(value)
+
+
+def _sanitize_roster_numerics(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Treat legacy NaN/Infinity observations as absent, never as game values."""
+    cleaned = _drop_nonfinite_fields(payload)
+    if not isinstance(cleaned, dict):
+        raise ValueError("invalid roster document")
+    return cleaned
+
+
+def _finite(value: Any, default: float) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return float(default)
+    return number if math.isfinite(number) else float(default)
 
 
 def _abilities_from_dict(d: Dict[str, float]) -> PlayerAbilities:
-    gk_val = float(d.get("gk", 0.0))
-    phys = float(d.get("phys", 0.5))
+    gk_val = _finite(d.get("gk"), 0.0)
+    phys = _finite(d.get("phys"), 0.5)
+    tech = _finite(d.get("tech"), 0.5)
+    vision = _finite(d.get("vision"), 0.5)
+    aerial = _finite(d.get("aerial"), 0.5)
     return PlayerAbilities(
-        tech=float(d.get("tech", 0.5)),
-        pass_skill=float(d.get("pass_skill", d.get("tech", 0.5))),
-        vision=float(d.get("vision", 0.5)),
-        spatial=float(d.get("spatial", d.get("vision", 0.5))),
-        pace=float(d.get("pace", 0.5)),
-        press=float(d.get("press", 0.5)),
-        curve=float(d.get("curve", 0.4)),
-        shot=float(d.get("shot", d.get("tech", 0.5) * 0.9)),
-        power=float(d.get("power", phys)),
-        aerial=float(d.get("aerial", 0.5)),
-        heading=float(d.get("heading", d.get("aerial", 0.5))),
-        gk_reflex=float(d.get("gk_reflex", gk_val if gk_val > 0 else 0.58)),
-        gk_aerial=float(d.get("gk_aerial", gk_val * 0.95 if gk_val > 0 else 0.55)),
+        tech=tech,
+        pass_skill=_finite(d.get("pass_skill"), tech),
+        vision=vision,
+        spatial=_finite(d.get("spatial"), vision),
+        pace=_finite(d.get("pace"), 0.5),
+        press=_finite(d.get("press"), 0.5),
+        curve=_finite(d.get("curve"), 0.4),
+        shot=_finite(d.get("shot"), tech * 0.9),
+        power=_finite(d.get("power"), phys),
+        aerial=aerial,
+        heading=_finite(d.get("heading"), aerial),
+        gk_reflex=_finite(
+            d.get("gk_reflex"), gk_val if gk_val > 0 else 0.58,
+        ),
+        gk_aerial=_finite(
+            d.get("gk_aerial"), gk_val * 0.95 if gk_val > 0 else 0.55,
+        ),
     )
 
 
@@ -69,10 +123,16 @@ def _player_state_from_pdata(
     from src.match_engine.math_utils import sigmoid
 
     cond = pdata.get("condition") or {}
-    mental = float(cond.get("composure", pdata.get("abilities", {}).get("mental", 0.55)))
+    mental = _finite(
+        cond.get("composure"),
+        _finite(pdata.get("abilities", {}).get("mental"), 0.55),
+    )
     ab = _abilities_from_dict(pdata.get("abilities", {}))
-    ch_aff = {k: float(v) for k, v in (pdata.get("channel_affinities") or {}).items()}
-    avail = float(pdata.get("availability", 1.0))
+    ch_aff = {
+        k: _finite(v, 0.0)
+        for k, v in (pdata.get("channel_affinities") or {}).items()
+    }
+    avail = _finite(pdata.get("availability"), 1.0)
     if pdata.get("squad_role") == "suspended":
         avail = 0.0
     return PlayerAffectiveState(
