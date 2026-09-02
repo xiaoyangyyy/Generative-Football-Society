@@ -14,7 +14,7 @@ from src.product.web import ProductWebApp, _is_loopback_host, create_product_web
 from src.product.web_security import WebAccessPolicy
 from src.product.tasks import BackgroundMatchWorker
 from src.product.tactical_study import TacticalStudyPlan
-from scripts.build_excellence_evidence_kit import PROTOCOLS, SECRET_PATTERN
+from scripts.build_excellence_evidence_kit import PROTOCOLS, SECRET_PATTERNS
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -637,7 +637,10 @@ def test_evidence_kit_download_is_deterministic_secret_free_and_memory_only(tmp_
     with zipfile.ZipFile(io.BytesIO(first["body"])) as archive:
         contents = b"".join(archive.read(name) for name in archive.namelist())
         assert "manifest.json" in archive.namelist()
-    assert SECRET_PATTERN.search(contents) is None
+    assert all(
+        pattern.search(contents) is None
+        for pattern in SECRET_PATTERNS.values()
+    )
     assert not (tmp_path / "build/evidence-kits").exists()
     metrics = _request(app, path="/api/v1/operations")["json"]
     assert metrics["requests"]["routes"][

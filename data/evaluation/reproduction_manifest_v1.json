@@ -73,8 +73,8 @@
     "product_cli": "src/cli.py",
     "product_web": "src/product/web.py",
     "product_telemetry": "src/product/telemetry.py",
-    "security_closure_protocol": "data/evaluation/security_closure_protocol_v1.json",
-    "security_closure_protocol_verification": "data/evaluation/security_closure_protocol_verification_v1.json",
+    "security_closure_protocol": "data/evaluation/security_closure_protocol_v2.json",
+    "security_closure_protocol_verification": "data/evaluation/security_closure_protocol_verification_v2.json",
     "security_closure_guide": "docs/SECURITY_CREDENTIAL_CLOSURE.md",
     "security_closure_verifier": "scripts/verify_security_closure.py",
     "sbom_builder": "scripts/build_supply_chain_sbom.py",
@@ -296,8 +296,8 @@
     },
     {
       "id": "security_closure_attestation_audit",
-      "command": "python scripts/verify_security_closure.py --attestation data/evaluation/security_closure_v1/attestation.json --out data/evaluation/security_closure_verification_v1.json",
-      "effect": "verify_user_revocation_attestation_and_redacted_receipt",
+      "command": "python scripts/verify_security_closure.py --attestation data/evaluation/security_closure_v2/attestation.json --out data/evaluation/security_closure_verification_v2.json",
+      "effect": "verify_all_known_user_revocation_attestations_and_redacted_receipts",
       "runs_simulation": false,
       "explicit_authority_required": true
     },

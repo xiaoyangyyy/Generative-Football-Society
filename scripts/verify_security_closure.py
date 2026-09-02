@@ -12,16 +12,46 @@ import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
+from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
-PROTOCOL_PATH = ROOT / "data/evaluation/security_closure_protocol_v1.json"
+PROTOCOL_PATH = ROOT / "data/evaluation/security_closure_protocol_v2.json"
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
-SECRET_PATTERN = re.compile(rb"(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}")
+SECRET_PATTERN_VERSION = "gfs_known_credentials_v2"
+SECRET_PATTERNS = {
+    "openai_compatible_api_key": re.compile(
+        rb"(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}"
+    ),
+    "github_classic_pat": re.compile(
+        rb"(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9_]{20,}"
+    ),
+    "github_fine_grained_pat": re.compile(
+        rb"(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]{20,}"
+    ),
+}
+KNOWN_INCIDENTS = (
+    {
+        "incident_id": "deepseek_api_credential",
+        "provider": "deepseek",
+        "credential_family": "openai_compatible_api_key",
+        "credential_value_must_not_be_recorded": True,
+        "revocation_required": True,
+        "replacement_storage": "local_environment_only",
+    },
+    {
+        "incident_id": "github_classic_pat",
+        "provider": "github",
+        "credential_family": "github_classic_pat",
+        "credential_value_must_not_be_recorded": True,
+        "revocation_required": True,
+        "replacement_storage": "local_environment_only",
+    },
+)
 ATTESTATION = (
-    "I revoked the exposed provider credential, stored no credential value in "
-    "evidence, and confined any replacement to the local environment"
+    "I revoked every known exposed credential, stored no credential value in "
+    "evidence, and confined every replacement to the local environment"
 )
 
 
@@ -69,8 +99,31 @@ def _current_revision(root: Path) -> str | None:
     return revision if completed.returncode == 0 and COMMIT.fullmatch(revision) else None
 
 
-def _secret_match_count(root: Path) -> int:
-    count = 0
+def _origin_has_embedded_credential(root: Path) -> bool:
+    completed = subprocess.run(
+        ["git", "config", "--get", "remote.origin.url"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        return False
+    url = completed.stdout.strip()
+    if not re.match(r"https?://", url, flags=re.IGNORECASE):
+        return False
+    authority = url.split("://", 1)[1].split("/", 1)[0]
+    if "@" not in authority:
+        return False
+    userinfo = unquote(authority.rsplit("@", 1)[0])
+    if ":" in userinfo:
+        return True
+    encoded = userinfo.encode("utf-8", errors="ignore")
+    return any(pattern.search(encoded) for pattern in SECRET_PATTERNS.values())
+
+
+def _secret_match_counts(root: Path) -> dict[str, int]:
+    counts = {name: 0 for name in SECRET_PATTERNS}
     excluded = {".git", ".pytest_cache", "__pycache__"}
     for path in root.rglob("*"):
         if not path.is_file() or any(part in excluded for part in path.parts):
@@ -79,55 +132,63 @@ def _secret_match_count(root: Path) -> int:
             data = path.read_bytes()
         except OSError:
             continue
-        count += len(SECRET_PATTERN.findall(data))
-    return count
+        for name, pattern in SECRET_PATTERNS.items():
+            counts[name] += len(pattern.findall(data))
+    return counts
+
+
+def _secret_match_count(root: Path) -> int:
+    return sum(_secret_match_counts(root).values())
 
 
 def validate_protocol(protocol: dict[str, Any], root: Path = ROOT) -> dict[str, bool]:
-    incident = protocol.get("incident") or {}
+    incidents = protocol.get("incidents") or []
     evidence = protocol.get("evidence_contract") or {}
     execution = protocol.get("current_execution") or {}
     output = _confined(root, protocol.get("output"))
     return {
-        "schema_state_and_provider_are_frozen": (
-            protocol.get("schema_version") == 1
+        "schema_state_and_known_incidents_are_frozen": (
+            protocol.get("schema_version") == 2
             and protocol.get("protocol_id")
-            == "gfs-exposed-provider-credential-closure-v1"
-            and protocol.get("state") == "registered_waiting_for_user_revocation"
-            and incident
-            == {
-                "provider": "deepseek",
-                "credential_value_must_not_be_recorded": True,
-                "revocation_required": True,
-                "replacement_storage": "local_environment_only",
-            }
+            == "gfs-all-known-exposed-credential-closure-v2"
+            and protocol.get("state")
+            == "registered_waiting_for_all_user_revocations"
+            and incidents == list(KNOWN_INCIDENTS)
         ),
-        "attestation_allowlist_is_exact": (
+        "attestation_allowlists_are_exact": (
             protocol.get("required_attestation_fields")
             == [
-                "schema_version", "protocol_id", "provider",
-                "credential_revoked", "revoked_at", "revocation_evidence",
-                "revocation_evidence_sha256", "evidence_contains_secret",
-                "replacement_credential_generated", "replacement_storage",
+                "schema_version", "protocol_id", "incidents",
                 "repository_secret_scan", "signed_at", "attestation",
+            ]
+            and protocol.get("required_incident_attestation_fields")
+            == [
+                "incident_id", "provider", "credential_revoked", "revoked_at",
+                "revocation_evidence", "revocation_evidence_sha256",
+                "evidence_contains_secret", "replacement_credential_generated",
+                "replacement_storage",
             ]
         ),
         "redacted_evidence_contract_is_fail_closed": (
             evidence
             == {
-                "revocation_evidence_root": "data/evaluation/security_closure_v1",
+                "revocation_evidence_root": "data/evaluation/security_closure_v2",
                 "allowed_extensions": [".json", ".pdf", ".png"],
                 "redaction_required": True,
+                "distinct_receipt_per_incident_required": True,
                 "current_commit_scan_required": True,
+                "origin_remote_credential_forbidden": True,
+                "secret_pattern_version": SECRET_PATTERN_VERSION,
                 "boundary_aware_secret_matches_required": 0,
                 "attestation_text": ATTESTATION,
             }
         ),
         "output_is_confined": output is not None,
-        "execution_is_zero_and_contains_no_credential": (
+        "execution_is_zero_and_all_incidents_remain_open": (
             execution
             == {
-                "attestation_available": False,
+                "known_incident_count": len(KNOWN_INCIDENTS),
+                "incidents_attested": 0,
                 "credential_value_stored": False,
                 "provider_calls_made": False,
                 "training_executed": False,
@@ -143,22 +204,44 @@ def protocol_report(
 ) -> dict[str, Any]:
     protocol = _read_json(protocol_path)
     checks = validate_protocol(protocol, root)
+    secret_counts = _secret_match_counts(root)
+    origin_has_credential = _origin_has_embedded_credential(root)
+    checks.update({
+        "repository_has_zero_boundary_aware_secret_matches": (
+            sum(secret_counts.values()) == 0
+        ),
+        "origin_remote_contains_no_embedded_credential": (
+            origin_has_credential is False
+        ),
+    })
     return {
-        "schema_version": 1,
-        "verification": "gfs_security_credential_closure_preregistration",
+        "schema_version": 2,
+        "verification": "gfs_all_known_credential_closure_preregistration",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "status": "registered_waiting_for_user_revocation" if all(checks.values()) else "failed",
+        "status": (
+            "registered_waiting_for_all_user_revocations"
+            if all(checks.values()) else "failed"
+        ),
         "passed": all(checks.values()),
         "closure_complete": False,
+        "known_incident_count": len(KNOWN_INCIDENTS),
+        "revoked_incident_count": 0,
+        "known_incidents_complete": False,
+        "incident_ids": [
+            incident["incident_id"] for incident in KNOWN_INCIDENTS
+        ],
         "checks": checks,
         "artifact_sha256": {
-            "data/evaluation/security_closure_protocol_v1.json": _sha256(protocol_path),
+            "data/evaluation/security_closure_protocol_v2.json": _sha256(protocol_path),
             "docs/SECURITY_CREDENTIAL_CLOSURE.md": _sha256(
                 root / "docs/SECURITY_CREDENTIAL_CLOSURE.md"
             ),
             "scripts/verify_security_closure.py": _sha256(Path(__file__)),
         },
-        "boundary_aware_secret_match_count": _secret_match_count(root),
+        "secret_pattern_version": SECRET_PATTERN_VERSION,
+        "boundary_aware_secret_match_count": sum(secret_counts.values()),
+        "boundary_aware_secret_matches_by_family": secret_counts,
+        "origin_has_embedded_credential": origin_has_credential,
         "credential_value_stored": False,
         "provider_calls_made": False,
         "training_executed": False,
@@ -185,63 +268,129 @@ def verify_closure(
     except ValueError as exc:
         raise ValueError("attestation must stay inside the security evidence root") from exc
     attestation = _read_json(resolved_attestation)
-    evidence_path = _confined(root, attestation.get("revocation_evidence"))
-    scan = attestation.get("repository_secret_scan") or {}
-    actual_revision = revision if revision is not None else _current_revision(root)
-    actual_matches = _secret_match_count(root)
+    raw_incidents = attestation.get("incidents")
+    raw_incidents = raw_incidents if isinstance(raw_incidents, list) else []
     expected_fields = set(protocol["required_attestation_fields"])
-    evidence_is_bounded = False
-    if evidence_path is not None and evidence_root is not None:
-        try:
-            evidence_path.relative_to(evidence_root)
-            evidence_is_bounded = evidence_path.suffix.casefold() in set(
-                evidence["allowed_extensions"]
-            )
-        except ValueError:
-            pass
-    checks = {
-        "protocol_is_valid": all(protocol_checks.values()),
-        "attestation_schema_and_fields_are_exact": (
-            set(attestation) == expected_fields
-            and attestation.get("schema_version") == 1
-            and attestation.get("protocol_id") == protocol["protocol_id"]
-            and attestation.get("provider") == "deepseek"
-        ),
-        "revocation_is_explicitly_signed": (
-            attestation.get("credential_revoked") is True
-            and _timestamp(attestation.get("revoked_at"))
-            and _timestamp(attestation.get("signed_at"))
-            and attestation.get("attestation") == ATTESTATION
-        ),
-        "redacted_receipt_is_confined_and_content_addressed": (
+    expected_incident_fields = set(
+        protocol["required_incident_attestation_fields"]
+    )
+    expected_by_id = {
+        row["incident_id"]: row for row in KNOWN_INCIDENTS
+    }
+    observed_by_id: dict[str, Mapping[str, Any]] = {}
+    incidents_have_exact_fields = True
+    for row in raw_incidents:
+        if not isinstance(row, Mapping) or set(row) != expected_incident_fields:
+            incidents_have_exact_fields = False
+            continue
+        incident_id = row.get("incident_id")
+        if not isinstance(incident_id, str) or incident_id in observed_by_id:
+            incidents_have_exact_fields = False
+            continue
+        observed_by_id[incident_id] = row
+    all_known_incidents_present = (
+        incidents_have_exact_fields
+        and len(raw_incidents) == len(KNOWN_INCIDENTS)
+        and set(observed_by_id) == set(expected_by_id)
+        and all(
+            observed_by_id[incident_id].get("provider")
+            == expected["provider"]
+            for incident_id, expected in expected_by_id.items()
+        )
+    )
+    receipts: list[Path] = []
+    revoked_incident_count = 0
+    every_receipt_valid = all_known_incidents_present
+    every_replacement_safe = all_known_incidents_present
+    for incident_id, expected in expected_by_id.items():
+        row = observed_by_id.get(incident_id) or {}
+        if (
+            row.get("provider") == expected["provider"]
+            and row.get("credential_revoked") is True
+            and _timestamp(row.get("revoked_at"))
+        ):
+            revoked_incident_count += 1
+        evidence_path = _confined(root, row.get("revocation_evidence"))
+        evidence_is_bounded = False
+        if evidence_path is not None:
+            try:
+                evidence_path.relative_to(evidence_root)
+                evidence_is_bounded = (
+                    evidence_path.suffix.casefold()
+                    in set(evidence["allowed_extensions"])
+                    and evidence_path != resolved_attestation
+                )
+            except ValueError:
+                pass
+        receipt_valid = bool(
             evidence_is_bounded
             and evidence_path is not None
             and evidence_path.is_file()
             and SHA256.fullmatch(
-                str(attestation.get("revocation_evidence_sha256") or "")
+                str(row.get("revocation_evidence_sha256") or "")
             )
             is not None
             and _sha256(evidence_path)
-            == attestation.get("revocation_evidence_sha256")
-            and attestation.get("evidence_contains_secret") is False
-        ),
-        "replacement_location_is_safe": (
-            isinstance(attestation.get("replacement_credential_generated"), bool)
-            and attestation.get("replacement_storage")
+            == row.get("revocation_evidence_sha256")
+            and row.get("evidence_contains_secret") is False
+        )
+        every_receipt_valid = every_receipt_valid and receipt_valid
+        if receipt_valid and evidence_path is not None:
+            receipts.append(evidence_path)
+        replacement_safe = (
+            isinstance(row.get("replacement_credential_generated"), bool)
+            and row.get("replacement_storage")
             in {"local_environment_only", "not_generated"}
             and (
-                attestation.get("replacement_credential_generated") is True
-                or attestation.get("replacement_storage") == "not_generated"
+                row.get("replacement_credential_generated") is True
+                or row.get("replacement_storage") == "not_generated"
             )
+        )
+        every_replacement_safe = (
+            every_replacement_safe and replacement_safe
+        )
+    receipts_are_distinct = (
+        len(receipts) == len(KNOWN_INCIDENTS)
+        and len({path.resolve() for path in receipts}) == len(KNOWN_INCIDENTS)
+    )
+    scan = attestation.get("repository_secret_scan") or {}
+    actual_revision = revision if revision is not None else _current_revision(root)
+    actual_match_counts = _secret_match_counts(root)
+    actual_matches = sum(actual_match_counts.values())
+    origin_has_credential = _origin_has_embedded_credential(root)
+    zero_counts = {name: 0 for name in SECRET_PATTERNS}
+    checks = {
+        "protocol_is_valid": all(protocol_checks.values()),
+        "attestation_schema_and_fields_are_exact": (
+            set(attestation) == expected_fields
+            and attestation.get("schema_version") == 2
+            and attestation.get("protocol_id") == protocol["protocol_id"]
         ),
+        "all_known_incidents_are_present_exactly_once": (
+            all_known_incidents_present
+        ),
+        "every_incident_is_explicitly_revoked_and_signed": (
+            revoked_incident_count == len(KNOWN_INCIDENTS)
+            and _timestamp(attestation.get("signed_at"))
+            and attestation.get("attestation") == ATTESTATION
+        ),
+        "every_redacted_receipt_is_distinct_confined_and_content_addressed": (
+            every_receipt_valid and receipts_are_distinct
+        ),
+        "every_replacement_location_is_safe": every_replacement_safe,
         "current_revision_has_zero_boundary_aware_matches": (
             actual_revision is not None
             and scan
             == {
                 "commit_sha": actual_revision,
+                "secret_pattern_version": SECRET_PATTERN_VERSION,
                 "boundary_aware_secret_match_count": 0,
+                "boundary_aware_secret_matches_by_family": zero_counts,
             }
             and actual_matches == 0
+        ),
+        "origin_remote_contains_no_embedded_credential": (
+            origin_has_credential is False
         ),
     }
     passed = all(checks.values())
@@ -250,21 +399,32 @@ def verify_closure(
             resolved_attestation
         )
     }
-    if evidence_path is not None and evidence_path.is_file():
-        artifacts[evidence_path.resolve().relative_to(root.resolve()).as_posix()] = (
-            _sha256(evidence_path)
-        )
+    for evidence_path in receipts:
+        artifacts[
+            evidence_path.resolve().relative_to(root.resolve()).as_posix()
+        ] = _sha256(evidence_path)
     return {
-        "schema_version": 1,
-        "verification": "gfs_security_credential_closure",
+        "schema_version": 2,
+        "verification": "gfs_all_known_credential_closure",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "verified_closed" if passed else "failed",
         "passed": passed,
         "closure_complete": passed,
-        "provider": "deepseek",
+        "known_incident_count": len(KNOWN_INCIDENTS),
+        "revoked_incident_count": revoked_incident_count,
+        "known_incidents_complete": passed,
+        "incident_ids": [
+            incident["incident_id"] for incident in KNOWN_INCIDENTS
+        ],
+        "providers": sorted({
+            incident["provider"] for incident in KNOWN_INCIDENTS
+        }),
         "checks": checks,
         "artifact_sha256": artifacts,
+        "secret_pattern_version": SECRET_PATTERN_VERSION,
         "boundary_aware_secret_match_count": actual_matches,
+        "boundary_aware_secret_matches_by_family": actual_match_counts,
+        "origin_has_embedded_credential": origin_has_credential,
         "credential_value_stored": False,
         "provider_calls_made": False,
         "training_executed": False,

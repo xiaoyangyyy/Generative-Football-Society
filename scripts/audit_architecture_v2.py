@@ -179,6 +179,21 @@ def main() -> int:
         ROOT / "scripts/run_formal_experiment.py"
     ).read_text(encoding="utf-8")
     formal_protocol = _read("data/evaluation/formal_experiment_protocol_v2.json")
+    security_protocol = _read(
+        "data/evaluation/security_closure_protocol_v2.json"
+    )
+    security_verifier = (
+        ROOT / "scripts/verify_security_closure.py"
+    ).read_text(encoding="utf-8")
+    completion_plan = (
+        ROOT / "src/product/completion_plan.py"
+    ).read_text(encoding="utf-8")
+    control_plane = (
+        ROOT / "src/product/control_plane.py"
+    ).read_text(encoding="utf-8")
+    evidence_kit = (
+        ROOT / "scripts/build_excellence_evidence_kit.py"
+    ).read_text(encoding="utf-8")
     runtime = (ROOT / "src/simulation/runtime.py").read_text(encoding="utf-8")
     gateway = (ROOT / "src/simulation/llm_gateway.py").read_text(encoding="utf-8")
     wm_inference = (
@@ -1237,6 +1252,46 @@ def main() -> int:
                 "button.setAttribute('aria-pressed','false')",
                 "managerWorldActionTransitionDetail.focus()",
                 "不排名、不比较跨格效果、不归因赛果",
+            ))
+        ),
+        "all_known_exposed_credentials_require_independent_v2_closure": (
+            security_protocol.get("schema_version") == 2
+            and [
+                row.get("incident_id")
+                for row in security_protocol.get("incidents", [])
+            ] == ["deepseek_api_credential", "github_classic_pat"]
+            and security_protocol.get("evidence_contract", {}).get(
+                "distinct_receipt_per_incident_required"
+            ) is True
+            and security_protocol.get("evidence_contract", {}).get(
+                "secret_pattern_version"
+            ) == "gfs_known_credentials_v2"
+            and security_protocol.get("evidence_contract", {}).get(
+                "origin_remote_credential_forbidden"
+            ) is True
+            and all(token in security_verifier for token in (
+                '"github_classic_pat": re.compile(',
+                '"github_fine_grained_pat": re.compile(',
+                '"all_known_incidents_are_present_exactly_once"',
+                '"every_redacted_receipt_is_distinct_confined_and_content_addressed"',
+                '"known_incidents_complete": passed',
+                '"origin_remote_contains_no_embedded_credential"',
+            ))
+            and all(token in completion_plan for token in (
+                "security_closure_v2/attestation.json",
+                "security_closure_verification_v2.json",
+                "distinct redacted DeepSeek and GitHub revocation receipts",
+            ))
+            and all(token in control_plane for token in (
+                "security_closure_protocol_verification_v2.json",
+                "security_closure_verification_v2.json",
+                'security_closure.get("known_incidents_complete") is True',
+                'security_protocol.get("origin_has_embedded_credential") is False',
+            ))
+            and all(token in evidence_kit for token in (
+                '"security": "data/evaluation/security_closure_protocol_v2.json"',
+                "deepseek_api_credential_receipt.template.json",
+                "github_classic_pat_receipt.template.json",
             ))
         ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (

@@ -80,6 +80,13 @@ V3-compatible transition propagation, and every evidenced non-zero action-map
 cell can open its same-chapter downstream world facts and latest source chapter
 with keyboard and screen-reader semantics. These remain descriptive,
 overlapping strata rather than cross-cell effect estimates.
+V3.79 upgrades credential closure from a DeepSeek-only attestation to a V2
+all-known-incident contract covering both DeepSeek and the exposed GitHub
+Classic PAT. Each incident requires its own redacted receipt; partial closure,
+receipt reuse, stale commit scans and three known token families fail closed.
+Refreshing the evidence chain also correctly invalidates the old paper-package
+pass because post-experiment action-policy code changed; no result is relabelled
+or regenerated.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

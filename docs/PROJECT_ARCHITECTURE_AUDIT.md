@@ -97,6 +97,10 @@ not quality signals by themselves.
 31. Fixed V4 inclusion in V3-compatible transition propagation and connected
     each evidenced action-matrix cell to its bounded same-chapter world facts
     and latest identity-verified chapter through an accessible drill-down.
+32. Replaced the single-incident credential closure with a V2 exact incident
+    registry for DeepSeek and GitHub PAT exposure, independent redacted receipts
+    and multi-family zero-value scans; refreshing the evidence chain also
+    invalidated the stale post-code-change formal paper-package pass.
 
 ## LLM Scope Decision
 

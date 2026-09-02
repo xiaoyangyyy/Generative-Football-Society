@@ -87,7 +87,7 @@ PAPER_FINALIZATION_PROTOCOL_REPORT = (
     ROOT / "data/evaluation/action_paper_finalization_protocol_verification_v2.json"
 )
 SECURITY_CLOSURE_PROTOCOL_REPORT = (
-    ROOT / "data/evaluation/security_closure_protocol_verification_v1.json"
+    ROOT / "data/evaluation/security_closure_protocol_verification_v2.json"
 )
 EXCELLENCE_SCORING_CONTRACT = (
     ROOT / "data/evaluation/excellence_scoring_contract_v1.json"
@@ -463,8 +463,14 @@ def verify_reproduction_release() -> dict:
             == paper_finalization_protocol.get("artifact_sha256")
             and security_closure_protocol.get("passed") is True
             and security_closure_protocol.get("closure_complete") is False
+            and security_closure_protocol.get("known_incident_count") == 2
+            and security_closure_protocol.get("revoked_incident_count") == 0
+            and security_closure_protocol.get("known_incidents_complete") is False
             and security_closure_protocol.get("boundary_aware_secret_match_count")
             == 0
+            and security_closure_protocol.get(
+                "origin_has_embedded_credential"
+            ) is False
             and stored_security_closure_protocol.get("checks")
             == security_closure_protocol.get("checks")
             and stored_security_closure_protocol.get("artifact_sha256")
@@ -562,8 +568,8 @@ def verify_reproduction_release() -> dict:
                 "product_cli": "src/cli.py",
                 "product_web": "src/product/web.py",
                 "product_telemetry": "src/product/telemetry.py",
-                "security_closure_protocol": "data/evaluation/security_closure_protocol_v1.json",
-                "security_closure_protocol_verification": "data/evaluation/security_closure_protocol_verification_v1.json",
+                "security_closure_protocol": "data/evaluation/security_closure_protocol_v2.json",
+                "security_closure_protocol_verification": "data/evaluation/security_closure_protocol_verification_v2.json",
                 "security_closure_guide": "docs/SECURITY_CREDENTIAL_CLOSURE.md",
                 "security_closure_verifier": "scripts/verify_security_closure.py",
                 "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
@@ -643,7 +649,7 @@ def verify_reproduction_release() -> dict:
         "src/cli.py",
         "src/product/web.py",
         "src/product/telemetry.py",
-        "data/evaluation/security_closure_protocol_v1.json",
+        "data/evaluation/security_closure_protocol_v2.json",
         "docs/SECURITY_CREDENTIAL_CLOSURE.md",
         "scripts/verify_security_closure.py",
         "scripts/verify_paper_package.py",

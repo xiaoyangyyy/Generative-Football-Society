@@ -32,7 +32,14 @@ def test_template_kit_is_deterministic_secret_free_and_zero_execution():
     assert first == second
     assert report["passed"] is True
     assert report["status"] == "passed_template_only_kit"
-    assert report["template_count"] == 7
+    assert report["template_count"] == 8
+    assert "security/deepseek_api_credential_receipt.template.json" in files
+    assert "security/github_classic_pat_receipt.template.json" in files
+    security = json.loads(files["security/attestation.template.json"])
+    assert security["schema_version"] == 2
+    assert {
+        row["incident_id"] for row in security["incidents"]
+    } == {"deepseek_api_credential", "github_classic_pat"}
     assert all(report["checks"].values())
     assert report["external_calls_made"] is False
     assert report["matches_executed"] == 0

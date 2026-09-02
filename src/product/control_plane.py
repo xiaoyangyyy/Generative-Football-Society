@@ -241,13 +241,13 @@ class ProductControlPlane:
             "data/evaluation/action_paper_finalization_protocol_verification_v2.json"
         )
         security_protocol = self._report(
-            "data/evaluation/security_closure_protocol_verification_v1.json"
+            "data/evaluation/security_closure_protocol_verification_v2.json"
         )
         evidence_kit_report = self._report(
             "data/evaluation/excellence_evidence_kit_verification_v1.json"
         )
         security_closure = self._report(
-            "data/evaluation/security_closure_verification_v1.json"
+            "data/evaluation/security_closure_verification_v2.json"
         )
         product_validation = self._report(
             "data/evaluation/product_validation_v1/decision.json"
@@ -394,12 +394,18 @@ class ProductControlPlane:
             ),
             (
                 "security_closure_protocol",
-                "Frozen exposed-credential closure protocol",
+                "Frozen all-known-credential closure protocol",
                 security_protocol.get("passed") is True
                 and security_protocol.get("closure_complete") is False
+                and security_protocol.get("known_incident_count") == 2
+                and security_protocol.get("revoked_incident_count") == 0
+                and security_protocol.get("known_incidents_complete") is False
+                and security_protocol.get("incident_ids")
+                == ["deepseek_api_credential", "github_classic_pat"]
                 and security_protocol.get("boundary_aware_secret_match_count") == 0
+                and security_protocol.get("origin_has_embedded_credential") is False
                 and security_protocol_current,
-                "data/evaluation/security_closure_protocol_verification_v1.json",
+                "data/evaluation/security_closure_protocol_verification_v2.json",
             ),
             (
                 "product_validation_protocol",
@@ -467,13 +473,17 @@ class ProductControlPlane:
             ),
             (
                 "credential_security_closure",
-                "Exposed provider credential revoked with redacted evidence",
+                "All known exposed credentials revoked with redacted evidence",
                 security_closure.get("passed") is True
                 and security_closure.get("closure_complete") is True
+                and security_closure.get("known_incident_count") == 2
+                and security_closure.get("revoked_incident_count") == 2
+                and security_closure.get("known_incidents_complete") is True
                 and security_closure.get("boundary_aware_secret_match_count") == 0
+                and security_closure.get("origin_has_embedded_credential") is False
                 and security_closure.get("credential_value_stored") is False
                 and security_closure_current,
-                "data/evaluation/security_closure_verification_v1.json",
+                "data/evaluation/security_closure_verification_v2.json",
             ),
             (
                 "production_operations_validation",

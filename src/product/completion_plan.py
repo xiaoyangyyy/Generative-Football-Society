@@ -24,11 +24,11 @@ STEPS = (
         "credential_security_closure", "security", 10, "external_manual",
         "credential_owner", (),
         ("python scripts/verify_security_closure.py --attestation "
-         "data/evaluation/security_closure_v1/attestation.json --out "
-         "data/evaluation/security_closure_verification_v1.json",),
+         "data/evaluation/security_closure_v2/attestation.json --out "
+         "data/evaluation/security_closure_verification_v2.json",),
         required_inputs=(
-            "provider-console revocation receipt with all credential values redacted",
-            "data/evaluation/security_closure_v1/attestation.json",
+            "distinct redacted DeepSeek and GitHub revocation receipts",
+            "data/evaluation/security_closure_v2/attestation.json",
         ),
     ),
     CompletionStep(

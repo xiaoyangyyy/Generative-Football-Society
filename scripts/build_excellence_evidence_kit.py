@@ -8,7 +8,6 @@ import hashlib
 import io
 import json
 import os
-import re
 import sys
 import tempfile
 import zipfile
@@ -28,15 +27,17 @@ from scripts.product_value_study import (  # noqa: E402
 )
 from scripts.run_production_validation import ATTESTATION as PRODUCTION_ATTESTATION  # noqa: E402
 from scripts.verify_independent_reproduction import REVIEWER_ATTESTATION as REPRO_ATTESTATION  # noqa: E402
-from scripts.verify_security_closure import ATTESTATION as SECURITY_ATTESTATION  # noqa: E402
+from scripts.verify_security_closure import (  # noqa: E402
+    ATTESTATION as SECURITY_ATTESTATION,
+    SECRET_PATTERNS,
+)
 from src.infrastructure import file_sha256  # noqa: E402
 
 KIT_ID = "gfs-excellence-evidence-kit-v1"
 KIT_ROOT = Path("build/evidence-kits")
-SECRET_PATTERN = re.compile(rb"(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}")
 PLACEHOLDER = "REPLACE_WITH_VERIFIED_VALUE"
 PROTOCOLS = {
-    "security": "data/evaluation/security_closure_protocol_v1.json",
+    "security": "data/evaluation/security_closure_protocol_v2.json",
     "product": "data/evaluation/product_validation_protocol_v1.json",
     "production": "data/evaluation/production_validation_protocol_v1.json",
     "value": "data/evaluation/product_value_validation_protocol_v1.json",
@@ -78,26 +79,46 @@ def build_template_files(root: Path = ROOT) -> dict[str, bytes]:
     security = protocols["security"]
     production = protocols["production"]
 
-    security_receipt = {
-        "template_only": True,
-        "provider": "deepseek",
-        "status": "REPLACE_WITH_REVOKED_STATUS",
-        "redacted": True,
-        "non_secret_receipt_reference": PLACEHOLDER,
+    security_receipts = {
+        incident["incident_id"]: {
+            "template_only": True,
+            "incident_id": incident["incident_id"],
+            "provider": incident["provider"],
+            "status": "REPLACE_WITH_REVOKED_STATUS",
+            "redacted": True,
+            "non_secret_receipt_reference": PLACEHOLDER,
+        }
+        for incident in security["incidents"]
     }
     security_attestation = {
         **_template_header(security["protocol_id"]),
-        "provider": security["incident"]["provider"],
-        "credential_revoked": False,
-        "revoked_at": PLACEHOLDER,
-        "revocation_evidence": "security/receipt.json",
-        "revocation_evidence_sha256": PLACEHOLDER,
-        "evidence_contains_secret": False,
-        "replacement_credential_generated": False,
-        "replacement_storage": "not_generated",
+        "schema_version": security["schema_version"],
+        "incidents": [
+            {
+                "incident_id": incident["incident_id"],
+                "provider": incident["provider"],
+                "credential_revoked": False,
+                "revoked_at": PLACEHOLDER,
+                "revocation_evidence": (
+                    "security/"
+                    f"{incident['incident_id']}_receipt.json"
+                ),
+                "revocation_evidence_sha256": PLACEHOLDER,
+                "evidence_contains_secret": False,
+                "replacement_credential_generated": False,
+                "replacement_storage": "not_generated",
+            }
+            for incident in security["incidents"]
+        ],
         "repository_secret_scan": {
             "commit_sha": PLACEHOLDER,
+            "secret_pattern_version": security["evidence_contract"][
+                "secret_pattern_version"
+            ],
             "boundary_aware_secret_match_count": None,
+            "boundary_aware_secret_matches_by_family": {
+                family: None for family in SECRET_PATTERNS
+            },
         },
         "signed_at": PLACEHOLDER,
         "attestation": SECURITY_ATTESTATION,
@@ -317,7 +338,6 @@ training job, or formal experiment.
 """
     files = {
         "README.md": readme.encode(),
-        "security/receipt.template.json": _json_bytes(security_receipt),
         "security/attestation.template.json": _json_bytes(security_attestation),
         "product_validation/participant_record.template.json": _json_bytes(product_record),
         "product_validation/external_review.template.json": _json_bytes(external_review),
@@ -326,6 +346,10 @@ training job, or formal experiment.
         "independent_reproduction/review.template.json": _json_bytes(independent_review),
         "paper/PAPER_FINAL.template.md": manuscript.encode(),
     }
+    files.update({
+        f"security/{incident_id}_receipt.template.json": _json_bytes(receipt)
+        for incident_id, receipt in security_receipts.items()
+    })
     manifest = {
         "schema_version": 1,
         "kit_id": KIT_ID,
@@ -367,8 +391,9 @@ def verify_kit(root: Path = ROOT) -> dict[str, Any]:
     checks = {
         "template_inventory_is_exact": set(files) == {
             "README.md", "manifest.json",
-            "security/receipt.template.json",
             "security/attestation.template.json",
+            "security/deepseek_api_credential_receipt.template.json",
+            "security/github_classic_pat_receipt.template.json",
             "product_validation/participant_record.template.json",
             "product_validation/external_review.template.json",
             "product_value/participant_record.template.json",
@@ -377,14 +402,17 @@ def verify_kit(root: Path = ROOT) -> dict[str, Any]:
             "paper/PAPER_FINAL.template.md",
         },
         "all_json_templates_are_explicitly_non_evidence": (
-            len(json_templates) == 7
+            len(json_templates) == 8
             and all(row.get("template_only") is True for row in json_templates)
         ),
         "templates_contain_placeholders": all(
             b"REPLACE_WITH_" in content
             for path, content in files.items() if path.endswith(".template.json")
         ),
-        "archive_is_secret_free": SECRET_PATTERN.search(archive) is None,
+        "archive_is_secret_free": all(
+            pattern.search(archive) is None
+            for pattern in SECRET_PATTERNS.values()
+        ),
         "archive_paths_are_relative_and_normalized": all(
             not Path(path).is_absolute()
             and ".." not in Path(path).parts
@@ -400,7 +428,7 @@ def verify_kit(root: Path = ROOT) -> dict[str, Any]:
         "status": "passed_template_only_kit" if passed else "failed",
         "passed": passed,
         "kit_id": KIT_ID,
-        "template_count": 7,
+        "template_count": 8,
         "archive_sha256": hashlib.sha256(archive).hexdigest(),
         "checks": checks,
         "artifact_sha256": {

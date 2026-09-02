@@ -28,7 +28,12 @@ Product security cannot reach 15/15 until the redacted, content-addressed
 closure procedure in `docs/SECURITY_CREDENTIAL_CLOSURE.md` passes together
 with the independent application-security review.
 
-For the current DeepSeek OpenAI-compatible API:
+The closure registry currently contains both the DeepSeek API credential and
+the GitHub Classic PAT incident. Both provider-side revocations and two
+distinct redacted receipts are required; a clean repository scan alone cannot
+close either incident.
+
+For a replacement DeepSeek OpenAI-compatible API credential:
 
 ```powershell
 $env:DEEPSEEK_API_KEY="<new rotated key>"

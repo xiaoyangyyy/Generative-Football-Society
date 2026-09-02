@@ -76,6 +76,13 @@ def test_live_plan_is_integrated_and_never_executes_external_work(capsys):
     assert release["completion_plan"]["open_step_count"] == 10
     assert release["completion_plan"]["evidence_kit"]["ready"] is True
     assert release["completion_plan"]["zero_execution_plan"] is True
+    security = release["completion_plan"]["steps"][0]
+    assert security["gate_id"] == "credential_security_closure"
+    assert "security_closure_v2/attestation.json" in security["commands"][0]
+    assert security["required_inputs"] == [
+        "distinct redacted DeepSeek and GitHub revocation receipts",
+        "data/evaluation/security_closure_v2/attestation.json",
+    ]
     parser = build_parser()
     args = parser.parse_args(["--base-dir", str(ROOT), "studio", "excellence"])
     assert args.func(args) == 0

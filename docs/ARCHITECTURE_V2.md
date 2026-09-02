@@ -2957,3 +2957,41 @@ transitions and therefore enter several strata; the UI prohibits ranking cells,
 cross-cell effect comparison, score attribution and real-football causal claims.
 No training, match, future generation, formal experiment or provider call is
 executed in this stage.
+
+## 97. V3.79 All-known credential closure and evidence invalidation
+
+The prior security closure protocol registered only the exposed DeepSeek key.
+It could therefore accept a valid DeepSeek revocation while remaining unaware
+of the separately exposed GitHub Classic personal access token. A clean
+repository scan was also limited to one OpenAI-compatible key pattern. That was
+not sufficient evidence for the generic credential-security completion gate.
+
+Security closure protocol V2 freezes two incident identities: the DeepSeek API
+credential and the GitHub Classic PAT. The outer attestation must contain the
+exact incident set. Every incident must be explicitly revoked, use a distinct
+confined content-addressed redacted receipt, and record either no replacement
+or local-environment-only replacement storage. One signed attestation binds the
+complete set to the current commit. Partial closure, duplicate incident ids,
+unknown or missing incidents, reused receipts, escaping paths, secret-bearing
+evidence, stale scans and credentials embedded in the HTTPS origin URL all fail
+closed. The origin check returns only a boolean and never prints the URL.
+
+Repository scanning now reports only counts for OpenAI-compatible API keys,
+GitHub Classic PATs and GitHub fine-grained PATs. Neither the verifier nor its
+reports expose matched values. The evidence kit contains separate deliberately
+invalid receipt templates and one deliberately invalid multi-incident
+attestation template. Control-plane, completion-plan, reproduction-manifest and
+excellence-roadmap paths all point to V2. The historical V1 protocol remains in
+the repository as superseded evidence but cannot satisfy a current gate.
+
+Refreshing this chain revealed an independent stale-evidence condition:
+post-experiment action-adoption code had changed, while the old paper-package
+snapshot still carried a passing status. The current paper-package verifier
+correctly rejects its frozen execution identity. The control plane now reports
+9 of 21 gates passed and 12 open while retaining the evidence-derived product
+83 and academic 70 base maturity scores. Restoring the paper gate requires a
+new explicitly authorized identity-matched experiment; this stage does not run
+or rewrite that experiment.
+
+No credential is used or stored. No provider call, network revocation, training,
+match, future generation or formal experiment is executed in this stage.

@@ -70,14 +70,14 @@ def test_control_plane_unifies_product_and_paper_release_gates():
     release = ProductControlPlane(ROOT).snapshot()["release"]
     assert release["code_ready"] is False
     assert release["release_ready"] is False
-    assert release["passed_gate_count"] == 10
-    assert release["open_gate_count"] == 11
+    assert release["passed_gate_count"] == 9
+    assert release["open_gate_count"] == 12
     assert release["next_action"] == "credential_security_closure"
     assert release["completion_plan"]["zero_execution_plan"] is True
     assert release["completion_plan"]["open_step_count"] == 10
     assert release["scores"] == {"product": 83, "academic": 70}
     gates = {gate["id"]: gate for gate in release["gates"]}
-    assert gates["paper_package"]["passed"] is True
+    assert gates["paper_package"]["passed"] is False
     assert gates["target_hash_lock"]["passed"] is False
     assert gates["cyclonedx_sbom"]["passed"] is True
     assert gates["local_runtime"]["passed"] is True
@@ -87,11 +87,17 @@ def test_control_plane_unifies_product_and_paper_release_gates():
     assert gates["external_data_archive"]["passed"] is True
     assert gates["product_validation_protocol"]["passed"] is True
     assert gates["security_closure_protocol"]["passed"] is True
+    assert gates["security_closure_protocol"]["evidence"].endswith(
+        "security_closure_protocol_verification_v2.json"
+    )
     assert gates["independent_reproduction_protocol"]["passed"] is True
     assert gates["target_user_validation"]["passed"] is False
     assert gates["external_accessibility_review"]["passed"] is False
     assert gates["external_security_review"]["passed"] is False
     assert gates["credential_security_closure"]["passed"] is False
+    assert gates["credential_security_closure"]["evidence"].endswith(
+        "security_closure_verification_v2.json"
+    )
     assert gates["production_operations_validation"]["passed"] is False
     assert gates["user_value_validation"]["passed"] is False
     assert gates["confirmatory_results"]["passed"] is False

@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "protocol_id": "gfs-all-known-exposed-credential-closure-v2",
+  "state": "registered_waiting_for_all_user_revocations",
+  "incidents": [
+    {
+      "incident_id": "deepseek_api_credential",
+      "provider": "deepseek",
+      "credential_family": "openai_compatible_api_key",
+      "credential_value_must_not_be_recorded": true,
+      "revocation_required": true,
+      "replacement_storage": "local_environment_only"
+    },
+    {
+      "incident_id": "github_classic_pat",
+      "provider": "github",
+      "credential_family": "github_classic_pat",
+      "credential_value_must_not_be_recorded": true,
+      "revocation_required": true,
+      "replacement_storage": "local_environment_only"
+    }
+  ],
+  "required_attestation_fields": [
+    "schema_version",
+    "protocol_id",
+    "incidents",
+    "repository_secret_scan",
+    "signed_at",
+    "attestation"
+  ],
+  "required_incident_attestation_fields": [
+    "incident_id",
+    "provider",
+    "credential_revoked",
+    "revoked_at",
+    "revocation_evidence",
+    "revocation_evidence_sha256",
+    "evidence_contains_secret",
+    "replacement_credential_generated",
+    "replacement_storage"
+  ],
+  "evidence_contract": {
+    "revocation_evidence_root": "data/evaluation/security_closure_v2",
+    "allowed_extensions": [".json", ".pdf", ".png"],
+    "redaction_required": true,
+    "distinct_receipt_per_incident_required": true,
+    "current_commit_scan_required": true,
+    "origin_remote_credential_forbidden": true,
+    "secret_pattern_version": "gfs_known_credentials_v2",
+    "boundary_aware_secret_matches_required": 0,
+    "attestation_text": "I revoked every known exposed credential, stored no credential value in evidence, and confined every replacement to the local environment"
+  },
+  "output": "data/evaluation/security_closure_verification_v2.json",
+  "current_execution": {
+    "known_incident_count": 2,
+    "incidents_attested": 0,
+    "credential_value_stored": false,
+    "provider_calls_made": false,
+    "training_executed": false,
+    "matches_executed": 0
+  }
+}

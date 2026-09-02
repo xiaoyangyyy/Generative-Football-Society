@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "verification": "gfs_all_known_credential_closure_preregistration",
+  "generated_at": "2026-09-02T07:56:01.859444+00:00",
+  "status": "registered_waiting_for_all_user_revocations",
+  "passed": true,
+  "closure_complete": false,
+  "known_incident_count": 2,
+  "revoked_incident_count": 0,
+  "known_incidents_complete": false,
+  "incident_ids": [
+    "deepseek_api_credential",
+    "github_classic_pat"
+  ],
+  "checks": {
+    "schema_state_and_known_incidents_are_frozen": true,
+    "attestation_allowlists_are_exact": true,
+    "redacted_evidence_contract_is_fail_closed": true,
+    "output_is_confined": true,
+    "execution_is_zero_and_all_incidents_remain_open": true,
+    "repository_has_zero_boundary_aware_secret_matches": true,
+    "origin_remote_contains_no_embedded_credential": true
+  },
+  "artifact_sha256": {
+    "data/evaluation/security_closure_protocol_v2.json": "3f97b83f214a3d2cc0466022f96d0cdc6fca765a1cc9e77da115ab4cc4a66777",
+    "docs/SECURITY_CREDENTIAL_CLOSURE.md": "c80a28522f4e512712adffcfe62d4172e64e6482b23fdff523827c72d6a8fe74",
+    "scripts/verify_security_closure.py": "57017a18256141d9d9b277943dbb0c8b93e0749b22b69edb47f545827eb156d8"
+  },
+  "secret_pattern_version": "gfs_known_credentials_v2",
+  "boundary_aware_secret_match_count": 0,
+  "boundary_aware_secret_matches_by_family": {
+    "openai_compatible_api_key": 0,
+    "github_classic_pat": 0,
+    "github_fine_grained_pat": 0
+  },
+  "origin_has_embedded_credential": false,
+  "credential_value_stored": false,
+  "provider_calls_made": false,
+  "training_executed": false,
+  "matches_executed": 0
+}

@@ -6,6 +6,7 @@
     "action_change_expectation_matches_shared_uniform_sampler": true,
     "action_transition_map_drills_into_descriptive_world_propagation": true,
     "aggregate_views_preserve_cross_and_v2_action_semantics": true,
+    "all_known_exposed_credentials_require_independent_v2_closure": true,
     "all_training_entrypoints_are_classified": true,
     "counterfactual_propagation_preserves_cross_and_v2_signal_semantics": true,
     "cross_action_authority_is_distinct_replayable_and_fail_closed": true,
