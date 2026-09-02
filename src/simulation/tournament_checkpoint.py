@@ -2,22 +2,34 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
 import os
+import shutil
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Dict, List, Optional, Tuple
 
+from src.infrastructure.locking import FileLease
 from src.simulation.runtime import environment_snapshot, env_bool
 from src.simulation.world_state import validate_world_state
 
 
-CHECKPOINT_VERSION = 4
+CHECKPOINT_VERSION = 5
 RANDOM_WORLD_CONTRACT = "identity_scoped_rng_v1"
 DEFAULT_PATH = os.path.join("data", "persistence", "tournament_checkpoint.json")
 MAX_CHECKPOINT_BYTES = 64 * 1024 * 1024
+STATE_SNAPSHOT_VERSION = 1
+MAX_STATE_SNAPSHOT_BYTES = 32 * 1024 * 1024
+MAX_STATE_SNAPSHOT_FILES = 10_000
+RECOVERY_PATH = os.path.join(
+    "data", "persistence", "tournament_state_recovery.json",
+)
+LAST_RECOVERY_PATH = os.path.join(
+    "data", "persistence", "tournament_state_recovery_last.json",
+)
 STATE_ARTIFACT_PATHS = (
     "data/persistence/squad_carryover.json",
     "data/persistence/world_model_fusion.jsonl",
@@ -65,34 +77,387 @@ def _cognitive_cache_artifact(base_dir: str) -> tuple[str, Path] | None:
     return key, path
 
 
-def capture_state_artifacts(base_dir: str) -> Dict[str, str]:
-    root = os.path.abspath(base_dir)
-    artifacts: Dict[str, str] = {}
-    for relative in STATE_ARTIFACT_PATHS:
-        path = os.path.join(root, *relative.split("/"))
-        if os.path.isfile(path):
-            artifacts[relative] = _file_sha256(path)
+def _state_artifact_targets(base_dir: str) -> Dict[str, tuple[Path, str, bool]]:
+    root = Path(base_dir).resolve()
+    targets = {
+        relative: (
+            root.joinpath(*relative.split("/")), "file", True,
+        )
+        for relative in STATE_ARTIFACT_PATHS
+    }
     cache = _cognitive_cache_artifact(base_dir)
     if cache is not None:
         key, path = cache
-        if path.is_dir():
+        targets[key] = (path, "directory", key != "external/MATCH_COGNITIVE_CACHE")
+    return targets
+
+
+def capture_state_artifacts(base_dir: str) -> Dict[str, str]:
+    artifacts: Dict[str, str] = {}
+    for key, (path, kind, _internal) in _state_artifact_targets(base_dir).items():
+        if path.is_symlink():
+            raise ValueError("Tournament state artifacts cannot be symlinks")
+        if not path.exists():
+            continue
+        if kind == "file":
+            if not path.is_file():
+                raise ValueError("Tournament state file has an invalid type")
+            artifacts[key] = _file_sha256(str(path))
+        else:
+            if not path.is_dir():
+                raise ValueError("Tournament state directory has an invalid type")
             artifacts[key] = _directory_sha256(path)
     return artifacts
 
 
 def verify_state_artifacts(base_dir: str, payload: Dict[str, Any]) -> None:
     expected = payload.get("state_artifacts")
-    if not isinstance(expected, dict) or any(
+    _validate_state_artifact_digests(expected)
+    if expected != capture_state_artifacts(base_dir):
+        raise ValueError("Tournament checkpoint external state integrity mismatch")
+
+
+def _validate_state_artifact_digests(value: Any) -> Dict[str, str]:
+    if not isinstance(value, dict) or any(
         not isinstance(path, str)
         or not path
         or not isinstance(digest, str)
         or len(digest) != 64
         or any(char not in "0123456789abcdef" for char in digest)
-        for path, digest in expected.items()
+        for path, digest in value.items()
     ):
         raise ValueError("Invalid tournament checkpoint state artifacts")
-    if expected != capture_state_artifacts(base_dir):
-        raise ValueError("Tournament checkpoint external state integrity mismatch")
+    return value
+
+
+def _snapshot_file(path: Path, relative: str) -> tuple[dict[str, str], int]:
+    if path.stat().st_size > MAX_STATE_SNAPSHOT_BYTES:
+        raise ValueError("Tournament state snapshot exceeds safety limits")
+    content = path.read_bytes()
+    digest = hashlib.sha256(content).hexdigest()
+    return {
+        "path": relative,
+        "sha256": digest,
+        "content_b64": base64.b64encode(content).decode("ascii"),
+    }, len(content)
+
+
+def capture_state_snapshot(
+    base_dir: str, artifacts: Dict[str, str] | None = None,
+) -> Dict[str, Any]:
+    """Embed a bounded rollback image of every causal external artifact."""
+    expected = _validate_state_artifact_digests(
+        artifacts if artifacts is not None else capture_state_artifacts(base_dir)
+    )
+    targets = _state_artifact_targets(base_dir)
+    snapshot: Dict[str, Any] = {
+        "schema_version": STATE_SNAPSHOT_VERSION,
+        "artifacts": {},
+    }
+    total_bytes = 0
+    file_count = 0
+    for key in sorted(expected):
+        if key not in targets:
+            raise ValueError("Tournament state snapshot target is unavailable")
+        path, kind, _internal = targets[key]
+        files: list[dict[str, str]] = []
+        if kind == "file":
+            if not path.is_file() or path.is_symlink():
+                raise ValueError("Tournament state file changed during snapshot")
+            item, size = _snapshot_file(path, "")
+            files.append(item)
+            total_bytes += size
+            file_count += 1
+        else:
+            if not path.is_dir() or path.is_symlink():
+                raise ValueError("Tournament state directory changed during snapshot")
+            for candidate in sorted(path.rglob("*")):
+                if candidate.is_symlink():
+                    raise ValueError(
+                        "Tournament state directories cannot contain symlinks"
+                    )
+                if not candidate.is_file():
+                    continue
+                relative = candidate.relative_to(path).as_posix()
+                item, size = _snapshot_file(candidate, relative)
+                files.append(item)
+                total_bytes += size
+                file_count += 1
+        if (
+            total_bytes > MAX_STATE_SNAPSHOT_BYTES
+            or file_count > MAX_STATE_SNAPSHOT_FILES
+        ):
+            raise ValueError("Tournament state snapshot exceeds safety limits")
+        snapshot["artifacts"][key] = {"kind": kind, "files": files}
+    validate_state_snapshot(snapshot, expected)
+    return snapshot
+
+
+def _safe_snapshot_relative(value: Any) -> str:
+    if not isinstance(value, str) or not value or "\\" in value:
+        raise ValueError("Invalid tournament state snapshot path")
+    path = PurePosixPath(value)
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+        raise ValueError("Invalid tournament state snapshot path")
+    return path.as_posix()
+
+
+def _decode_snapshot_content(item: Dict[str, Any]) -> bytes:
+    if not isinstance(item, dict) or set(item) != {
+        "path", "sha256", "content_b64",
+    }:
+        raise ValueError("Invalid tournament state snapshot file")
+    digest = item["sha256"]
+    encoded = item["content_b64"]
+    if (
+        not isinstance(digest, str)
+        or len(digest) != 64
+        or any(char not in "0123456789abcdef" for char in digest)
+        or not isinstance(encoded, str)
+    ):
+        raise ValueError("Invalid tournament state snapshot file identity")
+    try:
+        content = base64.b64decode(encoded.encode("ascii"), validate=True)
+    except (UnicodeEncodeError, ValueError) as exc:
+        raise ValueError("Invalid tournament state snapshot encoding") from exc
+    if not hmac.compare_digest(hashlib.sha256(content).hexdigest(), digest):
+        raise ValueError("Tournament state snapshot file integrity mismatch")
+    return content
+
+
+def validate_state_snapshot(
+    value: Any, expected_artifacts: Dict[str, str],
+) -> Dict[str, Any]:
+    expected = _validate_state_artifact_digests(expected_artifacts)
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"schema_version", "artifacts"}
+        or value.get("schema_version") != STATE_SNAPSHOT_VERSION
+        or not isinstance(value["artifacts"], dict)
+        or set(value["artifacts"]) != set(expected)
+    ):
+        raise ValueError("Invalid tournament state snapshot")
+    total_bytes = 0
+    file_count = 0
+    for key, record in value["artifacts"].items():
+        if (
+            not isinstance(record, dict)
+            or set(record) != {"kind", "files"}
+            or record["kind"] not in {"file", "directory"}
+            or not isinstance(record["files"], list)
+        ):
+            raise ValueError("Invalid tournament state snapshot artifact")
+        rows = record["files"]
+        if record["kind"] == "file" and (
+            len(rows) != 1
+            or not isinstance(rows[0], dict)
+            or rows[0].get("path") != ""
+        ):
+            raise ValueError("Invalid tournament state file snapshot")
+        seen: set[str] = set()
+        directory_digest = hashlib.sha256()
+        for item in rows:
+            relative = item.get("path") if isinstance(item, dict) else None
+            if record["kind"] == "directory":
+                relative = _safe_snapshot_relative(relative)
+            elif relative != "":
+                raise ValueError("Invalid tournament state file snapshot path")
+            if relative in seen:
+                raise ValueError("Duplicate tournament state snapshot path")
+            seen.add(relative)
+            content = _decode_snapshot_content(item)
+            total_bytes += len(content)
+            file_count += 1
+            if record["kind"] == "directory":
+                encoded_path = relative.encode("utf-8")
+                directory_digest.update(len(encoded_path).to_bytes(4, "big"))
+                directory_digest.update(encoded_path)
+                directory_digest.update(item["sha256"].encode("ascii"))
+        observed = (
+            rows[0]["sha256"]
+            if record["kind"] == "file"
+            else directory_digest.hexdigest()
+        )
+        if not hmac.compare_digest(observed, expected[key]):
+            raise ValueError("Tournament state snapshot artifact integrity mismatch")
+        if (
+            total_bytes > MAX_STATE_SNAPSHOT_BYTES
+            or file_count > MAX_STATE_SNAPSHOT_FILES
+        ):
+            raise ValueError("Tournament state snapshot exceeds safety limits")
+    return value
+
+
+def _atomic_json(path: Path, payload: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = json.dumps(
+        payload, ensure_ascii=False, allow_nan=False,
+    ).encode("utf-8")
+    if len(encoded) > MAX_CHECKPOINT_BYTES:
+        raise ValueError("Tournament recovery journal exceeds 64 MiB")
+    handle, temporary = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent),
+    )
+    try:
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(encoded)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.remove(temporary)
+
+
+def _internal_restore_target(root: Path, target: Path) -> Path:
+    resolved = target.resolve()
+    try:
+        relative = resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(
+            "Automatic recovery cannot modify an external state directory"
+        ) from exc
+    if not relative.parts:
+        raise ValueError("Automatic recovery target cannot be the project root")
+    return resolved
+
+
+def _restore_file_target(path: Path, record: Dict[str, Any] | None) -> None:
+    if record is None:
+        if path.exists():
+            path.unlink()
+        return
+    content = _decode_snapshot_content(record["files"][0])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle, temporary = tempfile.mkstemp(
+        prefix=f".{path.name}.restore-", suffix=".tmp", dir=str(path.parent),
+    )
+    try:
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.remove(temporary)
+
+
+def _restore_directory_target(
+    root: Path, path: Path, record: Dict[str, Any] | None,
+) -> None:
+    if record is None:
+        if path.exists():
+            checked = _internal_restore_target(root, path)
+            shutil.rmtree(checked)
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(
+        prefix=f".{path.name}.restore-", dir=str(path.parent),
+    ))
+    try:
+        for item in record["files"]:
+            relative = _safe_snapshot_relative(item["path"])
+            destination = staging.joinpath(*PurePosixPath(relative).parts)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with destination.open("wb") as stream:
+                stream.write(_decode_snapshot_content(item))
+                stream.flush()
+                os.fsync(stream.fileno())
+        if path.exists():
+            checked = _internal_restore_target(root, path)
+            shutil.rmtree(checked)
+        os.replace(staging, path)
+    finally:
+        if staging.exists():
+            checked_staging = _internal_restore_target(root, staging)
+            shutil.rmtree(checked_staging)
+
+
+def restore_state_artifacts(base_dir: str, payload: Dict[str, Any]) -> bool:
+    """Idempotently roll internal causal files back after identity verification."""
+    expected = _validate_state_artifact_digests(payload.get("state_artifacts"))
+    desired = validate_state_snapshot(payload.get("state_snapshot"), expected)
+    checkpoint_identity = str(payload.get("content_sha256") or "")
+    root = Path(base_dir).resolve()
+    recovery_path = root.joinpath(*RECOVERY_PATH.split(os.sep))
+    last_recovery_path = root.joinpath(*LAST_RECOVERY_PATH.split(os.sep))
+    lock_path = recovery_path.with_suffix(".lock")
+    with FileLease(lock_path, timeout=5.0):
+        current = capture_state_artifacts(base_dir)
+        targets = _state_artifact_targets(base_dir)
+        if any(
+            key not in targets
+            or desired["artifacts"][key]["kind"] != targets[key][1]
+            for key in expected
+        ):
+            raise ValueError("Tournament state snapshot target type mismatch")
+        mismatches = {
+            key for key in set(current) | set(expected)
+            if current.get(key) != expected.get(key)
+        }
+        unavailable = mismatches - set(targets)
+        external = {
+            key for key in mismatches
+            if key in targets and not targets[key][2]
+        }
+        if unavailable:
+            raise ValueError("Tournament recovery target is unavailable")
+        if external:
+            raise ValueError(
+                "Automatic recovery cannot modify an external cognitive cache"
+            )
+        if recovery_path.is_symlink():
+            raise ValueError("Tournament recovery journal cannot be a symlink")
+        if not mismatches:
+            if recovery_path.is_file():
+                os.replace(recovery_path, last_recovery_path)
+                return True
+            return False
+
+        if recovery_path.is_file():
+            if recovery_path.stat().st_size > MAX_CHECKPOINT_BYTES:
+                raise ValueError("Tournament recovery journal exceeds 64 MiB")
+            recovery = json.loads(recovery_path.read_text(encoding="utf-8"))
+            if (
+                not isinstance(recovery, dict)
+                or set(recovery) != {
+                    "schema_version", "checkpoint_content_sha256",
+                    "original_state_artifacts", "original_state_snapshot",
+                }
+                or recovery.get("schema_version") != 1
+                or recovery.get("checkpoint_content_sha256")
+                != checkpoint_identity
+            ):
+                raise ValueError("Conflicting tournament state recovery journal")
+            validate_state_snapshot(
+                recovery["original_state_snapshot"],
+                recovery["original_state_artifacts"],
+            )
+        else:
+            original = capture_state_snapshot(base_dir, current)
+            recovery = {
+                "schema_version": 1,
+                "checkpoint_content_sha256": checkpoint_identity,
+                "original_state_artifacts": current,
+                "original_state_snapshot": original,
+            }
+            _atomic_json(recovery_path, recovery)
+
+        # All paths and snapshot bytes were preflighted before the first mutation.
+        for key, (target, kind, internal) in targets.items():
+            if not internal:
+                continue
+            target = _internal_restore_target(root, target)
+            record = desired["artifacts"].get(key)
+            if kind == "file":
+                _restore_file_target(target, record)
+            else:
+                _restore_directory_target(root, target, record)
+        if capture_state_artifacts(base_dir) != expected:
+            raise ValueError("Tournament external state recovery did not converge")
+        os.replace(recovery_path, last_recovery_path)
+        return True
 
 
 def _content_sha256(payload: Dict[str, Any]) -> str:
@@ -221,6 +586,7 @@ def _validate_payload(payload: Dict[str, Any]) -> None:
         "post_group_reflection_done", "random_world", "content_sha256",
         "run_identity_sha256",
         "state_artifacts",
+        "state_snapshot",
         "world_state",
         "reflection_journal",
     }
@@ -237,6 +603,7 @@ def _validate_payload(payload: Dict[str, Any]) -> None:
     checkpoint_root_seed(payload)
     checkpoint_run_identity(payload)
     world_state = validate_world_state(payload["world_state"])
+    validate_state_snapshot(payload["state_snapshot"], payload["state_artifacts"])
     reflection_journal = validate_reflection_journal(payload["reflection_journal"])
     validate_reflection_world_consistency(reflection_journal, world_state)
     if payload["phase"] not in {"group", "post_group", "knockout", "complete"}:
@@ -307,6 +674,7 @@ def save_checkpoint(
 ) -> str:
     path = checkpoint_path(base_dir)
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    state_artifacts = capture_state_artifacts(base_dir)
     payload = {
         "version": CHECKPOINT_VERSION,
         "phase": phase,
@@ -326,7 +694,8 @@ def save_checkpoint(
             "root_seed": int(root_seed),
         },
         "run_identity_sha256": run_identity_sha256,
-        "state_artifacts": capture_state_artifacts(base_dir),
+        "state_artifacts": state_artifacts,
+        "state_snapshot": capture_state_snapshot(base_dir, state_artifacts),
         "world_state": validate_world_state(world_state),
         "reflection_journal": validate_reflection_journal(reflection_journal),
     }
@@ -335,11 +704,16 @@ def save_checkpoint(
     )
     checkpoint_run_identity(payload)
     payload["content_sha256"] = _content_sha256(payload)
+    encoded = json.dumps(
+        payload, ensure_ascii=False, indent=2, allow_nan=False,
+    ).encode("utf-8")
+    if len(encoded) > MAX_CHECKPOINT_BYTES:
+        raise ValueError("Tournament checkpoint exceeds 64 MiB")
     directory = os.path.dirname(path)
     fd, temporary = tempfile.mkstemp(prefix=".tournament-", suffix=".json.tmp", dir=directory)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=2, allow_nan=False)
+        with os.fdopen(fd, "wb") as f:
+            f.write(encoded)
             f.flush()
             os.fsync(f.fileno())
         os.replace(temporary, path)
@@ -349,7 +723,9 @@ def save_checkpoint(
     return path
 
 
-def load_checkpoint(base_dir: str) -> Optional[Dict[str, Any]]:
+def load_checkpoint(
+    base_dir: str, *, verify_external_state: bool = True,
+) -> Optional[Dict[str, Any]]:
     path = checkpoint_path(base_dir)
     if not os.path.isfile(path):
         return None
@@ -374,12 +750,18 @@ def load_checkpoint(base_dir: str) -> Optional[Dict[str, Any]]:
             "Tournament checkpoint V3 lacks dynamic world state; start a fresh "
             "tournament instead of resuming it"
         )
+    if payload.get("version") == 4:
+        raise ValueError(
+            "Tournament checkpoint V4 lacks recoverable external state; start "
+            "a fresh tournament instead of resuming it"
+        )
     if payload.get("version") != CHECKPOINT_VERSION:
         raise ValueError(
             f"Unsupported tournament checkpoint version: {payload.get('version')!r}"
         )
     _validate_payload(payload)
-    verify_state_artifacts(base_dir, payload)
+    if verify_external_state:
+        verify_state_artifacts(base_dir, payload)
     return payload
 
 

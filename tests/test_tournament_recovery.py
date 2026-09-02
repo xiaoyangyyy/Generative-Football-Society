@@ -15,8 +15,9 @@ from src.simulation.psychological_state import PsychologicalState
 from src.simulation.random_control import derive_seed
 from src.simulation.tournament_2026 import TournamentManager
 from src.simulation.tournament_checkpoint import (
-    load_checkpoint, validate_reflection_journal,
-    validate_reflection_world_consistency,
+    capture_state_artifacts, capture_state_snapshot, load_checkpoint,
+    restore_state_artifacts, validate_reflection_journal,
+    validate_reflection_world_consistency, validate_state_snapshot,
 )
 from src.simulation.world_state import restore_world_state, snapshot_world_state
 from src.simulation.world_cup_runner import _attach_team_dynamics_from_rosters
@@ -389,6 +390,160 @@ def test_checkpoint_binds_dynamic_evidence_and_cognitive_cache(
     cache_file.write_text('{"plan":2}', encoding="utf-8")
     with pytest.raises(ValueError, match="external state integrity mismatch"):
         load_checkpoint(str(tmp_path))
+    unchecked = load_checkpoint(
+        str(tmp_path), verify_external_state=False,
+    )
+    assert restore_state_artifacts(str(tmp_path), unchecked)
+    assert cache_file.read_text(encoding="utf-8") == '{"plan":1}'
+    assert load_checkpoint(str(tmp_path))["state_artifacts"] == (
+        checkpoint["state_artifacts"]
+    )
+    assert (
+        tmp_path / "data/persistence/tournament_state_recovery_last.json"
+    ).is_file()
+
+
+def test_state_snapshot_rejects_tampered_bytes_and_path_traversal(
+    tmp_path, monkeypatch,
+):
+    cache = tmp_path / "data/cache/cognitive"
+    cache.mkdir(parents=True)
+    (cache / "decision.json").write_text('{"plan":1}', encoding="utf-8")
+    monkeypatch.setenv("MATCH_COGNITIVE", "1")
+    monkeypatch.setenv("MATCH_COGNITIVE_CACHE", str(cache))
+    expected = capture_state_artifacts(str(tmp_path))
+    snapshot = capture_state_snapshot(str(tmp_path), expected)
+    item = snapshot["artifacts"]["data/cache/cognitive"]["files"][0]
+    item["content_b64"] = "e30="
+    with pytest.raises(ValueError, match="integrity mismatch"):
+        validate_state_snapshot(snapshot, expected)
+
+    snapshot = capture_state_snapshot(str(tmp_path), expected)
+    snapshot["artifacts"]["data/cache/cognitive"]["files"][0]["path"] = "../x"
+    with pytest.raises(ValueError, match="snapshot path"):
+        validate_state_snapshot(snapshot, expected)
+
+
+def test_recovery_rejects_snapshot_target_type_before_mutation(tmp_path):
+    empty = tmp_path / "data/persistence/world_model_fusion.jsonl"
+    empty.parent.mkdir(parents=True)
+    empty.write_bytes(b"")
+    manager = _manager(tmp_path)
+    manager._save_checkpoint()
+    checkpoint = load_checkpoint(str(tmp_path))
+    checkpoint["state_snapshot"]["artifacts"][
+        "data/persistence/world_model_fusion.jsonl"
+    ]["kind"] = "directory"
+    # An empty file and empty directory share the same raw digest, so target
+    # type must be checked independently from content identity.
+    checkpoint["state_snapshot"]["artifacts"][
+        "data/persistence/world_model_fusion.jsonl"
+    ]["files"] = []
+    empty.write_text("later", encoding="utf-8")
+    with pytest.raises(ValueError, match="target type mismatch"):
+        restore_state_artifacts(str(tmp_path), checkpoint)
+    assert empty.read_text(encoding="utf-8") == "later"
+
+
+def test_interrupted_external_recovery_is_idempotently_completed(
+    tmp_path, monkeypatch,
+):
+    carryover = tmp_path / "data/persistence/squad_carryover.json"
+    fusion = tmp_path / "data/persistence/world_model_fusion.jsonl"
+    carryover.parent.mkdir(parents=True)
+    carryover.write_text('{"version":1}', encoding="utf-8")
+    fusion.write_text('{"decision_id":"one"}\n', encoding="utf-8")
+    manager = _manager(tmp_path)
+    manager._save_checkpoint()
+    checkpoint = load_checkpoint(str(tmp_path))
+
+    carryover.write_text('{"version":2}', encoding="utf-8")
+    fusion.write_text('{"decision_id":"two"}\n', encoding="utf-8")
+    import src.simulation.tournament_checkpoint as checkpoint_module
+
+    original_restore = checkpoint_module._restore_file_target
+    calls = {"count": 0}
+
+    def crash_after_first(path, record):
+        original_restore(path, record)
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise RuntimeError("injected recovery crash")
+
+    with monkeypatch.context() as crash:
+        crash.setattr(checkpoint_module, "_restore_file_target", crash_after_first)
+        with pytest.raises(RuntimeError, match="injected recovery crash"):
+            restore_state_artifacts(str(tmp_path), checkpoint)
+
+    assert (
+        tmp_path / "data/persistence/tournament_state_recovery.json"
+    ).is_file()
+    assert restore_state_artifacts(str(tmp_path), checkpoint)
+    assert carryover.read_text(encoding="utf-8") == '{"version":1}'
+    assert fusion.read_text(encoding="utf-8") == '{"decision_id":"one"}\n'
+    assert load_checkpoint(str(tmp_path)) is not None
+
+
+def test_external_cognitive_cache_is_never_automatically_overwritten(
+    tmp_path, monkeypatch,
+):
+    external = tmp_path.parent / f"{tmp_path.name}-external-cache"
+    external.mkdir()
+    cache_file = external / "decision.json"
+    cache_file.write_text('{"plan":1}', encoding="utf-8")
+    monkeypatch.setenv("MATCH_COGNITIVE", "1")
+    monkeypatch.setenv("MATCH_COGNITIVE_CACHE", str(external))
+    manager = _manager(tmp_path)
+    manager._save_checkpoint()
+    checkpoint = load_checkpoint(str(tmp_path))
+
+    cache_file.write_text('{"plan":2}', encoding="utf-8")
+    with pytest.raises(ValueError, match="external cognitive cache"):
+        restore_state_artifacts(str(tmp_path), checkpoint)
+    assert cache_file.read_text(encoding="utf-8") == '{"plan":2}'
+    assert not (
+        tmp_path / "data/persistence/tournament_state_recovery.json"
+    ).exists()
+
+
+def test_recovery_removes_artifact_created_after_checkpoint(tmp_path):
+    manager = _manager(tmp_path)
+    manager._save_checkpoint()
+    checkpoint = load_checkpoint(str(tmp_path))
+    late = tmp_path / "data/persistence/tactical_counterfactuals.jsonl"
+    late.write_text('{"late":true}\n', encoding="utf-8")
+
+    assert restore_state_artifacts(str(tmp_path), checkpoint)
+    assert not late.exists()
+    assert load_checkpoint(str(tmp_path)) is not None
+
+
+def test_app_recovery_refuses_identity_mismatch_before_file_mutation(
+    tmp_path, monkeypatch,
+):
+    from src import app
+
+    fusion = tmp_path / "data/persistence/world_model_fusion.jsonl"
+    fusion.parent.mkdir(parents=True)
+    fusion.write_text('{"decision_id":"one"}\n', encoding="utf-8")
+    manager = _manager(tmp_path)
+    manager._save_checkpoint()
+    fusion.write_text('{"decision_id":"two"}\n', encoding="utf-8")
+
+    monkeypatch.setattr(app, "run_manifest_identity", lambda _: "d" * 64)
+    manifest = {"run_identity_sha256": "d" * 64}
+    with pytest.raises(ValueError, match="identity-matched checkpoint"):
+        app._recover_tournament_external_state(
+            tmp_path, resume=True, manifest=manifest,
+        )
+    assert fusion.read_text(encoding="utf-8") == '{"decision_id":"two"}\n'
+
+    monkeypatch.setattr(app, "run_manifest_identity", lambda _: RUN_IDENTITY)
+    app._recover_tournament_external_state(
+        tmp_path, resume=True,
+        manifest={"run_identity_sha256": RUN_IDENTITY},
+    )
+    assert fusion.read_text(encoding="utf-8") == '{"decision_id":"one"}\n'
 
 
 def test_skipped_completed_final_rebuilds_result_and_reflection(tmp_path):

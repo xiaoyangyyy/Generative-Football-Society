@@ -15,7 +15,7 @@ not quality signals by themselves.
 | Entity priors | Continuous player/coach/team fields with football-semantic role axes | Useful and interpretable | Fit coefficients to held-out player/event data instead of hand tuning |
 | Tournament | Official group schedule and constrained R32 builder; stable named seeds | Correct simulation path | Encode the final FIFA bracket table once officially fixed |
 | Randomness | Stable BLAKE2-derived identity streams across match, scoring, referee, social, wear, carryover, agents, brackets and legacy journeys | Strong runtime contract with machine-enforced global-draw ban | Add matched-seed intervention invariance checks as new stochastic subsystems appear |
-| Persistence | Checkpoint V4 binds inputs/randomness, snapshots causal Agent/social state, receipts reflection, and hashes evolving files/cache trees | Strong crash-consistent in-memory restore with fail-closed external drift | Add a multi-file write-ahead transaction for automatic external-state rollback; obtain provider idempotency guarantees |
+| Persistence | Checkpoint V5 binds inputs/randomness, snapshots Agent/social state, receipts reflection, and embeds bounded external-state rollback images | Strong identity-gated, crash-resumable recovery for project-owned causal state; external paths remain fail-closed | Obtain provider idempotency guarantees and validate recovery under production filesystem faults |
 | Macro scoring | Coupled intensity dynamics; xG fused before a single goal observation | Coherent research model | Replace Euler heuristic with fitted state-space point process |
 | Micro engine | Spatial fields, action selection, pass/shot/aerial physics and affective coupling | Rich but heuristic | Establish explicit SI/normalized unit contract and fit jointly to event data |
 | World model | v7 deployed plus evidence-gated v8 frame candidates; v8.9 strict SkillCorner/StatsBomb temporal LODO | Modular and empirically guarded | Beat the continuous-time baseline before any v8 promotion |
@@ -132,6 +132,15 @@ not quality signals by themselves.
     enabled cognitive cache tree are checkpoint-bound. Roster loading removes
     non-finite observations and incomplete team dynamics fall back to the
     status-derived vector instead of entering match math as NaN or false zeros.
+37. Upgraded tournament checkpoints to V5 with bounded, content-addressed
+    rollback images for carryover, fusion history, counterfactual evidence and
+    enabled cognitive caches. Resume verifies the complete run identity before
+    mutation, preserves displaced state in an atomic recovery journal and
+    converges after an interrupted restore. Relative-path validation,
+    independent file hashes, snapshot/file-count limits, symlink rejection and
+    project-root confinement prevent the checkpoint from becoming an
+    arbitrary filesystem writer. Externally configured cache directories stay
+    read-only and fail closed.
 
 ## LLM Scope Decision
 

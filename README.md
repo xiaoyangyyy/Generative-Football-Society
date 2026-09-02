@@ -117,6 +117,15 @@ fusion history, counterfactual evidence and enabled cognitive caches are bound
 as evolving external state. A legacy roster `NaN` can no longer enter match
 math: non-finite observations become missing fields and incomplete team
 dynamics use the status-derived fallback.
+V3.84 upgrades tournament persistence to checkpoint V5. Every checkpoint now
+contains a bounded, integrity-checked rollback image of its causal external
+files and enabled cognitive cache. On explicit resume, the application first
+reconstructs and verifies the code/data/model/configuration identity, then
+idempotently restores internal external-state targets before rebuilding the
+world. A durable recovery journal preserves the displaced state and lets an
+interrupted rollback converge on the next attempt. Snapshot paths cannot
+escape the project, symlinks and malformed payloads fail closed, and a cache
+configured outside the project is never overwritten automatically.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

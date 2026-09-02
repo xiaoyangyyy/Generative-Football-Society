@@ -27,6 +27,7 @@ from src.simulation.runtime import (
 )
 from src.simulation.tournament_checkpoint import (
     checkpoint_root_seed, checkpoint_run_identity, load_checkpoint,
+    restore_state_artifacts,
 )
 
 
@@ -81,7 +82,7 @@ def _resolve_tournament_root_seed(
     root: Path, *, resume: bool, requested_seed: int | None,
 ) -> int:
     if resume:
-        checkpoint = load_checkpoint(str(root))
+        checkpoint = load_checkpoint(str(root), verify_external_state=False)
         if checkpoint is not None:
             stored_seed = checkpoint_root_seed(checkpoint)
             if requested_seed is not None and int(requested_seed) != stored_seed:
@@ -99,7 +100,7 @@ def _verify_tournament_resume_identity(
 ) -> None:
     if not resume:
         return
-    checkpoint = load_checkpoint(str(root))
+    checkpoint = load_checkpoint(str(root), verify_external_state=False)
     if checkpoint is None:
         return
     current = run_manifest_identity(manifest)
@@ -109,6 +110,23 @@ def _verify_tournament_resume_identity(
         raise ValueError(
             "Tournament checkpoint code, data, model, or configuration identity drift"
         )
+
+
+def _recover_tournament_external_state(
+    root: Path, *, resume: bool, manifest: Mapping[str, Any],
+) -> None:
+    if not resume:
+        return
+    checkpoint = load_checkpoint(str(root), verify_external_state=False)
+    if checkpoint is None:
+        return
+    current = run_manifest_identity(manifest)
+    if checkpoint_run_identity(checkpoint) != current:
+        raise ValueError(
+            "Tournament recovery requires an identity-matched checkpoint"
+        )
+    if restore_state_artifacts(str(root), checkpoint):
+        print("[CHECKPOINT] Restored checkpoint-bound external state.")
 
 
 def _tournament_input_paths(
@@ -168,6 +186,11 @@ def run_full_tournament(
         model_paths=model_paths, runtime_values=runtime_values,
     )
     _verify_tournament_resume_identity(root, resume=resume, manifest=manifest)
+    # External rollback mutates files, so it is authorized only after the
+    # current code/data/model/configuration identity matches the checkpoint.
+    _recover_tournament_external_state(
+        root, resume=resume, manifest=manifest,
+    )
     write_manifest(root / "data" / "persistence" / "run_manifest.json", manifest)
     _, tournament, _ = build_simulation(
         root, require_tactics=require_tactics, seed=root_seed,

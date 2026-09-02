@@ -1456,7 +1456,7 @@ def main() -> int:
         ),
         "tournament_resume_binds_random_world_identity": (
             all(token in tournament_checkpoint for token in (
-                "CHECKPOINT_VERSION = 4",
+                "CHECKPOINT_VERSION = 5",
                 'RANDOM_WORLD_CONTRACT = "identity_scoped_rng_v1"',
                 "def _content_sha256(",
                 "Tournament checkpoint content integrity mismatch",
@@ -1530,7 +1530,7 @@ def main() -> int:
                 "manager.narrative_event_bus.history",
             ))
             and all(token in tournament_checkpoint for token in (
-                "CHECKPOINT_VERSION = 4",
+                "CHECKPOINT_VERSION = 5",
                 '"world_state": validate_world_state(world_state)',
                 '"reflection_journal": validate_reflection_journal(reflection_journal)',
                 "def validate_reflection_world_consistency(",
@@ -1560,6 +1560,31 @@ def main() -> int:
                 "def _finite(",
             ))
             and "math.isfinite(float(dynamics[key]))" in world_runner
+        ),
+        "tournament_resume_rolls_back_internal_external_state_after_identity": (
+            all(token in tournament_checkpoint for token in (
+                "STATE_SNAPSHOT_VERSION = 1",
+                "MAX_STATE_SNAPSHOT_BYTES",
+                "MAX_STATE_SNAPSHOT_FILES",
+                "def capture_state_snapshot(",
+                "def validate_state_snapshot(",
+                "def restore_state_artifacts(",
+                "Tournament state snapshot file integrity mismatch",
+                "Invalid tournament state snapshot path",
+                "Automatic recovery cannot modify an external cognitive cache",
+                "with FileLease(lock_path, timeout=5.0)",
+                "Tournament checkpoint V4 lacks recoverable external state",
+                '"state_snapshot": capture_state_snapshot(base_dir, state_artifacts)',
+                "verify_external_state: bool = True",
+            ))
+            and all(token in public_app for token in (
+                "def _recover_tournament_external_state(",
+                "verify_external_state=False",
+                "Tournament recovery requires an identity-matched checkpoint",
+                "_verify_tournament_resume_identity(root, resume=resume, manifest=manifest)",
+                "_recover_tournament_external_state(",
+                "External rollback mutates files",
+            ))
         ),
         "stable_release_pointer_identity_verified": release_pointer_ok,
         "stable_release_artifact_chain_verified": bool(release_artifacts.get("ok")),

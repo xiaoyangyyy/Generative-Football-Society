@@ -3200,3 +3200,49 @@ No training, tournament, formal experiment or provider call is executed in
 this stage. The real-world snapshot check only constructed and serialized the
 333-Agent initial world. Therefore V3.83 improves recovery correctness and data
 safety but adds no model-quality, action-effect or outcome evidence.
+
+## 102. V3.84 Recoverable external-state transaction
+
+Checkpoint V5 closes the remaining internal external-state crash gap without
+turning resume into an unrestricted filesystem restore. Alongside the digest
+map, each checkpoint embeds a versioned rollback image for every present
+causal state artifact: squad carryover, world-model fusion history, tactical
+counterfactual evidence and the enabled cognitive cache tree. Snapshot files
+are base64 transport values with independent SHA-256 identities. Directory
+identity is reconstructed from ordered relative paths and file hashes using
+the same contract as live-state verification.
+
+The image is deliberately bounded to 32 MiB and 10,000 files, while the full
+checkpoint and recovery journal are each bounded to 64 MiB. Absolute paths,
+parent traversal, backslash aliases, duplicate paths, malformed base64,
+digest disagreement, non-file targets and symlinks fail closed. Missing
+artifacts are meaningful: if an artifact was created after the checkpoint,
+recovery removes it so the exact checkpoint set is restored.
+
+Resume separates inspection from mutation. Seed extraction and run-manifest
+verification load the checkpoint with external comparison disabled, but all
+checkpoint checksums, schemas, world state, reflection consistency and
+embedded snapshot hashes are still verified. Only after the current
+code/data/model/configuration identity equals the checkpoint identity may the
+application call external-state recovery. The normal TournamentManager load
+then uses strict live comparison and must pass before in-memory restoration.
+
+Recovery holds an operating-system file lease and writes an atomic recovery
+journal containing the displaced state before changing the first target.
+Individual files are restored by fsync plus atomic replacement. Cache
+directories are rebuilt in a confined sibling staging directory. If the
+process stops after any target, the journal remains and the next resume
+repeats the desired writes until the exact digest set converges. On success,
+the journal is retained as the last-recovery record, so the overwritten state
+is not silently discarded.
+
+Automatic mutation is limited to paths whose resolved target remains inside
+the verified project root. A cognitive cache configured outside that root is
+still captured and integrity-checked, but drift produces an explicit error and
+is never overwritten. This is a safety boundary, not an exact-recovery claim
+for arbitrary external directories. Provider billing also retains the V3.83
+limitation before a reflection receipt has been durably committed.
+
+This stage executes no training, match, tournament, formal experiment or
+provider request. It changes recovery semantics only and provides no new
+model-quality or causal-effect evidence.
