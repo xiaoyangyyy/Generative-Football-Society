@@ -40,9 +40,9 @@ from src.simulation.social_dialogue import SocialDialogueEngine
 from src.simulation.fusion_controller import FusionController
 from src.simulation.narrative_events import NarrativeEventBus
 from src.simulation.standings import apply_group_result
-from src.simulation.runtime import environment_snapshot, env_bool, env_int
 from src.simulation.referee_policy import RefereePolicy
 from src.simulation.tournament_match import TournamentMatchMixin
+from src.simulation.random_control import derive_seed, named_py_rng
 
 # Note:
 # These 48-team groups follow the 2026 final draw structure, while play-off slots
@@ -74,6 +74,7 @@ class TournamentManager(TournamentMatchMixin):
         referee_profiles=None,
     ):
         self.world = world_engine
+        self.root_seed = int(getattr(world_engine, "root_seed", 42))
         self.groups = WORLD_CUP_2026_GROUPS
         self.standings = {group: {team: {"pts": 0, "gf": 0, "ga": 0, "gd": 0} for team in teams} for group, teams in self.groups.items()}
         self.qualified_teams = []
@@ -230,9 +231,10 @@ class TournamentManager(TournamentMatchMixin):
                             f"  [FIXTURE] #{meta.match_number} {meta.date} "
                             f"{t1} vs {t2} @ {meta.venue}, {meta.city}"
                         )
-                    from src.simulation.random_control import derive_seed
-
-                    fixture_seed = derive_seed(0, "group_fixture", g_name, md_idx, t1, t2)
+                    fixture_seed = derive_seed(
+                        self.root_seed, "group_fixture",
+                        g_name, md_idx, t1, t2,
+                    )
                     self.play_match(
                         t1,
                         t2,
@@ -270,8 +272,12 @@ class TournamentManager(TournamentMatchMixin):
     def _stage_referee_distribution(self, stage_pressure):
         return self.referee_policy.stage_distribution(stage_pressure)
 
-    def _sample_referee_profile(self, a1, a2, stage_pressure):
-        return self.referee_policy.sample(a1, a2, stage_pressure)
+    def _sample_referee_profile(
+        self, a1, a2, stage_pressure, *, rng=None,
+    ):
+        return self.referee_policy.sample(
+            a1, a2, stage_pressure, rng=rng,
+        )
 
 
     def update_standings(self, g, t1, t2, s1, s2):
@@ -280,11 +286,9 @@ class TournamentManager(TournamentMatchMixin):
     def resolve_advancements(self):
         self.qualified_entries = build_qualified_entries(self.groups, self.standings)
         self.qualified_teams = [e.team for e in self.qualified_entries]
-        gfs_seed = env_int(environment_snapshot(), "GFS_SEED", 42)
-        import random
-
         self.r32_fixtures = build_r32_pairings(
-            self.qualified_entries, rng=random.Random(gfs_seed + 2026)
+            self.qualified_entries,
+            rng=named_py_rng(self.root_seed, "round_of_32_pairings"),
         )
         print(f"[ADVANCE] {len(self.qualified_teams)} teams qualified; R32 bracket seeded ({len(self.r32_fixtures)} fixtures).")
 
@@ -307,9 +311,9 @@ class TournamentManager(TournamentMatchMixin):
                     print(f"  [SKIP] {t1} vs {t2} (checkpoint) → {winner}")
                     next_round.append(winner)
                     continue
-            from src.simulation.random_control import derive_seed
-
-            fixture_seed = derive_seed(0, "knockout_fixture", round_name, t1, t2)
+            fixture_seed = derive_seed(
+                self.root_seed, "knockout_fixture", round_name, t1, t2,
+            )
             winner = self.play_match(
                 t1,
                 t2,

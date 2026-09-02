@@ -3,6 +3,7 @@
 import numpy as np
 
 from src.simulation.match_pipeline import finalize_match_feedback, micro_layer_enabled
+from src.simulation.random_control import named_rng
 
 
 class TournamentFinalizeMixin:
@@ -14,16 +15,18 @@ class TournamentFinalizeMixin:
 
     def _update_post_match_agents(
         self, *, a1, a2, t1_name, t2_name, s1, s2,
-        prof_score, social_chaos, referee, drama_score,
+        prof_score, social_chaos, referee, drama_score, match_seed,
     ):
         res_1, res_2 = self._match_result_labels(s1, s2)
         a1.recursive_update(
             res_1, s1 - s2, prof_score, social_chaos,
             t2_name, a2.status_score,
+            rng=named_rng(match_seed, "post_match_latent", t1_name),
         )
         a2.recursive_update(
             res_2, s2 - s1, prof_score, social_chaos,
             t1_name, a1.status_score,
+            rng=named_rng(match_seed, "post_match_latent", t2_name),
         )
         a1.relax_referee_grievance_post_match(
             res_1, referee["bias_t1"], drama_score,
@@ -33,18 +36,19 @@ class TournamentFinalizeMixin:
         )
         return res_1, res_2
 
-    @staticmethod
     def _apply_physical_wear(
-        *, a1, a2, t1_name, t2_name, pressure, drama_score,
-        tactical_1, tactical_2,
+        self, *, a1, a2, t1_name, t2_name, pressure, drama_score,
+        tactical_1, tactical_2, match_seed,
     ):
         wear_intensity = 0.24 + 0.36 * pressure + 0.06 * drama_score
         pre_fatigue_a, pre_fatigue_b = a1.fatigue, a2.fatigue
         injury_a = a1.apply_match_wear(
             intensity=wear_intensity * tactical_1["fatigue_load_multiplier"],
+            rng=named_rng(match_seed, "physical_wear", t1_name),
         )
         injury_b = a2.apply_match_wear(
             intensity=wear_intensity * tactical_2["fatigue_load_multiplier"],
+            rng=named_rng(match_seed, "physical_wear", t2_name),
         )
         for agent, label, _ in (
             (a1, t1_name, injury_a),
@@ -54,7 +58,10 @@ class TournamentFinalizeMixin:
             p_report = float(
                 1.0 / (1.0 + np.exp(-10.0 * (float(agent.injury_load) - 0.62)))
             )
-            if np.random.random() < p_report:
+            report_rng = named_rng(
+                match_seed, "medical_report", label,
+            )
+            if report_rng.random() < p_report:
                 print(f"  [MEDICAL] {label} reported injury concerns.")
         return pre_fatigue_a, pre_fatigue_b
 
@@ -109,11 +116,15 @@ class TournamentFinalizeMixin:
             print(f"  [WORLD_MODEL] Fusion audit write skipped: {exc}")
 
     @staticmethod
-    def _report_locker_room_state(*, a1, a2, t1_name, t2_name):
+    def _report_locker_room_state(
+        *, a1, a2, t1_name, t2_name, match_seed,
+    ):
         for agent, label in ((a1, t1_name), (a2, t2_name)):
             tension = agent.locker_room_tension()
             print(f"  [LOCKER_ROOM] {label} tension={tension:.2f}")
-            if agent.rare_locker_room_explosion():
+            if agent.rare_locker_room_explosion(
+                rng=named_rng(match_seed, "locker_room", label),
+            ):
                 print(f"  [EMERGENCY] {label} Locker Room Explosion!")
 
     def _commit_match_result(
@@ -134,17 +145,19 @@ class TournamentFinalizeMixin:
         s1, s2, xg1, xg2, winner_name, drama_score,
         prof_score, social_chaos, pressure, referee,
         internal_1, internal_2, ref_1, ref_2,
-        tactical_1, tactical_2, micro_summary,
+        tactical_1, tactical_2, micro_summary, match_seed,
     ):
         res_1, res_2 = self._update_post_match_agents(
             a1=a1, a2=a2, t1_name=t1_name, t2_name=t2_name,
             s1=s1, s2=s2, prof_score=prof_score, social_chaos=social_chaos,
             referee=referee, drama_score=drama_score,
+            match_seed=match_seed,
         )
         pre_fatigue_a, pre_fatigue_b = self._apply_physical_wear(
             a1=a1, a2=a2, t1_name=t1_name, t2_name=t2_name,
             pressure=pressure, drama_score=drama_score,
             tactical_1=tactical_1, tactical_2=tactical_2,
+            match_seed=match_seed,
         )
         self._record_match_decisions(
             a1=a1, a2=a2, t1_name=t1_name, t2_name=t2_name,
@@ -159,9 +172,16 @@ class TournamentFinalizeMixin:
             xg_home=xg1, xg_away=xg2, prof_score=prof_score,
             social_chaos=social_chaos, stage_name=stage_name,
             micro_summary=micro_summary if micro_layer_enabled() else None,
+            rng_home=named_rng(
+                match_seed, "cross_match_settlement", t1_name,
+            ),
+            rng_away=named_rng(
+                match_seed, "cross_match_settlement", t2_name,
+            ),
         )
         self._report_locker_room_state(
             a1=a1, a2=a2, t1_name=t1_name, t2_name=t2_name,
+            match_seed=match_seed,
         )
         return self._commit_match_result(
             stage_name=stage_name, t1_name=t1_name, t2_name=t2_name,

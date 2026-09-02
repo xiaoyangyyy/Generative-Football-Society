@@ -87,6 +87,12 @@ receipt reuse, stale commit scans and three known token families fail closed.
 Refreshing the evidence chain also correctly invalidates the old paper-package
 pass because post-experiment action-policy code changed; no result is relabelled
 or regenerated.
+V3.80 isolates runtime stochasticity by identity. The root seed now derives a
+match seed and named referee, scoring, dialogue, physical-wear, carryover,
+agent and bracket streams. The legacy journey simulator follows the same
+contract. A machine audit rejects direct process-global random draws across
+simulation and memory runtime modules, so an unrelated extra draw cannot
+silently change another subsystem's future.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

@@ -1,5 +1,4 @@
 import re
-import random
 import numpy as np
 
 
@@ -12,9 +11,10 @@ class SocialDialogueEngine:
     4) social memory compression hooks via agent APIs
     """
 
-    def __init__(self, feed, turns_per_match=4):
+    def __init__(self, feed, turns_per_match=4, *, rng=None):
         self.feed = feed
         self.turns_per_match = max(2, int(turns_per_match))
+        self.rng = rng or np.random.default_rng()
         self.market_step = 0
         self.topic_market = {}
         self.speech_acts = [
@@ -29,7 +29,7 @@ class SocialDialogueEngine:
     def _clip01(self, x):
         return float(np.clip(float(x), 0.0, 1.0))
 
-    def _softmax_choice(self, keys, logits):
+    def _softmax_choice(self, keys, logits, rng):
         arr = np.array([float(logits[k]) for k in keys], dtype=float)
         if not np.all(np.isfinite(arr)):
             raise ValueError(f"Non-finite logits in social dialogue softmax: {arr}")
@@ -41,10 +41,10 @@ class SocialDialogueEngine:
         probs = probs / total
         if not np.all(np.isfinite(probs)):
             raise ValueError(f"Non-finite probabilities in social dialogue softmax: {probs}")
-        idx = int(np.random.choice(np.arange(len(keys)), p=probs))
+        idx = int(rng.choice(np.arange(len(keys)), p=probs))
         return keys[idx]
 
-    def _seed_topics(self, t1_name, t2_name, stage_name, context):
+    def _seed_topics(self, t1_name, t2_name, stage_name, context, rng):
         winner = context.get("winner") or "draw"
         score = context.get("score", "0-0")
         key_event = str(context.get("key_event", "")).lower()
@@ -80,9 +80,9 @@ class SocialDialogueEngine:
         for topic in topics:
             if topic not in self.topic_market:
                 self.topic_market[topic] = {
-                    "heat": 0.18 + 0.25 * random.random(),
-                    "novelty": 0.60 + 0.25 * random.random(),
-                    "controversy": 0.30 + 0.30 * random.random(),
+                    "heat": 0.18 + 0.25 * rng.random(),
+                    "novelty": 0.60 + 0.25 * rng.random(),
+                    "controversy": 0.30 + 0.30 * rng.random(),
                     "last_step": self.market_step,
                 }
 
@@ -128,7 +128,7 @@ class SocialDialogueEngine:
             bias -= 0.35
         return bias
 
-    def _pick_topic(self, agent, candidate_topics, stage_name=""):
+    def _pick_topic(self, agent, candidate_topics, rng, stage_name=""):
         if not candidate_topics:
             candidate_topics = list(self.topic_market.keys()) or ["match_discourse"]
         logits = {}
@@ -149,11 +149,11 @@ class SocialDialogueEngine:
                 + referee_bias
                 + conflict_bias
                 + stage_bias
-                + np.random.normal(0.0, 0.05)
+                + rng.normal(0.0, 0.05)
             )
-        return self._softmax_choice(list(logits.keys()), logits)
+        return self._softmax_choice(list(logits.keys()), logits, rng)
 
-    def _pick_speech_act(self, speaker, opponent, match_context):
+    def _pick_speech_act(self, speaker, opponent, match_context, rng):
         score_diff = float(match_context.get("score_diff_for_speaker", 0.0))
         stage_pressure = float(np.clip(match_context.get("stage_pressure", 0.3), 0.0, 1.0))
         grievance = float(np.clip(speaker.referee_grievance, 0.0, 0.95))
@@ -169,9 +169,11 @@ class SocialDialogueEngine:
             "calm": 0.35 + 0.55 * stage_pressure + 0.40 * max(0.0, speaker.hidden_state[2]),
             "provoke": 0.25 + 0.65 * arrogance + 0.50 * max(0.0, score_diff),
         }
-        return self._softmax_choice(self.speech_acts, logits)
+        return self._softmax_choice(self.speech_acts, logits, rng)
 
-    def _compose_utterance(self, speaker_name, target_name, topic, act, context):
+    def _compose_utterance(
+        self, speaker_name, target_name, topic, act, context, rng,
+    ):
         score = context.get("score", "0-0")
         stage_name = context.get("stage_name", "Stage")
         templates = {
@@ -204,7 +206,7 @@ class SocialDialogueEngine:
             ],
         }
         bucket = templates.get(act, [f"We respond on {topic}."])
-        text = random.choice(bucket)
+        text = str(rng.choice(bucket))
         text = re.sub(r"\s+", " ", text).strip()
         return text
 
@@ -271,7 +273,7 @@ class SocialDialogueEngine:
             "speech_act": act,
         }
 
-    def _update_topic_market(self, topic, signal, stage_name=""):
+    def _update_topic_market(self, topic, signal, rng, stage_name=""):
         rec = self.topic_market.setdefault(
             topic,
             {"heat": 0.2, "novelty": 0.5, "controversy": 0.3, "last_step": self.market_step},
@@ -301,22 +303,27 @@ class SocialDialogueEngine:
         drive_h = (0.10 + 0.22 * prov + 0.12 * sentiment_abs + 0.05 * cred + stage_drive) * high_heat_damp
         drive_c = 0.12 + 0.30 * prov + 0.13 * (signal.get("blame_target") == "referee")
 
-        h1 = 0.90 * h0 + 0.06 * c0 + 0.03 * n0 + drive_h + np.random.normal(0.0, 0.01)
-        c1 = 0.90 * c0 + 0.04 * h0 + drive_c + np.random.normal(0.0, 0.01)
-        n1 = 0.86 * n0 - 0.06 * c0 - 0.03 * h0 + 0.03 * cred + np.random.normal(0.0, 0.008)
+        h1 = 0.90 * h0 + 0.06 * c0 + 0.03 * n0 + drive_h + rng.normal(0.0, 0.01)
+        c1 = 0.90 * c0 + 0.04 * h0 + drive_c + rng.normal(0.0, 0.01)
+        n1 = 0.86 * n0 - 0.06 * c0 - 0.03 * h0 + 0.03 * cred + rng.normal(0.0, 0.008)
 
         rec["heat"] = float(np.clip(h1, 0.01, 1.95))
         rec["controversy"] = float(np.clip(c1, 0.01, 1.3))
         rec["novelty"] = float(np.clip(n1, 0.01, 1.5))
         rec["last_step"] = self.market_step
 
-    def run_post_match_dialogue(self, a1, a2, stage_name, context):
+    def run_post_match_dialogue(
+        self, a1, a2, stage_name, context, *, rng=None,
+    ):
+        rng = rng or self.rng
         self.market_step += 1
         self._decay_market()
 
         context = dict(context or {})
         context["stage_name"] = stage_name
-        topics = self._seed_topics(a1.team_name, a2.team_name, stage_name, context)
+        topics = self._seed_topics(
+            a1.team_name, a2.team_name, stage_name, context, rng,
+        )
 
         aggregates = {
             a1.team_name: {"sentiment": 0.0, "unity_signal": 0.0, "provocation_level": 0.0, "credibility": 0.0, "blame_referee": 0.0, "n": 0},
@@ -333,11 +340,16 @@ class SocialDialogueEngine:
             local_ctx["score_diff_for_speaker"] = speaker_diff
             local_ctx["stage_pressure"] = float(context.get("stage_pressure", 0.3))
 
-            topic = self._pick_topic(speaker, topics, stage_name)
-            act = self._pick_speech_act(speaker, target, local_ctx)
-            text = self._compose_utterance(speaker.team_name, target.team_name, topic, act, local_ctx)
+            topic = self._pick_topic(speaker, topics, rng, stage_name)
+            act = self._pick_speech_act(speaker, target, local_ctx, rng)
+            text = self._compose_utterance(
+                speaker.team_name, target.team_name, topic, act,
+                local_ctx, rng,
+            )
             signal = self._extract_signal(text, act, speaker, target, topic)
-            self._update_topic_market(topic, signal, stage_name=stage_name)
+            self._update_topic_market(
+                topic, signal, rng, stage_name=stage_name,
+            )
             topic_traces.append((topic, signal["provocation_level"]))
 
             self.feed.publish(

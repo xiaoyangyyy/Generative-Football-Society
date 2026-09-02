@@ -11,6 +11,7 @@ from src.memory_engine.poisson_simulator import (
 from src.simulation.match_pipeline import print_micro_match_logs, run_micro_layer
 from src.simulation.score_path import score_path_label
 from src.simulation.runtime import environment_snapshot, env_bool
+from src.simulation.random_control import named_rng
 
 
 class TournamentReportingMixin:
@@ -346,7 +347,7 @@ class TournamentReportingMixin:
     def _run_post_match_dialogue(
         self, *, a1, a2, t1_name, t2_name, stage_name,
         winner_name, s1, s2, key_event, drama_score, pressure,
-        referee, micro_summary, social_chaos,
+        referee, micro_summary, social_chaos, match_seed,
     ):
         # 5.5 SOCIAL DIALOGUE LAYER (speech acts + meme market + signal compression)
         dialogue_pack = self.dialogue_engine.run_post_match_dialogue(
@@ -367,6 +368,7 @@ class TournamentReportingMixin:
                     else []
                 ),
             },
+            rng=named_rng(match_seed, "social_dialogue"),
         )
         sig_1 = dialogue_pack.get("signals", {}).get(t1_name, {})
         sig_2 = dialogue_pack.get("signals", {}).get(t2_name, {})
@@ -395,7 +397,7 @@ class TournamentReportingMixin:
         eff_status_1, eff_status_2, micro_summary, xg_context_line,
         reg_s1, reg_s2, went_to_extra_time, pen1, pen2,
         verdict_json, key_event, pressure, referee, ref_1, ref_2,
-        fused_1, fused_2,
+        fused_1, fused_2, match_seed,
     ):
         facts_ledger = self._build_facts_ledger(
             a1=a1, a2=a2, t1_name=t1_name, t2_name=t2_name,
@@ -428,6 +430,7 @@ class TournamentReportingMixin:
             s1=s1, s2=s2, key_event=key_event, drama_score=drama_score,
             pressure=pressure, referee=referee, micro_summary=micro_summary,
             social_chaos=social_chaos,
+            match_seed=match_seed,
         )
         
         return prof_score, social_chaos

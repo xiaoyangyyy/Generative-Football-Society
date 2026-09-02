@@ -276,6 +276,8 @@ def finalize_match_feedback(
     transaction_id: str | None = None,
     fatigue_load_home: float = 1.0,
     fatigue_load_away: float = 1.0,
+    rng_home: np.random.Generator | None = None,
+    rng_away: np.random.Generator | None = None,
 ) -> None:
     rh = load_effective_roster(base_dir, home.team_name)
     ra = load_effective_roster(base_dir, away.team_name)
@@ -292,6 +294,7 @@ def finalize_match_feedback(
         micro_player_stats=extract_micro_player_stats(micro_summary, home.team_name),
         transaction_id=transaction_id,
         fatigue_load_multiplier=fatigue_load_home,
+        rng=rng_home,
     )
     ingest_match_result(
         away,
@@ -306,6 +309,7 @@ def finalize_match_feedback(
         micro_player_stats=extract_micro_player_stats(micro_summary, away.team_name),
         transaction_id=transaction_id,
         fatigue_load_multiplier=fatigue_load_away,
+        rng=rng_away,
     )
     if micro_summary is not None:
         plans = getattr(micro_summary, "cognitive_plans", None) or []

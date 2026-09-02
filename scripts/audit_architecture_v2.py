@@ -43,6 +43,44 @@ def _forbidden_imports(area: str, forbidden: tuple[str, ...]) -> list[str]:
     return sorted(violations)
 
 
+_PY_RANDOM_DRAWS = {
+    "betavariate", "choice", "choices", "expovariate", "gammavariate",
+    "gauss", "getrandbits", "normalvariate", "randint", "random",
+    "randrange", "sample", "shuffle", "triangular", "uniform",
+}
+_NP_RANDOM_DRAWS = {
+    "beta", "choice", "gamma", "normal", "permutation", "poisson",
+    "rand", "randint", "randn", "random", "shuffle", "uniform",
+}
+
+
+def _direct_global_rng_draws(paths: list[Path]) -> list[str]:
+    """Find draws coupled to process-global RNG state in runtime modules."""
+    violations: list[str] = []
+    for path in paths:
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+            owner = node.func.value
+            python_global = (
+                isinstance(owner, ast.Name) and owner.id == "random"
+                and node.func.attr in _PY_RANDOM_DRAWS
+            )
+            numpy_global = (
+                isinstance(owner, ast.Attribute)
+                and isinstance(owner.value, ast.Name)
+                and owner.value.id == "np" and owner.attr == "random"
+                and node.func.attr in _NP_RANDOM_DRAWS
+            )
+            if python_global or numpy_global:
+                violations.append(
+                    f"{path.relative_to(ROOT).as_posix()}:{node.lineno} -> "
+                    f"{ast.unparse(node.func)}"
+                )
+    return sorted(violations)
+
+
 def _read(relative: str) -> dict:
     return json.loads((ROOT / relative).read_text(encoding="utf-8-sig"))
 
@@ -78,6 +116,14 @@ def main() -> int:
          "src.memory_engine", "src.simulation"),
     )
     product_training_violations = _forbidden_imports("product", ("src.training",))
+    stochastic_runtime_paths = sorted(
+        (ROOT / "src" / "simulation").rglob("*.py")
+    ) + sorted((ROOT / "src" / "memory_engine").rglob("*.py")) + [
+        ROOT / "src" / "app.py", ROOT / "src" / "journey_router.py",
+    ]
+    global_rng_draw_violations = _direct_global_rng_draws(
+        stochastic_runtime_paths,
+    )
 
     trainer = (ROOT / "scripts/train_world_model.py").read_text(encoding="utf-8")
     ensure = (ROOT / "scripts/ensure_world_model.py").read_text(encoding="utf-8")
@@ -483,8 +529,9 @@ def main() -> int:
                 "native_tactical_vector",
                 "_tactical_action_weights_from_vector",
             ))
-            and "self._initialization_rng = initialization_rng or random" in agent
-            and "random.Random(int(initialization_seed))" in world_runner
+            and "self.random_root_seed = int(random_root_seed)" in agent
+            and "self._initialization_rng = initialization_rng or named_py_rng(" in agent
+            and "root_seed=root_seed" in world_runner
             and all(token in workspace for token in (
                 "def request_manager_decision_advice(",
                 "def _generate_manager_decision_advice_packet(",
@@ -1375,6 +1422,25 @@ def main() -> int:
             and "experimental units do not match exactly" in formal_runner
             and 'actions.add_argument("--execute"' in formal_runner
         ),
+        "runtime_random_draws_are_identity_scoped": (
+            not global_rng_draw_violations
+            and "def named_py_rng(" in (
+                ROOT / "src/simulation/random_control.py"
+            ).read_text(encoding="utf-8")
+            and all(token in (
+                ROOT / "src/simulation/tournament_match.py"
+            ).read_text(encoding="utf-8") for token in (
+                "match_seed = derive_seed(", '"tournament_match"',
+            ))
+            and 'named_py_rng(root_seed, "legacy_journey", team)' in (
+                ROOT / "src/memory_engine/tournament_simulator.py"
+            ).read_text(encoding="utf-8")
+            and all(token in (
+                ROOT / "src/simulation/engine.py"
+            ).read_text(encoding="utf-8") for token in (
+                '"active_agents"', '"agent_action"', '"headline_match"',
+            ))
+        ),
         "stable_release_pointer_identity_verified": release_pointer_ok,
         "stable_release_artifact_chain_verified": bool(release_artifacts.get("ok")),
         "research_checkpoint_identity_chain_verified": candidate_identity_ok,
@@ -1434,6 +1500,7 @@ def main() -> int:
             "infrastructure_upward_imports": infrastructure_violations,
             "training_upward_imports": training_violations,
             "product_training_imports": product_training_violations,
+            "direct_global_runtime_rng_draws": global_rng_draw_violations,
             "unclassified_training_entrypoints": sorted(
                 discovered_trainers - registered_trainers
             ),

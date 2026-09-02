@@ -89,7 +89,11 @@ class RefereePolicy:
         total = sum(scores.values())
         return {name: value / total for name, value in scores.items()}
 
-    def sample(self, first_agent, second_agent, stage_pressure: float) -> dict:
+    def sample(
+        self, first_agent, second_agent, stage_pressure: float,
+        *, rng: np.random.Generator | None = None,
+    ) -> dict:
+        rng = rng or np.random.default_rng()
         distribution = self.stage_distribution(stage_pressure)
         profile_names = list(distribution)
         probabilities = np.array(
@@ -101,14 +105,14 @@ class RefereePolicy:
                 f"Invalid referee profile probabilities: {probabilities}"
             )
 
-        chosen = np.random.choice(
+        chosen = rng.choice(
             profile_names,
             p=probabilities / probabilities.sum(),
         )
         profile = self.profiles[chosen]
         mean = float(np.clip(profile["strictness_mean"], 0.02, 0.98))
         concentration = float(max(4.0, profile["strictness_kappa"]))
-        strictness = np.random.beta(
+        strictness = rng.beta(
             max(1e-6, mean * concentration),
             max(1e-6, (1.0 - mean) * concentration),
         )
@@ -147,7 +151,7 @@ class RefereePolicy:
         base_bias = profile["exposure_bias_weight"] * np.tanh(
             (exposure_first - exposure_second) * 1.8
         )
-        noise = np.random.normal(
+        noise = rng.normal(
             0.0,
             profile["bias_noise"] * (1.0 - 0.30 * stage_pressure),
         )

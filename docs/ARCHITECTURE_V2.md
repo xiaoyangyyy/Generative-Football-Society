@@ -2995,3 +2995,37 @@ or rewrite that experiment.
 
 No credential is used or stored. No provider call, network revocation, training,
 match, future generation or formal experiment is executed in this stage.
+
+## 98. V3.80 Identity-scoped stochastic runtime
+
+Reproducibility previously depended on a mixture of named generators and the
+process-global Python or NumPy random state. The principal scoring path already
+had stable seeds, but referee sampling, social dialogue, agent latent updates,
+physical wear, carryover injuries, world-day events and the legacy journey path
+could still consume shared state. Adding an unrelated draw in one subsystem
+could therefore change a later outcome in another subsystem while retaining the
+same top-level seed.
+
+The runtime now derives a stable match identity from the root seed, fixture
+seed, stage and ordered teams. That identity is forwarded through preparation,
+simulation, narrative and finalization. Named child streams isolate referee,
+score, fusion volatility, dialogue, post-match latent state, physical wear,
+medical reporting and carryover settlement. World-day activity selection,
+per-agent behavior and headline matches are independent child streams, so a
+social draw cannot perturb the day's match event. Bracket, black-swan, agent
+initialization and legacy journey paths use identity-derived standard-library
+streams as well. Public journey callers may provide a root seed; the default
+remains deterministic for compatibility.
+
+This is an isolation contract, not evidence of model quality. A static AST
+audit now rejects direct process-global Python or NumPy random draws throughout
+simulation and memory runtime modules. Tests verify replay under the same
+identity, non-interference with global RNG state, environment-seed independence
+once a match identity exists, and exact seed propagation across the four match
+lifecycle phases. Local generator fallbacks remain available for isolated API
+use, while the authoritative tournament and manager paths always inject named
+streams.
+
+No training, match, future generation, formal experiment or provider call is
+executed in this stage. Existing frozen research results remain stale for the
+current code identity and are not upgraded by this correctness change.

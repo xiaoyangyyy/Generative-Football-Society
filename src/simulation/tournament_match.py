@@ -4,6 +4,7 @@ from src.simulation.tournament_finalize import TournamentFinalizeMixin
 from src.simulation.tournament_reporting import TournamentReportingMixin
 from src.simulation.tournament_scoring import TournamentScoringMixin
 from src.simulation.tournament_setup import TournamentSetupMixin
+from src.simulation.random_control import derive_seed
 
 
 class TournamentMatchMixin(
@@ -32,11 +33,13 @@ class TournamentMatchMixin(
         referee,
         ref_1,
         ref_2,
+        match_seed,
     ):
         fused_context = self._build_fused_match_context(
             a1=a1, a2=a2, t1_name=t1_name, t2_name=t2_name,
             home_micro=home_micro, pressure=pressure, referee=referee,
             internal_1=internal_1, internal_2=internal_2, ref_1=ref_1, ref_2=ref_2,
+            match_seed=match_seed,
         )
         matchup_bonus_1 = fused_context["matchup_bonus_1"]
         tactical_1, tactical_2 = fused_context["tactical_1"], fused_context["tactical_2"]
@@ -55,6 +58,7 @@ class TournamentMatchMixin(
             eff_micro_home=eff_micro_home, eff_micro_away=eff_micro_away,
             fused_1=fused_1, fused_2=fused_2,
             fused_vol_h=fused_vol_h, fused_vol_a=fused_vol_a,
+            match_seed=match_seed,
         )
         s1, s2, xg1, xg2 = regulation["s1"], regulation["s2"], regulation["xg1"], regulation["xg2"]
         score_path, physics_first = regulation["score_path"], regulation["physics_first"]
@@ -131,6 +135,10 @@ class TournamentMatchMixin(
         fixture_seed: int = 0,
         scheduled_home: str | None = None,
     ):
+        match_seed = derive_seed(
+            getattr(self, "root_seed", 42),
+            "tournament_match", fixture_seed, stage_name, t1_name, t2_name,
+        )
         (
             a1, a2, ah, aa, home_micro, away_micro, neutral_venue,
             pressure, internal_1, internal_2, referee, ref_1, ref_2,
@@ -144,6 +152,7 @@ class TournamentMatchMixin(
             standings_snapshot=standings_snapshot,
             fixture_seed=fixture_seed,
             scheduled_home=scheduled_home,
+            match_seed=match_seed,
         )
         match = self._simulate_match(
             a1=a1, a2=a2, ah=ah, aa=aa,
@@ -152,6 +161,7 @@ class TournamentMatchMixin(
             away_micro=away_micro, neutral_venue=neutral_venue,
             pressure=pressure, internal_1=internal_1, internal_2=internal_2,
             referee=referee, ref_1=ref_1, ref_2=ref_2,
+            match_seed=match_seed,
         )
         s1, s2, xg1, xg2 = match["s1"], match["s2"], match["xg1"], match["xg2"]
         winner_name, drama_score = match["winner_name"], match["drama_score"]
@@ -173,6 +183,7 @@ class TournamentMatchMixin(
             verdict_json=verdict_json, key_event=key_event, pressure=pressure,
             referee=referee, ref_1=ref_1, ref_2=ref_2,
             fused_1=fused_1, fused_2=fused_2,
+            match_seed=match_seed,
         )
         return self._finalize_match_state(
             a1=a1, a2=a2, t1_name=t1_name, t2_name=t2_name,
@@ -183,4 +194,5 @@ class TournamentMatchMixin(
             internal_2=internal_2, ref_1=ref_1, ref_2=ref_2,
             tactical_1=tactical_1, tactical_2=tactical_2,
             micro_summary=micro_summary,
+            match_seed=match_seed,
         )

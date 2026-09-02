@@ -35,3 +35,8 @@ def derive_seed(root_seed: int, *parts: object) -> int:
 def named_rng(root_seed: int, *parts: object) -> np.random.Generator:
     """Create an isolated deterministic stream for one simulation subsystem."""
     return np.random.default_rng(derive_seed(root_seed, *parts))
+
+
+def named_py_rng(root_seed: int, *parts: object) -> random.Random:
+    """Create an isolated deterministic stdlib stream for one subsystem."""
+    return random.Random(derive_seed(root_seed, *parts))

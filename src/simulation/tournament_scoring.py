@@ -19,17 +19,16 @@ from src.simulation.score_path import (
     finalize_official_score_from_micro,
     resolve_score_path_mode,
 )
-from src.simulation.random_control import derive_seed, named_rng
-from src.simulation.runtime import environment_snapshot, env_bool, env_int
+from src.simulation.random_control import named_rng
+from src.simulation.runtime import environment_snapshot, env_bool
 
 
 class TournamentScoringMixin:
-    def _build_regulation_context(self, *, stage_name, t1_name, t2_name, referee):
+    def _build_regulation_context(
+        self, *, stage_name, t1_name, t2_name, referee, match_seed,
+    ):
         score_path = resolve_score_path_mode()
-        seed = derive_seed(
-            env_int(environment_snapshot(), "GFS_SEED", 42),
-            "match", stage_name, t1_name, t2_name,
-        )
+        seed = int(match_seed)
         return {
             "score_path": score_path,
             "physics_first": score_path == ScorePathMode.PHYSICS_OFFICIAL,
@@ -37,7 +36,7 @@ class TournamentScoringMixin:
             "legacy_poisson": score_path == ScorePathMode.POISSON_LEGACY,
             "drama_pre": min(1.0, 0.25 + 0.15 * referee["strictness"]),
             "seed": seed,
-            "rng_score": np.random.default_rng(seed),
+            "rng_score": named_rng(seed, "score"),
         }
 
     def _run_physics_official_score(
@@ -108,10 +107,12 @@ class TournamentScoringMixin:
         referee, internal_micro_h, internal_micro_a,
         eff_status_1, eff_status_2, eff_micro_home, eff_micro_away,
         fused_1, fused_2, fused_vol_h, fused_vol_a,
+        match_seed,
     ):
         context = self._build_regulation_context(
             stage_name=stage_name, t1_name=t1_name, t2_name=t2_name,
             referee=referee,
+            match_seed=match_seed,
         )
         micro_summary = None
         xg_prior_h, xg_prior_a = 1.0, 1.0

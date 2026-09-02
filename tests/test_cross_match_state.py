@@ -1,6 +1,7 @@
 import json
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from src.simulation.cross_match_state import (
@@ -126,6 +127,34 @@ def test_settlement_and_matchday_recovery_are_idempotent(tmp_path):
     expected = first_fatigue * __import__("math").exp(-0.42)
     assert payload["team_fatigue_ema"] == pytest.approx(expected)
     assert payload["recovery_ids"] == ["season-1:recovery:md01"]
+
+
+def test_settlement_injury_draw_is_explicit_and_global_rng_isolated():
+    def settle_once():
+        carry = TeamSquadCarryover(
+            team_id="Brazil",
+            players={"starter": PlayerCarryover(player_id="starter")},
+        )
+        agent = _agent("Brazil", carry)
+        agent.injury_load = 1.0
+        ingest_match_result(
+            agent, roster=None, result="draw", score_diff=0,
+            xg_for=1.0, xg_against=1.0, prof_score=0.0,
+            social_chaos=0.0, stage_name="md-01",
+            micro_player_stats={"starter": {"minutes": 90}},
+            transaction_id="season-1:fixture-1",
+            rng=np.random.default_rng(17),
+        )
+        return carry.to_dict()
+
+    np.random.seed(991)
+    expected_next = float(np.random.random())
+    np.random.seed(991)
+    first = settle_once()
+    observed_next = float(np.random.random())
+
+    assert first == settle_once()
+    assert observed_next == expected_next
 
 
 def test_medical_recovery_is_injury_only_fractional_and_idempotent():

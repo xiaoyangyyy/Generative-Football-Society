@@ -5,11 +5,13 @@ from src.agents.sociologist_agent import SociologistAgent
 from src.agents.critic_agent import CriticAgent
 from src.memory_engine.tournament_simulator import simulate_journey
 
-def run_journey(team_name: str, memory: dict, stats):
+def run_journey(team_name: str, memory: dict, stats, *, root_seed: int = 42):
     print(f"\n[Journey] Initiating 2026 World Cup Simulation for {team_name}...")
     
     print("[Journey] Rolling the dice for the tournament path...")
-    journey_log, final_fate = simulate_journey(team_name, stats)
+    journey_log, final_fate = simulate_journey(
+        team_name, stats, root_seed=root_seed,
+    )
     
     print(f"[Journey] Awakening {team_name} Agent for pre-tournament declaration...")
     team_agent = TeamAgent()

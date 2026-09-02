@@ -10,6 +10,7 @@ from src.simulation.match_pipeline import prepare_match_agents
 from src.simulation.tactical_matchup import compute_matchup_bonus
 from src.simulation.tactics_sync import apply_coach_tactics_from_llm
 from src.simulation.venue_policy import resolve_match_venue
+from src.simulation.random_control import named_rng
 
 
 class TournamentSetupMixin:
@@ -260,11 +261,14 @@ class TournamentSetupMixin:
             print(f"  [DEBUG-NARRATIVE] tactics log skipped: {exc}")
 
     def _resolve_internal_and_referee_game(
-        self, *, a1, a2, t1_name, t2_name, pressure,
+        self, *, a1, a2, t1_name, t2_name, pressure, match_seed,
     ):
         internal_1 = a1.simulate_internal_game(stage_pressure=pressure)
         internal_2 = a2.simulate_internal_game(stage_pressure=pressure)
-        referee = self._sample_referee_profile(a1, a2, pressure)
+        referee = self._sample_referee_profile(
+            a1, a2, pressure,
+            rng=named_rng(match_seed, "referee"),
+        )
         ref_1 = a1.apply_referee_dynamics(referee["strictness"], referee["bias_t1"])
         ref_2 = a2.apply_referee_dynamics(referee["strictness"], referee["bias_t2"])
         print(
@@ -289,6 +293,7 @@ class TournamentSetupMixin:
         standings_snapshot,
         fixture_seed,
         scheduled_home,
+        match_seed,
     ):
         (
             a1, a2, ah, aa, home_micro, away_micro, neutral_venue, venue_label,
@@ -315,6 +320,7 @@ class TournamentSetupMixin:
             self._resolve_internal_and_referee_game(
                 a1=a1, a2=a2, t1_name=t1_name, t2_name=t2_name,
                 pressure=pressure,
+                match_seed=match_seed,
             )
         )
 
@@ -326,6 +332,7 @@ class TournamentSetupMixin:
     def _build_fused_match_context(
         self, *, a1, a2, t1_name, t2_name, home_micro,
         pressure, referee, internal_1, internal_2, ref_1, ref_2,
+        match_seed,
     ):
         # 2. Match simulation: physics micro first (spectate) → score; macro-only fallback
         matchup_bonus_1 = compute_matchup_bonus(a1.style_archetype, a2.style_archetype)
@@ -341,7 +348,7 @@ class TournamentSetupMixin:
         exp_2 = self.fusion_controller.export_expert_signals(a2, internal_2, ref_2, tactical_2)
         fused_1 = self.fusion_controller.fuse(exp_1, context)
         fused_2 = self.fusion_controller.fuse(exp_2, context)
-        def _safe_eff(agent, bonus: float, fused: dict) -> float:
+        def _safe_eff(agent, bonus: float, fused: dict, rng) -> float:
             delta = 0.55 * float(fused.get("status_delta", 0.0))
             if not np.isfinite(delta):
                 delta = 0.0
@@ -349,13 +356,19 @@ class TournamentSetupMixin:
             vol = float(fused.get("volatility", 0.0))
             if not np.isfinite(vol):
                 vol = 0.0
-            val *= max(0.82, 1.0 + np.random.normal(0.0, 0.016 * vol))
+            val *= max(0.82, 1.0 + rng.normal(0.0, 0.016 * vol))
             if not np.isfinite(val):
                 val = max(12.0, float(agent.status_score))
             return float(max(12.0, val))
 
-        eff_status_1 = _safe_eff(a1, matchup_bonus_1, fused_1)
-        eff_status_2 = _safe_eff(a2, matchup_bonus_2, fused_2)
+        eff_status_1 = _safe_eff(
+            a1, matchup_bonus_1, fused_1,
+            named_rng(match_seed, "fusion_volatility", t1_name),
+        )
+        eff_status_2 = _safe_eff(
+            a2, matchup_bonus_2, fused_2,
+            named_rng(match_seed, "fusion_volatility", t2_name),
+        )
         if home_micro == t1_name:
             eff_micro_home, eff_micro_away = eff_status_1, eff_status_2
             internal_micro_h, internal_micro_a = internal_1, internal_2

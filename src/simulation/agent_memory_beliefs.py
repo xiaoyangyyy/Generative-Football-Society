@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from src.simulation.random_control import named_rng
+
 
 class AgentBeliefMemoryMixin:
     def update_beliefs_from_match_event(self, match_event):
@@ -29,6 +31,10 @@ class AgentBeliefMemoryMixin:
                 },
             ]
             for i, sc in enumerate(seed_claims, 1):
+                prototype_rng = named_rng(
+                    getattr(self, "random_root_seed", 42),
+                    "belief_prototype", self.team_name, i,
+                )
                 self.beliefs.append(
                     {
                         "id": f"{self.team_name}_BELIEF_{i:03d}",
@@ -39,7 +45,9 @@ class AgentBeliefMemoryMixin:
                         "policy_effect": sc["policy_effect"],
                         "supporting_memories": [],
                         "contradicting_memories": [],
-                        "prototype": np.random.normal(0.0, 0.05, size=m_vec.shape[0]).tolist(),
+                        "prototype": prototype_rng.normal(
+                            0.0, 0.05, size=m_vec.shape[0],
+                        ).tolist(),
                     }
                 )
 
@@ -107,4 +115,3 @@ class AgentBeliefMemoryMixin:
             tags=["stage_consolidation"],
             write_temperature=1.2,
         )
-

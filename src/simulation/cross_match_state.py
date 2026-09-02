@@ -18,6 +18,7 @@ import numpy as np
 
 from src.data_engine.entity_dynamics import PLAYER_CONDITION_KEYS
 from src.infrastructure.locking import FileLease
+from src.simulation.random_control import named_rng
 
 TEAM_STATE_KEYS = ("attack", "defense", "press", "morale_field", "institutional_pressure")
 from src.match_engine.math_utils import sigmoid, tanh_clip
@@ -311,11 +312,17 @@ def ingest_match_result(
     new_injuries: Optional[List[str]] = None,
     transaction_id: Optional[str] = None,
     fatigue_load_multiplier: float = 1.0,
+    rng: Optional[np.random.Generator] = None,
 ) -> None:
     """Update carryover after match; feeds next fixture."""
     carry = ensure_team_carryover(agent)
     if transaction_id and transaction_id in carry.settled_match_ids:
         return
+    rng = rng or named_rng(
+        getattr(agent, "random_root_seed", 42),
+        "cross_match_settlement", transaction_id or stage_name,
+        agent.team_name,
+    )
     if roster:
         sync_carryover_from_roster(agent, roster)
     won = result == "win"
@@ -380,7 +387,7 @@ def ingest_match_result(
         if (
             float(stats.get("minutes", 0)) > 75
             and float(agent.injury_load) > 0.55
-            and np.random.random() < 0.06 * float(agent.injury_load)
+            and rng.random() < 0.06 * float(agent.injury_load)
         ):
             if pid not in injury_ids:
                 injury_ids.add(pid)

@@ -153,6 +153,19 @@ def test_agent_local_initialization_rng_is_replayable_and_does_not_touch_global_
     assert first.referee_trust == second.referee_trust
 
 
+def test_agent_default_initialization_is_identity_scoped():
+    stats = {"tier": "Core", "final_status_score": 65.0}
+    random.seed(117)
+    expected_next = random.random()
+    random.seed(117)
+    first = SocietyAgent("Identity FC", stats, random_root_seed=91)
+    observed_next = random.random()
+    second = SocietyAgent("Identity FC", stats, random_root_seed=91)
+
+    assert observed_next == expected_next
+    assert first.personality == second.personality
+
+
 def test_match_execution_is_inherited_from_dedicated_mixin():
     assert issubclass(TournamentManager, TournamentMatchMixin)
     assert "play_match" not in TournamentManager.__dict__
@@ -283,10 +296,11 @@ def test_referee_policy_produces_a_valid_stage_distribution_and_sample():
     assert np.isclose(sum(final.values()), 1.0)
     assert final["strict"] > group["strict"]
 
-    np.random.seed(42)
     first = SimpleNamespace(media_exposure=0.8)
     second = SimpleNamespace(media_exposure=0.2)
-    sample = policy.sample(first, second, 0.7)
+    sample = policy.sample(
+        first, second, 0.7, rng=np.random.default_rng(42),
+    )
     assert sample["profile_name"] in policy.profiles
     assert 0.05 <= sample["strictness"] <= 0.98
     assert sample["bias_t2"] == -sample["bias_t1"]

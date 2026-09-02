@@ -1,4 +1,3 @@
-import random
 import numpy as np
 import json
 
@@ -6,6 +5,7 @@ from src.simulation.agent_memory import AgentMemoryMixin
 from src.simulation.agent_dynamics import AgentMatchDynamicsMixin
 from src.simulation.agent_initialization import AgentInitializationMixin
 from src.simulation.agent_social import SocialAgentMixin
+from src.simulation.random_control import named_py_rng, named_rng
 
 
 class SocietyAgent(
@@ -24,10 +24,11 @@ class SocietyAgent(
             return float(default)
         return v
 
-    def __init__(self, name, stats, tactical_info=None, initialization_rng=None):
-        import random
-
-        self._initialization_rng = initialization_rng or random
+    def __init__(self, name, stats, tactical_info=None,
+                 initialization_rng=None, random_root_seed=42):
+        self.random_root_seed = int(random_root_seed)
+        self._initialization_rng = initialization_rng or named_py_rng(
+            self.random_root_seed, "initialization", name)
         self._initialize_identity(name, stats)
         self._initialize_roles_and_strategy(stats, tactical_info)
         self._initialize_runtime_state()
@@ -504,14 +505,16 @@ class SocietyAgent(
 
     def rare_locker_room_explosion(self, rng=None):
         """Headline-level crisis; intentionally rare so it keeps punch."""
-        rng = np.random if rng is None else rng
+        rng = rng or named_rng(
+            self.random_root_seed, "locker_room_explosion", self.memory_clock,
+        )
         t = self.locker_room_tension()
         if t < 0.86:
             return False
         p = ((t - 0.86) ** 2.15) * 0.085 + 0.002
         return bool(rng.random() < p)
 
-    def apply_match_wear(self, intensity=0.3):
+    def apply_match_wear(self, intensity=0.3, *, rng=None):
         # Continuous wear model (no hard thresholds):
         # fatigue follows exponential smoothing; injury_load follows hazard-driven stochastic drift.
         effective_intensity = float(intensity) * (1.0 - 0.35 * np.tanh(self.momentum))
@@ -519,14 +522,17 @@ class SocietyAgent(
 
         fatigue_pressure = 1.0 / (1.0 + np.exp(-3.2 * (self.fatigue - 0.55)))
         hazard = fatigue_pressure * (0.35 + 0.65 * effective_intensity) * (1.0 + 0.5 * self.injury_load)
-        shock = np.random.gamma(shape=1.4, scale=max(1e-6, hazard * 0.30))
+        rng = rng or named_rng(
+            self.random_root_seed, "match_wear", self.memory_clock,
+        )
+        shock = rng.gamma(shape=1.4, scale=max(1e-6, hazard * 0.30))
 
         # Keep injury load in a normalized [0, 1] band for stable downstream interpretation.
         self.injury_load = float(np.clip(self.injury_load * np.exp(-0.10) + np.tanh(shock), 0.0, 1.0))
         self.readiness = float(np.exp(-0.9 * self.fatigue - 1.35 * self.injury_load))
 
         event_rate = max(0.0, hazard * 1.6)
-        events = np.random.poisson(event_rate)
+        events = rng.poisson(event_rate)
         if events > 0:
             note = f"Medical load increased: hazard={hazard:.2f}, injury_load={self.injury_load:.2f}"
             self.injury_list.append(note)

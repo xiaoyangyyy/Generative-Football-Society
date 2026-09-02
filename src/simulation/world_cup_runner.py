@@ -1,6 +1,5 @@
 import json
 import os
-import random
 
 from src.data_engine.loader import load_data
 from src.data_engine.cleaner import clean_results
@@ -13,6 +12,7 @@ from src.data_engine.coach_loader import (
 from src.data_engine.identity_normalizer import normalize_identities
 from src.memory_engine.status_score import compute_team_status
 from src.simulation.engine import WorldEngine
+from src.simulation.runtime import environment_snapshot, env_int
 from src.simulation.tournament_2026 import TournamentManager
 
 
@@ -49,13 +49,14 @@ def build_world_and_tournament(
         coaches = load_coaches_json(coaches_path)
         tactical_map = merge_coach_into_tactical_map(tactical_map, coaches)
 
-    initialization_rng = (
-        random.Random(int(initialization_seed))
-        if initialization_seed is not None else None
+    root_seed = (
+        int(initialization_seed)
+        if initialization_seed is not None
+        else env_int(environment_snapshot(), "GFS_SEED", 42)
     )
     engine = WorldEngine(
         stats, tactical_map=tactical_map,
-        initialization_rng=initialization_rng,
+        root_seed=root_seed,
     )
     if coaches:
         n = attach_coaches_to_agents(engine.agents, coaches)

@@ -1,11 +1,12 @@
 import random
 import pandas as pd
 from src.memory_engine.probability_engine import calculate_match_probabilities
+from src.simulation.random_control import named_py_rng
 from src.simulation.tournament_2026 import WORLD_CUP_2026_GROUPS
 
 GROUPS_2026 = {k.split()[-1]: v for k, v in WORLD_CUP_2026_GROUPS.items()}
 
-def get_knockout_opponents(stats, exclude_teams, stage):
+def get_knockout_opponents(stats, exclude_teams, stage, *, rng: random.Random):
     if stage == "Round of 32":
         pool = stats.nlargest(40, 'final_status_score').index.tolist()
     elif stage == "Round of 16":
@@ -19,9 +20,10 @@ def get_knockout_opponents(stats, exclude_teams, stage):
     if not valid_pool:
         valid_pool = [t for t in stats.index if t not in exclude_teams]
     
-    return random.choice(valid_pool)
+    return rng.choice(valid_pool)
 
-def simulate_journey(team, stats):
+def simulate_journey(team, stats, *, root_seed=42, rng=None):
+    rng = rng or named_py_rng(root_seed, "legacy_journey", team)
     if team not in stats.index:
         raise ValueError(f"Team {team} not found in database.")
         
@@ -46,7 +48,7 @@ def simulate_journey(team, stats):
             stat_opp = stats.loc[opp]
             
         probs = calculate_match_probabilities(stats.loc[team], stat_opp)
-        roll = random.uniform(0, 100)
+        roll = rng.uniform(0, 100)
         
         if roll <= probs['p_win_a']:
             res = "win"
@@ -68,7 +70,7 @@ def simulate_journey(team, stats):
     if points >= 4:
         advances = True
     elif points == 3:
-        advances = random.random() > 0.5
+        advances = rng.random() > 0.5
         
     if not advances:
         return journey_log, "Eliminated in Group Stage"
@@ -77,7 +79,7 @@ def simulate_journey(team, stats):
     played_teams = set(my_group_teams + [team])
     
     for stage in stages:
-        opp = get_knockout_opponents(stats, played_teams, stage)
+        opp = get_knockout_opponents(stats, played_teams, stage, rng=rng)
         played_teams.add(opp)
         
         stat_opp = stats.loc[opp]
@@ -85,7 +87,7 @@ def simulate_journey(team, stats):
         
         p_win_adj = probs['p_win_a'] + (probs['p_draw'] / 2)
         
-        roll = random.uniform(0, 100)
+        roll = rng.uniform(0, 100)
         if roll <= p_win_adj:
             res = "win"
             journey_log.append({

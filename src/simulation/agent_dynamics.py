@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from src.simulation.random_control import named_rng
+
 
 class AgentMatchDynamicsMixin:
     def _build_match_update_context(
@@ -66,9 +68,10 @@ class AgentMatchDynamicsMixin:
 
     def _update_match_latent_state(
         self, *, appraisal, emotion, coping, belief_context, social_chaos,
+        rng,
     ):
         # Latent state update (continuous, bounded by tanh/sigmoid projection only).
-        noise = np.random.normal(0.0, self.state_noise_sigma, size=8)
+        noise = rng.normal(0.0, self.state_noise_sigma, size=8)
         self.z_state["morale"] = (
             self.rho_s * self.z_state["morale"]
             + 0.55 * appraisal["impact"]
@@ -168,7 +171,8 @@ class AgentMatchDynamicsMixin:
         print(f"  [MOMENTUM: {self.momentum:.2f} | GAMMA: {gamma:.2f}] {self.name}")
 
 
-    def recursive_update(self, match_result, score_diff, prof_score, social_chaos, opp_name, opp_status):
+    def recursive_update(self, match_result, score_diff, prof_score,
+                         social_chaos, opp_name, opp_status, *, rng=None):
         """
         Final V13 Logic: 
         - Rivalry amplification persists.
@@ -182,9 +186,13 @@ class AgentMatchDynamicsMixin:
             )
         )
 
+        rng = rng or named_rng(getattr(self, "random_root_seed", 42),
+                               "match_dynamics", self.memory_clock, opp_name,
+                               match_result, score_diff)
         self._update_match_latent_state(
             appraisal=appraisal, emotion=emotion, coping=coping,
             belief_context=belief_context, social_chaos=social_chaos,
+            rng=rng,
         )
         self._record_match_outcome(
             match_result=match_result, score_diff=score_diff,
@@ -192,4 +200,3 @@ class AgentMatchDynamicsMixin:
             opp_name=opp_name, appraisal=appraisal, emotion=emotion,
             coping=coping, gamma=gamma,
         )
-

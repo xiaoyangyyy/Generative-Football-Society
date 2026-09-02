@@ -14,7 +14,7 @@ not quality signals by themselves.
 | Raw data | Explicit CSV boundary, schema checks, source/version manifests, sealed group splits | Reproducible baseline | Add temporal snapshots when upstream datasets change |
 | Entity priors | Continuous player/coach/team fields with football-semantic role axes | Useful and interpretable | Fit coefficients to held-out player/event data instead of hand tuning |
 | Tournament | Official group schedule and constrained R32 builder; stable named seeds | Correct simulation path | Encode the final FIFA bracket table once officially fixed |
-| Randomness | Stable BLAKE2-derived subsystem streams for match, extra time, penalties, calibration | Strong contract | Migrate remaining social/legacy global RNG calls to injected streams |
+| Randomness | Stable BLAKE2-derived identity streams across match, scoring, referee, social, wear, carryover, agents, brackets and legacy journeys | Strong runtime contract with machine-enforced global-draw ban | Add matched-seed intervention invariance checks as new stochastic subsystems appear |
 | Persistence | Versioned, validated, atomic tournament checkpoint | Production-grade minimum | Add migration functions and content checksum |
 | Macro scoring | Coupled intensity dynamics; xG fused before a single goal observation | Coherent research model | Replace Euler heuristic with fitted state-space point process |
 | Micro engine | Spatial fields, action selection, pass/shot/aerial physics and affective coupling | Rich but heuristic | Establish explicit SI/normalized unit contract and fit jointly to event data |
@@ -101,6 +101,12 @@ not quality signals by themselves.
     registry for DeepSeek and GitHub PAT exposure, independent redacted receipts
     and multi-family zero-value scans; refreshing the evidence chain also
     invalidated the stale post-code-change formal paper-package pass.
+33. Replaced the remaining runtime process-global random draws with
+    identity-derived Python and NumPy streams. Tournament match identity now
+    reaches scoring, referee, dialogue, agent settlement, physical wear and
+    cross-match carryover; bracket, world-day and legacy journey draws are
+    isolated as well. The architecture audit rejects future direct global draws
+    in simulation and memory runtime modules.
 
 ## LLM Scope Decision
 

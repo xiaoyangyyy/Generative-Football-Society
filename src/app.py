@@ -311,6 +311,14 @@ def run_micro_match(
             transaction_id=continuity_id or stage_name,
             fatigue_load_home=settled_fatigue_load_home,
             fatigue_load_away=settled_fatigue_load_away,
+            rng_home=named_rng(
+                seed, "cross_match_settlement",
+                continuity_id or stage_name, home,
+            ),
+            rng_away=named_rng(
+                seed, "cross_match_settlement",
+                continuity_id or stage_name, away,
+            ),
         )
         summary.continuity_state = {
             "enabled": True,

@@ -1,8 +1,7 @@
 """Social feed, dialogue, and relationship behavior for society agents."""
 
-import random
-
 import numpy as np
+from src.simulation.random_control import named_py_rng
 
 
 class SocialAgentMixin:
@@ -10,13 +9,17 @@ class SocialAgentMixin:
         current = self.rivalry_database.get(opp_name, 0.0)
         self.rivalry_database[opp_name] = current + (drama_score * 0.1)
     
-    def decide_action(self, feed):
+    def decide_action(self, feed, *, rng=None):
         if not feed.posts:
             return "POST"
+        rng = rng or named_py_rng(
+            getattr(self, "random_root_seed", 42),
+            "social_action", len(feed.posts),
+        )
         base_post_prob = 0.4 + (self.personality["arrogance"] - 0.5) * 0.3
         if self.hidden_state[2] > 0.3:
             base_post_prob += 0.1
-        return "POST" if random.random() < np.clip(base_post_prob, 0.15, 0.85) else "REPLY"
+        return "POST" if rng.random() < np.clip(base_post_prob, 0.15, 0.85) else "REPLY"
     
     def generate_comment(self):
         tone = "confident" if self.hidden_state[0] > 0 else "defiant"

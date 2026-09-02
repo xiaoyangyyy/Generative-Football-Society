@@ -1,4 +1,4 @@
-import random
+from src.simulation.random_control import named_py_rng
 
 class ChaosEngine:
     def __init__(self, world_engine):
@@ -28,7 +28,11 @@ class ChaosEngine:
                 # Symbolic capital transfer from one former core power to the new ascendant.
                 core_pool = [n for n, a in self.world.agents.items() if n != target and a.tier == "Core Power"]
                 if core_pool:
-                    loser_name = random.choice(core_pool)
+                    rng = named_py_rng(
+                        getattr(self.world, "root_seed", 42),
+                        "black_swan", swan_type, target,
+                    )
+                    loser_name = rng.choice(core_pool)
                     self.loot_status(target, loser_name)
 
         elif swan_type == "global_strike": # No matches, only social media chaos
