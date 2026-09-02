@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_evidence_derived_excellence_score",
-  "generated_at": "2026-09-02T12:34:37.471733+00:00",
+  "generated_at": "2026-09-02T13:02:20.083704+00:00",
   "status": "passed_dynamic_scoring",
   "passed": true,
   "scores": {
@@ -10,8 +10,8 @@
   },
   "all_tracks_full_maturity": false,
   "release_ready": false,
-  "passed_gate_count": 9,
-  "open_gate_count": 12,
+  "passed_gate_count": 10,
+  "open_gate_count": 11,
   "tracks": {
     "product": {
       "score": 83,
@@ -236,9 +236,9 @@
     "data/evaluation/excellence_scoring_contract_v1.json": "650bf8d0140545d32447253b2d9e27f39f5f130e74fca02aa676b588b75cc13b",
     "data/evaluation/excellence_roadmap_v1.json": "7ca039fbf6a2c6e0a9b5f854d3e3842829de29a61abc39e17de8ae668d257ba4",
     "src/product/excellence.py": "1cf02fae25a9a72659abfcd621e9ba0a68d707fe74bfaf3b3db7cd5ea5c7a6fc",
-    "src/product/control_plane.py": "9c1f5ba42a3d441aba46c06f4e4e29d8e4daccc4ce7ffec5242bdb104026e065",
+    "src/product/control_plane.py": "4c2075b5eb14eab68f46fcf9768a68faa4aa2267d0379eb85536eb89824b16ca",
     "src/product/completion_plan.py": "5e82ce6c520847216ae1a87085ccd668194f2ff32411742aa280560dc93d3b97",
-    "src/cli.py": "d8d4381ef94daa459fc3b2af2c7737947f95beb9a15a4e08150879ce6db68529",
+    "src/cli.py": "f1b7751291e2726e7e56749ce620d4c5dd7990dc4417d6bea854e01ec2fdeab7",
     "src/product/web.py": "f044de8eff7cffea0754d439e31a5ba51a69935574a3c6a9427fb4da85482300",
     "src/product/telemetry.py": "d3b7cda8f249da11f0e908d514b70abb8446b94721c33fa2681d5f7e361162a7",
     "scripts/build_excellence_evidence_kit.py": "c08b7648f96a1e2369b34feda8f1c67b8d863b9ef7653875a0fadd720862dd7f",

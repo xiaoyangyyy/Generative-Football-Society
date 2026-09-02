@@ -133,6 +133,13 @@ tournament entry parses an existing V5 checkpoint once and passes the same
 validated object through seed selection, manifest verification, external
 rollback and in-memory restore; ordinary non-resume integrations retain their
 previous call signature.
+V3.86 corrects release-readiness semantics. The verified Linux target hash lock
+is no longer made false merely because the separate formal paper result is
+pending. The control plane now reports `code_ready=true` only when every
+infrastructure/protocol gate passes and every paper-package check except the
+authorized confirmatory-result cell passes; final `release_ready` remains
+false until all external evidence exists. Studio CLI and Web expose the same
+distinction, open-gate count and next action.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

@@ -20,6 +20,36 @@ DECISION_ARTIFACTS = {
     "action_outcome_v1": "data/evaluation/action_outcome_v1/decision.json",
 }
 
+PAPER_PACKAGE_CHECKS = frozenset({
+    "manifest_schema_and_stage",
+    "manifest_artifacts_exist_and_are_confined",
+    "claim_registry_schema",
+    "claim_ids_unique_and_well_formed",
+    "claim_statuses_bounded",
+    "supported_claim_evidence_exists",
+    "pending_claims_have_no_result_language",
+    "every_claim_marked_exactly_once",
+    "prohibited_claim_phrases_absent",
+    "manuscript_has_required_sections",
+    "manuscript_status_is_explicitly_completed",
+    "confirmatory_result_cells_match_sealed_result",
+    "protocol_is_frozen_and_compute_bounded",
+    "formal_result_identity_and_replay_pass",
+    "confirmatory_outputs_are_complete_and_research_only",
+    "existing_research_evidence_is_fresh",
+    "existing_m1_is_negative_and_not_relabelled",
+    "commands_are_unique_and_effect_classified",
+    "simulation_commands_are_exact_and_explicit",
+    "read_only_commands_cannot_run_simulation",
+    "environment_snapshot_has_verified_reference_matrix",
+    "data_distribution_limits_are_explicit",
+    "model_card_keeps_research_layers_default_off",
+    "independent_reproduction_remains_unclaimed",
+    "all_manuscript_citations_resolve",
+    "software_citation_has_no_placeholder_and_matches_version",
+})
+PAPER_EXTERNAL_RESULT_CHECK = "formal_result_identity_and_replay_pass"
+
 
 class ProductControlPlane:
     def __init__(self, root: str | Path) -> None:
@@ -272,8 +302,8 @@ class ProductControlPlane:
         )
         readiness = release.get("readiness") or {}
         checks = release.get("checks") or {}
-        release_identity_current = self._artifact_hashes_current(
-            release.get("artifact_sha256") or {}
+        target_identity_current = self._artifact_hashes_current(
+            target.get("artifact_sha256") or {}
         )
         paper_identity_current = self._artifact_hashes_current(
             {
@@ -343,10 +373,15 @@ class ProductControlPlane:
             (
                 "target_hash_lock",
                 "Python 3.12 Linux transitive hash lock",
-                release.get("passed") is True
-                and release_identity_current
+                target_identity_current
                 and readiness.get("full_transitive_hash_lock") is True
-                and target.get("passed") is True,
+                and target.get("passed") is True
+                and all(checks.get(name) is True for name in (
+                    "target_lock_is_complete_and_hashed",
+                    "target_lock_contains_direct_contract",
+                    "target_lock_has_safe_index_and_portability_contract",
+                    "target_lock_validation_matches_artifacts",
+                )),
                 target.get("path"),
             ),
             (
@@ -576,7 +611,6 @@ class ProductControlPlane:
             for name, row in (excellence.get("tracks") or {}).items()
         }
         code_gate_ids = {
-            "paper_package",
             "target_hash_lock",
             "cyclonedx_sbom",
             "known_source_decisions",
@@ -588,9 +622,23 @@ class ProductControlPlane:
             "independent_reproduction_protocol",
             "security_closure_protocol",
         }
-        code_ready = all(
+        paper_checks = paper.get("checks") or {}
+        paper_code_ready = (
+            paper_identity_current
+            and paper_finalization_protocol.get("passed") is True
+            and paper_finalization_protocol_current
+            and set(paper_checks) == PAPER_PACKAGE_CHECKS
+            and paper_checks.get(PAPER_EXTERNAL_RESULT_CHECK) is False
+            and all(
+                value is True
+                for name, value in paper_checks.items()
+                if name != PAPER_EXTERNAL_RESULT_CHECK
+            )
+        )
+        infrastructure_code_ready = all(
             gate["passed"] for gate in gates if gate["id"] in code_gate_ids
         )
+        code_ready = paper_code_ready and infrastructure_code_ready
         release_ready = all(gate["passed"] for gate in gates)
         open_gates = [gate for gate in gates if not gate["passed"]]
         return {
@@ -603,6 +651,10 @@ class ProductControlPlane:
                 else "code_contract_incomplete"
             ),
             "code_ready": code_ready,
+            "code_contract_checks": {
+                "paper_package_without_confirmatory_result": paper_code_ready,
+                "infrastructure_and_protocol_gates": infrastructure_code_ready,
+            },
             "release_ready": release_ready,
             "scores": scores,
             "excellence": excellence,

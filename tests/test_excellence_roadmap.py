@@ -68,17 +68,21 @@ def test_security_action_closes_only_from_evidence_gate():
 
 def test_control_plane_unifies_product_and_paper_release_gates():
     release = ProductControlPlane(ROOT).snapshot()["release"]
-    assert release["code_ready"] is False
+    assert release["code_ready"] is True
     assert release["release_ready"] is False
-    assert release["passed_gate_count"] == 9
-    assert release["open_gate_count"] == 12
+    assert release["passed_gate_count"] == 10
+    assert release["open_gate_count"] == 11
+    assert release["code_contract_checks"] == {
+        "paper_package_without_confirmatory_result": True,
+        "infrastructure_and_protocol_gates": True,
+    }
     assert release["next_action"] == "credential_security_closure"
     assert release["completion_plan"]["zero_execution_plan"] is True
     assert release["completion_plan"]["open_step_count"] == 10
     assert release["scores"] == {"product": 83, "academic": 70}
     gates = {gate["id"]: gate for gate in release["gates"]}
     assert gates["paper_package"]["passed"] is False
-    assert gates["target_hash_lock"]["passed"] is False
+    assert gates["target_hash_lock"]["passed"] is True
     assert gates["cyclonedx_sbom"]["passed"] is True
     assert gates["local_runtime"]["passed"] is True
     assert gates["cross_platform_lock_matrix"]["passed"] is True
@@ -104,6 +108,28 @@ def test_control_plane_unifies_product_and_paper_release_gates():
     assert gates["independent_reproduction"]["passed"] is False
     assert gates["completed_manuscript"]["passed"] is False
     assert release["external_calls_made"] is False
+
+
+def test_code_readiness_fails_closed_when_paper_check_contract_is_incomplete(
+    monkeypatch,
+):
+    control_plane = ProductControlPlane(ROOT)
+    original_report = control_plane._report
+
+    def incomplete_report(relative):
+        report = original_report(relative)
+        if relative == "data/evaluation/paper_package_verification_v1.json":
+            report = {**report, "checks": dict(report["checks"])}
+            report["checks"].pop("claim_registry_schema")
+        return report
+
+    monkeypatch.setattr(control_plane, "_report", incomplete_report)
+    release = control_plane.release_readiness()
+    assert release["code_ready"] is False
+    assert release["status"] == "code_contract_incomplete"
+    assert release["code_contract_checks"][
+        "paper_package_without_confirmatory_result"
+    ] is False
 
 
 def test_control_plane_rejects_stale_or_escaping_report_hashes(tmp_path):

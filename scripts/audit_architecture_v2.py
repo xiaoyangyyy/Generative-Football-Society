@@ -1587,6 +1587,28 @@ def main() -> int:
                 "checkpoint=checkpoint",
             ))
         ),
+        "release_readiness_separates_code_contract_from_external_results": (
+            all(token in control_plane for token in (
+                "target_identity_current",
+                '"target_lock_is_complete_and_hashed"',
+                '"target_lock_validation_matches_artifacts"',
+                "PAPER_PACKAGE_CHECKS = frozenset({",
+                'PAPER_EXTERNAL_RESULT_CHECK = "formal_result_identity_and_replay_pass"',
+                "paper_code_ready = (",
+                "and set(paper_checks) == PAPER_PACKAGE_CHECKS",
+                "and paper_checks.get(PAPER_EXTERNAL_RESULT_CHECK) is False",
+                "if name != PAPER_EXTERNAL_RESULT_CHECK",
+                "infrastructure_code_ready = all(",
+                '"code_contract_checks": {',
+                '"paper_package_without_confirmatory_result": paper_code_ready',
+            ))
+            and all(token in cli for token in (
+                '"status": release["status"]',
+                '"code_ready": release["code_ready"]',
+                '"code_contract_checks": release["code_contract_checks"]',
+                '"next_action": release["next_action"]',
+            ))
+        ),
         "stable_release_pointer_identity_verified": release_pointer_ok,
         "stable_release_artifact_chain_verified": bool(release_artifacts.get("ok")),
         "research_checkpoint_identity_chain_verified": candidate_identity_ok,

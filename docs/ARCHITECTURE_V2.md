@@ -3274,3 +3274,45 @@ checkpoint loads and requires exactly one for a real resume handoff.
 
 No training, production tournament, formal experiment or provider request is
 executed in this stage; bounded test fixtures are verification only.
+
+## 104. V3.86 Code-contract versus evidence maturity
+
+The release control plane previously coupled the `target_hash_lock` gate to
+the aggregate reproduction-release result. Because that aggregate correctly
+fails while the formal paper result is absent, a fully verified target lock
+was reported as failed. The same aggregate paper gate was also classified as
+a code gate even though its only failing check requires authorized
+confirmatory execution. This made `code_ready=false` describe missing external
+evidence rather than incomplete code.
+
+The target-lock gate now depends on its own current artifact hashes, the
+verified transitive-lock readiness flag and the four target-lock checks:
+completeness/hashes, direct dependency inclusion, safe index/portability
+contract and artifact agreement. It does not inherit unrelated paper-result
+failure.
+
+Code-contract readiness is computed separately from final release readiness.
+The paper side is code-ready only when the paper and finalization identities
+are current, the finalization protocol passes, and every paper-package check
+other than `formal_result_identity_and_replay_pass` is true. The infrastructure
+side still requires every designated lock, SBOM, data-license, runtime,
+container-image and validation-protocol gate. Both components are exposed in
+`code_contract_checks`. Final release readiness continues to require every
+gate, including formal results, human studies, independent reviews, credential
+closure, container execution and production validation.
+
+The paper-package check names are an exact fail-closed contract. A missing or
+unknown check, or a result state other than the single expected pending formal
+result, makes code readiness false rather than relying on a vacuously true
+aggregate.
+
+The authoritative state after this correction is therefore:
+`code_contract_ready_external_gates_open`, with 10 passed and 11 open release
+gates. The target lock is passed; the registered paper package remains open
+for the missing confirmatory result. Studio CLI now surfaces status,
+`code_ready`, the two code-contract checks, `release_ready`, counts and the
+next action, matching the existing Web representation.
+
+This is a semantic correction to reporting and gate composition. It does not
+promote the world model, manufacture external evidence or change the product
+and academic scores.

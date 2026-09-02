@@ -147,6 +147,14 @@ not quality signals by themselves.
     checkpoint once. The same validated payload now drives seed, manifest,
     rollback and world restoration, while non-resume callers retain their
     established method signature.
+39. Corrected release-readiness composition so the Linux target hash lock is
+    evaluated from its own verified artifacts and checks rather than the
+    aggregate paper result. `code_ready` now means the paper code contract
+    (excluding only the authorized confirmatory result) and all designated
+    infrastructure/protocol gates are complete; `release_ready` still requires
+    every external result and review. CLI and Web now expose this distinction
+    consistently. Current state is 10 passed/11 open gates with the code
+    contract ready and external evidence still open.
 
 ## LLM Scope Decision
 

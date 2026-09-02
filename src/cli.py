@@ -265,10 +265,14 @@ def cmd_studio_excellence(args: argparse.Namespace) -> int:
     release = ProductControlPlane(args.base_dir).release_readiness()
     print(json.dumps({
         "schema_version": 1,
+        "status": release["status"],
         "scores": release["scores"],
+        "code_ready": release["code_ready"],
+        "code_contract_checks": release["code_contract_checks"],
         "release_ready": release["release_ready"],
         "passed_gate_count": release["passed_gate_count"],
         "open_gate_count": release["open_gate_count"],
+        "next_action": release["next_action"],
         "completion_plan": release["completion_plan"],
         "external_calls_made": False,
     }, ensure_ascii=False, indent=2))

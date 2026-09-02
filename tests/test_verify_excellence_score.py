@@ -16,8 +16,8 @@ def test_dynamic_score_report_matches_current_control_plane():
     assert report["scores"] == {"product": 83, "academic": 70}
     assert report["all_tracks_full_maturity"] is False
     assert report["release_ready"] is False
-    assert report["passed_gate_count"] == 9
-    assert report["open_gate_count"] == 12
+    assert report["passed_gate_count"] == 10
+    assert report["open_gate_count"] == 11
     assert all(report["checks"].values())
     assert report["checks"][
         "completion_plan_is_dependency_aware_and_zero_execution"

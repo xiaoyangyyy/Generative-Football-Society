@@ -88,6 +88,13 @@ def test_live_plan_is_integrated_and_never_executes_external_work(capsys):
     assert args.func(args) == 0
     output = json.loads(capsys.readouterr().out)
     assert output["scores"] == {"product": 83, "academic": 70}
+    assert output["status"] == "code_contract_ready_external_gates_open"
+    assert output["code_ready"] is True
+    assert output["release_ready"] is False
+    assert output["passed_gate_count"] == 10
+    assert output["open_gate_count"] == 11
+    assert output["next_action"] == "credential_security_closure"
+    assert all(output["code_contract_checks"].values())
     assert output["external_calls_made"] is False
     assert output["completion_plan"]["recommended_gate_id"] == (
         "credential_security_closure"

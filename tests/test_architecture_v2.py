@@ -74,6 +74,9 @@ def test_architecture_v2_machine_audit_passes():
     assert report["checks"][
         "tournament_resume_rolls_back_internal_external_state_after_identity"
     ]
+    assert report["checks"][
+        "release_readiness_separates_code_contract_from_external_results"
+    ]
     assert not report["violations"]["direct_global_runtime_rng_draws"]
     assert report["checks"]["formal_experiment_is_preregistered_and_compute_bounded"]
     assert report["checks"]["formal_experiment_fails_closed_on_identity_or_partial_evidence"]
