@@ -141,6 +141,12 @@ not quality signals by themselves.
     project-root confinement prevent the checkpoint from becoming an
     arbitrary filesystem writer. Externally configured cache directories stay
     read-only and fail closed.
+38. Hardened V5 resume against conflicting recovery journals even when live
+    files already match, validated recovery/last-recovery path types before
+    mutation, and changed the public tournament handoff to parse an existing
+    checkpoint once. The same validated payload now drives seed, manifest,
+    rollback and world restoration, while non-resume callers retain their
+    established method signature.
 
 ## LLM Scope Decision
 

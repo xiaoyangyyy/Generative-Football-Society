@@ -126,6 +126,13 @@ world. A durable recovery journal preserves the displaced state and lets an
 interrupted rollback converge on the next attempt. Snapshot paths cannot
 escape the project, symlinks and malformed payloads fail closed, and a cache
 configured outside the project is never overwritten automatically.
+V3.85 hardens that recovery path: an existing recovery journal is validated
+against the requested checkpoint even when live files already match, so a
+conflicting interrupted transaction cannot be silently archived. The public
+tournament entry parses an existing V5 checkpoint once and passes the same
+validated object through seed selection, manifest verification, external
+rollback and in-memory restore; ordinary non-resume integrations retain their
+previous call signature.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

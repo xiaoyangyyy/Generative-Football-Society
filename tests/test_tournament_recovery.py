@@ -546,6 +546,77 @@ def test_app_recovery_refuses_identity_mismatch_before_file_mutation(
     assert fusion.read_text(encoding="utf-8") == '{"decision_id":"one"}\n'
 
 
+def test_matching_files_do_not_hide_conflicting_recovery_journal(tmp_path):
+    manager = _manager(tmp_path)
+    manager._save_checkpoint()
+    checkpoint = load_checkpoint(str(tmp_path))
+    recovery_path = (
+        tmp_path / "data/persistence/tournament_state_recovery.json"
+    )
+    recovery_path.write_text(json.dumps({
+        "schema_version": 1,
+        "checkpoint_content_sha256": "d" * 64,
+        "original_state_artifacts": {},
+        "original_state_snapshot": {
+            "schema_version": 1, "artifacts": {},
+        },
+    }), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Conflicting.*recovery journal"):
+        restore_state_artifacts(str(tmp_path), checkpoint)
+    assert recovery_path.is_file()
+    assert not (
+        tmp_path / "data/persistence/tournament_state_recovery_last.json"
+    ).exists()
+
+
+def test_public_tournament_resume_loads_large_checkpoint_once(
+    tmp_path, monkeypatch,
+):
+    from src import app
+
+    manager = _manager(tmp_path)
+    manager.phase = "complete"
+    manager._save_checkpoint()
+    original_load = app.load_checkpoint
+    calls = []
+
+    def counted_load(*args, **kwargs):
+        calls.append((args, kwargs))
+        return original_load(*args, **kwargs)
+
+    class _CompletedTournament:
+        received = None
+
+        def run_full_tournament(self, *, resume=False, checkpoint=None):
+            self.received = (resume, checkpoint)
+
+    completed = _CompletedTournament()
+    monkeypatch.setattr(app, "load_checkpoint", counted_load)
+    monkeypatch.setattr(
+        app, "build_run_manifest",
+        lambda *args, **kwargs: {"run_identity_sha256": RUN_IDENTITY},
+    )
+    monkeypatch.setattr(
+        app, "run_manifest_identity", lambda _manifest: RUN_IDENTITY,
+    )
+    monkeypatch.setattr(app, "write_manifest", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        app, "build_simulation",
+        lambda *args, **kwargs: (object(), completed, {}),
+    )
+
+    returned = app.run_full_tournament(base_dir=tmp_path, resume=True)
+
+    assert returned is completed
+    assert len(calls) == 1
+    assert calls[0][1] == {"verify_external_state": False}
+    assert completed.received[0] is True
+    assert completed.received[1]["content_sha256"] == (
+        load_checkpoint(str(tmp_path))["content_sha256"]
+    )
+
+
 def test_skipped_completed_final_rebuilds_result_and_reflection(tmp_path):
     manager = _manager(tmp_path, names=("Alpha", "Beta"))
     manager.phase = "knockout"

@@ -80,9 +80,14 @@ def build_simulation(
 
 def _resolve_tournament_root_seed(
     root: Path, *, resume: bool, requested_seed: int | None,
+    checkpoint: Mapping[str, Any] | None = None,
 ) -> int:
     if resume:
-        checkpoint = load_checkpoint(str(root), verify_external_state=False)
+        checkpoint = (
+            checkpoint
+            if checkpoint is not None
+            else load_checkpoint(str(root), verify_external_state=False)
+        )
         if checkpoint is not None:
             stored_seed = checkpoint_root_seed(checkpoint)
             if requested_seed is not None and int(requested_seed) != stored_seed:
@@ -97,10 +102,15 @@ def _resolve_tournament_root_seed(
 
 def _verify_tournament_resume_identity(
     root: Path, *, resume: bool, manifest: Mapping[str, Any],
+    checkpoint: Mapping[str, Any] | None = None,
 ) -> None:
     if not resume:
         return
-    checkpoint = load_checkpoint(str(root), verify_external_state=False)
+    checkpoint = (
+        checkpoint
+        if checkpoint is not None
+        else load_checkpoint(str(root), verify_external_state=False)
+    )
     if checkpoint is None:
         return
     current = run_manifest_identity(manifest)
@@ -114,10 +124,15 @@ def _verify_tournament_resume_identity(
 
 def _recover_tournament_external_state(
     root: Path, *, resume: bool, manifest: Mapping[str, Any],
+    checkpoint: Mapping[str, Any] | None = None,
 ) -> None:
     if not resume:
         return
-    checkpoint = load_checkpoint(str(root), verify_external_state=False)
+    checkpoint = (
+        checkpoint
+        if checkpoint is not None
+        else load_checkpoint(str(root), verify_external_state=False)
+    )
     if checkpoint is None:
         return
     current = run_manifest_identity(manifest)
@@ -173,8 +188,12 @@ def run_full_tournament(
 ):
     """Run the full tournament and return the tournament manager."""
     root = Path(base_dir) if base_dir is not None else project_root()
+    checkpoint = (
+        load_checkpoint(str(root), verify_external_state=False)
+        if resume else None
+    )
     root_seed = _resolve_tournament_root_seed(
-        root, resume=resume, requested_seed=seed,
+        root, resume=resume, requested_seed=seed, checkpoint=checkpoint,
     )
     set_global_seed(root_seed)
     runtime_values = dict(environment_snapshot())
@@ -185,18 +204,25 @@ def run_full_tournament(
         config, root, data_paths=data_paths,
         model_paths=model_paths, runtime_values=runtime_values,
     )
-    _verify_tournament_resume_identity(root, resume=resume, manifest=manifest)
+    _verify_tournament_resume_identity(
+        root, resume=resume, manifest=manifest, checkpoint=checkpoint,
+    )
     # External rollback mutates files, so it is authorized only after the
     # current code/data/model/configuration identity matches the checkpoint.
     _recover_tournament_external_state(
-        root, resume=resume, manifest=manifest,
+        root, resume=resume, manifest=manifest, checkpoint=checkpoint,
     )
     write_manifest(root / "data" / "persistence" / "run_manifest.json", manifest)
     _, tournament, _ = build_simulation(
         root, require_tactics=require_tactics, seed=root_seed,
         run_identity_sha256=manifest["run_identity_sha256"],
     )
-    tournament.run_full_tournament(resume=resume)
+    if checkpoint is None:
+        tournament.run_full_tournament(resume=resume)
+    else:
+        tournament.run_full_tournament(
+            resume=resume, checkpoint=checkpoint,
+        )
     return tournament
 
 

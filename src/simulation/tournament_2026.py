@@ -31,6 +31,7 @@ from src.simulation.tournament_checkpoint import (
     restore_r32_fixtures,
     save_checkpoint,
     validate_reflection_journal,
+    verify_state_artifacts,
 )
 from src.simulation.world_state import (
     preflight_world_state, restore_world_state, snapshot_world_state,
@@ -228,13 +229,21 @@ class TournamentManager(TournamentMatchMixin):
             f"qualified={len(self.qualified_teams)}"
         )
 
-    def run_full_tournament(self, *, resume: bool = False):
+    def run_full_tournament(
+        self, *, resume: bool = False, checkpoint: dict | None = None,
+    ):
         from src.match_engine.calibration.narrative_isolation import resolve_tournament_llm
 
         self._require_run_identity()
         llm = resolve_tournament_llm()
         if resume:
-            ckpt = load_checkpoint(self.base_dir)
+            ckpt = checkpoint
+            if ckpt is None:
+                ckpt = load_checkpoint(self.base_dir)
+            else:
+                # The application parsed and validated this payload before
+                # identity-gated recovery; require the restored files to match.
+                verify_state_artifacts(self.base_dir, ckpt)
             if ckpt:
                 self._restore_from_checkpoint(ckpt)
             else:

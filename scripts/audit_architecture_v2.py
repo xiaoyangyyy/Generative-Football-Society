@@ -1581,9 +1581,10 @@ def main() -> int:
                 "def _recover_tournament_external_state(",
                 "verify_external_state=False",
                 "Tournament recovery requires an identity-matched checkpoint",
-                "_verify_tournament_resume_identity(root, resume=resume, manifest=manifest)",
+                "_verify_tournament_resume_identity(",
                 "_recover_tournament_external_state(",
                 "External rollback mutates files",
+                "checkpoint=checkpoint",
             ))
         ),
         "stable_release_pointer_identity_verified": release_pointer_ok,

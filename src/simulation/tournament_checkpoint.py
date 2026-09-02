@@ -379,11 +379,50 @@ def restore_state_artifacts(base_dir: str, payload: Dict[str, Any]) -> bool:
     expected = _validate_state_artifact_digests(payload.get("state_artifacts"))
     desired = validate_state_snapshot(payload.get("state_snapshot"), expected)
     checkpoint_identity = str(payload.get("content_sha256") or "")
+    if (
+        len(checkpoint_identity) != 64
+        or any(char not in "0123456789abcdef" for char in checkpoint_identity)
+    ):
+        raise ValueError("Invalid tournament checkpoint content identity")
     root = Path(base_dir).resolve()
     recovery_path = root.joinpath(*RECOVERY_PATH.split(os.sep))
     last_recovery_path = root.joinpath(*LAST_RECOVERY_PATH.split(os.sep))
     lock_path = recovery_path.with_suffix(".lock")
     with FileLease(lock_path, timeout=5.0):
+        if recovery_path.is_symlink() or (
+            recovery_path.exists() and not recovery_path.is_file()
+        ):
+            raise ValueError("Tournament recovery journal must be a regular file")
+        if last_recovery_path.is_symlink() or (
+            last_recovery_path.exists() and not last_recovery_path.is_file()
+        ):
+            raise ValueError(
+                "Tournament last-recovery record must be a regular file"
+            )
+        recovery = None
+        if recovery_path.is_file():
+            if recovery_path.stat().st_size > MAX_CHECKPOINT_BYTES:
+                raise ValueError("Tournament recovery journal exceeds 64 MiB")
+            try:
+                recovery = json.loads(recovery_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                raise ValueError("Invalid tournament state recovery journal") from exc
+            if (
+                not isinstance(recovery, dict)
+                or set(recovery) != {
+                    "schema_version", "checkpoint_content_sha256",
+                    "original_state_artifacts", "original_state_snapshot",
+                }
+                or recovery.get("schema_version") != 1
+                or recovery.get("checkpoint_content_sha256")
+                != checkpoint_identity
+            ):
+                raise ValueError("Conflicting tournament state recovery journal")
+            validate_state_snapshot(
+                recovery["original_state_snapshot"],
+                recovery["original_state_artifacts"],
+            )
+
         current = capture_state_artifacts(base_dir)
         targets = _state_artifact_targets(base_dir)
         if any(
@@ -407,34 +446,13 @@ def restore_state_artifacts(base_dir: str, payload: Dict[str, Any]) -> bool:
             raise ValueError(
                 "Automatic recovery cannot modify an external cognitive cache"
             )
-        if recovery_path.is_symlink():
-            raise ValueError("Tournament recovery journal cannot be a symlink")
         if not mismatches:
-            if recovery_path.is_file():
+            if recovery is not None:
                 os.replace(recovery_path, last_recovery_path)
                 return True
             return False
 
-        if recovery_path.is_file():
-            if recovery_path.stat().st_size > MAX_CHECKPOINT_BYTES:
-                raise ValueError("Tournament recovery journal exceeds 64 MiB")
-            recovery = json.loads(recovery_path.read_text(encoding="utf-8"))
-            if (
-                not isinstance(recovery, dict)
-                or set(recovery) != {
-                    "schema_version", "checkpoint_content_sha256",
-                    "original_state_artifacts", "original_state_snapshot",
-                }
-                or recovery.get("schema_version") != 1
-                or recovery.get("checkpoint_content_sha256")
-                != checkpoint_identity
-            ):
-                raise ValueError("Conflicting tournament state recovery journal")
-            validate_state_snapshot(
-                recovery["original_state_snapshot"],
-                recovery["original_state_artifacts"],
-            )
-        else:
+        if recovery is None:
             original = capture_state_snapshot(base_dir, current)
             recovery = {
                 "schema_version": 1,

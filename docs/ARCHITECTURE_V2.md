@@ -3243,6 +3243,34 @@ is never overwritten. This is a safety boundary, not an exact-recovery claim
 for arbitrary external directories. Provider billing also retains the V3.83
 limitation before a reflection receipt has been durably committed.
 
-This stage executes no training, match, tournament, formal experiment or
-provider request. It changes recovery semantics only and provides no new
-model-quality or causal-effect evidence.
+This stage executes no training, production tournament, formal experiment or
+provider request. Unit and integration tests exercise bounded synthetic match
+fixtures, but they provide no new model-quality or causal-effect evidence.
+
+## 103. V3.85 Recovery continuity and single-load handoff
+
+The V5 recovery journal is now preflighted on every resume branch, including
+the branch where live artifact digests already equal the checkpoint. A journal
+must be a regular, bounded JSON file; its schema, target checkpoint content
+identity, displaced artifact map and complete rollback snapshot must all
+validate. The last-recovery destination must also be a regular file when it
+exists. Therefore a stale or conflicting interrupted transaction cannot be
+silently renamed merely because another process or operator happened to make
+the live files match.
+
+The public tournament entry now parses an existing checkpoint once with
+external comparison deferred. The same validated object is passed through
+root-seed selection, run-manifest comparison, identity-gated external recovery
+and TournamentManager restoration. The manager still performs a final strict
+live artifact comparison after recovery. This removes repeated parsing and
+base object construction for a checkpoint that may legally approach 64 MiB,
+while retaining validation at the mutation boundary. Calls that are not
+resuming a checkpoint keep the previous TournamentManager method signature.
+
+Regression coverage injects a valid rollback snapshot carrying the wrong
+checkpoint identity while the live filesystem is already consistent and
+requires failure without journal archival. A public-entry test also counts
+checkpoint loads and requires exactly one for a real resume handoff.
+
+No training, production tournament, formal experiment or provider request is
+executed in this stage; bounded test fixtures are verification only.
