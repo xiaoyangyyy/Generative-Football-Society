@@ -274,6 +274,9 @@ def _action_adoption_digest(value: Any) -> dict[str, Any]:
         "probability_policy_version": str(
             value.get("probability_policy_version") or ""
         ),
+        "expected_change_estimator": str(
+            value.get("expected_change_estimator") or ""
+        ),
     }
     for field in integer_fields:
         digest[field] = int(value.get(field) or 0)

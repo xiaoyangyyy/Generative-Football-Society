@@ -332,7 +332,10 @@ class _Summary:
             "expected_counterfactual_change_rate": 0.18,
             "mean_recommended_probability_shift": 0.015,
             "mean_primary_signal_probability_shift": 0.019,
-            "probability_policy_version": "validated_action_simplex_v2",
+            "probability_policy_version": "validated_action_simplex_v3",
+            "expected_change_estimator": (
+                "shared_uniform_inverse_cdf_overlap_v1"
+            ),
             "action_signal_breakdown": {
                 "pass": {
                     "signal_opportunities": 8,
@@ -950,7 +953,10 @@ def test_studio_match_writes_one_composed_product_report(tmp_path, monkeypatch):
     assert latest_adoption["counterfactual_change_rate"] == 0.2
     assert latest_adoption["mean_primary_signal_probability_shift"] == 0.019
     assert latest_adoption["probability_policy_version"] == (
-        "validated_action_simplex_v2"
+        "validated_action_simplex_v3"
+    )
+    assert latest_adoption["expected_change_estimator"] == (
+        "shared_uniform_inverse_cdf_overlap_v1"
     )
     assert latest_adoption["action_signal_breakdown"]["shot"] == {
         "signal_opportunities": 2,

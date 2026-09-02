@@ -53,6 +53,7 @@ def test_research_report_separates_realized_and_expected_changes_and_escapes():
         "attribution_eligible_opportunities": 17,
         "counterfactual_action_changes": 2,
         "expected_counterfactual_action_changes": 2.7,
+        "expected_change_estimator": "shared_uniform_inverse_cdf_overlap_v1",
         "mean_recommended_probability_shift": 0.0125,
         "mean_primary_signal_probability_shift": 0.02,
         "records": [{
@@ -82,8 +83,8 @@ def test_research_report_separates_realized_and_expected_changes_and_escapes():
     document = render_match_html(_report(action_adoption=adoption))
 
     assert "Counterfactual changes</span><strong>2</strong>" in document
-    assert "Expected changes</span><strong>2.70</strong>" in document
-    assert "Expected changes are probability mass" in document
+    assert "Expected changes (shared draw)</span><strong>2.70</strong>" in document
+    assert "exact mismatch probability" in document
     assert "Mean direct-recommendation shift" in document
     assert "Mean primary-signal shift</span><strong>2.00%" in document
     assert "direct validated preference" in document
@@ -244,7 +245,8 @@ def test_action_explorer_keeps_all_bounded_records_and_degrades_bad_fields():
     assert "All (13)" in document
     assert "Opportunities</span><strong>0</strong>" in document
     assert "Non-zero influence</span><strong>0</strong>" in document
-    assert "Expected changes</span><strong>0.00</strong>" in document
+    assert "Legacy expected-change proxy</span><strong>0.00</strong>" in document
+    assert "may use total-variation distance" in document
     assert "Changed action (3)" in document
     assert "Probability shifted (12)" in document
     assert document.count("<tr class=") == 13

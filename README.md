@@ -67,6 +67,10 @@ V3.75 turns those transition totals into an accessible, horizontally responsive
 5-by-5 manager-facing map. It exposes V3 and legacy coverage beside the matrix,
 uses an explicit unavailable state instead of treating missing evidence as zero,
 and keeps every cell a descriptive count rather than an effect estimate.
+V3.76 corrects the expected action-change estimator itself. Instead of treating
+total-variation distance as the change probability, it computes exact interval
+overlap under the simulator's shared inverse-CDF draw; TV remains a separate
+distribution diagnostic and legacy product evidence is labelled as a proxy.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

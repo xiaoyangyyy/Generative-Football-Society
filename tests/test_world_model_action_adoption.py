@@ -24,6 +24,7 @@ from src.match_engine.world_model.action_adoption import (
     record_action_policy_sample,
     register_action_policy_opportunity,
     sample_action_from_uniform,
+    shared_uniform_action_change_probability,
 )
 from src.match_engine.world_model.action_codec import decode_action_kind
 from src.match_engine.world_model.config import WorldModelConfig
@@ -220,7 +221,10 @@ def test_controller_competes_across_validated_actions_on_one_simplex():
         sampling_uniform=0.5, counterfactual_baseline_action="pass",
     )
     audit = direct_action_adoption_diagnostics(state)
-    assert audit["probability_policy_version"] == "validated_action_simplex_v2"
+    assert audit["probability_policy_version"] == "validated_action_simplex_v3"
+    assert audit["expected_change_estimator"] == (
+        "shared_uniform_inverse_cdf_overlap_v1"
+    )
     assert set(audit["action_signal_breakdown"]) == {"pass", "shot"}
     assert audit["action_signal_breakdown"]["pass"]["negative_guidance"] == 1
     assert audit["action_signal_breakdown"]["shot"]["positive_guidance"] == 1
@@ -440,6 +444,90 @@ def test_shared_uniform_identifies_world_model_changed_action():
     assert reference["realized_actions"] == 1
     assert reference["counterfactual_changes"] == 1
     assert reference["mean_probability_gain"] > 0.0
+
+
+def test_expected_change_uses_exact_shared_uniform_coupling_not_total_variation():
+    state = SimpleNamespace()
+    labels = ["pass", "shot", "hold"]
+    baseline = np.array([0.5, 0.5, 0.0], dtype=float)
+    adjusted = np.array([0.0, 0.5, 0.5], dtype=float)
+    register_action_policy_opportunity(
+        state, team_id="home", t_sec=13.0,
+        feasible_actions=set(labels),
+        base_utilities=[0.0, 0.0, 0.0],
+        adjusted_utilities=[-0.2, 0.0, 0.0],
+        labels=labels,
+        model_adjustments={"pass": -0.2, "shot": 0.0, "hold": 0.0},
+        quality_gates={
+            "pass": {
+                "open": True,
+                "decision_confidence": 1.0,
+                "decision_certainty": 1.0,
+                "policy_blend": 0.3,
+                "model_advantage": -0.2,
+            },
+            "shot": {"open": False},
+            "hold": {"open": False},
+        },
+    )
+
+    exact = shared_uniform_action_change_probability(baseline, adjusted)
+    record_action_policy_sample(
+        state,
+        actual_action="hold",
+        labels=labels,
+        base_probabilities=baseline,
+        adjusted_probabilities=adjusted,
+        sampling_uniform=0.6,
+        counterfactual_baseline_action="shot",
+    )
+    audit = direct_action_adoption_diagnostics(state)
+    record = audit["records"][0]
+
+    assert exact == 1.0
+    assert record["total_variation_distance"] == 0.5
+    assert record["shared_uniform_change_probability"] == 1.0
+    assert audit["expected_counterfactual_action_changes"] == 1.0
+    assert audit["expected_counterfactual_change_rate"] == 1.0
+
+
+def test_pass_target_expectation_uses_the_same_shared_uniform_coupling():
+    state = SimpleNamespace()
+    labels = ["pass", "hold"]
+    register_action_policy_opportunity(
+        state, team_id="home", t_sec=14.0,
+        feasible_actions=set(labels),
+        base_utilities=[0.0, 0.0], adjusted_utilities=[0.2, 0.0],
+        labels=labels,
+        model_adjustments={"pass": 0.2, "hold": 0.0},
+        quality_gates={
+            "pass": {
+                "open": True, "decision_confidence": 1.0,
+                "decision_certainty": 1.0, "policy_blend": 0.3,
+                "model_advantage": 0.2,
+            },
+            "hold": {"open": False},
+        },
+    )
+    baseline = np.array([0.5, 0.5, 0.0], dtype=float)
+    adjusted = np.array([0.0, 0.5, 0.5], dtype=float)
+
+    record_pass_target_policy_sample(
+        state,
+        candidate_ids=["a", "b", "c"],
+        base_probabilities=baseline,
+        adjusted_probabilities=adjusted,
+        selected_index=2,
+        counterfactual_index=0,
+        sampling_uniform=0.75,
+        evidence={"applied": True},
+    )
+    audit = direct_action_adoption_diagnostics(state)
+    target = audit["records"][0]["pass_target_policy"]
+
+    assert target["total_variation_distance"] == 0.5
+    assert target["shared_uniform_change_probability"] == 1.0
+    assert audit["pass_target_expected_changes"] == 1.0
 
 
 def test_hold_cannot_gain_direct_authority_from_a_forged_open_gate():

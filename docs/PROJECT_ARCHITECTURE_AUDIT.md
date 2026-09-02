@@ -88,6 +88,9 @@ not quality signals by themselves.
 28. Added an accessible, responsive 5-by-5 action-transition map to the manager
     world navigator. It distinguishes observed zeros from unavailable legacy
     evidence, publishes source coverage and renders only with safe DOM APIs.
+29. Replaced the multi-action expected-change TV proxy with the exact mismatch
+    probability of the simulator's shared-uniform inverse-CDF sampler. The
+    estimator is versioned and legacy product evidence remains visibly labelled.
 
 ## LLM Scope Decision
 

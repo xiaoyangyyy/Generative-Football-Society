@@ -2869,3 +2869,30 @@ ineffective or absent in real football. The matrix remains descriptive and
 does not authorize action ranking, cross-cell effect comparison, score
 attribution or real-football causality. No training, match, future generation,
 formal experiment or provider call is executed in this stage.
+
+## 94. V3.76 Exact shared-uniform action-change expectation
+
+The action controller samples the baseline and world-model policies by feeding
+the same uniform draw through two categorical inverse CDFs. Earlier diagnostics
+summed total-variation distance and named that value “expected counterfactual
+action changes.” TV is the minimum mismatch probability over all possible
+couplings; it equals the shared-draw mismatch for two actions, but not generally
+for the simulator's three- or four-action distributions. For example, ordered
+policies `(0.5, 0.5, 0.0)` and `(0.0, 0.5, 0.5)` have TV 0.5 while their
+same-label inverse-CDF intervals do not overlap, so the actual shared-draw
+mismatch probability is 1.0.
+
+The controller now computes that probability exactly by summing overlap between
+same-action CDF intervals and subtracting it from one. Both high-level action
+and executable pass-target expectations use the same estimator. Each retained
+runtime record keeps total variation as a separate distribution-distance
+diagnostic and adds its exact shared-uniform change probability. Diagnostics
+publish estimator identity `shared_uniform_inverse_cdf_overlap_v1`, and the
+probability-policy contract advances to `validated_action_simplex_v3`.
+
+Workspace projection preserves the estimator identity. Studio and HTML reports
+label current values as shared-draw expectations, while old records without the
+identity are explicitly shown as legacy proxies. This corrects measurement; it
+does not increase model authority, alter an action distribution, fabricate a
+realized change or authorize outcome claims. No training, match, future
+generation, formal experiment or provider call is executed in this stage.

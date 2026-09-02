@@ -327,7 +327,7 @@ def main() -> int:
         ),
         "world_model_action_authority_uses_validated_feasible_simplex": (
             all(token in action_adoption_controller for token in (
-                "validated_action_simplex_v2",
+                "validated_action_simplex_v3",
                 "applied_policy_actions",
                 "action_signal_breakdown",
                 "applied_action_authority",
@@ -1160,6 +1160,26 @@ def main() -> int:
                 "矩阵格是计数，不是效果值",
                 "renderManagerWorldNavigatorWithoutActionTransitionMap",
                 ".transition-map-scroll { max-width:100%; overflow-x:auto",
+            ))
+        ),
+        "action_change_expectation_matches_shared_uniform_sampler": (
+            all(token in action_adoption_controller for token in (
+                "def shared_uniform_action_change_probability(",
+                "shared_uniform_inverse_cdf_overlap_v1",
+                '"shared_uniform_change_probability": shared_uniform_change',
+                'store["expected_counterfactual_action_changes"] += shared_uniform_change',
+                'store["pass_target_expected_changes"] += shared_uniform_change',
+                '"total_variation_distance": total_variation',
+                '"expected_change_estimator": _EXPECTED_CHANGE_ESTIMATOR',
+            ))
+            and all(token in workspace for token in (
+                '"expected_change_estimator": str(',
+                'value.get("expected_change_estimator") or ""',
+            ))
+            and all(token in web for token in (
+                "adoption.expected_change_estimator==='shared_uniform_inverse_cdf_overlap_v1'",
+                "共享采样期望改变",
+                "旧版期望改变",
             ))
         ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (

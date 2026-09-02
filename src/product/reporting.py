@@ -169,6 +169,20 @@ def _action_influence_panel(
     expected = max(0.0, _finite_float(
         adoption.get("expected_counterfactual_action_changes")
     ))
+    exact_expected = adoption.get("expected_change_estimator") == (
+        "shared_uniform_inverse_cdf_overlap_v1"
+    )
+    expected_label = (
+        "Expected changes (shared draw)"
+        if exact_expected else "Legacy expected-change proxy"
+    )
+    expected_note = (
+        "Expected changes integrate the exact mismatch probability under the "
+        "simulator's shared inverse-CDF draw"
+        if exact_expected else
+        "Legacy expected changes may use total-variation distance rather than "
+        "the simulator's exact shared-draw coupling"
+    )
     mean_shift = max(0.0, _finite_float(
         adoption.get("mean_recommended_probability_shift")
     ))
@@ -312,11 +326,11 @@ def _action_influence_panel(
   <div><span class="label">Non-zero influence</span><strong>{influenced}</strong></div>
   <div><span class="label">Attribution eligible</span><strong>{eligible}</strong></div>
   <div><span class="label">Counterfactual changes</span><strong>{changed}</strong></div>
-  <div><span class="label">Expected changes</span><strong>{expected:.2f}</strong></div>
+  <div><span class="label">{expected_label}</span><strong>{expected:.2f}</strong></div>
   <div><span class="label">Mean direct-recommendation shift</span><strong>{_percent(mean_shift, 2)}</strong></div>
   <div><span class="label">Mean primary-signal shift</span><strong>{_percent(mean_primary_shift, 2)}</strong></div>
 </div>
-<p class="evidence">{protocol_line}. Expected changes are probability mass, not additional observed outcomes. This panel does not authorize product or academic promotion.</p>
+<p class="evidence">{protocol_line}. {expected_note}; they are probability mass, not additional observed outcomes. This panel does not authorize product or academic promotion.</p>
 <p class="evidence">Observed trajectories are linked only by the runtime opportunity identity plus matching action, team and timestamp. Time proximity alone is never treated as a direct match.</p>
 <ol class="causal-chain"><li>Quality gate decides whether validated model evidence may enter the policy.</li><li>The bounded model signal adjusts action utility and therefore sampling probability.</li><li>The same stored random draw is applied to baseline and adjusted distributions.</li><li>A different sampled action is a local counterfactual change; only isolated records are attribution eligible.</li></ol>
 {decision_table}</section>"""

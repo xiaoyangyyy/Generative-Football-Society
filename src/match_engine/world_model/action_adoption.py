@@ -10,7 +10,8 @@ import numpy as np
 _MAX_SAMPLED_RECORDS = 96
 _DIRECTLY_VALIDATED_ACTIONS = frozenset({"pass", "shot", "cross"})
 _REFERENCE_ACTION = "hold"
-_PROBABILITY_POLICY_VERSION = "validated_action_simplex_v2"
+_PROBABILITY_POLICY_VERSION = "validated_action_simplex_v3"
+_EXPECTED_CHANGE_ESTIMATOR = "shared_uniform_inverse_cdf_overlap_v1"
 
 
 def mask_infeasible_action_probabilities(
@@ -49,6 +50,44 @@ def sample_action_from_uniform(
         np.cumsum(probs), u, side="right",
     )))
     return str(labels[index])
+
+
+def shared_uniform_action_change_probability(
+    base_probabilities: Sequence[float],
+    adjusted_probabilities: Sequence[float],
+) -> float:
+    """Return the exact mismatch probability under the sampler's shared draw.
+
+    Total variation is the minimum mismatch probability over all couplings. The
+    simulator uses one specific coupling: both categorical distributions are
+    inverse-CDF sampled with the same uniform draw and fixed action order. For
+    three or more actions its mismatch probability can differ from total
+    variation, so compute the overlap of the corresponding CDF intervals.
+    """
+    base = np.asarray(base_probabilities, dtype=float)
+    adjusted = np.asarray(adjusted_probabilities, dtype=float)
+    if base.ndim != 1 or base.size < 1 or adjusted.shape != base.shape:
+        raise ValueError("shared-uniform probability shapes are invalid")
+    if not np.isfinite(base).all() or not np.isfinite(adjusted).all():
+        raise ValueError("shared-uniform probabilities must be finite")
+    base = np.clip(base, 0.0, None)
+    adjusted = np.clip(adjusted, 0.0, None)
+    base_total = float(base.sum())
+    adjusted_total = float(adjusted.sum())
+    if base_total <= 0.0 or adjusted_total <= 0.0:
+        raise ValueError("shared-uniform probabilities need positive mass")
+    base /= base_total
+    adjusted /= adjusted_total
+    base_upper = np.cumsum(base)
+    adjusted_upper = np.cumsum(adjusted)
+    base_lower = np.concatenate(([0.0], base_upper[:-1]))
+    adjusted_lower = np.concatenate(([0.0], adjusted_upper[:-1]))
+    overlap = np.maximum(
+        0.0,
+        np.minimum(base_upper, adjusted_upper)
+        - np.maximum(base_lower, adjusted_lower),
+    ).sum()
+    return float(np.clip(1.0 - overlap, 0.0, 1.0))
 
 
 def mix_direct_action_probabilities(
@@ -316,6 +355,9 @@ def record_action_policy_sample(
         and actual != counterfactual
     )
     total_variation = float(0.5 * np.abs(adjusted - base).sum())
+    shared_uniform_change = shared_uniform_action_change_probability(
+        base, adjusted,
+    )
     reference_index = (
         labels.index(_REFERENCE_ACTION)
         if _REFERENCE_ACTION in labels else None
@@ -338,6 +380,7 @@ def record_action_policy_sample(
         "counterfactual_baseline_action": counterfactual,
         "policy_changed_action": changed_action,
         "total_variation_distance": total_variation,
+        "shared_uniform_change_probability": shared_uniform_change,
         "adopted": adopted, "attribution_eligible": attribution_eligible,
         "resolution": (
             "external_schedule_override" if externally_overridden
@@ -365,7 +408,7 @@ def record_action_policy_sample(
     store["counterfactual_action_changes"] += int(changed_action)
     store.setdefault("expected_counterfactual_action_changes", 0.0)
     if attribution_eligible:
-        store["expected_counterfactual_action_changes"] += total_variation
+        store["expected_counterfactual_action_changes"] += shared_uniform_change
     # Keep the legacy public metric semantically narrow: it measures only a
     # direct positive recommendation. Suppression has its own signed signal.
     store["probability_shift_sum"] += abs(delta)
@@ -430,6 +473,9 @@ def record_pass_target_policy_sample(
     base = np.asarray(base_probabilities, dtype=float)
     adjusted = np.asarray(adjusted_probabilities, dtype=float)
     total_variation = float(0.5 * np.abs(adjusted - base).sum())
+    shared_uniform_change = shared_uniform_action_change_probability(
+        base, adjusted,
+    )
     changed = bool(selected_index != counterfactual_index)
     applied = bool(evidence.get("applied", False) and total_variation > 1e-12)
     selected_id = str(candidate_ids[selected_index])
@@ -446,6 +492,7 @@ def record_pass_target_policy_sample(
         "recommended_candidate_id": str(candidate_ids[recommended_index]),
         "policy_changed_target": bool(applied and changed),
         "total_variation_distance": total_variation,
+        "shared_uniform_change_probability": shared_uniform_change,
     }
     store.setdefault("pass_target_opportunities", 0)
     store.setdefault("pass_target_influenced_opportunities", 0)
@@ -455,7 +502,7 @@ def record_pass_target_policy_sample(
     store["pass_target_influenced_opportunities"] += int(applied)
     store["pass_target_changes"] += int(applied and changed)
     if applied:
-        store["pass_target_expected_changes"] += total_variation
+        store["pass_target_expected_changes"] += shared_uniform_change
 
 
 def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
@@ -478,6 +525,7 @@ def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
             "pass_target_expected_changes": 0.0,
             "adoption_rate": 0.0,
             "probability_policy_version": _PROBABILITY_POLICY_VERSION,
+            "expected_change_estimator": _EXPECTED_CHANGE_ESTIMATOR,
             "action_signal_breakdown": {},
             "reference_action_breakdown": {
                 "action": _REFERENCE_ACTION,
@@ -542,6 +590,7 @@ def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
             store.get("pass_target_expected_changes", 0.0)
         ),
         "probability_policy_version": _PROBABILITY_POLICY_VERSION,
+        "expected_change_estimator": _EXPECTED_CHANGE_ESTIMATOR,
         "action_signal_breakdown": action_breakdown,
         "reference_action_breakdown": {
             "action": _REFERENCE_ACTION,

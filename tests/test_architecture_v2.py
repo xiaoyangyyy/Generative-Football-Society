@@ -51,5 +51,8 @@ def test_architecture_v2_machine_audit_passes():
     assert report["checks"][
         "manager_action_transition_matrix_is_accessible_and_honest"
     ]
+    assert report["checks"][
+        "action_change_expectation_matches_shared_uniform_sampler"
+    ]
     assert report["checks"]["formal_experiment_is_preregistered_and_compute_bounded"]
     assert report["checks"]["formal_experiment_fails_closed_on_identity_or_partial_evidence"]

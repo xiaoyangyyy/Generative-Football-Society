@@ -192,6 +192,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-advisor-protocol-evidence"' in document
     assert "renderActionAdoption(" in document
     assert "renderActionAdoptionWithoutActionSignals" in document
+    assert "shared_uniform_inverse_cdf_overlap_v1" in document
+    assert "共享采样期望改变" in document
+    assert "旧版期望改变" in document
     assert "adoption.action_signal_breakdown||{}" in document
     assert "evidence?.cross_action_validation||{}" in document
     assert "cross.cross_planning_authorized" in document
