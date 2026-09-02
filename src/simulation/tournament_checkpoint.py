@@ -9,13 +9,46 @@ import os
 import tempfile
 from typing import Any, Dict, List, Optional, Tuple
 
-CHECKPOINT_VERSION = 2
+CHECKPOINT_VERSION = 3
 RANDOM_WORLD_CONTRACT = "identity_scoped_rng_v1"
 DEFAULT_PATH = os.path.join("data", "persistence", "tournament_checkpoint.json")
+STATE_ARTIFACT_PATHS = ("data/persistence/squad_carryover.json",)
 
 
 def checkpoint_path(base_dir: str) -> str:
     return os.path.join(base_dir, DEFAULT_PATH.replace("/", os.sep))
+
+
+def _file_sha256(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def capture_state_artifacts(base_dir: str) -> Dict[str, str]:
+    root = os.path.abspath(base_dir)
+    artifacts: Dict[str, str] = {}
+    for relative in STATE_ARTIFACT_PATHS:
+        path = os.path.join(root, *relative.split("/"))
+        if os.path.isfile(path):
+            artifacts[relative] = _file_sha256(path)
+    return artifacts
+
+
+def verify_state_artifacts(base_dir: str, payload: Dict[str, Any]) -> None:
+    expected = payload.get("state_artifacts")
+    if not isinstance(expected, dict) or any(
+        path not in STATE_ARTIFACT_PATHS
+        or not isinstance(digest, str)
+        or len(digest) != 64
+        or any(char not in "0123456789abcdef" for char in digest)
+        for path, digest in expected.items()
+    ):
+        raise ValueError("Invalid tournament checkpoint state artifacts")
+    if expected != capture_state_artifacts(base_dir):
+        raise ValueError("Tournament checkpoint external state integrity mismatch")
 
 
 def _content_sha256(payload: Dict[str, Any]) -> str:
@@ -44,12 +77,23 @@ def checkpoint_root_seed(payload: Dict[str, Any]) -> int:
     return root_seed
 
 
+def checkpoint_run_identity(payload: Dict[str, Any]) -> str:
+    identity = payload.get("run_identity_sha256")
+    if not isinstance(identity, str) or len(identity) != 64 or any(
+        char not in "0123456789abcdef" for char in identity
+    ):
+        raise ValueError("Invalid tournament checkpoint run identity")
+    return identity
+
+
 def _validate_payload(payload: Dict[str, Any]) -> None:
     required = {
         "phase", "standings", "qualified_teams", "group_schedule_progress",
         "ko_round", "ko_fixture_index", "r32_fixtures",
         "completed_matches", "final_result", "match_index", "match_results",
         "post_group_reflection_done", "random_world", "content_sha256",
+        "run_identity_sha256",
+        "state_artifacts",
     }
     missing = sorted(required.difference(payload))
     if missing:
@@ -62,6 +106,7 @@ def _validate_payload(payload: Dict[str, Any]) -> None:
     ):
         raise ValueError("Tournament checkpoint content integrity mismatch")
     checkpoint_root_seed(payload)
+    checkpoint_run_identity(payload)
     if payload["phase"] not in {"group", "post_group", "knockout", "complete"}:
         raise ValueError("Invalid tournament checkpoint phase")
     for key in ("ko_fixture_index", "match_index"):
@@ -122,6 +167,7 @@ def save_checkpoint(
     final_result: Dict[str, Any],
     match_index: int,
     root_seed: int,
+    run_identity_sha256: str,
     match_results: Optional[Dict[str, str]] = None,
     post_group_reflection_done: bool = False,
 ) -> str:
@@ -145,7 +191,10 @@ def save_checkpoint(
             "contract": RANDOM_WORLD_CONTRACT,
             "root_seed": int(root_seed),
         },
+        "run_identity_sha256": run_identity_sha256,
+        "state_artifacts": capture_state_artifacts(base_dir),
     }
+    checkpoint_run_identity(payload)
     payload["content_sha256"] = _content_sha256(payload)
     directory = os.path.dirname(path)
     fd, temporary = tempfile.mkstemp(prefix=".tournament-", suffix=".json.tmp", dir=directory)
@@ -174,11 +223,17 @@ def load_checkpoint(base_dir: str) -> Optional[Dict[str, Any]]:
             "Legacy tournament checkpoint V1 lacks random-world identity; "
             "start a fresh tournament instead of resuming it"
         )
+    if payload.get("version") == 2:
+        raise ValueError(
+            "Tournament checkpoint V2 lacks full run identity; start a fresh "
+            "tournament instead of resuming it"
+        )
     if payload.get("version") != CHECKPOINT_VERSION:
         raise ValueError(
             f"Unsupported tournament checkpoint version: {payload.get('version')!r}"
         )
     _validate_payload(payload)
+    verify_state_artifacts(base_dir, payload)
     return payload
 
 

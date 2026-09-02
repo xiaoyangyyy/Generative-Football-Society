@@ -28,6 +28,7 @@ def _attach_team_dynamics_from_rosters(base_dir: str, agents: dict) -> None:
 def build_world_and_tournament(
     base_dir, require_tactics=False, load_coaches=True,
     initialization_seed=None,
+    run_identity_sha256=None,
 ):
     raw_dir = os.path.join(base_dir, "data", "raw")
     data = load_data(raw_dir)
@@ -68,5 +69,8 @@ def build_world_and_tournament(
 
     load_persistence(base_dir, engine.agents)
 
-    tournament = TournamentManager(engine, base_dir=base_dir)
+    tournament = TournamentManager(
+        engine, base_dir=base_dir,
+        run_identity_sha256=run_identity_sha256,
+    )
     return engine, tournament, tactical_map

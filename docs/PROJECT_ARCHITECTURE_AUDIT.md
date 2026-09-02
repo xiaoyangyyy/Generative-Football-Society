@@ -15,7 +15,7 @@ not quality signals by themselves.
 | Entity priors | Continuous player/coach/team fields with football-semantic role axes | Useful and interpretable | Fit coefficients to held-out player/event data instead of hand tuning |
 | Tournament | Official group schedule and constrained R32 builder; stable named seeds | Correct simulation path | Encode the final FIFA bracket table once officially fixed |
 | Randomness | Stable BLAKE2-derived identity streams across match, scoring, referee, social, wear, carryover, agents, brackets and legacy journeys | Strong runtime contract with machine-enforced global-draw ban | Add matched-seed intervention invariance checks as new stochastic subsystems appear |
-| Persistence | Atomic checkpoint V2 with canonical content checksum, bound random-world root identity and caller-owned repository root | Strong random-resume contract | Bind future V3 to complete data/config/code identity; migrate only formats with enough evidence |
+| Persistence | Atomic checkpoint V3 binds portable run inputs, random world and evolving carryover | Strong fail-closed input/state boundary | Snapshot full Agent/social state and dynamic caches; make winner reflection transactional |
 | Macro scoring | Coupled intensity dynamics; xG fused before a single goal observation | Coherent research model | Replace Euler heuristic with fitted state-space point process |
 | Micro engine | Spatial fields, action selection, pass/shot/aerial physics and affective coupling | Rich but heuristic | Establish explicit SI/normalized unit contract and fit jointly to event data |
 | World model | v7 deployed plus evidence-gated v8 frame candidates; v8.9 strict SkillCorner/StatsBomb temporal LODO | Modular and empirically guarded | Beat the continuous-time baseline before any v8 promotion |
@@ -113,6 +113,14 @@ not quality signals by themselves.
     seed conflicts fail closed, and identity-less V1 resumes are rejected
     instead of guessed. Caller-provided project roots now own their checkpoint
     instead of leaking state into the installed source tree.
+35. Upgraded run manifests to V2 and tournament checkpoints to V3. Resume now
+    binds portable immutable source contents, data/model hashes, Python/platform,
+    structured simulation settings, tactics, coaches, all base rosters,
+    pre-run product state and secret-filtered runtime options. Evolving squad
+    carryover is hashed by every checkpoint rather than frozen as static input. It
+    hashes every supplemental runtime value, never persists credential fields, and rejects
+    any drift before provider resolution or match mutation. Mutable carryover
+    is verified against the exact checkpoint that references it.
 
 ## LLM Scope Decision
 

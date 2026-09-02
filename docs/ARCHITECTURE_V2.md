@@ -3072,3 +3072,61 @@ not automatic data deletion; the old file remains untouched for inspection.
 No training, tournament, formal experiment, future generation or provider call
 is executed in this stage. Frozen result identities remain stale for current
 code and receive no promotion credit.
+
+## 100. V3.82 Portable run-input identity for resume
+
+V3.81 bound checkpoint progress to the original random root, but equal seeds do
+not prove equal worlds. Modified Python sources, changed raw data, a different
+world-model checkpoint, altered score/cognition flags or a different runtime
+platform could still continue the same checkpoint and produce a false claim of
+deterministic resume.
+
+Run manifest V2 adds a portable immutable-input identity. It hashes every Python file below the
+installed `src` tree using relative paths and content digests, rather than
+trusting Git HEAD or an absolute checkout path. Data and model artifacts retain
+relative paths when they belong to the project and content hashes in all cases.
+The identity also covers Python/platform, structured `SimulationConfig`, and
+all non-secret `MATCH_*` runtime options plus selected model/provider settings.
+Credential-like variable names are excluded, and every retained supplemental
+value is represented only by its SHA-256 digest. Changes remain detectable
+without publishing a value that may have been misused to carry a credential.
+Arbitrary `SimulationConfig.extras` follow the same rule: sensitive-looking
+keys are omitted and all other values are canonically hashed.
+
+Checkpoint V3 stores the manifest identity under its own content checksum.
+Resume rebuilds the current manifest, validates its self-identity and compares
+it with the checkpoint before writing a replacement manifest, resolving an LLM
+provider or mutating match state. The manager repeats the identity comparison
+for direct integrations and refuses full-tournament execution when no verified
+identity was supplied. Configured world-model and frozen-shot artifacts are
+included when present.
+
+The immutable data set includes all four canonical history CSVs, tactics,
+coach profiles, all base roster JSON files and pre-run product-session state
+when present. Existing configured `MATCH_*` file inputs are also hashed.
+The checkpoint and run manifest themselves are outputs and are intentionally
+not self-included.
+
+Squad carryover is different: it is an evolving output and a required resume
+input. Each checkpoint therefore stores the current carryover file hash rather
+than freezing its initial hash into the run identity. Loading compares the
+external file set and content exactly. A crash or external edit that advances
+carryover without the matching checkpoint fails closed instead of replaying a
+match on top of ambiguous state.
+
+V1 lacks a random-world identity and V2 lacks the full run identity. Neither
+can be safely promoted by inference, so both fail with explicit fresh-start
+instructions and remain untouched on disk. The checkpoint digest detects
+corruption or casual rewriting but is not a cryptographic signature against an
+actor able to replace both payload and digest.
+
+No training, tournament, formal experiment, future generation or provider call
+is executed in this stage. This strengthens reproducibility mechanics; it does
+not create new model-quality, action-effect or outcome evidence.
+
+This stage does not claim complete world-state restoration. Squad carryover is
+bound, but all mutable Agent psychology/memory, the social topic market and
+writeable cognitive cache directories are not yet one atomic snapshot. Until
+that later contract exists, V3 prevents silent input drift and detects known
+carryover divergence; it does not authorize an exact-continuation claim for
+every optional subsystem.

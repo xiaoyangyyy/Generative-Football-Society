@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 
 import numpy as np
@@ -10,7 +11,10 @@ from src.match_engine.world_model.graph import build_interaction_graph
 from src.match_engine.world_model.observation import OBS_DIM
 from src.simulation.counterfactual import evaluate_intervention
 from src.simulation.meta_learning import MetaLearningController
-from src.simulation.runtime import SimulationConfig, build_run_manifest, environment_snapshot, write_manifest
+from src.simulation.runtime import (
+    SimulationConfig, build_run_manifest, environment_snapshot,
+    run_manifest_identity, write_manifest,
+)
 from src.simulation.agent import SocietyAgent
 from src.data_engine.dataset_registry import files_for_split, stable_partition
 from src.simulation.standings import apply_group_result
@@ -30,16 +34,46 @@ def test_paired_counterfactual_recovers_exact_effect():
 def test_runtime_manifest_hash_and_atomic_write(tmp_path):
     data = tmp_path / "data.csv"
     data.write_text("a\n1\n", encoding="utf-8")
-    cfg = SimulationConfig(seed=7)
-    manifest = build_run_manifest(cfg, tmp_path, data_paths=[data])
+    cfg = SimulationConfig(
+        seed=7,
+        extras={"scenario": "private-name", "API_TOKEN": "must-not-appear"},
+    )
+    manifest = build_run_manifest(
+        cfg, tmp_path, data_paths=[data],
+        runtime_values={
+            "MATCH_MICRO": "1", "MODEL_NAME": "model-a",
+            "BASE_URL": "https://provider.invalid/v1",
+            "DEEPSEEK_API_KEY": "must-not-appear",
+        },
+    )
     target = write_manifest(tmp_path / "run.json", manifest)
     assert target.is_file()
     assert manifest["root_seed"] == 7
+    assert manifest["schema_version"] == 2
+    assert manifest["run_identity_sha256"] == run_manifest_identity(manifest)
+    assert manifest["artifacts"]["data"][0]["path"] == "data.csv"
+    assert manifest["source_tree"]["file_count"] > 0
+    assert "DEEPSEEK_API_KEY" not in manifest["runtime_options"]
+    assert "must-not-appear" not in json.dumps(manifest)
+    assert "private-name" not in json.dumps(manifest)
+    assert "API_TOKEN" not in manifest["config"]["extras"]
+    assert manifest["config"]["extras"]["scenario"].startswith("sha256:")
+    assert manifest["runtime_options"]["BASE_URL"].startswith("sha256:")
+    assert manifest["runtime_options"]["MODEL_NAME"].startswith("sha256:")
+    assert "model-a" not in json.dumps(manifest["runtime_options"])
+    original_identity = manifest["run_identity_sha256"]
+    data.write_text("a\n2\n", encoding="utf-8")
+    changed = build_run_manifest(cfg, tmp_path, data_paths=[data])
+    assert changed["run_identity_sha256"] != original_identity
     assert len(manifest["artifacts"]["data"][0]["sha256"]) == 64
     values = environment_snapshot({"MATCH_MICRO": "0", "GFS_SEED": "9"})
     assert SimulationConfig.from_mapping(values).seed == 9
     with np.testing.assert_raises(TypeError):
         values["GFS_SEED"] = "10"
+
+    manifest["config"]["seed"] = 8
+    with pytest.raises(ValueError, match="identity mismatch"):
+        write_manifest(tmp_path / "tampered.json", manifest)
 
 
 def test_dataset_split_is_stable_and_sealed_test_is_isolated():

@@ -25,6 +25,7 @@ from src.simulation.score_path import (
 )
 from src.simulation.tournament_checkpoint import (
     checkpoint_root_seed,
+    checkpoint_run_identity,
     load_checkpoint,
     restore_r32_fixtures,
     save_checkpoint,
@@ -74,9 +75,11 @@ class TournamentManager(TournamentMatchMixin):
         referee_stage_morph_strength=1.0,
         referee_profiles=None,
         base_dir=None,
+        run_identity_sha256=None,
     ):
         self.world = world_engine
         self.root_seed = int(getattr(world_engine, "root_seed", 42))
+        self.run_identity_sha256 = run_identity_sha256
         self.groups = WORLD_CUP_2026_GROUPS
         self.standings = {group: {team: {"pts": 0, "gf": 0, "ga": 0, "gd": 0} for team in teams} for group, teams in self.groups.items()}
         self.qualified_teams = []
@@ -133,6 +136,7 @@ class TournamentManager(TournamentMatchMixin):
         raise RuntimeError(f"Reflection failed for {agent.name} after {attempts} attempts")
 
     def _save_checkpoint(self) -> None:
+        self._require_run_identity()
         save_checkpoint(
             self.base_dir,
             standings=self.standings,
@@ -146,15 +150,21 @@ class TournamentManager(TournamentMatchMixin):
             final_result=self.final_result,
             match_index=self.match_index,
             root_seed=self.root_seed,
+            run_identity_sha256=self.run_identity_sha256,
             match_results=self.match_results,
             post_group_reflection_done=self.post_group_reflection_done,
         )
 
     def _restore_from_checkpoint(self, ckpt: dict) -> None:
+        self._require_run_identity()
         stored_seed = checkpoint_root_seed(ckpt)
         if stored_seed != self.root_seed:
             raise ValueError(
                 "Tournament checkpoint root seed does not match the current world"
+            )
+        if checkpoint_run_identity(ckpt) != self.run_identity_sha256:
+            raise ValueError(
+                "Tournament checkpoint run identity does not match the current runtime"
             )
         self.standings = ckpt.get("standings", self.standings)
         self.qualified_teams = ckpt.get("qualified_teams", [])
@@ -175,6 +185,7 @@ class TournamentManager(TournamentMatchMixin):
     def run_full_tournament(self, *, resume: bool = False):
         from src.match_engine.calibration.narrative_isolation import resolve_tournament_llm
 
+        self._require_run_identity()
         llm = resolve_tournament_llm()
         if resume:
             ckpt = load_checkpoint(self.base_dir)
@@ -217,6 +228,15 @@ class TournamentManager(TournamentMatchMixin):
 
         self.phase = "complete"
         self._save_checkpoint()
+
+    def _require_run_identity(self) -> None:
+        value = self.run_identity_sha256
+        if not isinstance(value, str) or len(value) != 64 or any(
+            char not in "0123456789abcdef" for char in value
+        ):
+            raise RuntimeError(
+                "Full tournament execution requires a verified run identity"
+            )
 
     def simulate_group_stage(self, llm):
         print("\n" + "="*60 + "\n🚀 PHASE 1: GROUP STAGE (CINDERELLA FIELD ACTIVE)\n" + "="*60)

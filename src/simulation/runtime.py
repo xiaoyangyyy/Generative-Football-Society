@@ -13,9 +13,8 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
 from types import MappingProxyType
-from typing import Iterator
+from typing import Any, Iterator, Mapping
 
 
 _ENVIRONMENT_OVERRIDES: ContextVar[Mapping[str, str] | None] = ContextVar(
@@ -126,35 +125,128 @@ def _git_revision(root: Path) -> str | None:
         return None
 
 
+def _portable_artifact_path(path: Path, root: Path) -> str:
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(root).as_posix()
+    except ValueError:
+        return f"external/{resolved.name}"
+
+
+def _source_tree_identity() -> dict[str, Any]:
+    source_root = Path(__file__).resolve().parents[1]
+    paths = sorted(source_root.rglob("*.py"))
+    digest = hashlib.sha256()
+    for path in paths:
+        relative = path.relative_to(source_root).as_posix().encode("utf-8")
+        digest.update(len(relative).to_bytes(4, "big"))
+        digest.update(relative)
+        content_hash = _sha256(path).encode("ascii")
+        digest.update(content_hash)
+    return {
+        "scope": "src_python_tree_v1",
+        "file_count": len(paths),
+        "sha256": digest.hexdigest(),
+    }
+
+
+_SENSITIVE_OPTION_FRAGMENTS = (
+    "API_KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL",
+)
+
+
+def safe_runtime_options(values: Mapping[str, str]) -> dict[str, str]:
+    """Retain outcome-relevant runtime identity without persisting secrets."""
+    options: dict[str, str] = {}
+    for raw_key, raw_value in values.items():
+        key = str(raw_key).upper()
+        if any(fragment in key for fragment in _SENSITIVE_OPTION_FRAGMENTS):
+            continue
+        if not (
+            key.startswith("MATCH_")
+            or key in {"GFS_SEED", "SAVE_CARRYOVER", "MODEL_NAME", "BASE_URL"}
+        ):
+            continue
+        value = str(raw_value).encode("utf-8")
+        options[key] = "sha256:" + hashlib.sha256(value).hexdigest()
+    return dict(sorted(options.items()))
+
+
+def _safe_config_payload(config: SimulationConfig) -> dict[str, Any]:
+    payload = config.to_dict()
+    extras = payload.get("extras") or {}
+    safe_extras: dict[str, str] = {}
+    for raw_key, raw_value in extras.items():
+        key = str(raw_key)
+        if any(
+            fragment in key.upper() for fragment in _SENSITIVE_OPTION_FRAGMENTS
+        ):
+            continue
+        encoded = json.dumps(
+            raw_value, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        safe_extras[key] = "sha256:" + hashlib.sha256(encoded).hexdigest()
+    payload["extras"] = dict(sorted(safe_extras.items()))
+    return payload
+
+
+_RUN_IDENTITY_FIELDS = (
+    "schema_version", "config", "root_seed", "seed_derivation", "python",
+    "platform", "artifacts", "source_tree", "runtime_options",
+)
+
+
+def run_manifest_identity(manifest: Mapping[str, Any]) -> str:
+    payload = {key: manifest.get(key) for key in _RUN_IDENTITY_FIELDS}
+    encoded = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def build_run_manifest(
     config: SimulationConfig,
     root: str | Path,
     *,
     data_paths: list[str | Path] | None = None,
     model_paths: list[str | Path] | None = None,
+    runtime_values: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     root_path = Path(root).resolve()
     artifacts = {}
     for kind, paths in (("data", data_paths or []), ("models", model_paths or [])):
         artifacts[kind] = [
-            {"path": str(Path(path)), "sha256": _sha256(Path(path))}
+            {
+                "path": _portable_artifact_path(Path(path), root_path),
+                "sha256": _sha256(Path(path)),
+            }
             for path in paths
             if Path(path).is_file()
         ]
-    return {
-        "schema_version": 1,
+    manifest = {
+        "schema_version": 2,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "config": config.to_dict(),
+        "config": _safe_config_payload(config),
         "root_seed": config.seed,
         "seed_derivation": "blake2s-v1",
-        "git_revision": _git_revision(root_path),
+        "git_revision": _git_revision(Path(__file__).resolve().parents[2]),
         "python": platform.python_version(),
         "platform": platform.platform(),
         "artifacts": artifacts,
+        "source_tree": _source_tree_identity(),
+        "runtime_options": safe_runtime_options(runtime_values or {}),
     }
+    manifest["run_identity_sha256"] = run_manifest_identity(manifest)
+    return manifest
 
 
 def write_manifest(path: str | Path, manifest: Mapping[str, Any]) -> Path:
+    if manifest.get("schema_version") == 2 and manifest.get(
+        "run_identity_sha256"
+    ) != run_manifest_identity(manifest):
+        raise ValueError("Run manifest identity mismatch")
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(prefix=f".{target.name}-", suffix=".tmp", dir=target.parent)

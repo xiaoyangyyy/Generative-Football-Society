@@ -1450,7 +1450,7 @@ def main() -> int:
         ),
         "tournament_resume_binds_random_world_identity": (
             all(token in tournament_checkpoint for token in (
-                "CHECKPOINT_VERSION = 2",
+                "CHECKPOINT_VERSION = 3",
                 'RANDOM_WORLD_CONTRACT = "identity_scoped_rng_v1"',
                 "def _content_sha256(",
                 "Tournament checkpoint content integrity mismatch",
@@ -1470,7 +1470,46 @@ def main() -> int:
                 "does not match the current world",
                 "base_dir=None",
             ))
-            and "TournamentManager(engine, base_dir=base_dir)" in world_runner
+            and all(token in world_runner for token in (
+                "TournamentManager(", "engine, base_dir=base_dir",
+                "run_identity_sha256=run_identity_sha256",
+            ))
+        ),
+        "tournament_resume_binds_portable_run_input_identity": (
+            all(token in runtime for token in (
+                "def _source_tree_identity(",
+                '"scope": "src_python_tree_v1"',
+                "def safe_runtime_options(",
+                "def _safe_config_payload(",
+                "_SENSITIVE_OPTION_FRAGMENTS",
+                "def run_manifest_identity(",
+                '"schema_version": 2',
+                'manifest["run_identity_sha256"] = run_manifest_identity(manifest)',
+                'options[key] = "sha256:" + hashlib.sha256(value).hexdigest()',
+            ))
+            and all(token in tournament_checkpoint for token in (
+                "def checkpoint_run_identity(",
+                "def capture_state_artifacts(",
+                "def verify_state_artifacts(",
+                "external state integrity mismatch",
+                '"run_identity_sha256": run_identity_sha256',
+                "Tournament checkpoint V2 lacks full run identity",
+            ))
+            and all(token in public_app for token in (
+                "def _verify_tournament_resume_identity(",
+                "code, data, model, or configuration identity drift",
+                'runtime_values=runtime_values',
+                'run_identity_sha256=manifest["run_identity_sha256"]',
+                'runtime_values.get("MATCH_WM_CHECKPOINT"',
+                'runtime_values.get("MATCH_WM_SHOT_HEAD"',
+                "def _tournament_input_paths(",
+                'root / "data" / "rosters"',
+            ))
+            and all(token in tournament_runtime for token in (
+                "self._require_run_identity()",
+                "def _require_run_identity(",
+                "checkpoint_run_identity(ckpt) != self.run_identity_sha256",
+            ))
         ),
         "stable_release_pointer_identity_verified": release_pointer_ok,
         "stable_release_artifact_chain_verified": bool(release_artifacts.get("ok")),

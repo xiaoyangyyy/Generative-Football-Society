@@ -16,8 +16,12 @@ from src.simulation.tournament_2026 import TournamentManager
 from src.simulation.tournament_match import TournamentMatchMixin
 from src.simulation.tournament_scoring import TournamentScoringMixin
 from src.simulation.tournament_checkpoint import (
-    checkpoint_root_seed, load_checkpoint, save_checkpoint,
+    checkpoint_root_seed, checkpoint_run_identity, load_checkpoint,
+    save_checkpoint,
 )
+
+
+RUN_IDENTITY = "a" * 64
 
 
 def test_named_streams_are_stable_and_isolated():
@@ -233,12 +237,13 @@ def test_checkpoint_round_trip_and_version_validation(tmp_path):
         standings={"A": {}}, qualified_teams=[], phase="group",
         group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=3,
-        root_seed=91,
+        root_seed=91, run_identity_sha256=RUN_IDENTITY,
     )
     save_checkpoint(str(tmp_path), **kwargs)
     loaded = load_checkpoint(str(tmp_path))
     assert loaded["match_index"] == 3
     assert checkpoint_root_seed(loaded) == 91
+    assert checkpoint_run_identity(loaded) == RUN_IDENTITY
 
     path = tmp_path / "data" / "persistence" / "tournament_checkpoint.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -253,7 +258,7 @@ def test_checkpoint_rejects_content_tampering_and_unsafe_v1(tmp_path):
         standings={"A": {}}, qualified_teams=[], phase="group",
         group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=3,
-        root_seed=91,
+        root_seed=91, run_identity_sha256=RUN_IDENTITY,
     )
     save_checkpoint(str(tmp_path), **kwargs)
     path = tmp_path / "data" / "persistence" / "tournament_checkpoint.json"
@@ -268,6 +273,11 @@ def test_checkpoint_rejects_content_tampering_and_unsafe_v1(tmp_path):
     with pytest.raises(ValueError, match="lacks random-world identity"):
         load_checkpoint(str(tmp_path))
 
+    payload["version"] = 2
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="lacks full run identity"):
+        load_checkpoint(str(tmp_path))
+
 
 def test_resume_seed_comes_from_checkpoint_and_conflicts_fail(tmp_path, monkeypatch):
     from src import app
@@ -276,7 +286,7 @@ def test_resume_seed_comes_from_checkpoint_and_conflicts_fail(tmp_path, monkeypa
         standings={"A": {}}, qualified_teams=[], phase="group",
         group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=0,
-        root_seed=91,
+        root_seed=91, run_identity_sha256=RUN_IDENTITY,
     )
     save_checkpoint(str(tmp_path), **kwargs)
     monkeypatch.setenv("GFS_SEED", "999")
@@ -302,11 +312,15 @@ def test_build_simulation_forwards_explicit_seed(tmp_path, monkeypatch):
         return "world", "tournament", "tactics"
 
     monkeypatch.setattr(app, "build_world_and_tournament", build)
-    result = app.build_simulation(tmp_path, require_tactics=True, seed=91)
+    result = app.build_simulation(
+        tmp_path, require_tactics=True, seed=91,
+        run_identity_sha256=RUN_IDENTITY,
+    )
     assert result == ("world", "tournament", "tactics")
     assert observed == {
         "base_dir": str(tmp_path), "require_tactics": True,
         "initialization_seed": 91,
+        "run_identity_sha256": RUN_IDENTITY,
     }
 
 
@@ -315,13 +329,19 @@ def test_manager_rejects_checkpoint_for_another_random_world(tmp_path):
         standings={"A": {}}, qualified_teams=[], phase="group",
         group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=0,
-        root_seed=91,
+        root_seed=91, run_identity_sha256=RUN_IDENTITY,
     )
     save_checkpoint(str(tmp_path), **kwargs)
     checkpoint = load_checkpoint(str(tmp_path))
     manager = object.__new__(TournamentManager)
     manager.root_seed = 92
+    manager.run_identity_sha256 = RUN_IDENTITY
     with pytest.raises(ValueError, match="does not match the current world"):
+        manager._restore_from_checkpoint(checkpoint)
+
+    manager.root_seed = 91
+    manager.run_identity_sha256 = "b" * 64
+    with pytest.raises(ValueError, match="does not match the current runtime"):
         manager._restore_from_checkpoint(checkpoint)
 
 
@@ -329,3 +349,111 @@ def test_tournament_manager_uses_callers_project_root(tmp_path):
     world = SimpleNamespace(root_seed=91, feed=SocialMediaFeed())
     manager = TournamentManager(world, base_dir=tmp_path)
     assert manager.base_dir == str(tmp_path.resolve())
+
+
+def test_resume_rejects_valid_but_different_run_identity(tmp_path):
+    from src import app
+    from src.simulation.runtime import SimulationConfig, build_run_manifest
+
+    original = build_run_manifest(SimulationConfig(seed=91), tmp_path)
+    kwargs = dict(
+        standings={"A": {}}, qualified_teams=[], phase="group",
+        group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
+        r32_fixtures=[], completed_matches=[], final_result={}, match_index=0,
+        root_seed=91,
+        run_identity_sha256=original["run_identity_sha256"],
+    )
+    save_checkpoint(str(tmp_path), **kwargs)
+    app._verify_tournament_resume_identity(
+        tmp_path, resume=True, manifest=original,
+    )
+    drifted = build_run_manifest(SimulationConfig(seed=92), tmp_path)
+    with pytest.raises(ValueError, match="identity drift"):
+        app._verify_tournament_resume_identity(
+            tmp_path, resume=True, manifest=drifted,
+        )
+
+
+def test_full_tournament_requires_identity_before_resolving_provider(monkeypatch):
+    world = SimpleNamespace(root_seed=91, feed=SocialMediaFeed())
+    manager = TournamentManager(world)
+    called = []
+    monkeypatch.setattr(
+        "src.match_engine.calibration.narrative_isolation.resolve_tournament_llm",
+        lambda: called.append(True),
+    )
+    with pytest.raises(RuntimeError, match="requires a verified run identity"):
+        manager.run_full_tournament()
+    assert called == []
+
+
+def test_public_tournament_forwards_verified_manifest_identity(tmp_path, monkeypatch):
+    from src import app
+
+    observed = {}
+
+    class Tournament:
+        def run_full_tournament(self, *, resume=False):
+            observed["resume"] = resume
+
+    def build(root, **kwargs):
+        observed.update(root=str(root), **kwargs)
+        return object(), Tournament(), {}
+
+    monkeypatch.setattr(app, "build_simulation", build)
+    result = app.run_full_tournament(base_dir=tmp_path, seed=91)
+    manifest = json.loads(
+        (tmp_path / "data/persistence/run_manifest.json").read_text(
+            encoding="utf-8",
+        )
+    )
+    assert isinstance(result, Tournament)
+    assert observed["seed"] == 91
+    assert observed["run_identity_sha256"] == manifest["run_identity_sha256"]
+    assert observed["resume"] is False
+
+
+def test_tournament_identity_separates_immutable_and_evolving_inputs(tmp_path):
+    from src import app
+
+    paths = [
+        tmp_path / "data/tactics_final_en.json",
+        tmp_path / "data/coaches/wc2026_coaches.json",
+        tmp_path / "data/rosters/Brazil.json",
+        tmp_path / "data/persistence/product_session.json",
+        tmp_path / "data/persistence/squad_carryover.json",
+        tmp_path / "cache/replay.json",
+        tmp_path / "models/world.pt",
+    ]
+    for path in paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}", encoding="utf-8")
+    data_paths, model_paths = app._tournament_input_paths(
+        tmp_path,
+        {
+            "MATCH_COGNITIVE_CACHE": str(paths[-2]),
+            "MATCH_WM_CHECKPOINT": str(paths[-1]),
+        },
+    )
+    existing_data = {path.resolve() for path in data_paths if path.is_file()}
+    immutable = [paths[index] for index in (0, 1, 2, 3, 5)]
+    assert set(path.resolve() for path in immutable).issubset(existing_data)
+    assert paths[4].resolve() not in existing_data
+    assert paths[-1] in model_paths
+
+
+def test_checkpoint_binds_evolving_carryover_state(tmp_path):
+    carryover = tmp_path / "data/persistence/squad_carryover.json"
+    carryover.parent.mkdir(parents=True, exist_ok=True)
+    carryover.write_text('{"Brazil":{"revision":1}}', encoding="utf-8")
+    kwargs = dict(
+        standings={"A": {}}, qualified_teams=[], phase="group",
+        group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
+        r32_fixtures=[], completed_matches=[], final_result={}, match_index=0,
+        root_seed=91, run_identity_sha256=RUN_IDENTITY,
+    )
+    save_checkpoint(str(tmp_path), **kwargs)
+    assert load_checkpoint(str(tmp_path))["state_artifacts"]
+    carryover.write_text('{"Brazil":{"revision":2}}', encoding="utf-8")
+    with pytest.raises(ValueError, match="external state integrity mismatch"):
+        load_checkpoint(str(tmp_path))

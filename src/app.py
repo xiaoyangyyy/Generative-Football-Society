@@ -23,10 +23,10 @@ from src.simulation.random_control import named_rng, set_global_seed
 from src.simulation.world_cup_runner import build_world_and_tournament
 from src.simulation.runtime import (
     SimulationConfig, build_run_manifest, environment_snapshot, env_int,
-    write_manifest,
+    run_manifest_identity, write_manifest,
 )
 from src.simulation.tournament_checkpoint import (
-    checkpoint_root_seed, load_checkpoint,
+    checkpoint_root_seed, checkpoint_run_identity, load_checkpoint,
 )
 
 
@@ -66,13 +66,14 @@ def load_status_table(base_dir: str | Path | None = None):
 
 def build_simulation(
     base_dir: str | Path | None = None, *, require_tactics: bool = False,
-    seed: int | None = None,
+    seed: int | None = None, run_identity_sha256: str | None = None,
 ):
     """Build the world engine and tournament manager."""
     root = Path(base_dir) if base_dir is not None else project_root()
     return build_world_and_tournament(
         str(root), require_tactics=require_tactics,
         initialization_seed=seed,
+        run_identity_sha256=run_identity_sha256,
     )
 
 
@@ -93,6 +94,58 @@ def _resolve_tournament_root_seed(
     return env_int(environment_snapshot(), "GFS_SEED", 42)
 
 
+def _verify_tournament_resume_identity(
+    root: Path, *, resume: bool, manifest: Mapping[str, Any],
+) -> None:
+    if not resume:
+        return
+    checkpoint = load_checkpoint(str(root))
+    if checkpoint is None:
+        return
+    current = run_manifest_identity(manifest)
+    if manifest.get("run_identity_sha256") != current:
+        raise ValueError("Current tournament run manifest identity is invalid")
+    if checkpoint_run_identity(checkpoint) != current:
+        raise ValueError(
+            "Tournament checkpoint code, data, model, or configuration identity drift"
+        )
+
+
+def _tournament_input_paths(
+    root: Path, runtime_values: Mapping[str, str],
+) -> tuple[list[Path], list[Path]]:
+    raw = root / "data" / "raw"
+    data_paths = [
+        *(raw / name for name in (
+            "results.csv", "goalscorers.csv", "shootouts.csv",
+            "former_names.csv",
+        )),
+        root / "data" / "tactics_final_en.json",
+        root / "data" / "coaches" / "wc2026_coaches.json",
+        root / "data" / "persistence" / "product_session.json",
+        *sorted((root / "data" / "rosters").glob("*.json")),
+    ]
+    configured_model = str(runtime_values.get("MATCH_WM_CHECKPOINT", "")).strip()
+    configured_shot_head = str(runtime_values.get("MATCH_WM_SHOT_HEAD", "")).strip()
+    model_paths = [
+        Path(configured_model)
+        if configured_model else root / "data" / "world_model" / "latent_wm.pt"
+    ]
+    if configured_shot_head:
+        model_paths.append(Path(configured_shot_head))
+    configured_files = []
+    for key, value in runtime_values.items():
+        upper = str(key).upper()
+        if not upper.startswith("MATCH_") or not any(
+            marker in upper for marker in ("PATH", "FILE", "CACHE")
+        ):
+            continue
+        candidate = Path(str(value).strip())
+        if str(value).strip() and candidate.is_file():
+            configured_files.append(candidate)
+    return data_paths + sorted(set(configured_files)), model_paths
+
+
 def run_full_tournament(
     *,
     base_dir: str | Path | None = None,
@@ -109,16 +162,16 @@ def run_full_tournament(
     runtime_values = dict(environment_snapshot())
     runtime_values["GFS_SEED"] = str(root_seed)
     config = SimulationConfig.from_mapping(runtime_values)
-    raw = root / "data" / "raw"
-    data_paths = [raw / name for name in ("results.csv", "goalscorers.csv", "shootouts.csv", "former_names.csv")]
-    model_path = root / "data" / "world_model" / "latent_wm.pt"
+    data_paths, model_paths = _tournament_input_paths(root, runtime_values)
     manifest = build_run_manifest(
         config, root, data_paths=data_paths,
-        model_paths=[model_path] if model_path.is_file() else [],
+        model_paths=model_paths, runtime_values=runtime_values,
     )
+    _verify_tournament_resume_identity(root, resume=resume, manifest=manifest)
     write_manifest(root / "data" / "persistence" / "run_manifest.json", manifest)
     _, tournament, _ = build_simulation(
         root, require_tactics=require_tactics, seed=root_seed,
+        run_identity_sha256=manifest["run_identity_sha256"],
     )
     tournament.run_full_tournament(resume=resume)
     return tournament

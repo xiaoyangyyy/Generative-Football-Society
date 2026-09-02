@@ -100,6 +100,13 @@ conflicting seed, and refuses unsafe V1 checkpoints that never recorded their
 random-world identity. Public tournament and micro APIs now forward their seed
 into world construction instead of only reseeding process-global generators;
 custom project roots also reach the manager's checkpoint repository.
+V3.82 upgrades that boundary to checkpoint V3 and manifest V2. Resume now
+binds the portable identity of Python source contents, immutable data and model
+artifacts, interpreter/platform, structured simulation configuration and a
+secret-filtered, value-hashed runtime option set. Identity drift fails before provider
+resolution or match mutation; V1/V2 checkpoints remain inspectable but cannot
+be guessed into a current run. Evolving carryover is bound separately by each
+checkpoint; complete Agent/social-state snapshots remain a later gate.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
