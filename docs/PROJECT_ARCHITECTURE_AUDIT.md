@@ -91,6 +91,9 @@ not quality signals by themselves.
 29. Replaced the multi-action expected-change TV proxy with the exact mismatch
     probability of the simulator's shared-uniform inverse-CDF sampler. The
     estimator is versioned and legacy product evidence remains visibly labelled.
+30. Versioned official action evidence to V4 and propagated exact shared-draw
+    expectation through decision, world-thread, chapter, trajectory and season
+    views, with strict V1–V3 compatibility and explicit missing-version coverage.
 
 ## LLM Scope Decision
 

@@ -744,7 +744,7 @@ def world_model_official_action_execution_summary(
     semantic_rows = [
         evidence["retained_record_semantics"]
         for evidence in evidence_rows
-        if evidence.get("schema_version") in {2, 3}
+        if evidence.get("schema_version") in {2, 3, 4}
         and isinstance(evidence.get("retained_record_semantics"), Mapping)
     ]
     actual_actions = ("hold", "pass", "cross", "shot", "none")
@@ -809,7 +809,10 @@ def world_model_official_action_execution_summary(
         "outcome_attribution_authorized": False,
     }
     transition_rows = [
-        row for row in semantic_rows if row.get("schema_version") == 2
+        row for row in semantic_rows if row.get("schema_version") in {2, 3}
+    ]
+    expectation_rows = [
+        row for row in semantic_rows if row.get("schema_version") == 3
     ]
     semantic_summary.update({
         "fixtures_with_v3_transition_semantics": len(transition_rows),
@@ -848,6 +851,35 @@ def world_model_official_action_execution_summary(
             and all(
                 row["full_source_distribution_authorized"] is True
                 for row in transition_rows
+            )
+        ),
+        "fixtures_with_v4_expectation_semantics": len(expectation_rows),
+        "fixtures_without_v4_expectation_semantics": (
+            len(evidence_rows) - len(expectation_rows)
+        ),
+        "records_with_exact_change_probability": sum(
+            int(row["records_with_exact_change_probability"])
+            for row in expectation_rows
+        ),
+        "attribution_eligible_records_with_exact_change_probability": sum(
+            int(row[
+                "attribution_eligible_records_with_exact_change_probability"
+            ])
+            for row in expectation_rows
+        ),
+        "expected_counterfactual_action_changes": round(sum(
+            float(row["expected_counterfactual_action_changes"])
+            for row in expectation_rows
+        ), 9),
+        "all_official_evidence_has_v4_expectation_semantics": bool(
+            evidence_rows and len(expectation_rows) == len(evidence_rows)
+        ),
+        "full_source_expectation_authorized": bool(
+            evidence_rows
+            and len(expectation_rows) == len(evidence_rows)
+            and all(
+                row["full_source_expectation_authorized"] is True
+                for row in expectation_rows
             )
         ),
     })

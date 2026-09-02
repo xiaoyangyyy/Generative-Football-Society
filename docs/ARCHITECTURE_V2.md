@@ -2896,3 +2896,35 @@ identity are explicitly shown as legacy proxies. This corrects measurement; it
 does not increase model authority, alter an action distribution, fabricate a
 realized change or authorize outcome claims. No training, match, future
 generation, formal experiment or provider call is executed in this stage.
+
+## 95. V3.77 Official V4 shared-draw expectation continuity
+
+V3.76 corrected runtime measurement, but the official-match projector retained
+only total variation. The exact shared-draw probability therefore disappeared
+before the decision ledger, world thread and season navigator. A current match
+could display a correct expectation in the latest-match panel while the same
+match's authoritative manager history could not reproduce that value.
+
+Official action evidence now supports V4. A runtime declaring
+`validated_action_simplex_v3` must also declare the exact estimator and provide
+a finite `[0, 1]` shared-uniform change probability for every retained record;
+missing or malformed values fail closed. V4 retained semantics version 3 sums
+only attribution-eligible exact probabilities, counts exact records and exact
+eligible records, and distinguishes complete retained coverage from complete
+source coverage. Its identity includes all these fields. When bounded examples
+cover the retained set, validation recomputes the full semantic payload, so an
+attacker cannot legitimize a modified expectation by merely rehashing the outer
+envelope.
+
+Historical behavior stays explicit. Sources without the exact estimator still
+project as V3; stored V1, V2 and V3 evidence remains readable and is never
+upgraded to V4. Decision and season aggregates publish fixtures with and without
+V4 semantics, exact-record coverage, summed expected changes and a full-source
+authorization flag. World threads, chapters and trajectories preserve the same
+nested evidence. Studio shows exact expectation next to realized changes and
+labels old chapters as unavailable rather than zero.
+
+This closes a measurement and provenance chain only. It does not raise action
+authority, change the sampled policy, convert probability mass into observed
+events or claim tactical/outcome causality. No training, match, future
+generation, formal experiment or provider call is executed in this stage.

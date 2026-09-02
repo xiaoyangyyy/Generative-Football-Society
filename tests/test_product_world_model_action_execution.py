@@ -8,6 +8,7 @@ from src.product.manager_intelligence import build_postmatch_debrief
 from src.product.decision_ledger import (
     build_manager_decision_ledger,
     validate_manager_decision_ledger,
+    world_model_official_action_execution_summary,
 )
 from src.product.season import (
     ManagerDecision,
@@ -204,6 +205,95 @@ def test_official_action_execution_projects_only_manager_team_and_local_claim():
     assert evidence["outcome_effect_estimate"] is None
     assert evidence["causal_effect_authorized"] is False
     validate_world_model_action_execution(evidence)
+
+def test_v4_projects_exact_shared_uniform_expectation_and_rejects_tampering():
+    report = _report()
+    adoption = report["layers"]["world_model"]["action_adoption"]
+    adoption["probability_policy_version"] = "validated_action_simplex_v3"
+    adoption["expected_change_estimator"] = (
+        "shared_uniform_inverse_cdf_overlap_v1"
+    )
+    exact = {"a-pass": 0.4, "a-hold": 0.1, "b-shot": 0.3}
+    for record in adoption["records"]:
+        record["shared_uniform_change_probability"] = exact[
+            record["opportunity_id"]
+        ]
+
+    evidence = project_world_model_action_execution(
+        report, manager_team="A", expected_match_id="official-1",
+    )
+
+    assert evidence["schema_version"] == 4
+    semantics = evidence["retained_record_semantics"]
+    assert semantics["schema_version"] == 3
+    assert semantics["expected_change_estimator"] == (
+        "shared_uniform_inverse_cdf_overlap_v1"
+    )
+    assert semantics["records_with_exact_change_probability"] == 2
+    assert semantics[
+        "attribution_eligible_records_with_exact_change_probability"
+    ] == 2
+    assert semantics["expected_counterfactual_action_changes"] == 0.5
+    assert semantics["exact_retained_expectation_complete"] is True
+    assert semantics["full_source_expectation_authorized"] is True
+    assert {
+        row["shared_uniform_change_probability"]
+        for row in evidence["examples"]
+    } == {0.4, 0.1}
+    validate_world_model_action_execution(evidence)
+
+    legacy_evidence = project_world_model_action_execution(
+        _report(), manager_team="A", expected_match_id="official-1",
+    )
+    mixed = world_model_official_action_execution_summary([
+        {"execution": {"world_model_action_execution": evidence}},
+        {"execution": {"world_model_action_execution": legacy_evidence}},
+    ])["retained_record_semantics"]
+    assert mixed["fixtures_with_v4_expectation_semantics"] == 1
+    assert mixed["fixtures_without_v4_expectation_semantics"] == 1
+    assert mixed["records_with_exact_change_probability"] == 2
+    assert mixed[
+        "attribution_eligible_records_with_exact_change_probability"
+    ] == 2
+    assert mixed["expected_counterfactual_action_changes"] == 0.5
+    assert mixed["all_official_evidence_has_v4_expectation_semantics"] is False
+    assert mixed["full_source_expectation_authorized"] is False
+
+    tampered = copy.deepcopy(evidence)
+    tampered["retained_record_semantics"][
+        "expected_counterfactual_action_changes"
+    ] = 0.6
+    tampered["evidence_identity"] = _identity({
+        key: value for key, value in tampered.items()
+        if key != "evidence_identity"
+    })
+    with pytest.raises(ValueError, match="semantics disagree"):
+        validate_world_model_action_execution(tampered)
+
+    legacy_with_v4_field = copy.deepcopy(legacy_evidence)
+    legacy_with_v4_field["examples"][0][
+        "shared_uniform_change_probability"
+    ] = 0.1
+    legacy_with_v4_field["evidence_identity"] = _identity({
+        key: value for key, value in legacy_with_v4_field.items()
+        if key != "evidence_identity"
+    })
+    with pytest.raises(ValueError, match="legacy official action evidence"):
+        validate_world_model_action_execution(legacy_with_v4_field)
+
+
+def test_v4_source_estimator_fails_closed_when_a_record_lacks_exact_probability():
+    report = _report()
+    adoption = report["layers"]["world_model"]["action_adoption"]
+    adoption["probability_policy_version"] = "validated_action_simplex_v3"
+    adoption["expected_change_estimator"] = (
+        "shared_uniform_inverse_cdf_overlap_v1"
+    )
+
+    with pytest.raises(ValueError, match="shared-uniform action change"):
+        project_world_model_action_execution(
+            report, manager_team="A", expected_match_id="official-1",
+        )
 
 
 def test_official_action_execution_accepts_identity_bound_cross_trajectory():
@@ -455,7 +545,7 @@ def test_postmatch_debrief_contains_action_execution_and_isolates_invalid_layer(
     )
     assert isolated["available"] is True
     assert isolated["world_model_action_execution"] == {
-        "schema_version": 3,
+        "schema_version": 4,
         "available": False,
         "reason": "world_model_action_evidence_invalid",
     }
@@ -469,7 +559,7 @@ def test_official_action_execution_preserves_legacy_and_stable_boundaries():
     assert project_world_model_action_execution(
         legacy, manager_team="A", expected_match_id="legacy",
     ) == {
-        "schema_version": 3,
+        "schema_version": 4,
         "available": False,
         "reason": "legacy_report_without_world_model_layer",
     }
@@ -567,6 +657,13 @@ def test_official_action_execution_survives_ledger_and_summary_replay():
     )
     evidence = entry["execution"]["world_model_action_execution"]
     assert evidence["available"] is True
+    official_stage = next(
+        stage for stage in entry["world_evolution_thread"]["stages"]
+        if stage["stage_id"] == "official_world_model_actions"
+    )
+    assert official_stage["retained_record_semantics"] == (
+        evidence["retained_record_semantics"]
+    )
     summary = ledger["summary"]["world_model_official_action_execution"]
     assert summary["fixtures_with_official_action_evidence"] == 1
     assert summary["fixtures_with_local_action_changes"] == 1
@@ -612,6 +709,13 @@ def test_official_action_execution_survives_ledger_and_summary_replay():
         },
         "all_official_evidence_has_v3_transition_semantics": True,
         "full_source_transition_distribution_authorized": True,
+        "fixtures_with_v4_expectation_semantics": 0,
+        "fixtures_without_v4_expectation_semantics": 1,
+        "records_with_exact_change_probability": 0,
+        "attribution_eligible_records_with_exact_change_probability": 0,
+        "expected_counterfactual_action_changes": 0,
+        "all_official_evidence_has_v4_expectation_semantics": False,
+        "full_source_expectation_authorized": False,
     }
     assert summary["outcome_effect_estimate"] is None
     assert summary["causal_effect_authorized"] is False

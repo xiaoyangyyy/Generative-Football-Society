@@ -9,11 +9,12 @@ import math
 from typing import Any, Mapping
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
+V3_SCHEMA_VERSION = 3
 V2_SCHEMA_VERSION = 2
 LEGACY_SCHEMA_VERSION = 1
 SUPPORTED_SCHEMA_VERSIONS = {
-    LEGACY_SCHEMA_VERSION, V2_SCHEMA_VERSION, SCHEMA_VERSION,
+    LEGACY_SCHEMA_VERSION, V2_SCHEMA_VERSION, V3_SCHEMA_VERSION, SCHEMA_VERSION,
 }
 MAX_SOURCE_RECORDS = 96
 MAX_EXAMPLES = 5
@@ -24,6 +25,7 @@ _SEMANTIC_ACTIONS = ("hold", "pass", "cross", "shot", "none")
 _SIGNAL_MODES = (
     "direct_preference", "suppression_only", "none", "legacy_unclassified",
 )
+_EXPECTED_CHANGE_ESTIMATOR = "shared_uniform_inverse_cdf_overlap_v1"
 
 
 def _identity(payload: Mapping[str, Any]) -> str:
@@ -122,7 +124,7 @@ def _retained_record_semantics(
         "full_source_distribution_authorized": source_coverage_complete,
         "outcome_attribution_authorized": False,
     }
-    if schema_version == 2:
+    if schema_version in {2, 3}:
         transitions = {
             baseline: {actual_action: 0 for actual_action in _SEMANTIC_ACTIONS}
             for baseline in _SEMANTIC_ACTIONS
@@ -140,6 +142,31 @@ def _retained_record_semantics(
             "counterfactual_action_transition_counts": transitions,
             "locally_attributable_action_transition_counts": (
                 local_transitions
+            ),
+        })
+    if schema_version == 3:
+        exact_rows = [
+            row for row in rows
+            if row.get("shared_uniform_change_probability") is not None
+        ]
+        eligible_exact_rows = [
+            row for row in exact_rows if row.get("attribution_eligible") is True
+        ]
+        payload.update({
+            "expected_change_estimator": _EXPECTED_CHANGE_ESTIMATOR,
+            "records_with_exact_change_probability": len(exact_rows),
+            "attribution_eligible_records_with_exact_change_probability": (
+                len(eligible_exact_rows)
+            ),
+            "expected_counterfactual_action_changes": round(sum(
+                float(row["shared_uniform_change_probability"])
+                for row in eligible_exact_rows
+            ), 9),
+            "exact_retained_expectation_complete": (
+                len(exact_rows) == len(rows)
+            ),
+            "full_source_expectation_authorized": bool(
+                source_coverage_complete and len(exact_rows) == len(rows)
             ),
         })
     return payload
@@ -160,10 +187,19 @@ def _validate_retained_record_semantics(
         "full_source_distribution_authorized",
         "outcome_attribution_authorized",
     }
-    if expected_schema_version == 2:
+    if expected_schema_version in {2, 3}:
         required.update({
             "counterfactual_action_transition_counts",
             "locally_attributable_action_transition_counts",
+        })
+    if expected_schema_version == 3:
+        required.update({
+            "expected_change_estimator",
+            "records_with_exact_change_probability",
+            "attribution_eligible_records_with_exact_change_probability",
+            "expected_counterfactual_action_changes",
+            "exact_retained_expectation_complete",
+            "full_source_expectation_authorized",
         })
     if not isinstance(semantics, Mapping) or set(semantics) != required:
         raise ValueError("world-model retained action semantics shape is invalid")
@@ -197,7 +233,7 @@ def _validate_retained_record_semantics(
     local_transitions = semantics.get(
         "locally_attributable_action_transition_counts"
     )
-    if expected_schema_version == 2:
+    if expected_schema_version in {2, 3}:
         if any(
             not isinstance(matrix, Mapping)
             or set(matrix) != set(_SEMANTIC_ACTIONS)
@@ -254,6 +290,43 @@ def _validate_retained_record_semantics(
         ):
             raise ValueError(
                 "world-model retained action transitions are invalid"
+            )
+    if expected_schema_version == 3:
+        exact_records = semantics.get("records_with_exact_change_probability")
+        eligible_exact = semantics.get(
+            "attribution_eligible_records_with_exact_change_probability"
+        )
+        expected_changes = semantics.get(
+            "expected_counterfactual_action_changes"
+        )
+        if (
+            semantics.get("expected_change_estimator")
+            != _EXPECTED_CHANGE_ESTIMATOR
+            or isinstance(exact_records, bool)
+            or not isinstance(exact_records, int)
+            or exact_records < 0
+            or exact_records > records
+            or isinstance(eligible_exact, bool)
+            or not isinstance(eligible_exact, int)
+            or eligible_exact < 0
+            or eligible_exact > min(
+                exact_records, counts["attribution_eligible_decisions"]
+            )
+            or _number(
+                expected_changes,
+                name="expected retained shared-uniform action changes",
+                maximum=float(eligible_exact),
+            ) != float(expected_changes)
+            or semantics.get("exact_retained_expectation_complete") is not (
+                exact_records == records
+            )
+            or semantics.get("full_source_expectation_authorized") is not (
+                exact_records == records
+                and counts["source_records_truncated"] is False
+            )
+        ):
+            raise ValueError(
+                "world-model retained action expectation is invalid"
             )
     if (
         semantics["records"] != records
@@ -426,6 +499,14 @@ def project_world_model_action_execution(
     probability_policy_version = str(
         adoption.get("probability_policy_version") or "legacy_unversioned"
     )[:80]
+    estimator = adoption.get("expected_change_estimator")
+    exact_source = estimator == _EXPECTED_CHANGE_ESTIMATOR
+    if estimator not in {None, "", _EXPECTED_CHANGE_ESTIMATOR} or (
+        probability_policy_version == "validated_action_simplex_v3"
+        and not exact_source
+    ):
+        raise ValueError("world-model expected action-change estimator is invalid")
+    evidence_schema_version = SCHEMA_VERSION if exact_source else V3_SCHEMA_VERSION
     replay = report.get("replay")
     replay = replay if isinstance(replay, Mapping) else {}
     links = _validate_links(replay)
@@ -584,6 +665,21 @@ def project_world_model_action_execution(
                 name="action total variation", maximum=1.0,
             )
         )
+        shared_uniform_change = raw.get(
+            "shared_uniform_change_probability"
+        )
+        if exact_source:
+            shared_uniform_change = _number(
+                shared_uniform_change,
+                name="shared-uniform action change probability",
+                maximum=1.0,
+            )
+        elif shared_uniform_change is not None:
+            _number(
+                shared_uniform_change,
+                name="legacy shared-uniform action change probability",
+                maximum=1.0,
+            )
         link = links.get(opportunity_id)
         if link is not None and link.get("team") != manager_team:
             raise ValueError("world-model action link team is inconsistent")
@@ -617,7 +713,7 @@ def project_world_model_action_execution(
             and actual != "hold"
         ):
             raise ValueError("world-model action runtime link semantics are invalid")
-        manager_rows.append({
+        projected_row = {
             "opportunity_identity": _identity({
                 "match_id": expected_match_id,
                 "team": manager_team,
@@ -666,7 +762,12 @@ def project_world_model_action_execution(
                 changed is True and eligible is True
             ),
             "match_outcome_causality": False,
-        })
+        }
+        if exact_source:
+            projected_row["shared_uniform_change_probability"] = round(
+                float(shared_uniform_change), 9,
+            )
+        manager_rows.append(projected_row)
     if not manager_rows:
         return _unavailable(
             "no_manager_team_action_records_retained"
@@ -704,7 +805,7 @@ def project_world_model_action_execution(
         }
     ]
     payload = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": evidence_schema_version,
         "available": True,
         "match_id": expected_match_id,
         "team": manager_team,
@@ -730,7 +831,7 @@ def project_world_model_action_execution(
         },
         "retained_record_semantics": _retained_record_semantics(
             manager_rows, source_coverage_complete=not source_truncated,
-            schema_version=2,
+            schema_version=(3 if exact_source else 2),
         ),
         "examples": copy.deepcopy(manager_rows[:MAX_EXAMPLES]),
         "examples_truncated": len(manager_rows) > MAX_EXAMPLES,
@@ -830,12 +931,16 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
         is (not counts.get("source_records_truncated"))
     ):
         raise ValueError("world-model official action evidence counts are invalid")
-    if evidence.get("schema_version") in {V2_SCHEMA_VERSION, SCHEMA_VERSION}:
+    if evidence.get("schema_version") in {
+        V2_SCHEMA_VERSION, V3_SCHEMA_VERSION, SCHEMA_VERSION,
+    }:
         _validate_retained_record_semantics(
             evidence.get("retained_record_semantics"), counts=values,
-            expected_schema_version=(
-                2 if evidence.get("schema_version") == SCHEMA_VERSION else 1
-            ),
+            expected_schema_version={
+                V2_SCHEMA_VERSION: 1,
+                V3_SCHEMA_VERSION: 2,
+                SCHEMA_VERSION: 3,
+            }[evidence.get("schema_version")],
         )
     elif "retained_record_semantics" in evidence:
         raise ValueError(
@@ -943,6 +1048,19 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
                 total_variation, name="projected total variation",
                 maximum=1.0,
             )
+        shared_uniform_change = row.get(
+            "shared_uniform_change_probability"
+        )
+        if evidence.get("schema_version") == SCHEMA_VERSION:
+            _number(
+                shared_uniform_change,
+                name="projected shared-uniform action change probability",
+                maximum=1.0,
+            )
+        elif shared_uniform_change is not None:
+            raise ValueError(
+                "legacy official action evidence has V4 expectation fields"
+            )
         runtime = row.get("runtime_link")
         if (
             not isinstance(runtime, Mapping)
@@ -956,7 +1074,9 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
     ):
         raise ValueError("world-model official action example priority is invalid")
     if (
-        evidence.get("schema_version") in {V2_SCHEMA_VERSION, SCHEMA_VERSION}
+        evidence.get("schema_version") in {
+            V2_SCHEMA_VERSION, V3_SCHEMA_VERSION, SCHEMA_VERSION,
+        }
         and evidence.get("examples_truncated") is False
         and evidence.get("retained_record_semantics")
         != _retained_record_semantics(
@@ -964,9 +1084,11 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
             source_coverage_complete=(
                 counts.get("source_records_truncated") is False
             ),
-            schema_version=(
-                2 if evidence.get("schema_version") == SCHEMA_VERSION else 1
-            ),
+            schema_version={
+                V2_SCHEMA_VERSION: 1,
+                V3_SCHEMA_VERSION: 2,
+                SCHEMA_VERSION: 3,
+            }[evidence.get("schema_version")],
         )
     ):
         raise ValueError(
@@ -981,7 +1103,7 @@ def validate_world_model_action_execution(evidence: Mapping[str, Any]) -> None:
 __all__ = [
     "LEGACY_SCHEMA_VERSION", "MAX_EXAMPLES", "SCHEMA_VERSION",
     "SUPPORTED_SCHEMA_VERSIONS",
-    "V2_SCHEMA_VERSION",
+    "V2_SCHEMA_VERSION", "V3_SCHEMA_VERSION",
     "project_world_model_action_execution",
     "validate_world_model_action_execution",
 ]

@@ -71,6 +71,10 @@ V3.76 corrects the expected action-change estimator itself. Instead of treating
 total-variation distance as the change probability, it computes exact interval
 overlap under the simulator's shared inverse-CDF draw; TV remains a separate
 distribution diagnostic and legacy product evidence is labelled as a proxy.
+V3.77 closes the projection gap: current exact-estimator runs produce V4
+official evidence, carry exact expectation through the decision ledger, world
+thread and season navigator, and report legacy/missing coverage without
+upgrading historical V1–V3 records or substituting zero for absence.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

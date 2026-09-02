@@ -36,6 +36,7 @@
     "official_action_semantics_are_bounded_not_full_distribution": true,
     "official_action_v2_preserves_full_retained_record_semantics": true,
     "official_action_v3_preserves_counterfactual_transition_matrix": true,
+    "official_action_v4_preserves_exact_shared_uniform_expectation": true,
     "official_manager_matches_surface_world_model_action_execution": true,
     "product_does_not_import_training_implementation": true,
     "research_checkpoint_identity_chain_verified": true,

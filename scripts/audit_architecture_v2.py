@@ -1061,7 +1061,7 @@ def main() -> int:
         ),
         "official_action_v2_preserves_full_retained_record_semantics": (
             all(token in official_action_execution for token in (
-                "SCHEMA_VERSION = 3",
+                "SCHEMA_VERSION = 4",
                 "V2_SCHEMA_VERSION = 2",
                 "LEGACY_SCHEMA_VERSION = 1",
                 "def _retained_record_semantics(",
@@ -1102,7 +1102,8 @@ def main() -> int:
                 '"locally_attributable_action_transition_counts"',
                 "world-model retained action transition shape is invalid",
                 "world-model retained action transitions are invalid",
-                "expected_schema_version=(",
+                "V3_SCHEMA_VERSION = 3",
+                "V3_SCHEMA_VERSION: 2",
             ))
             and all(token in decision_ledger for token in (
                 '"fixtures_with_v3_transition_semantics"',
@@ -1180,6 +1181,42 @@ def main() -> int:
                 "adoption.expected_change_estimator==='shared_uniform_inverse_cdf_overlap_v1'",
                 "共享采样期望改变",
                 "旧版期望改变",
+            ))
+        ),
+        "official_action_v4_preserves_exact_shared_uniform_expectation": (
+            all(token in official_action_execution for token in (
+                "SCHEMA_VERSION = 4",
+                "V3_SCHEMA_VERSION = 3",
+                "evidence_schema_version = SCHEMA_VERSION if exact_source else V3_SCHEMA_VERSION",
+                '"shared_uniform_change_probability"',
+                '"expected_change_estimator": _EXPECTED_CHANGE_ESTIMATOR',
+                '"expected_counterfactual_action_changes": round(sum(',
+                '"full_source_expectation_authorized"',
+                "world-model retained action expectation is invalid",
+                "legacy official action evidence has V4 expectation fields",
+            ))
+            and all(token in decision_ledger for token in (
+                '"fixtures_with_v4_expectation_semantics"',
+                '"all_official_evidence_has_v4_expectation_semantics"',
+                '"full_source_expectation_authorized"',
+            ))
+            and all(token in manager_world_thread for token in (
+                'action.get("schema_version") in {2, 3, 4}',
+                "retained_record_semantics=retained_record_semantics",
+            ))
+            and all(token in manager_world_navigator for token in (
+                "semantic_schema_version not in {1, 2, 3}",
+                '"fixtures_with_v4_expectation_semantics"',
+                '"all_chapters_have_v4_expectation_semantics"',
+                '"full_source_expectation_authorized"',
+                "manager world navigator retained action expectation is invalid",
+            ))
+            and all(token in web for token in (
+                "retainedActionSemanticTextWithoutExactExpectation",
+                "renderManagerDecisionLedgerWithoutExactActionExpectation",
+                "renderManagerWorldNavigatorWithoutExactActionExpectation",
+                "V4共享采样期望不可用",
+                "不能解释为零影响",
             ))
         ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (

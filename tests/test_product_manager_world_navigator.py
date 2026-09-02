@@ -117,7 +117,7 @@ def _future_trace():
     }, "trace_identity")
 
 
-def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
+def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None, exact=False):
     trace = _future_trace()
     terminal = trace["terminal_review"]
     stages = [
@@ -255,6 +255,22 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
             },
         ),
     ]
+    if exact:
+        official = stages[3]
+        semantics = official["retained_record_semantics"]
+        semantics.update({
+            "schema_version": 3,
+            "expected_change_estimator": (
+                "shared_uniform_inverse_cdf_overlap_v1"
+            ),
+            "records_with_exact_change_probability": 4,
+            "attribution_eligible_records_with_exact_change_probability": 3,
+            "expected_counterfactual_action_changes": 1.25,
+            "exact_retained_expectation_complete": True,
+            "full_source_expectation_authorized": True,
+        })
+        official.pop("stage_identity")
+        official["stage_identity"] = _identity(official)
     certificate = _freeze({
         "schema_version": 1,
         "status": "complete" if complete else "awaiting_official_match",
@@ -291,7 +307,7 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None):
     }, "thread_identity")
 
 
-def _entry(index=1, *, pending=False, gaps=None):
+def _entry(index=1, *, pending=False, gaps=None, exact=False):
     fixture_id = f"md{index:02d}-fx01"
     payload = {
         "schema_version": 1,
@@ -335,7 +351,7 @@ def _entry(index=1, *, pending=False, gaps=None):
             },
         },
         "world_evolution_thread": _thread(
-            fixture_id, complete=not pending, gaps=gaps,
+            fixture_id, complete=not pending, gaps=gaps, exact=exact,
         ),
         "future_review_execution_trace": _future_trace(),
     }
@@ -663,6 +679,13 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
                 ),
                 "all_chapters_have_v3_transition_semantics": True,
                 "full_source_transition_distribution_authorized": True,
+                "fixtures_with_v4_expectation_semantics": 0,
+                "fixtures_without_v4_expectation_semantics": 2,
+                "records_with_exact_change_probability": 0,
+                "attribution_eligible_records_with_exact_change_probability": 0,
+                "expected_counterfactual_action_changes": 0,
+                "all_chapters_have_v4_expectation_semantics": False,
+                "full_source_expectation_authorized": False,
             },
             "influence_rate": 0.75,
             "realized_change_rate_among_influenced": 0.666667,
@@ -735,6 +758,36 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
     }
     assert navigator["causal_effect_authorized"] is False
     assert navigator["outcome_effect_estimate"] is None
+    validate_manager_world_navigator(navigator, season=season)
+
+
+def test_navigator_aggregates_v4_expectation_without_upgrading_legacy_chapters():
+    season = _season(entries=[
+        _entry(1),
+        _entry(2, exact=True),
+        _entry(3, pending=True),
+    ])
+
+    navigator = build_manager_world_navigator(season)
+    semantics = navigator["summary"][
+        "world_model_action_adoption_ledger"
+    ]["retained_record_semantics"]
+
+    assert navigator["history_chapters"][0]["action_adoption"][
+        "retained_record_semantics"
+    ]["schema_version"] == 3
+    assert navigator["history_chapters"][1]["action_adoption"][
+        "retained_record_semantics"
+    ]["schema_version"] == 2
+    assert semantics["fixtures_with_v4_expectation_semantics"] == 1
+    assert semantics["fixtures_without_v4_expectation_semantics"] == 1
+    assert semantics["records_with_exact_change_probability"] == 4
+    assert semantics[
+        "attribution_eligible_records_with_exact_change_probability"
+    ] == 3
+    assert semantics["expected_counterfactual_action_changes"] == 1.25
+    assert semantics["all_chapters_have_v4_expectation_semantics"] is False
+    assert semantics["full_source_expectation_authorized"] is False
     validate_manager_world_navigator(navigator, season=season)
 
 

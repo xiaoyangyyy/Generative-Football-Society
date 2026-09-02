@@ -229,7 +229,7 @@ def build_manager_world_evolution_thread(
     retained_record_semantics = action.get("retained_record_semantics")
     retained_record_semantics = (
         copy.deepcopy(dict(retained_record_semantics))
-        if action.get("schema_version") in {2, 3}
+        if action.get("schema_version") in {2, 3, 4}
         and isinstance(retained_record_semantics, Mapping)
         else None
     )

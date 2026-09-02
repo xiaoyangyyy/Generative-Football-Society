@@ -165,13 +165,22 @@ def _normalize_retained_record_semantics(
     semantic_schema_version = raw.get("schema_version") if isinstance(
         raw, Mapping
     ) else None
-    if semantic_schema_version == 2:
+    if semantic_schema_version in {2, 3}:
         required.update({
             "counterfactual_action_transition_counts",
             "locally_attributable_action_transition_counts",
         })
+    if semantic_schema_version == 3:
+        required.update({
+            "expected_change_estimator",
+            "records_with_exact_change_probability",
+            "attribution_eligible_records_with_exact_change_probability",
+            "expected_counterfactual_action_changes",
+            "exact_retained_expectation_complete",
+            "full_source_expectation_authorized",
+        })
     if (
-        semantic_schema_version not in {1, 2}
+        semantic_schema_version not in {1, 2, 3}
         or not isinstance(raw, Mapping)
         or set(raw) != required
     ):
@@ -210,7 +219,7 @@ def _normalize_retained_record_semantics(
         )
     records = action_counts["retained_records"]
     source_complete = not source_records_truncated
-    if semantic_schema_version == 2:
+    if semantic_schema_version in {2, 3}:
         transitions = raw.get("counterfactual_action_transition_counts")
         local_transitions = raw.get(
             "locally_attributable_action_transition_counts"
@@ -267,6 +276,40 @@ def _normalize_retained_record_semantics(
         ):
             raise ValueError(
                 "manager world navigator retained action transitions are invalid"
+            )
+    if semantic_schema_version == 3:
+        exact_records = raw.get("records_with_exact_change_probability")
+        eligible_exact = raw.get(
+            "attribution_eligible_records_with_exact_change_probability"
+        )
+        expected_changes = raw.get(
+            "expected_counterfactual_action_changes"
+        )
+        if (
+            raw.get("expected_change_estimator")
+            != "shared_uniform_inverse_cdf_overlap_v1"
+            or isinstance(exact_records, bool)
+            or not isinstance(exact_records, int)
+            or not 0 <= exact_records <= records
+            or isinstance(eligible_exact, bool)
+            or not isinstance(eligible_exact, int)
+            or not 0 <= eligible_exact <= min(
+                exact_records,
+                action_counts["attribution_eligible_decisions"],
+            )
+            or isinstance(expected_changes, bool)
+            or not isinstance(expected_changes, (int, float))
+            or not math.isfinite(float(expected_changes))
+            or not 0.0 <= float(expected_changes) <= float(eligible_exact)
+            or raw.get("exact_retained_expectation_complete") is not (
+                exact_records == records
+            )
+            or raw.get("full_source_expectation_authorized") is not (
+                exact_records == records and source_complete
+            )
+        ):
+            raise ValueError(
+                "manager world navigator retained action expectation is invalid"
             )
     if (
         raw["records"] != records
@@ -1639,7 +1682,11 @@ def build_manager_world_navigator(
         )
     ]
     transition_semantic_rows = [
-        row for row in full_semantic_rows if row.get("schema_version") == 2
+        row for row in full_semantic_rows
+        if row.get("schema_version") in {2, 3}
+    ]
+    expectation_semantic_rows = [
+        row for row in full_semantic_rows if row.get("schema_version") == 3
     ]
     semantic_actions = ("hold", "pass", "cross", "shot", "none")
     semantic_modes = (
@@ -1797,6 +1844,38 @@ def build_manager_world_navigator(
                 and all(
                     row["full_source_distribution_authorized"] is True
                     for row in transition_semantic_rows
+                )
+            ),
+            "fixtures_with_v4_expectation_semantics": len(
+                expectation_semantic_rows
+            ),
+            "fixtures_without_v4_expectation_semantics": (
+                len(all_chapters) - len(expectation_semantic_rows)
+            ),
+            "records_with_exact_change_probability": sum(
+                row["records_with_exact_change_probability"]
+                for row in expectation_semantic_rows
+            ),
+            "attribution_eligible_records_with_exact_change_probability": sum(
+                row[
+                    "attribution_eligible_records_with_exact_change_probability"
+                ]
+                for row in expectation_semantic_rows
+            ),
+            "expected_counterfactual_action_changes": round(sum(
+                row["expected_counterfactual_action_changes"]
+                for row in expectation_semantic_rows
+            ), 9),
+            "all_chapters_have_v4_expectation_semantics": bool(
+                all_chapters
+                and len(expectation_semantic_rows) == len(all_chapters)
+            ),
+            "full_source_expectation_authorized": bool(
+                all_chapters
+                and len(expectation_semantic_rows) == len(all_chapters)
+                and all(
+                    row["full_source_expectation_authorized"] is True
+                    for row in expectation_semantic_rows
                 )
             ),
         },

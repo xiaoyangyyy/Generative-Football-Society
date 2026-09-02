@@ -554,6 +554,13 @@ def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_
     assert '.transition-map td[data-active="true"]' in document
     assert "function renderManagerWorldActionTransitionMap(season)" in document
     assert "renderManagerWorldNavigatorWithoutActionTransitionMap" in document
+    assert "retainedActionSemanticTextWithoutExactExpectation" in document
+    assert "renderManagerDecisionLedgerWithoutExactActionExpectation" in document
+    assert "renderManagerWorldNavigatorWithoutExactActionExpectation" in document
+    assert "fixtures_with_v4_expectation_semantics" in document
+    assert "expected_counterfactual_action_changes" in document
+    assert "V4共享采样期望不可用" in document
+    assert "不能解释为零影响" in document
 
     renderer = document.split(
         "function renderManagerWorldActionTransitionMap(season)", 1
