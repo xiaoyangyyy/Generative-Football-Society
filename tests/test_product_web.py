@@ -561,6 +561,19 @@ def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_
     assert "expected_counterfactual_action_changes" in document
     assert "V4共享采样期望不可用" in document
     assert "不能解释为零影响" in document
+    assert 'id="manager-world-action-transition-detail"' in document
+    assert 'aria-labelledby="manager-world-action-transition-detail-title"' in document
+    assert 'aria-live="polite" aria-atomic="true" tabindex="-1"' in document
+    assert 'id="manager-world-action-transition-open"' in document
+    assert "function renderManagerWorldActionTransitionDrilldown(season)" in document
+    assert "renderManagerWorldNavigatorWithoutActionTransitionDrilldown" in document
+    assert "new Map(rows.map(row=>[row.transition_id,row]))" in document
+    assert "button.className='transition-cell-button'" in document
+    assert "button.setAttribute('aria-controls','manager-world-action-transition-detail')" in document
+    assert "button.setAttribute('aria-pressed','false')" in document
+    assert "managerWorldActionTransitionDetail.focus()" in document
+    assert "选择任一非零格可检查同章后续世界事实" in document
+    assert "不排名、不比较跨格效果、不归因赛果" in document
 
     renderer = document.split(
         "function renderManagerWorldActionTransitionMap(season)", 1

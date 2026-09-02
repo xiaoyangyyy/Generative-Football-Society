@@ -75,6 +75,11 @@ V3.77 closes the projection gap: current exact-estimator runs produce V4
 official evidence, carry exact expectation through the decision ledger, world
 thread and season navigator, and report legacy/missing coverage without
 upgrading historical V1–V3 records or substituting zero for absence.
+V3.78 closes the product drill-down gap: V4 chapters remain eligible for
+V3-compatible transition propagation, and every evidenced non-zero action-map
+cell can open its same-chapter downstream world facts and latest source chapter
+with keyboard and screen-reader semantics. These remain descriptive,
+overlapping strata rather than cross-cell effect estimates.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

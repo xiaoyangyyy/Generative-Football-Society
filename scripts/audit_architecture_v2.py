@@ -1219,6 +1219,26 @@ def main() -> int:
                 "不能解释为零影响",
             ))
         ),
+        "action_transition_map_drills_into_descriptive_world_propagation": (
+            all(token in manager_world_navigator for token in (
+                "Stratify same-chapter facts by V3-compatible local action transition.",
+                'in {2, 3}',
+                '"local_transition_descriptive_propagation": (',
+                '"cross_stratum_comparison_authorized": False',
+                '"outcome_attribution_authorized": False',
+            ))
+            and all(token in web for token in (
+                'id="manager-world-action-transition-detail"',
+                'id="manager-world-action-transition-open"',
+                "function renderManagerWorldActionTransitionDrilldown(season)",
+                "new Map(rows.map(row=>[row.transition_id,row]))",
+                "button.className='transition-cell-button'",
+                "button.setAttribute('aria-controls','manager-world-action-transition-detail')",
+                "button.setAttribute('aria-pressed','false')",
+                "managerWorldActionTransitionDetail.focus()",
+                "不排名、不比较跨格效果、不归因赛果",
+            ))
+        ),
         "manager_advice_preview_is_confidence_aware_and_non_causal": (
             all(token in decision_advice for token in (
                 "def build_manager_advice_comparison(",

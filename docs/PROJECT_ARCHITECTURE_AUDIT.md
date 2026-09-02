@@ -94,6 +94,9 @@ not quality signals by themselves.
 30. Versioned official action evidence to V4 and propagated exact shared-draw
     expectation through decision, world-thread, chapter, trajectory and season
     views, with strict V1–V3 compatibility and explicit missing-version coverage.
+31. Fixed V4 inclusion in V3-compatible transition propagation and connected
+    each evidenced action-matrix cell to its bounded same-chapter world facts
+    and latest identity-verified chapter through an accessible drill-down.
 
 ## LLM Scope Decision
 

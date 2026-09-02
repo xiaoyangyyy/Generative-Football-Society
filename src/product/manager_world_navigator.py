@@ -504,7 +504,7 @@ def _descriptive_world_propagation(
 def _local_transition_descriptive_propagation(
     chapters: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Stratify same-chapter facts by V3 local action transition."""
+    """Stratify same-chapter facts by V3-compatible local action transition."""
     actions = ("hold", "pass", "cross", "shot", "none")
     v3_chapters = [
         chapter for chapter in chapters
@@ -514,7 +514,7 @@ def _local_transition_descriptive_propagation(
         )
         and chapter["action_adoption"]["retained_record_semantics"].get(
             "schema_version"
-        ) == 2
+        ) in {2, 3}
     ]
     memberships: dict[tuple[str, str], list[tuple[dict[str, Any], int]]] = {}
     chapter_transition_counts: dict[str, int] = {}

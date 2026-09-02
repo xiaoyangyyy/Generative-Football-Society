@@ -2928,3 +2928,32 @@ This closes a measurement and provenance chain only. It does not raise action
 authority, change the sampled policy, convert probability mass into observed
 events or claim tactical/outcome causality. No training, match, future
 generation, formal experiment or provider call is executed in this stage.
+
+## 96. V3.78 Action-transition to world-propagation drill-down
+
+The season navigator already contained two correct but disconnected views: a
+5-by-5 local action-transition matrix and descriptive same-chapter propagation
+strata. It also filtered strata to retained semantic schema 2 only. Because V4
+official evidence uses retained semantic schema 3 while preserving the same
+transition matrices, a current exact-evidence chapter could disappear from the
+downstream propagation view.
+
+The propagation aggregator now treats retained semantic schemas 2 and 3 as
+V3-compatible transition evidence. Mixed historical seasons keep their original
+versions while contributing all valid transition matrices; missing old matrices
+remain explicit coverage gaps. A regression fixture combines V3 and V4
+chapters and verifies both are counted without upgrading either record.
+
+Studio now turns each evidenced non-zero matrix cell into a keyboard-accessible
+button. Selecting baseline-to-adopted joins by the stable transition id and
+reveals its occurrence and chapter counts, same-chapter downstream world facts,
+source-coverage boundary and a verified link to the latest relevant world
+chapter. Zero cells and cells without matching propagation evidence remain
+disabled. Selection uses aria-controls, aria-pressed, a labelled live region
+and explicit focus movement, without HTML injection.
+
+The detail is deliberately descriptive. A chapter may contain several local
+transitions and therefore enter several strata; the UI prohibits ranking cells,
+cross-cell effect comparison, score attribution and real-football causal claims.
+No training, match, future generation, formal experiment or provider call is
+executed in this stage.

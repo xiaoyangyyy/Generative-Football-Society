@@ -788,6 +788,21 @@ def test_navigator_aggregates_v4_expectation_without_upgrading_legacy_chapters()
     assert semantics["expected_counterfactual_action_changes"] == 1.25
     assert semantics["all_chapters_have_v4_expectation_semantics"] is False
     assert semantics["full_source_expectation_authorized"] is False
+    propagation = navigator["summary"][
+        "world_model_action_adoption_ledger"
+    ]["local_transition_descriptive_propagation"]
+    assert propagation["fixtures_with_v3_transition_semantics"] == 2
+    assert propagation["fixtures_without_v3_transition_semantics"] == 0
+    assert propagation["strata_count"] == 2
+    assert {
+        row["transition_id"]: (
+            row["transition_occurrences"], row["chapters"]
+        )
+        for row in propagation["strata"]
+    } == {
+        "hold_to_pass": (2, 2),
+        "pass_to_cross": (2, 2),
+    }
     validate_manager_world_navigator(navigator, season=season)
 
 
