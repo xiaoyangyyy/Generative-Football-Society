@@ -219,6 +219,13 @@ def main() -> int:
     world_runner = (
         ROOT / "src/simulation/world_cup_runner.py"
     ).read_text(encoding="utf-8")
+    public_app = (ROOT / "src/app.py").read_text(encoding="utf-8")
+    tournament_checkpoint = (
+        ROOT / "src/simulation/tournament_checkpoint.py"
+    ).read_text(encoding="utf-8")
+    tournament_runtime = (
+        ROOT / "src/simulation/tournament_2026.py"
+    ).read_text(encoding="utf-8")
     season = (ROOT / "src/product/season.py").read_text(encoding="utf-8")
     cli = (ROOT / "src/cli.py").read_text(encoding="utf-8")
     formal_runner = (
@@ -1440,6 +1447,30 @@ def main() -> int:
             ).read_text(encoding="utf-8") for token in (
                 '"active_agents"', '"agent_action"', '"headline_match"',
             ))
+        ),
+        "tournament_resume_binds_random_world_identity": (
+            all(token in tournament_checkpoint for token in (
+                "CHECKPOINT_VERSION = 2",
+                'RANDOM_WORLD_CONTRACT = "identity_scoped_rng_v1"',
+                "def _content_sha256(",
+                "Tournament checkpoint content integrity mismatch",
+                "def checkpoint_root_seed(",
+                "Legacy tournament checkpoint V1 lacks random-world identity",
+            ))
+            and all(token in public_app for token in (
+                "def _resolve_tournament_root_seed(",
+                "Explicit tournament seed conflicts with checkpoint root seed",
+                "initialization_seed=seed",
+                "build_simulation(root, seed=seed)",
+                "config = SimulationConfig.from_mapping(runtime_values)",
+            ))
+            and all(token in tournament_runtime for token in (
+                "root_seed=self.root_seed",
+                "stored_seed = checkpoint_root_seed(ckpt)",
+                "does not match the current world",
+                "base_dir=None",
+            ))
+            and "TournamentManager(engine, base_dir=base_dir)" in world_runner
         ),
         "stable_release_pointer_identity_verified": release_pointer_ok,
         "stable_release_artifact_chain_verified": bool(release_artifacts.get("ok")),

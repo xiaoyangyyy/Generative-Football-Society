@@ -24,6 +24,7 @@ from src.simulation.score_path import (
     score_path_label,
 )
 from src.simulation.tournament_checkpoint import (
+    checkpoint_root_seed,
     load_checkpoint,
     restore_r32_fixtures,
     save_checkpoint,
@@ -72,6 +73,7 @@ class TournamentManager(TournamentMatchMixin):
         referee_profile_weights=None,
         referee_stage_morph_strength=1.0,
         referee_profiles=None,
+        base_dir=None,
     ):
         self.world = world_engine
         self.root_seed = int(getattr(world_engine, "root_seed", 42))
@@ -100,9 +102,9 @@ class TournamentManager(TournamentMatchMixin):
         self.dialogue_engine = SocialDialogueEngine(self.world.feed, turns_per_match=4)
         self.fusion_controller = FusionController()
         self.narrative_event_bus = NarrativeEventBus()
-        self.base_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..")
-        )
+        self.base_dir = os.path.abspath(base_dir or os.path.join(
+            os.path.dirname(__file__), "..", "..",
+        ))
         self.final_result = {}
 
     @staticmethod
@@ -143,11 +145,17 @@ class TournamentManager(TournamentMatchMixin):
             completed_matches=self.completed_matches,
             final_result=self.final_result,
             match_index=self.match_index,
+            root_seed=self.root_seed,
             match_results=self.match_results,
             post_group_reflection_done=self.post_group_reflection_done,
         )
 
     def _restore_from_checkpoint(self, ckpt: dict) -> None:
+        stored_seed = checkpoint_root_seed(ckpt)
+        if stored_seed != self.root_seed:
+            raise ValueError(
+                "Tournament checkpoint root seed does not match the current world"
+            )
         self.standings = ckpt.get("standings", self.standings)
         self.qualified_teams = ckpt.get("qualified_teams", [])
         self.phase = ckpt.get("phase", "group")

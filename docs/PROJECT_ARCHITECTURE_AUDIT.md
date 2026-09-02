@@ -15,7 +15,7 @@ not quality signals by themselves.
 | Entity priors | Continuous player/coach/team fields with football-semantic role axes | Useful and interpretable | Fit coefficients to held-out player/event data instead of hand tuning |
 | Tournament | Official group schedule and constrained R32 builder; stable named seeds | Correct simulation path | Encode the final FIFA bracket table once officially fixed |
 | Randomness | Stable BLAKE2-derived identity streams across match, scoring, referee, social, wear, carryover, agents, brackets and legacy journeys | Strong runtime contract with machine-enforced global-draw ban | Add matched-seed intervention invariance checks as new stochastic subsystems appear |
-| Persistence | Versioned, validated, atomic tournament checkpoint | Production-grade minimum | Add migration functions and content checksum |
+| Persistence | Atomic checkpoint V2 with canonical content checksum, bound random-world root identity and caller-owned repository root | Strong random-resume contract | Bind future V3 to complete data/config/code identity; migrate only formats with enough evidence |
 | Macro scoring | Coupled intensity dynamics; xG fused before a single goal observation | Coherent research model | Replace Euler heuristic with fitted state-space point process |
 | Micro engine | Spatial fields, action selection, pass/shot/aerial physics and affective coupling | Rich but heuristic | Establish explicit SI/normalized unit contract and fit jointly to event data |
 | World model | v7 deployed plus evidence-gated v8 frame candidates; v8.9 strict SkillCorner/StatsBomb temporal LODO | Modular and empirically guarded | Beat the continuous-time baseline before any v8 promotion |
@@ -107,6 +107,12 @@ not quality signals by themselves.
     cross-match carryover; bracket, world-day and legacy journey draws are
     isolated as well. The architecture audit rejects future direct global draws
     in simulation and memory runtime modules.
+34. Bound tournament resume to checkpoint V2's original random world. The
+    public API now forwards seeds into world construction, checkpoint payloads
+    carry a canonical content checksum plus RNG contract/root seed, explicit
+    seed conflicts fail closed, and identity-less V1 resumes are rejected
+    instead of guessed. Caller-provided project roots now own their checkpoint
+    instead of leaking state into the installed source tree.
 
 ## LLM Scope Decision
 

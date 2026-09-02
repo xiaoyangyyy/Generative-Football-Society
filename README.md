@@ -93,6 +93,13 @@ agent and bracket streams. The legacy journey simulator follows the same
 contract. A machine audit rejects direct process-global random draws across
 simulation and memory runtime modules, so an unrelated extra draw cannot
 silently change another subsystem's future.
+V3.81 extends that identity across process restarts. Tournament checkpoint V2
+stores the random-world contract and root seed under a canonical content hash.
+Resume reconstructs the world with the stored seed, rejects an explicitly
+conflicting seed, and refuses unsafe V1 checkpoints that never recorded their
+random-world identity. Public tournament and micro APIs now forward their seed
+into world construction instead of only reseeding process-global generators;
+custom project roots also reach the manager's checkpoint repository.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

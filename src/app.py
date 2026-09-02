@@ -21,7 +21,13 @@ from src.memory_engine.sample_confidence import compute_sample_confidence
 from src.memory_engine.status_score import compute_team_status
 from src.simulation.random_control import named_rng, set_global_seed
 from src.simulation.world_cup_runner import build_world_and_tournament
-from src.simulation.runtime import SimulationConfig, build_run_manifest, write_manifest
+from src.simulation.runtime import (
+    SimulationConfig, build_run_manifest, environment_snapshot, env_int,
+    write_manifest,
+)
+from src.simulation.tournament_checkpoint import (
+    checkpoint_root_seed, load_checkpoint,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -58,10 +64,33 @@ def load_status_table(base_dir: str | Path | None = None):
     return stats, team_matches, data
 
 
-def build_simulation(base_dir: str | Path | None = None, *, require_tactics: bool = False):
+def build_simulation(
+    base_dir: str | Path | None = None, *, require_tactics: bool = False,
+    seed: int | None = None,
+):
     """Build the world engine and tournament manager."""
     root = Path(base_dir) if base_dir is not None else project_root()
-    return build_world_and_tournament(str(root), require_tactics=require_tactics)
+    return build_world_and_tournament(
+        str(root), require_tactics=require_tactics,
+        initialization_seed=seed,
+    )
+
+
+def _resolve_tournament_root_seed(
+    root: Path, *, resume: bool, requested_seed: int | None,
+) -> int:
+    if resume:
+        checkpoint = load_checkpoint(str(root))
+        if checkpoint is not None:
+            stored_seed = checkpoint_root_seed(checkpoint)
+            if requested_seed is not None and int(requested_seed) != stored_seed:
+                raise ValueError(
+                    "Explicit tournament seed conflicts with checkpoint root seed"
+                )
+            return stored_seed
+    if requested_seed is not None:
+        return int(requested_seed)
+    return env_int(environment_snapshot(), "GFS_SEED", 42)
 
 
 def run_full_tournament(
@@ -72,9 +101,14 @@ def run_full_tournament(
     require_tactics: bool = False,
 ):
     """Run the full tournament and return the tournament manager."""
-    actual_seed = set_global_seed(seed)
     root = Path(base_dir) if base_dir is not None else project_root()
-    config = SimulationConfig(seed=42 if actual_seed is None else actual_seed)
+    root_seed = _resolve_tournament_root_seed(
+        root, resume=resume, requested_seed=seed,
+    )
+    set_global_seed(root_seed)
+    runtime_values = dict(environment_snapshot())
+    runtime_values["GFS_SEED"] = str(root_seed)
+    config = SimulationConfig.from_mapping(runtime_values)
     raw = root / "data" / "raw"
     data_paths = [raw / name for name in ("results.csv", "goalscorers.csv", "shootouts.csv", "former_names.csv")]
     model_path = root / "data" / "world_model" / "latent_wm.pt"
@@ -83,7 +117,9 @@ def run_full_tournament(
         model_paths=[model_path] if model_path.is_file() else [],
     )
     write_manifest(root / "data" / "persistence" / "run_manifest.json", manifest)
-    _, tournament, _ = build_simulation(root, require_tactics=require_tactics)
+    _, tournament, _ = build_simulation(
+        root, require_tactics=require_tactics, seed=root_seed,
+    )
     tournament.run_full_tournament(resume=resume)
     return tournament
 
@@ -151,7 +187,7 @@ def run_micro_match(
 
     set_global_seed(seed)
     root = Path(base_dir) if base_dir is not None else project_root()
-    world, _, _ = build_simulation(root)
+    world, _, _ = build_simulation(root, seed=seed)
     home_agent = world.agents[home]
     away_agent = world.agents[away]
     roster_home = roster_away = None

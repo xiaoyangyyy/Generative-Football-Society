@@ -53,6 +53,7 @@
     "studio_progressively_discloses_product_areas": true,
     "studio_replays_manager_decision_lifecycle_without_second_state": true,
     "studio_uses_context_local_configuration": true,
+    "tournament_resume_binds_random_world_identity": true,
     "training_attempts_are_distinguishable": true,
     "training_has_exclusive_process_lease": true,
     "training_lifecycle_has_no_domain_or_product_dependencies": true,

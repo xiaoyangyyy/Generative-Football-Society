@@ -3029,3 +3029,46 @@ streams.
 No training, match, future generation, formal experiment or provider call is
 executed in this stage. Existing frozen research results remain stale for the
 current code identity and are not upgraded by this correctness change.
+
+## 99. V3.81 Random-world identity across tournament resume
+
+V3.80 isolated live stochastic subsystems, but the tournament checkpoint still
+used schema V1. It stored match progress without the root seed or random-stream
+contract. In addition, the public tournament and micro APIs seeded legacy
+process generators without forwarding the requested seed into world
+construction. A resumed process could therefore rebuild agents under a new
+root seed and continue a valid-looking checkpoint in a different random world.
+
+Checkpoint V2 stores `identity_scoped_rng_v1` and its integer root seed. A
+canonical, finite-JSON SHA-256 checksum covers the complete payload except the
+checksum field itself. Loading validates the version, checksum, random-world
+identity and bounded structural types before exposing state. This checksum is
+corruption/tamper detection, not a signature or proof against an actor able to
+rewrite both content and digest.
+
+The public resume path reads and verifies the checkpoint before constructing
+the world. With no explicit seed it reuses the stored seed regardless of the
+current environment; an explicitly different seed is rejected. The manager
+also compares the loaded seed with its already constructed world, protecting
+direct integration callers. Non-resume runs still use explicit seed, then
+`GFS_SEED`, then 42. Public micro matches now pass their seed into agent/world
+initialization as well as their match streams.
+
+The run manifest is built from a captured runtime environment with the resolved
+root seed overlaid, rather than from dataclass defaults. Score-path, cognition,
+world-model and carryover flags in that manifest now describe the actual run
+configuration at the construction boundary.
+
+Tournament construction also forwards the caller's resolved project root into
+the manager. Checkpoints, carryover state and run manifests therefore remain in
+one workspace instead of silently splitting custom-project state from a
+checkpoint written beside the installed source package.
+
+V1 is deliberately not guessed into V2: it never recorded enough information
+to prove which random world created its agent state. Attempting to resume V1
+fails with a fresh-start instruction. This is a safe compatibility boundary,
+not automatic data deletion; the old file remains untouched for inspection.
+
+No training, tournament, formal experiment, future generation or provider call
+is executed in this stage. Frozen result identities remain stale for current
+code and receive no promotion credit.

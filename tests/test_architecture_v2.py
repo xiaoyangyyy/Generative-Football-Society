@@ -64,6 +64,7 @@ def test_architecture_v2_machine_audit_passes():
         "all_known_exposed_credentials_require_independent_v2_closure"
     ]
     assert report["checks"]["runtime_random_draws_are_identity_scoped"]
+    assert report["checks"]["tournament_resume_binds_random_world_identity"]
     assert not report["violations"]["direct_global_runtime_rng_draws"]
     assert report["checks"]["formal_experiment_is_preregistered_and_compute_bounded"]
     assert report["checks"]["formal_experiment_fails_closed_on_identity_or_partial_evidence"]

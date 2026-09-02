@@ -161,7 +161,13 @@ def test_public_micro_match_applies_user_tactics_before_engine_execution(
         agent.semantic_memory = {}
         agent.simulate_internal_game = lambda _pressure: {}
     world = SimpleNamespace(agents={"Brazil": home, "Argentina": away})
-    monkeypatch.setattr(app, "build_simulation", lambda _root: (world, None, None))
+    observed_seed = {}
+    monkeypatch.setattr(
+        app, "build_simulation",
+        lambda _root, *, seed=None: (
+            observed_seed.update(seed=seed) or (world, None, None)
+        ),
+    )
     monkeypatch.setattr(
         "src.memory_engine.poisson_simulator.simulate_match_score",
         lambda *args, **kwargs: (0, 0, 0.8, 0.7),
@@ -184,6 +190,7 @@ def test_public_micro_match_applies_user_tactics_before_engine_execution(
         stage_name="studio-match-0001",
     )
     assert result == "summary"
+    assert observed_seed == {"seed": 42}
     assert observed["home"].style_archetype == "gegenpress"
     assert observed["away"].style_archetype == "low_block_counter"
     assert observed["home"].tactical_vector["pressing_intensity"] > (
@@ -207,7 +214,10 @@ def test_public_micro_match_continuity_is_explicit_and_reports_transition(
         agent.semantic_memory = {}
         agent.simulate_internal_game = lambda _pressure: {}
     world = SimpleNamespace(agents={"Brazil": home, "Argentina": away})
-    monkeypatch.setattr(app, "build_simulation", lambda _root: (world, None, None))
+    monkeypatch.setattr(
+        app, "build_simulation",
+        lambda _root, *, seed=None: (world, None, None),
+    )
     monkeypatch.setattr(
         "src.memory_engine.poisson_simulator.simulate_match_score",
         lambda *args, **kwargs: (1, 0, 1.2, 0.6),
@@ -268,7 +278,10 @@ def test_manager_rotation_and_continuity_status_reach_both_score_paths(
     home.tactical_effects = MethodType(SocietyAgent.tactical_effects, home)
     away.tactical_effects = MethodType(SocietyAgent.tactical_effects, away)
     world = SimpleNamespace(agents={"Brazil": home, "Argentina": away})
-    monkeypatch.setattr(app, "build_simulation", lambda _root: (world, None, None))
+    monkeypatch.setattr(
+        app, "build_simulation",
+        lambda _root, *, seed=None: (world, None, None),
+    )
     macro = {}
 
     def fake_score(home_status, away_status, **kwargs):

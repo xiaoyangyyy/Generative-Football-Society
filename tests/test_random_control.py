@@ -15,7 +15,9 @@ from src.simulation.social_dialogue import SocialDialogueEngine
 from src.simulation.tournament_2026 import TournamentManager
 from src.simulation.tournament_match import TournamentMatchMixin
 from src.simulation.tournament_scoring import TournamentScoringMixin
-from src.simulation.tournament_checkpoint import load_checkpoint, save_checkpoint
+from src.simulation.tournament_checkpoint import (
+    checkpoint_root_seed, load_checkpoint, save_checkpoint,
+)
 
 
 def test_named_streams_are_stable_and_isolated():
@@ -228,12 +230,15 @@ def test_lightweight_monte_carlo_is_reproducible():
 
 def test_checkpoint_round_trip_and_version_validation(tmp_path):
     kwargs = dict(
-        standings={"A": {}}, qualified_teams=[], phase="groups",
+        standings={"A": {}}, qualified_teams=[], phase="group",
         group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
         r32_fixtures=[], completed_matches=[], final_result={}, match_index=3,
+        root_seed=91,
     )
     save_checkpoint(str(tmp_path), **kwargs)
-    assert load_checkpoint(str(tmp_path))["match_index"] == 3
+    loaded = load_checkpoint(str(tmp_path))
+    assert loaded["match_index"] == 3
+    assert checkpoint_root_seed(loaded) == 91
 
     path = tmp_path / "data" / "persistence" / "tournament_checkpoint.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -241,3 +246,86 @@ def test_checkpoint_round_trip_and_version_validation(tmp_path):
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="Unsupported tournament checkpoint"):
         load_checkpoint(str(tmp_path))
+
+
+def test_checkpoint_rejects_content_tampering_and_unsafe_v1(tmp_path):
+    kwargs = dict(
+        standings={"A": {}}, qualified_teams=[], phase="group",
+        group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
+        r32_fixtures=[], completed_matches=[], final_result={}, match_index=3,
+        root_seed=91,
+    )
+    save_checkpoint(str(tmp_path), **kwargs)
+    path = tmp_path / "data" / "persistence" / "tournament_checkpoint.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["match_index"] = 4
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="content integrity mismatch"):
+        load_checkpoint(str(tmp_path))
+
+    payload["version"] = 1
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="lacks random-world identity"):
+        load_checkpoint(str(tmp_path))
+
+
+def test_resume_seed_comes_from_checkpoint_and_conflicts_fail(tmp_path, monkeypatch):
+    from src import app
+
+    kwargs = dict(
+        standings={"A": {}}, qualified_teams=[], phase="group",
+        group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
+        r32_fixtures=[], completed_matches=[], final_result={}, match_index=0,
+        root_seed=91,
+    )
+    save_checkpoint(str(tmp_path), **kwargs)
+    monkeypatch.setenv("GFS_SEED", "999")
+    assert app._resolve_tournament_root_seed(
+        tmp_path, resume=True, requested_seed=None,
+    ) == 91
+    assert app._resolve_tournament_root_seed(
+        tmp_path, resume=True, requested_seed=91,
+    ) == 91
+    with pytest.raises(ValueError, match="conflicts with checkpoint"):
+        app._resolve_tournament_root_seed(
+            tmp_path, resume=True, requested_seed=92,
+        )
+
+
+def test_build_simulation_forwards_explicit_seed(tmp_path, monkeypatch):
+    from src import app
+
+    observed = {}
+
+    def build(base_dir, **kwargs):
+        observed.update(base_dir=base_dir, **kwargs)
+        return "world", "tournament", "tactics"
+
+    monkeypatch.setattr(app, "build_world_and_tournament", build)
+    result = app.build_simulation(tmp_path, require_tactics=True, seed=91)
+    assert result == ("world", "tournament", "tactics")
+    assert observed == {
+        "base_dir": str(tmp_path), "require_tactics": True,
+        "initialization_seed": 91,
+    }
+
+
+def test_manager_rejects_checkpoint_for_another_random_world(tmp_path):
+    kwargs = dict(
+        standings={"A": {}}, qualified_teams=[], phase="group",
+        group_schedule_progress={}, ko_round=None, ko_fixture_index=0,
+        r32_fixtures=[], completed_matches=[], final_result={}, match_index=0,
+        root_seed=91,
+    )
+    save_checkpoint(str(tmp_path), **kwargs)
+    checkpoint = load_checkpoint(str(tmp_path))
+    manager = object.__new__(TournamentManager)
+    manager.root_seed = 92
+    with pytest.raises(ValueError, match="does not match the current world"):
+        manager._restore_from_checkpoint(checkpoint)
+
+
+def test_tournament_manager_uses_callers_project_root(tmp_path):
+    world = SimpleNamespace(root_seed=91, feed=SocialMediaFeed())
+    manager = TournamentManager(world, base_dir=tmp_path)
+    assert manager.base_dir == str(tmp_path.resolve())

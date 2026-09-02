@@ -68,5 +68,5 @@ def build_world_and_tournament(
 
     load_persistence(base_dir, engine.agents)
 
-    tournament = TournamentManager(engine)
+    tournament = TournamentManager(engine, base_dir=base_dir)
     return engine, tournament, tactical_map
