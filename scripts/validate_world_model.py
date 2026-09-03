@@ -19,8 +19,17 @@ DEFAULT_MODEL_PATH = ROOT / "data" / "world_model" / "latent_wm.pt"
 def _sealed_evaluation(runtime, trace_dir: Path, manifest_path: Path) -> dict:
     """Evaluate two-step state skill and shot calibration on sealed groups only."""
     import torch
-    from scripts.train_world_model import _match_group, _sequential_transition_pairs
+    from scripts.train_world_model import (
+        _match_group,
+        _policy_utility_validation,
+        _sequential_transition_pairs,
+    )
     from src.data_engine.dataset_registry import files_for_split, load_manifest, verify_trace_manifest
+    from src.match_engine.world_model.action_codec import decode_action_kinds
+    from src.match_engine.world_model.policy_utility import (
+        policy_utility_validation_gate,
+        transition_policy_utility_tensor,
+    )
     from src.match_engine.world_model.recorder import load_trace_batches
     from src.match_engine.world_model.schema import SHOT_GOAL_INDEX, observation_loss_weights, strip_outcome_leakage
 
@@ -77,6 +86,40 @@ def _sealed_evaluation(runtime, trace_dir: Path, manifest_path: Path) -> dict:
         and two_step["disagreement_error_correlation"] >= 0.0
     )
 
+    with torch.no_grad():
+        current = torch.from_numpy(obs)
+        clean_actions = torch.from_numpy(actions)
+        _latent, one_step_members = runtime.model.transition_predictions(
+            current, clean_actions,
+        )
+        predicted_utility = transition_policy_utility_tensor(
+            current, one_step_members,
+        )["policy_utility"].numpy()
+        realized_utility = transition_policy_utility_tensor(
+            current, torch.from_numpy(nxt),
+        )["policy_utility"].numpy()
+    training = (
+        runtime.meta.get("policy_utility_training") or {}
+        if isinstance(runtime.meta, dict) else {}
+    )
+    policy_utility = _policy_utility_validation(
+        predicted_utility,
+        realized_utility,
+        decode_action_kinds(actions),
+        groups,
+        configured_loss_weight=float(
+            training.get("configured_loss_weight", 0.0) or 0.0
+        ),
+        optimization_steps=int(training.get("optimization_steps", 0) or 0),
+    )
+    policy_utility["sealed_test"] = True
+    policy_utility["gates"] = {
+        action: policy_utility_validation_gate(
+            policy_utility, action_kind=action,
+        )
+        for action in ("pass", "cross", "shot", "hold")
+    }
+
     shot_mask = raw_actions[:, 1] > 0.5
     shot_true = raw_actions[shot_mask, SHOT_GOAL_INDEX]
     prior = np.clip(raw_actions[shot_mask, 13], 0.01, 0.78)
@@ -101,7 +144,12 @@ def _sealed_evaluation(runtime, trace_dir: Path, manifest_path: Path) -> dict:
     shot["learned_head_active"] = bool(
         shot["samples"] >= 40 and shot["goals"] >= 5 and model_brier < prior_brier
     )
-    return {"manifest": str(manifest_path), "two_step": two_step, "shot": shot}
+    return {
+        "manifest": str(manifest_path),
+        "two_step": two_step,
+        "policy_utility": policy_utility,
+        "shot": shot,
+    }
 
 
 def main() -> int:
@@ -122,6 +170,14 @@ def main() -> int:
         help=(
             "Require at least two grouped-validated learned events at both "
             "one-step and two-step rollout depths."
+        ),
+    )
+    p.add_argument(
+        "--require-policy-utility",
+        action="store_true",
+        help=(
+            "Require the exact pass policy-utility branch to pass both "
+            "development and sealed grouped holdouts."
         ),
     )
     args = p.parse_args()
@@ -216,6 +272,10 @@ def main() -> int:
     sealed_two_step_active = bool(
         sealed_test and sealed_test["two_step"]["active"]
     )
+    development_policy_utility_gate = rt.policy_utility_authority("pass")
+    sealed_policy_utility_gate = (
+        ((sealed_test or {}).get("policy_utility") or {}).get("gates") or {}
+    ).get("pass") or {"authorized": False, "reason": "sealed_test_unavailable"}
     effective_shot_active = bool(
         rt.shot_quality >= rt.cfg.min_planner_quality
         and sealed_test and sealed_test["shot"]["learned_head_active"]
@@ -234,6 +294,11 @@ def main() -> int:
             semantic_event_heads_ready
             if args.require_semantic_event_heads else True
         )
+        and (
+            development_policy_utility_gate.get("authorized") is True
+            and sealed_policy_utility_gate.get("authorized") is True
+            if args.require_policy_utility else True
+        )
     )
     payload = {
                 "ok": ok,
@@ -250,6 +315,10 @@ def main() -> int:
                 "transition_ensemble_size": transition_ensemble_size,
                 "two_step_planning_gate": two_step_planning_gate,
                 "sealed_test": sealed_test,
+                "development_policy_utility_gate": (
+                    development_policy_utility_gate
+                ),
+                "sealed_policy_utility_gate": sealed_policy_utility_gate,
                 "semantic_event_head_gates": semantic_event_gates,
                 "semantic_event_heads_ready": semantic_event_heads_ready,
                 "pass_planner_quality": rt.pass_quality,

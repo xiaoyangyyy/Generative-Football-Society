@@ -3342,6 +3342,12 @@ exact target version was trained, at least 96 samples from at least six groups
 exist, its MSE beats zero persistence by at least two percent, and its
 prediction/target correlation is non-negative.
 
+Action identity is decoded from the executed six-way one-hot vector. The
+pass-outcome head may continue to learn an intercepted attempt as a negative
+pass outcome, but a defensive `intercept` can no longer count toward M2 pass
+policy-utility samples; zero or malformed actions remain `other` rather than
+being relabelled as `hold`.
+
 MATCH_WM_OUTCOME_ALIGNED_POLICY=1 selects M2. In this mode the pass and cross
 planners call the multi-step predict_policy_utility path used by the
 explanation system. They do not silently fall back to the legacy transition
@@ -3384,6 +3390,27 @@ standard deviation 0.3673. A normal approximation requires 106 matched units
 for 80 percent power at two-sided alpha 0.05 to detect a meaningful 0.10
 xG-margin effect; M2 fixes 120 units. The historical M1 point estimate is not
 used as an expected M2 effect.
+
+M2 also freezes its training contract before optimization: 45 epochs, batch
+size 128, effective learning rate 0.0003, GRU transition, three independent
+dynamics members, 0.25 two-step and policy-utility objectives, 0.20 semantic
+event objective, and no ball-log augmentation. The zero-training preflight
+verifies the manifest hashes, disjoint train/dev/sealed groups, strict action
+support, non-degenerate utility targets, sequential-pair support, curriculum
+activation and ensemble size. On the current manifest it passes every gate:
+the training split has 9,497 rows across 53 groups and the development split
+has 1,793 rows across 10 groups, including 1,723 strict pass actions and 1,783
+aligned two-step pairs. It reports but never loads sealed rows for model
+selection.
+
+Candidate authorization is stricter than development validation. The
+checkpoint must reproduce the exact frozen training configuration, declare
+that sealed data was unused, retain the exact manifest binding, pass its
+development pass-utility and two-step gates, and then independently pass both
+gates on the sealed split. The previous checkpoint passes sealed two-step
+state prediction but its sealed pass-utility MSE is 0.01048 versus the zero
+persistence MSE of 0.00853 (skill -22.87 percent); it is therefore correctly
+rejected even apart from its missing M2 training contract.
 
 This stage completed code and protocol only. It did not train a new
 checkpoint or execute the 360-match study. The current default checkpoint is

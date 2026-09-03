@@ -31,6 +31,11 @@ from src.match_engine.calibration.contract import (
 )
 from src.match_engine.calibration.objective import calibration_loss
 from src.match_engine.world_model.inference import WorldModelRuntime
+from scripts.validate_world_model import _sealed_evaluation
+from src.match_engine.world_model.m2_contract import (
+    FROZEN_FIXTURES,
+    FROZEN_TRAINING_CONFIGURATION,
+)
 from src.match_engine.world_model.mirrored_policy_evaluation import (
     fixture_stratified_cluster_interval,
     paired_effect_rows,
@@ -43,14 +48,6 @@ DEFAULT_PROTOCOL = (
 DEFAULT_PROGRESS = (
     ROOT / "data/evaluation/m2_mirrored_policy_progress_v1.json"
 )
-FROZEN_FIXTURES = [
-    ["Mexico", "South Korea"],
-    ["Brazil", "Germany"],
-    ["France", "England"],
-    ["Argentina", "Netherlands"],
-    ["Spain", "Morocco"],
-    ["Portugal", "Uruguay"],
-]
 
 
 def _now() -> str:
@@ -107,6 +104,39 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
         raise ValueError("M2 protocol state is not preregistered")
     if protocol.get("arms") != ["M0", "M2_home", "M2_away"]:
         raise ValueError("M2 protocol must retain all three ordered arms")
+    candidate = protocol.get("candidate") or {}
+    if candidate.get("dataset_manifest") != (
+        "data/world_model/dataset_manifest_formal_v8_candidate.json"
+    ):
+        raise ValueError("M2 dataset manifest identity changed")
+    if candidate.get("trace_dir") != "data/world_model/traces":
+        raise ValueError("M2 trace directory identity changed")
+    if candidate.get("required_sealed_validation") != [
+        "two_step", "policy_utility.pass",
+    ]:
+        raise ValueError("M2 sealed validation requirements changed")
+    if candidate.get("pipeline") != "M2":
+        raise ValueError("M2 candidate pipeline changed")
+    if candidate.get("checkpoint_binding") != (
+        "bound_at_first_execution_then_immutable"
+    ):
+        raise ValueError("M2 checkpoint binding changed")
+    if candidate.get("required_policy_utility_branches") != ["pass"]:
+        raise ValueError("M2 required utility branch changed")
+    if candidate.get("optional_policy_utility_branches") != ["cross"]:
+        raise ValueError("M2 optional utility branch changed")
+    if candidate.get("shot_authority") != "independent_frozen_shot_head_gate":
+        raise ValueError("M2 shot authority changed")
+    training = protocol.get("training") or {}
+    expected_training_protocol = {
+        **FROZEN_TRAINING_CONFIGURATION,
+        "script": "scripts/train_world_model.py",
+        "preflight_script": "scripts/preflight_m2_training.py",
+        "required_preflight_status": "ready_for_m2_training",
+    }
+    expected_training_protocol.pop("dataset_manifest")
+    if training != expected_training_protocol:
+        raise ValueError("M2 training configuration changed")
     design = protocol.get("design") or {}
     fixtures = design.get("fixtures") or []
     samples = int(design.get("samples_per_fixture", 0))
@@ -185,28 +215,101 @@ def execution_identity(
     return study_execution_identity(ROOT, protocol_path, protocol, checkpoint)
 
 
-def candidate_eligibility(checkpoint: Path, protocol: dict[str, Any]) -> dict:
+def candidate_eligibility(
+    checkpoint: Path,
+    protocol: dict[str, Any],
+    *,
+    root: Path = ROOT,
+) -> dict:
     runtime = WorldModelRuntime.load(str(checkpoint))
-    required = list(protocol["candidate"]["required_policy_utility_branches"])
+    candidate = protocol["candidate"]
+    required = list(candidate["required_policy_utility_branches"])
     gates = {
         action: runtime.policy_utility_authority(action)
         for action in required
     }
     optional = {
         action: runtime.policy_utility_authority(action)
-        for action in protocol["candidate"]["optional_policy_utility_branches"]
+        for action in candidate["optional_policy_utility_branches"]
     }
     two_step = runtime.two_step_planning_gate()
-    eligible = bool(
+    root = root.resolve()
+    manifest_path = (root / str(candidate["dataset_manifest"])).resolve()
+    trace_dir = (root / str(candidate["trace_dir"])).resolve()
+    try:
+        manifest_path.relative_to(root)
+        trace_dir.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("M2 sealed inputs must remain inside the project") from exc
+    meta = runtime.meta if isinstance(runtime.meta, dict) else {}
+    training_configuration = meta.get("training_configuration") or {}
+    expected_checkpoint_training = {
+        **FROZEN_TRAINING_CONFIGURATION,
+        "dataset_manifest": str(candidate["dataset_manifest"]),
+    }
+    training_configuration_verified = (
+        training_configuration == expected_checkpoint_training
+        and int(getattr(runtime.model, "transition_member_count", 0)) == 3
+    )
+    metadata_manifest_value = meta.get("dataset_manifest")
+    metadata_manifest = None
+    if metadata_manifest_value:
+        metadata_manifest = Path(str(metadata_manifest_value))
+        if not metadata_manifest.is_absolute():
+            metadata_manifest = root / metadata_manifest
+        metadata_manifest = metadata_manifest.resolve()
+    manifest_identity_verified = bool(
+        metadata_manifest == manifest_path and manifest_path.is_file()
+    )
+    sealed_test_unused = meta.get("sealed_test_used") is False
+    development_ready = bool(
         all(gate.get("authorized") for gate in gates.values())
         and two_step.get("active")
         and runtime.pass_quality >= runtime.cfg.min_planner_quality
+        and training_configuration_verified
+    )
+    sealed_validation: dict[str, Any] = {
+        "executed": False,
+        "reason": "development_or_dataset_contract_not_ready",
+    }
+    sealed_two_step_active = False
+    sealed_pass_gate: dict[str, Any] = {
+        "authorized": False,
+        "reason": "sealed_validation_not_executed",
+    }
+    if development_ready and manifest_identity_verified and sealed_test_unused:
+        sealed_validation = _sealed_evaluation(
+            runtime, trace_dir, manifest_path,
+        )
+        sealed_validation["manifest"] = str(candidate["dataset_manifest"])
+        sealed_validation["executed"] = True
+        sealed_two_step_active = bool(
+            (sealed_validation.get("two_step") or {}).get("active")
+        )
+        sealed_pass_gate = (
+            ((sealed_validation.get("policy_utility") or {}).get("gates") or {})
+            .get("pass") or sealed_pass_gate
+        )
+    eligible = bool(
+        development_ready
+        and manifest_identity_verified
+        and sealed_test_unused
+        and sealed_two_step_active
+        and sealed_pass_gate.get("authorized") is True
     )
     return {
         "eligible": eligible,
         "required_policy_utility_gates": gates,
         "optional_policy_utility_gates": optional,
         "two_step_gate": two_step,
+        "dataset_manifest": candidate["dataset_manifest"],
+        "dataset_manifest_identity_verified": manifest_identity_verified,
+        "sealed_test_unused_by_training": sealed_test_unused,
+        "training_configuration_verified": training_configuration_verified,
+        "training_configuration": training_configuration,
+        "sealed_two_step_active": sealed_two_step_active,
+        "sealed_pass_policy_utility_gate": sealed_pass_gate,
+        "sealed_validation": sealed_validation,
         "pass_planner_quality": runtime.pass_quality,
         "minimum_planner_quality": runtime.cfg.min_planner_quality,
     }
@@ -515,6 +618,8 @@ def main() -> None:
             "execution_started": False,
             "candidate_checkpoint_bound": False,
             "budget": budget,
+            "training_contract": protocol["training"],
+            "preflight_command": "python scripts/preflight_m2_training.py",
             "next_action": (
                 "train_or_supply_one sealed checkpoint, then validate eligibility"
             ),
@@ -540,6 +645,13 @@ def main() -> None:
             "execution_started": False,
             "execution_identity": identity,
             "budget": budget,
+            "training_configuration_verified": eligibility[
+                "training_configuration_verified"
+            ],
+            "sealed_two_step_active": eligibility["sealed_two_step_active"],
+            "sealed_pass_policy_utility_gate": eligibility[
+                "sealed_pass_policy_utility_gate"
+            ],
         }, indent=2))
         return
     with FileLease(str(progress_path) + ".lock", timeout=0.0):

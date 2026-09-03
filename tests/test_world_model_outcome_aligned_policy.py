@@ -11,6 +11,7 @@ import pytest
 from scripts.train_world_model import _policy_utility_validation
 import scripts.run_m2_mirrored_policy_study as m2_study
 from scripts.estimate_m2_policy_power import estimate as estimate_power
+from scripts.preflight_m2_training import readiness_checks
 import src.match_engine.calibration.benchmark_core as benchmark_core
 from src.match_engine.world_model.action_adoption import (
     direct_action_adoption_diagnostics,
@@ -18,7 +19,10 @@ from src.match_engine.world_model.action_adoption import (
     register_action_policy_opportunity,
     resolve_action_policy_outcome,
 )
-from src.match_engine.world_model.action_codec import decode_action_kind
+from src.match_engine.world_model.action_codec import (
+    decode_action_kind,
+    decode_action_kinds,
+)
 from src.match_engine.world_model.config import world_model_controls_side
 from src.match_engine.world_model.observation import OBS_DIM
 from src.match_engine.world_model.planner import action_imagination_adjustments
@@ -138,6 +142,17 @@ def test_training_validation_reports_separate_action_branches():
     assert report["actions"]["pass"]["samples"] == 6
     assert report["actions"]["hold"]["samples"] == 6
     assert report["actions"]["cross"]["samples"] == 0
+
+
+def test_vectorized_policy_labels_do_not_alias_intercepts_or_unknowns_to_pass():
+    actions = np.zeros((6, 18), dtype=np.float32)
+    for index in range(5):
+        actions[index, index] = 1.0
+    actions[5, 0] = np.nan
+
+    assert decode_action_kinds(actions).tolist() == [
+        "pass", "shot", "hold", "cross", "intercept", "other",
+    ]
 
 
 class _M2Runtime:
@@ -331,10 +346,23 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
 ):
     checkpoint = tmp_path / "candidate.pt"
     checkpoint.write_bytes(b"sealed")
+    manifest = tmp_path / "data/world_model/manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text("{}", encoding="utf-8")
+    (tmp_path / "data/world_model/traces").mkdir()
 
     class Runtime:
         pass_quality = 0.2
         cfg = SimpleNamespace(min_planner_quality=0.15)
+        model = SimpleNamespace(transition_member_count=3)
+        meta = {
+            "dataset_manifest": "data/world_model/manifest.json",
+            "sealed_test_used": False,
+            "training_configuration": {
+                **m2_study.FROZEN_TRAINING_CONFIGURATION,
+                "dataset_manifest": "data/world_model/manifest.json",
+            },
+        }
 
         def policy_utility_authority(self, action):
             return {"authorized": action == "pass", "authority": 0.4}
@@ -345,17 +373,91 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
     monkeypatch.setattr(
         m2_study.WorldModelRuntime, "load", lambda _path: Runtime(),
     )
+    monkeypatch.setattr(
+        m2_study,
+        "_sealed_evaluation",
+        lambda *_args: {
+            "two_step": {"active": True},
+            "policy_utility": {
+                "gates": {"pass": {"authorized": True}},
+            },
+        },
+    )
     protocol = {
         "candidate": {
+            "dataset_manifest": "data/world_model/manifest.json",
+            "trace_dir": "data/world_model/traces",
             "required_policy_utility_branches": ["pass"],
             "optional_policy_utility_branches": ["cross"],
         },
     }
 
-    eligibility = m2_study.candidate_eligibility(checkpoint, protocol)
+    eligibility = m2_study.candidate_eligibility(
+        checkpoint, protocol, root=tmp_path,
+    )
 
     assert eligibility["eligible"] is True
     assert eligibility["two_step_gate"]["active"] is True
+    assert eligibility["dataset_manifest_identity_verified"] is True
+    assert eligibility["sealed_test_unused_by_training"] is True
+    assert eligibility["sealed_two_step_active"] is True
+    assert eligibility["sealed_pass_policy_utility_gate"]["authorized"] is True
+
+
+def test_candidate_eligibility_rejects_sealed_policy_failure(
+    monkeypatch, tmp_path,
+):
+    checkpoint = tmp_path / "candidate.pt"
+    checkpoint.write_bytes(b"sealed")
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text("{}", encoding="utf-8")
+    traces = tmp_path / "traces"
+    traces.mkdir()
+
+    class Runtime:
+        pass_quality = 0.2
+        cfg = SimpleNamespace(min_planner_quality=0.15)
+        model = SimpleNamespace(transition_member_count=3)
+        meta = {
+            "dataset_manifest": "manifest.json",
+            "sealed_test_used": False,
+            "training_configuration": {
+                **m2_study.FROZEN_TRAINING_CONFIGURATION,
+                "dataset_manifest": "manifest.json",
+            },
+        }
+
+        def policy_utility_authority(self, action):
+            return {"authorized": action == "pass"}
+
+        def two_step_planning_gate(self):
+            return {"active": True}
+
+    monkeypatch.setattr(m2_study.WorldModelRuntime, "load", lambda _path: Runtime())
+    monkeypatch.setattr(
+        m2_study,
+        "_sealed_evaluation",
+        lambda *_args: {
+            "two_step": {"active": True},
+            "policy_utility": {
+                "gates": {"pass": {"authorized": False}},
+            },
+        },
+    )
+    protocol = {"candidate": {
+        "dataset_manifest": "manifest.json",
+        "trace_dir": "traces",
+        "required_policy_utility_branches": ["pass"],
+        "optional_policy_utility_branches": ["cross"],
+    }}
+
+    eligibility = m2_study.candidate_eligibility(
+        checkpoint, protocol, root=tmp_path,
+    )
+
+    assert eligibility["eligible"] is False
+    assert eligibility["sealed_two_step_active"] is True
+    assert eligibility["sealed_pass_policy_utility_gate"]["authorized"] is False
 
 
 def test_formal_rows_prove_checkpoint_and_one_sided_runtime_identity():
@@ -440,6 +542,63 @@ def test_power_budget_uses_historical_variance_not_candidate_mean():
     assert report["historical_home_xg_margin_paired_sd"] == pytest.approx(0.4)
     assert report["normal_approximation_required_units"] == 126
     assert report["historical_candidate_mean_effect_used"] is False
+
+
+def test_m2_training_preflight_requires_real_grouped_action_support():
+    manifest = {
+        "schema_version": 1,
+        "sealed_test_policy": "evaluation-only; never train or tune",
+        "files": [
+            {"group": "train-a", "split": "train"},
+            {"group": "dev-a", "split": "dev"},
+            {"group": "sealed-a", "split": "sealed_test"},
+        ],
+        "summary": {"sealed_test": {"passes": 120, "groups": 6}},
+    }
+    train = {
+        "rows": 256,
+        "action_counts": {"pass": 180},
+        "action_groups": {"pass": 8},
+        "two_step_pairs": 64,
+        "two_step_groups": 5,
+        "pass_utility_persistence_mse": 0.01,
+        "pass_utility_standard_deviation": 0.1,
+    }
+    dev = {
+        "rows": 128,
+        "action_counts": {"pass": 100},
+        "action_groups": {"pass": 6},
+        "two_step_pairs": 40,
+        "two_step_groups": 4,
+        "pass_utility_persistence_mse": 0.01,
+        "pass_utility_standard_deviation": 0.1,
+    }
+
+    checks = readiness_checks(
+        manifest=manifest,
+        train=train,
+        dev=dev,
+        epochs=45,
+        warmup_fraction=0.2,
+        policy_utility_loss_weight=0.25,
+        multi_step_loss_weight=0.25,
+        transition_ensemble_size=3,
+    )
+    assert all(checks.values())
+
+    insufficient = copy.deepcopy(dev)
+    insufficient["action_counts"]["pass"] = 95
+    failed = readiness_checks(
+        manifest=manifest,
+        train=train,
+        dev=insufficient,
+        epochs=45,
+        warmup_fraction=0.2,
+        policy_utility_loss_weight=0.25,
+        multi_step_loss_weight=0.25,
+        transition_ensemble_size=3,
+    )
+    assert failed["development_pass_support_sufficient"] is False
 
 
 def test_m2_execution_identity_is_portable_complete_and_root_bounded(tmp_path):

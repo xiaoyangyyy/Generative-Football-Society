@@ -35,6 +35,7 @@ from src.match_engine.world_model.policy_utility import (
     POLICY_UTILITY_VERSION,
     transition_policy_utility_tensor,
 )
+from src.match_engine.world_model.action_codec import decode_action_kinds
 
 
 def _merge(*arrays):
@@ -73,6 +74,14 @@ def _dataset_identity(*arrays: np.ndarray) -> str:
         digest.update(str(array.dtype).encode("ascii"))
         digest.update(array.tobytes())
     return digest.hexdigest()
+
+
+def _portable_project_path(value: str, root: Path) -> str:
+    resolved = Path(value).resolve()
+    try:
+        return resolved.relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
 
 
 def _bootstrap_transition_loss(
@@ -1004,10 +1013,11 @@ def main() -> None:
             obs_weights.numpy(),
             groups[val_idx][cm],
         )
-        policy_action_kinds = np.full(len(val_idx), "hold", dtype="U8")
-        policy_action_kinds[is_pass[val_idx]] = "pass"
-        policy_action_kinds[is_cross[val_idx]] = "cross"
-        policy_action_kinds[is_shot[val_idx]] = "shot"
+        # Pass-outcome supervision deliberately includes intercepted attempts,
+        # but M2 action-specific authorization must use the executed one-hot
+        # type. Defensive intercepts and zero/unknown rows cannot count as pass
+        # or hold evidence.
+        policy_action_kinds = decode_action_kinds(act[val_idx])
         policy_utility_validation = _policy_utility_validation(
             transition_policy_utility_tensor(
                 vo, vp_members,
@@ -1173,6 +1183,32 @@ def main() -> None:
         model,
         cfg,
         meta={
+            "training_configuration": {
+                "trainer": "world_model_v9_m2",
+                "epochs": int(args.epochs),
+                "batch_size": int(args.batch_size),
+                "learning_rate": float(min(args.lr, 3e-4)),
+                "transition": str(args.transition),
+                "transition_ensemble_size": int(model.transition_member_count),
+                "multi_step_loss_weight": float(args.multi_step_loss_weight),
+                "multi_step_warmup_fraction": float(
+                    args.multi_step_warmup_fraction
+                ),
+                "semantic_event_loss_weight": float(
+                    args.semantic_event_loss_weight
+                ),
+                "policy_utility_loss_weight": float(
+                    args.policy_utility_loss_weight
+                ),
+                "dataset_manifest": (
+                    _portable_project_path(
+                        args.dataset_manifest, Path(base_dir),
+                    )
+                    if args.dataset_manifest else ""
+                ),
+                "ball_log_enabled": bool(args.use_ball_log),
+                "sealed_test_used": False,
+            },
             "rows": len(obs),
             "trace_dir": trace_dir,
             "ball_log_dir": ball_dir,

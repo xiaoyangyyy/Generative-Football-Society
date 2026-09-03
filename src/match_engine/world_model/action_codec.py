@@ -43,6 +43,23 @@ def decode_action_kind(action: np.ndarray) -> str:
     return ACTION_TYPE_NAMES[int(np.argmax(vector[:6]))]
 
 
+def decode_action_kinds(actions: np.ndarray) -> np.ndarray:
+    """Vectorized strict action decoding; zero/invalid rows remain ``other``."""
+    matrix = np.asarray(actions, dtype=float)
+    if matrix.ndim != 2 or matrix.shape[1] < 6:
+        raise ValueError("actions must be a two-dimensional matrix with six types")
+    output = np.full(len(matrix), "other", dtype="U9")
+    finite = np.isfinite(matrix[:, :6]).all(axis=1)
+    positive = np.max(
+        np.where(np.isfinite(matrix[:, :6]), matrix[:, :6], -np.inf),
+        axis=1,
+    ) > 0.0
+    valid = finite & positive
+    names = np.asarray(ACTION_TYPE_NAMES, dtype="U9")
+    output[valid] = names[np.argmax(matrix[valid, :6], axis=1)]
+    return output
+
+
 def _kind_onehot(kind: str) -> np.ndarray:
     out = np.zeros(4, dtype=np.float32)
     idx = _KIND_MAP.get(kind, 0)

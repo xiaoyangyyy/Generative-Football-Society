@@ -1690,6 +1690,12 @@ class ProductWorkspace:
                 "protocol_id": m2_protocol.get("protocol_id"),
                 "claim_scope": m2_protocol.get("claim_scope"),
                 "protocol_state": m2_protocol.get("state"),
+                "training_contract": dict(m2_protocol.get("training") or {}),
+                "required_sealed_validation": list(
+                    (m2_protocol.get("candidate") or {}).get(
+                        "required_sealed_validation"
+                    ) or []
+                ),
                 "execution_state": m2_execution_state,
                 "checkpoint_bound": bool(m2_stored_identity.get("checkpoint_path")),
                 "candidate_eligible": bool(

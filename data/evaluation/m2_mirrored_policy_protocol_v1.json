@@ -11,6 +11,12 @@
   "candidate": {
     "pipeline": "M2",
     "checkpoint_binding": "bound_at_first_execution_then_immutable",
+    "dataset_manifest": "data/world_model/dataset_manifest_formal_v8_candidate.json",
+    "trace_dir": "data/world_model/traces",
+    "required_sealed_validation": [
+      "two_step",
+      "policy_utility.pass"
+    ],
     "required_policy_utility_branches": [
       "pass"
     ],
@@ -18,6 +24,23 @@
       "cross"
     ],
     "shot_authority": "independent_frozen_shot_head_gate"
+  },
+  "training": {
+    "trainer": "world_model_v9_m2",
+    "script": "scripts/train_world_model.py",
+    "preflight_script": "scripts/preflight_m2_training.py",
+    "required_preflight_status": "ready_for_m2_training",
+    "epochs": 45,
+    "batch_size": 128,
+    "learning_rate": 0.0003,
+    "transition": "gru",
+    "transition_ensemble_size": 3,
+    "multi_step_loss_weight": 0.25,
+    "multi_step_warmup_fraction": 0.2,
+    "semantic_event_loss_weight": 0.2,
+    "policy_utility_loss_weight": 0.25,
+    "ball_log_enabled": false,
+    "sealed_test_used": false
   },
   "design": {
     "fixtures": [
@@ -80,6 +103,7 @@
       "data/coaches/**/*.json",
       "data/calibration/**/*.json",
       "data/tactics_final_en.json",
+      "data/world_model/dataset_manifest_formal_v8_candidate.json",
       "pyproject.toml"
     ],
     "code_identity_files": [
@@ -90,7 +114,9 @@
       "src/match_engine/calibration/ablation.py",
       "src/match_engine/calibration/benchmark_core.py",
       "scripts/train_world_model.py",
+      "scripts/preflight_m2_training.py",
       "scripts/estimate_m2_policy_power.py",
+      "scripts/validate_world_model.py",
       "scripts/run_m2_mirrored_policy_study.py"
     ]
   }
