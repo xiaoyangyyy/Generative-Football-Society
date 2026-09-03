@@ -325,6 +325,50 @@ def _keyed(rows: list[dict[str, Any]]) -> dict[tuple[str, int], dict]:
     return output
 
 
+def expected_experimental_units(
+    protocol: dict[str, Any],
+) -> set[tuple[str, int]]:
+    design = protocol["design"]
+    return {
+        (f"{home}_vs_{away}", sample_index)
+        for home, away in design["fixtures"]
+        for sample_index in range(int(design["samples_per_fixture"]))
+    }
+
+
+def verify_frozen_unit_identity(
+    protocol: dict[str, Any],
+    arms: dict[str, Any],
+    *,
+    require_complete: bool,
+) -> dict[str, Any]:
+    """Reject duplicate, foreign, or missing fixture-seed units per arm."""
+    expected = expected_experimental_units(protocol)
+    counts: dict[str, int] = {}
+    for arm in protocol["arms"]:
+        rows = (arms.get(arm) or {}).get("rows") or []
+        observed: set[tuple[str, int]] = set()
+        for row in rows:
+            key = (str(row["fixture"]), int(row["sample_index"]))
+            if key in observed:
+                raise ValueError(f"duplicate M2 {arm} experimental unit: {key}")
+            if key not in expected:
+                raise ValueError(f"foreign M2 {arm} experimental unit: {key}")
+            observed.add(key)
+        if require_complete and observed != expected:
+            missing = sorted(expected - observed)
+            raise ValueError(
+                f"M2 {arm} frozen unit budget incomplete; missing {missing[:3]}"
+            )
+        counts[arm] = len(observed)
+    return {
+        "verified": True,
+        "required_complete": bool(require_complete),
+        "expected_units_per_arm": len(expected),
+        "observed_units_by_arm": counts,
+    }
+
+
 def _continuous_loss(rows: list[dict[str, Any]]) -> float:
     evaluation = evaluate_rows(
         rows,
@@ -439,9 +483,9 @@ def analyze(
 ) -> dict[str, Any]:
     budget = validate_protocol(protocol)
     arms = state.get("arms") or {}
-    if any(len((arms.get(arm) or {}).get("rows") or []) != budget["units"]
-           for arm in protocol["arms"]):
-        raise ValueError("M2 analysis requires the complete frozen run budget")
+    unit_identity = verify_frozen_unit_identity(
+        protocol, arms, require_complete=True,
+    )
     if state.get("execution_identity") != expected_identity:
         raise ValueError("M2 execution identity drifted")
     baseline = arms["M0"]["rows"]
@@ -551,6 +595,7 @@ def analyze(
         "secondary_goal_difference_effect": goals,
         "sample_budget": budget,
         "runtime_row_identity": runtime_identity,
+        "experimental_unit_identity": unit_identity,
         "historical_m1_results_used": False,
         "generated_at": _now(),
     }
@@ -565,11 +610,20 @@ def _run_arm(
 ) -> None:
     design = protocol["design"]
     rows = state["arms"][arm]["rows"]
+    verify_frozen_unit_identity(
+        protocol,
+        {name: state["arms"].get(name, {"rows": []}) for name in protocol["arms"]},
+        require_complete=False,
+    )
     completed = {
         (str(row["fixture"]), int(row["sample_index"])) for row in rows
     }
 
     def persist(row: dict[str, Any]) -> None:
+        key = (str(row["fixture"]), int(row["sample_index"]))
+        if key not in expected_experimental_units(protocol) or key in completed:
+            raise ValueError(f"invalid or duplicate persisted M2 unit: {key}")
+        completed.add(key)
         state["arms"][arm]["rows"].append(row)
         state["updated_at"] = _now()
         _atomic_json(progress_path, state)

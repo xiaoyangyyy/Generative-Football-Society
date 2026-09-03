@@ -1760,6 +1760,10 @@ class ProductWorkspace:
                     dict(m2_analysis.get("runtime_row_identity") or {})
                     if m2_result_current else {}
                 ),
+                "experimental_unit_identity": (
+                    dict(m2_analysis.get("experimental_unit_identity") or {})
+                    if m2_result_current else {}
+                ),
             },
             "manager_advisor_adoption": {
                 "available": bool(manager_advisor_protocol),

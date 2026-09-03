@@ -3419,7 +3419,12 @@ training contract, even though its historical two-step gate remains active.
 Formal calibration worlds now ignore ambient seeds and persistent squad state;
 every result row records whether the runtime loaded, its exact checkpoint
 signature, the controlled side and the M2 policy mode. Analysis rejects any
-row whose declared arm and runtime identity disagree.
+row whose declared arm and runtime identity disagree. It also reconstructs
+the exact 120 registered fixture-seed keys for every arm and rejects duplicate,
+foreign or missing units both during incremental persistence and before final
+analysis. A complete synthetic 360-row acceptance case proves that all gates
+can jointly authorize promotion; a positive confidence interval with only a
+0.05 xG-margin point effect still fails the frozen 0.10 football-meaning gate.
 
 The product evidence API exposes M2 independently from the immutable M1
 result. It reports the protocol, bound checkpoint, eligibility, fixed budget,

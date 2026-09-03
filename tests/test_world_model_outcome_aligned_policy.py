@@ -493,6 +493,131 @@ def test_formal_rows_prove_checkpoint_and_one_sided_runtime_identity():
         )
 
 
+def test_complete_m2_analysis_positive_path_is_reachable_and_fully_audited(
+    monkeypatch,
+):
+    protocol = m2_study.load_protocol(m2_study.DEFAULT_PROTOCOL)
+    baseline, home_rows, away_rows = [], [], []
+    signature = "sha256:" + "a" * 64
+    for home_team, away_team in protocol["design"]["fixtures"]:
+        fixture = f"{home_team}_vs_{away_team}"
+        for sample_index in range(protocol["design"]["samples_per_fixture"]):
+            base = _study_row(
+                sample=sample_index, home_xg=1.0, away_xg=1.0,
+            )
+            base.update({
+                "fixture": fixture,
+                "wm_runtime_loaded": False,
+                "wm_checkpoint_signature": None,
+                "wm_control_scope": "none",
+                "wm_outcome_aligned_policy": False,
+            })
+            home = _study_row(
+                sample=sample_index, home_xg=1.2, away_xg=1.0,
+            )
+            home.update({
+                "fixture": fixture,
+                "wm_runtime_loaded": True,
+                "wm_checkpoint_signature": signature,
+                "wm_control_scope": "home",
+                "wm_outcome_aligned_policy": True,
+            })
+            away = _study_row(
+                sample=sample_index, home_xg=1.0, away_xg=1.2,
+            )
+            away.update({
+                "fixture": fixture,
+                "wm_runtime_loaded": True,
+                "wm_checkpoint_signature": signature,
+                "wm_control_scope": "away",
+                "wm_outcome_aligned_policy": True,
+            })
+            baseline.append(base)
+            home_rows.append(home)
+            away_rows.append(away)
+    identity = {"checkpoint_sha256": "a" * 64}
+    state = {
+        "execution_identity": identity,
+        "candidate_eligibility": {"eligible": True},
+        "arms": {
+            "M0": {"rows": baseline},
+            "M2_home": {"rows": home_rows},
+            "M2_away": {"rows": away_rows},
+        },
+    }
+    monkeypatch.setattr(
+        m2_study,
+        "_continuous_loss_interval",
+        lambda *_args, **_kwargs: {
+            "method": "synthetic_verified_external_loss",
+            "point_delta": 0.0,
+            "ci95_low": -0.5,
+            "ci95_high": 0.5,
+        },
+    )
+
+    result = m2_study.analyze(
+        protocol, state, expected_identity=identity,
+    )
+
+    assert result["decision"] == "promotion_supported"
+    assert result["promotion_supported"] is True
+    assert all(result["promotion_gates"].values())
+    assert result["primary_controlled_micro_xg_effect"][
+        "point_estimate"
+    ] == pytest.approx(0.2)
+    assert result["mechanism_attributable_coverage"]["outcomes"] == 1200
+    assert result["experimental_unit_identity"] == {
+        "verified": True,
+        "required_complete": True,
+        "expected_units_per_arm": 120,
+        "observed_units_by_arm": {
+            "M0": 120, "M2_home": 120, "M2_away": 120,
+        },
+    }
+
+    interval_reports = iter([
+        {
+            "point_estimate": 0.05,
+            "ci95_low": 0.01,
+            "ci95_high": 0.09,
+        },
+        {"point_estimate": 0.0, "ci95_low": -0.1, "ci95_high": 0.1},
+        {"point_estimate": 0.1, "ci95_low": 0.01, "ci95_high": 0.2},
+        {"point_estimate": 0.04, "ci95_low": 0.03, "ci95_high": 0.05},
+    ])
+    monkeypatch.setattr(
+        m2_study,
+        "fixture_stratified_cluster_interval",
+        lambda *_args, **_kwargs: next(interval_reports),
+    )
+    weak = m2_study.analyze(
+        protocol, state, expected_identity=identity,
+    )
+    assert weak["primary_controlled_micro_xg_effect"]["ci95_low"] > 0.0
+    assert weak["promotion_gates"][
+        "controlled_micro_xg_effect_is_meaningful"
+    ] is False
+    assert weak["promotion_supported"] is False
+    assert weak["decision"] == "research_only_default_off"
+
+
+def test_m2_analysis_rejects_foreign_or_incomplete_frozen_units():
+    protocol = m2_study.load_protocol(m2_study.DEFAULT_PROTOCOL)
+    arms = {arm: {"rows": []} for arm in protocol["arms"]}
+    arms["M0"]["rows"] = [{"fixture": "foreign", "sample_index": 0}]
+    with pytest.raises(ValueError, match="foreign M2 M0"):
+        m2_study.verify_frozen_unit_identity(
+            protocol, arms, require_complete=False,
+        )
+
+    arms["M0"]["rows"] = []
+    with pytest.raises(ValueError, match="frozen unit budget incomplete"):
+        m2_study.verify_frozen_unit_identity(
+            protocol, arms, require_complete=True,
+        )
+
+
 def test_benchmark_world_ignores_ambient_seed_and_persistence(monkeypatch):
     captured = {}
 
