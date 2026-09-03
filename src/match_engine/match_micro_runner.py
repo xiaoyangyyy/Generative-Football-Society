@@ -1022,6 +1022,19 @@ def _finish_world_model_tick(
         state,
         t_sec=t1,
     )
+    from src.match_engine.world_model.action_adoption import (
+        resolve_action_policy_outcome,
+    )
+
+    resolve_action_policy_outcome(
+        state,
+        state._wm_obs_pre,
+        observation_next,
+        attacking_home=(
+            str(getattr(state, "_wm_actor_team_id_pre", ""))
+            == str(state.home.team_id)
+        ),
+    )
     calibration = None
     if wm_runtime is not None:
         try:

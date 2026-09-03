@@ -135,20 +135,24 @@ class ActionEngine:
             feasible_actions.add("cross")
         pre_world_model_utils = utils.copy()
         if self.wm_runtime is not None:
+            from src.match_engine.world_model.config import (
+                world_model_controls_side,
+            )
             from src.match_engine.world_model.planner import action_imagination_adjustments
 
-            utils = action_imagination_adjustments(
-                self.wm_runtime,
-                state,
-                carrier,
-                attacking_home,
-                utils,
-                labels,
-                dist_goal=dist_goal,
-                tac=tac,
-                team_shots=team_shots,
-                feasible_actions=feasible_actions,
-            )
+            if world_model_controls_side(attacking_home):
+                utils = action_imagination_adjustments(
+                    self.wm_runtime,
+                    state,
+                    carrier,
+                    attacking_home,
+                    utils,
+                    labels,
+                    dist_goal=dist_goal,
+                    tac=tac,
+                    team_shots=team_shots,
+                    feasible_actions=feasible_actions,
+                )
         from src.match_engine.world_model.decision_adoption import (
             pending_policy_action_bias,
             record_policy_intervention_result,

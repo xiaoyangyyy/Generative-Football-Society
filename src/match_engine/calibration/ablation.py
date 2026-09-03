@@ -24,6 +24,9 @@ _CALIBRATION_ENV_KEYS = (
     "CALIBRATION_ROSTER_STATUS",
     "MATCH_COGNITIVE",
     "MATCH_WORLD_MODEL",
+    "MATCH_WM_PLAN",
+    "MATCH_WM_OUTCOME_ALIGNED_POLICY",
+    "MATCH_WM_CONTROL_SCOPE",
 )
 
 
@@ -44,6 +47,9 @@ PIPELINE_PRESETS: dict[str, AblationSpec] = {
             "CALIBRATION_MODE": "1",
             "MATCH_COGNITIVE": "0",
             "MATCH_WORLD_MODEL": "0",
+            "MATCH_WM_PLAN": "0",
+            "MATCH_WM_OUTCOME_ALIGNED_POLICY": "0",
+            "MATCH_WM_CONTROL_SCOPE": "none",
         },
     ),
     "M1": AblationSpec(
@@ -53,6 +59,23 @@ PIPELINE_PRESETS: dict[str, AblationSpec] = {
             "CALIBRATION_MODE": "1",
             "MATCH_COGNITIVE": "0",
             "MATCH_WORLD_MODEL": "1",
+            "MATCH_WM_PLAN": "1",
+            "MATCH_WM_OUTCOME_ALIGNED_POLICY": "0",
+            "MATCH_WM_CONTROL_SCOPE": "both",
+        },
+    ),
+    "M2": AblationSpec(
+        name="M2",
+        description=(
+            "M0 + outcome-aligned, action-specific validated world-model policy."
+        ),
+        env={
+            "CALIBRATION_MODE": "1",
+            "MATCH_COGNITIVE": "0",
+            "MATCH_WORLD_MODEL": "1",
+            "MATCH_WM_PLAN": "1",
+            "MATCH_WM_OUTCOME_ALIGNED_POLICY": "1",
+            "MATCH_WM_CONTROL_SCOPE": "both",
         },
     ),
     "C1": AblationSpec(
@@ -63,6 +86,9 @@ PIPELINE_PRESETS: dict[str, AblationSpec] = {
             "MATCH_COGNITIVE": "1",
             "MATCH_COGNITIVE_SYNC": "0",
             "MATCH_WORLD_MODEL": "0",
+            "MATCH_WM_PLAN": "0",
+            "MATCH_WM_OUTCOME_ALIGNED_POLICY": "0",
+            "MATCH_WM_CONTROL_SCOPE": "none",
         },
     ),
     "T0": AblationSpec(
@@ -72,6 +98,9 @@ PIPELINE_PRESETS: dict[str, AblationSpec] = {
             "CALIBRATION_MODE": "1",
             "MATCH_COGNITIVE": "0",
             "MATCH_WORLD_MODEL": "0",
+            "MATCH_WM_PLAN": "0",
+            "MATCH_WM_OUTCOME_ALIGNED_POLICY": "0",
+            "MATCH_WM_CONTROL_SCOPE": "none",
             "CALIBRATION_ROSTER_STATUS": "1",
         },
     ),

@@ -128,6 +128,30 @@ def world_model_plan_enabled(state: Any | None = None) -> bool:
     return True
 
 
+def world_model_outcome_aligned_policy_enabled() -> bool:
+    """Whether the separately validated M2 policy-value controller is selected."""
+    return env_bool(
+        environment_snapshot(), "MATCH_WM_OUTCOME_ALIGNED_POLICY", False,
+    )
+
+
+def world_model_controls_side(attacking_home: bool) -> bool:
+    """Apply planning to the declared side, enabling mirrored interventions."""
+    scope = (
+        environment_snapshot().get("MATCH_WM_CONTROL_SCOPE", "both")
+        .strip().lower() or "both"
+    )
+    if scope not in {"both", "home", "away", "none"}:
+        raise ValueError(
+            "MATCH_WM_CONTROL_SCOPE must be one of both, home, away, none"
+        )
+    return bool(
+        scope == "both"
+        or (scope == "home" and attacking_home)
+        or (scope == "away" and not attacking_home)
+    )
+
+
 @contextmanager
 def world_model_plan_clock(clock_seconds: float):
     token = _PLAN_CLOCK_SECONDS.set(float(clock_seconds))

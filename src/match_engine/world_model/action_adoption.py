@@ -451,7 +451,103 @@ def record_action_policy_sample(
         bucket["probability_delta_sum"] += probability_delta
         bucket["absolute_probability_shift_sum"] += abs(probability_delta)
         bucket["authority_sum"] += float(gate.get("applied_action_authority", 0.0))
+    state._wm_last_resolved_direct_action_adoption = record
     state._wm_pending_direct_action_adoption = None
+
+
+def resolve_action_policy_outcome(
+    state,
+    current_observation: np.ndarray,
+    next_observation: np.ndarray,
+    *,
+    attacking_home: bool,
+) -> None:
+    """Attach the realized actor-centred transition utility to one sampled action."""
+    record = getattr(
+        state, "_wm_last_resolved_direct_action_adoption", None,
+    )
+    if not isinstance(record, dict) or record.get("outcome_resolution"):
+        return
+    from src.match_engine.world_model.policy_utility import (
+        POLICY_UTILITY_VERSION,
+        transition_policy_utility_numpy,
+    )
+
+    components = transition_policy_utility_numpy(
+        np.asarray(current_observation),
+        np.asarray(next_observation),
+        attacking_home=attacking_home,
+    )
+    realized = float(np.asarray(components["policy_utility"]))
+    actual = str(record.get("actual_action") or "other")
+    gate = dict((record.get("quality_gates") or {}).get(actual) or {})
+    predicted = None
+    if gate.get("value_source") == "outcome_aligned_policy_utility":
+        predicted = gate.get({
+            "pass": "pass_value",
+            "cross": "cross_value",
+        }.get(actual, "predicted_policy_utility"))
+    elif actual == "hold":
+        for candidate_gate in (record.get("quality_gates") or {}).values():
+            if (
+                candidate_gate.get("value_source")
+                == "outcome_aligned_policy_utility"
+                and candidate_gate.get("hold_value") is not None
+            ):
+                predicted = candidate_gate["hold_value"]
+                gate = dict(candidate_gate)
+                break
+    prediction_error = (
+        float(predicted) - realized if predicted is not None else None
+    )
+    record["policy_utility_outcome"] = {
+        "version": 1,
+        "target_version": POLICY_UTILITY_VERSION,
+        "actual_action": actual,
+        "realized_policy_utility": realized,
+        "predicted_policy_utility": (
+            float(predicted) if predicted is not None else None
+        ),
+        "prediction_error": prediction_error,
+        "squared_error": (
+            prediction_error ** 2 if prediction_error is not None else None
+        ),
+        "goal_diff_delta": float(np.asarray(
+            components["goal_diff_delta"],
+        )),
+        "territorial_delta": float(np.asarray(
+            components["territorial_delta"],
+        )),
+        "possession_delta": float(np.asarray(
+            components["possession_delta"],
+        )),
+        "value_source": gate.get("value_source", "unavailable"),
+    }
+    record["outcome_resolution"] = "next_tick_transition_observed"
+    store = getattr(state, "_wm_direct_action_adoption", None)
+    if isinstance(store, dict):
+        store.setdefault("realized_policy_utility_count", 0)
+        store.setdefault("realized_policy_utility_sum", 0.0)
+        store["realized_policy_utility_count"] += 1
+        store["realized_policy_utility_sum"] += realized
+        if record.get("attribution_eligible"):
+            store.setdefault("attributable_realized_policy_utility_count", 0)
+            store.setdefault("attributable_realized_policy_utility_sum", 0.0)
+            store["attributable_realized_policy_utility_count"] += 1
+            store["attributable_realized_policy_utility_sum"] += realized
+        by_action = store.setdefault("realized_policy_utility_by_action", {})
+        bucket = by_action.setdefault(actual, {
+            "count": 0,
+            "sum": 0.0,
+            "predicted_count": 0,
+            "squared_error_sum": 0.0,
+        })
+        bucket["count"] += 1
+        bucket["sum"] += realized
+        if prediction_error is not None:
+            bucket["predicted_count"] += 1
+            bucket["squared_error_sum"] += prediction_error ** 2
+    state._wm_last_resolved_direct_action_adoption = None
 
 
 def record_pass_target_policy_sample(
@@ -538,6 +634,11 @@ def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
             },
             "mean_recommended_probability_shift": 0.0,
             "mean_primary_signal_probability_shift": 0.0,
+            "realized_policy_utility": {
+                "count": 0, "mean": 0.0,
+                "attributable_count": 0, "attributable_mean": 0.0,
+                "by_action": {},
+            },
             "records": [],
         }
     resolved = int(store["resolved"])
@@ -556,6 +657,25 @@ def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
                 raw.get("authority_sum", 0.0) / max(1, count)
             ),
         }
+    utility_by_action = {}
+    for action, raw in (
+        store.get("realized_policy_utility_by_action") or {}
+    ).items():
+        count = int(raw.get("count", 0))
+        predicted_count = int(raw.get("predicted_count", 0))
+        utility_by_action[str(action)] = {
+            "count": count,
+            "mean": float(raw.get("sum", 0.0) / max(1, count)),
+            "predicted_count": predicted_count,
+            "prediction_rmse": float(np.sqrt(
+                raw.get("squared_error_sum", 0.0)
+                / max(1, predicted_count)
+            )),
+        }
+    utility_count = int(store.get("realized_policy_utility_count", 0))
+    attributable_utility_count = int(
+        store.get("attributable_realized_policy_utility_count", 0)
+    )
     return {
         "available": True,
         "opportunities": int(store["opportunities"]),
@@ -591,6 +711,19 @@ def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
         ),
         "probability_policy_version": _PROBABILITY_POLICY_VERSION,
         "expected_change_estimator": _EXPECTED_CHANGE_ESTIMATOR,
+        "realized_policy_utility": {
+            "count": utility_count,
+            "mean": float(
+                store.get("realized_policy_utility_sum", 0.0)
+                / max(1, utility_count)
+            ),
+            "attributable_count": attributable_utility_count,
+            "attributable_mean": float(
+                store.get("attributable_realized_policy_utility_sum", 0.0)
+                / max(1, attributable_utility_count)
+            ),
+            "by_action": utility_by_action,
+        },
         "action_signal_breakdown": action_breakdown,
         "reference_action_breakdown": {
             "action": _REFERENCE_ACTION,

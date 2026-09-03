@@ -507,15 +507,30 @@ class PassingEngine:
         policy_evidence = {
             "applied": False, "reason": "world_model_runtime_unavailable",
         }
+        world_model_controls_actor = False
         if self.wm_runtime is not None:
+            from src.match_engine.world_model.config import (
+                world_model_controls_side,
+            )
             from src.match_engine.world_model.planner import (
                 pass_candidate_policy_probabilities,
             )
 
-            probabilities, policy_evidence = pass_candidate_policy_probabilities(
-                self.wm_runtime, state, carrier, metadata, attacking_home,
-                base_probabilities,
+            world_model_controls_actor = world_model_controls_side(
+                attacking_home,
             )
+            if world_model_controls_actor:
+                probabilities, policy_evidence = (
+                    pass_candidate_policy_probabilities(
+                        self.wm_runtime, state, carrier, metadata,
+                        attacking_home, base_probabilities,
+                    )
+                )
+            else:
+                policy_evidence = {
+                    "applied": False,
+                    "reason": "world_model_control_scope_excludes_actor",
+                }
         from src.match_engine.world_model.action_adoption import (
             record_pass_target_policy_sample,
             sample_action_from_uniform,
@@ -534,7 +549,7 @@ class PassingEngine:
         )
         baseline_index = candidate_ids.index(baseline_id)
         index = candidate_ids.index(selected_id)
-        if self.wm_runtime is not None:
+        if self.wm_runtime is not None and world_model_controls_actor:
             record_pass_target_policy_sample(
                 state,
                 candidate_ids=candidate_ids,

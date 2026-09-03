@@ -33,6 +33,8 @@ def row_from_summary(s) -> dict[str, float]:
     action_adoption = getattr(s, "world_model_action_adoption", {}) or {}
     return {
         "pass_completion": completed / max(1.0, passes),
+        "pass_completion_home": float(s.pass_completion_home),
+        "pass_completion_away": float(s.pass_completion_away),
         "interceptions_per_pass": (s.pass_intercepts_home + s.pass_intercepts_away) / max(1.0, passes),
         "passes_per_team_match": passes / 2.0,
         "passes_home": float(s.passes_home),
@@ -47,6 +49,8 @@ def row_from_summary(s) -> dict[str, float]:
         "long_pass_share": (s.long_passes_home + s.long_passes_away) / max(1.0, passes),
         "shots_per_team_match": shots / 2.0,
         "shots_on_target_rate": (s.shots_on_target_home + s.shots_on_target_away) / max(1.0, shots),
+        "shots_on_target_home": float(s.shots_on_target_home),
+        "shots_on_target_away": float(s.shots_on_target_away),
         "goals_per_team_match": goals / 2.0,
         "fouls_committed_per_team_match": (s.fouls_committed_home + s.fouls_committed_away) / 2.0,
         "yellow_cards_per_team_match": (s.yellow_cards_home + s.yellow_cards_away) / 2.0,
@@ -58,6 +62,10 @@ def row_from_summary(s) -> dict[str, float]:
         "headers_per_team_match": float(s.headers_attempted) / 2.0,
         "tackles_per_team_match": (s.tackles_home + s.tackles_away) / 2.0,
         "micro_xg_per_team_match": micro_xg / 2.0,
+        "micro_xg_difference_home": float(s.micro_xg_home - s.micro_xg_away),
+        "goal_difference_home": float(
+            s.goals_micro_home - s.goals_micro_away
+        ),
         "goals_to_micro_xg_ratio": (goals / max(0.05, micro_xg)) if micro_xg > 0.01 else 0.0,
         "wm_action_opportunities": float(action_adoption.get("opportunities", 0)),
         "wm_action_influenced_opportunities": float(
@@ -97,6 +105,26 @@ def row_from_summary(s) -> dict[str, float]:
         ),
         "wm_pass_target_expected_changes": float(
             action_adoption.get("pass_target_expected_changes", 0.0)
+        ),
+        "wm_realized_policy_utility_count": float(
+            (action_adoption.get("realized_policy_utility") or {}).get(
+                "count", 0
+            )
+        ),
+        "wm_realized_policy_utility_mean": float(
+            (action_adoption.get("realized_policy_utility") or {}).get(
+                "mean", 0.0
+            )
+        ),
+        "wm_attributable_realized_policy_utility_count": float(
+            (action_adoption.get("realized_policy_utility") or {}).get(
+                "attributable_count", 0
+            )
+        ),
+        "wm_attributable_realized_policy_utility_mean": float(
+            (action_adoption.get("realized_policy_utility") or {}).get(
+                "attributable_mean", 0.0
+            )
         ),
     }
 

@@ -3316,3 +3316,68 @@ next action, matching the existing Web representation.
 This is a semantic correction to reporting and gate composition. It does not
 promote the world model, manufacture external evidence or change the product
 and academic scores.
+
+## 105. V3.87 Outcome-aligned M2 world-model control
+
+M1 proved that a validated pass head could enter the action simplex, but its
+runtime score and its formal outcome objective were not the same quantity.
+It also enabled the model for both teams in the same match. That design could
+measure distribution movement, but it could not cleanly estimate whether one
+team benefited from the policy. The historical M1 conclusion therefore
+remains immutable: research_only_default_off.
+
+M2 introduces one actor-centred transition utility shared by training,
+validation, runtime planning and realized-outcome attribution:
+
+    U = clip(1.0 * delta_goal_difference + 0.35 * delta_territory
+             + 0.15 * delta_possession, -2, 2)
+
+Every term is a change from the current state from the original actor's
+perspective. Same-state persistence is exactly zero. Home and away advances
+have symmetric signs, and absolute possession is no longer rewarded twice.
+The trainer adds this value as a member-specific Bayesian-bootstrap auxiliary
+loss under the existing curriculum. The grouped holdout report is separated
+by pass, cross, shot and hold; an action receives authority only when the
+exact target version was trained, at least 96 samples from at least six groups
+exist, its MSE beats zero persistence by at least two percent, and its
+prediction/target correlation is non-negative.
+
+MATCH_WM_OUTCOME_ALIGNED_POLICY=1 selects M2. In this mode the pass and cross
+planners call the multi-step predict_policy_utility path used by the
+explanation system. They do not silently fall back to the legacy transition
+score when the M2 interface or the exact action gate is absent. The legacy M1
+path is retained behind the default-off flag so old experiments and product
+behavior remain reproducible. Shot authority remains independently governed
+by the frozen shot-head gate; M2 policy evidence cannot bypass it.
+
+Every sampled high-level action now retains its adoption record until the next
+observation is encoded. The runner then stores realized policy utility,
+component deltas, the value predicted at selection time and action-specific
+prediction RMSE. Aggregate records survive the bounded 96-record display
+window, so full-match mechanism analysis does not depend on retained examples.
+The confirmatory mechanism endpoint uses only attribution-eligible influenced
+opportunities; the all-opportunity mean remains diagnostic.
+
+The runtime also accepts MATCH_WM_CONTROL_SCOPE=home|away|both|none.
+Calibration presets define M0 as none, historical M1 as both, and M2 as a
+separate outcome-aligned pipeline. The preregistered M2 study runs each of 30
+fixture-seed units as M0, M2-home and M2-away. Home and away interventions
+control only the declared team and are analysed from that team's perspective.
+The matched-seed bootstrap samples within fixture while keeping both mirrored
+sides in the same cluster.
+
+Promotion requires all preregistered gates: a sealed checkpoint with pass
+policy-utility and two-step authority, a non-trivial counterfactual action
+change rate, positive realized transition utility, a positive and meaningful
+controlled-team micro-xG-margin effect, and non-inferiority on continuous
+external calibration loss with the discontinuous failed-metric penalty set to
+zero. Goal difference is secondary because 30 matched units are not enough to
+make sparse score events a stable primary endpoint. Protocol, checkpoint and
+critical code hashes are bound at first execution and immutable on resume.
+
+This stage completed code and protocol only. It did not train a new
+checkpoint or execute the 90-match study. The current default checkpoint is
+correctly rejected because it contains neither the policy-utility training
+contract nor current two-step evidence. Consequently M2 remains unavailable
+to stable product mode until a newly trained sealed candidate passes the
+eligibility check and the complete preregistered study supports promotion.

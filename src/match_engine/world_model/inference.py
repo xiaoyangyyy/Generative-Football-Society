@@ -37,6 +37,11 @@ from src.match_engine.world_model.state_scales import (
     multiscale_state_forecast,
     semantic_path_statistics,
 )
+from src.match_engine.world_model.policy_utility import (
+    POLICY_UTILITY_VERSION,
+    policy_utility_validation_gate,
+    transition_policy_utility_numpy,
+)
 from src.match_engine.world_model.cross_validation import (
     replay_cross_action_validation,
 )
@@ -327,6 +332,16 @@ class WorldModelRuntime:
             "online_trust": trust,
             "decision_confidence": decision_confidence,
         }
+
+    def policy_utility_authority(self, action_kind: str) -> dict:
+        """Authorize M2 value use only from action-specific grouped holdout."""
+        validation = self.meta.get("validation", {}) if isinstance(
+            self.meta, dict
+        ) else {}
+        return policy_utility_validation_gate(
+            validation.get("policy_utility"),
+            action_kind=action_kind,
+        )
 
     def observe_transition(
         self,
@@ -636,23 +651,18 @@ class WorldModelRuntime:
         )
         current = np.asarray(obs, dtype=float)
         future = np.asarray(output.next_obs, dtype=float)
-        direction = 1.0 if attacking_home else -1.0
-        progress = float(np.clip(
-            direction * (future[200] - current[200]), -1.0, 1.0,
-        ))
-        current_goal_diff = direction * 5.0 * (current[204] - current[205])
-        future_goal_diff = direction * 5.0 * (future[204] - future[205])
-        goal_delta = float(np.clip(
-            future_goal_diff - current_goal_diff, -2.0, 2.0,
-        ))
+        components = transition_policy_utility_numpy(
+            current,
+            future,
+            attacking_home=attacking_home,
+        )
+        progress = float(np.asarray(components["territorial_delta"]))
+        goal_delta = float(np.asarray(components["goal_diff_delta"]))
+        possession_delta = float(np.asarray(components["possession_delta"]))
         possession_home = float(np.clip(future[209], 0.0, 1.0))
         retention_probability = (
             possession_home if attacking_home else 1.0 - possession_home
         )
-        retention_edge = 2.0 * retention_probability - 1.0
-        xg_net = float(np.clip(
-            output.progress_delta * rollout_steps, -1.0, 1.0,
-        ))
         epistemic_uncertainty = compound_uncertainty(
             output.epistemic_uncertainty, rollout_steps,
         )
@@ -662,12 +672,7 @@ class WorldModelRuntime:
         uncertainty = compose_uncertainty(
             epistemic_uncertainty, aleatoric_uncertainty,
         )
-        utility = (
-            goal_delta
-            + 0.35 * xg_net
-            + 0.15 * progress
-            + 0.05 * retention_edge
-        )
+        utility = float(np.asarray(components["policy_utility"]))
         transition_samples = (output.uncertainty_samples or {}).get(
             "transition_states",
             np.asarray(future, dtype=np.float32).reshape(1, 1, -1),
@@ -815,9 +820,12 @@ class WorldModelRuntime:
             "rollout_steps": rollout_steps,
             "segment_horizon_s": segment_horizon_s,
             "policy_utility": float(utility),
+            "policy_utility_version": POLICY_UTILITY_VERSION,
             "progress": progress,
             "retention_probability": retention_probability,
-            "xg_net_delta": xg_net,
+            "possession_delta": possession_delta,
+            "territorial_value_delta": progress,
+            "xg_net_delta": progress,
             "goal_diff_delta": goal_delta,
             "uncertainty": uncertainty,
             "epistemic_uncertainty": epistemic_uncertainty,

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "state": "preregistered_code_ready_awaiting_sealed_checkpoint",
+  "arms": [
+    "M0",
+    "M2_home",
+    "M2_away"
+  ],
+  "candidate": {
+    "pipeline": "M2",
+    "checkpoint_binding": "bound_at_first_execution_then_immutable",
+    "required_policy_utility_branches": [
+      "pass"
+    ],
+    "optional_policy_utility_branches": [
+      "cross"
+    ],
+    "shot_authority": "independent_frozen_shot_head_gate"
+  },
+  "design": {
+    "fixtures": [
+      ["Mexico", "South Korea"],
+      ["Brazil", "Germany"],
+      ["France", "England"],
+      ["Argentina", "Netherlands"],
+      ["Spain", "Morocco"],
+      ["Portugal", "Uruguay"]
+    ],
+    "samples_per_fixture": 5,
+    "seed_start": 260903,
+    "match_seconds": 5400.0,
+    "matched_units": 30,
+    "runs_total": 90,
+    "control_scope": {
+      "M0": "none",
+      "M2_home": "home",
+      "M2_away": "away"
+    },
+    "mirror_rule": "Each M0 fixture-seed is compared once from the home perspective and once from the away perspective. M2 controls only that perspective's team."
+  },
+  "analysis": {
+    "primary_efficacy_metric": "controlled_micro_xg_margin",
+    "minimum_meaningful_delta": 0.015,
+    "mechanism_metric": "wm_attributable_realized_policy_utility_mean",
+    "minimum_counterfactual_change_rate": 0.02,
+    "external_validity_metric": "continuous_calibration_loss_fail_penalty_zero",
+    "external_noninferiority_margin": 1.0,
+    "confidence_level": 0.95,
+    "bootstrap_method": "fixture_stratified_matched_seed_cluster_bootstrap",
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 260903,
+    "goal_difference_role": "secondary_descriptive",
+    "promotion_requires_all_gates": true
+  },
+  "integrity": {
+    "interim_analysis": false,
+    "optional_stopping": false,
+    "post_hoc_fixture_or_metric_selection": false,
+    "resume_requires_identical_protocol_checkpoint_and_code_identity": true,
+    "historical_m1_results_are_current_m2_evidence": false,
+    "code_identity_files": [
+      "src/match_engine/world_model/policy_utility.py",
+      "src/match_engine/world_model/inference.py",
+      "src/match_engine/world_model/planner.py",
+      "src/match_engine/world_model/action_adoption.py",
+      "src/match_engine/calibration/ablation.py",
+      "src/match_engine/calibration/benchmark_core.py",
+      "scripts/train_world_model.py",
+      "scripts/run_m2_mirrored_policy_study.py"
+    ]
+  }
+}

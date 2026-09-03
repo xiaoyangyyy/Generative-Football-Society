@@ -31,6 +31,10 @@ from src.match_engine.world_model.state_scales import (
     projected_semantic_path_probabilities,
     semantic_event_targets,
 )
+from src.match_engine.world_model.policy_utility import (
+    POLICY_UTILITY_VERSION,
+    transition_policy_utility_tensor,
+)
 
 
 def _merge(*arrays):
@@ -135,6 +139,71 @@ def _multi_step_curriculum_weight(
     return float(base * np.clip(progress, 0.0, 1.0))
 
 
+def _policy_utility_validation(
+    predicted_members: np.ndarray,
+    targets: np.ndarray,
+    action_kinds: np.ndarray,
+    groups: np.ndarray,
+    *,
+    configured_loss_weight: float,
+    optimization_steps: int,
+) -> dict:
+    """Build action-specific grouped holdout evidence for M2 authorization."""
+    predictions = np.asarray(predicted_members, dtype=np.float64)
+    observed = np.asarray(targets, dtype=np.float64).reshape(-1)
+    kinds = np.asarray(action_kinds).astype("U")
+    group_ids = np.asarray(groups).astype("U")
+    if predictions.ndim != 2 or predictions.shape[1] != len(observed):
+        raise ValueError("policy utility predictions must be [members, samples]")
+    if len(kinds) != len(observed) or len(group_ids) != len(observed):
+        raise ValueError("policy utility validation arrays must align")
+    ensemble = predictions.mean(axis=0)
+    actions = {}
+    for action in ("pass", "shot", "cross", "hold"):
+        mask = kinds == action
+        count = int(mask.sum())
+        if count:
+            target = observed[mask]
+            prediction = ensemble[mask]
+            model_mse = float(np.mean((prediction - target) ** 2))
+            persistence_mse = float(np.mean(target ** 2))
+            member_mean_mse = float(np.mean([
+                np.mean((member[mask] - target) ** 2)
+                for member in predictions
+            ]))
+            correlation = (
+                float(np.corrcoef(prediction, target)[0, 1])
+                if np.std(prediction) > 1e-12 and np.std(target) > 1e-12
+                else 0.0
+            )
+            skill = float(
+                1.0 - model_mse / max(1e-12, persistence_mse)
+            )
+        else:
+            model_mse = persistence_mse = member_mean_mse = 0.0
+            correlation = skill = 0.0
+        actions[action] = {
+            "samples": count,
+            "groups": int(len(np.unique(group_ids[mask]))) if count else 0,
+            "model_mse": model_mse,
+            "persistence_mse": persistence_mse,
+            "skill_vs_persistence": skill,
+            "member_mean_mse": member_mean_mse,
+            "ensemble_gain_vs_member_mean": member_mean_mse - model_mse,
+            "prediction_target_correlation": correlation,
+            "grouped_holdout": True,
+        }
+    return {
+        "version": 1,
+        "target_version": POLICY_UTILITY_VERSION,
+        "trained_with_policy_utility_objective": optimization_steps > 0,
+        "configured_loss_weight": float(configured_loss_weight),
+        "optimization_steps": int(optimization_steps),
+        "baseline": "same_state_zero_transition_utility",
+        "actions": actions,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=45)
@@ -169,6 +238,15 @@ def main() -> None:
         default=0.20,
         help="Final proper-BCE weight for member-specific semantic event heads.",
     )
+    parser.add_argument(
+        "--policy-utility-loss-weight",
+        type=float,
+        default=0.25,
+        help=(
+            "Final weight of actor-centred transition-utility supervision "
+            "(0 disables M2 policy-value training)."
+        ),
+    )
     parser.add_argument("--dataset-manifest", type=str, default="")
     parser.add_argument(
         "--run-dir", type=str, default="",
@@ -191,6 +269,8 @@ def main() -> None:
         parser.error("--multi-step-warmup-fraction must be in [0, 1)")
     if not 0.0 <= args.semantic_event_loss_weight <= 1.0:
         parser.error("--semantic-event-loss-weight must be in [0, 1]")
+    if not 0.0 <= args.policy_utility_loss_weight <= 1.0:
+        parser.error("--policy-utility-loss-weight must be in [0, 1]")
     if args.checkpoint_every < 1:
         parser.error("--checkpoint-every must be at least 1")
 
@@ -393,6 +473,8 @@ def main() -> None:
     semantic_path_one_step_optimization_steps = 0
     semantic_path_two_step_optimization_steps = 0
     max_semantic_event_weight_applied = 0.0
+    policy_utility_optimization_steps = 0
+    max_policy_utility_weight_applied = 0.0
     from src.training import TrainingJob
 
     job_config = {
@@ -409,6 +491,7 @@ def main() -> None:
         "multi_step_loss_weight": args.multi_step_loss_weight,
         "multi_step_warmup_fraction": args.multi_step_warmup_fraction,
         "semantic_event_loss_weight": args.semantic_event_loss_weight,
+        "policy_utility_loss_weight": args.policy_utility_loss_weight,
         "dataset_manifest": (
             str(Path(args.dataset_manifest).resolve())
             if args.dataset_manifest else ""
@@ -454,6 +537,12 @@ def main() -> None:
         max_semantic_event_weight_applied = float(
             counters.get("max_semantic_event_weight_applied", 0.0)
         )
+        policy_utility_optimization_steps = int(
+            counters.get("policy_utility_optimization_steps", 0)
+        )
+        max_policy_utility_weight_applied = float(
+            counters.get("max_policy_utility_weight_applied", 0.0)
+        )
 
     for epoch in range(start_epoch, args.epochs):
         loss_sum = 0.0
@@ -468,6 +557,12 @@ def main() -> None:
         )
         semantic_event_weight = _multi_step_curriculum_weight(
             args.semantic_event_loss_weight,
+            epoch,
+            args.epochs,
+            warmup_fraction=args.multi_step_warmup_fraction,
+        )
+        policy_utility_weight = _multi_step_curriculum_weight(
+            args.policy_utility_loss_weight,
             epoch,
             args.epochs,
             warmup_fraction=args.multi_step_warmup_fraction,
@@ -542,6 +637,27 @@ def main() -> None:
                 + 0.30 * shot_loss
                 + 0.20 * progress_loss
             )
+            if policy_utility_weight > 0.0:
+                predicted_utility = transition_policy_utility_tensor(
+                    o, pred_obs_members,
+                )["policy_utility"]
+                target_utility = transition_policy_utility_tensor(
+                    o, no,
+                )["policy_utility"]
+                utility_loss, _utility_member_losses = (
+                    _bootstrap_transition_loss(
+                        predicted_utility.unsqueeze(-1),
+                        target_utility.unsqueeze(-1),
+                        torch.ones(1, dtype=o.dtype, device=o.device),
+                        transition_bootstrap,
+                    )
+                )
+                loss = loss + policy_utility_weight * utility_loss
+                policy_utility_optimization_steps += 1
+                max_policy_utility_weight_applied = max(
+                    max_policy_utility_weight_applied,
+                    policy_utility_weight,
+                )
             if semantic_event_weight > 0.0:
                 event_logits = model.semantic_event_logits(
                     o, pred_obs_members, a,
@@ -651,7 +767,8 @@ def main() -> None:
             f"two_step_pairs={len(train_pair_left)} "
             f"two_step_weight={sequence_weight:.4f} "
             f"two_step_loss={sequence_loss_sum/max(1,sequence_batches):.4f} "
-            f"semantic_event_weight={semantic_event_weight:.4f}"
+            f"semantic_event_weight={semantic_event_weight:.4f} "
+            f"policy_utility_weight={policy_utility_weight:.4f}"
         )
         epoch_number = epoch + 1
         epoch_metrics = {
@@ -663,6 +780,7 @@ def main() -> None:
             "two_step_weight": sequence_weight,
             "two_step_loss": sequence_loss_sum / max(1, sequence_batches),
             "semantic_event_weight": semantic_event_weight,
+            "policy_utility_weight": policy_utility_weight,
         }
         stop_requested = job.stop_requested()
         if (
@@ -690,6 +808,12 @@ def main() -> None:
                     "semantic_path_one_step_optimization_steps": semantic_path_one_step_optimization_steps,
                     "semantic_path_two_step_optimization_steps": semantic_path_two_step_optimization_steps,
                     "max_semantic_event_weight_applied": max_semantic_event_weight_applied,
+                    "policy_utility_optimization_steps": (
+                        policy_utility_optimization_steps
+                    ),
+                    "max_policy_utility_weight_applied": (
+                        max_policy_utility_weight_applied
+                    ),
                 },
             })
         job.record_epoch(epoch_number, epoch_metrics)
@@ -880,6 +1004,22 @@ def main() -> None:
             obs_weights.numpy(),
             groups[val_idx][cm],
         )
+        policy_action_kinds = np.full(len(val_idx), "hold", dtype="U8")
+        policy_action_kinds[is_pass[val_idx]] = "pass"
+        policy_action_kinds[is_cross[val_idx]] = "cross"
+        policy_action_kinds[is_shot[val_idx]] = "shot"
+        policy_utility_validation = _policy_utility_validation(
+            transition_policy_utility_tensor(
+                vo, vp_members,
+            )["policy_utility"].numpy(),
+            transition_policy_utility_tensor(
+                vo, vn,
+            )["policy_utility"].numpy(),
+            policy_action_kinds,
+            groups[val_idx],
+            configured_loss_weight=args.policy_utility_loss_weight,
+            optimization_steps=policy_utility_optimization_steps,
+        )
         pass_logits = vpass_all[:, :, torch.from_numpy(pm), :].squeeze(-1)
         pass_targets = torch.from_numpy(pass_success[val_idx][pm]).float()
     # Class-balanced training learns a ranking score, not a calibrated probability.
@@ -1016,6 +1156,7 @@ def main() -> None:
         "pass_planner_quality": pass_planner_quality,
         "shot_planner_quality": shot_planner_quality,
         "cross_action_validation": cross_action_validation,
+        "policy_utility": policy_utility_validation,
         "pass_samples": int(pm.sum()),
         "shot_samples": shot_count,
         "shot_goals": shot_goals,
@@ -1051,6 +1192,20 @@ def main() -> None:
                 "member_independent_bootstrap": True,
                 "optimization_steps": total_sequence_optimization_steps,
                 "max_curriculum_weight_applied": max_sequence_weight_applied,
+            },
+            "policy_utility_training": {
+                "target_version": POLICY_UTILITY_VERSION,
+                "objective": "actor_centered_realized_transition_utility",
+                "baseline": "same_state_zero_transition_utility",
+                "configured_loss_weight": float(
+                    args.policy_utility_loss_weight
+                ),
+                "optimization_steps": policy_utility_optimization_steps,
+                "max_curriculum_weight_applied": (
+                    max_policy_utility_weight_applied
+                ),
+                "member_independent_bootstrap": True,
+                "labels": "realized_future_state_only",
             },
             "semantic_event_training": {
                 "events": list(FALSIFIABLE_SEMANTIC_EVENTS),

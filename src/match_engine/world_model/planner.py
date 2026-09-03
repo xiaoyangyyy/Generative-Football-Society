@@ -13,7 +13,14 @@ from src.match_engine.world_model.action_codec import (
     encode_pass_candidate,
     encode_shot_action,
 )
-from src.match_engine.world_model.config import world_model_plan_enabled
+from src.match_engine.world_model.config import (
+    world_model_outcome_aligned_policy_enabled,
+    world_model_plan_enabled,
+)
+from src.match_engine.world_model.schema import (
+    HORIZON_INDEX,
+    HORIZON_SCALE_SECONDS,
+)
 from src.match_engine.shot_decision import ShotEvidence, shot_counterfactual_value
 
 if TYPE_CHECKING:
@@ -45,6 +52,84 @@ def _decision_certainty(runtime) -> float:
     return 1.0 - float(np.clip(uncertainty, 0.0, 1.0))
 
 
+def _policy_value(
+    runtime,
+    observation: np.ndarray,
+    action: np.ndarray,
+    *,
+    action_kind: str,
+    attacking_home: bool,
+    legacy_authority: dict,
+) -> tuple[float | None, float, dict]:
+    """Use M2 value only when its exact action-specific evidence gate is open."""
+    if not world_model_outcome_aligned_policy_enabled():
+        return (
+            float(runtime.score_action(observation, action)),
+            _decision_certainty(runtime),
+            {
+                **legacy_authority,
+                "value_source": "legacy_transition_score",
+            },
+        )
+    authority_method = getattr(runtime, "policy_utility_authority", None)
+    predictor = getattr(runtime, "predict_policy_utility", None)
+    if not callable(authority_method) or not callable(predictor):
+        return None, 0.0, {
+            **legacy_authority,
+            "authorized": False,
+            "authority": 0.0,
+            "reason": "policy_utility_runtime_contract_missing",
+            "value_source": "outcome_aligned_policy_utility",
+        }
+    policy_authority = dict(authority_method(action_kind))
+    authorized = bool(
+        legacy_authority.get("authorized")
+        and policy_authority.get("authorized")
+    )
+    authority = min(
+        float(legacy_authority.get("decision_confidence", 0.0)),
+        float(policy_authority.get("authority", 0.0)),
+    ) if authorized else 0.0
+    if authority <= 0.0:
+        return None, 0.0, {
+            **legacy_authority,
+            **policy_authority,
+            "authorized": False,
+            "authority": 0.0,
+            "reason": str(policy_authority.get(
+                "reason", "policy_utility_evidence_gate_closed",
+            )),
+            "value_source": "outcome_aligned_policy_utility",
+        }
+    horizon_s = float(max(
+        0.1,
+        action[HORIZON_INDEX] * HORIZON_SCALE_SECONDS
+        if len(action) > HORIZON_INDEX else 10.0,
+    ))
+    prediction = dict(predictor(
+        observation,
+        action,
+        action_kind=action_kind,
+        attacking_home=attacking_home,
+        horizon_s=horizon_s,
+    ))
+    uncertainty = float(np.clip(
+        prediction.get("uncertainty", 1.0), 0.0, 1.0,
+    ))
+    certainty = 1.0 - uncertainty
+    return float(prediction["policy_utility"]), certainty, {
+        **legacy_authority,
+        **policy_authority,
+        "authorized": True,
+        "authority": authority,
+        "decision_confidence": authority,
+        "decision_certainty": certainty,
+        "value_source": "outcome_aligned_policy_utility",
+        "policy_utility_version": prediction.get("policy_utility_version"),
+        "predicted_policy_utility": float(prediction["policy_utility"]),
+    }
+
+
 def pass_imagination_bonuses(
     runtime: "WorldModelRuntime",
     state: "MatchAffectiveState",
@@ -69,7 +154,14 @@ def pass_imagination_bonuses(
         target=np.asarray(state.ball.position),
         horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
     )
-    baseline = runtime.score_action(obs, hold_action)
+    baseline, baseline_certainty, value_gate = _policy_value(
+        runtime, obs, hold_action,
+        action_kind="pass",
+        attacking_home=attacking_home,
+        legacy_authority=authority,
+    )
+    if baseline is None:
+        return [0.0] * len(meta)
     bonuses: List[float] = []
 
     for candidate in meta:
@@ -84,8 +176,19 @@ def pass_imagination_bonuses(
             success_p=success_prior,
             horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
         )
-        val = runtime.score_action(obs, act)
-        certainty = _decision_certainty(runtime)
+        val, certainty, _candidate_gate = _policy_value(
+            runtime, obs, act,
+            action_kind="pass",
+            attacking_home=attacking_home,
+            legacy_authority=authority,
+        )
+        if val is None:
+            bonuses.append(0.0)
+            continue
+        confidence = float(value_gate.get(
+            "decision_confidence", confidence,
+        ))
+        certainty = min(certainty, baseline_certainty)
         advantage = float(np.clip(val - baseline, -0.35, 0.35))
         bonuses.append(finite_float(blend * confidence * certainty * advantage, 0.0))
     return bonuses
@@ -118,6 +221,7 @@ def pass_candidate_policy_probabilities(
         }
     values: list[float] = []
     certainties: list[float] = []
+    value_gates: list[dict] = []
     for candidate in meta:
         recv, kind, tgt, _lane, _press, _omega = candidate[:6]
         success_prior = float(candidate[6]) if len(candidate) > 6 else 0.5
@@ -126,11 +230,33 @@ def pass_candidate_policy_probabilities(
             success_p=success_prior,
             horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
         )
-        values.append(float(runtime.score_action(obs, action)))
-        certainties.append(_decision_certainty(runtime))
+        value, certainty, value_gate = _policy_value(
+            runtime, obs, action,
+            action_kind="pass",
+            attacking_home=attacking_home,
+            legacy_authority=authority,
+        )
+        if value is None:
+            return base, {
+                **disabled,
+                **value_gate,
+                "reason": str(value_gate.get(
+                    "reason", "policy_utility_evidence_gate_closed",
+                )),
+            }
+        values.append(value)
+        certainties.append(certainty)
+        value_gates.append(value_gate)
     model_values = np.asarray(values, dtype=float)
     spread = float(np.max(model_values) - np.min(model_values))
     certainty = float(np.dot(base, np.asarray(certainties, dtype=float)))
+    if value_gates:
+        confidence = min(
+            confidence,
+            min(float(gate.get(
+                "decision_confidence", confidence,
+            )) for gate in value_gates),
+        )
     blend = float(getattr(runtime.cfg, "planner_blend", 0.0))
     blend_weight = float(np.clip(
         blend * min(confidence, certainty), 0.0, 0.35,
@@ -157,6 +283,11 @@ def pass_candidate_policy_probabilities(
         "model_value_spread": spread,
         "blend_weight": blend_weight,
         "model_values": values,
+        "value_source": (
+            value_gates[0].get("value_source") if value_gates
+            else "unavailable"
+        ),
+        "policy_utility_gate": value_gates[0] if value_gates else {},
     }
 
 
@@ -264,29 +395,64 @@ def action_imagination_adjustments(
                 horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
             )
             hold_action[13] = 0.90
-            pass_value = float(runtime.score_action(observation, pass_action))
-            hold_value = float(runtime.score_action(observation, hold_action))
-            certainty = _decision_certainty(runtime)
-            advantage = float(np.clip(pass_value - hold_value, -0.35, 0.35))
-            adjustment = finite_float(
-                float(runtime.cfg.planner_blend) * confidence * certainty * advantage,
-                0.0,
+            pass_value, pass_certainty, value_gate = _policy_value(
+                runtime, observation, pass_action,
+                action_kind="pass",
+                attacking_home=attacking_home,
+                legacy_authority=authority,
             )
-            adjustment = float(np.clip(adjustment, -0.35, 0.35))
-            out[pass_index] += adjustment
-            adjustments["pass"] = adjustment
-            gates["pass"].update({
-                "open": True,
-                "direct_action_authorized": True,
-                "reason": "validated_pass_vs_hold_advantage",
-                "pass_value": pass_value,
-                "hold_value": hold_value,
-                "model_advantage": advantage,
-                "certainty": certainty,
-                "decision_certainty": certainty,
-                "decision_confidence": confidence,
-                "policy_blend": float(runtime.cfg.planner_blend),
-            })
+            hold_value, hold_certainty, hold_gate = _policy_value(
+                runtime, observation, hold_action,
+                action_kind="pass",
+                attacking_home=attacking_home,
+                legacy_authority=authority,
+            )
+            if pass_value is None or hold_value is None:
+                gates["pass"].update({
+                    **value_gate,
+                    "open": False,
+                    "direct_action_authorized": False,
+                    "reason": str(value_gate.get(
+                        "reason", "policy_utility_evidence_gate_closed",
+                    )),
+                })
+            else:
+                confidence = min(
+                    confidence,
+                    float(value_gate.get(
+                        "decision_confidence", confidence,
+                    )),
+                )
+                certainty = min(pass_certainty, hold_certainty)
+                advantage = float(np.clip(
+                    pass_value - hold_value, -0.35, 0.35,
+                ))
+                adjustment = finite_float(
+                    float(runtime.cfg.planner_blend)
+                    * confidence * certainty * advantage,
+                    0.0,
+                )
+                adjustment = float(np.clip(adjustment, -0.35, 0.35))
+                out[pass_index] += adjustment
+                adjustments["pass"] = adjustment
+                gates["pass"].update({
+                    **value_gate,
+                    "open": True,
+                    "direct_action_authorized": True,
+                    "reason": (
+                        "validated_outcome_aligned_pass_vs_hold_advantage"
+                        if world_model_outcome_aligned_policy_enabled()
+                        else "validated_pass_vs_hold_advantage"
+                    ),
+                    "pass_value": pass_value,
+                    "hold_value": hold_value,
+                    "model_advantage": advantage,
+                    "certainty": certainty,
+                    "decision_certainty": certainty,
+                    "decision_confidence": confidence,
+                    "policy_blend": float(runtime.cfg.planner_blend),
+                    "hold_value_gate": hold_gate,
+                })
         else:
             gates["pass"]["reason"] = "pass_quality_gate_closed"
     if "shot" in labels and "shot" in feasible:
@@ -354,40 +520,89 @@ def action_imagination_adjustments(
                 "hold", target=np.asarray(state.ball.position),
                 horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
             )
-            cross_value = float(runtime.score_cross_action(
-                observation, cross_action, attacking_home=attacking_home,
-            ))
-            hold_value = float(runtime.score_cross_action(
-                observation, hold_action, attacking_home=attacking_home,
-            ))
-            cross_certainty = _decision_certainty(runtime)
-            cross_advantage = float(np.clip(
-                cross_value - hold_value, -0.35, 0.35,
-            ))
-            cross_blend = float(getattr(
-                runtime.cfg, "cross_planner_blend", 0.20,
-            ))
-            cross_adjustment = finite_float(
-                cross_blend * cross_confidence * cross_certainty
-                * cross_advantage,
-                0.0,
-            )
-            cross_adjustment = float(np.clip(
-                cross_adjustment, -0.35, 0.35,
-            ))
-            out[cross_index] += cross_adjustment
-            adjustments["cross"] = cross_adjustment
-            gates["cross"].update({
-                "open": True,
-                "direct_action_authorized": True,
-                "reason": "validated_cross_vs_continuation_advantage",
-                "cross_value": cross_value,
-                "hold_value": hold_value,
-                "model_advantage": cross_advantage,
-                "certainty": cross_certainty,
-                "decision_certainty": cross_certainty,
-                "policy_blend": cross_blend,
-            })
+            if world_model_outcome_aligned_policy_enabled():
+                cross_value, cross_action_certainty, value_gate = _policy_value(
+                    runtime, observation, cross_action,
+                    action_kind="cross",
+                    attacking_home=attacking_home,
+                    legacy_authority=cross_authority,
+                )
+                hold_value, hold_certainty, hold_gate = _policy_value(
+                    runtime, observation, hold_action,
+                    action_kind="cross",
+                    attacking_home=attacking_home,
+                    legacy_authority=cross_authority,
+                )
+            else:
+                cross_value = float(runtime.score_cross_action(
+                    observation, cross_action, attacking_home=attacking_home,
+                ))
+                cross_action_certainty = _decision_certainty(runtime)
+                hold_value = float(runtime.score_cross_action(
+                    observation, hold_action, attacking_home=attacking_home,
+                ))
+                hold_certainty = _decision_certainty(runtime)
+                value_gate = {
+                    **cross_authority,
+                    "value_source": "legacy_cross_score",
+                }
+                hold_gate = dict(value_gate)
+            if cross_value is None or hold_value is None:
+                gates["cross"].update({
+                    **value_gate,
+                    "open": False,
+                    "direct_action_authorized": False,
+                    "reason": str(value_gate.get(
+                        "reason", "policy_utility_evidence_gate_closed",
+                    )),
+                })
+                cross_confidence = 0.0
+                cross_advantage = 0.0
+                cross_adjustment = 0.0
+            else:
+                cross_confidence = min(
+                    cross_confidence,
+                    float(value_gate.get(
+                        "decision_confidence", cross_confidence,
+                    )),
+                )
+                cross_certainty = min(
+                    cross_action_certainty, hold_certainty,
+                )
+                cross_advantage = float(np.clip(
+                    cross_value - hold_value, -0.35, 0.35,
+                ))
+                cross_blend = float(getattr(
+                    runtime.cfg, "cross_planner_blend", 0.20,
+                ))
+                cross_adjustment = finite_float(
+                    cross_blend * cross_confidence * cross_certainty
+                    * cross_advantage,
+                    0.0,
+                )
+                cross_adjustment = float(np.clip(
+                    cross_adjustment, -0.35, 0.35,
+                ))
+                out[cross_index] += cross_adjustment
+                adjustments["cross"] = cross_adjustment
+                gates["cross"].update({
+                    **value_gate,
+                    "open": True,
+                    "direct_action_authorized": True,
+                    "reason": (
+                        "validated_outcome_aligned_cross_vs_hold_advantage"
+                        if world_model_outcome_aligned_policy_enabled()
+                        else "validated_cross_vs_continuation_advantage"
+                    ),
+                    "cross_value": cross_value,
+                    "hold_value": hold_value,
+                    "model_advantage": cross_advantage,
+                    "certainty": cross_certainty,
+                    "decision_certainty": cross_certainty,
+                    "decision_confidence": cross_confidence,
+                    "policy_blend": cross_blend,
+                    "hold_value_gate": hold_gate,
+                })
         else:
             gates["cross"]["reason"] = "cross_quality_gate_closed"
     elif "cross" in labels:
