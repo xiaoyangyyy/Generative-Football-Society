@@ -28,6 +28,9 @@ from src.product.decision_ledger import (
     validate_manager_decision_ledger,
 )
 from src.match_engine.tactical_catalog import TACTICAL_KEYS
+from src.match_engine.world_model.mirrored_policy_evaluation import (
+    study_execution_identity,
+)
 from src.product.decision_advice import (
     build_manager_advice_adoption,
     build_manager_decision_advice,
@@ -854,6 +857,75 @@ def test_formal_evidence_identity_tracks_exact_protocol_checkpoint_and_code(tmp_
     assert stale == {
         "verified": False, "reason": "progress_code_identity_stale",
     }
+
+
+def test_m2_product_evidence_is_independent_current_and_fail_closed(tmp_path):
+    protocol_path = (
+        tmp_path / "data/evaluation/m2_mirrored_policy_protocol_v1.json"
+    )
+    progress_path = (
+        tmp_path / "data/evaluation/m2_mirrored_policy_progress_v1.json"
+    )
+    checkpoint = tmp_path / "data/world_model/m2.pt"
+    code = tmp_path / "src/controller.py"
+    input_path = tmp_path / "data/calibration/target.json"
+    for path, content in (
+        (checkpoint, b"checkpoint"),
+        (code, b"controller-v1"),
+        (input_path, b"{}"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    protocol = {
+        "protocol_id": "m2-mirrored-policy-v1",
+        "claim_scope": "simulator_only",
+        "state": "preregistered_code_ready_awaiting_sealed_checkpoint",
+        "design": {"runs_total": 3},
+        "integrity": {
+            "code_identity_files": ["src/controller.py"],
+            "input_identity_globs": ["data/calibration/*.json"],
+        },
+    }
+    protocol_path.parent.mkdir(parents=True, exist_ok=True)
+    protocol_path.write_text(json.dumps(protocol), encoding="utf-8")
+    identity = study_execution_identity(
+        tmp_path, protocol_path, protocol, checkpoint,
+    )
+    progress = {
+        "state": "completed",
+        "execution_identity": identity,
+        "candidate_eligibility": {"eligible": True},
+        "arms": {
+            "M0": {"rows": [{}]},
+            "M2_home": {"rows": [{}]},
+            "M2_away": {"rows": [{}]},
+        },
+        "analysis": {
+            "state": "completed",
+            "decision": "promotion_supported",
+            "promotion_supported": True,
+            "primary_controlled_micro_xg_effect": {"point_estimate": 0.2},
+            "promotion_gates": {"all": True},
+        },
+    }
+    progress_path.write_text(json.dumps(progress), encoding="utf-8")
+    workspace = ProductWorkspace(tmp_path, StudioConfig(mode="research"))
+
+    current = workspace.evidence()["outcome_aligned_m2_study"]
+    assert current["result_identity_verified"] is True
+    assert current["result_applicable_to_current_code"] is True
+    assert current["promotion_supported"] is True
+    assert current["primary"] == {"point_estimate": 0.2}
+    assert current["runs_executed"] == 3
+
+    code.write_bytes(b"controller-v2")
+    stale = workspace.evidence()["outcome_aligned_m2_study"]
+    assert stale["historical_result_available"] is True
+    assert stale["result_identity_verified"] is False
+    assert stale["result_applicable_to_current_code"] is False
+    assert stale["promotion_supported"] is False
+    assert stale["result_status"] is None
+    assert stale["primary"] == {}
 
 
 def test_cognitive_readiness_rejects_retired_deepseek_model(tmp_path, monkeypatch):

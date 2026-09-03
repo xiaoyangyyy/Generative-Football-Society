@@ -3,10 +3,72 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from pathlib import Path
 import random
 from typing import Any, Callable
 
 import numpy as np
+
+from src.infrastructure import file_sha256
+
+
+def study_execution_identity(
+    root: str | Path,
+    protocol_path: str | Path,
+    protocol: dict[str, Any],
+    checkpoint: str | Path,
+) -> dict[str, Any]:
+    """Hash every frozen M2 dependency using project-relative identities."""
+    root_path = Path(root).resolve()
+    protocol_file = Path(protocol_path).resolve()
+    checkpoint_file = Path(checkpoint).resolve()
+    try:
+        protocol_relative = protocol_file.relative_to(root_path).as_posix()
+        checkpoint_relative = checkpoint_file.relative_to(root_path).as_posix()
+    except ValueError as exc:
+        raise ValueError(
+            "M2 protocol and checkpoint must be contained by the project root"
+        ) from exc
+    if not protocol_file.is_file():
+        raise FileNotFoundError(f"missing M2 protocol: {protocol_relative}")
+    if not checkpoint_file.is_file():
+        raise FileNotFoundError(
+            f"missing candidate checkpoint: {checkpoint_relative}"
+        )
+
+    integrity = protocol.get("integrity") or {}
+    code: dict[str, str] = {}
+    for raw_relative in integrity.get("code_identity_files") or []:
+        relative = str(raw_relative)
+        path = (root_path / relative).resolve()
+        try:
+            canonical = path.relative_to(root_path).as_posix()
+        except ValueError as exc:
+            raise ValueError(f"invalid code identity path: {relative}") from exc
+        if not path.is_file():
+            raise ValueError(f"invalid code identity path: {relative}")
+        code[canonical] = file_sha256(path)
+
+    inputs: dict[str, str] = {}
+    for raw_pattern in integrity.get("input_identity_globs") or []:
+        pattern = str(raw_pattern)
+        matched = sorted(path for path in root_path.glob(pattern) if path.is_file())
+        if not matched:
+            raise ValueError(f"input identity glob matched no files: {pattern}")
+        for path in matched:
+            relative = path.resolve().relative_to(root_path).as_posix()
+            inputs[relative] = file_sha256(path)
+    if not code or not inputs:
+        raise ValueError("M2 execution identity requires code and input hashes")
+
+    return {
+        "protocol_path": protocol_relative,
+        "protocol_sha256": file_sha256(protocol_file),
+        "checkpoint_path": checkpoint_relative,
+        "checkpoint_sha256": file_sha256(checkpoint_file),
+        "code_sha256": code,
+        "input_sha256": inputs,
+    }
 
 
 def controlled_perspective(row: dict[str, Any], side: str) -> dict[str, Any]:

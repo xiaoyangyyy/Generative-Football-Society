@@ -233,6 +233,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "outcome.result_identity_verified" in document
     assert "renderActionAdoptionWithoutManagerProtocol" in document
     assert "manager_advisor_adoption" in document
+    assert "renderActionAdoptionWithoutM2Outcome" in document
+    assert "outcome_aligned_m2_study" in document
+    assert "m2.result_applicable_to_current_code" in document
     assert 'name="experience"' in document
     assert 'id="tactical-options"' in document
     assert 'name="reuse_last_seed" type="checkbox" disabled' in document

@@ -1,5 +1,7 @@
 {
   "schema_version": 1,
+  "protocol_id": "m2-mirrored-policy-v1",
+  "claim_scope": "simulator_team_scoped_outcome_aligned_policy_not_real_football_causality",
   "state": "preregistered_code_ready_awaiting_sealed_checkpoint",
   "arms": [
     "M0",
@@ -26,11 +28,11 @@
       ["Spain", "Morocco"],
       ["Portugal", "Uruguay"]
     ],
-    "samples_per_fixture": 5,
+    "samples_per_fixture": 20,
     "seed_start": 260903,
     "match_seconds": 5400.0,
-    "matched_units": 30,
-    "runs_total": 90,
+    "matched_units": 120,
+    "runs_total": 360,
     "control_scope": {
       "M0": "none",
       "M2_home": "home",
@@ -40,8 +42,10 @@
   },
   "analysis": {
     "primary_efficacy_metric": "controlled_micro_xg_margin",
-    "minimum_meaningful_delta": 0.015,
+    "minimum_meaningful_delta": 0.1,
     "mechanism_metric": "wm_attributable_realized_policy_utility_mean",
+    "minimum_attributable_outcomes": 384,
+    "minimum_attributable_unit_fraction": 0.8,
     "minimum_counterfactual_change_rate": 0.02,
     "external_validity_metric": "continuous_calibration_loss_fail_penalty_zero",
     "external_noninferiority_margin": 1.0,
@@ -52,12 +56,32 @@
     "goal_difference_role": "secondary_descriptive",
     "promotion_requires_all_gates": true
   },
+  "power_analysis": {
+    "script": "scripts/estimate_m2_policy_power.py",
+    "source": "historical_action_outcome_v1_30_paired_units_design_only",
+    "historical_home_xg_margin_paired_sd": 0.3673,
+    "two_sided_alpha": 0.05,
+    "target_power": 0.8,
+    "normal_approximation_required_units_for_delta_0_10": 106,
+    "planned_matched_units": 120,
+    "historical_candidate_effect_used_as_expected_effect": false,
+    "purpose": "variance-based budget planning only; historical M1 efficacy is not M2 evidence"
+  },
   "integrity": {
     "interim_analysis": false,
     "optional_stopping": false,
     "post_hoc_fixture_or_metric_selection": false,
     "resume_requires_identical_protocol_checkpoint_and_code_identity": true,
     "historical_m1_results_are_current_m2_evidence": false,
+    "input_identity_globs": [
+      "src/**/*.py",
+      "data/raw/**/*",
+      "data/rosters/**/*.json",
+      "data/coaches/**/*.json",
+      "data/calibration/**/*.json",
+      "data/tactics_final_en.json",
+      "pyproject.toml"
+    ],
     "code_identity_files": [
       "src/match_engine/world_model/policy_utility.py",
       "src/match_engine/world_model/inference.py",
@@ -66,6 +90,7 @@
       "src/match_engine/calibration/ablation.py",
       "src/match_engine/calibration/benchmark_core.py",
       "scripts/train_world_model.py",
+      "scripts/estimate_m2_policy_power.py",
       "scripts/run_m2_mirrored_policy_study.py"
     ]
   }

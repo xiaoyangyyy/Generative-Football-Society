@@ -668,6 +668,12 @@ def test_benchmark_row_exports_action_adoption_mechanism_metrics():
             "pass_target_changes": 1,
             "pass_target_expected_changes": 1.5,
         },
+        world_model_runtime={
+            "loaded": True,
+            "checkpoint_signature": "sha256:test",
+            "control_scope": "home",
+            "outcome_aligned_policy": True,
+        },
     )
 
     row = row_from_summary(summary)
@@ -685,3 +691,7 @@ def test_benchmark_row_exports_action_adoption_mechanism_metrics():
     assert row["wm_pass_target_influenced_opportunities"] == 4.0
     assert row["wm_pass_target_changes"] == 1.0
     assert row["wm_pass_target_expected_changes"] == 1.5
+    assert row["wm_runtime_loaded"] is True
+    assert row["wm_checkpoint_signature"] == "sha256:test"
+    assert row["wm_control_scope"] == "home"
+    assert row["wm_outcome_aligned_policy"] is True

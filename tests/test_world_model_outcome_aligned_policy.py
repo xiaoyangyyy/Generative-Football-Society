@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from types import SimpleNamespace
 
 import numpy as np
@@ -9,6 +10,8 @@ import pytest
 
 from scripts.train_world_model import _policy_utility_validation
 import scripts.run_m2_mirrored_policy_study as m2_study
+from scripts.estimate_m2_policy_power import estimate as estimate_power
+import src.match_engine.calibration.benchmark_core as benchmark_core
 from src.match_engine.world_model.action_adoption import (
     direct_action_adoption_diagnostics,
     record_action_policy_sample,
@@ -22,6 +25,7 @@ from src.match_engine.world_model.planner import action_imagination_adjustments
 from src.match_engine.world_model.mirrored_policy_evaluation import (
     fixture_stratified_cluster_interval,
     paired_effect_rows,
+    study_execution_identity,
 )
 from src.match_engine.world_model.policy_utility import (
     POLICY_UTILITY_VERSION,
@@ -352,3 +356,138 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
 
     assert eligibility["eligible"] is True
     assert eligibility["two_step_gate"]["active"] is True
+
+
+def test_formal_rows_prove_checkpoint_and_one_sided_runtime_identity():
+    signature = "sha256:" + "a" * 64
+    baseline = [{
+        "wm_runtime_loaded": False,
+        "wm_checkpoint_signature": None,
+        "wm_control_scope": "none",
+        "wm_outcome_aligned_policy": False,
+    }]
+    home = [{
+        "wm_runtime_loaded": True,
+        "wm_checkpoint_signature": signature,
+        "wm_control_scope": "home",
+        "wm_outcome_aligned_policy": True,
+    }]
+    away = [{
+        "wm_runtime_loaded": True,
+        "wm_checkpoint_signature": signature,
+        "wm_control_scope": "away",
+        "wm_outcome_aligned_policy": True,
+    }]
+
+    audit = m2_study.verify_runtime_row_identity(
+        baseline, home, away, checkpoint_sha256="a" * 64,
+    )
+
+    assert audit["verified"] is True
+    corrupted = [dict(home[0], wm_control_scope="both")]
+    with pytest.raises(ValueError, match="runtime identity"):
+        m2_study.verify_runtime_row_identity(
+            baseline, corrupted, away, checkpoint_sha256="a" * 64,
+        )
+
+
+def test_benchmark_world_ignores_ambient_seed_and_persistence(monkeypatch):
+    captured = {}
+
+    def build(root, **kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(agents={}), None, {}
+
+    monkeypatch.setattr(
+        benchmark_core, "build_world_and_tournament", build,
+    )
+    monkeypatch.setenv("GFS_SEED", "999999")
+
+    rows = benchmark_core.run_micro_benchmark_rows(
+        root=".",
+        fixtures=[("MissingHome", "MissingAway")],
+        samples=3,
+        seed_start=260903,
+    )
+
+    assert rows == []
+    assert captured["initialization_seed"] == 260903
+    assert captured["load_persistence_state"] is False
+
+
+def test_power_budget_uses_historical_variance_not_candidate_mean():
+    rows0, rows1 = [], []
+    for index, difference in enumerate((-0.4, 0.0, 0.4)):
+        base = {
+            "fixture": "A_vs_B",
+            "sample_index": index,
+            "micro_xg_home": 1.0,
+            "micro_xg_away": 1.0,
+        }
+        candidate = dict(base)
+        candidate["micro_xg_home"] += 10.0 + difference
+        rows0.append(base)
+        rows1.append(candidate)
+    payload = {
+        "arms": {
+            "M0": {"rows": rows0},
+            "M1": {"rows": rows1},
+        },
+    }
+
+    report = estimate_power(payload, meaningful_delta=0.1)
+
+    assert report["historical_home_xg_margin_paired_sd"] == pytest.approx(0.4)
+    assert report["normal_approximation_required_units"] == 126
+    assert report["historical_candidate_mean_effect_used"] is False
+
+
+def test_m2_execution_identity_is_portable_complete_and_root_bounded(tmp_path):
+    root = tmp_path / "project"
+    protocol_path = root / "data/evaluation/protocol.json"
+    checkpoint = root / "data/world_model/candidate.pt"
+    code = root / "src/controller.py"
+    input_path = root / "data/calibration/target.json"
+    for path, content in (
+        (protocol_path, b"{}"),
+        (checkpoint, b"checkpoint"),
+        (code, b"controller"),
+        (input_path, b"{}"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    protocol = {
+        "integrity": {
+            "code_identity_files": ["src/controller.py"],
+            "input_identity_globs": ["data/calibration/*.json"],
+        },
+    }
+
+    identity = study_execution_identity(
+        root, protocol_path, protocol, checkpoint,
+    )
+
+    assert identity["protocol_path"] == "data/evaluation/protocol.json"
+    assert identity["checkpoint_path"] == "data/world_model/candidate.pt"
+    assert set(identity["code_sha256"]) == {"src/controller.py"}
+    assert set(identity["input_sha256"]) == {"data/calibration/target.json"}
+    code.write_bytes(b"changed")
+    assert study_execution_identity(
+        root, protocol_path, protocol, checkpoint,
+    ) != identity
+
+    external = tmp_path / "outside.pt"
+    external.write_bytes(b"outside")
+    with pytest.raises(ValueError, match="contained by the project root"):
+        study_execution_identity(root, protocol_path, protocol, external)
+
+
+def test_m2_protocol_validator_rejects_preregistered_threshold_drift():
+    protocol = m2_study.load_protocol(m2_study.DEFAULT_PROTOCOL)
+    assert m2_study.validate_protocol(protocol) == {
+        "fixtures": 6, "units": 120, "runs": 360,
+    }
+    changed = copy.deepcopy(protocol)
+    changed["analysis"]["minimum_meaningful_delta"] = 0.09
+    with pytest.raises(ValueError, match="threshold is frozen"):
+        m2_study.validate_protocol(changed)

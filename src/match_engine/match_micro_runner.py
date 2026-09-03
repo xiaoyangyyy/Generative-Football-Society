@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 import numpy as np
+from src.simulation.runtime import environment_snapshot, env_bool
 
 from src.match_engine.action_engine import ActionEngine
 from src.match_engine.affective_coupling import AffectiveSpatialCoupling
@@ -713,6 +714,20 @@ def _build_micro_match_summary(
                 getattr(wm_runtime, "shot_quality", None)
                 if wm_runtime is not None else None
             ),
+            "control_scope": (
+                environment_snapshot().get(
+                    "MATCH_WM_CONTROL_SCOPE", "both",
+                ).strip().lower()
+                if wm_runtime is not None else "none"
+            ),
+            "outcome_aligned_policy": (
+                env_bool(
+                    environment_snapshot(),
+                    "MATCH_WM_OUTCOME_ALIGNED_POLICY",
+                    False,
+                )
+                if wm_runtime is not None else False
+            ),
         },
         in_match_management={
             side: runtime.diagnostics()
@@ -1190,7 +1205,6 @@ def run_match_micro_simulation(
     state._wm_recorder = wm_recorder
     wm_cfg = wm_runtime.cfg if wm_runtime is not None else None
     from src.match_engine.world_model.config import world_model_branch_at_sec
-    from src.simulation.runtime import environment_snapshot, env_bool
 
     branch_at_sec = world_model_branch_at_sec()
     authoritative_clock = env_bool(

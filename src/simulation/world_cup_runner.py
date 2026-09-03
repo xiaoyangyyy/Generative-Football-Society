@@ -41,6 +41,7 @@ def build_world_and_tournament(
     base_dir, require_tactics=False, load_coaches=True,
     initialization_seed=None,
     run_identity_sha256=None,
+    load_persistence_state=True,
 ):
     raw_dir = os.path.join(base_dir, "data", "raw")
     data = load_data(raw_dir)
@@ -79,7 +80,8 @@ def build_world_and_tournament(
 
     from src.simulation.cross_match_state import load_persistence
 
-    load_persistence(base_dir, engine.agents)
+    if load_persistence_state:
+        load_persistence(base_dir, engine.agents)
 
     tournament = TournamentManager(
         engine, base_dir=base_dir,

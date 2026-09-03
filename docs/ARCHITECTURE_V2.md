@@ -3360,8 +3360,8 @@ opportunities; the all-opportunity mean remains diagnostic.
 
 The runtime also accepts MATCH_WM_CONTROL_SCOPE=home|away|both|none.
 Calibration presets define M0 as none, historical M1 as both, and M2 as a
-separate outcome-aligned pipeline. The preregistered M2 study runs each of 30
-fixture-seed units as M0, M2-home and M2-away. Home and away interventions
+separate outcome-aligned pipeline. The preregistered M2 study runs each of 120
+fixture-seed units as M0, M2-home and M2-away, for 360 matches. Home and away interventions
 control only the declared team and are analysed from that team's perspective.
 The matched-seed bootstrap samples within fixture while keeping both mirrored
 sides in the same cluster.
@@ -3371,13 +3371,35 @@ policy-utility and two-step authority, a non-trivial counterfactual action
 change rate, positive realized transition utility, a positive and meaningful
 controlled-team micro-xG-margin effect, and non-inferiority on continuous
 external calibration loss with the discontinuous failed-metric penalty set to
-zero. Goal difference is secondary because 30 matched units are not enough to
-make sparse score events a stable primary endpoint. Protocol, checkpoint and
-critical code hashes are bound at first execution and immutable on resume.
+zero. Goal difference remains secondary even at 120 matched units because
+sparse score events are materially noisier than micro-xG. Protocol,
+checkpoint, all simulation source files and every registered data/configuration
+input are hashed at first execution. Paths are project-relative, the protocol
+and checkpoint must remain inside the project root, and resume also requires
+the candidate eligibility report to remain identical.
+
+The budget is prospectively variance-based rather than copied from the
+inconclusive 30-pair study. Historical paired home-xG-margin differences had
+standard deviation 0.3673. A normal approximation requires 106 matched units
+for 80 percent power at two-sided alpha 0.05 to detect a meaningful 0.10
+xG-margin effect; M2 fixes 120 units. The historical M1 point estimate is not
+used as an expected M2 effect.
 
 This stage completed code and protocol only. It did not train a new
-checkpoint or execute the 90-match study. The current default checkpoint is
-correctly rejected because it contains neither the policy-utility training
-contract nor current two-step evidence. Consequently M2 remains unavailable
-to stable product mode until a newly trained sealed candidate passes the
-eligibility check and the complete preregistered study supports promotion.
+checkpoint or execute the 360-match study. The current default checkpoint is
+correctly rejected because it lacks the outcome-aligned policy-utility
+training contract, even though its historical two-step gate remains active.
+Formal calibration worlds now ignore ambient seeds and persistent squad state;
+every result row records whether the runtime loaded, its exact checkpoint
+signature, the controlled side and the M2 policy mode. Analysis rejects any
+row whose declared arm and runtime identity disagree.
+
+The product evidence API exposes M2 independently from the immutable M1
+result. It reports the protocol, bound checkpoint, eligibility, fixed budget,
+progress and gates, but exposes a result or promotion only when the completed
+analysis still matches the current protocol, checkpoint, source and input
+identity. A stale or partial M2 artifact therefore fails closed and cannot
+rewrite the historical `inconclusive_keep_research_only` conclusion.
+Consequently M2 remains unavailable to stable product mode until a newly
+trained sealed candidate passes the eligibility check and the complete
+preregistered study supports promotion.

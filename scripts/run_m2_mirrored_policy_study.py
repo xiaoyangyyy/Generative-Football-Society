@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.infrastructure import FileLease, file_sha256
+from src.infrastructure import FileLease
 from src.match_engine.calibration.ablation import (
     PIPELINE_PRESETS,
     ablation_context,
@@ -34,6 +34,7 @@ from src.match_engine.world_model.inference import WorldModelRuntime
 from src.match_engine.world_model.mirrored_policy_evaluation import (
     fixture_stratified_cluster_interval,
     paired_effect_rows,
+    study_execution_identity,
 )
 
 DEFAULT_PROTOCOL = (
@@ -42,6 +43,14 @@ DEFAULT_PROTOCOL = (
 DEFAULT_PROGRESS = (
     ROOT / "data/evaluation/m2_mirrored_policy_progress_v1.json"
 )
+FROZEN_FIXTURES = [
+    ["Mexico", "South Korea"],
+    ["Brazil", "Germany"],
+    ["France", "England"],
+    ["Argentina", "Netherlands"],
+    ["Spain", "Morocco"],
+    ["Portugal", "Uruguay"],
+]
 
 
 def _now() -> str:
@@ -86,6 +95,12 @@ def load_protocol(path: Path) -> dict[str, Any]:
 def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
     if protocol.get("schema_version") != 1:
         raise ValueError("M2 protocol schema_version must be 1")
+    if protocol.get("protocol_id") != "m2-mirrored-policy-v1":
+        raise ValueError("M2 protocol identity changed")
+    if protocol.get("claim_scope") != (
+        "simulator_team_scoped_outcome_aligned_policy_not_real_football_causality"
+    ):
+        raise ValueError("M2 claim scope changed")
     if protocol.get("state") != (
         "preregistered_code_ready_awaiting_sealed_checkpoint"
     ):
@@ -95,12 +110,10 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
     design = protocol.get("design") or {}
     fixtures = design.get("fixtures") or []
     samples = int(design.get("samples_per_fixture", 0))
-    if len(fixtures) != 6 or any(len(pair) != 2 for pair in fixtures):
-        raise ValueError("M2 protocol requires six two-team fixtures")
-    if len({tuple(pair) for pair in fixtures}) != len(fixtures):
-        raise ValueError("M2 fixtures must be unique")
+    if fixtures != FROZEN_FIXTURES:
+        raise ValueError("M2 fixture order and identities are frozen")
     units = len(fixtures) * samples
-    if samples < 3 or design.get("matched_units") != units:
+    if samples != 20 or design.get("matched_units") != units:
         raise ValueError("M2 matched-unit budget is inconsistent")
     if design.get("runs_total") != units * 3:
         raise ValueError("M2 run budget must include all three arms")
@@ -108,6 +121,10 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
         "M0": "none", "M2_home": "home", "M2_away": "away",
     }:
         raise ValueError("M2 control scopes must remain mirrored and one-sided")
+    if int(design.get("seed_start", -1)) != 260903:
+        raise ValueError("M2 seed start is frozen at 260903")
+    if float(design.get("match_seconds", 0.0)) != 5400.0:
+        raise ValueError("M2 matches must retain full 5400-second duration")
     analysis = protocol.get("analysis") or {}
     if analysis.get("bootstrap_method") != (
         "fixture_stratified_matched_seed_cluster_bootstrap"
@@ -115,13 +132,47 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
         raise ValueError("M2 bootstrap must preserve matched mirrored clusters")
     if int(analysis.get("bootstrap_draws", 0)) != 10000:
         raise ValueError("M2 bootstrap budget is frozen at 10000")
+    if int(analysis.get("bootstrap_seed", -1)) != 260903:
+        raise ValueError("M2 bootstrap seed is frozen at 260903")
+    if float(analysis.get("confidence_level", 0.0)) != 0.95:
+        raise ValueError("M2 confidence level is frozen at 0.95")
+    if analysis.get("primary_efficacy_metric") != "controlled_micro_xg_margin":
+        raise ValueError("M2 primary efficacy metric changed")
+    if float(analysis.get("minimum_meaningful_delta", 0.0)) != 0.1:
+        raise ValueError("M2 meaningful efficacy threshold is frozen at 0.1")
+    if float(analysis.get("minimum_counterfactual_change_rate", 0.0)) != 0.02:
+        raise ValueError("M2 action-change threshold is frozen at 0.02")
+    if float(analysis.get("external_noninferiority_margin", 0.0)) != 1.0:
+        raise ValueError("M2 external noninferiority margin is frozen at 1.0")
+    if analysis.get("goal_difference_role") != "secondary_descriptive":
+        raise ValueError("M2 goal difference must remain secondary")
     if analysis.get("promotion_requires_all_gates") is not True:
         raise ValueError("M2 promotion must require every preregistered gate")
+    if int(analysis.get("minimum_attributable_outcomes", 0)) < 384:
+        raise ValueError("M2 mechanism endpoint needs at least 384 outcomes")
+    unit_fraction = float(
+        analysis.get("minimum_attributable_unit_fraction", 0.0)
+    )
+    if not 0.5 <= unit_fraction <= 1.0:
+        raise ValueError("M2 attributable unit fraction is invalid")
     integrity = protocol.get("integrity") or {}
     if integrity.get("interim_analysis") or integrity.get("optional_stopping"):
         raise ValueError("M2 interim analysis and optional stopping are forbidden")
     if integrity.get("post_hoc_fixture_or_metric_selection") is not False:
         raise ValueError("M2 post-hoc metric selection is forbidden")
+    power = protocol.get("power_analysis") or {}
+    if (
+        power.get("script") != "scripts/estimate_m2_policy_power.py"
+        or float(power.get("historical_home_xg_margin_paired_sd", 0.0))
+        != 0.3673
+        or int(power.get(
+            "normal_approximation_required_units_for_delta_0_10", 0,
+        )) != 106
+        or int(power.get("planned_matched_units", 0)) != units
+        or power.get("historical_candidate_effect_used_as_expected_effect")
+        is not False
+    ):
+        raise ValueError("M2 prospective power contract changed")
     return {"fixtures": len(fixtures), "units": units, "runs": units * 3}
 
 
@@ -131,20 +182,7 @@ def execution_identity(
     checkpoint: Path,
 ) -> dict[str, Any]:
     validate_protocol(protocol)
-    if not checkpoint.is_file():
-        raise FileNotFoundError(f"missing candidate checkpoint: {checkpoint}")
-    code = {}
-    for relative in protocol["integrity"]["code_identity_files"]:
-        path = (ROOT / relative).resolve()
-        if not path.is_file() or ROOT.resolve() not in path.parents:
-            raise ValueError(f"invalid code identity path: {relative}")
-        code[relative] = file_sha256(path)
-    return {
-        "protocol_sha256": file_sha256(protocol_path),
-        "checkpoint_path": str(checkpoint.resolve()),
-        "checkpoint_sha256": file_sha256(checkpoint),
-        "code_sha256": code,
-    }
+    return study_execution_identity(ROOT, protocol_path, protocol, checkpoint)
 
 
 def candidate_eligibility(checkpoint: Path, protocol: dict[str, Any]) -> dict:
@@ -191,6 +229,45 @@ def _continuous_loss(rows: list[dict[str, Any]]) -> float:
         baselines=load_statsbomb_baselines(),
     )
     return calibration_loss(evaluation, fail_penalty=0.0)
+
+
+def verify_runtime_row_identity(
+    baseline: list[dict[str, Any]],
+    home: list[dict[str, Any]],
+    away: list[dict[str, Any]],
+    *,
+    checkpoint_sha256: str,
+) -> dict[str, Any]:
+    """Prove every result row ran its declared model and control scope."""
+    expected_signature = "sha256:" + checkpoint_sha256
+    if any(
+        row.get("wm_runtime_loaded")
+        or row.get("wm_checkpoint_signature") is not None
+        or row.get("wm_control_scope") != "none"
+        or row.get("wm_outcome_aligned_policy")
+        for row in baseline
+    ):
+        raise ValueError("M0 rows contain world-model runtime leakage")
+    for scope, rows in (("home", home), ("away", away)):
+        if any(
+            row.get("wm_runtime_loaded") is not True
+            or row.get("wm_checkpoint_signature") != expected_signature
+            or row.get("wm_control_scope") != scope
+            or row.get("wm_outcome_aligned_policy") is not True
+            for row in rows
+        ):
+            raise ValueError(
+                f"M2_{scope} rows failed runtime identity verification"
+            )
+    return {
+        "verified": True,
+        "checkpoint_signature": expected_signature,
+        "rows_by_scope": {
+            "none": len(baseline),
+            "home": len(home),
+            "away": len(away),
+        },
+    }
 
 
 def _continuous_loss_interval(
@@ -267,6 +344,12 @@ def analyze(
     baseline = arms["M0"]["rows"]
     home = arms["M2_home"]["rows"]
     away = arms["M2_away"]["rows"]
+    runtime_identity = verify_runtime_row_identity(
+        baseline,
+        home,
+        away,
+        checkpoint_sha256=expected_identity["checkpoint_sha256"],
+    )
     effects = paired_effect_rows(baseline, home, away)
     settings = protocol["analysis"]
     draws = int(settings["bootstrap_draws"])
@@ -299,10 +382,29 @@ def analyze(
         baseline, home, away, draws=draws, seed=seed + 4,
     )
     minimum = float(settings["minimum_meaningful_delta"])
+    attributable_counts = [
+        float(row["candidate"][
+            "wm_attributable_realized_policy_utility_count"
+        ])
+        for row in effects
+    ]
+    attributable_total = int(sum(attributable_counts))
+    attributable_unit_fraction = float(
+        sum(count > 0 for count in attributable_counts)
+        / max(1, len(attributable_counts))
+    )
     gates = {
         "execution_identity_verified": True,
         "checkpoint_policy_utility_eligible": bool(
             state["candidate_eligibility"]["eligible"]
+        ),
+        "minimum_attributable_outcomes_observed": (
+            attributable_total
+            >= int(settings["minimum_attributable_outcomes"])
+        ),
+        "minimum_attributable_unit_coverage_observed": (
+            attributable_unit_fraction
+            >= float(settings["minimum_attributable_unit_fraction"])
         ),
         "mechanism_realized_utility_ci_above_zero": (
             float(mechanism["ci95_low"]) > 0.0
@@ -331,10 +433,21 @@ def analyze(
         "promotion_gates": gates,
         "primary_controlled_micro_xg_effect": xg,
         "mechanism_realized_policy_utility": mechanism,
+        "mechanism_attributable_coverage": {
+            "outcomes": attributable_total,
+            "minimum_outcomes": int(
+                settings["minimum_attributable_outcomes"]
+            ),
+            "unit_fraction": attributable_unit_fraction,
+            "minimum_unit_fraction": float(
+                settings["minimum_attributable_unit_fraction"]
+            ),
+        },
         "mechanism_expected_counterfactual_changes": expected_changes,
         "external_continuous_calibration_noninferiority": external,
         "secondary_goal_difference_effect": goals,
         "sample_budget": budget,
+        "runtime_row_identity": runtime_identity,
         "historical_m1_results_used": False,
         "generated_at": _now(),
     }
@@ -385,7 +498,10 @@ def main() -> None:
     parser.add_argument("--progress", default=str(DEFAULT_PROGRESS))
     parser.add_argument(
         "--execute", action="store_true",
-        help="Run the sealed 90-match budget; omitted means code-only validation.",
+        help=(
+            "Run the sealed 360-match budget; omitted means code-only "
+            "validation."
+        ),
     )
     args = parser.parse_args()
     protocol_path = Path(args.protocol).resolve()
@@ -431,6 +547,8 @@ def main() -> None:
             state = json.loads(progress_path.read_text(encoding="utf-8"))
             if state.get("execution_identity") != identity:
                 raise SystemExit("refusing resume after protocol/checkpoint/code drift")
+            if state.get("candidate_eligibility") != eligibility:
+                raise SystemExit("refusing resume after candidate eligibility drift")
         else:
             state = {
                 "schema_version": 1,

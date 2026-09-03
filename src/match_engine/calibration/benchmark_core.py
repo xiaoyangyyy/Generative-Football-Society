@@ -24,7 +24,7 @@ DEFAULT_FIXTURES = [
 ]
 
 
-def row_from_summary(s) -> dict[str, float]:
+def row_from_summary(s) -> dict[str, Any]:
     passes = s.passes_home + s.passes_away
     completed = (s.pass_completion_home * s.passes_home) + (s.pass_completion_away * s.passes_away)
     shots = s.shots_home + s.shots_away
@@ -126,6 +126,26 @@ def row_from_summary(s) -> dict[str, float]:
                 "attributable_mean", 0.0
             )
         ),
+        "wm_runtime_loaded": bool(
+            (getattr(s, "world_model_runtime", {}) or {}).get(
+                "loaded", False
+            )
+        ),
+        "wm_checkpoint_signature": (
+            (getattr(s, "world_model_runtime", {}) or {}).get(
+                "checkpoint_signature"
+            )
+        ),
+        "wm_control_scope": str(
+            (getattr(s, "world_model_runtime", {}) or {}).get(
+                "control_scope", "none"
+            )
+        ),
+        "wm_outcome_aligned_policy": bool(
+            (getattr(s, "world_model_runtime", {}) or {}).get(
+                "outcome_aligned_policy", False
+            )
+        ),
     }
 
 
@@ -167,7 +187,12 @@ def run_micro_benchmark_rows(
     row_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> list[dict[str, Any]]:
     fixtures = fixtures or DEFAULT_FIXTURES
-    engine, _, _ = build_world_and_tournament(root, require_tactics=False)
+    engine, _, _ = build_world_and_tournament(
+        root,
+        require_tactics=False,
+        initialization_seed=seed_start,
+        load_persistence_state=False,
+    )
     tac_h, tac_a = (None, None)
     if spec is not None:
         cfg = apply_ablation(spec, cfg)

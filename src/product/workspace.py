@@ -37,6 +37,9 @@ from src.product.manager_future_review import (
 from src.product.world_model_fork_set import (
     project_fork_set_scenario_evidence,
 )
+from src.match_engine.world_model.mirrored_policy_evaluation import (
+    study_execution_identity,
+)
 from src.product.decision_advice import (
     build_manager_advice_adoption,
     build_manager_advice_comparison,
@@ -1423,6 +1426,56 @@ class ProductWorkspace:
         outcome_protocol = read("data/evaluation/action_outcome_protocol_v1.json")
         outcome_progress = read("data/evaluation/action_outcome_v1/progress.json")
         outcome_decision = read("data/evaluation/action_outcome_v1/decision.json")
+        m2_protocol_relative = (
+            "data/evaluation/m2_mirrored_policy_protocol_v1.json"
+        )
+        m2_protocol = read(m2_protocol_relative)
+        m2_progress = read(
+            "data/evaluation/m2_mirrored_policy_progress_v1.json"
+        )
+        m2_stored_identity = m2_progress.get("execution_identity") or {}
+        m2_identity_verified = False
+        m2_identity_reason = (
+            "not_started" if m2_protocol and not m2_progress
+            else "missing_execution_identity"
+        )
+        if m2_protocol and m2_stored_identity:
+            try:
+                checkpoint_relative = str(
+                    m2_stored_identity["checkpoint_path"]
+                )
+                recomputed_m2_identity = study_execution_identity(
+                    self.root,
+                    self.root / m2_protocol_relative,
+                    m2_protocol,
+                    self.root / checkpoint_relative,
+                )
+                m2_identity_verified = (
+                    recomputed_m2_identity == m2_stored_identity
+                )
+                m2_identity_reason = (
+                    "current_protocol_checkpoint_code_and_input_identity_verified"
+                    if m2_identity_verified
+                    else "protocol_checkpoint_code_or_input_identity_stale"
+                )
+            except (KeyError, OSError, TypeError, ValueError):
+                m2_identity_reason = "invalid_or_unavailable_execution_identity"
+        m2_analysis = (
+            m2_progress.get("analysis")
+            if isinstance(m2_progress.get("analysis"), Mapping)
+            else {}
+        )
+        m2_result_current = bool(
+            m2_identity_verified
+            and m2_progress.get("state") == "completed"
+            and m2_analysis.get("state") == "completed"
+        )
+        if m2_analysis and not m2_result_current:
+            m2_execution_state = "stale_current_code_or_input_identity"
+        elif m2_progress:
+            m2_execution_state = m2_progress.get("state", "invalid_progress")
+        else:
+            m2_execution_state = m2_protocol.get("state", "absent")
         mechanism_identity = _formal_evidence_identity(
             self.root,
             "data/evaluation/action_adoption_protocol_v1.json",
@@ -1630,6 +1683,76 @@ class ProductWorkspace:
                 "promotion_gates": (
                     dict(outcome_decision.get("promotion_gates") or {})
                     if outcome_current else {}
+                ),
+            },
+            "outcome_aligned_m2_study": {
+                "available": bool(m2_protocol),
+                "protocol_id": m2_protocol.get("protocol_id"),
+                "claim_scope": m2_protocol.get("claim_scope"),
+                "protocol_state": m2_protocol.get("state"),
+                "execution_state": m2_execution_state,
+                "checkpoint_bound": bool(m2_stored_identity.get("checkpoint_path")),
+                "candidate_eligible": bool(
+                    m2_identity_verified
+                    and (m2_progress.get("candidate_eligibility") or {}).get(
+                        "eligible", False
+                    )
+                ),
+                "historical_result_available": bool(m2_analysis),
+                "result_identity_verified": m2_identity_verified,
+                "result_applicable_to_current_code": m2_result_current,
+                "identity_reason": m2_identity_reason,
+                "runs_executed": sum(
+                    len((row or {}).get("rows") or [])
+                    for row in (m2_progress.get("arms") or {}).values()
+                ),
+                "fixed_run_budget": (
+                    (m2_protocol.get("design") or {}).get("runs_total")
+                ),
+                "result_status": (
+                    m2_analysis.get("decision") if m2_result_current else None
+                ),
+                "promotion_supported": bool(
+                    m2_result_current
+                    and m2_analysis.get("promotion_supported", False)
+                ),
+                "primary": (
+                    dict(m2_analysis.get("primary_controlled_micro_xg_effect") or {})
+                    if m2_result_current else {}
+                ),
+                "mechanism": (
+                    dict(m2_analysis.get("mechanism_realized_policy_utility") or {})
+                    if m2_result_current else {}
+                ),
+                "mechanism_coverage": (
+                    dict(m2_analysis.get("mechanism_attributable_coverage") or {})
+                    if m2_result_current else {}
+                ),
+                "expected_counterfactual_changes": (
+                    dict(
+                        m2_analysis.get(
+                            "mechanism_expected_counterfactual_changes"
+                        ) or {}
+                    ) if m2_result_current else {}
+                ),
+                "external_validity": (
+                    dict(
+                        m2_analysis.get(
+                            "external_continuous_calibration_noninferiority"
+                        ) or {}
+                    ) if m2_result_current else {}
+                ),
+                "secondary_goal_difference": (
+                    dict(m2_analysis.get("secondary_goal_difference_effect") or {})
+                    if m2_result_current else {}
+                ),
+                "promotion_gates": (
+                    dict(m2_analysis.get("promotion_gates") or {})
+                    if m2_result_current else {}
+                ),
+                "runtime_row_identity": (
+                    dict(m2_analysis.get("runtime_row_identity") or {})
+                    if m2_result_current else {}
                 ),
             },
             "manager_advisor_adoption": {
