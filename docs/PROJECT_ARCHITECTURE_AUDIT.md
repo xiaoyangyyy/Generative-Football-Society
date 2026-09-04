@@ -15,7 +15,7 @@ not quality signals by themselves.
 | Entity priors | Continuous player/coach/team fields with football-semantic role axes | Useful and interpretable | Fit coefficients to held-out player/event data instead of hand tuning |
 | Tournament | Official group schedule and constrained R32 builder; stable named seeds | Correct simulation path | Encode the final FIFA bracket table once officially fixed |
 | Randomness | Stable BLAKE2-derived identity streams across match, scoring, referee, social, wear, carryover, agents, brackets and legacy journeys | Strong runtime contract with machine-enforced global-draw ban | Add matched-seed intervention invariance checks as new stochastic subsystems appear |
-| Persistence | Checkpoint V6 binds inputs/randomness, snapshots Agent/social state, receipts reflection, and makes each tournament match a workspace-locked rollback-complete transaction | Strong identity-gated, crash-resumable recovery for project-owned causal state; missing commits, concurrent writers, and external paths fail closed | Obtain provider idempotency guarantees and validate recovery under production filesystem faults |
+| Persistence | Checkpoint V6 binds inputs/randomness, snapshots Agent/social state, receipts reflection, and shares one workspace lease across startup, resume and rollback-complete matches | Strong identity-gated, crash-resumable recovery for project-owned causal state; missing commits, concurrent lifecycle writers, and external paths fail closed | Obtain provider idempotency guarantees and validate recovery under production filesystem faults |
 | Macro scoring | Coupled intensity dynamics; xG fused before a single goal observation | Coherent research model | Replace Euler heuristic with fitted state-space point process |
 | Micro engine | Root-bound effective rosters with explicit synthetic fallback provenance; spatial fields, action selection, pass/shot/aerial physics and affective coupling | Rich, portable and evidence-visible, but still heuristic | Establish explicit SI/normalized unit contract and fit jointly to event data |
 | World model | v7 deployed plus evidence-gated v8 frame candidates; v8.9 strict SkillCorner/StatsBomb temporal LODO | Modular and empirically guarded | Beat the continuous-time baseline before any v8 promotion |
@@ -188,6 +188,13 @@ not quality signals by themselves.
     output targets fail before match execution. Fault-injection tests cover
     successful commit, memory/file rollback, missing commit, rollback failure,
     external paths and lock contention.
+44. Extended the same operating-system lease across the public tournament
+    lifecycle. Checkpoint loading, seed selection, run-identity verification,
+    external-state recovery, manifest writing, world construction and all
+    matches now execute under one project-root lock. Context-local ownership
+    lets nested per-match transactions reuse that lease without weakening the
+    standalone match boundary. A competing process fails before startup state
+    is read or mutated; behavioral tests prove ownership, reuse and release.
 
 ## LLM Scope Decision
 

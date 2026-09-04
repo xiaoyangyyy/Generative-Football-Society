@@ -85,6 +85,9 @@ def test_architecture_v2_machine_audit_passes():
         "tournament_match_is_one_verified_rollback_complete_transaction"
     ]
     assert report["checks"][
+        "public_tournament_lifecycle_shares_the_match_workspace_lease"
+    ]
+    assert report["checks"][
         "release_readiness_separates_code_contract_from_external_results"
     ]
     assert not report["violations"]["direct_global_runtime_rng_draws"]

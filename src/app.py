@@ -29,6 +29,7 @@ from src.simulation.tournament_checkpoint import (
     checkpoint_root_seed, checkpoint_run_identity, load_checkpoint,
     restore_state_artifacts,
 )
+from src.simulation.tournament_transaction import tournament_workspace_lease
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -188,6 +189,23 @@ def run_full_tournament(
 ):
     """Run the full tournament and return the tournament manager."""
     root = Path(base_dir) if base_dir is not None else project_root()
+    with tournament_workspace_lease(root):
+        return _run_full_tournament_locked(
+            root=root,
+            resume=resume,
+            seed=seed,
+            require_tactics=require_tactics,
+        )
+
+
+def _run_full_tournament_locked(
+    *,
+    root: Path,
+    resume: bool,
+    seed: int | None,
+    require_tactics: bool,
+):
+    """Run one tournament while the caller owns its workspace lease."""
     checkpoint = (
         load_checkpoint(str(root), verify_external_state=False)
         if resume else None

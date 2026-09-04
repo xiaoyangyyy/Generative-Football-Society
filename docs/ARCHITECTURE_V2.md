@@ -3697,3 +3697,33 @@ failure, external output rejection and workspace lock contention. The machine
 architecture audit enforces the full boundary. This stage runs no training,
 provider request or formal match experiment and changes no stable release or
 research promotion claim.
+
+## 113. V3.95 Shared tournament lifecycle lease
+
+V3.94 serialized individual matches, but public startup and explicit resume
+still ran outside that lease. A second process could load the pre-match
+checkpoint and enter identity-approved external recovery while the first
+process was mutating the same files inside a match. Separate recovery-journal
+locking did not prevent this cross-operation race.
+
+The public `run_full_tournament` boundary now acquires the same project-root
+operating-system lease before checkpoint loading. Seed resolution, portable
+run-identity verification, external-state recovery, run-manifest persistence,
+world construction and the complete tournament execute while ownership is
+held. Each `play_match` enters the same lease boundary, but a context-local
+ownership record proves the path and live handle and permits safe reentrant
+reuse instead of attempting a second non-reentrant OS lock.
+
+Standalone integrations still receive the original per-match protection. A
+nested match on one manager remains forbidden, a lifecycle context for another
+workspace fails closed, and a stale or released inherited handle is rejected.
+Competing processes fail before they read evolving checkpoint state, restore
+files or write the manifest. The lease is released on success and every
+exception path.
+
+Tests prove that public execution owns the lease through the tournament call,
+that a match reuses and does not release its lifecycle lease, that final exit
+releases it, and that an independently held lock prevents all startup writes.
+The architecture audit binds both call sites to the shared contract. This
+stage runs no training, provider request or formal experiment and does not
+change any model-effect or release claim.

@@ -11,7 +11,10 @@ from src.simulation.engine import SocialMediaFeed
 from src.simulation.random_control import derive_seed
 from src.simulation.tournament_2026 import TournamentManager
 from src.simulation.tournament_checkpoint import load_checkpoint
-from src.simulation.tournament_transaction import TournamentMatchRollbackError
+from src.simulation.tournament_transaction import (
+    TournamentMatchRollbackError,
+    tournament_workspace_lease,
+)
 from src.simulation.world_state import snapshot_world_state
 
 
@@ -261,3 +264,26 @@ def test_workspace_match_lease_rejects_concurrent_writer(tmp_path, monkeypatch):
         with pytest.raises(LeaseUnavailable, match="already owned"):
             manager.play_match("Alpha", "Beta", "Final", SimpleNamespace())
     assert called is False
+
+
+def test_match_reuses_the_public_lifecycle_workspace_lease(tmp_path, monkeypatch):
+    manager = _manager(tmp_path)
+
+    def commit_match(*args, **kwargs):
+        return manager._commit_match_result(
+            stage_name="Final", t1_name="Alpha", t2_name="Beta",
+            s1=1, s2=0, winner_name="Alpha",
+        )
+
+    monkeypatch.setattr(manager, "_play_match_once", commit_match)
+    lock_path = (
+        tmp_path / "data/persistence/tournament_match_transaction.lock"
+    )
+    with tournament_workspace_lease(tmp_path) as lease:
+        assert lease.held
+        assert FileLease.is_held(lock_path)
+        assert manager.play_match(
+            "Alpha", "Beta", "Final", SimpleNamespace(),
+        ) == "Alpha"
+        assert lease.held
+    assert not FileLease.is_held(lock_path)

@@ -7,6 +7,7 @@ import json
 import os
 import tempfile
 from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
@@ -27,6 +28,9 @@ from src.simulation.world_state import preflight_world_state, snapshot_world_sta
 
 TRANSACTION_LOCK_PATH = (
     "data", "persistence", "tournament_match_transaction.lock",
+)
+_ACTIVE_WORKSPACE_LEASE: ContextVar[tuple[Path, FileLease] | None] = (
+    ContextVar("gfs_tournament_workspace_lease", default=None)
 )
 
 
@@ -255,6 +259,25 @@ def _locked_tournament_match_transaction(
 
 
 @contextmanager
+def tournament_workspace_lease(base_dir: str | Path) -> Iterator[FileLease]:
+    """Serialize a tournament lifecycle and safely reuse its match lease."""
+    lock_path = _project_owned_path(str(base_dir), *TRANSACTION_LOCK_PATH)
+    active = _ACTIVE_WORKSPACE_LEASE.get()
+    if active is not None:
+        active_path, lease = active
+        if active_path != lock_path or not lease.held:
+            raise RuntimeError("Tournament workspace lease context is invalid")
+        yield lease
+        return
+    with FileLease(lock_path, timeout=0.0) as lease:
+        token = _ACTIVE_WORKSPACE_LEASE.set((lock_path, lease))
+        try:
+            yield lease
+        finally:
+            _ACTIVE_WORKSPACE_LEASE.reset(token)
+
+
+@contextmanager
 def tournament_match_transaction(
     manager: Any,
     *,
@@ -265,8 +288,7 @@ def tournament_match_transaction(
     """Serialize and execute one rollback-complete tournament match."""
     if getattr(manager, "_active_match_transaction", None) is not None:
         raise RuntimeError("Nested tournament match transactions are forbidden")
-    lock_path = _project_owned_path(manager.base_dir, *TRANSACTION_LOCK_PATH)
-    with FileLease(lock_path, timeout=0.0):
+    with tournament_workspace_lease(manager.base_dir):
         with _locked_tournament_match_transaction(
             manager, stage=stage, home=home, away=away,
         ):

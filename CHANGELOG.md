@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Extended the tournament transaction lease across public startup, identity
+  verification, resume recovery and the complete tournament, while safely
+  reusing it inside each match and rejecting concurrent lifecycle writers
+  before they can read or mutate tournament state.
 - Upgraded tournament checkpoints to V6 and wrapped every public tournament
   match in a workspace-locked, rollback-complete transaction with durable
   commit verification, bounded redacted recovery receipts, and fault-injection

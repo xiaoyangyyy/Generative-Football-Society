@@ -1668,7 +1668,7 @@ def main() -> int:
             and all(token in tournament_transaction for token in (
                 "class TournamentMatchRollbackError(RuntimeError):",
                 "@contextmanager",
-                "with FileLease(lock_path, timeout=0.0):",
+                "with FileLease(lock_path, timeout=0.0) as lease:",
                 "manager._save_checkpoint()",
                 "checkpoint = load_checkpoint(manager.base_dir)",
                 "def _verify_match_commit(",
@@ -1679,6 +1679,20 @@ def main() -> int:
                 "Tournament in-memory rollback did not converge",
                 "Tournament durable checkpoint rollback did not converge",
                 '"contains_error_message": False',
+            ))
+        ),
+        "public_tournament_lifecycle_shares_the_match_workspace_lease": (
+            all(token in public_app for token in (
+                "from src.simulation.tournament_transaction import tournament_workspace_lease",
+                "with tournament_workspace_lease(root):",
+                "def _run_full_tournament_locked(",
+            ))
+            and all(token in tournament_transaction for token in (
+                "_ACTIVE_WORKSPACE_LEASE: ContextVar[",
+                "def tournament_workspace_lease(",
+                "active_path != lock_path or not lease.held",
+                "with FileLease(lock_path, timeout=0.0) as lease:",
+                "with tournament_workspace_lease(manager.base_dir):",
             ))
         ),
         "release_readiness_separates_code_contract_from_external_results": (

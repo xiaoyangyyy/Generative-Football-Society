@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from src.infrastructure.locking import FileLease, LeaseUnavailable
 from src.memory_engine.poisson_simulator import simulate_match_score, simulate_penalty_shootout
 from src.memory_engine.tournament_simulator import simulate_journey
 from src.simulation.agent import SocietyAgent
@@ -431,6 +432,9 @@ def test_public_tournament_forwards_verified_manifest_identity(tmp_path, monkeyp
     class Tournament:
         def run_full_tournament(self, *, resume=False):
             observed["resume"] = resume
+            observed["lease_held"] = FileLease.is_held(
+                tmp_path / "data/persistence/tournament_match_transaction.lock"
+            )
 
     def build(root, **kwargs):
         observed.update(root=str(root), **kwargs)
@@ -447,6 +451,44 @@ def test_public_tournament_forwards_verified_manifest_identity(tmp_path, monkeyp
     assert observed["seed"] == 91
     assert observed["run_identity_sha256"] == manifest["run_identity_sha256"]
     assert observed["resume"] is False
+    assert observed["lease_held"] is True
+    assert not FileLease.is_held(
+        tmp_path / "data/persistence/tournament_match_transaction.lock"
+    )
+
+
+def test_public_tournament_fails_before_startup_when_workspace_is_busy(
+    tmp_path,
+):
+    from src import app
+
+    lock_path = (
+        tmp_path / "data/persistence/tournament_match_transaction.lock"
+    )
+    with FileLease(lock_path):
+        with pytest.raises(LeaseUnavailable, match="already owned"):
+            app.run_full_tournament(base_dir=tmp_path, seed=91)
+    assert not (tmp_path / "data/persistence/run_manifest.json").exists()
+
+
+def test_public_tournament_releases_workspace_after_runtime_failure(
+    tmp_path, monkeypatch,
+):
+    from src import app
+
+    class Tournament:
+        def run_full_tournament(self, *, resume=False):
+            raise RuntimeError("injected tournament failure")
+
+    monkeypatch.setattr(
+        app, "build_simulation",
+        lambda *args, **kwargs: (object(), Tournament(), {}),
+    )
+    with pytest.raises(RuntimeError, match="injected tournament failure"):
+        app.run_full_tournament(base_dir=tmp_path, seed=91)
+    assert not FileLease.is_held(
+        tmp_path / "data/persistence/tournament_match_transaction.lock"
+    )
 
 
 def test_tournament_identity_separates_immutable_and_evolving_inputs(tmp_path):

@@ -176,6 +176,11 @@ narrative-debug state on any
 catchable failure. Missing commits are failures, concurrent writers and
 external output targets fail before match execution, and rollback receipts
 record bounded error types without exception messages or credentials.
+V3.95 extends that same operating-system lease across public tournament
+startup, identity verification, resume recovery, world construction and the
+complete tournament run. Per-match transactions reuse the context-owned lease
+without reacquiring it; a second process fails before it can read evolving
+state, restore files or write a run manifest.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

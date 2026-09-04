@@ -291,7 +291,7 @@
       "src/simulation/tournament_reporting.py": "e7e8f0209a51cd856c6c178e76546eeccad79b73028c41cd11d62e8986fb7f39",
       "src/simulation/tournament_scoring.py": "2f1e43b725b65e5523231d33a999fee964a941aeff69988c63877f7b7b4d89fe",
       "src/simulation/tournament_setup.py": "4e1065c9447cdd7f8771ab405ab7e07271759e9995839ebf78e0ad18c2b5e4ef",
-      "src/simulation/tournament_transaction.py": "3ab780376f3c86c9122e978c92e83ceed4628c39101c2805b0076301410497fc",
+      "src/simulation/tournament_transaction.py": "1ed5105d37234c261c1f6b146b9b419fd4846d3343ea866bd55775a3cdb35ce9",
       "src/simulation/venue_policy.py": "852c74fe6c6a124016eda1330d63293ac3a4e818576f17ab04cf090932715e2a",
       "src/simulation/wc2026_schedule.py": "6db76921fd03f0f86f62865fb130c1cb74b918c32798784bf5797b64c2e41889",
       "src/simulation/world_cup_runner.py": "25bea4faef73269335f549e06f1cbf80da91b6c74482da6faa1edfa9072fba18",
@@ -332,7 +332,7 @@
   "next_action": "run the frozen M2 training command",
   "protocol_id": "m2-mirrored-policy-v1",
   "ready": true,
-  "recorded_at": "2026-09-04T15:40:50.848136+00:00",
+  "recorded_at": "2026-09-04T15:55:42.381769+00:00",
   "schema_version": 1,
   "sealed_test": {
     "rows_loaded_for_model_selection": 0,
