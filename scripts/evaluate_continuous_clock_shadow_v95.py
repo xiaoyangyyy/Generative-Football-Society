@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Matched-seed v7 vs v9.3 continuous-clock shadow tournament audit."""
 from __future__ import annotations
-import argparse, json, sys, time
+import argparse
+import json
+import sys
+import time
 from pathlib import Path
 import numpy as np
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))

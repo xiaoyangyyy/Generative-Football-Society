@@ -29,7 +29,8 @@ def test_calibrated_thresholds_are_used_by_shared_decoder():
 
 
 def test_v88_manifest_pins_dependencies():
-    import hashlib,json
+    import hashlib
+    import json
     from pathlib import Path
     root=Path(__file__).resolve().parents[1]; manifest=json.loads((root/"data/frame_world/temporal_router_v88.json").read_text())
     assert manifest["ready"] and manifest["provider_scope"]=="skillcorner"

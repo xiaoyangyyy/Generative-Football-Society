@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Freeze the validated v7 artifacts without mutating the v6 parent."""
 from __future__ import annotations
-import argparse, hashlib, json, sys
+import argparse
+import hashlib
+import json
+import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))
 from src.data_engine.dataset_registry import file_sha256, write_json_atomic

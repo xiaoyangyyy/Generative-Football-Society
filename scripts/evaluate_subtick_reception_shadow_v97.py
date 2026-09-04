@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Matched-seed production-cadence shadow for the dual-clock reception queue."""
 from __future__ import annotations
-import argparse,json,sys,time
+import argparse
+import json
+import sys
+import time
 from pathlib import Path
 import numpy as np
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))

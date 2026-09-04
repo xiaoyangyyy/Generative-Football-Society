@@ -2,6 +2,9 @@
 
 ## Unreleased - v7 candidate
 
+- Split all 65 remaining multi-module imports and removed five redundant
+  trailing semicolons across source, scripts, and tests, eliminating E401 and
+  E703 repository-wide with normalized-AST equivalence verification.
 - Replaced assigned lambdas in frame-world training and temporal calibration
   evaluation with named helpers, reformatted the four active frame trainers,
   and added parse/no-assigned-lambda regression coverage without running any

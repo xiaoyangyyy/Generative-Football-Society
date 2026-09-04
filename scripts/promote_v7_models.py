@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Register, seal, deploy v7 models, and retain an explicit v6 rollback pointer."""
 from __future__ import annotations
-import json, sys
+import json
+import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))
 from src.data_engine.dataset_registry import file_sha256, write_json_atomic

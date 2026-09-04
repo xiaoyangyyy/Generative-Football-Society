@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Audit calibrated lower/median/upper event timing on real tracking contexts."""
 from __future__ import annotations
-import json,sys
+import json
+import sys
 from pathlib import Path
 import numpy as np
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Checkpointed full-match v7 vs continuous-clock mirrored shadow audit."""
 from __future__ import annotations
-import argparse,json,sys,time
+import argparse
+import json
+import sys
+import time
 from pathlib import Path
 import numpy as np
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
@@ -30,7 +33,7 @@ def main():
     if args.pairs%2: raise SystemExit("pairs must be even to preserve mirrored fixtures")
     artifact=ROOT/"data/frame_world/continuous_intervals_v93.json";router=load_calibrated_temporal_router(artifact);checkpoint=ROOT/"reports/acceptance/continuous_clock_long_shadow_v96.checkpoint.json";target=ROOT/"reports/acceptance/continuous_clock_long_shadow_v96.json";rows=[]
     if args.resume and checkpoint.is_file():
-        saved=json.loads(checkpoint.read_text());
+        saved=json.loads(checkpoint.read_text())
         if saved.get("seconds")!=args.seconds or saved.get("dt")!=args.dt or saved.get("pairs_requested")!=args.pairs: raise RuntimeError("checkpoint protocol mismatch")
         rows=saved.get("pairs",[])
     started=time.perf_counter()

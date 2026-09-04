@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Freeze v9.7 dual-clock evidence into immutable source snapshots."""
 from __future__ import annotations
-import hashlib,json,shutil,sys
+import hashlib
+import json
+import shutil
+import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from src.data_engine.dataset_registry import write_json_atomic

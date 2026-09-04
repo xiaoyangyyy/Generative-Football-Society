@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Build pressure-onset geometry without changing sealed action datasets."""
 from __future__ import annotations
-import gc,hashlib,json
+import gc
+import hashlib
+import json
 from pathlib import Path
 import numpy as np
 import sys

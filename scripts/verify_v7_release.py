@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Verify the complete v7 hash chain, lifecycle registry, and rollback pointer."""
 from __future__ import annotations
-import argparse, hashlib, json, sys
+import argparse
+import hashlib
+import json
+import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))
 from scripts.freeze_v7_release import source_digest

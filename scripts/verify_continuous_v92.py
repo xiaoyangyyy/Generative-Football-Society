@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Verify frozen v9.2 evidence, calibrated intervals, and deployment boundary."""
 from __future__ import annotations
-import hashlib,json
+import hashlib
+import json
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()

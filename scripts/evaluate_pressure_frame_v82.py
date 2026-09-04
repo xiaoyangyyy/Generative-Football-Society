@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Match-held-out pressure recognition on SkillCorner strong labels."""
 from __future__ import annotations
-import json,sys
+import json
+import sys
 from pathlib import Path
 import torch
 from torch.utils.data import DataLoader

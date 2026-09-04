@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build the reproducible v7 cross-provider data inventory."""
-import hashlib, json
+import hashlib
+import json
 from pathlib import Path
 import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Strict leave-one-provider-out evaluation for the joint pass model."""
 from __future__ import annotations
-import json, sys
+import json
+import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd

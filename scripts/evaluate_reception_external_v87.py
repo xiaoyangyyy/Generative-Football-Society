@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Non-promotional Metrica audit against inferred next-event reception labels."""
 from __future__ import annotations
-import json,sys
+import json
+import sys
 from pathlib import Path
 import torch
 from torch.utils.data import DataLoader

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Audit v9.2 provider clocks and temporal arrays before training."""
 from __future__ import annotations
-import hashlib,json,sys
+import hashlib
+import json
+import sys
 from pathlib import Path
 import numpy as np
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate imported SkillCorner tracking through the provider-neutral adapter."""
-import json, sys
+import json
+import sys
 from pathlib import Path
 import pandas as pd
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))

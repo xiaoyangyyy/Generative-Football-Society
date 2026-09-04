@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Verify v9.7 dual-clock candidate and deployment boundary."""
 from __future__ import annotations
-import hashlib,json
+import hashlib
+import json
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()

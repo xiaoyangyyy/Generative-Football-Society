@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 '''Parallel, resumable matched-seed shadow across teams and fixtures.'''
 from __future__ import annotations
-import argparse,json,os,sys,time
+import argparse
+import json
+import os
+import sys
+import time
 from concurrent.futures import ProcessPoolExecutor,as_completed
 from pathlib import Path
 import numpy as np

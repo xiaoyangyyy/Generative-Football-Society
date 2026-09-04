@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Train and falsify a match-held-out pressure-onset pair transition."""
 from __future__ import annotations
-import json,sys
+import json
+import sys
 from pathlib import Path
 import numpy as np
 import torch

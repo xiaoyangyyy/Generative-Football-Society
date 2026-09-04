@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Build event-level passer/receiver/interceptor triplets from aligned passes."""
 from __future__ import annotations
-import gc,hashlib,json,sys
+import gc
+import hashlib
+import json
+import sys
 from pathlib import Path
 import numpy as np
 
@@ -21,7 +24,7 @@ def metric(points):
 
 
 def nearest_interceptor(frame,index,actor,receiver):
-    teams=frame["teams"]; actor_team=int(teams[actor]); candidates=np.flatnonzero((teams>=0)&(teams!=actor_team)&frame["visible"][index]);
+    teams=frame["teams"]; actor_team=int(teams[actor]); candidates=np.flatnonzero((teams>=0)&(teams!=actor_team)&frame["visible"][index])
     if not len(candidates): return -1,float("inf")
     start=metric(frame["positions"][index,BALL_INDEX]); end=metric(frame["positions"][index,receiver]); points=metric(frame["positions"][index,candidates]); line=end-start; denom=max(float(line@line),1e-6); alpha=np.clip(((points-start)@line)/denom,0,1); distances=np.linalg.norm(points-(start+alpha[:,None]*line),axis=1); choice=int(np.argmin(distances)); return int(candidates[choice]),float(distances[choice])
 

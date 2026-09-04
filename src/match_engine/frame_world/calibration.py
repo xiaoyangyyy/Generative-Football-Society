@@ -1,6 +1,7 @@
 """Verified loading for calibrated continuous-time routing artifacts."""
 from __future__ import annotations
-import hashlib,json
+import hashlib
+import json
 from functools import lru_cache
 from pathlib import Path
 from .continuous import load_continuous_time

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Real-checkpoint closed-loop and counterfactual acceptance for v8.6 routing."""
 from __future__ import annotations
-import hashlib,json,sys
+import hashlib
+import json
+import sys
 from pathlib import Path
 import numpy as np
 

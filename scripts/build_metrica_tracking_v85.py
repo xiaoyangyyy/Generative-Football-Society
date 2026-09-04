@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Build corrected Metrica frames without overwriting registered v8 evidence."""
 from __future__ import annotations
-import json,sys
+import json
+import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))
 import scripts.build_frame_tracking_v8 as builder

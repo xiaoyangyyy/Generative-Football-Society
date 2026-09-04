@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Train strong-label reception and next-action heads with match holdout."""
 from __future__ import annotations
-import json,sys
+import json
+import sys
 from pathlib import Path
 import numpy as np
 import torch
@@ -23,7 +24,7 @@ class Chains(Dataset):
             assert len(chains)==len(labels["event_frames"])
             for n,chain in enumerate(chains):
                 if not labels["valid"][n] or chain["outcome"] not in {"complete","turnover"}: continue
-                index=int(labels["event_frames"][n]); slots=np.array([BALL_INDEX,int(labels["receiver_indices"][n]),int(labels["defender_indices"][n])]);
+                index=int(labels["event_frames"][n]); slots=np.array([BALL_INDEX,int(labels["receiver_indices"][n]),int(labels["defender_indices"][n])])
                 if index<1: continue
                 pos=frame["positions"][index,slots].astype(np.float32); vel=frame["velocities"][index,slots].astype(np.float32); acc=(frame["velocities"][index,slots]-frame["velocities"][index-1,slots]).astype(np.float32); features=feature_vector(pos,vel,acc,float(labels["lane_distance_m"][n])); outcome=np.float32(chain["outcome"]=="complete"); raw_action="terminal" if chain["next_action"] in {"loss","stoppage"} else chain["next_action"]; action=NEXT_ACTIONS.index(raw_action) if raw_action in NEXT_ACTIONS else -1; self.rows.append((features,outcome,np.int64(action)))
     def __len__(self): return len(self.rows)

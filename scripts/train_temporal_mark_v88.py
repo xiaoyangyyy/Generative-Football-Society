@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Train right-censored event timing and hierarchical next-action marks."""
 from __future__ import annotations
-import json,sys
+import json
+import sys
 from pathlib import Path
 import numpy as np
 import torch
@@ -21,7 +22,7 @@ class TemporalEvents(Dataset):
             with np.load(ROOT/item["file"],allow_pickle=False) as source: frame={key:source[key] for key in ("positions","velocities")}
             for n,chain in enumerate(chains):
                 if not labels["valid"][n]: continue
-                index=int(labels["event_frames"][n]); slots=np.array([BALL_INDEX,int(labels["receiver_indices"][n]),int(labels["defender_indices"][n])]);
+                index=int(labels["event_frames"][n]); slots=np.array([BALL_INDEX,int(labels["receiver_indices"][n]),int(labels["defender_indices"][n])])
                 if index<1: continue
                 pos=frame["positions"][index,slots].astype(np.float32); vel=frame["velocities"][index,slots].astype(np.float32); acc=(frame["velocities"][index,slots]-frame["velocities"][index-1,slots]).astype(np.float32); features=feature_vector(pos,vel,acc,float(labels["lane_distance_m"][n])); action=chain["next_action"]; observed=action in {"pass","shot","loss","stoppage"} and chain["delay_s"] is not None and chain["delay_s"]<=5; event_bin=min(cfg.bins-1,max(0,int(np.ceil(float(chain["delay_s"])/cfg.bin_seconds))-1)) if observed else cfg.bins-1; continuation=1 if action in {"pass","shot"} else 0 if action in {"loss","stoppage"} else -1; subtype=1 if action=="shot" else 0 if action=="pass" else -1; self.rows.append((features,np.int64(event_bin),np.bool_(observed),np.int64(continuation),np.int64(subtype),np.float32(min(float(chain["delay_s"] or 5),5))))
     def __len__(self): return len(self.rows)
