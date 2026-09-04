@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_deployment_contract",
-  "generated_at": "2026-08-09T18:25:37.333103+00:00",
+  "generated_at": "2026-09-04T17:26:27.193667+00:00",
   "status": "passed_static_contract_unbuilt",
   "passed": true,
   "docker_available": false,
@@ -19,6 +19,8 @@
     "hashed_python_dependency_install": true,
     "immutable_container_image_digests": true,
     "release_evidence_copied": true,
+    "production_validation_runner_is_in_image": true,
+    "production_validation_writable_paths_are_prepared": true,
     "generated_state_excluded": true,
     "provider_credentials_not_wired": true,
     "independent_product_secret_file_required": true,
@@ -29,6 +31,12 @@
     "backend_network_internal": true,
     "read_only_and_capability_reduced": true,
     "persistent_product_volumes": true,
+    "validation_service_is_explicit_and_offline": true,
+    "validation_service_has_dedicated_persistent_surfaces": true,
+    "validation_service_is_non_privileged": true,
+    "validation_runner_serializes_product_writers": true,
+    "validation_attestation_binds_final_progress": true,
+    "validation_restore_uses_external_scratch": true,
     "trusted_tls_proxy_contract": true
   },
   "limitations": [

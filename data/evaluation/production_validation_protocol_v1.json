@@ -64,8 +64,21 @@
     "optional_stopping": false,
     "unknown_attestation_fields_forbidden": true,
     "operator_ids_are_pseudonymous": true,
-    "raw_host_identifiers_forbidden": true
+    "raw_host_identifiers_forbidden": true,
+    "workload_attestation_and_finalization_are_separate": true,
+    "attestation_binds_final_progress_sha256": true,
+    "writers_share_product_web_lease": true,
+    "restore_scratch_outside_workspace_required": true,
+    "running_task_observation_persisted_before_match": true
   },
+  "preexecution_amendments": [
+    {
+      "amendment_id": "deployable-production-transaction-v1",
+      "reason": "Make the frozen workload executable in the shipped read-only container and bind the real restart observation before any formal invocation.",
+      "matches_executed_before_amendment": 0,
+      "results_available_before_amendment": false
+    }
+  ],
   "outputs": {
     "progress": "data/evaluation/production_validation_v1/progress.json",
     "deployment_attestation": "data/evaluation/production_validation_v1/deployment_attestation.json",

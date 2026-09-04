@@ -81,12 +81,27 @@ STEPS = (
     CompletionStep(
         "production_operations_validation", "production", 60,
         "authorized_compute", "release_engineer", ("container_build",),
-        ("python scripts/run_production_validation.py --execute --workspace . "
-         "--authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION "
-         "--deployment-instance-id INSTANCE_ID",),
+        (
+            "python scripts/run_production_validation.py --execute --workspace . "
+            "--authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION "
+            "--deployment-instance-id instance-replace",
+            "python scripts/run_production_validation.py --record-attestation "
+            "--workspace . --operator-id operator-replace "
+            "--volume-id volume-replace --container-image-digest "
+            "sha256:REPLACE --attested-deployment-instance-id instance-first "
+            "--attested-deployment-instance-id instance-second "
+            "--confirm-forced-termination --confirm-same-volume",
+            "python scripts/run_production_validation.py --finalize "
+            "--workspace . --restore-scratch REPLACE_EXTERNAL_SCRATCH "
+            "--authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION",
+        ),
         required_inputs=(
             "verified deployment container",
-            "stable deployment instance identifier and isolated validation workspace",
+            "dedicated Compose validation project and named volume set",
+            "two pseudonymous deployment instance identifiers",
+            "observed running-task event followed by forced container termination",
+            "captured container image digest and pseudonymous operator attestation",
+            "writable restore scratch outside the validation workspace",
         ),
         requires_explicit_authorization=True,
     ),

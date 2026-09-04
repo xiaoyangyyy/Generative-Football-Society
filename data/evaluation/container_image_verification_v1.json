@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_immutable_container_image_contract",
-  "generated_at": "2026-08-09T17:41:39.268822+00:00",
+  "generated_at": "2026-09-04T17:08:54.901085+00:00",
   "status": "passed",
   "passed": true,
   "images": {
@@ -18,8 +18,8 @@
     "human_readable_tags_are_retained": true
   },
   "artifact_sha256": {
-    "Dockerfile": "024b9f661aee7d4ca65e063da8ab76dd3034f39ded9a1d0f08a450cc456d6480",
-    "deploy/compose.yaml": "9858147e031850f7760b2259af0921787e9d63702788785d327b0a9dadd4d04d",
+    "Dockerfile": "c31fe69c6a603ed6048633f8604861157c3144666415ae4667fd82c4da5d1bd4",
+    "deploy/compose.yaml": "d835a4564c49e2ca9f23989478bd81e66b03ad59fb75e284f2aea45e9087780c",
     "data/evaluation/container_image_contract_v1.json": "e2bd5134e849ad38fb525a3fdb1a7f359cc4370f2096df8223e2a5bd99b703e9"
   },
   "verification_external_calls_made": false,

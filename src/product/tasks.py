@@ -800,11 +800,13 @@ class BackgroundMatchWorker:
     def __init__(
         self, queue: ProductTaskQueue, *, poll_interval: float = 0.2,
         workspace_loader: Callable[[Path], Any] | None = None,
+        on_task_claimed: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.queue = queue
         self.worker_id = f"{socket.gethostname()}-{uuid.uuid4().hex[:12]}"
         self.poll_interval = max(0.05, float(poll_interval))
         self.workspace_loader = workspace_loader or ProductWorkspace.load
+        self.on_task_claimed = on_task_claimed
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -818,6 +820,8 @@ class BackgroundMatchWorker:
         if task is None:
             return False
         try:
+            if self.on_task_claimed is not None:
+                self.on_task_claimed(_public_task(task))
             request = task["request"]
             workspace = self.workspace_loader(self.queue.root)
             if task.get("kind") == "tactical_study":

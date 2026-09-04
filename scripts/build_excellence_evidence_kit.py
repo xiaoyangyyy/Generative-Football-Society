@@ -220,6 +220,7 @@ def build_template_files(root: Path = ROOT) -> dict[str, bytes]:
         "forced_termination_observed": False,
         "same_volume_persisted": False,
         "raw_host_identifiers_included": False,
+        "progress_sha256": PLACEHOLDER,
     }
     independent_review = {
         **_template_header(independent["protocol_id"]),

@@ -158,6 +158,11 @@ def main() -> int:
     product_recovery = (
         ROOT / "src/product/recovery.py"
     ).read_text(encoding="utf-8")
+    production_validation = (
+        ROOT / "scripts/run_production_validation.py"
+    ).read_text(encoding="utf-8")
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    compose = (ROOT / "deploy/compose.yaml").read_text(encoding="utf-8")
     recovery_verification = _read(
         "data/evaluation/product_recovery_verification_v1.json"
     )
@@ -1742,6 +1747,30 @@ def main() -> int:
                 "active_path != lock_path or not lease.held",
                 "with FileLease(lock_path, timeout=0.0) as lease:",
                 "with tournament_workspace_lease(manager.base_dir):",
+            ))
+        ),
+        "production_validation_is_deployable_serialized_and_identity_bound": (
+            all(token in production_validation for token in (
+                'persistence / "product_web.lock"',
+                'persistence / "production_validation.lock"',
+                "on_task_claimed=on_task_claimed",
+                '"production_validation_task_running"',
+                "recovered_identity_replayed",
+                '"idempotency_sha256"',
+                '"progress_sha256": _payload_sha256(progress)',
+                "final_progress_snapshot_is_bound",
+                "restore scratch must be outside the validation workspace",
+                "def record_attestation(",
+                "def finalize(",
+            ))
+            and "COPY scripts/run_production_validation.py" in dockerfile
+            and all(token in compose for token in (
+                "production-validation:",
+                'profiles: ["validation"]',
+                'network_mode: "none"',
+                "gfs_validation_persistence:/app/data/persistence",
+                "gfs_validation_evaluation:/app/data/evaluation/production_validation_v1",
+                "gfs_validation_scratch:/validation-scratch",
             ))
         ),
         "release_readiness_separates_code_contract_from_external_results": (

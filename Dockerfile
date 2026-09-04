@@ -16,10 +16,13 @@ RUN python -m pip install --require-hashes -r requirements-linux-py312.lock \
     && python -m pip install --no-build-isolation --no-deps .
 
 COPY gfs.py ./
+COPY scripts/run_production_validation.py ./scripts/run_production_validation.py
 COPY data ./data
 COPY reports/acceptance ./reports/acceptance
 RUN mkdir -p outputs backups data/persistence \
-    && chown -R gfs:gfs outputs backups data/persistence
+        data/evaluation/production_validation_v1 /validation-scratch \
+    && chown -R gfs:gfs outputs backups data/persistence \
+        data/evaluation/production_validation_v1 /validation-scratch
 
 USER 10001:10001
 EXPOSE 8765

@@ -51,6 +51,36 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  production-validation:
+    profiles: ["validation"]
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    entrypoint: ["python", "scripts/run_production_validation.py"]
+    command: []
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    volumes:
+      - gfs_validation_outputs:/app/outputs
+      - gfs_validation_persistence:/app/data/persistence
+      - gfs_validation_backups:/app/backups
+      - gfs_validation_evaluation:/app/data/evaluation/production_validation_v1
+      - gfs_validation_scratch:/validation-scratch
+    network_mode: "none"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+    init: true
+    pids_limit: 512
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
   gateway:
     image: caddy:2.8.4-alpine@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17
     depends_on:
@@ -95,6 +125,11 @@ volumes:
   gfs_outputs: {}
   gfs_persistence: {}
   gfs_backups: {}
+  gfs_validation_outputs: {}
+  gfs_validation_persistence: {}
+  gfs_validation_backups: {}
+  gfs_validation_evaluation: {}
+  gfs_validation_scratch: {}
   caddy_data: {}
   caddy_config: {}
 

@@ -3759,3 +3759,43 @@ handling, Web lease release, and preservation of a prior single-file document
 when replacement fails. This is local process-crash evidence, not a production
 volume, host-power-loss, RPO or RTO claim. No match, training, provider request
 or formal experiment is executed.
+
+## 115. V3.97 Deployable production-validation transaction
+
+The preregistered 100-match operations protocol previously described a
+container restart drill that the shipped container could not actually run. The
+image omitted its runner, the read-only Compose service exposed no writable
+validation-evidence path, restore staging depended on a bounded temporary
+filesystem, and an operator had to hand-author an attestation that did not bind
+the final progress snapshot.
+
+The image now includes only the production-validation runner required for this
+gate and prepares the validation evidence and external scratch mount points for
+the non-root user. A profile-scoped Compose service remains read-only,
+capability-free and fully offline while attaching dedicated named volumes for
+outputs, persistence, backups, prospective evidence and restore scratch. The
+documented dedicated Compose project name prevents the drill from sharing a
+live product deployment by accident.
+
+Every validation writer acquires both the Studio Web lease and a dedicated
+validation lease before reading or changing workspace state. Workload execution
+persists and emits the exact claimed task identity before entering match code;
+an ungraceful stop therefore leaves a durable running-task observation rather
+than relying on operator timing. The resumed workload ends before a decision.
+An explicit attestation command validates pseudonymous operator, volume, image
+and deployment identities, requires both real-world observations, binds the
+canonical final progress payload by SHA-256 and refuses replacement. A separate
+authorized finalization restores the verified backup into a fresh directory
+outside the workspace and writes one immutable positive or negative decision.
+
+Final analysis also joins the persisted running-task marker to the completed
+queue entry. The task ID and privacy-safe idempotency digest must match the
+frozen schedule and the completed attempt must be exactly one greater than the
+interrupted attempt; a recovery count alone cannot pass the gate.
+
+Unit tests and machine audits cover lock contention, callback ordering,
+recovered-task identity, attestation drift, immutability, external-scratch
+confinement and all static container wiring. This stage executes no production match, training, formal
+research run or provider call. The production protocol remains
+`preregistered_not_executed`; container build, real named-volume interruption,
+RPO/RTO observation and the 100-match decision remain external gates.

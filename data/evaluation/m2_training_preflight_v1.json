@@ -333,7 +333,7 @@
   "next_action": "run the frozen M2 training command",
   "protocol_id": "m2-mirrored-policy-v1",
   "ready": true,
-  "recorded_at": "2026-09-04T16:27:37.866326+00:00",
+  "recorded_at": "2026-09-04T17:13:13.999694+00:00",
   "schema_version": 1,
   "sealed_test": {
     "rows_loaded_for_model_selection": 0,

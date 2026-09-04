@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_evidence_derived_excellence_score",
-  "generated_at": "2026-09-04T16:42:29.658241+00:00",
+  "generated_at": "2026-09-04T17:27:25.195716+00:00",
   "status": "passed_dynamic_scoring",
   "passed": true,
   "scores": {
@@ -237,12 +237,12 @@
     "data/evaluation/excellence_roadmap_v1.json": "7ca039fbf6a2c6e0a9b5f854d3e3842829de29a61abc39e17de8ae668d257ba4",
     "src/product/excellence.py": "1cf02fae25a9a72659abfcd621e9ba0a68d707fe74bfaf3b3db7cd5ea5c7a6fc",
     "src/product/control_plane.py": "4c2075b5eb14eab68f46fcf9768a68faa4aa2267d0379eb85536eb89824b16ca",
-    "src/product/completion_plan.py": "5e82ce6c520847216ae1a87085ccd668194f2ff32411742aa280560dc93d3b97",
+    "src/product/completion_plan.py": "c02e3b928048ddea0804937d52d5d1ae7eda72d2d6818659c6dd482a67f7e40a",
     "src/cli.py": "dee187e5a56ceb5c86ca03622bbfea3efa22491366422be6a9f7af389ed9c131",
     "src/product/web.py": "779715befc2b71f756d1ab5fc630102c9db93867ba9f5a559206944d53528bff",
     "src/product/telemetry.py": "d3b7cda8f249da11f0e908d514b70abb8446b94721c33fa2681d5f7e361162a7",
-    "scripts/build_excellence_evidence_kit.py": "c08b7648f96a1e2369b34feda8f1c67b8d863b9ef7653875a0fadd720862dd7f",
-    "data/evaluation/excellence_evidence_kit_verification_v1.json": "d83ca3e9482adb21ceeedf4b467e93eef275cc85f2e43ad52ac3a828aa21f570",
+    "scripts/build_excellence_evidence_kit.py": "c3dd1e273881388e4d547c43d8e73476ac67e1b903ef9e294ccb9509a8c02d9a",
+    "data/evaluation/excellence_evidence_kit_verification_v1.json": "a3927ace2a12f87fde9d174448d195877014706e488a0205cb50053e3d806e1d",
     "scripts/verify_excellence_score.py": "6310d79bce04964bb41b1d4fae3a20c5ed330c8d9c3b0efadd2f583d966ae173"
   },
   "external_calls_made": false,

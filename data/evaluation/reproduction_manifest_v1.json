@@ -185,8 +185,22 @@
     {
       "id": "production_validation_execution",
       "command": "python scripts/run_production_validation.py --execute --workspace . --authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION --deployment-instance-id instance-replace",
-      "effect": "fixed_100_match_resumable_deployment_volume_validation",
+      "effect": "fixed_100_match_resumable_deployment_volume_workload",
       "runs_simulation": true,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "production_validation_attestation",
+      "command": "python scripts/run_production_validation.py --record-attestation --workspace . --operator-id operator-replace --volume-id volume-replace --container-image-digest sha256:replace --attested-deployment-instance-id instance-first --attested-deployment-instance-id instance-second --confirm-forced-termination --confirm-same-volume",
+      "effect": "record_identity_bound_operator_observation_without_simulation",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "production_validation_finalization",
+      "command": "python scripts/run_production_validation.py --finalize --workspace . --restore-scratch REPLACE_EXTERNAL_SCRATCH --authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION",
+      "effect": "restore_drill_and_immutable_production_validation_decision",
+      "runs_simulation": false,
       "explicit_authority_required": true
     },
     {

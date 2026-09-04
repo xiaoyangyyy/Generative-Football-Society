@@ -201,6 +201,18 @@ not quality signals by themselves.
     set. Active transaction cleanup is atomically detached before deletion,
     unsafe or unverifiable journals fail closed, and real child-process exit
     tests cover partial and fully switched states without a match or training.
+46. Made the frozen production-operations protocol executable from the shipped
+    image without weakening the read-only runtime. A profile-scoped offline
+    validation service owns dedicated output, persistence, backup, evidence and
+    restore-scratch volumes. It shares the Web writer lease, adds a second
+    validator lease, records the claimed task before match execution, and splits
+    workload execution, operator attestation and immutable finalization. The
+    exact operator statement now binds the final progress payload by SHA-256;
+    the recovered task must retain its task ID and idempotency digest and finish
+    on exactly the next attempt. Restore staging must remain outside the source
+    workspace. These are
+    zero-match contract and local substitute checks, not evidence that the
+    prospective 100-match deployment drill has run.
 
 ## LLM Scope Decision
 

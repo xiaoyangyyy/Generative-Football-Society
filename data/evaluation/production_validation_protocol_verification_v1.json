@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_production_validation_preregistration",
-  "generated_at": "2026-08-31T16:18:34.951954+00:00",
+  "generated_at": "2026-09-04T17:26:30.126910+00:00",
   "status": "passed_preregistered_not_executed",
   "passed": true,
   "execution_authorized": false,
@@ -15,13 +15,14 @@
     "backup_restore_is_integrity_checked": true,
     "acceptance_is_zero_loss_zero_duplicate": true,
     "audit_trail_and_negative_results_are_preserved": true,
+    "preexecution_deployment_amendment_is_explicit": true,
     "outputs_are_confined": true,
     "execution_remains_zero": true
   },
   "artifact_sha256": {
-    "data/evaluation/production_validation_protocol_v1.json": "33d57def38df799e3cd6847434e0eef66144981734a4435993919dd6303ae7e3",
-    "scripts/run_production_validation.py": "597fed3495c1184a2669d01bf7b95778588afad1962ca0ca2eea6726a3ef6668",
-    "docs/PRODUCTION_VALIDATION.md": "0ffaaf09e27faf766fd5d44c823945de2d07c996652be2121ae191db9f17c4b5"
+    "data/evaluation/production_validation_protocol_v1.json": "0f411e08287e5abec4f9549d960d35e45dd2c1ccb886c7bf2ae7283ca99b95eb",
+    "scripts/run_production_validation.py": "e7110e2ce00ce94a4749fe63e4c8062c7a69f62759a2b72a36c4ea4dfcfaf6df",
+    "docs/PRODUCTION_VALIDATION.md": "4b0eb3485c4605704117c2eddda893dc5fedbe16bdc899800e1f96392ee2f89c"
   },
   "external_calls_made": false,
   "training_executed": false,

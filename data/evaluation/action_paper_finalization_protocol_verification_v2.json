@@ -17,10 +17,10 @@
     "academic_replication_is_complete_and_branch_locked": false,
     "confirmatory_decision_is_complete": true,
     "full_study_independent_review_is_complete": false,
-    "results_paper_package_is_current": true
+    "results_paper_package_is_current": false
   },
   "final_manuscript_available": false,
-  "generated_at": "2026-08-31T16:11:29.684634+00:00",
+  "generated_at": "2026-09-04T17:09:39.807379+00:00",
   "matches_executed": 0,
   "passed": true,
   "provider_calls_made": false,

@@ -92,6 +92,9 @@ def verify_deployment_contract() -> dict:
     compose = (ROOT / "deploy/compose.yaml").read_text(encoding="utf-8")
     caddy = (ROOT / "deploy/Caddyfile").read_text(encoding="utf-8")
     dockerignore = (ROOT / ".dockerignore").read_text(encoding="utf-8")
+    production_runner = (
+        ROOT / "scripts/run_production_validation.py"
+    ).read_text(encoding="utf-8")
     checks = {
         "non_root_application": "USER 10001:10001" in dockerfile,
         "container_healthcheck": "HEALTHCHECK" in dockerfile
@@ -122,6 +125,18 @@ def verify_deployment_contract() -> dict:
             for value in (
                 "COPY data ./data",
                 "COPY reports/acceptance ./reports/acceptance",
+            )
+        ),
+        "production_validation_runner_is_in_image": (
+            "COPY scripts/run_production_validation.py "
+            "./scripts/run_production_validation.py" in dockerfile
+        ),
+        "production_validation_writable_paths_are_prepared": all(
+            value in dockerfile
+            for value in (
+                "data/evaluation/production_validation_v1",
+                "/validation-scratch",
+                "chown -R gfs:gfs",
             )
         ),
         "generated_state_excluded": all(
@@ -185,6 +200,55 @@ def verify_deployment_contract() -> dict:
                 "gfs_outputs:/app/outputs",
                 "gfs_persistence:/app/data/persistence",
                 "gfs_backups:/app/backups",
+            )
+        ),
+        "validation_service_is_explicit_and_offline": all(
+            value in compose
+            for value in (
+                "production-validation:",
+                'profiles: ["validation"]',
+                'entrypoint: ["python", "scripts/run_production_validation.py"]',
+                'network_mode: "none"',
+                'restart: "no"',
+            )
+        ),
+        "validation_service_has_dedicated_persistent_surfaces": all(
+            value in compose
+            for value in (
+                "gfs_validation_outputs:/app/outputs",
+                "gfs_validation_persistence:/app/data/persistence",
+                "gfs_validation_backups:/app/backups",
+                "gfs_validation_evaluation:/app/data/evaluation/production_validation_v1",
+                "gfs_validation_scratch:/validation-scratch",
+            )
+        ),
+        "validation_service_is_non_privileged": (
+            compose.count("read_only: true") >= 3
+            and compose.count("no-new-privileges:true") >= 3
+            and compose.count("cap_drop:") >= 3
+        ),
+        "validation_runner_serializes_product_writers": all(
+            value in production_runner
+            for value in (
+                'persistence / "product_web.lock"',
+                'persistence / "production_validation.lock"',
+                "with FileLease(web_lock, timeout=0.0), FileLease(validation_lock, timeout=0.0):",
+            )
+        ),
+        "validation_attestation_binds_final_progress": all(
+            value in production_runner
+            for value in (
+                '"progress_sha256"',
+                "_payload_sha256(progress)",
+                "final_progress_snapshot_is_bound",
+            )
+        ),
+        "validation_restore_uses_external_scratch": all(
+            value in production_runner
+            for value in (
+                "restore scratch must be outside the validation workspace",
+                "dir=restore_parent",
+                'parser.add_argument("--restore-scratch", type=Path)',
             )
         ),
         "trusted_tls_proxy_contract": all(

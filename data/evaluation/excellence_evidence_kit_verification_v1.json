@@ -5,7 +5,7 @@
   "passed": true,
   "kit_id": "gfs-excellence-evidence-kit-v1",
   "template_count": 8,
-  "archive_sha256": "e585e1b2d0b8a1215b4247486e612f0a67f77b1ca61f65468bc5a54ff67df755",
+  "archive_sha256": "ca11d3871204ff017a5f5336a87aa0368e5a86e8e56a27107e7df7f949983fa2",
   "checks": {
     "template_inventory_is_exact": true,
     "all_json_templates_are_explicitly_non_evidence": true,
@@ -17,11 +17,11 @@
   "artifact_sha256": {
     "data/evaluation/security_closure_protocol_v2.json": "3f97b83f214a3d2cc0466022f96d0cdc6fca765a1cc9e77da115ab4cc4a66777",
     "data/evaluation/product_validation_protocol_v1.json": "76b8848d0910d4c4fd60f9e13c183f8eb99d3a684c4afe73cabfa9305ffedd2e",
-    "data/evaluation/production_validation_protocol_v1.json": "33d57def38df799e3cd6847434e0eef66144981734a4435993919dd6303ae7e3",
+    "data/evaluation/production_validation_protocol_v1.json": "0f411e08287e5abec4f9549d960d35e45dd2c1ccb886c7bf2ae7283ca99b95eb",
     "data/evaluation/product_value_validation_protocol_v1.json": "416114c03ce821ba53ee125f87128ba14320dc03c02432007b26ba38792f6843",
     "data/evaluation/independent_action_reproduction_protocol_v2.json": "72076edd1285e36b33aa81b15b578d3742674e47155c19fb21f2177df563978e",
     "data/evaluation/action_paper_finalization_protocol_v2.json": "9fb07ab8d4f36022438e0e7e22ef235d42051dd81b75369f0e3a3ebd94604fa5",
-    "scripts/build_excellence_evidence_kit.py": "c08b7648f96a1e2369b34feda8f1c67b8d863b9ef7653875a0fadd720862dd7f",
+    "scripts/build_excellence_evidence_kit.py": "c3dd1e273881388e4d547c43d8e73476ac67e1b903ef9e294ccb9509a8c02d9a",
     "docs/EXCELLENCE_EVIDENCE_KIT.md": "f0d3022f19c6a0c358d996da592e99b3984c1816861400b0537ebbd9d43c56a1"
   },
   "external_calls_made": false,

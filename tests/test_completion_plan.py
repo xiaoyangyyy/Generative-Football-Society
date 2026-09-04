@@ -50,6 +50,12 @@ def test_dependency_completion_unblocks_downstream_without_marking_it_passed():
     assert rows["production_operations_validation"]["state"] == (
         "explicit_authorization_required"
     )
+    production_commands = rows["production_operations_validation"]["commands"]
+    assert len(production_commands) == 3
+    assert "--execute" in production_commands[0]
+    assert "--record-attestation" in production_commands[1]
+    assert "--finalize" in production_commands[2]
+    assert "--restore-scratch" in production_commands[2]
     assert rows["user_value_validation"]["state"] == "external_evidence_required"
     assert rows["independent_reproduction"]["state"] == "external_evidence_required"
     assert rows["completed_manuscript"]["state"] == "blocked_by_dependency"

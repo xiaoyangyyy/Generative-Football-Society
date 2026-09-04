@@ -94,6 +94,39 @@ def test_worker_executes_domain_match_and_persists_only_relative_artifacts(
     assert observed["seed_override"] is None
 
 
+def test_worker_reports_durable_running_identity_immediately_after_claim(
+    tmp_path, monkeypatch,
+):
+    report = tmp_path / "outputs/studio/demo/matches/0001.json"
+    observed = []
+
+    class Workspace:
+        def run_match(self, home, away, *, fast, plan, seed_override):
+            assert observed and observed[0]["state"] == "running"
+            return {
+                "match_id": "0001",
+                "fixture": {"home": home, "away": away, "fast": fast},
+                "result": {"score": {"home": 0, "away": 0}},
+                "integrity": {"accepted": True},
+                "report_path": str(report),
+                "dashboard_path": str(report.with_suffix(".html")),
+                "comparison_path": None,
+                "comparison_dashboard_path": None,
+            }
+
+    monkeypatch.setattr(
+        "src.product.tasks.ProductWorkspace.load", lambda _root: Workspace(),
+    )
+    queue = ProductTaskQueue(tmp_path)
+    task, _ = queue.submit_match("Brazil", "Argentina", fast=True)
+    worker = BackgroundMatchWorker(queue, on_task_claimed=observed.append)
+    assert worker.run_once() is True
+    assert len(observed) == 1
+    assert observed[0]["task_id"] == task["task_id"]
+    assert observed[0]["attempt"] == 1
+    assert queue.get_task(task["task_id"])["state"] == "completed"
+
+
 def test_worker_failure_is_terminal_and_does_not_persist_exception_text(
     tmp_path, monkeypatch,
 ):
