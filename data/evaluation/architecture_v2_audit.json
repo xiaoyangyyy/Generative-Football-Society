@@ -15,6 +15,7 @@
     "formal_experiment_is_preregistered_and_compute_bounded": true,
     "historical_navigator_preserves_v2_action_semantics": true,
     "hold_is_reference_only_not_direct_model_authority": true,
+    "human_studies_are_registered_allocated_and_byte_verified": true,
     "infrastructure_has_no_upward_dependencies": true,
     "llm_pool_is_config_scoped_and_locked": true,
     "llm_success_count_requires_accepted_content": true,

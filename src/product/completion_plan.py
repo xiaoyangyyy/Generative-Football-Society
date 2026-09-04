@@ -42,13 +42,20 @@ STEPS = (
     CompletionStep(
         "target_user_validation", "product_validation", 30, "human_study",
         "study_lead", (),
-        ("python scripts/product_validation_study.py --analyze --records "
+        ("python scripts/product_validation_study.py --register "
+         "--participant-id P-REPLACE00000 --target-role football_analyst "
+         "--moderator-id M-REPLACE0 --confirm-consent",
+         "python scripts/product_validation_study.py --analyze --records "
          "data/evaluation/product_validation_v1/participant_records.jsonl "
+         "--registry data/evaluation/product_validation_v1/session_registry.json "
+         "--evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE "
          "--external-review data/evaluation/product_validation_v1/"
          "external_review.json --out "
-         "data/evaluation/product_validation_v1/decision.json",),
+         "data/evaluation/product_validation_v1/decision.json"),
         required_inputs=(
+            "data/evaluation/product_validation_v1/session_registry.json",
             "data/evaluation/product_validation_v1/participant_records.jsonl",
+            "controlled content-addressed evidence archive",
             "at least ten valid target-user participants with frozen role quotas",
         ),
     ),
@@ -57,11 +64,14 @@ STEPS = (
         "independent_review", "accessibility_reviewer", (),
         ("python scripts/product_validation_study.py --analyze --records "
          "data/evaluation/product_validation_v1/participant_records.jsonl "
+         "--registry data/evaluation/product_validation_v1/session_registry.json "
+         "--evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE "
          "--external-review data/evaluation/product_validation_v1/"
          "external_review.json --out "
          "data/evaluation/product_validation_v1/decision.json",),
         required_inputs=(
             "data/evaluation/product_validation_v1/external_review.json",
+            "controlled content-addressed evidence archive",
             "independent WCAG 2.2 AA reviewer attestation",
         ),
     ),
@@ -70,11 +80,14 @@ STEPS = (
         "security_reviewer", ("credential_security_closure",),
         ("python scripts/product_validation_study.py --analyze --records "
          "data/evaluation/product_validation_v1/participant_records.jsonl "
+         "--registry data/evaluation/product_validation_v1/session_registry.json "
+         "--evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE "
          "--external-review data/evaluation/product_validation_v1/"
          "external_review.json --out "
          "data/evaluation/product_validation_v1/decision.json",),
         required_inputs=(
             "data/evaluation/product_validation_v1/external_review.json",
+            "controlled content-addressed evidence archive",
             "independent application-security reviewer attestation",
         ),
     ),
@@ -108,12 +121,21 @@ STEPS = (
     CompletionStep(
         "user_value_validation", "product_validation", 70, "human_study",
         "study_lead", ("target_user_validation",),
-        ("python scripts/product_value_study.py --analyze --records "
+        ("python scripts/product_value_study.py --register "
+         "--participant-id participant-replace0001 "
+         "--target-role football_analyst "
+         "--moderator-id moderator-replace0001 --confirm-consent",
+         "python scripts/product_value_study.py --analyze --records "
          "data/evaluation/product_value_validation_v1/participant_records.jsonl "
+         "--registry data/evaluation/product_value_validation_v1/session_registry.json "
+         "--evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE "
          "--out data/evaluation/product_value_validation_v1/decision.json",),
         required_inputs=(
+            "data/evaluation/product_value_validation_v1/session_registry.json",
+            "data/evaluation/product_value_case_packs_v1.json",
             "data/evaluation/product_value_validation_v1/participant_records.jsonl",
-            "valid randomized comparative target-user records",
+            "controlled content-addressed structured receipt archive",
+            "valid registry-assigned comparative target-user records",
         ),
     ),
     CompletionStep(

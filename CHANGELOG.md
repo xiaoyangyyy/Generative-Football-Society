@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Replaced self-declared human-study sequence, correctness and digest-only
+  evidence with an OS-serialized pseudonymous registry, role-stratified
+  permuted-block allocation, frozen scored case packs, structured receipt
+  re-scoring and byte-verified content-addressed evidence archives.
 - Extended the tournament transaction lease across public startup, identity
   verification, resume recovery and the complete tournament, while safely
   reusing it inside each match and rejecting concurrent lifecycle writers

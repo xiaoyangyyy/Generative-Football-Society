@@ -213,6 +213,15 @@ not quality signals by themselves.
     workspace. These are
     zero-match contract and local substitute checks, not evidence that the
     prospective 100-match deployment drill has run.
+47. Replaced self-reported human-study authority with one shared product-layer
+    registration and evidence contract. Registrations are atomic and
+    OS-serialized, bind protocol/case/time identity, and allocate comparative
+    AB/BA order through role-stratified permuted blocks. Final analysis requires
+    exact registry coverage and verifies non-symlink evidence bytes in a
+    content-addressed archive. Comparative structured receipts are re-scored
+    from frozen numeric case contracts instead of trusting `correct=true`.
+    The amendments record zero prior participants and remain preparation, not
+    user-value evidence.
 
 ## LLM Scope Decision
 

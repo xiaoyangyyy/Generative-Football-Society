@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_validation_preregistration",
-  "generated_at": "2026-08-09T18:37:21.873502+00:00",
+  "generated_at": "2026-09-04T18:54:55.271941+00:00",
   "status": "passed_preregistered_not_executed",
   "passed": true,
   "study_executed": false,
@@ -13,14 +13,18 @@
     "decision_thresholds_are_frozen": true,
     "external_reviews_are_independent_and_fail_closed": true,
     "privacy_and_analysis_integrity_are_explicit": true,
+    "registration_is_authoritative_and_premeasurement": true,
+    "evidence_archive_requires_real_unique_bytes": true,
+    "preexecution_amendment_is_zero_participant": true,
     "outputs_are_confined_and_exact": true,
     "execution_remains_zero": true
   },
-  "protocol_sha256": "76b8848d0910d4c4fd60f9e13c183f8eb99d3a684c4afe73cabfa9305ffedd2e",
+  "protocol_sha256": "3cdbc8c0569a822bbf97e094667d97645b44fedf2a830bf91d18ce7072e6d322",
   "artifact_sha256": {
-    "data/evaluation/product_validation_protocol_v1.json": "76b8848d0910d4c4fd60f9e13c183f8eb99d3a684c4afe73cabfa9305ffedd2e",
-    "docs/PRODUCT_VALIDATION_STUDY.md": "2969c803921576cfb2a21dc51a056c332ad908ed940879fb1eed16864ad18058",
-    "scripts/product_validation_study.py": "19a281f1ec7caa7d1e4eae2093d4fce40989f8a14043c3e263e6c90d783bc13a"
+    "data/evaluation/product_validation_protocol_v1.json": "3cdbc8c0569a822bbf97e094667d97645b44fedf2a830bf91d18ce7072e6d322",
+    "docs/PRODUCT_VALIDATION_STUDY.md": "79d2376dd0a5b225e72920f46048eaeb78014b4e06d423e486a800f1ed09c8c1",
+    "scripts/product_validation_study.py": "01e1a03c642b65118dc9bfc3e8cdedf7102719b6b901fee7001071905dcd1e92",
+    "src/product/human_study.py": "446fc3a975d45b40948eef51848106e06db025db39fb6056a46658d890b5064f"
   },
   "external_calls_made": false,
   "participants_observed": 0,

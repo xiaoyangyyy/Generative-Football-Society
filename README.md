@@ -181,6 +181,17 @@ startup, identity verification, resume recovery, world construction and the
 complete tournament run. Per-match transactions reuse the context-owned lease
 without reacquiring it; a second process fails before it can read evolving
 state, restore files or write a run manifest.
+V3.96 makes Studio restore crash-convergent. A durable recovery journal binds
+the verified backup, displaced live state and replacement boundary so an
+interrupted restore resumes or rolls back without inventing a second world.
+V3.97 ships the production-validation runner in the read-only container and
+separates fixed workload execution, deployment attestation and finalization.
+The 100-match restart drill remains preregistered and unexecuted.
+V3.98 replaces manually trusted human-study rows with an authoritative
+pseudonymous session registry, role-stratified permuted-block allocation,
+concrete scored product-value cases and byte-verified content-addressed
+evidence. Comparative correctness is recomputed from frozen structured
+receipts; no participant session has been executed.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

@@ -3799,3 +3799,35 @@ confinement and all static container wiring. This stage executes no production m
 research run or provider call. The production protocol remains
 `preregistered_not_executed`; container build, real named-volume interruption,
 RPO/RTO observation and the 100-match decision remain external gates.
+
+## 116. V3.98 Authoritative human-study evidence intake
+
+The target-user and comparative-value protocols previously accepted observer
+authored JSONL rows whose sequence and correctness fields were internally
+consistent but not tied to a pre-measurement authority. Evidence values only
+had to match the syntax of SHA-256, so an invented digest could survive the
+analysis boundary.
+
+Both studies now use one product-layer registration primitive. It writes a
+pseudonymous session registry atomically under an operating-system lease,
+binds each registration to the frozen protocol hash and registration time, and
+requires exact coverage during final analysis. The comparative study also
+binds the concrete case-pack manifest and assigns AB/BA through deterministic
+role-stratified permuted blocks. Operators cannot select or rewrite a sequence
+inside the participant row.
+
+Evidence lives outside the repository in a flat content-addressed archive.
+Every referenced file must be a real non-symlink file named by its exact
+lowercase SHA-256; missing bytes, content drift and digest reuse fail closed.
+Comparative evidence is a structured receipt bound to registration,
+participant, condition, case and session time. The analyzer re-scores its
+answers from the frozen case keys and rejects disagreement with the observer's
+summary. The case audit separately recomputes the unique threshold-passing
+intervention from numeric branch data.
+
+The sole preexecution amendments record zero prior participants, sessions and
+results. Tests cover concurrent registration without lost entries, idempotent
+retry, post-measurement registration refusal, protocol/case/allocation/time
+tampering, privacy allowlists, missing and modified evidence, and positive and
+negative analyses. This stage observes no participant, runs no match or
+training, and makes no provider call; user value remains an external gate.

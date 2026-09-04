@@ -32,9 +32,10 @@ def test_template_kit_is_deterministic_secret_free_and_zero_execution():
     assert first == second
     assert report["passed"] is True
     assert report["status"] == "passed_template_only_kit"
-    assert report["template_count"] == 8
+    assert report["template_count"] == 9
     assert "security/deepseek_api_credential_receipt.template.json" in files
     assert "security/github_classic_pat_receipt.template.json" in files
+    assert "product_value/condition_receipt.template.json" in files
     security = json.loads(files["security/attestation.template.json"])
     assert security["schema_version"] == 2
     assert {

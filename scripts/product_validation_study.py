@@ -8,6 +8,7 @@ import json
 import math
 import os
 import re
+import sys
 import tempfile
 from collections import Counter
 from datetime import datetime, timezone
@@ -16,7 +17,25 @@ from statistics import mean, median
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.product.human_study import (  # noqa: E402
+    ARCHIVE_LAYOUT,
+    bind_records_to_registry,
+    register_participant,
+    validate_registry,
+    verify_content_addressed_archive,
+)
+
+
 PROTOCOL_PATH = ROOT / "data/evaluation/product_validation_protocol_v1.json"
+DEFAULT_REGISTRY_PATH = (
+    ROOT / "data/evaluation/product_validation_v1/session_registry.json"
+)
+DEFAULT_RECORDS_PATH = (
+    ROOT / "data/evaluation/product_validation_v1/participant_records.jsonl"
+)
 PARTICIPANT_ID = re.compile(r"^P-[A-Z0-9]{12}$")
 MODERATOR_ID = re.compile(r"^M-[A-Z0-9]{8}$")
 REVIEWER_ID = re.compile(r"^R-[A-Z0-9]{10}$")
@@ -65,6 +84,9 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
     execution = protocol.get("execution") or {}
     tasks = protocol.get("tasks") or []
     outputs = protocol.get("outputs") or {}
+    registration = protocol.get("registration") or {}
+    archive = protocol.get("evidence_archive") or {}
+    amendments = protocol.get("preexecution_amendments") or []
     return {
         "schema_and_state_are_preregistered": (
             protocol.get("schema_version") == 1
@@ -121,9 +143,43 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             and integrity.get("duplicate_participant_ids_forbidden") is True
             and integrity.get("all_valid_records_analyzed") is True
             and integrity.get("interim_release_decisions") is False
+            and integrity.get("authoritative_session_registry_required") is True
+            and integrity.get("all_registrations_analyzed") is True
+            and integrity.get("record_identity_bound_to_registration") is True
+            and integrity.get("evidence_hashes_verified_against_real_files") is True
+        ),
+        "registration_is_authoritative_and_premeasurement": (
+            registration.get("registry_kind")
+            == "gfs_human_study_session_registry_v1"
+            and registration.get("participant_id_pattern")
+            == r"^P-[A-Z0-9]{12}$"
+            and registration.get("moderator_id_pattern") == r"^M-[A-Z0-9]{8}$"
+            and registration.get("registration_before_measurement") is True
+            and registration.get("consent_required") is True
+            and registration.get("duplicate_registration_policy")
+            == "idempotent_exact_match"
+        ),
+        "evidence_archive_requires_real_unique_bytes": (
+            archive.get("layout") == ARCHIVE_LAYOUT
+            and archive.get("file_name_is_exact_sha256") is True
+            and archive.get("symlinks_allowed") is False
+            and archive.get("all_referenced_content_verified_during_analysis")
+            is True
+            and archive.get("duplicate_digest_across_observations_allowed")
+            is False
+            and archive.get("archive_path_recorded_in_decision") is False
+        ),
+        "preexecution_amendment_is_zero_participant": (
+            len(amendments) == 1
+            and amendments[0].get("amendment_id")
+            == "authoritative-human-study-intake-v1"
+            and amendments[0].get("participants_observed_before_amendment") == 0
+            and amendments[0].get("sessions_executed_before_amendment") == 0
+            and amendments[0].get("results_available_before_amendment") is False
         ),
         "outputs_are_confined_and_exact": (
-            set(outputs) == {"raw_records", "external_review", "decision"}
+            set(outputs)
+            == {"session_registry", "raw_records", "external_review", "decision"}
             and all(_confined_output(value) for value in outputs.values())
         ),
         "execution_remains_zero": (
@@ -161,6 +217,9 @@ def protocol_report(protocol_path: Path = PROTOCOL_PATH) -> dict[str, Any]:
                 ROOT / "docs/PRODUCT_VALIDATION_STUDY.md"
             ),
             "scripts/product_validation_study.py": _file_sha256(Path(__file__)),
+            "src/product/human_study.py": _file_sha256(
+                ROOT / "src/product/human_study.py"
+            ),
         },
         "external_calls_made": False,
         "participants_observed": 0,
@@ -197,6 +256,7 @@ def _validate_record(
     expected_fields = {
         "schema_version",
         "protocol_id",
+        "registration_id",
         "participant_id",
         "target_role",
         "consent",
@@ -219,6 +279,9 @@ def _validate_record(
     participant_id = str(record.get("participant_id") or "")
     if not PARTICIPANT_ID.fullmatch(participant_id):
         raise ValueError("participant_id must be pseudonymous")
+    registration_id = str(record.get("registration_id") or "")
+    if re.fullmatch(r"REG-[0-9A-F]{24}", registration_id) is None:
+        raise ValueError(f"registration_id is invalid: {participant_id}")
     if record.get("observer_attestation") != OBSERVER_ATTESTATION:
         raise ValueError(f"missing observer attestation for {participant_id}")
     excluded = record.get("excluded")
@@ -248,7 +311,16 @@ def _validate_record(
             raise ValueError(
                 f"excluded record contains behavioral data: {participant_id}"
             )
-        return {"participant_id": participant_id, "excluded": True, "reason": reason}
+        return {
+            "participant_id": participant_id,
+            "registration_id": registration_id,
+            "moderator_id": moderator_id,
+            "session_started_at": record["session_started_at"],
+            "role": role,
+            "sequence": None,
+            "excluded": True,
+            "reason": reason,
+        }
     if reason is not None:
         raise ValueError(f"valid participant has exclusion reason: {participant_id}")
     if record.get("consent") is not True:
@@ -302,6 +374,7 @@ def _validate_record(
                 "critical_error": critical,
                 "duration_seconds": float(duration),
                 "assistance_count": assistance,
+                "evidence_sha256": evidence,
             }
         )
     elapsed = (ended - started).total_seconds()
@@ -328,8 +401,12 @@ def _validate_record(
         raise ValueError(f"qualitative tags invalid: {participant_id}")
     return {
         "participant_id": participant_id,
+        "registration_id": registration_id,
+        "moderator_id": moderator_id,
+        "session_started_at": record["session_started_at"],
         "excluded": False,
         "role": role,
+        "sequence": None,
         "tasks": normalized_tasks,
         "sus": _sus_score(responses),
         "duration_seconds": elapsed,
@@ -431,6 +508,8 @@ def _external_review_checks(
 def analyze(
     records_path: Path,
     external_review_path: Path,
+    registry_path: Path,
+    evidence_root: Path,
     protocol_path: Path = PROTOCOL_PATH,
 ) -> dict[str, Any]:
     protocol = _read_json(protocol_path)
@@ -439,9 +518,11 @@ def analyze(
         raise ValueError("product validation protocol is invalid or has drifted")
     raw_records = _load_records(records_path)
     normalized = [_validate_record(row, protocol) for row in raw_records]
-    ids = [row["participant_id"] for row in normalized]
-    if len(ids) != len(set(ids)):
-        raise ValueError("duplicate participant_id")
+    registry_report = validate_registry(
+        protocol_path=protocol_path,
+        registry=registry_path,
+    )
+    registry_binding = bind_records_to_registry(normalized, registry_report)
     valid = [row for row in normalized if not row["excluded"]]
     excluded = [row for row in normalized if row["excluded"]]
     if not valid:
@@ -461,6 +542,19 @@ def analyze(
     tags = Counter(tag for row in valid for tag in row["qualitative_tags"])
     review = _read_json(external_review_path)
     review_checks = _external_review_checks(review, protocol)
+    evidence_digests = [
+        str(task["evidence_sha256"])
+        for row in valid
+        for task in row["tasks"]
+        if task["evidence_sha256"] is not None
+    ]
+    for section_name in ("accessibility", "security"):
+        artifact_map = (review.get(section_name) or {}).get("artifact_sha256") or {}
+        evidence_digests.extend(str(value) for value in artifact_map.values())
+    archive_report = verify_content_addressed_archive(
+        evidence_root,
+        evidence_digests,
+    )
     workflow_rate = workflow_successes / len(valid)
     task_rate = task_successes / task_total
     mean_sus = mean(sus_scores)
@@ -480,6 +574,14 @@ def analyze(
             critical_errors <= protocol["measurement"]["critical_error_threshold"]
         ),
         "external_review_bundle_passes": all(review_checks.values()),
+        "all_records_bound_to_registry": all(
+            value is True
+            for key, value in registry_binding.items()
+            if key.startswith("all_")
+        ),
+        "all_evidence_bytes_verified": (
+            archive_report["verified_artifacts"] == len(evidence_digests)
+        ),
     }
     passed = all(gates.values())
     return {
@@ -516,8 +618,15 @@ def analyze(
         },
         "gates": gates,
         "external_review_checks": review_checks,
+        "registry_checks": registry_binding,
+        "evidence_archive": {
+            "layout": archive_report["layout"],
+            "verified_artifacts": archive_report["verified_artifacts"],
+            "inventory_sha256": archive_report["inventory_sha256"],
+        },
         "artifact_sha256": {
             "protocol": _file_sha256(protocol_path),
+            "session_registry": _file_sha256(registry_path),
             "participant_records": _file_sha256(records_path),
             "external_review": _file_sha256(external_review_path),
             "analyzer": _file_sha256(Path(__file__)),
@@ -529,7 +638,7 @@ def analyze(
         "provider_calls_made_by_analyzer": False,
         "limitations": [
             "The study evaluates the frozen tasks and recruited target-role sample, not every possible user or deployment context.",
-            "The analyzer validates evidence digests but does not contain participant media or independently prove reviewer identity.",
+            "The analyzer verifies referenced evidence bytes but does not independently prove the real-world identity of a pseudonymous participant or reviewer.",
             "Passing this study does not substitute for confirmatory scientific results or production deployment approval.",
         ],
     }
@@ -558,22 +667,92 @@ def _atomic_write(path: Path, payload: dict[str, Any], *, overwrite: bool) -> No
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--analyze", action="store_true")
+    parser.add_argument("--register", action="store_true")
     parser.add_argument("--records", type=Path)
+    parser.add_argument("--registry", type=Path)
+    parser.add_argument("--evidence-root", type=Path)
     parser.add_argument("--external-review", type=Path)
+    parser.add_argument("--participant-id")
+    parser.add_argument("--target-role")
+    parser.add_argument("--moderator-id")
+    parser.add_argument("--confirm-consent", action="store_true")
     parser.add_argument("--out", type=Path)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args(argv)
+    if args.analyze and args.register:
+        parser.error("--analyze and --register are mutually exclusive")
+    if args.register:
+        if args.out is not None or args.external_review is not None:
+            parser.error("--register does not accept --out or --external-review")
+        if args.evidence_root is not None or args.overwrite:
+            parser.error("--register does not accept evidence or overwrite options")
+        if not all((args.participant_id, args.target_role, args.moderator_id)):
+            parser.error(
+                "--register requires --participant-id, --target-role, and --moderator-id"
+            )
+        if not args.confirm_consent:
+            parser.error("--register requires --confirm-consent")
+        if not all(validate_protocol(_read_json(PROTOCOL_PATH)).values()):
+            raise ValueError("cannot register under an invalid or drifted protocol")
+        result = register_participant(
+            project_root=ROOT,
+            protocol_path=PROTOCOL_PATH,
+            registry_path=args.registry or DEFAULT_REGISTRY_PATH,
+            records_path=args.records or DEFAULT_RECORDS_PATH,
+            participant_id=args.participant_id,
+            target_role=args.target_role,
+            moderator_id=args.moderator_id,
+            consent_recorded=True,
+        )
+        public = {
+            "schema_version": 1,
+            "status": "registered" if result["created"] else "already_registered",
+            "created": result["created"],
+            "registration": result["registration"],
+            "external_calls_made": False,
+            "matches_executed": 0,
+            "training_executed": False,
+        }
+        print(json.dumps(public, ensure_ascii=False, indent=2))
+        return 0
     if not args.analyze:
-        if any(value is not None for value in (args.records, args.external_review)):
-            parser.error("--records and --external-review require --analyze")
+        if any(
+            value is not None
+            for value in (
+                args.records,
+                args.registry,
+                args.evidence_root,
+                args.external_review,
+                args.participant_id,
+                args.target_role,
+                args.moderator_id,
+            )
+        ) or args.confirm_consent:
+            parser.error("study inputs require --register or --analyze")
         report = protocol_report()
         if args.out is not None:
             _atomic_write(args.out, report, overwrite=args.overwrite)
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["passed"] else 1
-    if args.records is None or args.external_review is None or args.out is None:
-        parser.error("--analyze requires --records, --external-review, and --out")
-    decision = analyze(args.records, args.external_review)
+    if any((args.participant_id, args.target_role, args.moderator_id)) or args.confirm_consent:
+        parser.error("participant registration options require --register")
+    if (
+        args.records is None
+        or args.registry is None
+        or args.evidence_root is None
+        or args.external_review is None
+        or args.out is None
+    ):
+        parser.error(
+            "--analyze requires --records, --registry, --evidence-root, "
+            "--external-review, and --out"
+        )
+    decision = analyze(
+        args.records,
+        args.external_review,
+        args.registry,
+        args.evidence_root,
+    )
     _atomic_write(args.out, decision, overwrite=args.overwrite)
     print(json.dumps(decision, ensure_ascii=False, indent=2))
     return 0 if decision["passed"] else 1

@@ -81,6 +81,22 @@
     "unresolved_critical_findings_allowed": 0,
     "critical_findings_may_be_risk_accepted": false
   },
+  "registration": {
+    "registry_kind": "gfs_human_study_session_registry_v1",
+    "participant_id_pattern": "^P-[A-Z0-9]{12}$",
+    "moderator_id_pattern": "^M-[A-Z0-9]{8}$",
+    "registration_before_measurement": true,
+    "consent_required": true,
+    "duplicate_registration_policy": "idempotent_exact_match"
+  },
+  "evidence_archive": {
+    "layout": "content_addressed_flat_sha256_v1",
+    "file_name_is_exact_sha256": true,
+    "symlinks_allowed": false,
+    "all_referenced_content_verified_during_analysis": true,
+    "duplicate_digest_across_observations_allowed": false,
+    "archive_path_recorded_in_decision": false
+  },
   "integrity": {
     "protocol_changes_after_first_participant": false,
     "participant_ids_are_pseudonymous": true,
@@ -89,13 +105,27 @@
     "completed_tasks_require_sha256_evidence": true,
     "duplicate_participant_ids_forbidden": true,
     "all_valid_records_analyzed": true,
-    "interim_release_decisions": false
+    "interim_release_decisions": false,
+    "authoritative_session_registry_required": true,
+    "all_registrations_analyzed": true,
+    "record_identity_bound_to_registration": true,
+    "evidence_hashes_verified_against_real_files": true
   },
   "outputs": {
+    "session_registry": "data/evaluation/product_validation_v1/session_registry.json",
     "raw_records": "data/evaluation/product_validation_v1/participant_records.jsonl",
     "external_review": "data/evaluation/product_validation_v1/external_review.json",
     "decision": "data/evaluation/product_validation_v1/decision.json"
   },
+  "preexecution_amendments": [
+    {
+      "amendment_id": "authoritative-human-study-intake-v1",
+      "reason": "Bind every measured session to a pre-measurement registry and verify referenced evidence bytes before the first participant.",
+      "participants_observed_before_amendment": 0,
+      "sessions_executed_before_amendment": 0,
+      "results_available_before_amendment": false
+    }
+  ],
   "execution": {
     "participants_observed": 0,
     "sessions_executed": 0,

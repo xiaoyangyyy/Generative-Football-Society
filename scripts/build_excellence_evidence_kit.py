@@ -41,6 +41,7 @@ PROTOCOLS = {
     "product": "data/evaluation/product_validation_protocol_v1.json",
     "production": "data/evaluation/production_validation_protocol_v1.json",
     "value": "data/evaluation/product_value_validation_protocol_v1.json",
+    "value_cases": "data/evaluation/product_value_case_packs_v1.json",
     "independent": "data/evaluation/independent_action_reproduction_protocol_v2.json",
     "paper": "data/evaluation/action_paper_finalization_protocol_v2.json",
 }
@@ -125,6 +126,7 @@ def build_template_files(root: Path = ROOT) -> dict[str, bytes]:
     }
     product_record = {
         **_template_header(product["protocol_id"]),
+        "registration_id": "REPLACE_WITH_REGISTRY_ASSIGNED_ID",
         "participant_id": "REPLACE_WITH_PSEUDONYMOUS_PARTICIPANT_ID",
         "target_role": product["population"]["target_roles"][0],
         "consent": False,
@@ -178,6 +180,7 @@ def build_template_files(root: Path = ROOT) -> dict[str, bytes]:
     }
     value_record = {
         **_template_header(value["protocol_id"]),
+        "registration_id": "REPLACE_WITH_REGISTRY_ASSIGNED_ID",
         "participant_id": "REPLACE_WITH_PSEUDONYMOUS_PARTICIPANT_ID",
         "target_role": value["population"]["target_roles"][0],
         "consent": False,
@@ -208,6 +211,19 @@ def build_template_files(root: Path = ROOT) -> dict[str, bytes]:
         "excluded": False,
         "exclusion_reason": None,
         "observer_attestation": VALUE_OBSERVER_ATTESTATION,
+    }
+    value_receipt = {
+        **_template_header(value["protocol_id"]),
+        "registration_id": "REPLACE_WITH_REGISTRY_ASSIGNED_ID",
+        "participant_id": "REPLACE_WITH_PSEUDONYMOUS_PARTICIPANT_ID",
+        "condition": "gfs_studio",
+        "case_pack": "case_pack_alpha",
+        "answers": {
+            "recommended_intervention": PLACEHOLDER,
+            "supported_claim": PLACEHOLDER,
+            "next_evidence_action": PLACEHOLDER,
+        },
+        "submitted_at": PLACEHOLDER,
     }
     deployment_attestation = {
         **_template_header(production["protocol_id"]),
@@ -343,6 +359,7 @@ training job, or formal experiment.
         "product_validation/participant_record.template.json": _json_bytes(product_record),
         "product_validation/external_review.template.json": _json_bytes(external_review),
         "product_value/participant_record.template.json": _json_bytes(value_record),
+        "product_value/condition_receipt.template.json": _json_bytes(value_receipt),
         "production/deployment_attestation.template.json": _json_bytes(deployment_attestation),
         "independent_reproduction/review.template.json": _json_bytes(independent_review),
         "paper/PAPER_FINAL.template.md": manuscript.encode(),
@@ -398,12 +415,13 @@ def verify_kit(root: Path = ROOT) -> dict[str, Any]:
             "product_validation/participant_record.template.json",
             "product_validation/external_review.template.json",
             "product_value/participant_record.template.json",
+            "product_value/condition_receipt.template.json",
             "production/deployment_attestation.template.json",
             "independent_reproduction/review.template.json",
             "paper/PAPER_FINAL.template.md",
         },
         "all_json_templates_are_explicitly_non_evidence": (
-            len(json_templates) == 8
+            len(json_templates) == 9
             and all(row.get("template_only") is True for row in json_templates)
         ),
         "templates_contain_placeholders": all(
@@ -429,7 +447,7 @@ def verify_kit(root: Path = ROOT) -> dict[str, Any]:
         "status": "passed_template_only_kit" if passed else "failed",
         "passed": passed,
         "kit_id": KIT_ID,
-        "template_count": 8,
+        "template_count": 9,
         "archive_sha256": hashlib.sha256(archive).hexdigest(),
         "checks": checks,
         "artifact_sha256": {

@@ -34,6 +34,15 @@ placeholder from contemporaneous evidence, remove only the two template-only
 fields, retain failures and deviations, and then run the verifier named by
 `python gfs.py studio excellence`.
 
+Human-study records are not valid until the participant has been registered by
+the matching `--register` command. The returned `registration_id` must replace
+the template placeholder. Comparative-value conditions additionally use the
+structured receipt template: remove its two template-only fields, fill the
+three frozen-choice answers, hash the exact JSON bytes, and store those bytes
+under that digest in the controlled evidence archive. The final analyzer takes
+both `--registry` and `--evidence-root`; a syntactically plausible digest with
+no matching file is rejected.
+
 The archive contains no credential value or direct participant identifier and
 must never be used to collect names, email addresses, access tokens, API keys,
 raw free text, or host identifiers. Building or auditing it performs no study,

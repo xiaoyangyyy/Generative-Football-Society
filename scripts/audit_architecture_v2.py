@@ -336,6 +336,24 @@ def main() -> int:
     evidence_kit = (
         ROOT / "scripts/build_excellence_evidence_kit.py"
     ).read_text(encoding="utf-8")
+    human_study = (
+        ROOT / "src/product/human_study.py"
+    ).read_text(encoding="utf-8")
+    product_validation_study = (
+        ROOT / "scripts/product_validation_study.py"
+    ).read_text(encoding="utf-8")
+    product_value_study = (
+        ROOT / "scripts/product_value_study.py"
+    ).read_text(encoding="utf-8")
+    product_validation_protocol = _read(
+        "data/evaluation/product_validation_protocol_v1.json"
+    )
+    product_value_protocol = _read(
+        "data/evaluation/product_value_validation_protocol_v1.json"
+    )
+    product_value_cases = _read(
+        "data/evaluation/product_value_case_packs_v1.json"
+    )
     runtime = (ROOT / "src/simulation/runtime.py").read_text(encoding="utf-8")
     gateway = (ROOT / "src/simulation/llm_gateway.py").read_text(encoding="utf-8")
     wm_inference = (
@@ -1772,6 +1790,45 @@ def main() -> int:
                 "gfs_validation_evaluation:/app/data/evaluation/production_validation_v1",
                 "gfs_validation_scratch:/validation-scratch",
             ))
+        ),
+        "human_studies_are_registered_allocated_and_byte_verified": (
+            all(token in human_study for token in (
+                "with FileLease(",
+                'timeout=5.0',
+                '"registered_at": registered_at',
+                '"case_pack_manifest_sha256": case_pack_manifest_sha256',
+                "def bind_records_to_registry(",
+                "def verify_content_addressed_archive(",
+                'candidate.is_symlink() or not candidate.is_file()',
+                'hasher = hashlib.sha256()',
+                'hasher.hexdigest() != digest',
+                'retained evidence bytes require a positive size limit',
+                '"verified_bytes": verified_bytes',
+            ))
+            and all(token in product_validation_study for token in (
+                'parser.add_argument("--register", action="store_true")',
+                "registry_binding = bind_records_to_registry",
+                "archive_report = verify_content_addressed_archive",
+                '"session_registry": _file_sha256(registry_path)',
+            ))
+            and all(token in product_value_study for token in (
+                "def validate_case_packs(",
+                "derived_winners.append",
+                "def _score_receipt(",
+                'archive_report["verified_bytes"]',
+                "max_bytes_per_artifact=case_manifest",
+                "declared correctness disagrees with frozen scoring",
+                "case_pack_manifest_path=case_pack_path",
+            ))
+            and product_validation_protocol.get("execution", {}).get(
+                "participants_observed"
+            ) == 0
+            and product_value_protocol.get("current_execution", {}).get(
+                "participants_observed"
+            ) == 0
+            and product_value_cases.get("current_execution", {}).get(
+                "participants_exposed"
+            ) == 0
         ),
         "release_readiness_separates_code_contract_from_external_results": (
             all(token in control_plane for token in (

@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "manifest_id": "gfs-studio-product-value-case-packs-v1",
+  "protocol_id": "gfs-studio-comparative-value-validation-v1",
+  "state": "frozen_preexecution",
+  "purpose": "Two matched synthetic football-decision cases for comparing evidence-correct analysis workflows without making real-football causal claims.",
+  "delivery_contract": {
+    "gfs_studio": "Present the participant packet in the integrated evidence workspace with navigation, provenance and limitation surfaces enabled.",
+    "manual_baseline": "Present the same participant packet as a flat read-only document with no GFS navigation or computed assistance.",
+    "operator_scoring_keys_hidden_until_condition_submission": true,
+    "same_pack_in_both_conditions_forbidden": true,
+    "training_case_is_separate_and_unscored": true
+  },
+  "receipt_contract": {
+    "schema_version": 1,
+    "maximum_bytes": 65536,
+    "required_fields": [
+      "schema_version",
+      "protocol_id",
+      "registration_id",
+      "participant_id",
+      "condition",
+      "case_pack",
+      "answers",
+      "submitted_at"
+    ],
+    "answer_fields": [
+      "recommended_intervention",
+      "supported_claim",
+      "next_evidence_action"
+    ]
+  },
+  "packs": [
+    {
+      "case_pack_id": "case_pack_alpha",
+      "revision": 1,
+      "participant_packet": {
+        "title": "Trailing against a compact block",
+        "scenario": "The managed team trails 0-1 after 62 simulated minutes. Three frozen counterfactual branches were generated from the same world state and shared random identity.",
+        "decision_rule": "Select the branch only if projected shots are at least 6.0, transition-risk is at most 0.25 and model confidence is at least 0.80.",
+        "decision_contract": [
+          {"field": "projected_shots", "operator": "gte", "threshold": 6.0},
+          {"field": "transition_risk", "operator": "lte", "threshold": 0.25},
+          {"field": "confidence", "operator": "gte", "threshold": 0.8}
+        ],
+        "branches": [
+          {"id": "high_press", "projected_shots": 6.7, "transition_risk": 0.34, "confidence": 0.84},
+          {"id": "wide_overload", "projected_shots": 6.4, "transition_risk": 0.22, "confidence": 0.83},
+          {"id": "patient_build_up", "projected_shots": 5.8, "transition_risk": 0.18, "confidence": 0.87}
+        ],
+        "evidence_boundary": "The branches are simulator-local projections. They rank frozen alternatives inside this case but do not estimate a real-football causal effect.",
+        "questions": [
+          {"id": "recommended_intervention", "prompt": "Which intervention satisfies every frozen decision threshold?", "allowed_answers": ["high_press", "wide_overload", "patient_build_up"]},
+          {"id": "supported_claim", "prompt": "What is the strongest supported claim?", "allowed_answers": ["best_frozen_simulator_branch", "proven_real_world_tactic", "guaranteed_match_win"]},
+          {"id": "next_evidence_action", "prompt": "What should happen before any broader effectiveness claim?", "allowed_answers": ["preregistered_paired_validation", "automatic_production_promotion", "remove_negative_results"]}
+        ]
+      },
+      "scoring_key": {
+        "recommended_intervention": "wide_overload",
+        "supported_claim": "best_frozen_simulator_branch",
+        "next_evidence_action": "preregistered_paired_validation"
+      }
+    },
+    {
+      "case_pack_id": "case_pack_beta",
+      "revision": 1,
+      "participant_packet": {
+        "title": "Protecting a narrow lead",
+        "scenario": "The managed team leads 1-0 after 71 simulated minutes. Three frozen counterfactual branches were generated from the same world state and shared random identity.",
+        "decision_rule": "Select the branch only if projected possession retention is at least 0.55, concession-risk is at most 0.20 and model confidence is at least 0.80.",
+        "decision_contract": [
+          {"field": "possession_retention", "operator": "gte", "threshold": 0.55},
+          {"field": "concession_risk", "operator": "lte", "threshold": 0.2},
+          {"field": "confidence", "operator": "gte", "threshold": 0.8}
+        ],
+        "branches": [
+          {"id": "controlled_possession", "possession_retention": 0.59, "concession_risk": 0.17, "confidence": 0.85},
+          {"id": "direct_counter", "possession_retention": 0.46, "concession_risk": 0.19, "confidence": 0.82},
+          {"id": "aggressive_press", "possession_retention": 0.57, "concession_risk": 0.27, "confidence": 0.86}
+        ],
+        "evidence_boundary": "The branches are simulator-local projections. They rank frozen alternatives inside this case but do not estimate a real-football causal effect.",
+        "questions": [
+          {"id": "recommended_intervention", "prompt": "Which intervention satisfies every frozen decision threshold?", "allowed_answers": ["controlled_possession", "direct_counter", "aggressive_press"]},
+          {"id": "supported_claim", "prompt": "What is the strongest supported claim?", "allowed_answers": ["best_frozen_simulator_branch", "proven_real_world_tactic", "guaranteed_match_win"]},
+          {"id": "next_evidence_action", "prompt": "What should happen before any broader effectiveness claim?", "allowed_answers": ["preregistered_paired_validation", "automatic_production_promotion", "remove_negative_results"]}
+        ]
+      },
+      "scoring_key": {
+        "recommended_intervention": "controlled_possession",
+        "supported_claim": "best_frozen_simulator_branch",
+        "next_evidence_action": "preregistered_paired_validation"
+      }
+    }
+  ],
+  "balance_contract": {
+    "same_question_ids_and_order": true,
+    "same_answer_cardinality": true,
+    "one_branch_satisfies_all_thresholds_per_pack": true,
+    "identical_claim_boundary_answers": true,
+    "pilot_difficulty_matching_required_before_first_measured_session": true
+  },
+  "current_execution": {
+    "participants_exposed": 0,
+    "measured_sessions": 0,
+    "results_available": false
+  }
+}

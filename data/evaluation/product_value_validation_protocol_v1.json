@@ -14,11 +14,19 @@
     "same_case_pack_in_both_conditions_forbidden": true,
     "optional_stopping": false
   },
+  "allocation": {
+    "method": "role_stratified_permuted_blocks_v1",
+    "seed": 20260905,
+    "block_size": 4,
+    "sequences": ["AB", "BA"],
+    "assignments_per_sequence_per_block": 2
+  },
   "population": {
     "target_roles": ["football_analyst", "research_engineer", "product_operator"],
     "minimum_valid_participants": 24,
     "minimum_per_role": 8,
     "minimum_per_sequence": 12,
+    "minimum_per_role_sequence": 4,
     "inclusion": ["adult_with_relevant_role_experience", "recorded_informed_consent"],
     "predeclared_exclusions": ["consent_withdrawn", "infrastructure_failure_before_first_measured_condition"],
     "performance_based_exclusion": false
@@ -36,6 +44,23 @@
     "gfs_critical_error_threshold": 0,
     "all_valid_records_analyzed": true
   },
+  "registration": {
+    "registry_kind": "gfs_human_study_session_registry_v1",
+    "participant_id_pattern": "^participant-[a-z0-9]{8,40}$",
+    "moderator_id_pattern": "^moderator-[a-z0-9]{8,40}$",
+    "registration_before_measurement": true,
+    "consent_required": true,
+    "duplicate_registration_policy": "idempotent_exact_match"
+  },
+  "evidence_archive": {
+    "layout": "content_addressed_flat_sha256_v1",
+    "file_name_is_exact_sha256": true,
+    "symlinks_allowed": false,
+    "all_referenced_content_verified_during_analysis": true,
+    "duplicate_digest_across_observations_allowed": false,
+    "archive_path_recorded_in_decision": false,
+    "structured_receipts_are_rescored_from_frozen_keys": true
+  },
   "integrity": {
     "protocol_changes_after_first_participant": false,
     "participant_ids_are_pseudonymous": true,
@@ -47,12 +72,30 @@
     "negative_results_are_valid_outputs": true,
     "interim_release_decisions": false,
     "provider_calls_authorized": false,
-    "training_authorized": false
+    "training_authorized": false,
+    "authoritative_session_registry_required": true,
+    "all_registrations_analyzed": true,
+    "record_identity_bound_to_registration": true,
+    "sequence_assigned_by_frozen_allocation": true,
+    "case_pack_identity_bound_at_registration": true,
+    "evidence_hashes_verified_against_real_files": true,
+    "correctness_recomputed_from_structured_receipts": true
   },
   "outputs": {
+    "session_registry": "data/evaluation/product_value_validation_v1/session_registry.json",
+    "case_pack_manifest": "data/evaluation/product_value_case_packs_v1.json",
     "raw_records": "data/evaluation/product_value_validation_v1/participant_records.jsonl",
     "decision": "data/evaluation/product_value_validation_v1/decision.json"
   },
+  "preexecution_amendments": [
+    {
+      "amendment_id": "authoritative-randomized-value-study-v1",
+      "reason": "Freeze role-stratified allocation, concrete scored case packs, session identity and byte-level evidence verification before the first participant.",
+      "participants_observed_before_amendment": 0,
+      "sessions_executed_before_amendment": 0,
+      "results_available_before_amendment": false
+    }
+  ],
   "current_execution": {
     "participants_observed": 0,
     "sessions_executed": 0,
