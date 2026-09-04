@@ -29,18 +29,23 @@ def temporal_path_calibration_diagnostics(
     issued = eligible = missing = malformed = 0
     for payload in match_logs:
         match_rows = []
-        records = (
-            (payload.get("world_model_decision_adoption") or {}).get("records")
-            or []
-        )
+        records = (payload.get("world_model_decision_adoption") or {}).get(
+            "records"
+        ) or []
         for record in records:
-            if checkpoint_signature is not None and str(record.get(
-                "checkpoint_signature", "",
-            )) != str(checkpoint_signature):
+            if checkpoint_signature is not None and str(
+                record.get(
+                    "checkpoint_signature",
+                    "",
+                )
+            ) != str(checkpoint_signature):
                 continue
-            if environment_signature is not None and str(record.get(
-                "environment_signature", "environment_unspecified",
-            )) != str(environment_signature):
+            if environment_signature is not None and str(
+                record.get(
+                    "environment_signature",
+                    "environment_unspecified",
+                )
+            ) != str(environment_signature):
                 continue
             forecast = record.get("world_model_temporal_path_forecast")
             if not isinstance(forecast, dict) or not forecast.get("available"):
@@ -63,8 +68,7 @@ def temporal_path_calibration_diagnostics(
     valid = [row for rows in grouped for row in rows]
     empirical = [row for row in valid if row["temporal_dependence_learned"]]
     empirical_matches = sum(
-        any(row["temporal_dependence_learned"] for row in rows)
-        for rows in grouped
+        any(row["temporal_dependence_learned"] for row in rows) for rows in grouped
     )
 
     def clustered(rows_filter, path: tuple[str, ...]) -> float:
@@ -82,23 +86,28 @@ def temporal_path_calibration_diagnostics(
             values.append(float(np.mean(samples)))
         return float(np.mean(values)) if values else 0.0
 
-    empirical_filter = lambda row: bool(row["temporal_dependence_learned"])
+    def empirical_filter(row: dict[str, Any]) -> bool:
+        return bool(row["temporal_dependence_learned"])
+
     primary_brier = clustered(
-        empirical_filter, ("primary_score", "mean_event_brier_score"),
+        empirical_filter,
+        ("primary_score", "mean_event_brier_score"),
     )
     benchmark_brier = clustered(
         empirical_filter,
         ("comonotonic_benchmark_score", "mean_event_brier_score"),
     )
     primary_min_crps = clustered(
-        empirical_filter, ("primary_score", "path_minimum_crps"),
+        empirical_filter,
+        ("primary_score", "path_minimum_crps"),
     )
     benchmark_min_crps = clustered(
         empirical_filter,
         ("comonotonic_benchmark_score", "path_minimum_crps"),
     )
     primary_drawdown_crps = clustered(
-        empirical_filter, ("primary_score", "maximum_drawdown_crps"),
+        empirical_filter,
+        ("primary_score", "maximum_drawdown_crps"),
     )
     benchmark_drawdown_crps = clustered(
         empirical_filter,
@@ -114,32 +123,48 @@ def temporal_path_calibration_diagnostics(
             selected = [row for row in rows if empirical_filter(row)]
             if not selected:
                 continue
-            match_predictions.append(float(np.mean([
-                row["primary_score"]["event_scenario_rates"][key]
-                for row in selected
-            ])))
-            match_observations.append(float(np.mean([
-                row["primary_score"]["observed_events"][key]
-                for row in selected
-            ])))
+            match_predictions.append(
+                float(
+                    np.mean(
+                        [
+                            row["primary_score"]["event_scenario_rates"][key]
+                            for row in selected
+                        ]
+                    )
+                )
+            )
+            match_observations.append(
+                float(
+                    np.mean(
+                        [
+                            row["primary_score"]["observed_events"][key]
+                            for row in selected
+                        ]
+                    )
+                )
+            )
         predicted = np.mean(match_predictions)
         observed = np.mean(match_observations)
         event_gaps.append(abs(float(predicted) - float(observed)))
     mean_gap = float(np.mean(event_gaps)) if event_gaps else 0.0
-    scopes = sorted({(
-        str(row.get("checkpoint_signature", "")),
-        str(row.get("environment_signature", "")),
-    ) for row in valid})
+    scopes = sorted(
+        {
+            (
+                str(row.get("checkpoint_signature", "")),
+                str(row.get("environment_signature", "")),
+            )
+            for row in valid
+        }
+    )
     unspecified = {
-        "", "runtime_unspecified", "environment_unspecified",
+        "",
+        "runtime_unspecified",
+        "environment_unspecified",
     }
     provenance_compatible = bool(
         len(scopes) == 1
         and all(value not in unspecified for value in scopes[0])
-        and all(
-            row.get("issuance_evaluation_provenance_compatible")
-            for row in valid
-        )
+        and all(row.get("issuance_evaluation_provenance_compatible") for row in valid)
     )
     if (
         len(empirical) < MIN_EMPIRICAL_VALIDATION_PATHS
@@ -175,27 +200,20 @@ def temporal_path_calibration_diagnostics(
         "match_clustered_comonotonic_mean_event_brier": benchmark_brier,
         "match_clustered_empirical_path_minimum_crps": primary_min_crps,
         "match_clustered_comonotonic_path_minimum_crps": benchmark_min_crps,
-        "match_clustered_empirical_maximum_drawdown_crps": (
-            primary_drawdown_crps
-        ),
-        "match_clustered_comonotonic_maximum_drawdown_crps": (
-            benchmark_drawdown_crps
-        ),
+        "match_clustered_empirical_maximum_drawdown_crps": (primary_drawdown_crps),
+        "match_clustered_comonotonic_maximum_drawdown_crps": (benchmark_drawdown_crps),
         "empirical_mean_event_calibration_gap": mean_gap,
         "all_shadow_only": all(row.get("shadow_only") for row in valid),
         "all_non_controlling": all(
             not row.get("authority_active") and not row.get("policy_mutated")
             for row in valid
         ),
-        "all_non_causal": all(
-            not row.get("causal_interpretation") for row in valid
-        ),
+        "all_non_causal": all(not row.get("causal_interpretation") for row in valid),
         "all_joint_probability_claims_disabled": all(
             not row.get("joint_temporal_probability_claimed") for row in valid
         ),
         "all_provenance_compatible": all(
-            row.get("issuance_evaluation_provenance_compatible")
-            for row in valid
+            row.get("issuance_evaluation_provenance_compatible") for row in valid
         ),
         "provenance_compatible": provenance_compatible,
         "model_policy_scopes": [list(scope) for scope in scopes],

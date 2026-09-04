@@ -232,7 +232,7 @@
       "src/match_engine/world_model/shot_head.py": "9867da1c6cac562d57ba09de18f1e489835a796f99b5ddceedc50027c8bb00a6",
       "src/match_engine/world_model/state_scales.py": "88b9e9709d237dc58c1016bd67c64e6d1f0ddaac7e2c034760114cb90a116635",
       "src/match_engine/world_model/temporal_calibration.py": "0bbb0f77fdde2c793a26c5085b625c075f48225f3fba9dbfdcca808abaddc749",
-      "src/match_engine/world_model/temporal_calibration_evaluation.py": "248cd5b3e9531a34a213199c6ebd52f45674575c5e29b80fb334fd030158c754",
+      "src/match_engine/world_model/temporal_calibration_evaluation.py": "d8f0325b3b4d03c73ceb9ada75ec33264653a9cd15eb109e272acf871ddffdc1",
       "src/match_engine/world_model/temporal_preference.py": "1dbb62d07817342ffe88bbc69a8cc5b961fd640ff608998d7c94273aabc7ea17",
       "src/match_engine/world_model/temporal_residual_memory.py": "897fd4841361d735c9e6ca0c126679a461141408b018dc6ffc09588a1f2720c5",
       "src/match_engine/world_model/temporal_utility.py": "a9b9d741b9ae476edf64df6c91640d2a1a67f3f62cb8a21de208ec38a39f4a0b",
@@ -333,7 +333,7 @@
   "next_action": "run the frozen M2 training command",
   "protocol_id": "m2-mirrored-policy-v1",
   "ready": true,
-  "recorded_at": "2026-09-04T22:22:11.414220+00:00",
+  "recorded_at": "2026-09-04T22:38:02.286349+00:00",
   "schema_version": 1,
   "sealed_test": {
     "rows_loaded_for_model_selection": 0,

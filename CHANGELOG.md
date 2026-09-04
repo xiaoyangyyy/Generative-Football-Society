@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Replaced assigned lambdas in frame-world training and temporal calibration
+  evaluation with named helpers, reformatted the four active frame trainers,
+  and added parse/no-assigned-lambda regression coverage without running any
+  training or formal match workload.
 - Removed all 15 placeholder-free f-strings after Unicode verification proved
   their static symbols and headings were intact, eliminating misleading
   interpolation markers without changing generated reports or console output.
