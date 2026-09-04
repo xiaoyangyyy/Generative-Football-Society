@@ -1,0 +1,140 @@
+{
+  "checkpoint_written": false,
+  "checks": {
+    "configuration_matches_frozen_m2_protocol": true,
+    "development_pass_support_sufficient": true,
+    "development_pass_utility_target_non_degenerate": true,
+    "development_rows_sufficient": true,
+    "development_two_step_support_sufficient": true,
+    "manifest_schema_and_policy_valid": true,
+    "policy_utility_curriculum_will_activate": true,
+    "sealed_pass_support_declared_sufficient": true,
+    "train_dev_sealed_groups_complete_and_disjoint": true,
+    "training_rows_sufficient": true,
+    "training_two_step_support_sufficient": true,
+    "transition_ensemble_supports_uncertainty": true,
+    "two_step_curriculum_will_activate": true
+  },
+  "claim_scope": "zero_training_readiness_only_no_model_or_outcome_evidence",
+  "configuration": {
+    "ball_log_enabled": false,
+    "batch_size": 128,
+    "dataset_manifest": "data/world_model/dataset_manifest_formal_v8_candidate.json",
+    "epochs": 45,
+    "learning_rate": 0.0003,
+    "multi_step_loss_weight": 0.25,
+    "multi_step_warmup_fraction": 0.2,
+    "policy_utility_loss_weight": 0.25,
+    "sealed_test_used": false,
+    "semantic_event_loss_weight": 0.2,
+    "trainer": "world_model_v9_m2",
+    "transition": "gru",
+    "transition_ensemble_size": 3
+  },
+  "development_split": {
+    "action_counts": {
+      "cross": 4,
+      "hold": 5,
+      "intercept": 0,
+      "pass": 1723,
+      "shot": 61,
+      "tackle": 0
+    },
+    "action_groups": {
+      "cross": 3,
+      "hold": 4,
+      "intercept": 0,
+      "pass": 10,
+      "shot": 9,
+      "tackle": 0
+    },
+    "groups": 10,
+    "pass_utility_persistence_mse": 0.008113987608533225,
+    "pass_utility_standard_deviation": 0.07565750494938463,
+    "rows": 1793,
+    "two_step_groups": 10,
+    "two_step_pairs": 1783
+  },
+  "evidence_identity": {
+    "code_sha256": {
+      "scripts/estimate_m2_policy_power.py": "7e455529549df27b8e6318a99774f28bbaa5ed97a1b3afc485ba96de52532e18",
+      "scripts/preflight_m2_training.py": "e251e06ab63a0a21378b419bfe1b6aa14c3ad284a0b7ce020df1c9277ed58dee",
+      "scripts/run_m2_mirrored_policy_study.py": "84f80cb41251ffc1a21d71b7f1a90f8a5a5a09937c6e4a8e2d32a01af62cee0f",
+      "scripts/train_world_model.py": "22a5b47bf0b56b10c4781497f5fb19c6112434fcbc2cf61eab7b511f893b25cb",
+      "scripts/validate_world_model.py": "2067ba8cfe6bb049f8c587fb5df2a18b87ec967b4dc5300c168e63e6b55abaad",
+      "src/match_engine/calibration/ablation.py": "ef6832b03fd509b3d90c79912a73756f49c16e09af533b01fe971ab62485f2d6",
+      "src/match_engine/calibration/benchmark_core.py": "aabd292df162e40009c8146a7535e8a6b2066c3fec8308fda47761b8ddc418d2",
+      "src/match_engine/world_model/action_adoption.py": "92c3d63f2764e3ed4f49e273ed28df72f77ba98f591b1a84f3883e229f4669ee",
+      "src/match_engine/world_model/inference.py": "2a62936b9278e525f6aa9902762a1e55fc852ab8fb51889e3e2590f65a19c962",
+      "src/match_engine/world_model/mirrored_policy_evaluation.py": "0b8f5a285b8be0b5943111ed7ba5b2ee29a30eb7cc026476a29e6f82a8cfc643",
+      "src/match_engine/world_model/planner.py": "ebd14b177a8239bd662bfa8a9d4d669c389fff2cd35607caf28bf87cc72030ac",
+      "src/match_engine/world_model/policy_utility.py": "46bc25e2131e904ddd431d8d7930bdffdb775e9c421798b6b2e24a583e565bbf"
+    },
+    "manifest_path": "data/world_model/dataset_manifest_formal_v8_candidate.json",
+    "manifest_sha256": "1f3b957ca4fd756c32d30dad2b8ce87c73edab4bb497d8bc12f604a16b717f8d",
+    "protocol_path": "data/evaluation/m2_mirrored_policy_protocol_v1.json",
+    "protocol_sha256": "9fb8502d054023cf26a302afc57bac96c48f7f8596c89783e0ba1160637064b0"
+  },
+  "frozen_training_command": "python scripts/train_world_model.py --trace-dir data/world_model/traces --dataset-manifest data/world_model/dataset_manifest_formal_v8_candidate.json --epochs 45 --batch-size 128 --lr 0.0003 --transition gru --transition-ensemble-size 3 --multi-step-loss-weight 0.25 --multi-step-warmup-fraction 0.2 --semantic-event-loss-weight 0.2 --policy-utility-loss-weight 0.25 --out data/world_model/m2_outcome_aligned_candidate.pt --run-dir data/training/runs/m2_outcome_aligned_candidate",
+  "manifest": "data/world_model/dataset_manifest_formal_v8_candidate.json",
+  "manifest_summary": {
+    "dev": {
+      "goals": 6,
+      "groups": 10,
+      "passes": 1723,
+      "rows": 1793,
+      "shots": 61
+    },
+    "sealed_test": {
+      "goals": 8,
+      "groups": 9,
+      "passes": 1545,
+      "rows": 1610,
+      "shots": 49
+    },
+    "train": {
+      "goals": 30,
+      "groups": 53,
+      "passes": 9166,
+      "rows": 9497,
+      "shots": 272
+    }
+  },
+  "next_action": "run the frozen M2 training command",
+  "protocol_id": "m2-mirrored-policy-v1",
+  "ready": true,
+  "recorded_at": "2026-09-04T12:35:02.938683+00:00",
+  "schema_version": 1,
+  "sealed_test": {
+    "rows_loaded_for_model_selection": 0,
+    "support_read_from_frozen_manifest_only": true,
+    "used_for_training_or_tuning": false
+  },
+  "status": "ready_for_m2_training",
+  "trace_dir": "data/world_model/traces",
+  "training_executed": false,
+  "training_split": {
+    "action_counts": {
+      "cross": 42,
+      "hold": 17,
+      "intercept": 0,
+      "pass": 9166,
+      "shot": 272,
+      "tackle": 0
+    },
+    "action_groups": {
+      "cross": 27,
+      "hold": 14,
+      "intercept": 0,
+      "pass": 53,
+      "shot": 47,
+      "tackle": 0
+    },
+    "groups": 53,
+    "pass_utility_persistence_mse": 0.00854591196204976,
+    "pass_utility_standard_deviation": 0.07675295880354169,
+    "rows": 9497,
+    "two_step_groups": 53,
+    "two_step_pairs": 9444
+  }
+}

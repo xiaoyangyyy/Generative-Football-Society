@@ -38,8 +38,12 @@ from src.product.world_model_fork_set import (
     project_fork_set_scenario_evidence,
 )
 from src.match_engine.world_model.mirrored_policy_evaluation import (
+    study_preflight_identity,
     study_execution_identity,
+    validate_m2_candidate_receipt,
+    validate_m2_preflight_receipt,
 )
+from src.product.m2_research_control import build_m2_research_control
 from src.product.decision_advice import (
     build_manager_advice_adoption,
     build_manager_advice_comparison,
@@ -1430,13 +1434,68 @@ class ProductWorkspace:
             "data/evaluation/m2_mirrored_policy_protocol_v1.json"
         )
         m2_protocol = read(m2_protocol_relative)
+        m2_preflight = read(
+            "data/evaluation/m2_training_preflight_v1.json"
+        )
+        m2_candidate_report = read(
+            "data/evaluation/m2_candidate_eligibility_v1.json"
+        )
         m2_progress = read(
             "data/evaluation/m2_mirrored_policy_progress_v1.json"
         )
-        m2_stored_identity = m2_progress.get("execution_identity") or {}
+        m2_preflight_identity_verified = False
+        m2_preflight_identity_reason = (
+            "not_recorded" if not m2_preflight else "missing_evidence_identity"
+        )
+        if m2_protocol and m2_preflight.get("evidence_identity"):
+            try:
+                validate_m2_preflight_receipt(m2_preflight, m2_protocol)
+                manifest_relative = str(
+                    (m2_protocol.get("candidate") or {})["dataset_manifest"]
+                )
+                expected_preflight_identity = study_preflight_identity(
+                    self.root,
+                    self.root / m2_protocol_relative,
+                    m2_protocol,
+                    self.root / manifest_relative,
+                )
+                m2_preflight_identity_verified = bool(
+                    m2_preflight.get("schema_version") == 1
+                    and m2_preflight.get("protocol_id")
+                    == m2_protocol.get("protocol_id")
+                    and m2_preflight.get("evidence_identity")
+                    == expected_preflight_identity
+                )
+                m2_preflight_identity_reason = (
+                    "current_protocol_manifest_and_training_code_verified"
+                    if m2_preflight_identity_verified else
+                    "protocol_manifest_or_training_code_identity_stale"
+                )
+            except (KeyError, OSError, TypeError, ValueError):
+                m2_preflight_identity_reason = (
+                    "invalid_or_unavailable_preflight_identity"
+                )
+        m2_candidate_source = (
+            m2_progress if m2_progress.get("execution_identity")
+            else m2_candidate_report
+        )
+        m2_stored_identity = (
+            m2_candidate_source.get("execution_identity") or {}
+        )
+        m2_candidate_contract_valid = bool(
+            m2_progress.get("execution_identity")
+        )
+        if m2_candidate_report and not m2_progress.get("execution_identity"):
+            try:
+                validate_m2_candidate_receipt(
+                    m2_candidate_report, m2_protocol,
+                )
+                m2_candidate_contract_valid = True
+            except (KeyError, TypeError, ValueError):
+                m2_candidate_contract_valid = False
         m2_identity_verified = False
         m2_identity_reason = (
-            "not_started" if m2_protocol and not m2_progress
+            "not_started" if m2_protocol and not m2_candidate_source
             else "missing_execution_identity"
         )
         if m2_protocol and m2_stored_identity:
@@ -1450,14 +1509,25 @@ class ProductWorkspace:
                     m2_protocol,
                     self.root / checkpoint_relative,
                 )
-                m2_identity_verified = (
+                m2_identity_match = (
                     recomputed_m2_identity == m2_stored_identity
                 )
-                m2_identity_reason = (
-                    "current_protocol_checkpoint_code_and_input_identity_verified"
-                    if m2_identity_verified
-                    else "protocol_checkpoint_code_or_input_identity_stale"
+                m2_identity_verified = bool(
+                    m2_candidate_contract_valid and m2_identity_match
                 )
+                if m2_identity_verified:
+                    m2_identity_reason = (
+                        "current_protocol_checkpoint_code_and_input_identity_"
+                        "verified"
+                    )
+                elif not m2_candidate_contract_valid:
+                    m2_identity_reason = (
+                        "invalid_candidate_qualification_receipt"
+                    )
+                else:
+                    m2_identity_reason = (
+                        "protocol_checkpoint_code_or_input_identity_stale"
+                    )
             except (KeyError, OSError, TypeError, ValueError):
                 m2_identity_reason = "invalid_or_unavailable_execution_identity"
         m2_analysis = (
@@ -1474,8 +1544,66 @@ class ProductWorkspace:
             m2_execution_state = "stale_current_code_or_input_identity"
         elif m2_progress:
             m2_execution_state = m2_progress.get("state", "invalid_progress")
+        elif m2_candidate_report:
+            m2_execution_state = (
+                "candidate_qualified_awaiting_execution"
+                if m2_identity_verified
+                and m2_candidate_report.get("candidate_eligible") is True
+                else "candidate_rejected"
+                if m2_identity_verified else
+                m2_identity_reason
+            )
         else:
             m2_execution_state = m2_protocol.get("state", "absent")
+        m2_runs_executed = sum(
+            len((row or {}).get("rows") or [])
+            for row in (m2_progress.get("arms") or {}).values()
+        )
+        m2_fixed_run_budget = int(
+            (m2_protocol.get("design") or {}).get("runs_total") or 0
+        )
+        m2_candidate_eligibility = (
+            m2_candidate_source.get("candidate_eligibility") or {}
+        )
+        m2_candidate_eligible = bool(
+            m2_identity_verified
+            and m2_candidate_eligibility.get("eligible", False)
+        )
+        m2_preflight_current = bool(
+            m2_preflight_identity_verified
+            and m2_preflight.get("status")
+            in {"ready_for_m2_training", "blocked_before_training"}
+        )
+        m2_preflight_ready = bool(
+            m2_preflight_current
+            and m2_preflight.get("ready") is True
+            and m2_preflight.get("status") == "ready_for_m2_training"
+        )
+        m2_research_control = build_m2_research_control(
+            protocol_available=bool(m2_protocol),
+            protocol_state=m2_protocol.get("state"),
+            preflight_available=bool(m2_preflight),
+            preflight_current=m2_preflight_current,
+            preflight_ready=m2_preflight_ready,
+            preflight_status=m2_preflight.get("status"),
+            frozen_training_command=m2_preflight.get(
+                "frozen_training_command"
+            ),
+            candidate_evidence_available=bool(m2_candidate_source),
+            candidate_evidence_current=m2_identity_verified,
+            candidate_eligible=m2_candidate_eligible,
+            checkpoint_path=m2_stored_identity.get("checkpoint_path"),
+            execution_state=m2_execution_state,
+            runs_executed=m2_runs_executed,
+            fixed_run_budget=m2_fixed_run_budget,
+            result_current=m2_result_current,
+            result_status=m2_analysis.get("decision"),
+            promotion_supported=bool(
+                m2_result_current
+                and m2_analysis.get("promotion_supported", False)
+            ),
+            promotion_gates=m2_analysis.get("promotion_gates"),
+        )
         mechanism_identity = _formal_evidence_identity(
             self.root,
             "data/evaluation/action_adoption_protocol_v1.json",
@@ -1698,23 +1826,57 @@ class ProductWorkspace:
                 ),
                 "execution_state": m2_execution_state,
                 "checkpoint_bound": bool(m2_stored_identity.get("checkpoint_path")),
-                "candidate_eligible": bool(
-                    m2_identity_verified
-                    and (m2_progress.get("candidate_eligibility") or {}).get(
-                        "eligible", False
-                    )
-                ),
+                "candidate_eligible": m2_candidate_eligible,
+                "training_preflight": {
+                    "available": bool(m2_preflight),
+                    "result_identity_verified": (
+                        m2_preflight_identity_verified
+                    ),
+                    "result_applicable_to_current_code": m2_preflight_current,
+                    "identity_reason": m2_preflight_identity_reason,
+                    "status": (
+                        m2_preflight.get("status")
+                        if m2_preflight_current else None
+                    ),
+                    "ready": m2_preflight_ready,
+                    "checks": (
+                        dict(m2_preflight.get("checks") or {})
+                        if m2_preflight_current else {}
+                    ),
+                    "training_executed": False,
+                    "claim_scope": (
+                        "zero_training_readiness_only_no_model_or_outcome_evidence"
+                    ),
+                },
+                "candidate_qualification": {
+                    "available": bool(m2_candidate_source),
+                    "source": (
+                        "formal_progress"
+                        if m2_progress.get("execution_identity")
+                        else "qualification_report"
+                        if m2_candidate_report else None
+                    ),
+                    "result_identity_verified": m2_identity_verified,
+                    "eligible": m2_candidate_eligible,
+                    "checkpoint_path": (
+                        m2_stored_identity.get("checkpoint_path")
+                        if m2_identity_verified else None
+                    ),
+                    "details": (
+                        dict(m2_candidate_eligibility)
+                        if m2_identity_verified else {}
+                    ),
+                    "claim_scope": (
+                        "checkpoint_qualification_only_no_policy_effect_or_"
+                        "outcome_claim"
+                    ),
+                },
                 "historical_result_available": bool(m2_analysis),
                 "result_identity_verified": m2_identity_verified,
                 "result_applicable_to_current_code": m2_result_current,
                 "identity_reason": m2_identity_reason,
-                "runs_executed": sum(
-                    len((row or {}).get("rows") or [])
-                    for row in (m2_progress.get("arms") or {}).values()
-                ),
-                "fixed_run_budget": (
-                    (m2_protocol.get("design") or {}).get("runs_total")
-                ),
+                "runs_executed": m2_runs_executed,
+                "fixed_run_budget": m2_fixed_run_budget,
                 "result_status": (
                     m2_analysis.get("decision") if m2_result_current else None
                 ),
@@ -1764,6 +1926,7 @@ class ProductWorkspace:
                     dict(m2_analysis.get("experimental_unit_identity") or {})
                     if m2_result_current else {}
                 ),
+                "research_control": m2_research_control,
             },
             "manager_advisor_adoption": {
                 "available": bool(manager_advisor_protocol),

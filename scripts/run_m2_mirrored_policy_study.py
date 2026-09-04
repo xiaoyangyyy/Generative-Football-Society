@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Execute or validate the preregistered team-scoped M2 policy study."""
 
+# ruff: noqa: E402
+
 from __future__ import annotations
 
 import argparse
@@ -40,6 +42,7 @@ from src.match_engine.world_model.mirrored_policy_evaluation import (
     fixture_stratified_cluster_interval,
     paired_effect_rows,
     study_execution_identity,
+    validate_m2_candidate_receipt,
 )
 
 DEFAULT_PROTOCOL = (
@@ -52,6 +55,33 @@ DEFAULT_PROGRESS = (
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def candidate_eligibility_report(
+    protocol: dict[str, Any],
+    identity: dict[str, Any],
+    eligibility: dict[str, Any],
+) -> dict[str, Any]:
+    """Build a non-causal, identity-bound candidate qualification receipt."""
+    eligible = bool(eligibility.get("eligible", False))
+    receipt = {
+        "schema_version": 1,
+        "protocol_id": protocol["protocol_id"],
+        "status": (
+            "eligible_for_m2_execution" if eligible else "candidate_rejected"
+        ),
+        "candidate_eligible": eligible,
+        "candidate_eligibility": eligibility,
+        "execution_identity": identity,
+        "formal_execution_started": False,
+        "formal_result_available": False,
+        "claim_scope": (
+            "checkpoint_qualification_only_no_policy_effect_or_outcome_claim"
+        ),
+        "recorded_at": _now(),
+    }
+    validate_m2_candidate_receipt(receipt, protocol)
+    return receipt
 
 
 def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
@@ -654,6 +684,13 @@ def main() -> None:
     parser.add_argument("--checkpoint")
     parser.add_argument("--progress", default=str(DEFAULT_PROGRESS))
     parser.add_argument(
+        "--eligibility-out",
+        help=(
+            "Optionally persist the checkpoint qualification result inside "
+            "the project root without starting the formal study."
+        ),
+    )
+    parser.add_argument(
         "--execute", action="store_true",
         help=(
             "Run the sealed 360-match budget; omitted means code-only "
@@ -684,12 +721,25 @@ def main() -> None:
     checkpoint = Path(args.checkpoint).resolve()
     identity = execution_identity(protocol_path, protocol, checkpoint)
     eligibility = candidate_eligibility(checkpoint, protocol)
+    eligibility_report = candidate_eligibility_report(
+        protocol, identity, eligibility,
+    )
+    if args.eligibility_out:
+        eligibility_path = Path(args.eligibility_out).resolve()
+        try:
+            eligibility_path.relative_to(ROOT)
+        except ValueError as exc:
+            raise SystemExit(
+                "M2 eligibility output must stay inside the project root"
+            ) from exc
+        _atomic_json(eligibility_path, eligibility_report)
     if not eligibility["eligible"]:
         raise SystemExit(json.dumps({
             "code_ready": True,
             "candidate_eligible": False,
             "candidate_eligibility": eligibility,
             "execution_started": False,
+            "eligibility_report_written": bool(args.eligibility_out),
         }, indent=2))
     if not args.execute:
         print(json.dumps({
@@ -706,6 +756,7 @@ def main() -> None:
             "sealed_pass_policy_utility_gate": eligibility[
                 "sealed_pass_policy_utility_gate"
             ],
+            "eligibility_report_written": bool(args.eligibility_out),
         }, indent=2))
         return
     with FileLease(str(progress_path) + ".lock", timeout=0.0):

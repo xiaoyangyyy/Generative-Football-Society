@@ -5,11 +5,159 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 import random
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 import numpy as np
 
 from src.infrastructure import file_sha256
+
+
+def validate_m2_preflight_receipt(
+    receipt: Mapping[str, Any],
+    protocol: Mapping[str, Any],
+) -> None:
+    """Reject internally inconsistent or over-claiming preflight receipts."""
+    training = dict(protocol.get("training") or {})
+    for key in ("script", "preflight_script", "required_preflight_status"):
+        training.pop(key, None)
+    training["dataset_manifest"] = str(
+        (protocol.get("candidate") or {}).get("dataset_manifest") or ""
+    )
+    checks = receipt.get("checks")
+    if receipt.get("schema_version") != 1:
+        raise ValueError("unsupported M2 preflight receipt schema")
+    if receipt.get("protocol_id") != protocol.get("protocol_id"):
+        raise ValueError("M2 preflight receipt protocol mismatch")
+    if receipt.get("claim_scope") != (
+        "zero_training_readiness_only_no_model_or_outcome_evidence"
+    ):
+        raise ValueError("M2 preflight receipt claim scope changed")
+    if receipt.get("training_executed") is not False:
+        raise ValueError("M2 preflight receipt cannot claim training")
+    if receipt.get("checkpoint_written") is not False:
+        raise ValueError("M2 preflight receipt cannot claim a checkpoint")
+    if receipt.get("configuration") != training:
+        raise ValueError("M2 preflight receipt configuration mismatch")
+    if not isinstance(checks, Mapping) or not checks or not all(
+        isinstance(value, bool) for value in checks.values()
+    ):
+        raise ValueError("M2 preflight receipt checks are invalid")
+    ready = all(checks.values())
+    expected_status = (
+        "ready_for_m2_training" if ready else "blocked_before_training"
+    )
+    if receipt.get("ready") is not ready or receipt.get("status") != expected_status:
+        raise ValueError("M2 preflight receipt readiness is inconsistent")
+    sealed = receipt.get("sealed_test")
+    if (
+        not isinstance(sealed, Mapping)
+        or sealed.get("used_for_training_or_tuning") is not False
+        or sealed.get("rows_loaded_for_model_selection") != 0
+        or sealed.get("support_read_from_frozen_manifest_only") is not True
+    ):
+        raise ValueError("M2 preflight receipt violates sealed-test isolation")
+    if not isinstance(receipt.get("evidence_identity"), Mapping):
+        raise ValueError("M2 preflight receipt identity is missing")
+
+
+def validate_m2_candidate_receipt(
+    receipt: Mapping[str, Any],
+    protocol: Mapping[str, Any],
+) -> None:
+    """Reject candidate receipts that conflict with qualification evidence."""
+    eligibility = receipt.get("candidate_eligibility")
+    if receipt.get("schema_version") != 1:
+        raise ValueError("unsupported M2 candidate receipt schema")
+    if receipt.get("protocol_id") != protocol.get("protocol_id"):
+        raise ValueError("M2 candidate receipt protocol mismatch")
+    if receipt.get("claim_scope") != (
+        "checkpoint_qualification_only_no_policy_effect_or_outcome_claim"
+    ):
+        raise ValueError("M2 candidate receipt claim scope changed")
+    if (
+        receipt.get("formal_execution_started") is not False
+        or receipt.get("formal_result_available") is not False
+    ):
+        raise ValueError("M2 candidate receipt cannot claim formal execution")
+    if not isinstance(eligibility, Mapping):
+        raise ValueError("M2 candidate receipt qualification details are missing")
+    eligible = eligibility.get("eligible") is True
+    expected_status = (
+        "eligible_for_m2_execution" if eligible else "candidate_rejected"
+    )
+    if (
+        receipt.get("candidate_eligible") is not eligible
+        or receipt.get("status") != expected_status
+    ):
+        raise ValueError("M2 candidate receipt eligibility is inconsistent")
+    if not isinstance(receipt.get("execution_identity"), Mapping):
+        raise ValueError("M2 candidate receipt identity is missing")
+
+
+def study_preflight_identity(
+    root: str | Path,
+    protocol_path: str | Path,
+    protocol: dict[str, Any],
+    manifest_path: str | Path,
+) -> dict[str, Any]:
+    """Bind a recorded zero-training preflight to its frozen inputs.
+
+    The preflight itself verifies every trace against the manifest. This
+    lighter identity lets product status requests prove that the recorded
+    result still belongs to the current protocol, manifest and training code
+    without repeatedly parsing the full trace corpus. Training performs the
+    full trace verification again before optimization.
+    """
+    root_path = Path(root).resolve()
+    protocol_file = Path(protocol_path).resolve()
+    manifest_file = Path(manifest_path).resolve()
+    try:
+        protocol_relative = protocol_file.relative_to(root_path).as_posix()
+        manifest_relative = manifest_file.relative_to(root_path).as_posix()
+    except ValueError as exc:
+        raise ValueError(
+            "M2 protocol and manifest must be contained by the project root"
+        ) from exc
+    if not protocol_file.is_file():
+        raise FileNotFoundError(f"missing M2 protocol: {protocol_relative}")
+    if not manifest_file.is_file():
+        raise FileNotFoundError(f"missing M2 manifest: {manifest_relative}")
+
+    declared_manifest = str(
+        (protocol.get("candidate") or {}).get("dataset_manifest") or ""
+    )
+    if declared_manifest != manifest_relative:
+        raise ValueError("M2 preflight manifest does not match the protocol")
+
+    raw_paths = list(
+        (protocol.get("integrity") or {}).get("code_identity_files") or []
+    )
+    raw_paths.append(
+        "src/match_engine/world_model/mirrored_policy_evaluation.py"
+    )
+    code: dict[str, str] = {}
+    for raw_relative in raw_paths:
+        path = (root_path / str(raw_relative)).resolve()
+        try:
+            canonical = path.relative_to(root_path).as_posix()
+        except ValueError as exc:
+            raise ValueError(
+                f"invalid M2 preflight code identity path: {raw_relative}"
+            ) from exc
+        if not path.is_file():
+            raise ValueError(
+                f"invalid M2 preflight code identity path: {raw_relative}"
+            )
+        code[canonical] = file_sha256(path)
+    if not code:
+        raise ValueError("M2 preflight identity requires code hashes")
+    return {
+        "protocol_path": protocol_relative,
+        "protocol_sha256": file_sha256(protocol_file),
+        "manifest_path": manifest_relative,
+        "manifest_sha256": file_sha256(manifest_file),
+        "code_sha256": code,
+    }
 
 
 def study_execution_identity(

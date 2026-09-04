@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Validate M2 training feasibility without optimizing or writing a checkpoint."""
 
+# ruff: noqa: E402
+
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import sys
@@ -24,11 +27,16 @@ from src.data_engine.dataset_registry import (
     files_for_split,
     load_manifest,
     verify_trace_manifest,
+    write_json_atomic,
 )
 from src.match_engine.world_model.action_codec import decode_action_kinds
 from src.match_engine.world_model.config import WorldModelConfig
 from src.match_engine.world_model.m2_contract import (
     FROZEN_TRAINING_CONFIGURATION,
+)
+from src.match_engine.world_model.mirrored_policy_evaluation import (
+    study_preflight_identity,
+    validate_m2_preflight_receipt,
 )
 from src.match_engine.world_model.policy_utility import (
     transition_policy_utility_numpy,
@@ -40,6 +48,9 @@ DEFAULT_MANIFEST = (
     ROOT / "data/world_model/dataset_manifest_formal_v8_candidate.json"
 )
 DEFAULT_TRACES = ROOT / "data/world_model/traces"
+DEFAULT_PROTOCOL = (
+    ROOT / "data/evaluation/m2_mirrored_policy_protocol_v1.json"
+)
 
 
 def _split_arrays(trace_dir: Path, manifest: dict, split: str) -> dict[str, Any]:
@@ -285,6 +296,15 @@ def main() -> int:
     parser.add_argument("--learning-rate", type=float, default=0.0003)
     parser.add_argument("--transition", choices=("gru", "transformer"), default="gru")
     parser.add_argument("--semantic-event-loss-weight", type=float, default=0.20)
+    parser.add_argument("--protocol", type=Path, default=DEFAULT_PROTOCOL)
+    parser.add_argument(
+        "--out",
+        type=Path,
+        help=(
+            "Optionally persist an identity-bound zero-training report inside "
+            "the project root."
+        ),
+    )
     args = parser.parse_args()
     report = preflight(
         manifest_path=args.manifest,
@@ -299,6 +319,36 @@ def main() -> int:
         transition=args.transition,
         semantic_event_loss_weight=args.semantic_event_loss_weight,
     )
+    if args.out is not None:
+        protocol_path = args.protocol.resolve()
+        output_path = args.out.resolve()
+        try:
+            protocol_path.relative_to(ROOT)
+            output_path.relative_to(ROOT)
+        except ValueError as exc:
+            raise ValueError(
+                "M2 protocol and preflight output must stay inside the project root"
+            ) from exc
+        from scripts.run_m2_mirrored_policy_study import (
+            load_protocol,
+            validate_protocol,
+        )
+
+        protocol = load_protocol(protocol_path)
+        validate_protocol(protocol)
+        manifest_path = args.manifest.resolve()
+        report.update({
+            "protocol_id": protocol["protocol_id"],
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "evidence_identity": study_preflight_identity(
+                ROOT, protocol_path, protocol, manifest_path,
+            ),
+            "claim_scope": (
+                "zero_training_readiness_only_no_model_or_outcome_evidence"
+            ),
+        })
+        validate_m2_preflight_receipt(report, protocol)
+        write_json_atomic(output_path, report)
     print(json.dumps(report, indent=2))
     return 0 if report["ready"] else 1
 

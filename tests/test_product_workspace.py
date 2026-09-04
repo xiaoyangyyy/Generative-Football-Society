@@ -30,6 +30,7 @@ from src.product.decision_ledger import (
 from src.match_engine.tactical_catalog import TACTICAL_KEYS
 from src.match_engine.world_model.mirrored_policy_evaluation import (
     study_execution_identity,
+    study_preflight_identity,
 )
 from src.product.decision_advice import (
     build_manager_advice_adoption,
@@ -823,7 +824,8 @@ def test_formal_evidence_identity_tracks_exact_protocol_checkpoint_and_code(tmp_
     ):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
-    digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+    def digest(path):
+        return hashlib.sha256(path.read_bytes()).hexdigest()
     protocol = {
         "candidate": {
             "checkpoint": "data/world_model/candidate.pt",
@@ -926,6 +928,180 @@ def test_m2_product_evidence_is_independent_current_and_fail_closed(tmp_path):
     assert stale["promotion_supported"] is False
     assert stale["result_status"] is None
     assert stale["primary"] == {}
+
+
+def test_m2_preflight_receipt_drives_one_current_product_next_action(tmp_path):
+    protocol_path = (
+        tmp_path / "data/evaluation/m2_mirrored_policy_protocol_v1.json"
+    )
+    preflight_path = (
+        tmp_path / "data/evaluation/m2_training_preflight_v1.json"
+    )
+    manifest = tmp_path / "data/world_model/manifest.json"
+    trainer = tmp_path / "scripts/train.py"
+    shared = (
+        tmp_path
+        / "src/match_engine/world_model/mirrored_policy_evaluation.py"
+    )
+    for path, content in (
+        (manifest, "{}"),
+        (trainer, "trainer = 1"),
+        (shared, "identity = 1"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    protocol = {
+        "protocol_id": "m2-mirrored-policy-v1",
+        "claim_scope": "simulator_only",
+        "state": "preregistered_code_ready_awaiting_sealed_checkpoint",
+        "candidate": {
+            "dataset_manifest": "data/world_model/manifest.json",
+            "required_sealed_validation": ["two_step", "policy_utility.pass"],
+        },
+        "training": {},
+        "design": {"runs_total": 360},
+        "integrity": {
+            "code_identity_files": ["scripts/train.py"],
+            "input_identity_globs": ["data/world_model/manifest.json"],
+        },
+    }
+    protocol_path.parent.mkdir(parents=True, exist_ok=True)
+    protocol_path.write_text(json.dumps(protocol), encoding="utf-8")
+    preflight = {
+        "schema_version": 1,
+        "protocol_id": "m2-mirrored-policy-v1",
+        "status": "ready_for_m2_training",
+        "ready": True,
+        "checks": {"all_frozen_checks": True},
+        "configuration": {
+            "dataset_manifest": "data/world_model/manifest.json",
+        },
+        "training_executed": False,
+        "checkpoint_written": False,
+        "sealed_test": {
+            "used_for_training_or_tuning": False,
+            "rows_loaded_for_model_selection": 0,
+            "support_read_from_frozen_manifest_only": True,
+        },
+        "claim_scope": (
+            "zero_training_readiness_only_no_model_or_outcome_evidence"
+        ),
+        "frozen_training_command": "python train.py --frozen",
+        "evidence_identity": study_preflight_identity(
+            tmp_path, protocol_path, protocol, manifest,
+        ),
+    }
+    preflight_path.write_text(json.dumps(preflight), encoding="utf-8")
+    workspace = ProductWorkspace(tmp_path, StudioConfig(mode="research"))
+
+    current = workspace.evidence()["outcome_aligned_m2_study"]
+
+    assert current["training_preflight"]["ready"] is True
+    assert current["training_preflight"]["result_identity_verified"] is True
+    assert current["research_control"]["status"] == "awaiting_candidate"
+    assert current["research_control"]["next_action"]["id"] == (
+        "train_or_supply_and_qualify_candidate"
+    )
+
+    trainer.write_text("trainer = 2", encoding="utf-8")
+    stale = workspace.evidence()["outcome_aligned_m2_study"]
+    assert stale["training_preflight"]["ready"] is False
+    assert stale["training_preflight"]["result_identity_verified"] is False
+    assert stale["research_control"]["status"] == "awaiting_current_preflight"
+
+    trainer.write_text("trainer = 1", encoding="utf-8")
+    preflight["training_executed"] = True
+    preflight["evidence_identity"] = study_preflight_identity(
+        tmp_path, protocol_path, protocol, manifest,
+    )
+    preflight_path.write_text(json.dumps(preflight), encoding="utf-8")
+    overclaim = workspace.evidence()["outcome_aligned_m2_study"]
+    assert overclaim["training_preflight"]["result_identity_verified"] is False
+    assert overclaim["research_control"]["status"] == (
+        "awaiting_current_preflight"
+    )
+
+
+def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
+    tmp_path,
+):
+    protocol_path = (
+        tmp_path / "data/evaluation/m2_mirrored_policy_protocol_v1.json"
+    )
+    report_path = (
+        tmp_path / "data/evaluation/m2_candidate_eligibility_v1.json"
+    )
+    checkpoint = tmp_path / "data/world_model/m2.pt"
+    code = tmp_path / "src/controller.py"
+    input_path = tmp_path / "data/calibration/target.json"
+    for path, content in (
+        (checkpoint, b"checkpoint"),
+        (code, b"controller"),
+        (input_path, b"{}"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    protocol = {
+        "protocol_id": "m2-mirrored-policy-v1",
+        "claim_scope": "simulator_only",
+        "state": "preregistered_code_ready_awaiting_sealed_checkpoint",
+        "candidate": {"required_sealed_validation": []},
+        "training": {},
+        "design": {"runs_total": 360},
+        "integrity": {
+            "code_identity_files": ["src/controller.py"],
+            "input_identity_globs": ["data/calibration/*.json"],
+        },
+    }
+    protocol_path.parent.mkdir(parents=True, exist_ok=True)
+    protocol_path.write_text(json.dumps(protocol), encoding="utf-8")
+    identity = study_execution_identity(
+        tmp_path, protocol_path, protocol, checkpoint,
+    )
+    report = {
+        "schema_version": 1,
+        "protocol_id": "m2-mirrored-policy-v1",
+        "status": "eligible_for_m2_execution",
+        "candidate_eligible": True,
+        "candidate_eligibility": {"eligible": True},
+        "execution_identity": identity,
+        "formal_execution_started": False,
+        "formal_result_available": False,
+        "claim_scope": (
+            "checkpoint_qualification_only_no_policy_effect_or_outcome_claim"
+        ),
+    }
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+
+    evidence = ProductWorkspace(
+        tmp_path, StudioConfig(mode="research"),
+    ).evidence()["outcome_aligned_m2_study"]
+
+    assert evidence["candidate_eligible"] is True
+    assert evidence["runs_executed"] == 0
+    assert evidence["candidate_qualification"]["source"] == (
+        "qualification_report"
+    )
+    assert evidence["candidate_qualification"]["result_identity_verified"]
+    assert evidence["research_control"]["status"] == (
+        "ready_for_authorized_execution"
+    )
+
+    report["formal_result_available"] = True
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    overclaim = ProductWorkspace(
+        tmp_path, StudioConfig(mode="research"),
+    ).evidence()["outcome_aligned_m2_study"]
+    assert overclaim["candidate_eligible"] is False
+    assert overclaim["candidate_qualification"][
+        "result_identity_verified"
+    ] is False
+    assert overclaim["identity_reason"] == (
+        "invalid_candidate_qualification_receipt"
+    )
+    assert overclaim["execution_state"] == (
+        "invalid_candidate_qualification_receipt"
+    )
 
 
 def test_cognitive_readiness_rejects_retired_deepseek_model(tmp_path, monkeypatch):

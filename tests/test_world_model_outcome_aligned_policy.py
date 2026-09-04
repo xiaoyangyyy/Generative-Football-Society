@@ -30,6 +30,7 @@ from src.match_engine.world_model.mirrored_policy_evaluation import (
     fixture_stratified_cluster_interval,
     paired_effect_rows,
     study_execution_identity,
+    study_preflight_identity,
 )
 from src.match_engine.world_model.policy_utility import (
     POLICY_UTILITY_VERSION,
@@ -402,6 +403,64 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
     assert eligibility["sealed_test_unused_by_training"] is True
     assert eligibility["sealed_two_step_active"] is True
     assert eligibility["sealed_pass_policy_utility_gate"]["authorized"] is True
+
+
+def test_preflight_identity_binds_protocol_manifest_and_training_code(tmp_path):
+    protocol_path = tmp_path / "data/evaluation/m2.json"
+    manifest_path = tmp_path / "data/world_model/manifest.json"
+    trainer_path = tmp_path / "scripts/train.py"
+    shared_path = (
+        tmp_path
+        / "src/match_engine/world_model/mirrored_policy_evaluation.py"
+    )
+    for path, content in (
+        (manifest_path, "{}"),
+        (trainer_path, "trainer = 1"),
+        (shared_path, "identity = 1"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    protocol = {
+        "candidate": {"dataset_manifest": "data/world_model/manifest.json"},
+        "integrity": {"code_identity_files": ["scripts/train.py"]},
+    }
+    protocol_path.parent.mkdir(parents=True, exist_ok=True)
+    protocol_path.write_text("{}", encoding="utf-8")
+
+    identity = study_preflight_identity(
+        tmp_path, protocol_path, protocol, manifest_path,
+    )
+
+    assert identity["manifest_path"] == "data/world_model/manifest.json"
+    assert set(identity["code_sha256"]) == {
+        "scripts/train.py",
+        "src/match_engine/world_model/mirrored_policy_evaluation.py",
+    }
+    trainer_path.write_text("trainer = 2", encoding="utf-8")
+    assert study_preflight_identity(
+        tmp_path, protocol_path, protocol, manifest_path,
+    ) != identity
+
+
+def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
+    identity = {
+        "checkpoint_path": "data/world_model/m2.pt",
+        "checkpoint_sha256": "a" * 64,
+    }
+    eligibility = {"eligible": True, "sealed_two_step_active": True}
+
+    receipt = m2_study.candidate_eligibility_report(
+        {"protocol_id": "m2-mirrored-policy-v1"},
+        identity,
+        eligibility,
+    )
+
+    assert receipt["status"] == "eligible_for_m2_execution"
+    assert receipt["execution_identity"] is identity
+    assert receipt["candidate_eligibility"] is eligibility
+    assert receipt["formal_execution_started"] is False
+    assert receipt["formal_result_available"] is False
+    assert "no_policy_effect_or_outcome_claim" in receipt["claim_scope"]
 
 
 def test_candidate_eligibility_rejects_sealed_policy_failure(

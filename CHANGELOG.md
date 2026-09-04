@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Added identity-bound persisted M2 zero-training preflight and standalone
+  checkpoint-qualification receipts.
+- Added a fail-closed five-stage M2 research control plane to the product API
+  and Web evidence centre, with one explicit next action and no Web execution.
 - Added provider-neutral Metrica/SkillCorner tracking contracts, grouped domain
   splits, and deterministic missingness/noise evaluation.
 - Added joint listwise receiver and physics-residual completion training.

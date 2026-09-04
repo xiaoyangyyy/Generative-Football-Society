@@ -3435,3 +3435,50 @@ rewrite the historical `inconclusive_keep_research_only` conclusion.
 Consequently M2 remains unavailable to stable product mode until a newly
 trained sealed candidate passes the eligibility check and the complete
 preregistered study supports promotion.
+
+## 106. V3.88 Identity-bound M2 research control plane
+
+M2 readiness previously existed in three disconnected places: the training
+preflight printed to a terminal, checkpoint qualification was only visible
+during a runner invocation, and Studio showed a compact result card. That was
+scientifically safe but operationally incomplete. An operator could not tell
+whether readiness belonged to current code, whether a checkpoint had already
+been qualified without starting the study, or which single action was valid.
+
+The zero-training preflight can now persist
+`data/evaluation/m2_training_preflight_v1.json` explicitly through
+`--out`. The receipt binds the protocol, frozen dataset manifest and every
+declared M2 training code dependency. The expensive preflight still verifies
+all trace contents at recording time, and training repeats that verification;
+ordinary product status requests verify the smaller receipt identity instead
+of reparsing the full trace corpus. A current preflight remains readiness
+evidence only: it records no optimization, checkpoint or match result.
+
+Checkpoint qualification can likewise persist a standalone
+`m2_candidate_eligibility_v1.json` receipt through `--eligibility-out`.
+It uses the exact execution identity later required by the formal study and
+records both accepted and rejected candidates. A rejected receipt is not a
+tuning invitation: after sealed evaluation is opened, the product workflow
+requires preserving that rejection and preregistering any genuinely new
+candidate.
+
+Studio composes protocol, preflight, candidate receipt, resumable progress and
+current analysis into one validated five-stage workflow:
+
+1. freeze the protocol;
+2. verify training readiness;
+3. qualify one sealed candidate;
+4. execute the fixed mirrored study;
+5. decide promotion from all preregistered gates.
+
+The projection exposes exactly one next action and distinguishes preflight
+drift, candidate identity drift, candidate rejection, authorized execution,
+interrupted execution, current non-promotion and current promotion. It never
+executes a command. The Web evidence centre renders the stages and exact
+operator commands using text-only DOM construction; training and the 360
+formal matches still require an explicit command and authorization.
+
+The current recorded preflight is identity-valid and passes all thirteen
+checks. Therefore the workflow is at stage 3, `awaiting_candidate`, with
+zero of 360 formal matches executed. No training, checkpoint qualification,
+formal match, provider request or promotion occurred in this stage.

@@ -155,6 +155,12 @@ not quality signals by themselves.
     every external result and review. CLI and Web now expose this distinction
     consistently. Current state is 10 passed/11 open gates with the code
     contract ready and external evidence still open.
+40. Joined the M2 terminal preflight, standalone checkpoint qualification,
+    formal progress and final decision into one identity-bound five-stage
+    Studio workflow. Recorded preflight and candidate receipts fail closed
+    after dependency drift, rejected sealed candidates cannot become tuning
+    evidence, interrupted runs can only resume the same identity, and the Web
+    surface displays but never executes the single valid next command.
 
 ## LLM Scope Decision
 
