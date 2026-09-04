@@ -8,7 +8,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from src.match_engine.cognitive.apply import (
     apply_coach_plan_to_team,
     apply_referee_plan,
-    apply_player_plan,
 )
 from src.match_engine.cognitive.executor import CognitiveExecutor, _rule_fallback_plan
 from src.match_engine.cognitive.config import CognitiveMatchConfig
@@ -17,7 +16,6 @@ from src.match_engine.state import (
     CoachAffectiveState,
     CrowdState,
     MatchAffectiveState,
-    PlayerAffectiveState,
     RefereeAffectiveState,
     TeamAffectiveState,
 )

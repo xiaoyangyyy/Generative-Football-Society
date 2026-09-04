@@ -16,7 +16,6 @@ from src.match_engine.ball_physics import (
     desired_pass_omega,
     ground_pass_weight,
     integrate_pass_trajectory,
-    outside_foot_factor,
     sample_pass_delivery_params,
 )
 from src.match_engine.pass_intercept import (

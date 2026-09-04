@@ -12,7 +12,6 @@ FM proprietary databases are NOT downloaded here. Use export from your FM instal
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path

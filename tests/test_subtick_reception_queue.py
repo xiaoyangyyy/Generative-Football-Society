@@ -1,5 +1,4 @@
 from __future__ import annotations
-from collections import deque
 import heapq
 import numpy as np
 from src.match_engine.subtick_reception_queue import SubtickReceptionQueue,_QueuedReception

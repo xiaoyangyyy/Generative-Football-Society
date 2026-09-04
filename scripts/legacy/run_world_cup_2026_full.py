@@ -70,7 +70,7 @@ def main():
         ball_path_log_enabled,
         ball_path_log_txt_enabled,
     )
-    from src.simulation.match_pipeline import micro_layer_enabled, micro_physics_score_enabled
+    from src.simulation.match_pipeline import micro_layer_enabled
     from src.simulation.score_path import resolve_score_path_mode, score_path_label
 
     score_path = resolve_score_path_mode()

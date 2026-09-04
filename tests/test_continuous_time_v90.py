@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from src.match_engine.frame_world.router import ActionRequest,ActionTransitionRouter,FrameContext
 from src.match_engine.frame_world.schema import ENTITY_COUNT
-from src.match_engine.frame_world.continuous import ContinuousTimeConfig,ContinuousTimeMarkModel,mixture_survival_loss
+from src.match_engine.frame_world.continuous import ContinuousTimeMarkModel,mixture_survival_loss
 
 
 def test_continuous_survival_loss_is_finite_for_events_and_censoring():

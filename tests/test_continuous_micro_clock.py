@@ -1,5 +1,4 @@
 from __future__ import annotations
-from dataclasses import dataclass
 from types import SimpleNamespace
 import numpy as np
 from src.match_engine.continuous_micro_clock import ContinuousMicroEventClock

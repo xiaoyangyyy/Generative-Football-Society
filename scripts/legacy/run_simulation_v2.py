@@ -5,7 +5,6 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-import pandas as pd
 from src.data_engine.loader import load_data
 from src.data_engine.cleaner import clean_results
 from src.data_engine.identity_normalizer import normalize_identities

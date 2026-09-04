@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.simulation.world_cup_runner import build_world_and_tournament
-from src.simulation.media_logic import MediaOutlet, simulate_counterfactual_media
+from src.simulation.media_logic import simulate_counterfactual_media
 from src.simulation.random_control import set_global_seed
 from src.visualization.sentiment_viz import plot_sentiment_pulse
 

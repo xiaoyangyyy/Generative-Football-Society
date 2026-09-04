@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-from types import SimpleNamespace
 
 import numpy as np
 import pytest

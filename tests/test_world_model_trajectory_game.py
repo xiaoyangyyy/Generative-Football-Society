@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import numpy as np
-import pytest
 
 from src.match_engine.world_model.inference import WorldModelRuntime
 from src.match_engine.world_model.opponent_contract import OPPONENT_HYPOTHESES

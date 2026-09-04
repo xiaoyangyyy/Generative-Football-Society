@@ -94,7 +94,7 @@ def main() -> int:
     press_tac = dict(TACTICAL_PRESETS[PRESS_PRESET])
     possess_tac = dict(TACTICAL_PRESETS[POSSESS_PRESET])
 
-    from src.match_engine.discipline_schedule import team_foul_weight, team_press_factor
+    from src.match_engine.discipline_schedule import team_press_factor
 
     report_weights = {
         "press_team_press_factor": team_press_factor(press_tac),

@@ -2,6 +2,9 @@
 
 ## Unreleased - v7 candidate
 
+- Completed repository-wide unused-import closure by removing the final 30
+  dead imports from active/legacy scripts and tests, with every modified script
+  compiled and every affected test module executed before full-suite review.
 - Removed 89 verified-dead imports from 50 internal source modules, including
   obsolete tournament-facade dependencies left behind by mixin extraction;
   no package initializer exports or live implementation symbols were changed.

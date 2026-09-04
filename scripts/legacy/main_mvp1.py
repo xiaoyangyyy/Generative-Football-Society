@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 from src.data_engine.loader import load_data
 from src.data_engine.cleaner import clean_results
 from src.data_engine.identity_normalizer import normalize_identities

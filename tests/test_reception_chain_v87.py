@@ -2,7 +2,6 @@ from __future__ import annotations
 import hashlib,json
 from pathlib import Path
 import numpy as np
-import torch
 from src.match_engine.frame_world.reception import ReceptionChainModel,ReceptionConfig,apply_reception_state
 from src.match_engine.frame_world.router import ActionRequest,ActionTransitionRouter,FrameContext
 from src.match_engine.frame_world.schema import ENTITY_COUNT
