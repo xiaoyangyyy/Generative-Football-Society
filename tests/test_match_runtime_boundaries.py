@@ -174,8 +174,11 @@ def test_tournament_regulation_and_extra_time_use_manager_root(monkeypatch, tmp_
     summary = SimpleNamespace(
         goals_micro_home=1,
         goals_micro_away=0,
+        goals_physics_home=1,
+        goals_physics_away=0,
         micro_xg_home=0.4,
         micro_xg_away=0.2,
+        xg_supplement_applied=False,
     )
 
     def fake_micro(*args, **kwargs):
@@ -218,6 +221,160 @@ def test_tournament_regulation_and_extra_time_use_manager_root(monkeypatch, tmp_
 
     assert result["went_to_extra_time"] is True
     assert roots == [tmp_path, tmp_path]
+
+
+def _regulation_kwargs():
+    return {
+        "a1": object(),
+        "a2": object(),
+        "ah": object(),
+        "aa": object(),
+        "t1_name": "Home",
+        "t2_name": "Away",
+        "stage_name": "Group",
+        "is_knockout": False,
+        "home_micro": "Home",
+        "away_micro": "Away",
+        "neutral_venue": False,
+        "pressure": 0.4,
+        "referee": {"strictness": 0.5},
+        "internal_micro_h": {},
+        "internal_micro_a": {},
+        "eff_status_1": 70.0,
+        "eff_status_2": 68.0,
+        "eff_micro_home": 70.0,
+        "eff_micro_away": 68.0,
+        "fused_1": {"volatility": 0.0},
+        "fused_2": {"volatility": 0.0},
+        "fused_vol_h": 0.0,
+        "fused_vol_a": 0.0,
+        "match_seed": 7,
+    }
+
+
+def test_physics_official_failure_never_falls_back_to_macro(
+    monkeypatch, tmp_path,
+):
+    monkeypatch.setenv("MATCH_MICRO", "1")
+    monkeypatch.setenv("MATCH_MICRO_SCORE", "1")
+    monkeypatch.setenv("MATCH_MICRO_STRICT", "0")
+    monkeypatch.setattr(
+        tournament_scoring,
+        "expected_match_xg",
+        lambda *a, **k: (1.0, 1.0, {}),
+    )
+    monkeypatch.setattr(
+        tournament_scoring,
+        "run_physics_first_micro",
+        lambda *a, **k: (_ for _ in ()).throw(ValueError("corrupt roster")),
+    )
+    macro_called = False
+
+    def macro(*args, **kwargs):
+        nonlocal macro_called
+        macro_called = True
+        return 0, 0, 0.0, 0.0, {}
+
+    harness = _ScoringHarness(tmp_path)
+    monkeypatch.setattr(harness, "_run_macro_regulation_score", macro)
+
+    with pytest.raises(
+        tournament_scoring.PhysicsOfficialScoreError,
+        match="corrupt roster",
+    ):
+        harness._resolve_regulation_score(**_regulation_kwargs())
+
+    assert macro_called is False
+
+
+def test_physics_official_rejects_nonfinite_prior_before_micro(
+    monkeypatch, tmp_path,
+):
+    monkeypatch.setenv("MATCH_MICRO", "1")
+    monkeypatch.setenv("MATCH_MICRO_SCORE", "1")
+    monkeypatch.setattr(
+        tournament_scoring,
+        "expected_match_xg",
+        lambda *a, **k: (float("nan"), 1.0, {}),
+    )
+    micro_called = False
+
+    def micro(*args, **kwargs):
+        nonlocal micro_called
+        micro_called = True
+
+    monkeypatch.setattr(
+        tournament_scoring, "run_physics_first_micro", micro
+    )
+    harness = _ScoringHarness(tmp_path)
+
+    with pytest.raises(
+        tournament_scoring.PhysicsOfficialScoreError,
+        match="macro_xg_prior_home",
+    ):
+        harness._resolve_regulation_score(**_regulation_kwargs())
+
+    assert micro_called is False
+
+
+def test_macro_score_path_remains_an_explicit_choice(monkeypatch, tmp_path):
+    monkeypatch.setenv("MATCH_MICRO", "0")
+    monkeypatch.setenv("MATCH_MICRO_SCORE", "0")
+    monkeypatch.setenv("MATCH_LEGACY_POISSON", "0")
+    harness = _ScoringHarness(tmp_path)
+    monkeypatch.setattr(
+        harness,
+        "_run_macro_regulation_score",
+        lambda **kwargs: (1, 2, 0.8, 1.1, {}),
+    )
+    monkeypatch.setattr(
+        tournament_scoring,
+        "run_physics_first_micro",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("physics must not run")
+        ),
+    )
+
+    result = harness._resolve_regulation_score(**_regulation_kwargs())
+
+    assert result["score_path"].value == "macro_unified"
+    assert result["physics_first"] is False
+    assert (result["s1"], result["s2"]) == (1, 2)
+
+
+def test_physics_extra_time_rejects_unproven_summary(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        tournament_scoring,
+        "run_extra_time_micro",
+        lambda *a, **k: SimpleNamespace(
+            goals_micro_home=1,
+            goals_micro_away=0,
+            goals_physics_home=0,
+            goals_physics_away=0,
+            micro_xg_home=0.3,
+            micro_xg_away=0.1,
+            xg_supplement_applied=False,
+        ),
+    )
+    harness = _ScoringHarness(tmp_path)
+    kwargs = _micro_kwargs()
+
+    with pytest.raises(
+        tournament_scoring.PhysicsOfficialScoreError,
+        match="extra time.*do not match",
+    ):
+        harness._resolve_knockout_score(
+            a1=object(), a2=object(), ah=object(), aa=object(),
+            t1_name="Home", t2_name="Away", stage_name="Final",
+            is_knockout=True, home_micro="Home", away_micro="Away",
+            neutral_venue=True, pressure=0.8, referee=kwargs["referee"],
+            internal_micro_h=kwargs["internal_home"],
+            internal_micro_a=kwargs["internal_away"],
+            eff_status_1=70.0, eff_status_2=68.0,
+            eff_micro_home=70.0, eff_micro_away=68.0,
+            physics_first=True, xg_prior_h=1.0, xg_prior_a=1.0,
+            drama_pre=0.5, seed=7, s1=0, s2=0,
+        )
 
 
 class _ReportingHarness(tournament_reporting.TournamentReportingMixin):

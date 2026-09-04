@@ -230,6 +230,9 @@ def main() -> int:
     tournament_reporting = (
         ROOT / "src/simulation/tournament_reporting.py"
     ).read_text(encoding="utf-8")
+    score_path = (
+        ROOT / "src/simulation/score_path.py"
+    ).read_text(encoding="utf-8")
     code_identity = (
         ROOT / "src/infrastructure/code_identity.py"
     ).read_text(encoding="utf-8")
@@ -1773,6 +1776,35 @@ def main() -> int:
             and match_pipeline.count("base_dir=base_dir") >= 3
             and tournament_scoring.count("base_dir=self.base_dir") >= 2
             and tournament_reporting.count("base_dir=self.base_dir") >= 2
+        ),
+        "physics_official_score_path_fails_closed": (
+            all(token in score_path for token in (
+                "class OfficialScoreIntegrityError(ValueError):",
+                "def _official_goal(",
+                "def _official_xg(",
+                "def validate_official_xg_prior(",
+                "def validate_physics_official_summary(",
+                "Physics-official score cannot contain an xG supplement",
+                "Physics-official goals do not match physics goal evidence",
+            ))
+            and all(token in tournament_scoring for token in (
+                "class PhysicsOfficialScoreError(RuntimeError):",
+                "Physics-official regulation failed before score commit",
+                "Physics-official extra time failed before score commit",
+                "finalize_official_score_from_micro(",
+            ))
+            and "falling back to macro score" not in tournament_scoring
+            and "MATCH_MICRO_STRICT" not in tournament_scoring
+            and all(token in workspace for token in (
+                "validate_physics_official_summary(raw)",
+                '"physics_evidence_validated": (',
+                "physics_score_evidence is None",
+            ))
+            and all(token in product_reporting for token in (
+                'data-testid="score-provenance"',
+                "Physics score evidence verified",
+                "Physics score evidence not verified",
+            ))
         ),
         "prospective_m2_identity_closes_transitive_runtime_dependencies": (
             all(token in code_identity for token in (

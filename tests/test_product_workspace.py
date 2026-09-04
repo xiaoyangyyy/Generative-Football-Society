@@ -310,6 +310,7 @@ class _Summary:
     goals_micro_away: int = 1
     goals_physics_home: int = 2
     goals_physics_away: int = 1
+    xg_supplement_applied: bool = False
     micro_xg_home: float = 1.4
     micro_xg_away: float = 0.8
     possession_home: float = 0.55
@@ -1328,6 +1329,18 @@ def test_tactical_lab_uses_locked_presets_physics_score_and_explicit_seed(
     assert observed["away_tactic"] == "low_block_counter"
     assert observed["stage_name"] == report["match_id"]
     assert report["match_plan"]["score_path"] == "physics_official"
+    assert report["result"]["score_provenance"] == {
+        "selected_path": "physics_official",
+        "physics_evidence_required": True,
+        "physics_evidence_validated": True,
+        "evidence": {
+            "source": "physics_official",
+            "goals_micro": [2, 1],
+            "goals_physics": [2, 1],
+            "micro_xg": [1.4, 0.8],
+            "xg_supplement_applied": False,
+        },
+    }
     assert report["match_plan"]["claim_boundary"].startswith(
         "single_run_descriptive_only"
     )
@@ -1928,6 +1941,39 @@ def test_post_simulation_reporting_failure_preserves_run_provenance(
     assert run["state"] == "failed"
     assert run["simulation_completed_at"]
     assert run["successful_provider_calls"] == 0
+
+
+def test_product_physics_score_rejects_unproven_source_before_report(
+    tmp_path, monkeypatch,
+):
+    _evidence(tmp_path)
+    workspace = ProductWorkspace.create(
+        tmp_path,
+        StudioConfig(name="Score Integrity", mode="research", seed=31),
+    )
+    from src import app
+    from src.simulation.score_path import OfficialScoreIntegrityError
+
+    monkeypatch.setattr(
+        app,
+        "run_micro_match",
+        lambda *args, **kwargs: _Summary(goals_physics_home=1),
+    )
+
+    with pytest.raises(OfficialScoreIntegrityError, match="do not match"):
+        workspace.run_match(
+            "Brazil",
+            "Argentina",
+            fast=True,
+            plan=MatchPlan(
+                experience="tactical_lab", home_tactic="gegenpress"
+            ),
+        )
+
+    status = workspace.status()
+    assert status["last_run"]["state"] == "failed"
+    assert status["matches_played"] == 0
+    assert not list((tmp_path / "outputs/product/matches").glob("*.json"))
 
 
 def test_paired_workspace_persists_synchronized_dual_replay(tmp_path, monkeypatch):

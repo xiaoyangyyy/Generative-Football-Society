@@ -322,6 +322,18 @@ def test_tactical_lab_report_exposes_score_path_seed_and_inference_boundary():
         "score_path": "physics_official",
         "paired_baseline_match_id": "0001-brazil-vs-argentina",
     }
+    report["result"]["score_provenance"] = {
+        "selected_path": "physics_official",
+        "physics_evidence_required": True,
+        "physics_evidence_validated": True,
+        "evidence": {
+            "source": "physics_official",
+            "goals_micro": [2, 1],
+            "goals_physics": [2, 1],
+            "micro_xg": [1.4, 0.8],
+            "xg_supplement_applied": False,
+        },
+    }
     document = render_match_html(report)
     assert 'data-testid="match-plan-panel"' in document
     assert "高位反抢" in document and "低位防反" in document
@@ -329,6 +341,24 @@ def test_tactical_lab_report_exposes_score_path_seed_and_inference_boundary():
     assert "seed 77" in document
     assert "需与对应基线报告配对比较" in document
     assert "0001-brazil-vs-argentina" in document
+    assert 'data-testid="score-provenance"' in document
+    assert "Physics score evidence verified" in document
+
+
+def test_physics_score_without_provenance_is_visibly_unverified():
+    report = _report()
+    report["match_plan"] = {
+        "experience": "tactical_lab",
+        "home_tactic": "gegenpress",
+        "away_tactic": "team_identity",
+        "reuse_last_seed": False,
+        "score_path": "physics_official",
+    }
+
+    document = render_match_html(report)
+
+    assert "Physics score evidence not verified" in document
+    assert 'class="off">Physics score evidence not verified' in document
 
 
 def test_world_model_fork_report_exposes_policy_and_pairing_boundary():

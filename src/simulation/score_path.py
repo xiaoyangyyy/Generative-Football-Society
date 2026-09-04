@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-import os
+import math
+from collections.abc import Mapping
 from enum import Enum
+from numbers import Integral, Real
 from typing import Any, Dict, Tuple
 from src.simulation.runtime import environment_snapshot, env_bool
 
@@ -15,6 +17,91 @@ class ScorePathMode(str, Enum):
     MICRO_REPLAY = "micro_replay"  # macro samples score; micro replays anchored
     MACRO_UNIFIED = "macro_unified"  # macro λ (+ optional micro xG blend) → Poisson
     POISSON_LEGACY = "poisson_legacy"  # status-vector Poisson only
+
+
+class OfficialScoreIntegrityError(ValueError):
+    """The physics-official result cannot be proven from its micro summary."""
+
+
+def _required_summary_value(summary: Any, field: str) -> Any:
+    if isinstance(summary, Mapping):
+        if field not in summary:
+            raise OfficialScoreIntegrityError(
+                f"Physics-official summary is missing {field}"
+            )
+        return summary[field]
+    if not hasattr(summary, field):
+        raise OfficialScoreIntegrityError(
+            f"Physics-official summary is missing {field}"
+        )
+    return getattr(summary, field)
+
+
+def _official_goal(summary: Any, field: str) -> int:
+    value = _required_summary_value(summary, field)
+    if isinstance(value, bool) or not isinstance(value, Integral) or value < 0:
+        raise OfficialScoreIntegrityError(
+            f"Physics-official summary has invalid {field}"
+        )
+    return int(value)
+
+
+def _official_xg(summary: Any, field: str) -> float:
+    value = _required_summary_value(summary, field)
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise OfficialScoreIntegrityError(
+            f"Physics-official summary has invalid {field}"
+        )
+    result = float(value)
+    if not math.isfinite(result) or result < 0.0:
+        raise OfficialScoreIntegrityError(
+            f"Physics-official summary has invalid {field}"
+        )
+    return result
+
+
+def validate_official_xg_prior(value: Any, field: str) -> float:
+    """Return one finite non-negative macro prior used by physics scoring."""
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise OfficialScoreIntegrityError(
+            f"Physics-official score has invalid {field}"
+        )
+    result = float(value)
+    if not math.isfinite(result) or result < 0.0:
+        raise OfficialScoreIntegrityError(
+            f"Physics-official score has invalid {field}"
+        )
+    return result
+
+
+def validate_physics_official_summary(summary: Any) -> Dict[str, Any]:
+    """Return complete score evidence or reject the micro result."""
+    gh = _official_goal(summary, "goals_micro_home")
+    ga = _official_goal(summary, "goals_micro_away")
+    physics_gh = _official_goal(summary, "goals_physics_home")
+    physics_ga = _official_goal(summary, "goals_physics_away")
+    xgh = _official_xg(summary, "micro_xg_home")
+    xga = _official_xg(summary, "micro_xg_away")
+    supplement = _required_summary_value(summary, "xg_supplement_applied")
+    if not isinstance(supplement, bool):
+        raise OfficialScoreIntegrityError(
+            "Physics-official summary has invalid xg_supplement_applied"
+        )
+    if supplement:
+        raise OfficialScoreIntegrityError(
+            "Physics-official score cannot contain an xG supplement"
+        )
+    if (gh, ga) != (physics_gh, physics_ga):
+        raise OfficialScoreIntegrityError(
+            "Physics-official goals do not match physics goal evidence"
+        )
+    return {
+        "source": ScorePathMode.PHYSICS_OFFICIAL.value,
+        "goals_micro": [gh, ga],
+        "goals_physics": [physics_gh, physics_ga],
+        "micro_xg": [xgh, xga],
+        "xg_supplement_applied": supplement,
+    }
 
 
 def _env_truthy(name: str) -> bool:
@@ -100,22 +187,25 @@ def finalize_official_score_from_micro(
     Official score = micro physics goals only.
     Reported xG = micro integral; macro prior kept for narrative/logging.
     """
-    gh = int(getattr(micro_summary, "goals_micro_home", 0))
-    ga = int(getattr(micro_summary, "goals_micro_away", 0))
-    xgh = float(getattr(micro_summary, "micro_xg_home", 0.0))
-    xga = float(getattr(micro_summary, "micro_xg_away", 0.0))
+    evidence = validate_physics_official_summary(micro_summary)
+    gh, ga = evidence["goals_micro"]
+    physics_gh, physics_ga = evidence["goals_physics"]
+    xgh, xga = evidence["micro_xg"]
+    prior_home = validate_official_xg_prior(
+        macro_xg_prior_home, "macro_xg_prior_home"
+    )
+    prior_away = validate_official_xg_prior(
+        macro_xg_prior_away, "macro_xg_prior_away"
+    )
     s1, s2 = map_micro_score_to_fixture(home_micro, fixture_home, gh, ga)
     xg1, xg2 = map_micro_xg_to_fixture(home_micro, fixture_home, xgh, xga)
     meta: Dict[str, Any] = {
         "source": "physics_official",
         "score_path": ScorePathMode.PHYSICS_OFFICIAL.value,
-        "macro_xg_prior": [float(macro_xg_prior_home), float(macro_xg_prior_away)],
+        "macro_xg_prior": [prior_home, prior_away],
         "micro_xg": [xgh, xga],
-        "goals_physics": [
-            int(getattr(micro_summary, "goals_physics_home", gh)),
-            int(getattr(micro_summary, "goals_physics_away", ga)),
-        ],
-        "xg_supplement_applied": bool(getattr(micro_summary, "xg_supplement_applied", False)),
+        "goals_physics": [physics_gh, physics_ga],
+        "xg_supplement_applied": evidence["xg_supplement_applied"],
     }
     return s1, s2, xg1, xg2, meta
 

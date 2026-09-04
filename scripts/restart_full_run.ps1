@@ -60,7 +60,6 @@ $env:MATCH_WM_SHOT_BLEND = "0.40"
 $env:MATCH_WM_RECORD = "0"
 $env:MATCH_WM_SNAPSHOT_IN_BALL_LOG = "0"
 $env:MATCH_DEBUG_NARRATIVE = "1"
-$env:MATCH_MICRO_STRICT = "1"
 
 $py = if (Test-Path -LiteralPath ".venv\Scripts\python.exe") {
     ".venv\Scripts\python.exe"

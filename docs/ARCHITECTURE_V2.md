@@ -3614,3 +3614,39 @@ This stage executes no training, writes no checkpoint, runs no formal match
 and makes no provider request. The old M1/action results remain historical and
 inapplicable to the mutable current code until a separately preregistered
 current-code experiment is explicitly authorized and completed.
+
+## 111. V3.93 Fail-closed physics-official score provenance
+
+The tournament scorer previously caught every regulation micro-engine failure
+and, unless a legacy strict environment flag was enabled, continued through the
+macro scorer. The selected path nevertheless remained
+`physics_official`, so reporting could label a macro-generated result
+`micro_physics_first`. Missing micro-summary fields were also converted to
+zero by default. Both behaviors could turn absence of physics evidence into an
+apparently valid official physics result.
+
+A selected physics-official path is now mandatory rather than advisory.
+Regulation failures stop before score commit with a fixture- and stage-scoped
+error; they never invoke the macro scorer. Extra time follows the same rule.
+Macro-unified, replay and legacy scoring remain available as explicit
+configuration choices, preserving their legitimate product and compatibility
+uses without silently changing the selected score source.
+
+Before either regulation or extra-time physics can become official, the score
+boundary now requires non-negative integral micro and physics goals, finite
+non-negative micro xG and macro priors, an explicit Boolean supplement flag,
+no xG supplement, and exact equality between reported micro goals and physics
+goal evidence. Missing fields, Boolean-as-integer values, fractional or
+negative goals, non-finite xG, supplemented scores and source mismatches all
+fail closed.
+
+Behavioral tests prove both sides of the boundary: a failed physics run cannot
+reach the macro scorer, while an explicitly selected macro path remains
+functional and accurately labelled. The architecture audit prevents
+reintroduction of the former fallback. Product execution uses the same
+validator before finalizing its run journal: invalid evidence marks the run
+failed and writes no match report, while valid reports expose a visible score
+provenance badge and the complete bounded proof fields. This change performs
+no training, provider request or formal match study; M2 remains at zero of 360
+formal runs and its transitive preflight identity must be refreshed before
+future authorized execution.

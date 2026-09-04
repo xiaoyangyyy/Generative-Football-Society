@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_action_policy_external_replication_v2_registration",
-  "generated_at": "2026-09-04T14:18:30.692716+00:00",
+  "generated_at": "2026-09-04T14:56:50.104515+00:00",
   "status": "registered_ready_for_fixed_replication",
   "passed": true,
   "ready_to_start": true,

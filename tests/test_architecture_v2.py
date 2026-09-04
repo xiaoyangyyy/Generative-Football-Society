@@ -67,6 +67,7 @@ def test_architecture_v2_machine_audit_passes():
     assert report["checks"][
         "match_runtime_inputs_are_side_isolated_and_root_bound"
     ]
+    assert report["checks"]["physics_official_score_path_fails_closed"]
     assert report["checks"][
         "prospective_m2_identity_closes_transitive_runtime_dependencies"
     ]

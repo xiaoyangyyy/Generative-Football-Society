@@ -163,6 +163,10 @@ V3.92 replaces prospective M2's manually bounded code identity with a
 deterministic local-import closure. The zero-training preflight now binds 240
 Python dependencies, including the real match runner and its side-isolation
 contract, while completed historical studies retain their original identities.
+V3.93 makes a selected physics-official score path an enforceable contract:
+regulation and extra time now reject missing, non-finite, supplemented or
+source-mismatched micro evidence and stop before score commit. Macro scoring
+remains available only when the caller explicitly selects a macro score path.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

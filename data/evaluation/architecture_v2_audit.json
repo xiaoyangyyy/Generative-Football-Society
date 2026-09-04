@@ -42,6 +42,7 @@
     "official_action_v3_preserves_counterfactual_transition_matrix": true,
     "official_action_v4_preserves_exact_shared_uniform_expectation": true,
     "official_manager_matches_surface_world_model_action_execution": true,
+    "physics_official_score_path_fails_closed": true,
     "product_does_not_import_training_implementation": true,
     "prospective_m2_identity_closes_transitive_runtime_dependencies": true,
     "release_readiness_separates_code_contract_from_external_results": true,

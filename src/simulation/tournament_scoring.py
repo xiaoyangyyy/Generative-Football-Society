@@ -1,7 +1,5 @@
 """Regulation, micro-physics, extra-time, and penalty score resolution."""
 
-import numpy as np
-
 from src.memory_engine.macro_goal_dynamics import (
     clamp_match_xg,
     expected_match_xg,
@@ -18,9 +16,13 @@ from src.simulation.score_path import (
     ScorePathMode,
     finalize_official_score_from_micro,
     resolve_score_path_mode,
+    validate_official_xg_prior,
 )
 from src.simulation.random_control import named_rng
-from src.simulation.runtime import environment_snapshot, env_bool
+
+
+class PhysicsOfficialScoreError(RuntimeError):
+    """A selected physics-official score path failed before score commit."""
 
 
 class TournamentScoringMixin:
@@ -45,17 +47,25 @@ class TournamentScoringMixin:
         internal_micro_h, internal_micro_a, eff_micro_home, eff_micro_away,
         fused_vol_h, fused_vol_a, seed, rng_score, drama_pre,
     ):
-        xg_prior_h, xg_prior_a, _ = expected_match_xg(
-            ah, aa, eff_micro_home, eff_micro_away,
-            is_knockout=is_knockout,
-            stage_pressure=pressure,
-            fused_volatility_home=fused_vol_h,
-            fused_volatility_away=fused_vol_a,
-            rng=rng_score,
-        )
-        xg_prior_h = clamp_match_xg(xg_prior_h if np.isfinite(xg_prior_h) else 1.0)
-        xg_prior_a = clamp_match_xg(xg_prior_a if np.isfinite(xg_prior_a) else 1.0)
         try:
+            xg_prior_h, xg_prior_a, _ = expected_match_xg(
+                ah, aa, eff_micro_home, eff_micro_away,
+                is_knockout=is_knockout,
+                stage_pressure=pressure,
+                fused_volatility_home=fused_vol_h,
+                fused_volatility_away=fused_vol_a,
+                rng=rng_score,
+            )
+            xg_prior_h = clamp_match_xg(
+                validate_official_xg_prior(
+                    xg_prior_h, "macro_xg_prior_home"
+                )
+            )
+            xg_prior_a = clamp_match_xg(
+                validate_official_xg_prior(
+                    xg_prior_a, "macro_xg_prior_away"
+                )
+            )
             micro_summary = run_physics_first_micro(
                 ah, aa, xg_prior_home=xg_prior_h, xg_prior_away=xg_prior_a,
                 eff_status_home=eff_micro_home, eff_status_away=eff_micro_away,
@@ -75,12 +85,11 @@ class TournamentScoringMixin:
             score_meta["xg_prior"] = [xg_prior_h, xg_prior_a]
             return s1, s2, xg1, xg2, micro_summary, xg_prior_h, xg_prior_a
         except Exception as exc:
-            print(f"  [MICRO] physics-first failed ({exc}); falling back to macro score.")
-            if env_bool(environment_snapshot(), "MATCH_MICRO_STRICT", False):
-                raise RuntimeError(
-                    f"Micro physics-first failed ({t1_name} vs {t2_name}): {exc}"
-                ) from exc
-            return None
+            raise PhysicsOfficialScoreError(
+                "Physics-official regulation failed before score commit "
+                f"({t1_name} vs {t2_name}, {stage_name}): "
+                f"{type(exc).__name__}: {exc}"
+            ) from exc
 
     def _run_macro_regulation_score(
         self, *, a1, a2, eff_status_1, eff_status_2, is_knockout,
@@ -130,10 +139,9 @@ class TournamentScoringMixin:
                 seed=context["seed"], rng_score=context["rng_score"],
                 drama_pre=context["drama_pre"],
             )
-            if physics_result is not None:
-                s1, s2, xg1, xg2, micro_summary, xg_prior_h, xg_prior_a = physics_result
-            else:
-                context["physics_first"] = False
+            s1, s2, xg1, xg2, micro_summary, xg_prior_h, xg_prior_a = (
+                physics_result
+            )
 
         if not context["physics_first"]:
             s1, s2, xg1, xg2, _ = self._run_macro_regulation_score(
@@ -173,29 +181,42 @@ class TournamentScoringMixin:
             went_to_extra_time = True
             print(f"  [AET] Full micro extra time ({home_micro} vs {away_micro})...")
             if physics_first:
-                et_summary = run_extra_time_micro(
-                    ah,
-                    aa,
-                    xg_prior_home=xg_prior_h,
-                    xg_prior_away=xg_prior_a,
-                    eff_status_home=eff_micro_home,
-                    eff_status_away=eff_micro_away,
-                    referee=referee,
-                    stage_pressure=pressure,
-                    drama_score=drama_pre,
-                    internal_home=internal_micro_h,
-                    internal_away=internal_micro_a,
-                    seed=seed,
-                    stage_name=stage_name,
-                    neutral_venue=neutral_venue,
-                    base_dir=self.base_dir,
-                )
-                et_gh, et_ga = int(et_summary.goals_micro_home), int(et_summary.goals_micro_away)
-                et_xgh, et_xga = float(et_summary.micro_xg_home), float(et_summary.micro_xg_away)
-                aet1, aet2 = self._map_micro_score(home_micro, t1_name, et_gh, et_ga)
-                et_xg1 = et_xgh if home_micro == t1_name else et_xga
-                et_xg2 = et_xga if home_micro == t1_name else et_xgh
-                print_micro_match_logs(et_summary, home_micro, away_micro, ah, aa)
+                try:
+                    et_summary = run_extra_time_micro(
+                        ah,
+                        aa,
+                        xg_prior_home=xg_prior_h,
+                        xg_prior_away=xg_prior_a,
+                        eff_status_home=eff_micro_home,
+                        eff_status_away=eff_micro_away,
+                        referee=referee,
+                        stage_pressure=pressure,
+                        drama_score=drama_pre,
+                        internal_home=internal_micro_h,
+                        internal_away=internal_micro_a,
+                        seed=seed,
+                        stage_name=stage_name,
+                        neutral_venue=neutral_venue,
+                        base_dir=self.base_dir,
+                    )
+                    aet1, aet2, et_xg1, et_xg2, _ = (
+                        finalize_official_score_from_micro(
+                            et_summary,
+                            home_micro=home_micro,
+                            fixture_home=t1_name,
+                            macro_xg_prior_home=xg_prior_h,
+                            macro_xg_prior_away=xg_prior_a,
+                        )
+                    )
+                    print_micro_match_logs(
+                        et_summary, home_micro, away_micro, ah, aa
+                    )
+                except Exception as exc:
+                    raise PhysicsOfficialScoreError(
+                        "Physics-official extra time failed before score commit "
+                        f"({t1_name} vs {t2_name}, {stage_name}): "
+                        f"{type(exc).__name__}: {exc}"
+                    ) from exc
             else:
                 from src.memory_engine.macro_goal_dynamics import simulate_extra_time_dynamics
 

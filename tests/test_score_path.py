@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import os
+from types import SimpleNamespace
 from unittest import mock
 
+import pytest
+
 from src.simulation.score_path import (
+    OfficialScoreIntegrityError,
     ScorePathMode,
     finalize_official_score_from_micro,
     physics_official_enabled,
@@ -71,3 +75,67 @@ def test_finalize_official_score_from_micro():
     assert (x1, x2) == (1.8, 0.9)
     assert meta["source"] == "physics_official"
     assert meta["macro_xg_prior"] == [1.2, 0.8]
+
+
+def _valid_summary(**overrides):
+    values = {
+        "goals_micro_home": 2,
+        "goals_micro_away": 1,
+        "micro_xg_home": 1.8,
+        "micro_xg_away": 0.9,
+        "goals_physics_home": 2,
+        "goals_physics_away": 1,
+        "xg_supplement_applied": False,
+    }
+    values.update(overrides)
+    return SimpleNamespace(**values)
+
+
+def _finalize(summary, *, prior_home=1.2, prior_away=0.8):
+    return finalize_official_score_from_micro(
+        summary,
+        home_micro="Mexico",
+        fixture_home="Mexico",
+        macro_xg_prior_home=prior_home,
+        macro_xg_prior_away=prior_away,
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("goals_micro_home", True),
+        ("goals_micro_home", 1.5),
+        ("goals_physics_away", -1),
+        ("micro_xg_home", float("nan")),
+        ("micro_xg_away", float("inf")),
+        ("micro_xg_away", -0.1),
+        ("xg_supplement_applied", 0),
+    ],
+)
+def test_physics_official_summary_rejects_invalid_evidence(field, value):
+    with pytest.raises(OfficialScoreIntegrityError, match=field):
+        _finalize(_valid_summary(**{field: value}))
+
+
+def test_physics_official_summary_requires_complete_evidence():
+    summary = _valid_summary()
+    del summary.goals_physics_home
+
+    with pytest.raises(OfficialScoreIntegrityError, match="missing goals_physics_home"):
+        _finalize(summary)
+
+
+def test_physics_official_summary_rejects_supplement_or_goal_mismatch():
+    with pytest.raises(OfficialScoreIntegrityError, match="xG supplement"):
+        _finalize(_valid_summary(xg_supplement_applied=True))
+    with pytest.raises(OfficialScoreIntegrityError, match="do not match"):
+        _finalize(_valid_summary(goals_physics_home=1))
+
+
+@pytest.mark.parametrize("prior", [True, float("nan"), float("inf"), -0.1])
+def test_physics_official_summary_rejects_invalid_macro_prior(prior):
+    with pytest.raises(
+        OfficialScoreIntegrityError, match="macro_xg_prior_home"
+    ):
+        _finalize(_valid_summary(), prior_home=prior)

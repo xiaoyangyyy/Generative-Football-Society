@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Made the selected physics-official regulation and extra-time paths fail
+  closed, and reject incomplete, non-finite, supplemented or source-mismatched
+  micro score evidence instead of silently reporting a macro fallback as
+  physics output.
 - Added a deterministic, root-confined local-Python import closure for
   prospective experiment identities and activated it for M2 before training,
   candidate binding or any of the fixed 360 formal runs.

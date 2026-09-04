@@ -6189,6 +6189,13 @@ class ProductWorkspace:
                     "base_url": getattr(gateway.config, "base_url", None),
                 }
         raw = asdict(summary) if is_dataclass(summary) else dict(summary)
+        physics_score_evidence = None
+        if plan.score_path == "physics_official":
+            from src.simulation.score_path import (
+                validate_physics_official_summary,
+            )
+
+            physics_score_evidence = validate_physics_official_summary(raw)
         run_record.update(
             {
                 "state": "finalizing",
@@ -6285,6 +6292,16 @@ class ProductWorkspace:
                     "away": raw.get("passes_away"),
                 },
                 "shots": {"home": raw.get("shots_home"), "away": raw.get("shots_away")},
+                "score_provenance": {
+                    "selected_path": plan.score_path,
+                    "physics_evidence_required": (
+                        plan.score_path == "physics_official"
+                    ),
+                    "physics_evidence_validated": (
+                        physics_score_evidence is not None
+                    ),
+                    "evidence": physics_score_evidence,
+                },
             },
             "layers": {
                 "psychology": {
@@ -6407,11 +6424,9 @@ class ProductWorkspace:
             and squad_provenance.get("fallback_used") is True
         ):
             integrity_blockers.append("research_synthetic_roster_fallback")
-        if plan.score_path == "physics_official" and (
-            int(raw.get("goals_micro_home", -1))
-            != int(raw.get("goals_physics_home", -2))
-            or int(raw.get("goals_micro_away", -1))
-            != int(raw.get("goals_physics_away", -2))
+        if (
+            plan.score_path == "physics_official"
+            and physics_score_evidence is None
         ):
             integrity_blockers.append("physics_score_path_not_observed")
         report["integrity"] = {

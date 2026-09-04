@@ -365,6 +365,22 @@ def _match_plan_panel(report: Mapping[str, Any]) -> str:
         "physics_official": "物理射门与扑救产生正式比分",
         "macro_replay": "稳定宏观比分回放",
     }.get(score_path, score_path)
+    score_provenance = (
+        (report.get("result") or {}).get("score_provenance") or {}
+    )
+    physics_proof_required = score_path == "physics_official"
+    physics_proof_verified = bool(
+        score_provenance.get("physics_evidence_validated")
+    )
+    if physics_proof_required and physics_proof_verified:
+        score_proof_label = "Physics score evidence verified"
+        score_proof_class = "ok"
+    elif physics_proof_required:
+        score_proof_label = "Physics score evidence not verified"
+        score_proof_class = "off"
+    else:
+        score_proof_label = "Physics evidence not required for this path"
+        score_proof_class = ""
     seed = fixture.get("seed")
     paired = bool(plan.get("reuse_last_seed"))
     paired_baseline = plan.get("paired_baseline_match_id")
@@ -423,6 +439,7 @@ def _match_plan_panel(report: Mapping[str, Any]) -> str:
   <div><span class="label">主队战术</span><strong>{tactic_label(home_tactic)}</strong></div>
   <div><span class="label">客队战术</span><strong>{tactic_label(away_tactic)}</strong></div>
   <div><span class="label">正式比分路径</span><strong>{html.escape(score_label)}</strong></div>
+  <div data-testid="score-provenance"><span class="label">Score provenance</span><strong class="{score_proof_class}">{html.escape(score_proof_label)}</strong></div>
   {policy_card}
 </div>
 <p class="evidence">{html.escape(inference)}</p>{comparison_link}</section>"""
