@@ -45,6 +45,39 @@ def test_stable_report_explicitly_says_research_policy_is_inactive():
     assert 'id="replay-wm"' not in document
 
 
+def test_cognitive_report_surfaces_safe_provider_transport_evidence():
+    report = _report(mode="cognitive")
+    report["layers"]["cognition"] = {
+        "enabled": True,
+        "provider": {
+            "adapter": "openai_compatible",
+            "model": "<unsafe-model>",
+            "successful_calls": 2,
+            "transport": {
+                "available": True,
+                "truncated": False,
+                "provider_attempts": 3,
+                "total_tokens": 144,
+                "estimated_cost_usd": 0.001234,
+                "circuit": {"state": "closed"},
+                "contains_prompts_or_credentials": False,
+            },
+        },
+    }
+
+    document = render_match_html(report)
+
+    assert 'data-testid="provider-transport-panel"' in document
+    assert "Provider evidence" in document
+    assert "verified" in document
+    assert "openai_compatible" in document
+    assert "&lt;unsafe-model&gt;" in document
+    assert "<unsafe-model>" not in document
+    assert "144" in document
+    assert "$0.001234" in document
+    assert "prompts, response text and credential values are excluded" in document
+
+
 def test_research_report_separates_realized_and_expected_changes_and_escapes():
     adoption = {
         "available": True,

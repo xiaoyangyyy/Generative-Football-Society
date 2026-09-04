@@ -23,7 +23,7 @@ not quality signals by themselves.
 | Narrative | Generated events become bounded, persistent social signals with a facts ledger | Correct causal placement | Learn persistence/decay from longitudinal outcomes |
 | Memory | Layered retrieval, provenance graph, contradiction links, delayed utility | Auditable baseline | Add retention ablation benchmarks |
 | Meta-learning | LLM proposes bounded deltas with evidence and time-scale audit | Safe experimental meta-controller | Require delayed outcome credit before slow parameter updates |
-| LLM transport | Shared provider gateway; role agents remain logically independent | Right LLM amount | Add request IDs, token/cost telemetry, circuit breaker, provider adapter |
+| LLM transport | Shared adapter boundary with logical request IDs, bounded prompt-free token/cost telemetry and a thread-safe circuit breaker | Production-shaped, evidence-bearing transport | Validate live-provider request IDs/usage fields and freeze an explicit pricing snapshot before a paid pilot |
 | Calibration | Layer gates, ablations, external baselines, branch-specific WM quality | Good research hygiene | Automate confidence intervals and regression thresholds in CI |
 | Public API | Stable `src.app`/CLI and immutable runtime environment boundary | Clean integration surface | Keep compatibility facade stable through v6 |
 
@@ -161,6 +161,15 @@ not quality signals by themselves.
     after dependency drift, rejected sealed candidates cannot become tuning
     evidence, interrupted runs can only resume the same identity, and the Web
     surface displays but never executes the single valid next command.
+41. Replaced the opaque shared LLM client call with an explicit provider
+    adapter and one logical request identity preserved across retries. Added
+    bounded prompt-free attempt telemetry, token and configured-price cost
+    accounting, plus a thread-safe closed/open/half-open circuit breaker.
+    Cognitive match reports and the prospective pilot now fail closed when the
+    telemetry delta is unavailable, truncated, secret-boundary-unsafe or
+    inconsistent with the independently observed per-scope successful-call
+    count. ContextVar-bound match scopes prevent concurrent cognitive matches
+    from claiming each other's provider evidence.
 
 ## LLM Scope Decision
 

@@ -18,6 +18,7 @@
     "infrastructure_has_no_upward_dependencies": true,
     "llm_pool_is_config_scoped_and_locked": true,
     "llm_success_count_requires_accepted_content": true,
+    "llm_transport_is_scope_bound_and_evidence_bearing": true,
     "local_action_transitions_have_noncausal_world_propagation_ledger": true,
     "managed_fixtures_bind_three_phase_world_state_evidence": true,
     "manager_action_adoption_uses_identity_bound_world_model_advice": true,

@@ -41,6 +41,8 @@ class PilotProtocol:
             "acceptance": {
                 "all_matches_complete": True,
                 "successful_provider_calls_per_match": "> 0",
+                "transport_telemetry_complete_per_match": True,
+                "report_integrity_accepted_per_match": True,
                 "rule_fallback_only_is_rejected": True,
             },
         }
@@ -92,7 +94,16 @@ class ProspectivePilot:
         for home, away in self.protocol.fixtures:
             report = self.workspace.run_match(home, away, fast=self.protocol.fast)
             provider = report["layers"]["cognition"]["provider"]
-            accepted = bool(provider.get("real_provider_evidence"))
+            transport = provider.get("transport") or {}
+            accepted = bool(
+                provider.get("real_provider_evidence")
+                and report.get("integrity", {}).get("accepted")
+                and transport.get("available")
+                and transport.get("truncated") is False
+                and int(transport.get("successful_calls", -1))
+                == int(provider.get("successful_calls", 0))
+                and transport.get("contains_prompts_or_credentials") is False
+            )
             matches.append({
                 "match_id": report["match_id"],
                 "fixture": report["fixture"],
@@ -103,7 +114,10 @@ class ProspectivePilot:
                 "cognitive_log": report["artifacts"].get("cognitive_log"),
             })
             if self.protocol.require_provider_evidence and not accepted:
-                failure = f"no successful provider call for {home} vs {away}"
+                failure = (
+                    f"provider evidence or transport integrity rejected for "
+                    f"{home} vs {away}"
+                )
                 break
 
         passed = len(matches) == len(self.protocol.fixtures) and all(

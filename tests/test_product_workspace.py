@@ -1666,10 +1666,47 @@ def test_cognitive_report_persists_real_provider_provenance(tmp_path, monkeypatc
     class _Config:
         model = "test-model"
         base_url = "https://provider.invalid/v1"
+        provider = "openai_compatible"
 
     class _Gateway:
         config = _Config()
         call_count = 3
+        scope_id = None
+
+        @staticmethod
+        def request_scope(scope_id):
+            from contextlib import nullcontext
+
+            _Gateway.scope_id = scope_id
+            return nullcontext()
+
+        @staticmethod
+        def telemetry_cursor():
+            return {"schema_version": 1, "gateway_id": "test-gateway", "sequence": 8}
+
+        @staticmethod
+        def telemetry_since(cursor):
+            assert cursor["sequence"] == 8
+            return {
+                "schema_version": 1,
+                "gateway_id": "test-gateway",
+                "from_sequence": 8,
+                "to_sequence": 9,
+                "scope_id": _Gateway.scope_id,
+                "truncated": False,
+                "logical_request_ids": ["request-test-001"],
+                "provider_attempts": 1,
+                "successful_calls": 1,
+                "aggregate_successful_calls": 1,
+                "failed_attempts": 0,
+                "input_tokens": 12,
+                "output_tokens": 4,
+                "total_tokens": 16,
+                "estimated_cost_usd": None,
+                "pricing_configured": False,
+                "contains_prompts_or_credentials": False,
+                "events": [],
+            }
 
     gateway = _Gateway()
     monkeypatch.setattr(llm_gateway, "get_shared_llm_gateway", lambda: gateway)
@@ -1682,10 +1719,69 @@ def test_cognitive_report_persists_real_provider_provenance(tmp_path, monkeypatc
     report = workspace.run_match("Brazil", "Argentina", fast=True)
     assert report["layers"]["cognition"]["provider"]["successful_calls"] == 1
     assert report["layers"]["cognition"]["provider"]["real_provider_evidence"]
+    transport = report["layers"]["cognition"]["provider"]["transport"]
+    assert transport["available"]
+    assert transport["successful_calls"] == 1
+    assert transport["contains_prompts_or_credentials"] is False
     persisted = json.loads(Path(report["report_path"]).read_text(encoding="utf-8"))
     assert persisted["artifacts"]["cognitive_log"]
     assert (tmp_path / persisted["artifacts"]["cognitive_log"]).is_file()
     assert report["integrity"]["accepted"]
+
+
+def test_cognitive_report_rejects_provider_transport_count_mismatch(
+    tmp_path, monkeypatch,
+):
+    _evidence(tmp_path)
+    monkeypatch.setenv("API_KEY", "test-key")
+    workspace = ProductWorkspace.create(tmp_path, StudioConfig(mode="cognitive"))
+    from src import app
+    from src.simulation import llm_gateway
+
+    class _Config:
+        model = "test-model"
+        base_url = "https://provider.invalid/v1"
+        provider = "openai_compatible"
+
+    class _Gateway:
+        config = _Config()
+        call_count = 3
+        scope_id = None
+
+        @staticmethod
+        def request_scope(scope_id):
+            from contextlib import nullcontext
+
+            _Gateway.scope_id = scope_id
+            return nullcontext()
+
+        @staticmethod
+        def telemetry_cursor():
+            return {"schema_version": 1, "gateway_id": "test-gateway", "sequence": 8}
+
+        @staticmethod
+        def telemetry_since(_cursor):
+            return {
+                "schema_version": 1,
+                "scope_id": _Gateway.scope_id,
+                "truncated": False,
+                "successful_calls": 0,
+                "aggregate_successful_calls": 1,
+                "contains_prompts_or_credentials": False,
+            }
+
+    gateway = _Gateway()
+    monkeypatch.setattr(llm_gateway, "get_shared_llm_gateway", lambda: gateway)
+
+    def run(*args, **kwargs):
+        gateway.call_count += 1
+        return _Summary(cognitive_plans=[{"action": "press"}])
+
+    monkeypatch.setattr(app, "run_micro_match", run)
+    report = workspace.run_match("Brazil", "Argentina", fast=True)
+
+    assert not report["integrity"]["accepted"]
+    assert "provider_transport_call_count_mismatch" in report["integrity"]["blockers"]
 
 
 def test_invalid_product_mode_is_rejected():

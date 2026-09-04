@@ -830,6 +830,38 @@ def render_match_html(report: Mapping[str, Any]) -> str:
     plan_panel = _match_plan_panel(report)
     management_panel = _management_panel(report)
     replay_panel = _action_replay_panel(report)
+    provider = cognition.get("provider") or {}
+    provider = provider if isinstance(provider, Mapping) else {}
+    transport = provider.get("transport") or {}
+    transport = transport if isinstance(transport, Mapping) else {}
+    transport_verified = bool(
+        cognition.get("enabled")
+        and transport.get("available")
+        and transport.get("truncated") is False
+        and transport.get("contains_prompts_or_credentials") is False
+    )
+    if cognition.get("enabled"):
+        cost = transport.get("estimated_cost_usd")
+        cost_label = (
+            f"${float(cost):.6f}"
+            if isinstance(cost, (int, float)) and not isinstance(cost, bool)
+            else "pricing not configured"
+        )
+        provider_panel = f"""<section class="card wm-panel" data-testid="provider-transport-panel">
+<div class="panel-head"><div><div class="label">Cognitive transport</div><h2>Provider evidence</h2></div><span class="tag {'changed' if transport_verified else ''}">{'verified' if transport_verified else 'incomplete'}</span></div>
+<div class="wm-grid">
+<div><span class="label">Adapter</span><strong>{html.escape(str(provider.get('adapter') or 'unknown'))}</strong></div>
+<div><span class="label">Model</span><strong>{html.escape(str(provider.get('model') or 'unknown'))}</strong></div>
+<div><span class="label">Accepted calls</span><strong>{_value(provider.get('successful_calls'), 0)}</strong></div>
+<div><span class="label">Provider attempts</span><strong>{_value(transport.get('provider_attempts'), 0)}</strong></div>
+<div><span class="label">Total tokens</span><strong>{_value(transport.get('total_tokens'), 0)}</strong></div>
+<div><span class="label">Estimated cost</span><strong>{html.escape(cost_label)}</strong></div>
+<div><span class="label">Circuit</span><strong>{html.escape(str((transport.get('circuit') or {}).get('state') or 'unknown'))}</strong></div>
+</div>
+<p class="evidence">Evidence is bound to this match request scope. Telemetry retains identifiers, timing and usage only; prompts, response text and credential values are excluded.</p>
+</section>"""
+    else:
+        provider_panel = ""
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(fixture['home'])} vs {html.escape(fixture['away'])} &middot; GFS Studio</title>
@@ -865,6 +897,7 @@ h1{{font-size:clamp(28px,6vw,58px);margin:0;letter-spacing:-.04em}}h2{{margin:0 
 <article class="card"><h2>System layers</h2><p>Integrity: <b class="{'ok' if integrity.get('accepted') else 'off'}">{html.escape(integrity_state)}</b><br>World model: <b class="{'ok' if world_model.get('enabled') else 'off'}">{'active' if world_model.get('enabled') else 'stable fallback'}</b><br>Shot probability: <b>{html.escape(shot_source)}</b><br>Cognition: <b class="{'ok' if cognition.get('enabled') else 'off'}">{'active' if cognition.get('enabled') else 'off'}</b></p></article>
     <article class="card"><h2>Match psychology</h2><p>Crowd field: <b>{_value(psychology.get('crowd_field'))}</b><br>Coach stress: <b>{_value((psychology.get('coach_stress') or {}).get('home'))} / {_value((psychology.get('coach_stress') or {}).get('away'))}</b><br>Tactical drift: <b>{_value((psychology.get('tactical_drift') or {}).get('home'))} / {_value((psychology.get('tactical_drift') or {}).get('away'))}</b></p></article>
 </section>
+{provider_panel}
 {plan_panel}
 {management_panel}
 {action_panel}

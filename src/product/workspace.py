@@ -7,7 +7,7 @@ import os
 import re
 import tempfile
 import copy
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -6086,6 +6086,9 @@ class ProductWorkspace:
 
         gateway = None
         calls_before = 0
+        telemetry_cursor = None
+        telemetry_cursor_error = None
+        provider_scope = nullcontext()
         with self._mode_environment(
             world_model_policy=plan.world_model_policy,
             world_model_branch_at_sec=plan.world_model_branch_at_sec,
@@ -6095,34 +6098,95 @@ class ProductWorkspace:
 
                 gateway = get_shared_llm_gateway()
                 calls_before = int(gateway.call_count)
-            micro_config = MicroMatchConfig.fast_demo() if fast else MicroMatchConfig()
-            micro_config.use_micro_goals = plan.score_path == "physics_official"
-            summary = app.run_micro_match(
-                home,
-                away,
-                base_dir=self.root,
-                seed=seed,
-                config=micro_config,
-                home_tactic=(
-                    None if plan.home_tactic == NATIVE_TACTIC else plan.home_tactic
-                ),
-                away_tactic=(
-                    None if plan.away_tactic == NATIVE_TACTIC else plan.away_tactic
-                ),
-                stage_name=match_id,
-                continuity=continuity,
-                continuity_id=continuity_id,
-                home_rotation=home_rotation,
-                away_rotation=away_rotation,
-                home_lineup=home_lineup,
-                away_lineup=away_lineup,
-                home_in_match_plan=home_in_match_plan,
-                away_in_match_plan=away_in_match_plan,
-                home_fatigue_load_factor=home_fatigue_load_factor,
-                away_fatigue_load_factor=away_fatigue_load_factor,
-            )
+                scope_factory = getattr(gateway, "request_scope", None)
+                if callable(scope_factory):
+                    provider_scope = scope_factory(match_id)
+                else:
+                    telemetry_cursor_error = "request_scope_unavailable"
+            with provider_scope:
+                cursor_reader = getattr(gateway, "telemetry_cursor", None)
+                if gateway is not None:
+                    if callable(cursor_reader):
+                        try:
+                            telemetry_cursor = cursor_reader()
+                        except Exception as exc:
+                            telemetry_cursor_error = type(exc).__name__
+                    else:
+                        telemetry_cursor_error = "telemetry_cursor_unavailable"
+                micro_config = (
+                    MicroMatchConfig.fast_demo() if fast else MicroMatchConfig()
+                )
+                micro_config.use_micro_goals = (
+                    plan.score_path == "physics_official"
+                )
+                summary = app.run_micro_match(
+                    home,
+                    away,
+                    base_dir=self.root,
+                    seed=seed,
+                    config=micro_config,
+                    home_tactic=(
+                        None if plan.home_tactic == NATIVE_TACTIC
+                        else plan.home_tactic
+                    ),
+                    away_tactic=(
+                        None if plan.away_tactic == NATIVE_TACTIC
+                        else plan.away_tactic
+                    ),
+                    stage_name=match_id,
+                    continuity=continuity,
+                    continuity_id=continuity_id,
+                    home_rotation=home_rotation,
+                    away_rotation=away_rotation,
+                    home_lineup=home_lineup,
+                    away_lineup=away_lineup,
+                    home_in_match_plan=home_in_match_plan,
+                    away_in_match_plan=away_in_match_plan,
+                    home_fatigue_load_factor=home_fatigue_load_factor,
+                    away_fatigue_load_factor=away_fatigue_load_factor,
+                )
         calls_after = int(gateway.call_count) if gateway is not None else 0
-        provider_calls = max(0, calls_after - calls_before)
+        global_provider_call_delta = max(0, calls_after - calls_before)
+        provider_calls = global_provider_call_delta
+        provider_transport: dict[str, Any] = {
+            "schema_version": 1,
+            "available": False,
+            "reason": telemetry_cursor_error or "cognitive_mode_disabled",
+            "contains_prompts_or_credentials": False,
+        }
+        if gateway is not None and telemetry_cursor is not None:
+            delta_reader = getattr(gateway, "telemetry_since", None)
+            if callable(delta_reader):
+                try:
+                    provider_transport = dict(delta_reader(telemetry_cursor))
+                    provider_transport["available"] = True
+                    provider_transport["reason"] = None
+                    provider_calls = int(
+                        provider_transport.get(
+                            "aggregate_successful_calls",
+                            global_provider_call_delta,
+                        )
+                    )
+                except Exception as exc:
+                    provider_transport["reason"] = (
+                        "telemetry_projection_failed:" + type(exc).__name__
+                    )
+            else:
+                provider_transport["reason"] = "telemetry_delta_unavailable"
+        provider_transport["global_successful_call_delta"] = (
+            global_provider_call_delta
+        )
+        provider_summary: dict[str, Any] = {}
+        if gateway is not None:
+            summary_reader = getattr(gateway.config, "public_summary", None)
+            if callable(summary_reader):
+                provider_summary = dict(summary_reader())
+            else:
+                provider_summary = {
+                    "provider": getattr(gateway.config, "provider", None),
+                    "model": getattr(gateway.config, "model", None),
+                    "base_url": getattr(gateway.config, "base_url", None),
+                }
         raw = asdict(summary) if is_dataclass(summary) else dict(summary)
         run_record.update(
             {
@@ -6252,14 +6316,12 @@ class ProductWorkspace:
                 "cognition": {
                     "enabled": self.config.mode == "cognitive",
                     "provider": {
-                        "model": str(gateway.config.model)
-                        if gateway is not None
-                        else None,
-                        "base_url": str(gateway.config.base_url)
-                        if gateway is not None
-                        else None,
+                        "adapter": provider_summary.get("provider"),
+                        "model": provider_summary.get("model"),
+                        "base_url": provider_summary.get("base_url"),
                         "successful_calls": provider_calls,
                         "real_provider_evidence": provider_calls > 0,
+                        "transport": provider_transport,
                     },
                     "triggers": raw.get("cognitive_triggers") or [],
                     "plans": raw.get("cognitive_plans") or [],
@@ -6310,6 +6372,28 @@ class ProductWorkspace:
             integrity_blockers.append("world_model_runtime_identity_mismatch")
         if self.config.mode == "cognitive" and provider_calls <= 0:
             integrity_blockers.append("no_successful_provider_call")
+        if self.config.mode == "cognitive":
+            if not provider_transport.get("available"):
+                integrity_blockers.append("provider_transport_telemetry_unavailable")
+            else:
+                if provider_transport.get("truncated") is not False:
+                    integrity_blockers.append("provider_transport_telemetry_truncated")
+                if provider_transport.get("scope_id") != match_id:
+                    integrity_blockers.append("provider_transport_scope_mismatch")
+                if (
+                    int(provider_transport.get("successful_calls", -1))
+                    != provider_calls
+                ):
+                    integrity_blockers.append(
+                        "provider_transport_call_count_mismatch"
+                    )
+                if (
+                    provider_transport.get("contains_prompts_or_credentials")
+                    is not False
+                ):
+                    integrity_blockers.append(
+                        "provider_transport_secret_boundary_unverified"
+                    )
         if plan.score_path == "physics_official" and (
             int(raw.get("goals_micro_home", -1))
             != int(raw.get("goals_physics_home", -2))

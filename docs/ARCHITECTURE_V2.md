@@ -3482,3 +3482,42 @@ The current recorded preflight is identity-valid and passes all thirteen
 checks. Therefore the workflow is at stage 3, `awaiting_candidate`, with
 zero of 360 formal matches executed. No training, checkpoint qualification,
 formal match, provider request or promotion occurred in this stage.
+
+## 107. V3.89 Evidence-bearing LLM transport
+
+The shared LLM gateway now separates the internal request contract from the
+OpenAI-compatible wire format through an explicit provider adapter. DeepSeek
+uses its own named adapter while retaining protocol compatibility. Every
+logical call receives one safe request ID that remains stable across transport
+retries and is optionally sent as `X-GFS-Request-ID`, allowing a paid provider
+record to be reconciled without persisting prompts or credentials.
+
+The gateway records a bounded in-memory stream of attempt facts: request and
+provider IDs, provider/model, attempt outcome, duration, token usage and an
+optional cost estimate from operator-supplied pricing. Prompts, responses and
+credential values are excluded. Aggregate counters remain complete even when
+the bounded event window rolls over; a cursor explicitly reports a truncated
+delta instead of silently presenting partial evidence.
+
+Repeated logical failures drive a lock-protected closed/open/half-open circuit
+breaker. An open circuit rejects before transport, and only one request may
+perform the recovery probe after the reset interval. Retries belong to the
+same logical request and therefore do not multiply circuit failures. Accepted
+attempt events and their per-scope success counters commit under one lock, so
+a concurrent cursor cannot observe a half-committed success.
+
+Cognitive product execution captures a telemetry cursor immediately before
+the match inside a ContextVar-bound match identity and persists the exact
+scope-filtered post-match delta in both the composed report
+and cognitive log. Report integrity fails closed if that delta is unavailable,
+truncated, contains an unverified secret boundary or disagrees with the
+independent per-scope successful-call counter. Its scope identity must also
+equal the reserved match identity. Concurrent cognitive matches
+therefore cannot claim each other's calls. The prospective paid-provider pilot now
+requires the same transport evidence and overall report integrity for every
+fixture.
+
+This stage changed code, tests and operator configuration only. It made no
+provider request, ran no training and produced no new football or LLM-effect
+claim. Live-provider header/usage behavior and configured pricing still
+require the separately authorized prospective pilot.

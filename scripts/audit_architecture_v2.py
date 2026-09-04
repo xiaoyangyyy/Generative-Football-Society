@@ -1649,8 +1649,25 @@ def main() -> int:
             "dict[LLMGatewayConfig" in gateway and "_GATEWAY_LOCK" in gateway
         ),
         "llm_success_count_requires_accepted_content": (
-            gateway.index("extract_json_object(content)")
-            < gateway.index("self.call_count += 1")
+            gateway.index("extract_json_object(content)", gateway.index("def complete("))
+            < gateway.index("self._request_succeeded()", gateway.index("def complete("))
+            and "self.call_count += 1" in gateway
+        ),
+        "llm_transport_is_scope_bound_and_evidence_bearing": (
+            all(token in gateway for token in (
+                "class ProviderAdapter(Protocol)",
+                "X-GFS-Request-ID",
+                "def request_scope(",
+                "aggregate_successful_calls",
+                "class LLMCircuitOpenError",
+                "contains_prompts_or_credentials",
+            ))
+            and all(token in workspace for token in (
+                "provider_transport_scope_mismatch",
+                "provider_transport_call_count_mismatch",
+                "provider_transport_secret_boundary_unverified",
+                "scope_factory(match_id)",
+            ))
         ),
         "wheel_preserves_src_console_namespace": (
             pyproject.get("project", {}).get("scripts", {}).get("gfs") == "src.cli:main"

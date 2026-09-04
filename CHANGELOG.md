@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Added an explicit LLM provider adapter, retry-stable request identities,
+  bounded prompt-free token/cost telemetry, and a thread-safe circuit breaker.
+- Bound cognitive reports and the prospective provider pilot to complete,
+  secret-safe transport evidence with fail-closed call-count reconciliation.
 - Added identity-bound persisted M2 zero-training preflight and standalone
   checkpoint-qualification receipts.
 - Added a fail-closed five-stage M2 research control plane to the product API
