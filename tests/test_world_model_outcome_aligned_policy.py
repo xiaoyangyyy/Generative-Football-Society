@@ -442,6 +442,24 @@ def test_preflight_identity_binds_protocol_manifest_and_training_code(tmp_path):
     ) != identity
 
 
+def test_current_m2_transitive_identity_reaches_match_runtime_dependencies():
+    protocol_path = m2_study.DEFAULT_PROTOCOL
+    protocol = m2_study.load_protocol(protocol_path)
+    manifest_path = m2_study.ROOT / protocol["candidate"]["dataset_manifest"]
+
+    identity = study_preflight_identity(
+        m2_study.ROOT, protocol_path, protocol, manifest_path,
+    )
+
+    assert {
+        "src/infrastructure/code_identity.py",
+        "src/match_engine/match_micro_runner.py",
+        "src/match_engine/internal_signals.py",
+        "src/simulation/match_pipeline.py",
+    }.issubset(identity["code_sha256"])
+    assert list(identity["code_sha256"]) == sorted(identity["code_sha256"])
+
+
 def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
     identity = {
         "checkpoint_path": "data/world_model/m2.pt",
@@ -830,7 +848,14 @@ def test_m2_protocol_validator_rejects_preregistered_threshold_drift():
     assert m2_study.validate_protocol(protocol) == {
         "fixtures": 6, "units": 120, "runs": 360,
     }
+    assert protocol["integrity"]["code_identity_mode"] == (
+        "transitive_local_imports_v1"
+    )
     changed = copy.deepcopy(protocol)
     changed["analysis"]["minimum_meaningful_delta"] = 0.09
     with pytest.raises(ValueError, match="threshold is frozen"):
+        m2_study.validate_protocol(changed)
+    changed = copy.deepcopy(protocol)
+    changed["integrity"]["code_identity_mode"] = "explicit_files_v1"
+    with pytest.raises(ValueError, match="transitive code identity"):
         m2_study.validate_protocol(changed)

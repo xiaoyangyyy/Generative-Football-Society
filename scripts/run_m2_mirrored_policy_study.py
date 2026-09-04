@@ -220,6 +220,17 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
         raise ValueError("M2 interim analysis and optional stopping are forbidden")
     if integrity.get("post_hoc_fixture_or_metric_selection") is not False:
         raise ValueError("M2 post-hoc metric selection is forbidden")
+    if integrity.get("code_identity_mode") != "transitive_local_imports_v1":
+        raise ValueError("M2 transitive code identity mode changed")
+    if integrity.get("identity_amendment") != {
+        "version": 1,
+        "reason": "manual_roots_did_not_bind_local_import_closure",
+        "timing": "before_candidate_binding_training_and_formal_execution",
+        "candidate_bound_before_amendment": False,
+        "training_runs_before_amendment": 0,
+        "formal_runs_before_amendment": 0,
+    }:
+        raise ValueError("M2 pre-execution identity amendment changed")
     power = protocol.get("power_analysis") or {}
     if (
         power.get("script") != "scripts/estimate_m2_policy_power.py"

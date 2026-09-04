@@ -67,6 +67,9 @@ def test_architecture_v2_machine_audit_passes():
     assert report["checks"][
         "match_runtime_inputs_are_side_isolated_and_root_bound"
     ]
+    assert report["checks"][
+        "prospective_m2_identity_closes_transitive_runtime_dependencies"
+    ]
     assert report["checks"]["tournament_resume_binds_random_world_identity"]
     assert report["checks"][
         "tournament_resume_binds_portable_run_input_identity"

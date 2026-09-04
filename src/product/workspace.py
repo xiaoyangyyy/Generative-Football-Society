@@ -15,6 +15,7 @@ from typing import Any, Iterator, Mapping
 
 from src.infrastructure import (
     FileLease,
+    code_identity_manifest,
     file_sha256,
     portable_text_hash_matches,
     verify_artifact_manifest,
@@ -371,12 +372,11 @@ def _formal_evidence_identity(
         checkpoint_sha = file_sha256(checkpoint_path)
         if checkpoint_sha != str(checkpoint_expected):
             return {"verified": False, "reason": "checkpoint_identity_mismatch"}
-        code_sha = {}
-        for relative in code_files:
-            path = (root / str(relative)).resolve()
-            if not path.is_file() or resolved_root not in path.parents:
-                raise ValueError("code identity artifact unavailable or outside root")
-            code_sha[str(relative)] = file_sha256(path)
+        code_sha = code_identity_manifest(
+            resolved_root,
+            code_files,
+            mode=str(integrity.get("code_identity_mode") or "explicit_files_v1"),
+        )
         expected = {
             "protocol_sha256": file_sha256(protocol_path),
             "checkpoint_sha256": checkpoint_sha,

@@ -3581,3 +3581,36 @@ replay modes. This correctness change intentionally invalidates assumptions
 that mutable development-branch simulations are identity-equivalent to older
 sealed results. It runs no training, provider call or formal match experiment,
 and does not alter the active stable release pointer or any promotion claim.
+
+## 110. V3.92 Transitive prospective experiment identity
+
+The historical action studies hashed an explicit list of controller and
+analysis files. That list was replayable, but it was not a complete runtime
+identity: a behavior-changing dependency reached through
+`benchmark_core -> match_micro_runner` could change without appearing as a
+separate code hash. Completed protocols and decisions remain immutable and are
+still interpreted with their original explicit-file identity; this stage does
+not rewrite historical evidence.
+
+New infrastructure mode `transitive_local_imports_v1` starts from a protocol's
+declared files and parses local `src` and `scripts` imports recursively. It
+includes package initializers, relative imports and statically named dynamic
+imports, terminates safely on cycles, emits project-relative paths in sorted
+order, and rejects absolute paths, parent traversal, missing declared files,
+unparseable Python and resolved paths outside the project. Legacy callers
+default to `explicit_files_v1`, so the algorithm is opt-in at the protocol
+boundary.
+
+M2 was still before candidate binding, training and all 360 formal runs, so its
+protocol records a versioned pre-execution identity amendment and opts into the
+transitive mode. Its refreshed zero-training preflight binds 240 local Python
+files and includes the real micro runner, shared internal-signal contract,
+match pipeline and identity implementation. The existing `src/**/*.py` input
+glob remains part of formal execution identity as an independent full-source
+lock. Architecture audit recomputes the complete preflight identity rather
+than checking only field presence.
+
+This stage executes no training, writes no checkpoint, runs no formal match
+and makes no provider request. The old M1/action results remain historical and
+inapplicable to the mutable current code until a separately preregistered
+current-code experiment is explicitly authorized and completed.

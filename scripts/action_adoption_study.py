@@ -20,7 +20,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.merge_formal_ablation_results import METRICS  # noqa: E402
-from src.infrastructure import FileLease, file_sha256  # noqa: E402
+from src.infrastructure import (  # noqa: E402
+    FileLease,
+    code_identity_manifest,
+    file_sha256,
+)
 from src.match_engine.calibration.ablation import (  # noqa: E402
     AblationSpec,
     PIPELINE_PRESETS,
@@ -168,16 +172,12 @@ def execution_identity(
     expected_checkpoint = protocol["candidate"]["checkpoint_sha256"]
     if not checkpoint.is_file() or file_sha256(checkpoint) != expected_checkpoint:
         raise ValueError("sealed action-adoption checkpoint identity mismatch")
-    code = {}
-    for relative in protocol["integrity"]["code_identity_files"]:
-        path = (root / relative).resolve()
-        try:
-            path.relative_to(root.resolve())
-        except ValueError as exc:
-            raise ValueError(f"code identity path escapes root: {relative}") from exc
-        if not path.is_file():
-            raise FileNotFoundError(f"code identity file missing: {relative}")
-        code[relative] = file_sha256(path)
+    integrity = protocol["integrity"]
+    code = code_identity_manifest(
+        root,
+        integrity["code_identity_files"],
+        mode=str(integrity.get("code_identity_mode") or "explicit_files_v1"),
+    )
     return {
         "protocol_sha256": file_sha256(protocol_path),
         "checkpoint_sha256": expected_checkpoint,

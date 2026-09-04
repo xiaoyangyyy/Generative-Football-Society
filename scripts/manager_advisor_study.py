@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.infrastructure import file_sha256  # noqa: E402
+from src.infrastructure import code_identity_manifest, file_sha256  # noqa: E402
 from src.product.decision_ledger import (  # noqa: E402
     validate_manager_decision_ledger,
     world_model_advisor_summary,
@@ -130,16 +130,12 @@ def protocol_identity(
     protocol = _read_json(protocol_path)
     if not all(validate_protocol(protocol).values()):
         raise ValueError("manager advisor protocol is invalid")
-    code = {}
-    for relative in protocol["integrity"]["code_identity_files"]:
-        path = (root / relative).resolve()
-        try:
-            path.relative_to(root.resolve())
-        except ValueError as exc:
-            raise ValueError(f"code identity path escapes root: {relative}") from exc
-        if not path.is_file():
-            raise FileNotFoundError(f"code identity file missing: {relative}")
-        code[relative] = file_sha256(path)
+    integrity = protocol["integrity"]
+    code = code_identity_manifest(
+        root,
+        integrity["code_identity_files"],
+        mode=str(integrity.get("code_identity_mode") or "explicit_files_v1"),
+    )
     return {
         "protocol_sha256": file_sha256(protocol_path),
         "code_sha256": code,

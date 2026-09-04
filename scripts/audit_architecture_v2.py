@@ -14,7 +14,10 @@ sys.path.insert(0, str(ROOT))
 
 from src.data_engine.dataset_registry import write_json_atomic  # noqa: E402
 from src.infrastructure import (  # noqa: E402
-    file_sha256, portable_text_hash_matches, verify_artifact_manifest,
+    code_identity_manifest,
+    file_sha256,
+    portable_text_hash_matches,
+    verify_artifact_manifest,
 )
 
 
@@ -227,6 +230,37 @@ def main() -> int:
     tournament_reporting = (
         ROOT / "src/simulation/tournament_reporting.py"
     ).read_text(encoding="utf-8")
+    code_identity = (
+        ROOT / "src/infrastructure/code_identity.py"
+    ).read_text(encoding="utf-8")
+    mirrored_policy_evaluation = (
+        ROOT / "src/match_engine/world_model/mirrored_policy_evaluation.py"
+    ).read_text(encoding="utf-8")
+    m2_study = (
+        ROOT / "scripts/run_m2_mirrored_policy_study.py"
+    ).read_text(encoding="utf-8")
+    m2_protocol_path = ROOT / "data/evaluation/m2_mirrored_policy_protocol_v1.json"
+    m2_protocol = _read("data/evaluation/m2_mirrored_policy_protocol_v1.json")
+    m2_preflight = _read("data/evaluation/m2_training_preflight_v1.json")
+    m2_integrity = m2_protocol.get("integrity") or {}
+    m2_manifest_path = ROOT / str(
+        (m2_protocol.get("candidate") or {}).get("dataset_manifest") or ""
+    )
+    m2_preflight_code = code_identity_manifest(
+        ROOT,
+        [
+            *(m2_integrity.get("code_identity_files") or []),
+            "src/match_engine/world_model/mirrored_policy_evaluation.py",
+        ],
+        mode=str(m2_integrity.get("code_identity_mode") or ""),
+    )
+    m2_expected_preflight_identity = {
+        "protocol_path": m2_protocol_path.relative_to(ROOT).as_posix(),
+        "protocol_sha256": file_sha256(m2_protocol_path),
+        "manifest_path": m2_manifest_path.relative_to(ROOT).as_posix(),
+        "manifest_sha256": file_sha256(m2_manifest_path),
+        "code_sha256": m2_preflight_code,
+    }
     wm_decision_support = (
         ROOT / "src/match_engine/world_model/decision_support.py"
     ).read_text(encoding="utf-8")
@@ -1739,6 +1773,33 @@ def main() -> int:
             and match_pipeline.count("base_dir=base_dir") >= 3
             and tournament_scoring.count("base_dir=self.base_dir") >= 2
             and tournament_reporting.count("base_dir=self.base_dir") >= 2
+        ),
+        "prospective_m2_identity_closes_transitive_runtime_dependencies": (
+            all(token in code_identity for token in (
+                'TRANSITIVE_LOCAL_IMPORTS_V1 = "transitive_local_imports_v1"',
+                "def code_identity_manifest(",
+                "relative.is_absolute()",
+                '".." in relative.parts',
+                "ast.parse(",
+                "for relative in sorted(resolved)",
+            ))
+            and "code_identity_manifest(" in mirrored_policy_evaluation
+            and '"transitive_local_imports_v1"' in m2_study
+            and m2_integrity.get("code_identity_mode")
+            == "transitive_local_imports_v1"
+            and (m2_integrity.get("identity_amendment") or {}).get(
+                "formal_runs_before_amendment"
+            ) == 0
+            and m2_preflight.get("training_executed") is False
+            and m2_preflight.get("checkpoint_written") is False
+            and m2_preflight.get("evidence_identity")
+            == m2_expected_preflight_identity
+            and {
+                "src/infrastructure/code_identity.py",
+                "src/match_engine/match_micro_runner.py",
+                "src/match_engine/internal_signals.py",
+                "src/simulation/match_pipeline.py",
+            }.issubset(m2_preflight_code)
         ),
         "wheel_preserves_src_console_namespace": (
             pyproject.get("project", {}).get("scripts", {}).get("gfs") == "src.cli:main"

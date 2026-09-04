@@ -9,7 +9,7 @@ from typing import Any, Callable, Mapping
 
 import numpy as np
 
-from src.infrastructure import file_sha256
+from src.infrastructure import code_identity_manifest, file_sha256
 
 
 def validate_m2_preflight_receipt(
@@ -135,20 +135,14 @@ def study_preflight_identity(
     raw_paths.append(
         "src/match_engine/world_model/mirrored_policy_evaluation.py"
     )
-    code: dict[str, str] = {}
-    for raw_relative in raw_paths:
-        path = (root_path / str(raw_relative)).resolve()
-        try:
-            canonical = path.relative_to(root_path).as_posix()
-        except ValueError as exc:
-            raise ValueError(
-                f"invalid M2 preflight code identity path: {raw_relative}"
-            ) from exc
-        if not path.is_file():
-            raise ValueError(
-                f"invalid M2 preflight code identity path: {raw_relative}"
-            )
-        code[canonical] = file_sha256(path)
+    code = code_identity_manifest(
+        root_path,
+        raw_paths,
+        mode=str(
+            (protocol.get("integrity") or {}).get("code_identity_mode")
+            or "explicit_files_v1"
+        ),
+    )
     if not code:
         raise ValueError("M2 preflight identity requires code hashes")
     return {
@@ -185,17 +179,11 @@ def study_execution_identity(
         )
 
     integrity = protocol.get("integrity") or {}
-    code: dict[str, str] = {}
-    for raw_relative in integrity.get("code_identity_files") or []:
-        relative = str(raw_relative)
-        path = (root_path / relative).resolve()
-        try:
-            canonical = path.relative_to(root_path).as_posix()
-        except ValueError as exc:
-            raise ValueError(f"invalid code identity path: {relative}") from exc
-        if not path.is_file():
-            raise ValueError(f"invalid code identity path: {relative}")
-        code[canonical] = file_sha256(path)
+    code = code_identity_manifest(
+        root_path,
+        integrity.get("code_identity_files") or [],
+        mode=str(integrity.get("code_identity_mode") or "explicit_files_v1"),
+    )
 
     inputs: dict[str, str] = {}
     for raw_pattern in integrity.get("input_identity_globs") or []:

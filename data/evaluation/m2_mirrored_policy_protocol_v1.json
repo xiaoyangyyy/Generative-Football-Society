@@ -96,6 +96,15 @@
     "post_hoc_fixture_or_metric_selection": false,
     "resume_requires_identical_protocol_checkpoint_and_code_identity": true,
     "historical_m1_results_are_current_m2_evidence": false,
+    "code_identity_mode": "transitive_local_imports_v1",
+    "identity_amendment": {
+      "version": 1,
+      "reason": "manual_roots_did_not_bind_local_import_closure",
+      "timing": "before_candidate_binding_training_and_formal_execution",
+      "candidate_bound_before_amendment": false,
+      "training_runs_before_amendment": 0,
+      "formal_runs_before_amendment": 0
+    },
     "input_identity_globs": [
       "src/**/*.py",
       "data/raw/**/*",

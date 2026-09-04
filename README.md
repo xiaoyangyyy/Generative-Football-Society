@@ -159,6 +159,10 @@ V3.91 completes that root boundary across tournament regulation, extra time,
 micro replay and affective replay. A shared finite, bounded signal contract now
 keeps each team's coordination and conflict inputs side-specific; the away
 team can no longer inherit the home team's conflict state.
+V3.92 replaces prospective M2's manually bounded code identity with a
+deterministic local-import closure. The zero-training preflight now binds 240
+Python dependencies, including the real match runner and its side-isolation
+contract, while completed historical studies retain their original identities.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
