@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import numpy as np
 
-from src.match_engine.world_model.action_codec import ACTION_DIM, zero_action
+from src.match_engine.world_model.action_codec import ACTION_DIM
 from src.match_engine.world_model.config import default_trace_dir
 from src.match_engine.world_model.observation import OBS_DIM
 from src.match_engine.world_model.schema import PASS_OUTCOME_INDEX, SHOT_GOAL_INDEX

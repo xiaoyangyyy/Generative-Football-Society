@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-import numpy as np
 
-from src.match_engine.math_utils import sigmoid
 from src.match_engine.micro_events import MicroEvent, MicroEventType
 
 if TYPE_CHECKING:

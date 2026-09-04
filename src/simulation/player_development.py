@@ -8,7 +8,7 @@ import json
 import math
 from pathlib import Path
 import re
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 
 DEVELOPMENT_SCHEMA_VERSION = 1

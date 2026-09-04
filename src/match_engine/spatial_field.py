@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from src.match_engine.math_utils import sigmoid
 from src.match_engine.micro_config import MicroMatchConfig
 from src.match_engine.state import MatchAffectiveState, SpatialGridState
 

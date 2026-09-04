@@ -5,7 +5,6 @@ from __future__ import annotations
 import gzip
 import json
 import math
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -14,7 +13,6 @@ import pandas as pd
 
 from src.data_engine.roster_loader import load_roster_json, roster_path_for_team
 from src.data_engine.roster_builder import citizenship_labels
-from src.data_engine.team_name_resolver import canonical_team
 
 
 def _load_tm_players(base_dir: str) -> pd.DataFrame:

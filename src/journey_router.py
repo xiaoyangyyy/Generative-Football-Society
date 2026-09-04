@@ -1,4 +1,3 @@
-import json
 from src.agents.team_agent import TeamAgent
 from src.agents.prophet_agent import ProphetAgent
 from src.agents.sociologist_agent import SociologistAgent

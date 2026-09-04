@@ -16,7 +16,6 @@ from src.match_engine.math_utils import clip01, finite_float, sigmoid, softmax, 
 from src.match_engine.micro_events import MicroEvent, apply_micro_event
 from src.match_engine.state import (
     EMOTION_KEYS,
-    CoachAffectiveState,
     MatchAffectiveState,
     PlayerModulators,
     TeamAffectiveState,

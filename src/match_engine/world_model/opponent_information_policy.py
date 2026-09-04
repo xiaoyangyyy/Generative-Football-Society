@@ -14,7 +14,6 @@ from src.match_engine.world_model.opponent_information_query import (
     evaluate_llm_opponent_information_query,
     opponent_information_query_audit_is_valid,
     opponent_information_question_menu_is_valid,
-    opponent_information_question_menu_self_is_valid,
 )
 from src.match_engine.world_model.opponent_response import RESPONSE_ACTIONS
 from src.match_engine.world_model.policy_experiment import policy_horizon_seconds

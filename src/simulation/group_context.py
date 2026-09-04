@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 def snapshot_standings_table(standings: Dict[str, Dict[str, Dict[str, int]]], group_name: str) -> Dict[str, Dict[str, int]]:

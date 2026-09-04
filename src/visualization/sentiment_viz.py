@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-import os
 
 def plot_sentiment_pulse(sentiment_data, output_path):
     """

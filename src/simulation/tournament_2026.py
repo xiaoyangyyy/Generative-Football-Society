@@ -1,28 +1,9 @@
-import itertools
 import json
 import os
 import time
 import numpy as np
-from src.memory_engine.macro_goal_dynamics import expected_match_xg
-from src.memory_engine.macro_micro_fusion import resolve_unified_score
-from src.simulation.group_context import build_coach_match_context, snapshot_standings_table
+from src.simulation.group_context import snapshot_standings_table
 from src.simulation.knockout_bracket import build_qualified_entries, build_r32_pairings
-from src.simulation.match_pipeline import (
-    finalize_match_feedback,
-    micro_layer_enabled,
-    micro_physics_score_enabled,
-    prepare_match_agents,
-    print_micro_match_logs,
-    run_extra_time_micro,
-    run_micro_layer,
-    run_physics_first_micro,
-)
-from src.simulation.score_path import (
-    ScorePathMode,
-    finalize_official_score_from_micro,
-    resolve_score_path_mode,
-    score_path_label,
-)
 from src.simulation.tournament_checkpoint import (
     checkpoint_root_seed,
     checkpoint_run_identity,
@@ -36,14 +17,6 @@ from src.simulation.tournament_checkpoint import (
 from src.simulation.world_state import (
     preflight_world_state, restore_world_state, snapshot_world_state,
 )
-from src.simulation.venue_policy import resolve_match_venue
-from src.simulation.tactics_sync import apply_coach_tactics_from_llm
-from src.memory_engine.poisson_simulator import (
-    simulate_penalty_shootout,
-    score_xg_anomaly_note,
-    finalize_stage_xg_context,
-)
-from src.simulation.tactical_matchup import compute_matchup_bonus
 from src.simulation.social_dialogue import SocialDialogueEngine
 from src.simulation.fusion_controller import FusionController
 from src.simulation.narrative_events import NarrativeEventBus

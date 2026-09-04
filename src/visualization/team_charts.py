@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import os
-import pandas as pd
 
 def set_master_style():
     """Sets a premium, academic-style dashboard theme."""

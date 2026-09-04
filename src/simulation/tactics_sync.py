@@ -8,13 +8,11 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 import numpy as np
 
 from src.match_engine.tactical_catalog import (
-    TACTICAL_PRESETS,
     infer_archetype_from_text,
     resolve_tactical_preset,
 )
 from src.match_engine.tactical_profile import (
     build_tactical_vector_for_agent,
-    legacy_controls_from_vector,
     sync_agent_controls_from_vector,
 )
 

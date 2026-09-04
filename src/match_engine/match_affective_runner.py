@@ -15,7 +15,7 @@ from src.match_engine.event_schedule import build_event_schedule
 from src.match_engine.internal_signals import normalize_internal_match_signals
 from src.match_engine.macro_bridge import apply_affective_endstate_to_agents, build_match_affective_state
 from src.match_engine.meso_aggregator import MesoAggregator, icon_emotion_shock
-from src.match_engine.state import AffectiveMatchSummary, MatchAffectiveState
+from src.match_engine.state import AffectiveMatchSummary
 
 if TYPE_CHECKING:
     from src.simulation.agent import SocietyAgent

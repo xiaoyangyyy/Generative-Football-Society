@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
 
 import numpy as np
 
-from src.match_engine.formation import interpolate_anchors
 from src.match_engine.math_utils import sigmoid, tanh_clip
 from src.match_engine.micro_config import MicroMatchConfig
-from src.match_engine.state import MatchAffectiveState, PlayerAffectiveState, TeamAffectiveState
+from src.match_engine.state import MatchAffectiveState, TeamAffectiveState
 
 
 class SpatialIntelligenceEngine:

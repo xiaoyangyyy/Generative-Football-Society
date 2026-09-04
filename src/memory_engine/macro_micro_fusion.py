@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
@@ -12,7 +11,7 @@ from src.memory_engine.macro_goal_dynamics import (
     expected_match_xg,
     sample_goals_from_xg,
 )
-from src.simulation.score_path import physics_official_enabled, resolve_score_path_mode, ScorePathMode
+from src.simulation.score_path import resolve_score_path_mode, ScorePathMode
 from src.simulation.runtime import environment_snapshot, env_float
 
 if TYPE_CHECKING:

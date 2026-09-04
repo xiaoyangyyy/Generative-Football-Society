@@ -12,7 +12,6 @@ from src.match_engine.micro_config import MicroMatchConfig
 from src.match_engine.tactical_profile import (
     apply_vector_to_team_coach,
     build_tactical_vector_for_agent,
-    legacy_controls_from_vector,
 )
 
 if TYPE_CHECKING:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from src.match_engine.formation import interpolate_anchors, mirror_for_away
-from src.match_engine.math_utils import clip01, sigmoid
+from src.match_engine.math_utils import sigmoid
 from typing import TYPE_CHECKING
 
 from src.match_engine.micro_config import MicroMatchConfig

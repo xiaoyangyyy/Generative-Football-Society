@@ -12,7 +12,7 @@ import csv
 import re
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 def _norm_key(k: str) -> str:

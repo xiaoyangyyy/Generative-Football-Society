@@ -8,7 +8,6 @@ from typing import Any, Dict, Mapping, Optional, Tuple, TYPE_CHECKING
 import numpy as np
 from src.simulation.runtime import environment_snapshot, env_bool
 
-from src.memory_engine.macro_micro_fusion import resolve_unified_score
 from src.simulation.cross_match_state import (
     apply_carryover_to_agent,
     apply_carryover_to_roster_for_agent,
@@ -57,8 +56,6 @@ def prepare_match_agents(
 
 from src.simulation.score_path import (
     ScorePathMode,
-    finalize_official_score_from_micro,
-    physics_official_enabled,
     resolve_score_path_mode,
 )
 

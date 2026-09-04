@@ -22,7 +22,6 @@ from src.match_engine.world_model.opponent_contract import (
     TACTICAL_FEATURES,
     normalise_distribution,
     normalized_entropy,
-    observation_only_tactic_posterior,
     tactic_feature_vector,
     tactic_likelihoods,
 )

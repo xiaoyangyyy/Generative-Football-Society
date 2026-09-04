@@ -5,9 +5,8 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
 
-from src.match_engine.calibration.profile import CalibrationProfile, ParamSpec
+from src.match_engine.calibration.profile import CalibrationProfile
 from src.match_engine.micro_config import MicroMatchConfig
 
 ROOT = Path(__file__).resolve().parents[3]

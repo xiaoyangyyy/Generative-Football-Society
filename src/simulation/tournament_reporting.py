@@ -2,7 +2,6 @@
 
 import json
 
-import numpy as np
 
 from src.memory_engine.poisson_simulator import (
     finalize_stage_xg_context,

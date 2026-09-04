@@ -8,7 +8,6 @@ outputs/ball_log/ after each micro match.
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING

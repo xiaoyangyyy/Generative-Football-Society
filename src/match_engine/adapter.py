@@ -6,9 +6,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 
-import numpy as np
 
-from src.match_engine.goal_generator import lambdas_from_micro, simulate_match_score_from_micro
+from src.match_engine.goal_generator import lambdas_from_micro
 from src.match_engine.match_micro_runner import run_match_micro_simulation
 from src.match_engine.micro_config import MicroMatchConfig
 

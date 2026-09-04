@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 from src.simulation.squad_registry import roster_identity, squad_player_quality
 

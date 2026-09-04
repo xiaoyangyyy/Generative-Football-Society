@@ -2,6 +2,9 @@
 
 ## Unreleased - v7 candidate
 
+- Removed 89 verified-dead imports from 50 internal source modules, including
+  obsolete tournament-facade dependencies left behind by mixin extraction;
+  no package initializer exports or live implementation symbols were changed.
 - Eliminated all remaining unused-local findings across source, scripts and
   tests; restored missing crowd-response and coach-stress assertions, bound v7
   readiness to its actual frozen parent, and expanded active research-script
