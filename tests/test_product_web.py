@@ -10,6 +10,7 @@ from wsgiref.util import setup_testing_defaults
 import pytest
 
 from src.cli import build_parser, cmd_studio_web
+from src.infrastructure import FileLease
 from src.product.web import ProductWebApp, _is_loopback_host, create_product_web_server
 from src.product.web_security import WebAccessPolicy
 from src.product.tasks import BackgroundMatchWorker
@@ -2331,6 +2332,51 @@ def test_server_serves_real_http_on_ephemeral_loopback_port(tmp_path):
         server.server_close()
         thread.join(timeout=3)
     assert not thread.is_alive()
+
+
+def test_server_recovers_restore_transaction_before_task_queue(
+    tmp_path, monkeypatch,
+):
+    calls = []
+
+    def recover_restore(_self):
+        calls.append("restore")
+        return {"recovered": False, "outcome": "no_interrupted_restore"}
+
+    def recover_tasks(_self, *, reason="web_worker_restarted"):
+        calls.append(("tasks", reason))
+        return 0
+
+    monkeypatch.setattr(
+        "src.product.web.ProductRecovery.recover_interrupted_restore",
+        recover_restore,
+    )
+    monkeypatch.setattr(
+        "src.product.web.ProductTaskQueue.recover_running", recover_tasks,
+    )
+    server = create_product_web_server(tmp_path, port=0)
+    try:
+        assert calls[:2] == [
+            "restore", ("tasks", "web_worker_restarted"),
+        ]
+    finally:
+        server.server_close()
+
+
+def test_server_releases_lease_when_restore_recovery_fails(
+    tmp_path, monkeypatch,
+):
+    def fail_recovery(_self):
+        raise RuntimeError("unverifiable restore transaction")
+
+    monkeypatch.setattr(
+        "src.product.web.ProductRecovery.recover_interrupted_restore",
+        fail_recovery,
+    )
+    with pytest.raises(RuntimeError, match="unverifiable restore"):
+        create_product_web_server(tmp_path, port=0)
+    with FileLease(tmp_path / "data/persistence/product_web.lock"):
+        pass
 
 
 def test_server_lease_rejects_a_second_web_process_for_same_workspace(tmp_path):

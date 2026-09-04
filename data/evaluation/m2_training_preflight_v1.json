@@ -72,7 +72,8 @@
       "src/data_engine/loader.py": "7e37b4f175cf75bf0b77a40b22eb9b1090a7849737dd35234b12cba4752b3e87",
       "src/data_engine/roster_loader.py": "4a486c954d7ed5f455856c4d88ebfca4525dba060467d4a92e4693698d4c272e",
       "src/data_engine/team_aliases.py": "68b2ec3edc1f49b9118fe98d8975924e2e017ba02b3e65090bfea3413778e5a2",
-      "src/infrastructure/__init__.py": "80120dff3976d23e69f09e1f6935942b8f66fd714211bf67a7834ca6e6f8d86c",
+      "src/infrastructure/__init__.py": "fc1f4cc0c4a8154b2c8a4ab659160a19eb98d5354dbb1c75b4b58b490645ab69",
+      "src/infrastructure/atomic_io.py": "c48c27e0739dcf1203e95f1869259ee17669bda3646cac4d946be2e44397c4d6",
       "src/infrastructure/code_identity.py": "b7111461fecb2118935cd38500e9560e994771e9ff36b5dac9e213497ceef65d",
       "src/infrastructure/integrity.py": "77cf99c664abc6419ddf334418bb52c1dd010de181f010787cd2388ce3dde89b",
       "src/infrastructure/locking.py": "a85ffddfb744c4b4357e2b9422cdfc0b267015c3bcf56ec03a3e4faaf92858b5",
@@ -332,7 +333,7 @@
   "next_action": "run the frozen M2 training command",
   "protocol_id": "m2-mirrored-policy-v1",
   "ready": true,
-  "recorded_at": "2026-09-04T15:55:42.381769+00:00",
+  "recorded_at": "2026-09-04T16:27:37.866326+00:00",
   "schema_version": 1,
   "sealed_test": {
     "rows_loaded_for_model_selection": 0,

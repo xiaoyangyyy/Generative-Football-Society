@@ -2004,8 +2004,9 @@ def create_product_web_server(
     server_lease = FileLease(
         resolved_root / "data/persistence/product_web.lock", timeout=0.0,
     ).acquire()
-    queue = ProductTaskQueue(resolved_root)
     try:
+        ProductRecovery(resolved_root).recover_interrupted_restore()
+        queue = ProductTaskQueue(resolved_root)
         queue.recover_running()
         worker = BackgroundMatchWorker(queue)
         server = make_server(

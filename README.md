@@ -304,9 +304,14 @@ Create and verify an integrity-checked Studio recovery bundle:
 ```bash
 python gfs.py studio backup --out backups/studio.zip
 python gfs.py studio verify-backup backups/studio.zip
+python gfs.py studio restore backups/studio.zip --replace
+python gfs.py studio recover
 ```
 
-Restore refuses to replace an existing session unless `--replace` is explicit.
+Restore refuses to replace any existing product artifact unless `--replace`
+is explicit. An activated multi-file restore owns a durable journal; Web
+startup resolves it before task recovery, and `studio recover` provides the
+same fail-closed operator path after an ungraceful CLI interruption.
 See `docs/STUDIO_RECOVERY.md` for scope, trust boundaries, and the still-
 unmeasured production RPO/RTO.
 

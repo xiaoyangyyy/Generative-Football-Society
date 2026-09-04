@@ -195,6 +195,12 @@ not quality signals by themselves.
     lets nested per-match transactions reuse that lease without weakening the
     standalone match boundary. A competing process fails before startup state
     is read or mutated; behavioral tests prove ownership, reuse and release.
+45. Made Studio multi-file restore crash-convergent. A persistent digest-bound
+    journal is activated before the first switch; startup or explicit recovery
+    either proves the complete new target set or reconstructs the exact old
+    set. Active transaction cleanup is atomically detached before deletion,
+    unsafe or unverifiable journals fail closed, and real child-process exit
+    tests cover partial and fully switched states without a match or training.
 
 ## LLM Scope Decision
 

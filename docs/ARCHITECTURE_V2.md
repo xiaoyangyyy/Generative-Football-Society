@@ -3727,3 +3727,35 @@ releases it, and that an independently held lock prevents all startup writes.
 The architecture audit binds both call sites to the shared contract. This
 stage runs no training, provider request or formal experiment and does not
 change any model-effect or release claim.
+
+## 114. V3.96 Crash-convergent Studio restore transaction
+
+The prior Studio restore staged and fsynced every archive member and rolled
+back ordinary Python exceptions, but its rollback image lived only inside one
+temporary-directory lifetime. A forced process exit between file replacements
+could leave a valid session, task queue and report tree drawn from different
+worlds.
+
+Restore now activates one persistent transaction directory only after all
+new files and a versioned journal are durable. The journal binds ordered
+relative paths to exact old/new SHA-256 values and records whether each target
+previously existed. Every replacement remains behind the session and task
+leases. Recovery validates the complete journal before changing a byte: a
+fully switched target set is completed, while every partial state is restored
+to the exact old set. Missing rollback evidence, unexpected content, unsafe
+paths, symbolic links and malformed journals fail closed.
+
+The session file remains the last world switch. Transaction cleanup is itself
+crash-convergent: the active directory is atomically renamed to an inert
+discard name before recursive deletion. POSIX directory entries are fsynced
+after authoritative replacements; Windows retains same-volume replacement and
+file-flush semantics. Web startup resolves restore state before task recovery,
+and the CLI exposes the identical `studio recover` operation.
+
+Tests and the existing zero-match recovery verifier use real child-process
+termination after the first and final staged switches. They prove exact
+rollback, commit completion, idempotent recovery, cleanup, fail-closed journal
+handling, Web lease release, and preservation of a prior single-file document
+when replacement fails. This is local process-crash evidence, not a production
+volume, host-power-loss, RPO or RTO claim. No match, training, provider request
+or formal experiment is executed.

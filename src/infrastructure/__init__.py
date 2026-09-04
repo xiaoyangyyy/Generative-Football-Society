@@ -9,6 +9,7 @@ from .code_identity import (
     TRANSITIVE_LOCAL_IMPORTS_V1,
     code_identity_manifest,
 )
+from .atomic_io import fsync_directory
 
 __all__ = [
     "FileLease", "LeaseUnavailable", "file_sha256",
@@ -17,4 +18,5 @@ __all__ = [
     "EXPLICIT_FILES_V1",
     "TRANSITIVE_LOCAL_IMPORTS_V1",
     "code_identity_manifest",
+    "fsync_directory",
 ]

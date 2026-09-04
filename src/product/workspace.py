@@ -17,6 +17,7 @@ from src.infrastructure import (
     FileLease,
     code_identity_manifest,
     file_sha256,
+    fsync_directory,
     portable_text_hash_matches,
     verify_artifact_manifest,
 )
@@ -405,6 +406,7 @@ def _atomic_json(path: Path, payload: Mapping[str, Any]) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, path)
+        fsync_directory(path.parent)
     finally:
         if os.path.exists(temporary):
             os.remove(temporary)

@@ -250,6 +250,16 @@ def cmd_studio_restore(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_studio_recover(args: argparse.Namespace) -> int:
+    """Resolve an interrupted multi-file restore from its durable journal."""
+    import json
+    from src.product import ProductRecovery
+
+    result = ProductRecovery(args.base_dir).recover_interrupted_restore()
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_studio_jobs(args: argparse.Namespace) -> int:
     import json
     print(json.dumps(
@@ -416,6 +426,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Explicitly replace existing files referenced by the backup",
     )
     p_studio_restore.set_defaults(func=cmd_studio_restore)
+    p_studio_recover = studio_sub.add_parser(
+        "recover", help="Resolve an interrupted Studio restore transaction",
+    )
+    p_studio_recover.set_defaults(func=cmd_studio_recover)
     p_studio_jobs = studio_sub.add_parser(
         "jobs", help="Show training jobs and model/LLM decision artifacts",
     )

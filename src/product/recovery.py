@@ -7,16 +7,18 @@ import json
 import os
 import re
 import secrets
+import shutil
 import tempfile
+import uuid
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, BinaryIO
 
-from src.infrastructure import FileLease, file_sha256
+from src.infrastructure import FileLease, file_sha256, fsync_directory
 from src.product.tasks import TASK_SCHEMA_VERSION, TASK_STATES
 from src.product.telemetry import ProductTelemetry
-from src.product.workspace import StudioConfig
+from src.product.workspace import StudioConfig, _atomic_json
 
 
 RECOVERY_SCHEMA_VERSION = 1
@@ -34,6 +36,9 @@ TASK_QUEUE_RELATIVE = "data/persistence/product_tasks.json"
 ACTIVE_TASK_STATES = {"queued", "running"}
 MANAGED_BACKUP_ID = re.compile(r"^backup-[0-9]{8}t[0-9]{6}z-[a-f0-9]{8}$")
 MAX_MANAGED_BACKUPS = 50
+RESTORE_TRANSACTION_RELATIVE = "data/persistence/product_restore_transaction"
+RESTORE_JOURNAL_NAME = "journal.json"
+RESTORE_TRANSACTION_SCHEMA_VERSION = 1
 
 
 def _now() -> str:
@@ -58,6 +63,14 @@ def _stream_hash(handle: BinaryIO) -> str:
     return digest.hexdigest()
 
 
+def _durable_replace(source: str | Path, target: str | Path) -> None:
+    source_path, target_path = Path(source), Path(target)
+    os.replace(source_path, target_path)
+    fsync_directory(target_path.parent)
+    if source_path.parent != target_path.parent:
+        fsync_directory(source_path.parent)
+
+
 class ProductRecovery:
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root).resolve()
@@ -72,6 +85,235 @@ class ProductRecovery:
         except ValueError as exc:
             raise ValueError("managed backup directory escapes the workspace") from exc
         self.managed_lease_path = self.managed_dir / ".managed-backups.lock"
+        self.restore_transaction_root = (
+            self.root / RESTORE_TRANSACTION_RELATIVE
+        )
+
+    def _safe_restore_target(self, relative: str) -> Path:
+        if relative != TASK_QUEUE_RELATIVE and not _allowed_path(relative):
+            raise ValueError("restore transaction contains an unsafe target")
+        target = self.root / Path(relative)
+        try:
+            target.resolve(strict=False).relative_to(self.root)
+        except ValueError as exc:
+            raise ValueError("restore transaction target escapes the workspace") from exc
+        current = target
+        while current != self.root:
+            if current.is_symlink():
+                raise ValueError(
+                    "restore transaction targets must not use symbolic links"
+                )
+            current = current.parent
+        return target
+
+    @staticmethod
+    def _entry_exists(path: Path) -> bool:
+        return path.exists() or path.is_symlink()
+
+    def _transaction_artifact(self, area: str, relative: str) -> Path:
+        if area not in {"staged", "rollback"}:
+            raise ValueError("unsupported restore transaction area")
+        base = self.restore_transaction_root / area
+        candidate = base / Path(relative)
+        try:
+            candidate.resolve(strict=False).relative_to(base.resolve(strict=False))
+        except ValueError as exc:
+            raise RuntimeError("restore transaction artifact escapes its area") from exc
+        current = candidate
+        while current != self.restore_transaction_root:
+            if current.is_symlink():
+                raise RuntimeError(
+                    "restore transaction artifacts must not use symbolic links"
+                )
+            current = current.parent
+        return candidate
+
+    def _remove_restore_transaction_unlocked(self) -> None:
+        transaction_root = self.restore_transaction_root
+        expected_parent = (self.root / "data/persistence").resolve()
+        if transaction_root.parent.resolve() != expected_parent:
+            raise RuntimeError("restore transaction directory is outside persistence")
+        if transaction_root.is_symlink():
+            raise RuntimeError("restore transaction directory must not be a symlink")
+        if transaction_root.exists():
+            discarded = transaction_root.parent / (
+                ".product-restore-discarded-" + uuid.uuid4().hex
+            )
+            _durable_replace(transaction_root, discarded)
+            try:
+                shutil.rmtree(discarded)
+            except OSError:
+                # The authoritative transaction is already atomically inactive.
+                # A later recovery pass can safely retry this bounded cleanup.
+                return
+            fsync_directory(transaction_root.parent)
+
+    def _cleanup_inactive_restore_directories_unlocked(self) -> None:
+        parent = self.restore_transaction_root.parent
+        if not parent.is_dir():
+            return
+        for pattern in (
+            ".product-restore-preparing-*",
+            ".product-restore-discarded-*",
+        ):
+            for candidate in parent.glob(pattern):
+                if candidate.is_symlink() or not candidate.is_dir():
+                    continue
+                try:
+                    candidate.resolve().relative_to(parent.resolve())
+                except ValueError:
+                    continue
+                try:
+                    shutil.rmtree(candidate)
+                except OSError:
+                    continue
+        fsync_directory(parent)
+
+    def _load_restore_journal_unlocked(self) -> dict[str, Any] | None:
+        transaction_root = self.restore_transaction_root
+        if transaction_root.is_symlink():
+            raise RuntimeError("invalid interrupted restore transaction")
+        if not transaction_root.exists():
+            return None
+        if not transaction_root.is_dir():
+            raise RuntimeError("invalid interrupted restore transaction")
+        journal_path = transaction_root / RESTORE_JOURNAL_NAME
+        if journal_path.is_symlink() or not journal_path.is_file():
+            raise RuntimeError("interrupted restore journal is unreadable")
+        try:
+            journal = json.loads(journal_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError("interrupted restore journal is unreadable") from exc
+        records = journal.get("files")
+        if (
+            journal.get("schema_version") != RESTORE_TRANSACTION_SCHEMA_VERSION
+            or journal.get("state") not in {"prepared", "committed"}
+            or not isinstance(journal.get("transaction_id"), str)
+            or not re.fullmatch(r"[a-f0-9]{32}", journal["transaction_id"])
+            or not isinstance(records, list)
+            or not records
+        ):
+            raise RuntimeError("interrupted restore journal is invalid")
+        seen: set[str] = set()
+        for record in records:
+            if not isinstance(record, dict):
+                raise RuntimeError("interrupted restore record is invalid")
+            relative = str(record.get("path") or "")
+            new_sha = str(record.get("new_sha256") or "")
+            old_sha = record.get("old_sha256")
+            had_original = record.get("had_original")
+            if (
+                relative in seen
+                or not re.fullmatch(r"[a-f0-9]{64}", new_sha)
+                or not isinstance(had_original, bool)
+                or (
+                    had_original
+                    and not re.fullmatch(r"[a-f0-9]{64}", str(old_sha or ""))
+                )
+                or (not had_original and old_sha is not None)
+            ):
+                raise RuntimeError("interrupted restore record is invalid")
+            self._safe_restore_target(relative)
+            seen.add(relative)
+        ordered_paths = [str(record["path"]) for record in records]
+        if ordered_paths[-2:] != [TASK_QUEUE_RELATIVE, ALLOWED_PATHS[0]]:
+            raise RuntimeError("interrupted restore record order is invalid")
+        return journal
+
+    @staticmethod
+    def _matches(path: Path, expected_sha256: str) -> bool:
+        return (
+            path.is_file()
+            and not path.is_symlink()
+            and file_sha256(path) == expected_sha256
+        )
+
+    def _recover_interrupted_restore_unlocked(
+        self, *, force_rollback: bool = False,
+    ) -> dict[str, Any]:
+        self._cleanup_inactive_restore_directories_unlocked()
+        journal = self._load_restore_journal_unlocked()
+        if journal is None:
+            return {
+                "recovered": False,
+                "outcome": "no_interrupted_restore",
+            }
+        records = journal["files"]
+        all_new = all(
+            self._matches(
+                self._safe_restore_target(str(record["path"])),
+                str(record["new_sha256"]),
+            )
+            for record in records
+        )
+        if all_new and not force_rollback:
+            self._remove_restore_transaction_unlocked()
+            return {
+                "recovered": True,
+                "outcome": "completed_committed_restore",
+                "transaction_id": journal["transaction_id"],
+            }
+
+        # Validate every rollback source and target before changing any path.
+        for record in records:
+            relative = str(record["path"])
+            target = self._safe_restore_target(relative)
+            rollback = self._transaction_artifact("rollback", relative)
+            if record["had_original"]:
+                old_sha = str(record["old_sha256"])
+                rollback_is_old = self._matches(rollback, old_sha)
+                target_is_old = self._matches(target, old_sha)
+                if not rollback_is_old and not target_is_old:
+                    raise RuntimeError(
+                        "interrupted restore cannot prove its original state"
+                    )
+            else:
+                if self._entry_exists(rollback):
+                    raise RuntimeError(
+                        "interrupted restore has an unexpected rollback artifact"
+                    )
+                if self._entry_exists(target) and not self._matches(
+                    target, str(record["new_sha256"]),
+                ):
+                    raise RuntimeError(
+                        "interrupted restore target has unexpected content"
+                    )
+
+        for record in reversed(records):
+            relative = str(record["path"])
+            target = self._safe_restore_target(relative)
+            rollback = self._transaction_artifact("rollback", relative)
+            if record["had_original"]:
+                old_sha = str(record["old_sha256"])
+                if self._matches(rollback, old_sha):
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    _durable_replace(rollback, target)
+            elif self._entry_exists(target):
+                target.unlink()
+                fsync_directory(target.parent)
+
+        for record in records:
+            target = self._safe_restore_target(str(record["path"]))
+            if record["had_original"]:
+                if not self._matches(target, str(record["old_sha256"])):
+                    raise RuntimeError("restore rollback verification failed")
+            elif self._entry_exists(target):
+                raise RuntimeError("restore rollback left a new artifact")
+        self._remove_restore_transaction_unlocked()
+        return {
+            "recovered": True,
+            "outcome": "rolled_back_interrupted_restore",
+            "transaction_id": journal["transaction_id"],
+        }
+
+    def recover_interrupted_restore(self) -> dict[str, Any]:
+        """Resolve an activated multi-file restore after an ungraceful stop."""
+
+        with (
+            FileLease(self.lease_path, timeout=0.0),
+            FileLease(self.task_lease_path, timeout=0.0),
+        ):
+            return self._recover_interrupted_restore_unlocked()
 
     def _assert_managed_dir(self) -> None:
         observed = self._managed_dir_input.resolve()
@@ -229,7 +471,11 @@ class ProductRecovery:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         if output_path.exists() and not overwrite:
             raise FileExistsError(f"backup already exists: {output_path}")
-        with FileLease(self.lease_path, timeout=0.0):
+        with (
+            FileLease(self.lease_path, timeout=0.0),
+            FileLease(self.task_lease_path, timeout=0.0),
+        ):
+            self._recover_interrupted_restore_unlocked()
             session, relative_files = self._collect_files()
             records = []
             for relative in relative_files:
@@ -270,7 +516,7 @@ class ProductRecovery:
                 verification = self.verify_backup(temporary)
                 if output_path.exists() and not overwrite:
                     raise FileExistsError(f"backup already exists: {output_path}")
-                os.replace(temporary, output_path)
+                _durable_replace(temporary, output_path)
             finally:
                 temporary.unlink(missing_ok=True)
         result = {
@@ -390,22 +636,27 @@ class ProductRecovery:
     def restore_backup(
         self, bundle: str | Path, *, replace: bool = False,
     ) -> dict[str, Any]:
-        verification = self.verify_backup(bundle)
         bundle_path = Path(bundle).resolve()
         with (
             FileLease(self.lease_path, timeout=0.0),
             FileLease(self.task_lease_path, timeout=0.0),
         ):
+            self._recover_interrupted_restore_unlocked()
+            bundle_sha256 = file_sha256(bundle_path)
+            verification = self.verify_backup(bundle_path)
+            if file_sha256(bundle_path) != bundle_sha256:
+                raise RuntimeError("backup changed during verification")
             if self.session_path.exists() and not replace:
                 raise FileExistsError(
                     "a Studio session already exists; pass --replace for explicit restore",
                 )
-            with tempfile.TemporaryDirectory(
-                dir=self.root, prefix=".gfs-restore-",
-            ) as temporary_name:
-                temporary = Path(temporary_name)
-                staged_root = temporary / "staged"
-                rollback_root = temporary / "rollback"
+            transaction_parent = self.restore_transaction_root.parent
+            transaction_parent.mkdir(parents=True, exist_ok=True)
+            preparing = Path(tempfile.mkdtemp(
+                dir=transaction_parent, prefix=".product-restore-preparing-",
+            ))
+            try:
+                staged_root = preparing / "staged"
                 task_path = self.root / TASK_QUEUE_RELATIVE
                 if task_path.is_file():
                     try:
@@ -439,6 +690,13 @@ class ProductRecovery:
                                 target.write(chunk)
                             target.flush()
                             os.fsync(target.fileno())
+                        if (
+                            staged.stat().st_size != int(record["size"])
+                            or file_sha256(staged) != str(record["sha256"])
+                        ):
+                            raise RuntimeError(
+                                "backup changed during staged extraction"
+                            )
 
                 staged_tasks = staged_root / TASK_QUEUE_RELATIVE
                 staged_tasks.parent.mkdir(parents=True, exist_ok=True)
@@ -450,6 +708,7 @@ class ProductRecovery:
                     handle.write("\n")
                     handle.flush()
                     os.fsync(handle.fileno())
+                fsync_directory(staged_tasks.parent)
 
                 ordered_artifacts = sorted(
                     (str(record["path"]) for record in records),
@@ -459,31 +718,84 @@ class ProductRecovery:
                     value for value in ordered_artifacts
                     if value != ALLOWED_PATHS[0]
                 ] + [TASK_QUEUE_RELATIVE, ALLOWED_PATHS[0]]
-                applied: list[tuple[Path, Path | None]] = []
+                journal_records = []
+                for relative in ordered:
+                    target = self._safe_restore_target(relative)
+                    staged = staged_root / Path(relative)
+                    if not staged.is_file() or staged.is_symlink():
+                        raise RuntimeError("prepared restore artifact is invalid")
+                    target_exists = self._entry_exists(target)
+                    if target_exists and (
+                        target.is_symlink() or not target.is_file()
+                    ):
+                        raise RuntimeError("restore target must be a regular file")
+                    if (
+                        target_exists
+                        and not replace
+                        and relative != TASK_QUEUE_RELATIVE
+                    ):
+                        raise FileExistsError(
+                            f"restore target exists: {relative}"
+                        )
+                    journal_records.append({
+                        "path": relative,
+                        "new_sha256": file_sha256(staged),
+                        "had_original": target_exists,
+                        "old_sha256": (
+                            file_sha256(target) if target_exists else None
+                        ),
+                    })
+                journal = {
+                    "schema_version": RESTORE_TRANSACTION_SCHEMA_VERSION,
+                    "transaction_id": uuid.uuid4().hex,
+                    "state": "prepared",
+                    "created_at": _now(),
+                    "bundle_sha256": bundle_sha256,
+                    "replace": bool(replace),
+                    "files": journal_records,
+                }
+                if file_sha256(bundle_path) != bundle_sha256:
+                    raise RuntimeError("backup changed during staged extraction")
+                _atomic_json(preparing / RESTORE_JOURNAL_NAME, journal)
+                _durable_replace(preparing, self.restore_transaction_root)
+                preparing = None
                 try:
-                    for relative in ordered:
-                        target = self.root / Path(relative)
-                        try:
-                            target.resolve(strict=False).relative_to(self.root)
-                        except ValueError as exc:
-                            raise ValueError("restore target escapes the workspace") from exc
-                        rollback = None
-                        if target.exists():
-                            if not replace and relative != TASK_QUEUE_RELATIVE:
-                                raise FileExistsError(f"restore target exists: {relative}")
-                            rollback = rollback_root / Path(relative)
+                    for record in journal_records:
+                        relative = str(record["path"])
+                        target = self._safe_restore_target(relative)
+                        rollback = self._transaction_artifact(
+                            "rollback", relative,
+                        )
+                        if self._entry_exists(target):
                             rollback.parent.mkdir(parents=True, exist_ok=True)
-                            os.replace(target, rollback)
-                        applied.append((target, rollback))
+                            _durable_replace(target, rollback)
                         target.parent.mkdir(parents=True, exist_ok=True)
-                        os.replace(staged_root / Path(relative), target)
+                        _durable_replace(
+                            self._transaction_artifact("staged", relative),
+                            target,
+                        )
+                    journal["state"] = "committed"
+                    _atomic_json(
+                        self.restore_transaction_root / RESTORE_JOURNAL_NAME,
+                        journal,
+                    )
+                    completion = self._recover_interrupted_restore_unlocked()
+                    if completion.get("outcome") != "completed_committed_restore":
+                        raise RuntimeError("restore commit verification failed")
                 except BaseException:
-                    for target, rollback in reversed(applied):
-                        target.unlink(missing_ok=True)
-                        if rollback is not None and rollback.exists():
-                            target.parent.mkdir(parents=True, exist_ok=True)
-                            os.replace(rollback, target)
+                    try:
+                        self._recover_interrupted_restore_unlocked(
+                            force_rollback=True,
+                        )
+                    except BaseException as rollback_error:
+                        raise RuntimeError(
+                            "restore failed and rollback could not be proven"
+                        ) from rollback_error
                     raise
+            finally:
+                if preparing is not None and preparing.exists():
+                    shutil.rmtree(preparing)
+                    fsync_directory(transaction_parent)
         result = {
             **verification,
             "restored": True,

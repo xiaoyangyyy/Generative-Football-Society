@@ -26,12 +26,30 @@ implicitly:
 ```powershell
 python gfs.py studio restore backups\studio-2026-08-09.zip
 python gfs.py studio restore backups\studio-2026-08-09.zip --replace
+python gfs.py studio recover
 ```
 
-`--replace` is an explicit destructive boundary. Every archive member is
-staged and fsynced first; referenced artifacts switch before the session file.
-If any switch fails, already changed files are rolled back to their exact prior
-bytes.
+`--replace` is an explicit destructive boundary for every existing product
+artifact, not only the session file. Every archive member is staged and
+fsynced first. Before the first authoritative switch, one durable journal
+records the transaction identity, ordered paths, and exact old/new SHA-256
+values. Referenced artifacts switch before the task queue and session file.
+
+An ordinary exception rolls all switched paths back to their exact prior
+bytes. An ungraceful process stop leaves the journal and rollback files on
+disk. On the next Web startup, backup operation, restore operation, or explicit
+`studio recover` command, recovery holds both product leases and validates
+every path and digest before mutation. If all target files are already the
+registered new bytes, it completes the restore; otherwise it restores the
+entire old set. Unexpected or unverifiable content fails closed and is not
+deleted.
+
+Transaction cleanup first atomically renames the active directory to an inert
+discard directory. A second crash during recursive cleanup therefore cannot
+turn a resolved restore into an ambiguous active transaction. POSIX atomic
+file and directory switches flush containing-directory metadata; Windows uses
+file fsync plus same-volume `os.replace` process-crash atomicity because
+Python exposes no equivalent portable directory handle there.
 
 ## Integrity and trust boundary
 
@@ -54,7 +72,10 @@ terminal task history inside the same rollback transaction so tasks from one
 Studio can never appear in another restored Studio.
 
 Run the isolated recovery acceptance without a match, training, or external
-call:
+call. It now terminates real child processes once during a partial switch and
+once immediately after the complete target set is switched. It proves exact
+rollback, commit completion, idempotence, residue cleanup, and preservation of
+the previous JSON document when atomic replacement itself fails:
 
 ```powershell
 python scripts\verify_product_recovery.py --out data\evaluation\product_recovery_verification_v1.json
@@ -70,9 +91,9 @@ recovery without running a match:
 python scripts\verify_process_recovery.py --out data\evaluation\process_recovery_verification_v1.json
 ```
 
-This is a temporary-local-filesystem process test. Production RPO/RTO remain
-unclaimed until timed failure and restore drills run against the actual
-deployment volumes, including faults during filesystem replacement.
+These are temporary-local-filesystem process tests. Production RPO/RTO remain
+unclaimed until timed failure, replacement, host-loss, and restore drills run
+against the actual deployment volumes.
 
 The Studio Web recovery center manages `backups/studio/` with generated backup
 IDs and a 50-entry capacity. Its API never accepts or returns an absolute path.

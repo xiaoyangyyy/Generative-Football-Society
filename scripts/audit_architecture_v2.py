@@ -155,6 +155,20 @@ def main() -> int:
     product_tasks = (
         ROOT / "src/product/tasks.py"
     ).read_text(encoding="utf-8")
+    product_recovery = (
+        ROOT / "src/product/recovery.py"
+    ).read_text(encoding="utf-8")
+    recovery_verification = _read(
+        "data/evaluation/product_recovery_verification_v1.json"
+    )
+    recovery_identity_files = (
+        "src/infrastructure/atomic_io.py",
+        "src/product/workspace.py",
+        "src/product/recovery.py",
+        "src/product/web.py",
+        "src/cli.py",
+        "scripts/verify_product_recovery.py",
+    )
     manager_advisor_study = (
         ROOT / "scripts/manager_advisor_study.py"
     ).read_text(encoding="utf-8")
@@ -399,6 +413,41 @@ def main() -> int:
             "next_match_index" in workspace
             and "simulation_completed_at" in workspace
             and '"state": "failed"' in workspace
+        ),
+        "studio_restore_is_crash_convergent": (
+            all(token in product_recovery for token in (
+                'RESTORE_TRANSACTION_RELATIVE =',
+                "def _recover_interrupted_restore_unlocked(",
+                '"old_sha256":',
+                "_durable_replace(preparing, self.restore_transaction_root)",
+                "force_rollback=True",
+                '"completed_committed_restore"',
+                '"rolled_back_interrupted_restore"',
+                "_remove_restore_transaction_unlocked",
+            ))
+            and web.index(
+                "ProductRecovery(resolved_root).recover_interrupted_restore()"
+            ) < web.index("queue.recover_running()")
+            and 'def cmd_studio_recover(' in cli
+            and recovery_verification.get("passed") is True
+            and recovery_verification.get("matches_executed") == 0
+            and recovery_verification.get("training_executed") is False
+            and recovery_verification.get("code_sha256") == {
+                relative: file_sha256(ROOT / relative)
+                for relative in recovery_identity_files
+            }
+            and all(
+                recovery_verification.get("checks", {}).get(name) is True
+                for name in (
+                    "real_process_crash_was_injected",
+                    "mid_restore_transaction_was_durable",
+                    "mid_restore_crash_rolled_back_exactly",
+                    "rollback_recovery_is_idempotent",
+                    "post_switch_crash_was_injected",
+                    "fully_switched_restore_was_completed",
+                    "atomic_replace_failure_preserved_document",
+                )
+            )
         ),
         "studio_exposes_one_guided_end_to_end_workflow": (
             "def workflow(" in workspace
