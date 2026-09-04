@@ -160,13 +160,22 @@ micro replay and affective replay. A shared finite, bounded signal contract now
 keeps each team's coordination and conflict inputs side-specific; the away
 team can no longer inherit the home team's conflict state.
 V3.92 replaces prospective M2's manually bounded code identity with a
-deterministic local-import closure. The zero-training preflight now binds 240
+deterministic local-import closure. The zero-training preflight now binds 241
 Python dependencies, including the real match runner and its side-isolation
 contract, while completed historical studies retain their original identities.
 V3.93 makes a selected physics-official score path an enforceable contract:
 regulation and extra time now reject missing, non-finite, supplemented or
 source-mismatched micro evidence and stop before score commit. Macro scoring
 remains available only when the caller explicitly selects a macro score path.
+V3.94 upgrades tournament persistence to checkpoint V6 and makes each public
+`play_match` call one workspace-serialized transaction. It persists a complete
+pre-match checkpoint, verifies exactly one matching in-memory and durable
+result on success, and restores the durable checkpoint, manager world and
+project-owned carryover, fusion, counterfactual, cognitive, ball-log and
+narrative-debug state on any
+catchable failure. Missing commits are failures, concurrent writers and
+external output targets fail before match execution, and rollback receipts
+record bounded error types without exception messages or credentials.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

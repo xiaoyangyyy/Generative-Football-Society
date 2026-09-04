@@ -2,6 +2,11 @@
 
 ## Unreleased - v7 candidate
 
+- Upgraded tournament checkpoints to V6 and wrapped every public tournament
+  match in a workspace-locked, rollback-complete transaction with durable
+  commit verification, bounded redacted recovery receipts, and fault-injection
+  coverage for memory, cognitive logs, ball logs, narrative logs and result
+  state.
 - Made the selected physics-official regulation and extra-time paths fail
   closed, and reject incomplete, non-finite, supplemented or source-mismatched
   micro score evidence instead of silently reporting a macro fallback as

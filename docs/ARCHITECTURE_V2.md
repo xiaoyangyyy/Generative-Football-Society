@@ -3603,7 +3603,7 @@ boundary.
 
 M2 was still before candidate binding, training and all 360 formal runs, so its
 protocol records a versioned pre-execution identity amendment and opts into the
-transitive mode. Its refreshed zero-training preflight binds 240 local Python
+transitive mode. Its refreshed zero-training preflight binds 241 local Python
 files and includes the real micro runner, shared internal-signal contract,
 match pipeline and identity implementation. The existing `src/**/*.py` input
 glob remains part of formal execution identity as an independent full-source
@@ -3650,3 +3650,50 @@ provenance badge and the complete bounded proof fields. This change performs
 no training, provider request or formal match study; M2 remains at zero of 360
 formal runs and its transitive preflight identity must be refreshed before
 future authorized execution.
+
+## 112. V3.94 Rollback-complete tournament match transaction
+
+Checkpoint V5 could restore a validated tournament during explicit resume, but
+one live `play_match` call was not itself atomic. Preparation, physics,
+narrative and post-match settlement mutate Agent state and several independent
+files before `_commit_match_result` writes the next checkpoint. A caught error
+could therefore leave the current process and its workspace in a hybrid state
+even though no result was committed.
+
+Checkpoint V6 expands the bounded external-state image to the cognitive-log
+tree, ball-log tree and narrative-debug stream. The public match entry now
+acquires a project-owned operating-system file lease, rejects nested or
+concurrent execution, validates that every configured writable match target is
+inside the workspace, and persists a complete pre-match checkpoint before the
+first causal stage runs.
+
+Success is not inferred from a return value. The boundary requires the match
+index to advance exactly once, the stable match key to exist in both completed
+matches and result storage, and the durable checkpoint to equal those complete
+in-memory structures. A missing, duplicate or inconsistent commit becomes a
+transaction failure.
+
+On any catchable failure, the boundary preflights the saved world and
+reflection identities before mutation, restores every captured or newly
+created project-owned file/directory to its pre-match image, restores the
+manager and full dynamic world, rewrites the durable pre-match checkpoint, and
+verifies all three surfaces converge. It then writes an
+atomic bounded receipt containing the match/checkpoint identities and exception
+types but no exception text, prompt, credential or provider payload. If
+rollback or its required proof fails, a distinct
+`TournamentMatchRollbackError` prevents the caller from mistaking an uncertain
+workspace for an ordinary match failure.
+
+The lease and internal-target rule prevent two processes or an external cache
+from escaping this guarantee. A hard process termination cannot run Python
+rollback code; in that case the already durable pre-match V6 checkpoint and the
+existing identity-first resume recovery path provide crash convergence on the
+next explicit resume. Irreversible provider-side effects such as billing are
+not claimed to be rolled back.
+
+Fault-injection tests cover successful durable commit, mid-match Agent/social/
+file mutation, newly created file removal, return-without-commit, rollback
+failure, external output rejection and workspace lock contention. The machine
+architecture audit enforces the full boundary. This stage runs no training,
+provider request or formal match experiment and changes no stable release or
+research promotion claim.

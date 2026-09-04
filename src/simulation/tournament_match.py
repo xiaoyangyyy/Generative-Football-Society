@@ -5,6 +5,7 @@ from src.simulation.tournament_reporting import TournamentReportingMixin
 from src.simulation.tournament_scoring import TournamentScoringMixin
 from src.simulation.tournament_setup import TournamentSetupMixin
 from src.simulation.random_control import derive_seed
+from src.simulation.tournament_transaction import tournament_match_transaction
 
 
 class TournamentMatchMixin(
@@ -123,6 +124,34 @@ class TournamentMatchMixin(
 
 
     def play_match(
+        self,
+        t1_name,
+        t2_name,
+        stage_name,
+        llm,
+        is_knockout=True,
+        *,
+        matchday: int = 0,
+        standings_snapshot=None,
+        fixture_seed: int = 0,
+        scheduled_home: str | None = None,
+    ):
+        with tournament_match_transaction(
+            self, stage=stage_name, home=t1_name, away=t2_name,
+        ):
+            return self._play_match_once(
+                t1_name,
+                t2_name,
+                stage_name,
+                llm,
+                is_knockout,
+                matchday=matchday,
+                standings_snapshot=standings_snapshot,
+                fixture_seed=fixture_seed,
+                scheduled_home=scheduled_home,
+            )
+
+    def _play_match_once(
         self,
         t1_name,
         t2_name,

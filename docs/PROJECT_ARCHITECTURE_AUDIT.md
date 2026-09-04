@@ -15,7 +15,7 @@ not quality signals by themselves.
 | Entity priors | Continuous player/coach/team fields with football-semantic role axes | Useful and interpretable | Fit coefficients to held-out player/event data instead of hand tuning |
 | Tournament | Official group schedule and constrained R32 builder; stable named seeds | Correct simulation path | Encode the final FIFA bracket table once officially fixed |
 | Randomness | Stable BLAKE2-derived identity streams across match, scoring, referee, social, wear, carryover, agents, brackets and legacy journeys | Strong runtime contract with machine-enforced global-draw ban | Add matched-seed intervention invariance checks as new stochastic subsystems appear |
-| Persistence | Checkpoint V5 binds inputs/randomness, snapshots Agent/social state, receipts reflection, and embeds bounded external-state rollback images | Strong identity-gated, crash-resumable recovery for project-owned causal state; external paths remain fail-closed | Obtain provider idempotency guarantees and validate recovery under production filesystem faults |
+| Persistence | Checkpoint V6 binds inputs/randomness, snapshots Agent/social state, receipts reflection, and makes each tournament match a workspace-locked rollback-complete transaction | Strong identity-gated, crash-resumable recovery for project-owned causal state; missing commits, concurrent writers, and external paths fail closed | Obtain provider idempotency guarantees and validate recovery under production filesystem faults |
 | Macro scoring | Coupled intensity dynamics; xG fused before a single goal observation | Coherent research model | Replace Euler heuristic with fitted state-space point process |
 | Micro engine | Root-bound effective rosters with explicit synthetic fallback provenance; spatial fields, action selection, pass/shot/aerial physics and affective coupling | Rich, portable and evidence-visible, but still heuristic | Establish explicit SI/normalized unit contract and fit jointly to event data |
 | World model | v7 deployed plus evidence-gated v8 frame candidates; v8.9 strict SkillCorner/StatsBomb temporal LODO | Modular and empirically guarded | Beat the continuous-time baseline before any v8 promotion |
@@ -177,6 +177,17 @@ not quality signals by themselves.
     roster now fails closed instead of being silently replaced. Exact roster
     identity, player counts and source travel through the micro summary and
     product report, and research/cognitive integrity rejects a real fallback.
+43. Upgraded tournament checkpoints to V6 and placed every public tournament
+    match behind one workspace-level file lease. A pre-match checkpoint now
+    covers the in-memory world and project-owned carryover, fusion,
+    counterfactual, cognitive, ball-log and narrative-debug state. Success
+    requires exactly one matching in-memory result and durable checkpoint;
+    exceptions and missing commits restore every bounded surface, including
+    the durable pre-match checkpoint, and produce a redacted rollback receipt.
+    Concurrent writers and configured external
+    output targets fail before match execution. Fault-injection tests cover
+    successful commit, memory/file rollback, missing commit, rollback failure,
+    external paths and lock contention.
 
 ## LLM Scope Decision
 

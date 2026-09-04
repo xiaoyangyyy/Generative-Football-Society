@@ -275,6 +275,12 @@ def main() -> int:
     tournament_checkpoint = (
         ROOT / "src/simulation/tournament_checkpoint.py"
     ).read_text(encoding="utf-8")
+    tournament_match = (
+        ROOT / "src/simulation/tournament_match.py"
+    ).read_text(encoding="utf-8")
+    tournament_transaction = (
+        ROOT / "src/simulation/tournament_transaction.py"
+    ).read_text(encoding="utf-8")
     tournament_runtime = (
         ROOT / "src/simulation/tournament_2026.py"
     ).read_text(encoding="utf-8")
@@ -1514,7 +1520,7 @@ def main() -> int:
         ),
         "tournament_resume_binds_random_world_identity": (
             all(token in tournament_checkpoint for token in (
-                "CHECKPOINT_VERSION = 5",
+                "CHECKPOINT_VERSION = 6",
                 'RANDOM_WORLD_CONTRACT = "identity_scoped_rng_v1"',
                 "def _content_sha256(",
                 "Tournament checkpoint content integrity mismatch",
@@ -1588,7 +1594,7 @@ def main() -> int:
                 "manager.narrative_event_bus.history",
             ))
             and all(token in tournament_checkpoint for token in (
-                "CHECKPOINT_VERSION = 5",
+                "CHECKPOINT_VERSION = 6",
                 '"world_state": validate_world_state(world_state)',
                 '"reflection_journal": validate_reflection_journal(reflection_journal)',
                 "def validate_reflection_world_consistency(",
@@ -1643,6 +1649,36 @@ def main() -> int:
                 "_recover_tournament_external_state(",
                 "External rollback mutates files",
                 "checkpoint=checkpoint",
+            ))
+        ),
+        "tournament_match_is_one_verified_rollback_complete_transaction": (
+            all(token in tournament_checkpoint for token in (
+                "CHECKPOINT_VERSION = 6",
+                "STATE_ARTIFACT_DIRECTORIES = (",
+                '"data/persistence/cognitive_log"',
+                '"outputs/ball_log"',
+                '"outputs/narrative_debug.jsonl"',
+                "def require_internal_match_transaction_targets(",
+                "Tournament checkpoint V5 lacks transactional match-output state",
+            ))
+            and all(token in tournament_match for token in (
+                "with tournament_match_transaction(",
+                "return self._play_match_once(",
+            ))
+            and all(token in tournament_transaction for token in (
+                "class TournamentMatchRollbackError(RuntimeError):",
+                "@contextmanager",
+                "with FileLease(lock_path, timeout=0.0):",
+                "manager._save_checkpoint()",
+                "checkpoint = load_checkpoint(manager.base_dir)",
+                "def _verify_match_commit(",
+                "restore_state_artifacts(manager.base_dir, checkpoint)",
+                "manager._restore_from_checkpoint(checkpoint)",
+                "def _verify_rollback(",
+                "snapshot_world_state(manager)",
+                "Tournament in-memory rollback did not converge",
+                "Tournament durable checkpoint rollback did not converge",
+                '"contains_error_message": False',
             ))
         ),
         "release_readiness_separates_code_contract_from_external_results": (

@@ -174,7 +174,7 @@ def test_tournament_match_identity_is_forwarded_through_every_stage(monkeypatch)
     monkeypatch.setattr(manager, "_run_narrative_and_social", narrative)
     monkeypatch.setattr(manager, "_finalize_match_state", finalize)
 
-    winner = TournamentMatchMixin.play_match(
+    winner = TournamentMatchMixin._play_match_once(
         manager, "Alpha", "Beta", "Final", SimpleNamespace(),
         fixture_seed=17,
     )
@@ -304,6 +304,11 @@ def test_checkpoint_rejects_content_tampering_and_unsafe_v1(tmp_path):
     payload["version"] = 4
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="lacks recoverable external state"):
+        load_checkpoint(str(tmp_path))
+
+    payload["version"] = 5
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="lacks transactional match-output state"):
         load_checkpoint(str(tmp_path))
 
 

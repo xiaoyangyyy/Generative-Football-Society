@@ -82,6 +82,9 @@ def test_architecture_v2_machine_audit_passes():
         "tournament_resume_rolls_back_internal_external_state_after_identity"
     ]
     assert report["checks"][
+        "tournament_match_is_one_verified_rollback_complete_transaction"
+    ]
+    assert report["checks"][
         "release_readiness_separates_code_contract_from_external_results"
     ]
     assert not report["violations"]["direct_global_runtime_rng_draws"]

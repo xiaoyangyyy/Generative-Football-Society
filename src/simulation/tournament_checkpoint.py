@@ -17,7 +17,7 @@ from src.simulation.runtime import environment_snapshot, env_bool
 from src.simulation.world_state import validate_world_state
 
 
-CHECKPOINT_VERSION = 5
+CHECKPOINT_VERSION = 6
 RANDOM_WORLD_CONTRACT = "identity_scoped_rng_v1"
 DEFAULT_PATH = os.path.join("data", "persistence", "tournament_checkpoint.json")
 MAX_CHECKPOINT_BYTES = 64 * 1024 * 1024
@@ -34,6 +34,11 @@ STATE_ARTIFACT_PATHS = (
     "data/persistence/squad_carryover.json",
     "data/persistence/world_model_fusion.jsonl",
     "data/persistence/tactical_counterfactuals.jsonl",
+    "outputs/narrative_debug.jsonl",
+)
+STATE_ARTIFACT_DIRECTORIES = (
+    "data/persistence/cognitive_log",
+    "outputs/ball_log",
 )
 
 
@@ -85,11 +90,43 @@ def _state_artifact_targets(base_dir: str) -> Dict[str, tuple[Path, str, bool]]:
         )
         for relative in STATE_ARTIFACT_PATHS
     }
+    targets.update({
+        relative: (
+            root.joinpath(*relative.split("/")), "directory", True,
+        )
+        for relative in STATE_ARTIFACT_DIRECTORIES
+    })
     cache = _cognitive_cache_artifact(base_dir)
     if cache is not None:
         key, path = cache
         targets[key] = (path, "directory", key != "external/MATCH_COGNITIVE_CACHE")
+    values = environment_snapshot()
+    if env_bool(values, "MATCH_BALL_LOG", False):
+        configured = str(values.get("MATCH_BALL_LOG_DIR", "")).strip()
+        if configured:
+            path = Path(configured).resolve()
+            try:
+                key = path.relative_to(root).as_posix()
+            except ValueError:
+                key = "external/MATCH_BALL_LOG_DIR"
+            targets[key] = (
+                path, "directory", key != "external/MATCH_BALL_LOG_DIR",
+            )
     return targets
+
+
+def require_internal_match_transaction_targets(base_dir: str) -> None:
+    """Reject configured outputs that an automatic match rollback cannot restore."""
+    external = sorted(
+        key for key, (_path, _kind, internal) in
+        _state_artifact_targets(base_dir).items()
+        if not internal
+    )
+    if external:
+        raise ValueError(
+            "Tournament match transactions require project-owned state paths: "
+            + ", ".join(external)
+        )
 
 
 def capture_state_artifacts(base_dir: str) -> Dict[str, str]:
@@ -772,6 +809,11 @@ def load_checkpoint(
         raise ValueError(
             "Tournament checkpoint V4 lacks recoverable external state; start "
             "a fresh tournament instead of resuming it"
+        )
+    if payload.get("version") == 5:
+        raise ValueError(
+            "Tournament checkpoint V5 lacks transactional match-output state; "
+            "start a fresh tournament instead of resuming it"
         )
     if payload.get("version") != CHECKPOINT_VERSION:
         raise ValueError(

@@ -59,6 +59,7 @@
     "studio_progressively_discloses_product_areas": true,
     "studio_replays_manager_decision_lifecycle_without_second_state": true,
     "studio_uses_context_local_configuration": true,
+    "tournament_match_is_one_verified_rollback_complete_transaction": true,
     "tournament_resume_binds_portable_run_input_identity": true,
     "tournament_resume_binds_random_world_identity": true,
     "tournament_resume_restores_dynamic_world_and_receipted_reflection": true,
