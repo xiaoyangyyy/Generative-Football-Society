@@ -173,7 +173,9 @@ class TournamentSetupMixin:
         try:
             from src.match_engine.macro_bridge import build_match_affective_state
 
-            base_state = build_match_affective_state(ah, aa)
+            base_state = build_match_affective_state(
+                ah, aa, base_dir=self.base_dir,
+            )
 
             def representative_state(team_id):
                 state = copy.deepcopy(base_state)

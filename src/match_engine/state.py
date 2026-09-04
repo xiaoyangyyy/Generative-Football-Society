@@ -179,6 +179,7 @@ class TeamAffectiveState:
     phase: float = 0.5
     possession_share: float = 0.5
     formation_key: str = "433"
+    squad_provenance: Dict[str, Any] = field(default_factory=dict)
 
     @property
     def n_players(self) -> int:
@@ -301,6 +302,7 @@ class MicroMatchSummary:
     manager_effects: Dict[str, Any] = field(default_factory=dict)
     in_match_management: Dict[str, Any] = field(default_factory=dict)
     tactical_execution: Dict[str, Any] = field(default_factory=dict)
+    squad_provenance: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

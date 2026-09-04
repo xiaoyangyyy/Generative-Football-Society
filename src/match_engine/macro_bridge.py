@@ -2,21 +2,19 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import numpy as np
 
-from src.match_engine.config import AffectiveConfig
 from src.match_engine.squad_factory import build_team_squad
 from src.match_engine.tactical_catalog import normalize_formation_key
 from src.match_engine.tactical_profile import apply_vector_to_team_coach, build_tactical_vector_for_agent
 from src.match_engine.state import (
     AssistantRefereeState,
-    CoachAffectiveState,
     CrowdState,
     MatchAffectiveState,
     RefereeAffectiveState,
-    TeamAffectiveState,
 )
 
 if TYPE_CHECKING:
@@ -35,6 +33,7 @@ def build_match_affective_state(
     eff_status_home: Optional[float] = None,
     eff_status_away: Optional[float] = None,
     rng: Optional[np.random.Generator] = None,
+    base_dir: str | Path | None = None,
 ) -> MatchAffectiveState:
     rng = rng or np.random.default_rng(42)
     home_id = home_team_id or home_agent.team_name
@@ -42,8 +41,12 @@ def build_match_affective_state(
 
     from src.match_engine.squad_factory import init_away_positions
 
-    home = build_team_squad(home_agent, rng, match_eff_status=eff_status_home)
-    away = build_team_squad(away_agent, rng, match_eff_status=eff_status_away)
+    home = build_team_squad(
+        home_agent, rng, base_dir=base_dir, match_eff_status=eff_status_home,
+    )
+    away = build_team_squad(
+        away_agent, rng, base_dir=base_dir, match_eff_status=eff_status_away,
+    )
     home.team_id = home_id
     away.team_id = away_id
     home.attacks_high_x = True

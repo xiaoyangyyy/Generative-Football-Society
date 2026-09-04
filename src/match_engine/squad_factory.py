@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, List, Tuple
+from pathlib import Path
+from typing import TYPE_CHECKING, List
 
 import numpy as np
 
@@ -55,7 +56,7 @@ def _emotion_logits_from_agent(agent: "SocietyAgent") -> np.ndarray:
 def build_team_squad(
     agent: "SocietyAgent",
     rng: np.random.Generator,
-    base_dir: str | None = None,
+    base_dir: str | Path | None = None,
     *,
     match_eff_status: float | None = None,
 ) -> TeamAffectiveState:
@@ -64,21 +65,32 @@ def build_team_squad(
         import os
 
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    try:
-        from src.data_engine.roster_loader import (
-            build_team_squad_from_roster,
-        )
-        from src.simulation.squad_registry import load_effective_roster
+    from src.data_engine.roster_loader import build_team_squad_from_roster
+    from src.simulation.squad_registry import load_effective_roster, roster_identity
 
-        roster = getattr(agent, "_roster_carryover_snapshot", None)
-        if roster is None:
-            roster = load_effective_roster(base_dir, team_id)
-        if roster:
-            real = build_team_squad_from_roster(agent, roster, rng)
-            if real is not None:
-                return real
-    except Exception:
-        pass
+    roster = getattr(agent, "_roster_carryover_snapshot", None)
+    roster_source = "prepared_carryover_snapshot"
+    if roster is None:
+        roster = load_effective_roster(base_dir, team_id)
+        roster_source = "effective_roster"
+    if roster is not None:
+        real = build_team_squad_from_roster(agent, roster, rng)
+        if real is None:
+            raise ValueError(
+                f"effective roster for {team_id!r} cannot form an available XI"
+            )
+        real.squad_provenance = {
+            "schema_version": 1,
+            "team_id": team_id,
+            "source": roster_source,
+            "roster_source": str(roster.get("source") or "unknown"),
+            "roster_identity": roster_identity(roster),
+            "roster_player_count": len(roster.get("players") or []),
+            "simulation_player_count": len(real.players),
+            "fallback_used": False,
+            "fallback_reason": None,
+        }
+        return real
 
     seed = _stable_seed(team_id, "squad")
     local_rng = np.random.default_rng(seed)
@@ -183,6 +195,17 @@ def build_team_squad(
         peer_matrix=peer,
         icon_player_id=icon_id,
         formation_key=fkey,
+        squad_provenance={
+            "schema_version": 1,
+            "team_id": team_id,
+            "source": "synthetic_status_fallback",
+            "roster_source": None,
+            "roster_identity": None,
+            "roster_player_count": 0,
+            "simulation_player_count": len(players),
+            "fallback_used": True,
+            "fallback_reason": "roster_unavailable",
+        },
     )
 
 

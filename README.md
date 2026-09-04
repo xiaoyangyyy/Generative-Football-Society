@@ -140,6 +140,21 @@ infrastructure/protocol gate passes and every paper-package check except the
 authorized confirmatory-result cell passes; final `release_ready` remains
 false until all external evidence exists. Studio CLI and Web expose the same
 distinction, open-gate count and next action.
+V3.87 aligns the M2 training, validation, planning and realized-outcome target
+around actor-centred transition utility, while keeping the historical M1
+result immutable and default-off. V3.88 exposes the frozen M2 preflight,
+candidate qualification, 360-match budget, resumable progress and decision as
+one identity-bound five-stage control plane; it is currently waiting for a new
+candidate and has executed zero formal M2 matches.
+V3.89 makes LLM transport evidence-bearing through explicit provider adapters,
+retry-stable request IDs, prompt-free token/cost telemetry and a
+closed/open/half-open circuit breaker. Match-scoped counters prevent concurrent
+cognitive runs from claiming each other's calls, and provider evidence is now
+visible in reports and required by the prospective pilot.
+V3.90 binds effective squad construction to the caller's project root. Missing
+rosters use a visible deterministic fallback, while malformed or
+XI-incomplete rosters fail closed; exact roster provenance reaches match and
+product reports.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

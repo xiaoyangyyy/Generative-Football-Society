@@ -46,6 +46,7 @@
     "research_checkpoint_identity_chain_verified": true,
     "runtime_random_draws_are_identity_scoped": true,
     "shot_head_decision_binds_promoted_artifact": true,
+    "squad_construction_is_root_bound_and_provenance_visible": true,
     "stable_release_artifact_chain_verified": true,
     "stable_release_pointer_identity_verified": true,
     "studio_exposes_one_guided_end_to_end_workflow": true,

@@ -4873,6 +4873,7 @@ class ProductWorkspace:
             state = build_match_affective_state(
                 home_agent,
                 away_agent,
+                base_dir=self.root,
                 rng=named_rng(
                     match_seed,
                     "manager_world_model_advice",
@@ -6327,6 +6328,11 @@ class ProductWorkspace:
                     "plans": raw.get("cognitive_plans") or [],
                     "tier_usage": raw.get("cognitive_tier_usage") or {},
                 },
+                "roster": raw.get("squad_provenance") or {
+                    "schema_version": 1,
+                    "available": False,
+                    "reason": "legacy_summary_without_squad_provenance",
+                },
                 "management": {
                     "decision": plan_record.get("manager_decision"),
                     "club_support": plan_record.get("club_support"),
@@ -6394,6 +6400,13 @@ class ProductWorkspace:
                     integrity_blockers.append(
                         "provider_transport_secret_boundary_unverified"
                     )
+        squad_provenance = raw.get("squad_provenance")
+        if (
+            self.config.mode in {"research", "cognitive"}
+            and isinstance(squad_provenance, Mapping)
+            and squad_provenance.get("fallback_used") is True
+        ):
+            integrity_blockers.append("research_synthetic_roster_fallback")
         if plan.score_path == "physics_official" and (
             int(raw.get("goals_micro_home", -1))
             != int(raw.get("goals_physics_home", -2))

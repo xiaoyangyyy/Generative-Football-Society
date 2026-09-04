@@ -734,6 +734,15 @@ def _build_micro_match_summary(
             for side, runtime in manager_runtimes.items()
         },
         tactical_execution=_final_tactical_execution(tactical_execution, state),
+        squad_provenance={
+            "schema_version": 1,
+            "home": dict(state.home.squad_provenance),
+            "away": dict(state.away.squad_provenance),
+            "fallback_used": bool(
+                state.home.squad_provenance.get("fallback_used")
+                or state.away.squad_provenance.get("fallback_used")
+            ),
+        },
     )
 
 
@@ -819,12 +828,13 @@ def _initialize_micro_match_state(
     eff_h, eff_a, poss_home, cfg, rng, tactical_engine,
     tactical_override_home, tactical_override_away,
     internal_home, internal_away, match_seconds,
-    goals_home, goals_away, xg_home, xg_away, drama_score,
+    goals_home, goals_away, xg_home, xg_away, drama_score, base_dir,
 ):
     state = build_match_affective_state(
         home_agent, away_agent, referee=referee,
         stage_pressure=stage_pressure, neutral_venue=neutral_venue,
         eff_status_home=eff_h, eff_status_away=eff_a, rng=rng,
+        base_dir=base_dir,
     )
     _init_micro_state(state, cfg, rng, possession_home=poss_home)
     tactical_engine.bootstrap(state, home_agent, away_agent)
@@ -1154,7 +1164,7 @@ def run_match_micro_simulation(
         internal_home=internal_home, internal_away=internal_away,
         match_seconds=match_seconds, goals_home=goals_home,
         goals_away=goals_away, xg_home=xg_home, xg_away=xg_away,
-        drama_score=drama_score,
+        drama_score=drama_score, base_dir=resolved_base_dir,
     )
     state = initialized["state"]
     tactical_execution = {

@@ -420,6 +420,18 @@ class _Summary:
     manager_effects: dict = field(default_factory=dict)
     in_match_management: dict = field(default_factory=dict)
     tactical_execution: dict = field(default_factory=dict)
+    squad_provenance: dict = field(default_factory=lambda: {
+        "schema_version": 1,
+        "home": {
+            "source": "effective_roster",
+            "fallback_used": False,
+        },
+        "away": {
+            "source": "effective_roster",
+            "fallback_used": False,
+        },
+        "fallback_used": False,
+    })
 
 
 def _runtime_tactical_execution(home, away, home_tactic, away_tactic):
@@ -1787,6 +1799,36 @@ def test_cognitive_report_rejects_provider_transport_count_mismatch(
 def test_invalid_product_mode_is_rejected():
     with pytest.raises(ValueError):
         StudioConfig(mode="unsafe")
+
+
+def test_research_report_fails_closed_on_synthetic_roster_fallback(
+    tmp_path, monkeypatch,
+):
+    _evidence(tmp_path)
+    workspace = ProductWorkspace.create(tmp_path, StudioConfig(mode="research"))
+    from src import app
+
+    summary = _Summary()
+    summary.squad_provenance = {
+        "schema_version": 1,
+        "home": {
+            "source": "effective_roster",
+            "fallback_used": False,
+        },
+        "away": {
+            "source": "synthetic_status_fallback",
+            "fallback_used": True,
+            "fallback_reason": "roster_unavailable",
+        },
+        "fallback_used": True,
+    }
+    monkeypatch.setattr(app, "run_micro_match", lambda *args, **kwargs: summary)
+
+    report = workspace.run_match("Brazil", "Argentina", fast=True)
+
+    assert not report["integrity"]["accepted"]
+    assert "research_synthetic_roster_fallback" in report["integrity"]["blockers"]
+    assert report["layers"]["roster"]["fallback_used"] is True
 
 
 def test_studio_creation_requires_explicit_replace(tmp_path):

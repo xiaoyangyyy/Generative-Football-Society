@@ -17,7 +17,7 @@ not quality signals by themselves.
 | Randomness | Stable BLAKE2-derived identity streams across match, scoring, referee, social, wear, carryover, agents, brackets and legacy journeys | Strong runtime contract with machine-enforced global-draw ban | Add matched-seed intervention invariance checks as new stochastic subsystems appear |
 | Persistence | Checkpoint V5 binds inputs/randomness, snapshots Agent/social state, receipts reflection, and embeds bounded external-state rollback images | Strong identity-gated, crash-resumable recovery for project-owned causal state; external paths remain fail-closed | Obtain provider idempotency guarantees and validate recovery under production filesystem faults |
 | Macro scoring | Coupled intensity dynamics; xG fused before a single goal observation | Coherent research model | Replace Euler heuristic with fitted state-space point process |
-| Micro engine | Spatial fields, action selection, pass/shot/aerial physics and affective coupling | Rich but heuristic | Establish explicit SI/normalized unit contract and fit jointly to event data |
+| Micro engine | Root-bound effective rosters with explicit synthetic fallback provenance; spatial fields, action selection, pass/shot/aerial physics and affective coupling | Rich, portable and evidence-visible, but still heuristic | Establish explicit SI/normalized unit contract and fit jointly to event data |
 | World model | v7 deployed plus evidence-gated v8 frame candidates; v8.9 strict SkillCorner/StatsBomb temporal LODO | Modular and empirically guarded | Beat the continuous-time baseline before any v8 promotion |
 | Cognition | Triggered System-2 plans, bounded schemas, validated replay cache | Good hybrid architecture | Measure intervention lift and remove plans that do not beat rules |
 | Narrative | Generated events become bounded, persistent social signals with a facts ledger | Correct causal placement | Learn persistence/decay from longitudinal outcomes |
@@ -170,6 +170,13 @@ not quality signals by themselves.
     inconsistent with the independently observed per-scope successful-call
     count. ContextVar-bound match scopes prevent concurrent cognitive matches
     from claiming each other's provider evidence.
+42. Propagated the caller's project root through the macro-to-micro squad
+    boundary, so installed or isolated workspaces no longer read rosters from
+    the source checkout by accident. Missing roster files retain an explicitly
+    labelled synthetic status fallback; an existing malformed or XI-incomplete
+    roster now fails closed instead of being silently replaced. Exact roster
+    identity, player counts and source travel through the micro summary and
+    product report, and research/cognitive integrity rejects a real fallback.
 
 ## LLM Scope Decision
 

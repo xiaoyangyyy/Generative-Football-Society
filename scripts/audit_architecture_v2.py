@@ -232,6 +232,12 @@ def main() -> int:
     roster_loader = (
         ROOT / "src/data_engine/roster_loader.py"
     ).read_text(encoding="utf-8")
+    squad_factory = (
+        ROOT / "src/match_engine/squad_factory.py"
+    ).read_text(encoding="utf-8")
+    macro_bridge = (
+        ROOT / "src/match_engine/macro_bridge.py"
+    ).read_text(encoding="utf-8")
     season = (ROOT / "src/product/season.py").read_text(encoding="utf-8")
     cli = (ROOT / "src/cli.py").read_text(encoding="utf-8")
     formal_runner = (
@@ -1667,6 +1673,31 @@ def main() -> int:
                 "provider_transport_call_count_mismatch",
                 "provider_transport_secret_boundary_unverified",
                 "scope_factory(match_id)",
+            ))
+        ),
+        "squad_construction_is_root_bound_and_provenance_visible": (
+            all(token in squad_factory for token in (
+                "base_dir: str | Path | None = None",
+                "load_effective_roster(base_dir, team_id)",
+                "cannot form an available XI",
+                'roster_source = "effective_roster"',
+                '"source": roster_source',
+                '"source": "synthetic_status_fallback"',
+                '"roster_identity": roster_identity(roster)',
+            ))
+            and all(token in macro_bridge for token in (
+                "base_dir: str | Path | None = None",
+                "base_dir=base_dir",
+            ))
+            and all(token in match_micro_runner for token in (
+                "base_dir=resolved_base_dir",
+                "squad_provenance={",
+                '"fallback_used": bool(',
+            ))
+            and all(token in workspace for token in (
+                '"roster": raw.get("squad_provenance")',
+                "research_synthetic_roster_fallback",
+                "base_dir=self.root",
             ))
         ),
         "wheel_preserves_src_console_namespace": (

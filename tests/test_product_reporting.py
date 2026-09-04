@@ -78,6 +78,20 @@ def test_cognitive_report_surfaces_safe_provider_transport_evidence():
     assert "prompts, response text and credential values are excluded" in document
 
 
+def test_report_surfaces_synthetic_roster_fallback():
+    report = _report()
+    report["layers"]["roster"] = {
+        "schema_version": 1,
+        "fallback_used": True,
+    }
+
+    document = render_match_html(report)
+
+    assert "Roster source:" in document
+    assert "synthetic fallback" in document
+    assert 'class="off">synthetic fallback</b>' in document
+
+
 def test_research_report_separates_realized_and_expected_changes_and_escapes():
     adoption = {
         "available": True,

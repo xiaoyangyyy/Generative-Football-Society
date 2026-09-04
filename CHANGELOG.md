@@ -2,6 +2,9 @@
 
 ## Unreleased - v7 candidate
 
+- Bound squad construction to the caller's project root, made malformed or
+  XI-incomplete rosters fail closed, and surfaced exact roster/fallback
+  provenance through match and product reports.
 - Added an explicit LLM provider adapter, retry-stable request identities,
   bounded prompt-free token/cost telemetry, and a thread-safe circuit breaker.
 - Bound cognitive reports and the prospective provider pilot to complete,

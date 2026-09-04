@@ -156,11 +156,13 @@ readiness, runs an authorized match, and opens the generated dashboard. It
 does not duplicate simulation rules: all mutations call `ProductWorkspace`,
 and control-plane status comes from `ProductControlPlane`.
 
-The Beta is intentionally loopback-only until authenticated TLS deployment is
-implemented. Mutations require a per-process CSRF token; requests are size
-limited, concurrent mutations fail fast, report paths are confined to Studio
-HTML outputs, and responses use restrictive browser security headers. Verify
-the actual HTTP boundary without running a match or making an external call:
+The safe default remains loopback-only. Non-loopback serving is available only
+through the separately authenticated remote boundary described below and a
+trusted TLS-terminating reverse proxy. Mutations require a per-process CSRF
+token; requests are size limited, concurrent mutations fail fast, report paths
+are confined to Studio HTML outputs, and responses use restrictive browser
+security headers. Verify the actual HTTP boundary without running a match or
+making an external call:
 
 ```bash
 python scripts/verify_product_web.py --out data/evaluation/web_beta_verification_v1.json

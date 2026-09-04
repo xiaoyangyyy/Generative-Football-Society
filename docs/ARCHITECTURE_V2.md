@@ -3521,3 +3521,32 @@ This stage changed code, tests and operator configuration only. It made no
 provider request, ran no training and produced no new football or LLM-effect
 claim. Live-provider header/usage behavior and configured pricing still
 require the separately authorized prospective pilot.
+
+## 108. V3.90 Root-bound squad provenance
+
+The public API already accepted an explicit project root, but the final
+macro-to-micro state constructor did not receive it. A non-continuity match in
+an installed or isolated workspace could therefore look for team rosters in
+the source checkout. The same broad exception boundary also converted a
+present-but-malformed roster or a roster unable to form an available XI into
+an unexplained synthetic team.
+
+The project root now travels through the micro runner, macro bridge, tournament
+prematch planner and manager-advice planner into the one squad factory.
+Prepared carryover remains authoritative when present; otherwise the factory
+loads the effective roster from that exact root. Every roster-backed team
+records its roster identity, declared source, roster player count, simulation
+player count and construction source.
+
+Only a genuinely absent roster file may use the deterministic status-derived
+synthetic squad. That path records `synthetic_status_fallback` and
+`roster_unavailable`. Existing invalid JSON, invalid registry state or an
+available-player set smaller than eleven propagates an error and cannot be
+silently replaced. The match summary and composed product report expose both
+teams' provenance. Stable mode may visibly use the compatibility fallback;
+research and cognitive reports that actually observe one fail integrity with
+`research_synthetic_roster_fallback`.
+
+This is a portability and evidence-correctness change. It performs no
+training, provider request or formal match study and changes no frozen
+world-model promotion decision.
