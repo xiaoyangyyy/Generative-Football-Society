@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Reformatted the four remaining compressed active research scripts for frame
+  actions, temporal-provider construction, large shadow evaluation, and the
+  v7 probabilistic trainer; documented their repository-bootstrap import
+  boundary and verified exact AST equivalence without executing workloads.
 - Split all 65 remaining multi-module imports and removed five redundant
   trailing semicolons across source, scripts, and tests, eliminating E401 and
   E703 repository-wide with normalized-AST equivalence verification.
