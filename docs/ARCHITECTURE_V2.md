@@ -3866,3 +3866,52 @@ record file exists. Once records appear it closes registration and reports that
 analysis is required instead of inventing a live count. This stage runs no
 participant, match, training, formal experiment or provider call and does not
 change the open user-value gate.
+
+## 118. V4.00 Isolated participant-session execution
+
+The blinded packet boundary still depended on a moderator to invent a delivery
+UI. It exposed both assigned conditions in one artifact, had no authoritative
+timer or submission state machine, and could not directly create the immutable
+receipts consumed by final analysis. This left the preregistered study
+deliverable but not end-to-end executable.
+
+`ParticipantSessionRuntime` now turns one registered allocation into a
+capability-bound session directory that must be physically outside the project.
+Only the capability hash is persisted. An unscored tutorial gates measurement;
+case content is revealed only when its server clock begins; future condition,
+condition name, sequence, pseudonyms, moderator identity and scoring material
+never enter the public response. The GFS condition receives the integrated
+provenance, threshold-matrix and limitation workflow while the manual condition
+receives the same frozen case as a flat document.
+
+The first valid structured submission is committed under an OS lease and can be
+retried only through its submission identity. Exact server timestamps determine
+duration, a 900-second expiry advances without a fabricated receipt, and every
+completed receipt is atomically named by its byte-level SHA-256. Final
+correctness is not disclosed. The separate participant WSGI application mounts
+no Studio or repository routes, validates Host and trusted-proxy HTTPS, uses a
+per-response CSP nonce and authenticates APIs with the fragment-delivered
+Bearer capability.
+
+Completion commits the validated final state before writing its deterministic
+derived record. If the process stops at that boundary, the next runtime load
+reconstructs the exact hash-bound record idempotently; a conflicting record
+fails closed. Reusing a submission identity is accepted only when the supplied
+answers and the original content-addressed receipt agree exactly. Remote mode
+keeps the service bound to loopback and accepts forwarded HTTPS only from a
+loopback peer with an exact public Host allowlist.
+
+The participant process writes only external session state, evidence receipts
+and a completion draft. Repository mutation requires a distinct moderator CLI
+import with the frozen observer attestation. Import revalidates authority
+hashes, registration identity, ordering, timing, exact choices, critical-error
+derivation and receipt bytes before an atomic idempotent JSONL append. The
+scoring seal remains outside this path and is consumed only by final analysis.
+
+The preexecution amendments record the unchanged zero-participant state,
+including the later recovery and trusted-proxy hardening.
+Tests exercise isolation, future-case non-disclosure, invalid capabilities,
+server deadlines, concurrent submissions, receipt hashing, attestation,
+idempotent import and end-to-end compatibility with the existing analyzer. No
+participant session, match, model training, formal study or provider call was
+executed, so the user-value gate and all empirical product claims remain open.

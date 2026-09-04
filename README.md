@@ -198,6 +198,16 @@ both the Studio CLI and authenticated Web evidence workspace. Packets exclude
 moderator identity and scoring material, use confined atomic no-overwrite
 materialization, and expose only aggregate status. The evidence kit excludes
 the seal. This is still zero-participant preparation, not user-value evidence.
+V4.00 adds a separate capability-bound participant service. It requires an
+external session directory, runs an unscored tutorial, starts the 900-second
+clock only when the current case is revealed, withholds every future case and
+correctness result, writes content-addressed structured receipts, and requires
+an explicit moderator attestation before importing a completed record. The
+participant application mounts no Studio or repository routes. This makes the
+study end-to-end executable but does not execute it or create user-value
+evidence. Completion is state-first and restart-recoverable, submission-ID
+retries require exact receipt-backed answers, and remote delivery remains
+loopback-bound behind a same-host trusted HTTPS proxy.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

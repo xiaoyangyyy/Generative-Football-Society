@@ -52,6 +52,30 @@
     "consent_required": true,
     "duplicate_registration_policy": "idempotent_exact_match"
   },
+  "session_execution": {
+    "runner_kind": "gfs_product_value_participant_session_v1",
+    "participant_runtime_is_external_to_repository": true,
+    "capability_token_minimum_characters": 32,
+    "capability_token_minimum_distinct_characters": 8,
+    "capability_plaintext_persistence_forbidden": true,
+    "launch_token_transport": "url_fragment_then_bearer_header",
+    "training_task_required_before_measurement": true,
+    "training_task_is_unscored": true,
+    "condition_content_revealed_only_after_server_start": true,
+    "future_condition_preexposure_forbidden": true,
+    "server_authoritative_deadline_seconds": 900,
+    "submission_policy": "first_valid_submission_wins_idempotent_by_submission_id",
+    "idempotent_retry_requires_exact_answers_and_verified_receipt": true,
+    "completion_commit_policy": "atomic_state_first_then_idempotent_derived_record",
+    "remote_transport_policy": "loopback_service_same_host_trusted_https_proxy",
+    "correctness_feedback_during_session": false,
+    "critical_error_policy": {
+      "field": "supported_claim",
+      "values": ["proven_real_world_tactic", "guaranteed_match_win"]
+    },
+    "completed_record_import_requires_moderator_attestation": true,
+    "participant_service_exposes_studio_routes": false
+  },
   "evidence_archive": {
     "layout": "content_addressed_flat_sha256_v1",
     "file_name_is_exact_sha256": true,
@@ -81,7 +105,14 @@
     "participant_delivery_excludes_scoring_material": true,
     "scoring_seal_is_separate_and_case_hash_bound": true,
     "evidence_hashes_verified_against_real_files": true,
-    "correctness_recomputed_from_structured_receipts": true
+    "correctness_recomputed_from_structured_receipts": true,
+    "isolated_participant_session_required": true,
+    "server_authoritative_condition_timing": true,
+    "future_condition_preexposure_forbidden": true,
+    "participant_capability_plaintext_storage_forbidden": true,
+    "moderator_attestation_required_before_import": true,
+    "completion_record_recoverable_from_committed_state": true,
+    "remote_session_rejects_nonloopback_forwarded_headers": true
   },
   "outputs": {
     "session_registry": "data/evaluation/product_value_validation_v1/session_registry.json",
@@ -101,6 +132,20 @@
     {
       "amendment_id": "blinded-delivery-and-scoring-seal-v1",
       "reason": "Physically separate participant-visible case content from the case-hash-bound scoring keys and freeze a moderator delivery surface before the first participant.",
+      "participants_observed_before_amendment": 0,
+      "sessions_executed_before_amendment": 0,
+      "results_available_before_amendment": false
+    },
+    {
+      "amendment_id": "isolated-participant-session-runner-v1",
+      "reason": "Freeze capability isolation, server-authoritative timing, one-condition-at-a-time disclosure, structured submission and attested import before the first participant.",
+      "participants_observed_before_amendment": 0,
+      "sessions_executed_before_amendment": 0,
+      "results_available_before_amendment": false
+    },
+    {
+      "amendment_id": "participant-session-recovery-and-proxy-hardening-v1",
+      "reason": "Freeze state-first completion recovery, exact idempotent replay and a loopback-only trusted HTTPS proxy boundary before the first participant.",
       "participants_observed_before_amendment": 0,
       "sessions_executed_before_amendment": 0,
       "results_available_before_amendment": false

@@ -65,10 +65,59 @@ route template. Output materialization is confined to
 `build/study-delivery/product-value-v1/`, rejects symbolic-link components and
 uses atomic no-overwrite creation by default.
 
-The repository is not a participant-delivery channel. A real study moderator
-must expose only the generated packet and condition UI, keep repository/source
-access and the scoring seal outside the participant session, and preserve the
-original packet digest with the session evidence.
+The repository is not a participant-delivery channel. The isolated runner now
+enforces that boundary instead of leaving it as an operator convention. First
+register the full frozen sample before importing any measurement record. Then
+provision each session into an absolute directory outside the repository:
+
+```bash
+python gfs.py --base-dir . studio value-study provision \
+  --registration-id REG-REPLACE_WITH_ASSIGNED_ID \
+  --session-root /controlled/sessions/product-value-v1 \
+  --origin https://study.example
+python gfs.py --base-dir . studio value-study serve \
+  --session-file /controlled/sessions/product-value-v1/SES-REPLACE.json \
+  --evidence-root /controlled/archive/product-value-v1 \
+  --host 127.0.0.1 --port 8876
+```
+
+Provisioning returns a one-time launch URL whose capability is carried in the
+URL fragment, never sent in an HTTP referrer, and stored only as a SHA-256 in
+session state. The participant server is a separate WSGI application: it has
+no Studio, registration, packet-download, scoring or repository route. Remote
+operation requires an explicit `--allow-remote` Host allowlist and HTTPS at a
+trusted reverse proxy on the same host. The participant service itself remains
+loopback-bound and accepts forwarded HTTPS only from a loopback peer, so a
+remote client cannot convert plaintext HTTP into trusted transport by forging
+`X-Forwarded-Proto`. The page uses a per-response CSP nonce and the API uses
+the high-entropy capability as a Bearer credential.
+
+The unscored tutorial must be completed before measurement. A condition's
+content remains hidden until its server-side 900-second clock starts. Only the
+current condition is returned; the second case, condition name, allocation
+sequence, participant pseudonym and moderator pseudonym are omitted. GFS is
+rendered as an integrated provenance, threshold and limitation workflow while
+the baseline is a flat read-only case. The first valid structured submission
+wins, retries with the same submission ID are idempotent, timeouts advance
+without fabricating a receipt, and correctness is never disclosed in-session.
+
+Receipts and the completed record draft remain in controlled external storage.
+The runner cannot write to the repository. After observing the completed
+session, the moderator explicitly attests and imports it:
+
+```bash
+python gfs.py --base-dir . studio value-study import \
+  --session-file /controlled/sessions/product-value-v1/SES-REPLACE.json \
+  --evidence-root /controlled/archive/product-value-v1 \
+  --attest-observed-session
+```
+
+Import revalidates the registration, protocol and case hashes, condition order,
+server timestamps, durations, structured choices, critical-claim flag, exact
+receipt bytes and content-addressed names before atomically appending the raw
+record. It does not expose or use the scoring seal; final analysis remains the
+only moderator scoring boundary. An exact repeated import is idempotent and a
+conflicting import fails closed.
 
 Analysis records are JSON Lines with an exact allowlist. Participant and
 moderator IDs are pseudonymous; raw text and direct identifiers are forbidden.
@@ -107,8 +156,10 @@ The analyzer makes no provider call, runs no match, observes no participant, and
 does not overwrite an existing decision unless `--overwrite` is explicit. A
 failed study is a valid result and does not satisfy the unified release gate.
 
-The registration/allocation/evidence amendment and the later physical
-participant-key separation amendment were both frozen while the authority
-still recorded zero participants, measured sessions and results. Registration
-is not measurement; once a records file exists, live Studio status stops
-claiming zero observations and closes further registration pending analysis.
+The registration/allocation/evidence amendment, physical participant-key
+separation amendment and isolated-session-runner amendment were all frozen
+while the authority still recorded zero participants, measured sessions and
+results. Registration and provisioning are not measurement; once an attested
+record is imported, live Studio status stops claiming zero observations and
+closes further registration pending analysis. No session has been provisioned
+or executed by the repository verification reported here.

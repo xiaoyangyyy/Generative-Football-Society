@@ -37,18 +37,20 @@ fields, retain failures and deviations, and then run the verifier named by
 Human-study records are not valid until the participant has been registered by
 the matching `--register` command. The returned `registration_id` must replace
 the template placeholder. Comparative-value conditions additionally use the
-structured receipt template: remove its two template-only fields, fill the
-three frozen-choice answers, hash the exact JSON bytes, and store those bytes
-under that digest in the controlled evidence archive. The final analyzer takes
-both `--registry` and `--evidence-root`; a syntactically plausible digest with
-no matching file is rejected.
+receipt and record templates only for schema review; do not manually convert
+them into evidence. The isolated `value-study provision|serve|import` chain
+creates the exact receipt bytes, content-addressed names, server-owned durations
+and attested record. The final analyzer takes both `--registry` and
+`--evidence-root`; a syntactically plausible digest with no matching file is
+rejected.
 
 The participant case manifest is scoring-key-free. The separate moderator
 scoring seal is deliberately excluded from the evidence kit and from every
 generated participant packet; the kit verifier checks both properties. Use the
-Studio `value-study packet` command or authenticated Web download for delivery,
-and never give a participant repository access as a substitute for a blinded
-packet. Final analysis receives the seal explicitly with `--scoring-seal`.
+Studio `value-study packet` command or authenticated Web download only for
+moderator inspection. Real participant delivery uses the separate external
+session service; never give a participant repository access as a substitute.
+Final analysis receives the seal explicitly with `--scoring-seal`.
 
 The archive contains no credential value or direct participant identifier and
 must never be used to collect names, email addresses, access tokens, API keys,

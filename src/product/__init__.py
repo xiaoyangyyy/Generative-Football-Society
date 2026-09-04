@@ -11,6 +11,13 @@ from src.product.season import SeasonPlan
 from src.product.season_commitments import SeasonCommitmentPlan
 from src.product.player_promises import PlayerPromisePlan, PlayerRolePromise
 from src.product.study_delivery import ProductValueStudyDelivery
+from src.product.study_session import (
+    ParticipantSessionRuntime,
+    ParticipantStudyWebApp,
+    create_participant_study_server,
+    import_completed_session,
+    provision_participant_session,
+)
 
 __all__ = [
     "BackgroundMatchWorker", "PilotProtocol", "ProductControlPlane",
@@ -18,5 +25,8 @@ __all__ = [
     "PlayerPromisePlan", "PlayerRolePromise", "ProductRecovery", "ProductWebApp",
     "ProspectivePilot", "StudioConfig",
     "ProductValueStudyDelivery",
+    "ParticipantSessionRuntime", "ParticipantStudyWebApp",
+    "create_participant_study_server", "import_completed_session",
+    "provision_participant_session",
     "SeasonCommitmentPlan", "SeasonPlan", "create_product_web_server",
 ]

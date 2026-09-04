@@ -348,6 +348,9 @@ def main() -> int:
     study_delivery = (
         ROOT / "src/product/study_delivery.py"
     ).read_text(encoding="utf-8")
+    study_session = (
+        ROOT / "src/product/study_session.py"
+    ).read_text(encoding="utf-8")
     product_validation_protocol = _read(
         "data/evaluation/product_validation_protocol_v1.json"
     )
@@ -1897,6 +1900,76 @@ def main() -> int:
             == {
                 "participants_exposed": 0,
                 "measured_sessions": 0,
+                "results_available": False,
+            }
+        ),
+        "product_value_participant_session_is_isolated_timed_and_attested": (
+            all(token in study_session for token in (
+                "class ParticipantSessionRuntime:",
+                "class ParticipantStudyWebApp:",
+                "def provision_participant_session(",
+                "def import_completed_session(",
+                '"capability_stored_in_plaintext": False',
+                '"participant_process_requires_repository_access": False',
+                '"future_condition_exposed": False',
+                '"correctness_disclosed": False',
+                "_advance_expired",
+                "_ensure_completion_record",
+                "with FileLease(self.lease_path, timeout=5.0)",
+                "verify_content_addressed_archive(",
+                "explicit moderator observer attestation is required",
+                'path == "/api/v1/conditions/current/submit"',
+                "script-src 'nonce-",
+                "style-src 'nonce-",
+                '"trusted_proxy_required"',
+                '"idempotency_conflict"',
+            ))
+            and all(token in cli for token in (
+                "cmd_studio_value_study_provision",
+                "cmd_studio_value_study_serve",
+                "cmd_studio_value_study_import",
+                '"--attest-observed-session"',
+            ))
+            and product_value_protocol.get("session_execution")
+            == {
+                "runner_kind": "gfs_product_value_participant_session_v1",
+                "participant_runtime_is_external_to_repository": True,
+                "capability_token_minimum_characters": 32,
+                "capability_token_minimum_distinct_characters": 8,
+                "capability_plaintext_persistence_forbidden": True,
+                "launch_token_transport": "url_fragment_then_bearer_header",
+                "training_task_required_before_measurement": True,
+                "training_task_is_unscored": True,
+                "condition_content_revealed_only_after_server_start": True,
+                "future_condition_preexposure_forbidden": True,
+                "server_authoritative_deadline_seconds": 900,
+                "submission_policy": (
+                    "first_valid_submission_wins_idempotent_by_submission_id"
+                ),
+                "idempotent_retry_requires_exact_answers_and_verified_receipt": True,
+                "completion_commit_policy": (
+                    "atomic_state_first_then_idempotent_derived_record"
+                ),
+                "remote_transport_policy": (
+                    "loopback_service_same_host_trusted_https_proxy"
+                ),
+                "correctness_feedback_during_session": False,
+                "critical_error_policy": {
+                    "field": "supported_claim",
+                    "values": [
+                        "proven_real_world_tactic", "guaranteed_match_win",
+                    ],
+                },
+                "completed_record_import_requires_moderator_attestation": True,
+                "participant_service_exposes_studio_routes": False,
+            }
+            and product_value_protocol.get("current_execution")
+            == {
+                "participants_observed": 0,
+                "sessions_executed": 0,
+                "matches_executed": 0,
+                "training_executed": False,
+                "provider_calls_made": False,
                 "results_available": False,
             }
         ),

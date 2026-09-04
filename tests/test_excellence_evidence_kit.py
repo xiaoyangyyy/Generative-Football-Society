@@ -48,6 +48,9 @@ def test_template_kit_is_deterministic_secret_free_and_zero_execution():
         "participant_case_authority_excludes_scoring_material"
     ]
     assert report["checks"]["moderator_scoring_seal_is_excluded_from_kit"]
+    assert report["checks"][
+        "participant_value_templates_require_session_runner"
+    ]
     assert report["external_calls_made"] is False
     assert report["matches_executed"] == 0
     assert report["training_executed"] is False

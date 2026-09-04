@@ -385,11 +385,16 @@ delivery boundary. It shows aggregate role and AB/BA registration counts,
 registers only consented pseudonymous participants under CSRF protection, and
 downloads a deterministic identity-bound packet. Participant cases contain no
 answer key; final scoring uses a separate case-hash-bound moderator seal. The
-same flow is available under `studio value-study status|register|packet`.
-Generated packets exclude moderator identity and scoring material, while the
-source repository and scoring seal remain explicitly outside the participant
-delivery channel. This is operational preparation, not a claim that any user
-study or product-value result exists.
+moderator flow continues under `studio value-study status|register|packet`, and
+the isolated participant chain adds `provision|serve|import`. Provisioning
+requires an absolute session directory outside the repository and returns a
+one-time fragment capability. The participant app gates measurement behind an
+unscored tutorial, reveals and times only the current condition, writes
+content-addressed structured receipts, discloses no correctness, and mounts no
+Studio routes. Import requires explicit observer attestation and verifies the
+identity and byte chain before appending the raw record. The source repository
+and scoring seal remain outside participant delivery. This is an executable but
+unrun study workflow, not a claim that user value exists.
 
 Remote sessions are independent and process-local. Each has an eight-hour
 absolute lifetime, a thirty-minute idle lifetime, and can be revoked with the

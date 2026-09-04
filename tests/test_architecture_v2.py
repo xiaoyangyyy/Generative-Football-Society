@@ -94,6 +94,9 @@ def test_architecture_v2_machine_audit_passes():
         "product_value_delivery_is_blinded_scoring_sealed_and_product_visible"
     ]
     assert report["checks"][
+        "product_value_participant_session_is_isolated_timed_and_attested"
+    ]
+    assert report["checks"][
         "release_readiness_separates_code_contract_from_external_results"
     ]
     assert not report["violations"]["direct_global_runtime_rng_draws"]

@@ -231,6 +231,14 @@ not quality signals by themselves.
     registration IDs. Live status stops asserting zero observations when a
     measurement record file appears. This closes delivery leakage and manual
     handoff gaps but records no participant or product-value result.
+49. Added a physically separate product-value participant service. Provisioned
+    state and receipt archives must live outside the repository; only a
+    high-entropy capability hash is stored. The server gates measurement behind
+    an unscored tutorial, reveals one condition at a time, owns the deadline,
+    commits idempotent structured receipts and never mounts Studio routes or
+    reads the scoring seal. A moderator-attested import revalidates the complete
+    byte and identity chain before repository mutation. This closes the study
+    execution handoff without claiming that a participant was observed.
 
 ## LLM Scope Decision
 

@@ -53,6 +53,7 @@
     "product_value_case_pack_manifest": "data/evaluation/product_value_case_packs_v1.json",
     "product_value_scoring_seal": "data/evaluation/product_value_scoring_seal_v1.json",
     "product_value_study_delivery": "src/product/study_delivery.py",
+    "product_value_participant_session_runner": "src/product/study_session.py",
     "independent_reproduction_protocol": "data/evaluation/independent_action_reproduction_protocol_v2.json",
     "independent_reproduction_protocol_verification": "data/evaluation/independent_action_reproduction_protocol_verification_v2.json",
     "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
@@ -434,6 +435,7 @@
     "product_value_case_packs": "data/evaluation/product_value_case_packs_v1.json",
     "product_value_scoring_seal": "data/evaluation/product_value_scoring_seal_v1.json",
     "product_value_delivery_service": "src/product/study_delivery.py",
+    "product_value_participant_session_runner": "src/product/study_session.py",
     "product_value_session_registry": "data/evaluation/product_value_validation_v1/session_registry.json",
     "product_value_status": "preregistered_not_executed",
     "product_value_participants_observed": 0

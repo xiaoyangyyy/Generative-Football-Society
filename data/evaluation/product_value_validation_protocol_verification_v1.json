@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_value_preregistration",
-  "generated_at": "2026-09-04T19:35:56.596141+00:00",
+  "generated_at": "2026-09-04T20:48:37.022403+00:00",
   "status": "passed_preregistered_not_executed",
   "passed": true,
   "study_executed": false,
@@ -16,6 +16,7 @@
     "accuracy_and_critical_error_guards_are_fixed": true,
     "privacy_and_analysis_integrity_are_explicit": true,
     "registration_is_authoritative_and_premeasurement": true,
+    "isolated_participant_session_is_frozen": true,
     "evidence_archive_requires_scored_real_bytes": true,
     "preexecution_amendment_is_zero_participant": true,
     "outputs_are_confined_and_exact": true,
@@ -32,12 +33,13 @@
     "case_pack_execution_remains_zero": true
   },
   "artifact_sha256": {
-    "data/evaluation/product_value_validation_protocol_v1.json": "441c1a1048762bd93602d7f41244c7022c69be5792798974da315e57ab0f2e1e",
-    "scripts/product_value_study.py": "5776bfa0dc82a5cb71c0c5e2ca274f3ead31f36d4bda0f08f5b1278fe9d7a158",
-    "docs/PRODUCT_VALUE_STUDY.md": "36144bad2175074c4341dd13cc0c0d1346fbde3530f15fe8c0d8a39bd56a01bd",
+    "data/evaluation/product_value_validation_protocol_v1.json": "3983a821044173b89c3fc31a3f3f0df7227f4728ac7b19d555766819984dec7b",
+    "scripts/product_value_study.py": "8fca7724abf037bded236887eb813551766d57571d42b616e605b15224be1ebb",
+    "docs/PRODUCT_VALUE_STUDY.md": "f936c2cb1fc236907f613af8c3b98ee8c3e664efda12d5b5d8094c20a95a4b5a",
     "data/evaluation/product_value_case_packs_v1.json": "2c683fe25545362661c3baa6600c2482b45cfcbe32fa908b5deebb8b5ed09173",
     "data/evaluation/product_value_scoring_seal_v1.json": "71277f9415c8348eec0cf08a40555453d2ad7125c76bc2744f205585118188fe",
-    "src/product/human_study.py": "446fc3a975d45b40948eef51848106e06db025db39fb6056a46658d890b5064f"
+    "src/product/human_study.py": "446fc3a975d45b40948eef51848106e06db025db39fb6056a46658d890b5064f",
+    "src/product/study_session.py": "7282644d5b5c6717d62f7e07927b415346a4f6f8679390061f9c10cd231096bb"
   },
   "external_calls_made": false,
   "training_executed": false,

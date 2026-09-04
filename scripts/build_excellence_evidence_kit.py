@@ -314,7 +314,7 @@ def build_template_files(root: Path = ROOT) -> dict[str, bytes]:
     }
     manuscript = """# GFS completed-results manuscript template
 
-TEMPLATE ONLY — this is not a completed manuscript and contains no result.
+TEMPLATE ONLY -- this is not a completed manuscript and contains no result.
 Copy the preexecution draft only after both study stages and independent
 reproduction are complete. Build the result ledger, replace every placeholder,
 and then run the finalization verifier.
@@ -365,6 +365,11 @@ Workflow:
    values to satisfy a threshold.
 6. Run the exact command shown by `python gfs.py studio excellence`.
 7. Treat a passing verifier with current hashes as the only machine gate.
+
+The comparative product-value receipt and record files are schema-review
+templates only. Do not hand-author them as evidence. Use the repository's
+isolated `value-study provision|serve|import` workflow so the server owns case
+disclosure, timing, structured receipt bytes and the attested import boundary.
 
 The kit generator makes no provider call and runs no match, study, container,
 training job, or formal experiment.
@@ -465,6 +470,11 @@ def verify_kit(root: Path = ROOT) -> dict[str, Any]:
                 b"gfs-studio-product-value-scoring-seal-v1" not in content
                 for content in files.values()
             )
+        ),
+        "participant_value_templates_require_session_runner": (
+            b"schema-review" in files["README.md"]
+            and b"Do not hand-author them as evidence" in files["README.md"]
+            and b"value-study provision|serve|import" in files["README.md"]
         ),
     }
     passed = all(checks.values())

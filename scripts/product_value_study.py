@@ -76,6 +76,7 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
     current = protocol.get("current_execution") or {}
     allocation = protocol.get("allocation") or {}
     registration = protocol.get("registration") or {}
+    session = protocol.get("session_execution") or {}
     archive = protocol.get("evidence_archive") or {}
     amendments = protocol.get("preexecution_amendments") or []
     return {
@@ -154,6 +155,20 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             and integrity.get("evidence_hashes_verified_against_real_files") is True
             and integrity.get("correctness_recomputed_from_structured_receipts")
             is True
+            and integrity.get("isolated_participant_session_required") is True
+            and integrity.get("server_authoritative_condition_timing") is True
+            and integrity.get("future_condition_preexposure_forbidden") is True
+            and integrity.get(
+                "participant_capability_plaintext_storage_forbidden"
+            ) is True
+            and integrity.get("moderator_attestation_required_before_import")
+            is True
+            and integrity.get(
+                "completion_record_recoverable_from_committed_state"
+            ) is True
+            and integrity.get(
+                "remote_session_rejects_nonloopback_forwarded_headers"
+            ) is True
         ),
         "registration_is_authoritative_and_premeasurement": (
             registration.get("registry_kind")
@@ -166,6 +181,43 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             and registration.get("consent_required") is True
             and registration.get("duplicate_registration_policy")
             == "idempotent_exact_match"
+        ),
+        "isolated_participant_session_is_frozen": (
+            session.get("runner_kind")
+            == "gfs_product_value_participant_session_v1"
+            and session.get("participant_runtime_is_external_to_repository") is True
+            and session.get("capability_token_minimum_characters") == 32
+            and session.get("capability_token_minimum_distinct_characters") == 8
+            and session.get("capability_plaintext_persistence_forbidden") is True
+            and session.get("launch_token_transport")
+            == "url_fragment_then_bearer_header"
+            and session.get("training_task_required_before_measurement") is True
+            and session.get("training_task_is_unscored") is True
+            and session.get("condition_content_revealed_only_after_server_start")
+            is True
+            and session.get("future_condition_preexposure_forbidden") is True
+            and session.get("server_authoritative_deadline_seconds") == 900
+            and session.get("submission_policy")
+            == "first_valid_submission_wins_idempotent_by_submission_id"
+            and session.get(
+                "idempotent_retry_requires_exact_answers_and_verified_receipt"
+            ) is True
+            and session.get("completion_commit_policy")
+            == "atomic_state_first_then_idempotent_derived_record"
+            and session.get("remote_transport_policy")
+            == "loopback_service_same_host_trusted_https_proxy"
+            and session.get("correctness_feedback_during_session") is False
+            and session.get("critical_error_policy")
+            == {
+                "field": "supported_claim",
+                "values": [
+                    "proven_real_world_tactic", "guaranteed_match_win",
+                ],
+            }
+            and session.get(
+                "completed_record_import_requires_moderator_attestation"
+            ) is True
+            and session.get("participant_service_exposes_studio_routes") is False
         ),
         "evidence_archive_requires_scored_real_bytes": (
             archive.get("layout") == ARCHIVE_LAYOUT
@@ -184,6 +236,8 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             == [
                 "authoritative-randomized-value-study-v1",
                 "blinded-delivery-and-scoring-seal-v1",
+                "isolated-participant-session-runner-v1",
+                "participant-session-recovery-and-proxy-hardening-v1",
             ]
             and all(
                 row.get("participants_observed_before_amendment") == 0
@@ -472,6 +526,9 @@ def protocol_report(protocol_path: Path = PROTOCOL_PATH) -> dict[str, Any]:
             ),
             "src/product/human_study.py": file_sha256(
                 ROOT / "src/product/human_study.py"
+            ),
+            "src/product/study_session.py": file_sha256(
+                ROOT / "src/product/study_session.py"
             ),
         },
         "external_calls_made": False,

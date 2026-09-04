@@ -367,6 +367,63 @@ def cmd_studio_value_study_packet(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_studio_value_study_provision(args: argparse.Namespace) -> int:
+    """Provision an external, capability-bound participant session."""
+    import json
+    from src.product import provision_participant_session
+
+    result = provision_participant_session(
+        args.base_dir,
+        registration_id=args.registration_id,
+        session_root=args.session_root,
+        origin=args.origin,
+    )
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_studio_value_study_import(args: argparse.Namespace) -> int:
+    """Attest and import one completed external participant record."""
+    import json
+    from src.product import import_completed_session
+
+    result = import_completed_session(
+        args.base_dir,
+        session_file=args.session_file,
+        evidence_root=args.evidence_root,
+        observer_attested=args.attest_observed_session,
+    )
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_studio_value_study_serve(args: argparse.Namespace) -> int:
+    """Serve one isolated participant session without Studio routes."""
+    from src.product import create_participant_study_server
+
+    allowed_hosts = tuple(args.allowed_host or ())
+    server = create_participant_study_server(
+        args.base_dir,
+        session_file=args.session_file,
+        evidence_root=args.evidence_root,
+        host=args.host,
+        port=args.port,
+        allow_remote=args.allow_remote,
+        allowed_hosts=allowed_hosts,
+    )
+    print(f"GFS isolated participant session: http://{args.host}:{server.server_port}")
+    if args.allow_remote:
+        print("TLS must terminate at the trusted reverse proxy.")
+    print("Only participant-session routes are mounted. Press Ctrl+C to stop.")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nParticipant session stopped.")
+    finally:
+        server.server_close()
+    return 0
+
+
 def cmd_studio_stop_job(args: argparse.Namespace) -> int:
     path = ProductControlPlane(args.base_dir).request_stop(args.run_id)
     print(f"Cooperative stop requested: {path}")
@@ -544,6 +601,40 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_value_packet.add_argument("--overwrite", action="store_true")
     p_value_packet.set_defaults(func=cmd_studio_value_study_packet)
+    p_value_provision = value_study_sub.add_parser(
+        "provision",
+        help="Provision an external one-condition-at-a-time participant session",
+    )
+    p_value_provision.add_argument("--registration-id", required=True)
+    p_value_provision.add_argument(
+        "--session-root", required=True,
+        help="Absolute session directory outside the project repository",
+    )
+    p_value_provision.add_argument(
+        "--origin", default="http://127.0.0.1:8876",
+        help="Bare participant-service origin used in the one-time launch URL",
+    )
+    p_value_provision.set_defaults(func=cmd_studio_value_study_provision)
+    p_value_serve = value_study_sub.add_parser(
+        "serve", help="Serve one provisioned participant session",
+    )
+    p_value_serve.add_argument("--session-file", required=True)
+    p_value_serve.add_argument("--evidence-root", required=True)
+    p_value_serve.add_argument("--host", default="127.0.0.1")
+    p_value_serve.add_argument("--port", type=int, default=8876)
+    p_value_serve.add_argument("--allow-remote", action="store_true")
+    p_value_serve.add_argument("--allowed-host", action="append", default=[])
+    p_value_serve.set_defaults(func=cmd_studio_value_study_serve)
+    p_value_import = value_study_sub.add_parser(
+        "import", help="Attest and import a completed external session record",
+    )
+    p_value_import.add_argument("--session-file", required=True)
+    p_value_import.add_argument("--evidence-root", required=True)
+    p_value_import.add_argument(
+        "--attest-observed-session", action="store_true",
+        help="Record the frozen moderator observer attestation",
+    )
+    p_value_import.set_defaults(func=cmd_studio_value_study_import)
     p_studio_stop = studio_sub.add_parser(
         "stop-job", help="Request a safe stop at the next epoch boundary",
     )

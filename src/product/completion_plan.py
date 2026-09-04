@@ -128,6 +128,17 @@ STEPS = (
          "--moderator-id moderator-replace0001 --confirm-consent",
          "python gfs.py --base-dir . studio value-study packet "
          "--registration-id REG-000000000000000000000000",
+         "python gfs.py --base-dir . studio value-study provision "
+         "--registration-id REG-000000000000000000000000 "
+         "--session-root REPLACE_EXTERNAL_SESSION_ROOT "
+         "--origin https://REPLACE_STUDY_HOST",
+         "python gfs.py --base-dir . studio value-study serve "
+         "--session-file REPLACE_EXTERNAL_SESSION_FILE "
+         "--evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE",
+         "python gfs.py --base-dir . studio value-study import "
+         "--session-file REPLACE_EXTERNAL_SESSION_FILE "
+         "--evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE "
+         "--attest-observed-session",
          "python scripts/product_value_study.py --analyze --records "
          "data/evaluation/product_value_validation_v1/participant_records.jsonl "
          "--registry data/evaluation/product_value_validation_v1/session_registry.json "
@@ -141,6 +152,9 @@ STEPS = (
             "data/evaluation/product_value_validation_v1/participant_records.jsonl",
             "controlled content-addressed structured receipt archive",
             "identity-bound scoring-key-free participant packets",
+            "external capability-bound participant session directory",
+            "isolated participant service behind HTTPS for remote delivery",
+            "explicit moderator attestation for each completed session",
             "valid registry-assigned comparative target-user records",
         ),
     ),

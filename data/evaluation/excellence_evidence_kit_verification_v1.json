@@ -5,7 +5,7 @@
   "passed": true,
   "kit_id": "gfs-excellence-evidence-kit-v1",
   "template_count": 9,
-  "archive_sha256": "131d505d9cbabd32493105c1d0993b98db27222247b3f580a0c1f9249accc211",
+  "archive_sha256": "b9661ec185fc9f9a82f3cccca22bc889ac84c6a299730c6b4c82c8c9b851f7b1",
   "checks": {
     "template_inventory_is_exact": true,
     "all_json_templates_are_explicitly_non_evidence": true,
@@ -14,18 +14,19 @@
     "archive_paths_are_relative_and_normalized": true,
     "archive_is_deterministic": true,
     "participant_case_authority_excludes_scoring_material": true,
-    "moderator_scoring_seal_is_excluded_from_kit": true
+    "moderator_scoring_seal_is_excluded_from_kit": true,
+    "participant_value_templates_require_session_runner": true
   },
   "artifact_sha256": {
     "data/evaluation/security_closure_protocol_v2.json": "3f97b83f214a3d2cc0466022f96d0cdc6fca765a1cc9e77da115ab4cc4a66777",
     "data/evaluation/product_validation_protocol_v1.json": "3cdbc8c0569a822bbf97e094667d97645b44fedf2a830bf91d18ce7072e6d322",
     "data/evaluation/production_validation_protocol_v1.json": "0f411e08287e5abec4f9549d960d35e45dd2c1ccb886c7bf2ae7283ca99b95eb",
-    "data/evaluation/product_value_validation_protocol_v1.json": "441c1a1048762bd93602d7f41244c7022c69be5792798974da315e57ab0f2e1e",
+    "data/evaluation/product_value_validation_protocol_v1.json": "3983a821044173b89c3fc31a3f3f0df7227f4728ac7b19d555766819984dec7b",
     "data/evaluation/product_value_case_packs_v1.json": "2c683fe25545362661c3baa6600c2482b45cfcbe32fa908b5deebb8b5ed09173",
     "data/evaluation/independent_action_reproduction_protocol_v2.json": "72076edd1285e36b33aa81b15b578d3742674e47155c19fb21f2177df563978e",
     "data/evaluation/action_paper_finalization_protocol_v2.json": "9fb07ab8d4f36022438e0e7e22ef235d42051dd81b75369f0e3a3ebd94604fa5",
-    "scripts/build_excellence_evidence_kit.py": "39b1e3c129de5674847d101e5b420ea3c70a2b941cd259f4aca7e08b3ef67400",
-    "docs/EXCELLENCE_EVIDENCE_KIT.md": "b59348939edb2dca01dd739ef8ee27e4e082ecc531f45edc77394854e4a68af3"
+    "scripts/build_excellence_evidence_kit.py": "fe62af989a58c7d6eb3f64192917b81e9d2aeb4b6468bbae021a20804e88354f",
+    "docs/EXCELLENCE_EVIDENCE_KIT.md": "241a19c3c8299b5c4b419f700601e4734864e0462861002a9754635dbe5bae21"
   },
   "external_calls_made": false,
   "matches_executed": 0,

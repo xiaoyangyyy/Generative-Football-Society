@@ -2,6 +2,14 @@
 
 ## Unreleased - v7 candidate
 
+- Added an external capability-bound participant-session runner for the
+  preregistered product-value study with an unscored tutorial, server-owned
+  deadlines, one-condition-at-a-time disclosure, differentiated GFS/baseline
+  presentation, idempotent structured receipts, timeout handling, CSP/Host/TLS
+  hardening and explicit moderator-attested evidence import. Completion records
+  now recover deterministically after a state-commit crash, idempotent retries
+  require exact receipt-backed answers, and remote service traffic is accepted
+  only through a same-host trusted HTTPS proxy.
 - Separated product-value participant cases from a case-hash-bound moderator
   scoring seal and added deterministic blinded packet delivery through Studio
   CLI/Web with aggregate-only status, CSRF, normalized telemetry, symlink-safe
