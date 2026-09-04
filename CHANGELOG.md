@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Reformatted the complete remaining frame-world and subtick-reception core
+  debt, making all of `src/match_engine` pass the default Ruff gate while
+  preserving exact ASTs for action routing, continuous/temporal state,
+  calibration, pressure, pass and reception behavior.
 - Reformatted the four remaining compressed active research scripts for frame
   actions, temporal-provider construction, large shadow evaluation, and the
   v7 probabilistic trainer; documented their repository-bootstrap import
