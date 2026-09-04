@@ -357,10 +357,6 @@ def observe_policy_intervention_outcomes(
             now=now,
             anchor=anchor,
         )
-        progress = float(realized["progress"])
-        xg_net = float(realized["xg_net_delta"])
-        goal_delta = float(realized["goal_diff_delta"])
-        retained = bool(realized["retained_possession"])
         utility = float(realized["policy_utility"])
         interval_monitor = _observe_interval_risk(
             record,

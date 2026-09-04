@@ -2,6 +2,9 @@
 
 ## Unreleased - v7 candidate
 
+- Made all active graph-temporal frame encoders explicitly disable PyTorch's
+  unavailable nested-tensor fast path, removing misleading runtime warnings,
+  and removed dead policy-outcome observations without changing outputs.
 - Restored parse and static-analysis health for active tracking/baseline data
   builders, completed missing runtime type imports, and replaced silent coach
   intervention failures with explicit input-preserving behavior and regression

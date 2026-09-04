@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from src.data_engine.entity_dynamics import (
     COACH_PRESET_HINTS,
@@ -16,7 +16,6 @@ from src.data_engine.entity_dynamics import (
     dominant_preset,
     preset_affinities,
 )
-from src.match_engine.tactical_catalog import TACTICAL_PRESETS, infer_archetype_from_text
 
 
 @dataclass
@@ -123,7 +122,7 @@ def build_coach_profile_payload(
         coach_name=name,
     )
     u_meta = mental_raw.pop("_dynamics_u", {})
-    inferred = mental_raw.pop("_inferred_preset", "balanced")
+    mental_raw.pop("_inferred_preset", "balanced")
     aff = preset_affinities(mental_raw, style_desc)
     preset = infer_preferred_preset(mental_raw, style_desc, name)
     return {
