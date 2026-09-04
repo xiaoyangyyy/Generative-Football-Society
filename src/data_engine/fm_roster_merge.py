@@ -192,8 +192,6 @@ def build_fm_only_roster(
     sorted_fm = sorted(fm_players, key=lambda x: int(x.get("ca") or 0), reverse=True)
 
     out_players: List[Dict[str, Any]] = []
-    used_roles = []
-
     for i, fm in enumerate(sorted_fm[:23]):
         role = fm_position_to_role(fm.get("position", ""))
         if i < len(roles_needed):

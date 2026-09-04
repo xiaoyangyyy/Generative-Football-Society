@@ -100,7 +100,7 @@ class WorldEngine:
         if target:
             content = f"@{target} {content}"
             
-        post = self.feed.publish(agent.team_name, content, tags=[topic, agent.region])
+        self.feed.publish(agent.team_name, content, tags=[topic, agent.region])
         print(f"POST: {agent.team_name}: {content}")
         
         # Target reacts

@@ -21,25 +21,8 @@ class AgentMatchDynamicsMixin:
         # As momentum grows for LOW EXPOSURE teams, Gamma approaches 1.0
         gamma = np.tanh(self.momentum * (1.0 - self.media_exposure)**2)
         
-        # 3. Base Impact & Rivalry
-        hate_score = self.rivalry_database.get(opp_name, 0.0)
-        res_val = 1.4 if match_result == "win" else (-1.6 if match_result == "loss" else 0.2)
-        if match_result == "loss": res_val *= (1.0 + hate_score * 1.5)
-        
-        # 4. Decoupled Social Feedback with Gamma-Inversion
-        social_impact_base = social_chaos * (1.0 + self.media_exposure ** 3)
-        # Flip: (1 - 2.5 * gamma) makes negative chaos POSITIVE for high-momentum weak teams
-        final_social_contribution = social_impact_base * (1.0 - 1.6 * gamma)
-        
-        # 5. Internal Pressure Transmission
-        pres_pressure = social_chaos * self.roles["President"]["media_sensitivity"]
-        
-        # 6. Legacy psych terms preserved as continuous drivers in latent updates.
-        X_t = np.array([
-            res_val + (score_diff * 0.1),
-            prof_score * 0.4,
-            -final_social_contribution * 0.5 - (pres_pressure * 0.3),
-        ])
+        # Match result and social pressure enter the canonical appraisal below.
+        # Do not maintain a second, uncalibrated legacy driver vector.
         
         upset = bool(match_result == "win" and (opp_status - self.status_score) > 12.0)
         referee_controversy = 1.0 if self.referee_grievance > 0.42 else 0.0

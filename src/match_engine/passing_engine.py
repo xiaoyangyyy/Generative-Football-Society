@@ -837,7 +837,7 @@ class PassingEngine:
 
         from src.match_engine.ball_path_logger import ball_log_wm_snapshot_enabled
 
-        obs_pre = obs_post = None
+        obs_pre = None
         if ball_log_wm_snapshot_enabled():
             from src.match_engine.world_model.observation import encode_observation
 

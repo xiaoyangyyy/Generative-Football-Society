@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Removed the remaining unused-local assignments from active runtime modules,
+  including a long-dead uncalibrated duplicate psychology vector, while adding
+  direct FM-only roster provenance coverage and preserving canonical appraisal,
+  passing, social-feed and calibration behavior.
 - Made all active graph-temporal frame encoders explicitly disable PyTorch's
   unavailable nested-tensor fast path, removing misleading runtime warnings,
   and removed dead policy-outcome observations without changing outputs.

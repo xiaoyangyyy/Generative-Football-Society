@@ -75,8 +75,6 @@ def target_completion(kind: str, dist_norm: float, *, base_dir: str = ".") -> fl
     short_t = float(t.get("short", 0.853))
     through_t = float(t.get("through", 0.74))
     long_t = float(t.get("long", 0.6221))
-    overall_t = float(t.get("overall", cal.get("overall_completion", 0.8224)))
-
     if kind == "long" or dist_norm >= long_min:
         return long_t
     if kind == "through":
