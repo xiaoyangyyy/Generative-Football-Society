@@ -118,7 +118,7 @@ def main():
         if agent.tier == 'Core Power':
             agent.add_memory(f"Historical Heritage: We are the pillars of football history. Our status score is {agent.status_score:.1f}.", importance=10)
         elif agent.status_score > 60:
-            agent.add_memory(f"Ambition: We are rising. World Cup 2026 is our stage to challenge the old order.", importance=8)
+            agent.add_memory("Ambition: We are rising. World Cup 2026 is our stage to challenge the old order.", importance=8)
 
     # RUN THE ENTIRE TOURNAMENT
     tournament.run_full_tournament(resume=args.resume)

@@ -16,7 +16,7 @@ def run_journey(team_name: str, memory: dict, stats, *, root_seed: int = 42):
     team_agent = TeamAgent()
     speech = team_agent.analyze(team_name, memory)
     
-    print(f"[Journey] Awakening Prophet Agent to write the epic...")
+    print("[Journey] Awakening Prophet Agent to write the epic...")
     prophet = ProphetAgent()
     epic = prophet.analyze(team_name, final_fate, journey_log)
     

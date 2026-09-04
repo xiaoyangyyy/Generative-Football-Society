@@ -110,8 +110,8 @@ def simulate_full_tournament(stats, verbose=True, rng=None):
         
         if verbose:
             report_lines.append("")
-            report_lines.append(f"| Pos | Team | Pts | GF | GA | GD |")
-            report_lines.append(f"|-----|------|-----|----|----|-----|")
+            report_lines.append("| Pos | Team | Pts | GF | GA | GD |")
+            report_lines.append("|-----|------|-----|----|----|-----|")
             for pos, entry in enumerate(group_standings[group_name], 1):
                 gd_str = f"+{entry['gd']}" if entry['gd'] >= 0 else str(entry['gd'])
                 report_lines.append(f"| {pos} | {entry['team']} | {entry['pts']} | {entry['gf']} | {entry['ga']} | {gd_str} |")

@@ -2,6 +2,9 @@
 
 ## Unreleased - v7 candidate
 
+- Removed all 15 placeholder-free f-strings after Unicode verification proved
+  their static symbols and headings were intact, eliminating misleading
+  interpolation markers without changing generated reports or console output.
 - Completed repository-wide unused-import closure by removing the final 30
   dead imports from active/legacy scripts and tests, with every modified script
   compiled and every affected test module executed before full-suite review.

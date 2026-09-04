@@ -285,7 +285,7 @@
       "src/simulation/standings.py": "71b13915b26cb6a7f962a55e19b59ff827f47c5957e6e603a59ef215f5539fe4",
       "src/simulation/tactical_matchup.py": "5b0b4bd24b79b2b4bab4623ad46d4f879d37ac5d727de33cd3c4dec5e9d176f2",
       "src/simulation/tactics_sync.py": "d69853536ffe7c2ae085b5469bfcf226a190fea485bf5fcf2302bc45e58cdf1e",
-      "src/simulation/tournament_2026.py": "7618489986231f83b4d48ee566197c0991aad1f008fe00c7b985d489b758242a",
+      "src/simulation/tournament_2026.py": "2fa39ed6b42b5895d76487ba39519a2dad6a41ed2622742dccee17209a3dca6e",
       "src/simulation/tournament_checkpoint.py": "306eeadecd6b2fd740b251e87842aa012d49496c4289df363329047aa5aa593a",
       "src/simulation/tournament_finalize.py": "9d0a9e6ad6a7556cf39b3d7f2513b6b03ffd7be427cdffc498c170dbb8d445da",
       "src/simulation/tournament_match.py": "36883a778ed3f19efaa1247e4c07e5f28ce0aee2497fb62b0798f3322f43be0b",
@@ -333,7 +333,7 @@
   "next_action": "run the frozen M2 training command",
   "protocol_id": "m2-mirrored-policy-v1",
   "ready": true,
-  "recorded_at": "2026-09-04T22:03:24.848388+00:00",
+  "recorded_at": "2026-09-04T22:22:11.414220+00:00",
   "schema_version": 1,
   "sealed_test": {
     "rows_loaded_for_model_selection": 0,

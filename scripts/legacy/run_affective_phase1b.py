@@ -59,7 +59,7 @@ def main():
         "bias_t1": 0.05,
     }
 
-    print(f"=== Phase 1b Affective Simulation ===")
+    print("=== Phase 1b Affective Simulation ===")
     print(f"Match: {args.home} vs {args.away} | Poisson prior {gh}-{ga} xG {xg1:.2f}-{xg2:.2f}")
     print(f"dt={cfg.dt_default}s ticks≈{int(cfg.match_seconds / cfg.dt_default)}")
 
@@ -80,30 +80,30 @@ def main():
         writeback_agents=True,
     )
 
-    print(f"\n--- Crowd / Coach / Ref ---")
+    print("\n--- Crowd / Coach / Ref ---")
     print(f"  ψ_final = {summary.final_psi:+.3f}")
     print(f"  coach stress = {summary.home_coach_stress:.3f} / {summary.away_coach_stress:.3f}")
     print(f"  ref strictness (mean) = {summary.ref_strictness_mean:.3f}")
     print(f"  controversy ∫ = {summary.controversy_integral:.3f}")
 
-    print(f"\n--- Team emotion (mean on pitch) ---")
+    print("\n--- Team emotion (mean on pitch) ---")
     for label, emo in ((args.home, summary.home_emotion_mean), (args.away, summary.away_emotion_mean)):
         print(
             f"  {label}: pride={emo.get('pride', 0):.3f} anger={emo.get('anger', 0):.3f} "
             f"fear={emo.get('fear', 0):.3f} det={emo.get('determination', 0):.3f}"
         )
 
-    print(f"\n--- Tactical drift (L1 vs kickoff) ---")
+    print("\n--- Tactical drift (L1 vs kickoff) ---")
     print(f"  {args.home}: {summary.tactical_drift_home:.3f}")
     print(f"  {args.away}: {summary.tactical_drift_away:.3f}")
     print(f"  {args.home} controls now: {a1.tactical_controls}")
 
     if summary.timeline_snippet:
-        print(f"\n--- Key micro-events ---")
+        print("\n--- Key micro-events ---")
         for line in summary.timeline_snippet:
             print(f"  {line}")
 
-    print(f"\n--- Sample player modulators (home ST) ---")
+    print("\n--- Sample player modulators (home ST) ---")
     from src.match_engine.affective_coupling import AffectiveSpatialCoupling
     from src.match_engine.macro_bridge import build_match_affective_state
     import numpy as np

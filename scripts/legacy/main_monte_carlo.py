@@ -69,9 +69,9 @@ def main():
     
     # Generate report
     report_lines = [
-        f"# 2026 World Cup: Monte Carlo Championship Probability Report",
+        "# 2026 World Cup: Monte Carlo Championship Probability Report",
         f"**Simulations Run:** {n:,}",
-        f"**Engine:** Poisson Score Simulation + Penalty Shootout\n",
+        "**Engine:** Poisson Score Simulation + Penalty Shootout\n",
         "## Championship Probability Table (夺冠概率表)\n",
         "| Rank | Team | Status Score | Championships | Probability |",
         "|------|------|-------------|---------------|-------------|"
@@ -86,7 +86,7 @@ def main():
     
     # Summary stats
     top5 = results[:5]
-    report_lines.append(f"\n## Key Insights\n")
+    report_lines.append("\n## Key Insights\n")
     report_lines.append(f"- **Most Likely Champion:** {results[0]['team']} ({results[0]['prob']:.2f}%)")
     report_lines.append(f"- **Top 5 Combined Probability:** {sum(r['prob'] for r in top5):.1f}%")
     
@@ -106,7 +106,7 @@ def main():
     print(f"\n{'='*60}")
     print(f"  MONTE CARLO SIMULATION COMPLETE ({n:,} runs)")
     print(f"{'='*60}")
-    print(f"\n  Top 10 Championship Probabilities:")
+    print("\n  Top 10 Championship Probabilities:")
     for i, r in enumerate(results[:10], 1):
         print(f"  {i:2d}. {r['team']:20s}  {r['prob']:6.2f}%  ({r['wins']:,} wins)")
     print(f"\n  Full report saved to: {out_path}")

@@ -352,7 +352,7 @@ class TournamentManager(TournamentMatchMixin):
         print(f"[ADVANCE] {len(self.qualified_teams)} teams qualified; R32 bracket seeded ({len(self.r32_fixtures)} fixtures).")
 
     def simulate_knockout_round(self, round_name, num_teams, llm):
-        print(f"\n" + "="*60 + f"\n🏆 {round_name.upper()}\n" + "="*60)
+        print("\n" + "="*60 + f"\n🏆 {round_name.upper()}\n" + "="*60)
         next_round = []
         current_batch = self.qualified_teams[:num_teams]
         if round_name == "Round of 32" and self.r32_fixtures:
