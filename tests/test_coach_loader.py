@@ -1,4 +1,3 @@
-import json
 import os
 
 from src.data_engine.coach_loader import (
@@ -47,3 +46,17 @@ def test_attach_coaches_to_agent():
     attach_coaches_to_agents({"Brazil": agent}, {"Brazil": prof})
     assert agent.coach_name == "Carlo Ancelotti"
     assert agent.coach_profile.preferred_preset == "possession_control"
+
+
+def test_coach_intervention_is_explicit_and_preserves_invalid_input():
+    agent = SocietyAgent(
+        "Brazil", {"tier": "Core", "final_status_score": 80}
+    )
+    original = agent.formation
+    agent.coach_intervention(None)
+    agent.coach_intervention("No structured formation")
+    agent.coach_intervention("Formation:   ")
+    assert agent.formation == original
+
+    agent.coach_intervention("Reasoning: compact block|Formation: 4-2-3-1")
+    assert agent.formation == "4-2-3-1"

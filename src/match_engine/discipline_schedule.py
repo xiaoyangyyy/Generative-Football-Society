@@ -8,7 +8,12 @@ import numpy as np
 
 from src.match_engine.config import AffectiveConfig
 from src.match_engine.micro_events import MicroEvent, MicroEventType
-from src.match_engine.state import MatchAffectiveState, PlayerModulators, TeamAffectiveState
+from src.match_engine.state import (
+    MatchAffectiveState,
+    PlayerAffectiveState,
+    PlayerModulators,
+    TeamAffectiveState,
+)
 
 if TYPE_CHECKING:
     from src.match_engine.micro_config import MicroMatchConfig
@@ -34,7 +39,9 @@ def team_press_factor(tac: Dict[str, float]) -> float:
     cp = float(tac.get("counterpress", 0.5))
     hp = float(tac.get("high_press", 0.5))
     mop = float(tac.get("man_oriented_press", 0.5))
-    return float(np.clip(0.52 + 0.28 * p + 0.14 * cp + 0.10 * hp + 0.08 * mop, 0.55, 1.40))
+    return float(
+        np.clip(0.52 + 0.28 * p + 0.14 * cp + 0.10 * hp + 0.08 * mop, 0.55, 1.40)
+    )
 
 
 def team_possession_foul_relief(tac: Dict[str, float]) -> float:
@@ -67,7 +74,11 @@ def team_foul_weight(
     mod_map: Dict[str, PlayerModulators],
 ) -> float:
     tac = dict(team.coach.tactical_current or team.coach.tactical_base or {})
-    return team_press_factor(tac) * team_possession_foul_relief(tac) * team_impulse_factor(team, mod_map)
+    return (
+        team_press_factor(tac)
+        * team_possession_foul_relief(tac)
+        * team_impulse_factor(team, mod_map)
+    )
 
 
 def expected_match_fouls(
@@ -91,14 +102,23 @@ def pick_weighted_outfield(
     team: TeamAffectiveState,
     rng: np.random.Generator,
     mod_map: Dict[str, PlayerModulators],
-) -> "PlayerAffectiveState":
+) -> PlayerAffectiveState:
     from src.match_engine.squad_factory import pick_random_outfield_player
 
     pool = [p for p in team.players if p.on_pitch and p.role != "GK"]
     if not pool:
         return pick_random_outfield_player(team, rng)
     w = np.array(
-        [max(0.05, float(mod_map.get(p.player_id, PlayerModulators(p.player_id)).foul_impulse) + 0.08) for p in pool],
+        [
+            max(
+                0.05,
+                float(
+                    mod_map.get(p.player_id, PlayerModulators(p.player_id)).foul_impulse
+                )
+                + 0.08,
+            )
+            for p in pool
+        ],
         dtype=float,
     )
     w /= w.sum()
@@ -163,7 +183,7 @@ def emit_tick_discipline(
 ) -> List[MicroEvent]:
     """
     Continuous in-play fouls/cards from lambda_foul, pressing style, and live foul_impulse.
-  """
+    """
     if not getattr(cfg, "discipline_tick_fouls", True):
         return []
 
@@ -176,7 +196,9 @@ def emit_tick_discipline(
         dt=dt,
         referee_strictness=referee_strictness,
         foul_target_base=float(getattr(cfg, "discipline_foul_target_base", 14.0)),
-        foul_target_ref_slope=float(getattr(cfg, "discipline_foul_target_ref_slope", 11.0)),
+        foul_target_ref_slope=float(
+            getattr(cfg, "discipline_foul_target_ref_slope", 11.0)
+        ),
     )
     if rng.random() >= p:
         return []
@@ -196,7 +218,13 @@ def emit_tick_discipline(
             event_type=MicroEventType.FOUL_COMMITTED,
             team_id=side.team_id,
             player_id=committer.player_id,
-            intensity=0.5 + 0.25 * float(side_mod.get(committer.player_id, PlayerModulators(committer.player_id)).foul_impulse),
+            intensity=0.5
+            + 0.25
+            * float(
+                side_mod.get(
+                    committer.player_id, PlayerModulators(committer.player_id)
+                ).foul_impulse
+            ),
         ),
         MicroEvent(
             t_sec=float(state.clock_seconds),
@@ -217,10 +245,17 @@ def emit_tick_discipline(
             )
         )
 
-    fi = float(side_mod.get(committer.player_id, PlayerModulators(committer.player_id)).foul_impulse)
-    p_yellow = float(getattr(cfg, "discipline_yellow_on_foul_base", 0.055)) + float(
-        getattr(cfg, "discipline_yellow_on_foul_ref", 0.075)
-    ) * referee_strictness + 0.04 * fi
+    fi = float(
+        side_mod.get(
+            committer.player_id, PlayerModulators(committer.player_id)
+        ).foul_impulse
+    )
+    p_yellow = (
+        float(getattr(cfg, "discipline_yellow_on_foul_base", 0.055))
+        + float(getattr(cfg, "discipline_yellow_on_foul_ref", 0.075))
+        * referee_strictness
+        + 0.04 * fi
+    )
     if rng.random() < p_yellow:
         events.append(
             MicroEvent(
@@ -232,9 +267,10 @@ def emit_tick_discipline(
             )
         )
 
-    p_red = float(getattr(cfg, "discipline_red_on_foul_base", 0.004)) + float(
-        getattr(cfg, "discipline_red_drama_gain", 0.012)
-    ) * drama_score
+    p_red = (
+        float(getattr(cfg, "discipline_red_on_foul_base", 0.004))
+        + float(getattr(cfg, "discipline_red_drama_gain", 0.012)) * drama_score
+    )
     if rng.random() < p_red:
         events.append(
             MicroEvent(
@@ -308,7 +344,9 @@ def emit_tick_cross(
     p = float(np.clip((target / ticks) * (0.68 + 0.52 * wing), 0.0, 0.16))
     if rng.random() >= p:
         return []
-    wide = [p for p in team.players if p.on_pitch and p.role in ("LW", "RW", "LB", "RB")]
+    wide = [
+        p for p in team.players if p.on_pitch and p.role in ("LW", "RW", "LB", "RB")
+    ]
     if not wide:
         return []
     crosser = wide[int(rng.integers(0, len(wide)))]

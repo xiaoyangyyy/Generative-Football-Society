@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Restored parse and static-analysis health for active tracking/baseline data
+  builders, completed missing runtime type imports, and replaced silent coach
+  intervention failures with explicit input-preserving behavior and regression
+  coverage.
 - Added an external capability-bound participant-session runner for the
   preregistered product-value study with an unscored tutorial, server-owned
   deadlines, one-condition-at-a-time disclosure, differentiated GFS/baseline

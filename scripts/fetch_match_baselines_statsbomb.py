@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -52,42 +53,77 @@ def main() -> int:
     fouls = ev[ev["type"] == "Foul Committed"].copy()
 
     pass_att = passes.groupby(gcols).size().rename("passes")
-    pass_cmp = passes[passes["pass_outcome"].isna()].groupby(gcols).size().rename("pass_completed")
+    pass_cmp = (
+        passes[passes["pass_outcome"].isna()]
+        .groupby(gcols)
+        .size()
+        .rename("pass_completed")
+    )
     through_mask = passes.get("pass_through_ball")
     if through_mask is None:
         through_mask = passes.get("pass_type").astype(str) == "Through Ball"
     else:
         through_mask = through_mask.fillna(False).astype(bool)
     through = passes[through_mask].groupby(gcols).size().rename("through_balls")
-    long_pass = passes[pd.to_numeric(passes.get("pass_length"), errors="coerce") >= 30.0].groupby(gcols).size().rename(
-        "long_passes"
+    long_pass = (
+        passes[pd.to_numeric(passes.get("pass_length"), errors="coerce") >= 30.0]
+        .groupby(gcols)
+        .size()
+        .rename("long_passes")
     )
     cross_col = passes.get("pass_cross")
     if cross_col is not None:
-        crosses = passes[cross_col.fillna(False).astype(bool)].groupby(gcols).size().rename("crosses")
+        crosses = (
+            passes[cross_col.fillna(False).astype(bool)]
+            .groupby(gcols)
+            .size()
+            .rename("crosses")
+        )
     else:
-        crosses = passes[passes.get("pass_height").astype(str).str.contains("High", na=False)].groupby(gcols).size().rename(
-            "crosses"
+        crosses = (
+            passes[passes.get("pass_height").astype(str).str.contains("High", na=False)]
+            .groupby(gcols)
+            .size()
+            .rename("crosses")
         )
 
     shot_att = shots.groupby(gcols).size().rename("shots")
     sot_outcomes = {"Goal", "Saved", "Saved To Post"}
-    sot = shots[shots.get("shot_outcome").astype(str).isin(sot_outcomes)].groupby(gcols).size().rename("shots_on_target")
-    goals = shots[shots.get("shot_outcome").astype(str) == "Goal"].groupby(gcols).size().rename("goals")
+    sot = (
+        shots[shots.get("shot_outcome").astype(str).isin(sot_outcomes)]
+        .groupby(gcols)
+        .size()
+        .rename("shots_on_target")
+    )
+    goals = (
+        shots[shots.get("shot_outcome").astype(str) == "Goal"]
+        .groupby(gcols)
+        .size()
+        .rename("goals")
+    )
     xg_col = None
     for cand in ("shot_statsbomb_xg", "xg", "statsbomb_xg"):
         if cand in shots.columns:
             xg_col = cand
             break
     if xg_col is not None:
-        team_xg = pd.to_numeric(shots[xg_col], errors="coerce").groupby([shots["match_id"], shots["team"]]).sum()
+        team_xg = (
+            pd.to_numeric(shots[xg_col], errors="coerce")
+            .groupby([shots["match_id"], shots["team"]])
+            .sum()
+        )
         team_xg.index.names = gcols
         team_xg = team_xg.rename("xg")
     else:
         team_xg = pd.Series(dtype=float, name="xg")
     body = shots.get("shot_body_part", shots.get("body_part"))
     if body is not None:
-        headers = shots[body.astype(str).str.contains("Head", case=False, na=False)].groupby(gcols).size().rename("headers")
+        headers = (
+            shots[body.astype(str).str.contains("Head", case=False, na=False)]
+            .groupby(gcols)
+            .size()
+            .rename("headers")
+        )
     else:
         headers = pd.Series(dtype=float, name="headers")
 
@@ -97,18 +133,35 @@ def main() -> int:
     duels = ev[ev["type"] == "Duel"].copy()
     duel_type = duels.get("duel_type", duels.get("type"))
     if duel_type is not None:
-        tackles = duels[duel_type.astype(str).str.contains("Tackle", case=False, na=False)].groupby(gcols).size().rename(
-            "tackles"
+        tackles = (
+            duels[duel_type.astype(str).str.contains("Tackle", case=False, na=False)]
+            .groupby(gcols)
+            .size()
+            .rename("tackles")
         )
     else:
         tackles = pd.Series(dtype=float, name="tackles")
 
     cards = ev[ev["type"] == "Bad Behaviour"].copy()
-    yc = cards[cards.get("bad_behaviour_card").astype(str).isin(["Yellow Card", "Second Yellow"])].groupby(gcols).size().rename(
-        "yellow_cards"
+    yc = (
+        cards[
+            cards.get("bad_behaviour_card")
+            .astype(str)
+            .isin(["Yellow Card", "Second Yellow"])
+        ]
+        .groupby(gcols)
+        .size()
+        .rename("yellow_cards")
     )
-    rc = cards[cards.get("bad_behaviour_card").astype(str).isin(["Red Card", "Second Yellow"])].groupby(gcols).size().rename(
-        "red_cards"
+    rc = (
+        cards[
+            cards.get("bad_behaviour_card")
+            .astype(str)
+            .isin(["Red Card", "Second Yellow"])
+        ]
+        .groupby(gcols)
+        .size()
+        .rename("red_cards")
     )
 
     tm = pd.concat(
@@ -190,7 +243,12 @@ def main() -> int:
             entry = {
                 "statsbomb_mean": statsbomb_val,
                 "target_mean": float(prev.get("target_mean", statsbomb_val)),
-                "scale": float(prev.get("scale", 0.15 if cid == "possession_passes_correlation" else 0.28)),
+                "scale": float(
+                    prev.get(
+                        "scale",
+                        0.15 if cid == "possession_passes_correlation" else 0.28,
+                    )
+                ),
             }
             if prev.get("sim_baseline_mean") is not None:
                 entry["sim_baseline_mean"] = float(prev["sim_baseline_mean"])
@@ -203,9 +261,7 @@ def main() -> int:
             "scale": 0.15 if cid == "possession_passes_correlation" else 0.28,
         }
 
-    joint = {
-        cid: _corr_entry(cid, val) for cid, val in joint_raw.items()
-    }
+    joint = {cid: _corr_entry(cid, val) for cid, val in joint_raw.items()}
 
     payload = {
         "source": f"StatsBomb Open Data — {division} {season} ({country})",
@@ -217,7 +273,9 @@ def main() -> int:
     }
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    OUT.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     soft = {
         "source": payload["source"],
         "n_team_matches": payload["n_team_matches"],
@@ -225,9 +283,15 @@ def main() -> int:
         "correlations_reference": joint,
     }
     if "xg_per_team_match" in metrics:
-        soft["soft_constraints"]["micro_xg_per_team_match"] = metrics["xg_per_team_match"]
-        soft["soft_constraints"]["goals_to_micro_xg_ratio"] = metrics["goals_to_xg_ratio"]
-    joint_path.write_text(json.dumps(soft, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        soft["soft_constraints"]["micro_xg_per_team_match"] = metrics[
+            "xg_per_team_match"
+        ]
+        soft["soft_constraints"]["goals_to_micro_xg_ratio"] = metrics[
+            "goals_to_xg_ratio"
+        ]
+    joint_path.write_text(
+        json.dumps(soft, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     print(f"Wrote {OUT}")
     print(f"Wrote {joint_path}")
     print("shots mean:", round(metrics["shots_per_team_match"]["mean"], 2))

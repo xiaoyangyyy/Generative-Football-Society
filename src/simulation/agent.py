@@ -24,11 +24,11 @@ class SocietyAgent(
             return float(default)
         return v
 
-    def __init__(self, name, stats, tactical_info=None,
-                 initialization_rng=None, random_root_seed=42):
+    def __init__(self, name, stats, tactical_info=None, initialization_rng=None, random_root_seed=42):
         self.random_root_seed = int(random_root_seed)
         self._initialization_rng = initialization_rng or named_py_rng(
-            self.random_root_seed, "initialization", name)
+            self.random_root_seed, "initialization", name
+        )
         self._initialize_identity(name, stats)
         self._initialize_roles_and_strategy(stats, tactical_info)
         self._initialize_runtime_state()
@@ -37,23 +37,63 @@ class SocietyAgent(
 
     def _infer_region(self):
         europe = {
-            "England", "Germany", "France", "Spain", "Portugal", "Netherlands", "Belgium",
-            "Croatia", "Austria", "Switzerland", "Sweden", "Scotland", "Turkey",
-            "Bosnia and Herzegovina", "Norway", "Czech Republic",
+            "England",
+            "Germany",
+            "France",
+            "Spain",
+            "Portugal",
+            "Netherlands",
+            "Belgium",
+            "Croatia",
+            "Austria",
+            "Switzerland",
+            "Sweden",
+            "Scotland",
+            "Turkey",
+            "Bosnia and Herzegovina",
+            "Norway",
+            "Czech Republic",
         }
         south_america = {
-            "Argentina", "Brazil", "Uruguay", "Colombia", "Paraguay", "Chile", "Ecuador",
-            "Peru", "Venezuela", "Bolivia",
+            "Argentina",
+            "Brazil",
+            "Uruguay",
+            "Colombia",
+            "Paraguay",
+            "Chile",
+            "Ecuador",
+            "Peru",
+            "Venezuela",
+            "Bolivia",
         }
         north_america = {
-            "United States", "Mexico", "Canada", "Panama", "Qatar", "Curaçao",
+            "United States",
+            "Mexico",
+            "Canada",
+            "Panama",
+            "Qatar",
+            "Curaçao",
         }
         africa = {
-            "Morocco", "Egypt", "Ivory Coast", "Senegal", "Ghana", "Algeria", "South Africa",
-            "Tunisia", "DR Congo", "Cape Verde",
+            "Morocco",
+            "Egypt",
+            "Ivory Coast",
+            "Senegal",
+            "Ghana",
+            "Algeria",
+            "South Africa",
+            "Tunisia",
+            "DR Congo",
+            "Cape Verde",
         }
         asia = {
-            "Japan", "South Korea", "Saudi Arabia", "Iraq", "Iran", "Jordan", "Uzbekistan",
+            "Japan",
+            "South Korea",
+            "Saudi Arabia",
+            "Iraq",
+            "Iran",
+            "Jordan",
+            "Uzbekistan",
             "Australia",
         }
         oceania = {"New Zealand", "Haiti"}
@@ -81,16 +121,31 @@ class SocietyAgent(
         c1 = self._finite(stats.get("c1_win_rate", 50.0), 50.0) / 100.0
         c3 = self._finite(stats.get("c3_major_exp", 45.0), 45.0) / 100.0
         c5 = self._finite(stats.get("c5_pressure", 45.0), 45.0) / 100.0
-        modern = self._finite(stats.get("modern_power", stats.get("final_status_score", 50.0)), 50.0) / 100.0
+        modern = (
+            self._finite(
+                stats.get("modern_power", stats.get("final_status_score", 50.0)), 50.0
+            )
+            / 100.0
+        )
         exposure = float(np.clip(self.media_exposure, 0.05, 1.0))
         profile = {
             "confidence": float(np.clip(0.58 * c1 + 0.42 * modern, 0.05, 0.98)),
-            "resilience": float(np.clip(0.50 * c3 + 0.25 * c1 + 0.25 * (1.0 - c5), 0.05, 0.98)),
+            "resilience": float(
+                np.clip(0.50 * c3 + 0.25 * c1 + 0.25 * (1.0 - c5), 0.05, 0.98)
+            ),
             "stability": float(np.clip(0.60 * c3 + 0.40 * c1, 0.05, 0.98)),
-            "media_sensitivity": float(np.clip(0.55 * exposure + 0.45 * c5, 0.05, 0.98)),
-            "penalty_anxiety": float(np.clip(0.35 + 0.50 * c5 * (1.0 - c3), 0.05, 0.98)),
-            "expectation_pressure": float(np.clip(0.55 * modern + 0.45 * exposure, 0.05, 0.99)),
-            "underdog_identity": float(np.clip((1.0 - modern) * (0.65 + 0.35 * c1), 0.0, 0.98)),
+            "media_sensitivity": float(
+                np.clip(0.55 * exposure + 0.45 * c5, 0.05, 0.98)
+            ),
+            "penalty_anxiety": float(
+                np.clip(0.35 + 0.50 * c5 * (1.0 - c3), 0.05, 0.98)
+            ),
+            "expectation_pressure": float(
+                np.clip(0.55 * modern + 0.45 * exposure, 0.05, 0.99)
+            ),
+            "underdog_identity": float(
+                np.clip((1.0 - modern) * (0.65 + 0.35 * c1), 0.0, 0.98)
+            ),
         }
         return profile
 
@@ -113,22 +168,50 @@ class SocietyAgent(
 
     def _initialize_latent_states(self):
         return {
-            "morale": float(np.arctanh(np.clip((self.psychology_profile["confidence"] - 0.5) * 1.6, -0.999, 0.999))),
-            "stability": float(np.arctanh(np.clip((self.psychology_profile["stability"] - 0.5) * 1.8, -0.999, 0.999))),
+            "morale": float(
+                np.arctanh(
+                    np.clip(
+                        (self.psychology_profile["confidence"] - 0.5) * 1.6,
+                        -0.999,
+                        0.999,
+                    )
+                )
+            ),
+            "stability": float(
+                np.arctanh(
+                    np.clip(
+                        (self.psychology_profile["stability"] - 0.5) * 1.8,
+                        -0.999,
+                        0.999,
+                    )
+                )
+            ),
             "unity": self._logit01(self.team_cohesion),
             "confidence": self._logit01(self.psychology_profile.get("confidence", 0.5)),
-            "risk_tolerance": self._logit01(self.tactical_controls.get("risk_budget", 0.5)),
-            "pressing_intensity": self._logit01(self.tactical_controls.get("pressing_intensity", 0.5)),
+            "risk_tolerance": self._logit01(
+                self.tactical_controls.get("risk_budget", 0.5)
+            ),
+            "pressing_intensity": self._logit01(
+                self.tactical_controls.get("pressing_intensity", 0.5)
+            ),
             "referee_trust": self._logit01(self.referee_trust),
-            "media_sensitivity": self._logit01(self.roles["President"]["media_sensitivity"]),
+            "media_sensitivity": self._logit01(
+                self.roles["President"]["media_sensitivity"]
+            ),
         }
 
     def _project_latents_to_states(self):
         self.team_cohesion = float(self._sigmoid(self.z_state["unity"]))
         self.referee_trust = float(self._sigmoid(self.z_state["referee_trust"]))
-        self.roles["President"]["media_sensitivity"] = float(self._sigmoid(self.z_state["media_sensitivity"]))
-        self.tactical_controls["risk_budget"] = float(self._sigmoid(self.z_state["risk_tolerance"]))
-        self.tactical_controls["pressing_intensity"] = float(self._sigmoid(self.z_state["pressing_intensity"]))
+        self.roles["President"]["media_sensitivity"] = float(
+            self._sigmoid(self.z_state["media_sensitivity"])
+        )
+        self.tactical_controls["risk_budget"] = float(
+            self._sigmoid(self.z_state["risk_tolerance"])
+        )
+        self.tactical_controls["pressing_intensity"] = float(
+            self._sigmoid(self.z_state["pressing_intensity"])
+        )
 
     def _emotion_scalar(self):
         # Scalar intensity from canonical emotion profile.
@@ -147,7 +230,9 @@ class SocietyAgent(
         score_diff = float(e.get("score_diff", 0.0))
         result = str(e.get("result", "draw"))
         stage_pressure = float(np.clip(e.get("stage_pressure", 0.3), 0.0, 1.0))
-        referee_controversy = float(np.clip(e.get("referee_controversy", 0.0), 0.0, 1.0))
+        referee_controversy = float(
+            np.clip(e.get("referee_controversy", 0.0), 0.0, 1.0)
+        )
         upset_factor = float(np.clip(e.get("upset_factor", 0.0), 0.0, 1.0))
         social_chaos = float(e.get("social_chaos", 0.0))
 
@@ -162,11 +247,26 @@ class SocietyAgent(
             agency_raw = -0.04 * referee_controversy
 
         z_impact = base_impact + 0.25 * upset_factor - 0.10 * referee_controversy
-        z_novelty = 0.60 * abs(score_diff) + 1.10 * upset_factor + 0.40 * referee_controversy - 0.30
-        z_control = 0.90 * (self.coach_authority - self.icon_influence) + 0.70 * self.team_cohesion - 0.50 * self.conflict_heat
+        z_novelty = (
+            0.60 * abs(score_diff)
+            + 1.10 * upset_factor
+            + 0.40 * referee_controversy
+            - 0.30
+        )
+        z_control = (
+            0.90 * (self.coach_authority - self.icon_influence)
+            + 0.70 * self.team_cohesion
+            - 0.50 * self.conflict_heat
+        )
         z_certainty = 1.20 * abs(score_diff) + 0.80 * stage_pressure - 0.60
-        z_norm = 1.60 * referee_controversy + 0.22 * max(0.0, social_chaos) - 0.70 * self.referee_trust
-        z_agency = agency_raw + 0.35 * np.tanh(self.coach_authority - self.icon_influence)
+        z_norm = (
+            1.60 * referee_controversy
+            + 0.22 * max(0.0, social_chaos)
+            - 0.70 * self.referee_trust
+        )
+        z_agency = agency_raw + 0.35 * np.tanh(
+            self.coach_authority - self.icon_influence
+        )
 
         app = {
             "impact": float(np.tanh(z_impact)),
@@ -189,7 +289,10 @@ class SocietyAgent(
 
         logits = {
             "pride": 3.0 * impact + 1.5 * agency + 1.0 * control,
-            "anger": -3.0 * impact - 2.0 * agency + 2.5 * norm_violation + 1.0 * novelty,
+            "anger": -3.0 * impact
+            - 2.0 * agency
+            + 2.5 * norm_violation
+            + 1.0 * novelty,
             "shame": -3.0 * impact + 2.0 * agency + 1.0 * certainty,
             "fear": -2.5 * impact + 1.8 * (1.0 - control) + 1.5 * (1.0 - certainty),
             "determination": -1.2 * impact + 2.0 * control + 1.2 * novelty,
@@ -215,7 +318,9 @@ class SocietyAgent(
             "external_blame": 1.8 * anger - 1.5 * agency + 1.2 * norm_violation,
         }
         base = self._softmax_dict(logits, tau=self.tau_c)
-        risk_shift = float(np.tanh(1.2 * anger + 0.8 * determination - 1.0 * fear + 0.2 * pride))
+        risk_shift = float(
+            np.tanh(1.2 * anger + 0.8 * determination - 1.0 * fear + 0.2 * pride)
+        )
         coping = {
             "planning": base["planning"],
             "self_correction": base["self_correction"],
@@ -253,16 +358,33 @@ class SocietyAgent(
         stability = float(np.clip((self.hidden_state[1] + 1.0) / 2.0, 0.0, 1.0))
         fatigue_term = float(np.tanh(self.fatigue))
         icon_drive = self.icon_influence * (1.0 + 0.35 * pressure)
-        coach_drive = self.coach_authority * (1.0 + 0.25 * self.roles["Manager"]["rationality"])
+        coach_drive = self.coach_authority * (
+            1.0 + 0.25 * self.roles["Manager"]["rationality"]
+        )
         negotiation_gap = coach_drive - icon_drive
 
-        coordination = self._bounded_sigmoid(2.8 * negotiation_gap + 1.2 * self.team_cohesion - 1.1 * fatigue_term)
-        tension_push = pressure * (1.0 - stability) * (0.55 + 0.45 * self.icon_influence)
+        coordination = self._bounded_sigmoid(
+            2.8 * negotiation_gap + 1.2 * self.team_cohesion - 1.1 * fatigue_term
+        )
+        tension_push = (
+            pressure * (1.0 - stability) * (0.55 + 0.45 * self.icon_influence)
+        )
         cooldown = 0.18 * coordination + 0.10 * self.team_cohesion
-        self.conflict_heat = float(np.clip(self.conflict_heat * np.exp(-cooldown) + tension_push, 0.0, 1.05))
-        self.team_cohesion = float(np.clip(self.team_cohesion * np.exp(-0.06 * self.conflict_heat) + 0.05 * coordination, 0.05, 0.99))
+        self.conflict_heat = float(
+            np.clip(self.conflict_heat * np.exp(-cooldown) + tension_push, 0.0, 1.05)
+        )
+        self.team_cohesion = float(
+            np.clip(
+                self.team_cohesion * np.exp(-0.06 * self.conflict_heat)
+                + 0.05 * coordination,
+                0.05,
+                0.99,
+            )
+        )
 
-        performance_bonus = 5.2 * (coordination - 0.5) + 2.2 * (self.team_cohesion - 0.5)
+        performance_bonus = 5.2 * (coordination - 0.5) + 2.2 * (
+            self.team_cohesion - 0.5
+        )
         volatility = 0.25 + 0.55 * self.conflict_heat
 
         self._register_memory_event(
@@ -288,16 +410,33 @@ class SocietyAgent(
         """
         strictness = float(np.clip(self._finite(referee_strictness, 0.5), 0.0, 1.0))
         bias = float(np.clip(self._finite(bias_signal, 0.0), -1.0, 1.0))
-        grievance_shock = 0.52 * strictness * (0.45 - 0.35 * bias) * (1.0 + self.conflict_heat * 0.35)
+        grievance_shock = (
+            0.52 * strictness * (0.45 - 0.35 * bias) * (1.0 + self.conflict_heat * 0.35)
+        )
         trust_repair = 0.10 + 0.18 * max(0.0, bias)
 
-        self.referee_grievance = float(np.clip(self.referee_grievance * np.exp(-0.16) + grievance_shock, 0.0, 0.92))
-        self.referee_trust = float(np.clip(self.referee_trust * np.exp(-0.10 * strictness) + trust_repair, 0.05, 0.99))
+        self.referee_grievance = float(
+            np.clip(self.referee_grievance * np.exp(-0.16) + grievance_shock, 0.0, 0.92)
+        )
+        self.referee_trust = float(
+            np.clip(
+                self.referee_trust * np.exp(-0.10 * strictness) + trust_repair,
+                0.05,
+                0.99,
+            )
+        )
 
-        whistle_drag = 4.8 * strictness * (0.55 + self.referee_grievance) * (1.0 - 0.35 * max(0.0, bias))
+        whistle_drag = (
+            4.8
+            * strictness
+            * (0.55 + self.referee_grievance)
+            * (1.0 - 0.35 * max(0.0, bias))
+        )
         decision_lift = 2.0 * bias * self.referee_trust
         status_delta = float(decision_lift - whistle_drag)
-        chaos_delta = float(0.35 + 1.4 * self.referee_grievance - 0.4 * self.referee_trust)
+        chaos_delta = float(
+            0.35 + 1.4 * self.referee_grievance - 0.4 * self.referee_trust
+        )
 
         self._register_memory_event(
             content=f"Referee dynamics: strict={strictness:.2f}, bias={bias:.2f}, grievance={self.referee_grievance:.2f}",
@@ -313,7 +452,9 @@ class SocietyAgent(
             "grievance": self.referee_grievance,
         }
 
-    def relax_referee_grievance_post_match(self, match_result, referee_bias_signal, drama_score):
+    def relax_referee_grievance_post_match(
+        self, match_result, referee_bias_signal, drama_score
+    ):
         """
         Settlement after whistle + chatter: grievance shouldn't ratchet forever.
         Wins, calm fixtures, evenly-called games, or sides that were mildly favored bleed heat faster.
@@ -321,20 +462,54 @@ class SocietyAgent(
         bias = float(np.clip(referee_bias_signal, -1.0, 1.0))
         drama = float(np.clip(drama_score, 0.0, 1.0))
         factor = np.exp(-0.10)
-        factor *= np.exp(-0.065) if match_result == "win" else np.exp(-0.035) if match_result == "draw" else 1.0
+        factor *= (
+            np.exp(-0.065)
+            if match_result == "win"
+            else np.exp(-0.035)
+            if match_result == "draw"
+            else 1.0
+        )
         factor *= np.exp(-0.09 * max(0.0, bias))
         factor *= np.exp(-0.05 * drama)
         factor *= np.exp(-0.05 * np.exp(-3.6 * bias**2))
-        self.referee_grievance = float(np.clip(self.referee_grievance * factor, 0.0, 0.92))
+        self.referee_grievance = float(
+            np.clip(self.referee_grievance * factor, 0.0, 0.92)
+        )
 
-    def update_governance_post_match(self, match_result, drama_score, governance_signal):
+    def update_governance_post_match(
+        self, match_result, drama_score, governance_signal
+    ):
         outcome = {"win": 0.22, "draw": 0.04, "loss": -0.26}.get(match_result, 0.0)
         signal = self._finite(governance_signal, 0.0)
         drama = float(np.clip(self._finite(drama_score, 0.0), 0.0, 1.5))
 
-        self.coach_authority = float(np.clip(self.coach_authority + 0.08 * outcome + 0.05 * signal - 0.03 * drama, 0.05, 0.98))
-        self.icon_influence = float(np.clip(self.icon_influence - 0.05 * outcome + 0.04 * drama + 0.03 * self.conflict_heat, 0.05, 0.98))
-        self.team_cohesion = float(np.clip(self.team_cohesion + 0.06 * outcome - 0.04 * self.conflict_heat + 0.03 * signal, 0.05, 0.99))
+        self.coach_authority = float(
+            np.clip(
+                self.coach_authority + 0.08 * outcome + 0.05 * signal - 0.03 * drama,
+                0.05,
+                0.98,
+            )
+        )
+        self.icon_influence = float(
+            np.clip(
+                self.icon_influence
+                - 0.05 * outcome
+                + 0.04 * drama
+                + 0.03 * self.conflict_heat,
+                0.05,
+                0.98,
+            )
+        )
+        self.team_cohesion = float(
+            np.clip(
+                self.team_cohesion
+                + 0.06 * outcome
+                - 0.04 * self.conflict_heat
+                + 0.03 * signal,
+                0.05,
+                0.99,
+            )
+        )
 
         self._register_memory_event(
             content=(
@@ -360,7 +535,9 @@ class SocietyAgent(
     def set_tactical_controls(self, controls):
         controls = controls or {}
         self.tactical_controls["pressing_intensity"] = self._clip01(
-            controls.get("pressing_intensity", self.tactical_controls["pressing_intensity"])
+            controls.get(
+                "pressing_intensity", self.tactical_controls["pressing_intensity"]
+            )
         )
         self.tactical_controls["risk_budget"] = self._clip01(
             controls.get("risk_budget", self.tactical_controls["risk_budget"])
@@ -369,7 +546,10 @@ class SocietyAgent(
             controls.get("line_height", self.tactical_controls["line_height"])
         )
         self.tactical_controls["rotation_aggressiveness"] = self._clip01(
-            controls.get("rotation_aggressiveness", self.tactical_controls["rotation_aggressiveness"])
+            controls.get(
+                "rotation_aggressiveness",
+                self.tactical_controls["rotation_aggressiveness"],
+            )
         )
         if getattr(self, "_tactical_vector", None) is None:
             self._tactical_vector = {}
@@ -409,11 +589,16 @@ class SocietyAgent(
             "discipline": float(np.clip(discipline, 0.4, 1.3)),
         }
 
-
     def _reflection_context_payload(self):
         memory_context = self.retrieve_memory_context_display(top_k=8)
-        stage_hint = self.decision_memory[-1].get("stage") if self.decision_memory else None
-        style_hint = self.decision_memory[-1].get("opponent_style") if self.decision_memory else None
+        stage_hint = (
+            self.decision_memory[-1].get("stage") if self.decision_memory else None
+        )
+        style_hint = (
+            self.decision_memory[-1].get("opponent_style")
+            if self.decision_memory
+            else None
+        )
         similar_decisions = self.retrieve_similar_decision_memories(
             self.tactical_controls,
             top_k=4,
@@ -447,11 +632,15 @@ class SocietyAgent(
         if not isinstance(data, dict):
             raise TypeError("Reflection payload must be a mapping")
         if operation_id:
-            previous = next((
-                record for record in self.llm_reflection_audit
-                if isinstance(record, dict)
-                and record.get("operation_id") == operation_id
-            ), None)
+            previous = next(
+                (
+                    record
+                    for record in self.llm_reflection_audit
+                    if isinstance(record, dict)
+                    and record.get("operation_id") == operation_id
+                ),
+                None,
+            )
             if previous is not None:
                 return previous
         audit = self.apply_llm_reflection(data, operation_id=operation_id)
@@ -472,7 +661,9 @@ class SocietyAgent(
         data = self.request_reflection_payload(llm)
         return self.apply_reflection_payload(data, operation_id=operation_id)
 
-    def ingest_micro_cognitive_memory(self, cognitive_plans: list, team_name: str = "") -> None:
+    def ingest_micro_cognitive_memory(
+        self, cognitive_plans: list, team_name: str = ""
+    ) -> None:
         """Absorb in-match System 2 narratives into episodic memory for cross-match continuity."""
         if not cognitive_plans:
             return
@@ -481,10 +672,14 @@ class SocietyAgent(
                 continue
             trig = rec.get("trigger") or {}
             if team_name and trig.get("team_id") and trig.get("team_id") != team_name:
-                if trig.get("entity_tier") == "coach" and team_name not in str(trig.get("entity_id", "")):
+                if trig.get("entity_tier") == "coach" and team_name not in str(
+                    trig.get("entity_id", "")
+                ):
                     continue
             plan = rec.get("plan") or {}
-            narrative = str(plan.get("narrative", "") or plan.get("reasoning", "")).strip()
+            narrative = str(
+                plan.get("narrative", "") or plan.get("reasoning", "")
+            ).strip()
             if len(narrative) < 8:
                 continue
             self._register_memory_event(
@@ -502,7 +697,9 @@ class SocietyAgent(
         from src.simulation.meta_learning import MetaLearningController
 
         audit_log = MetaLearningController().apply(
-            self, reflection, operation_id=operation_id,
+            self,
+            reflection,
+            operation_id=operation_id,
         )
         self.llm_reflection_audit.append(audit_log)
         return audit_log
@@ -530,7 +727,9 @@ class SocietyAgent(
     def rare_locker_room_explosion(self, rng=None):
         """Headline-level crisis; intentionally rare so it keeps punch."""
         rng = rng or named_rng(
-            self.random_root_seed, "locker_room_explosion", self.memory_clock,
+            self.random_root_seed,
+            "locker_room_explosion",
+            self.memory_clock,
         )
         t = self.locker_room_tension()
         if t < 0.86:
@@ -545,14 +744,22 @@ class SocietyAgent(
         self.fatigue = 0.82 * self.fatigue + effective_intensity
 
         fatigue_pressure = 1.0 / (1.0 + np.exp(-3.2 * (self.fatigue - 0.55)))
-        hazard = fatigue_pressure * (0.35 + 0.65 * effective_intensity) * (1.0 + 0.5 * self.injury_load)
+        hazard = (
+            fatigue_pressure
+            * (0.35 + 0.65 * effective_intensity)
+            * (1.0 + 0.5 * self.injury_load)
+        )
         rng = rng or named_rng(
-            self.random_root_seed, "match_wear", self.memory_clock,
+            self.random_root_seed,
+            "match_wear",
+            self.memory_clock,
         )
         shock = rng.gamma(shape=1.4, scale=max(1e-6, hazard * 0.30))
 
         # Keep injury load in a normalized [0, 1] band for stable downstream interpretation.
-        self.injury_load = float(np.clip(self.injury_load * np.exp(-0.10) + np.tanh(shock), 0.0, 1.0))
+        self.injury_load = float(
+            np.clip(self.injury_load * np.exp(-0.10) + np.tanh(shock), 0.0, 1.0)
+        )
         self.readiness = float(np.exp(-0.9 * self.fatigue - 1.35 * self.injury_load))
 
         event_rate = max(0.0, hazard * 1.6)
@@ -567,14 +774,20 @@ class SocietyAgent(
     def recover(self, rest_units=1.0):
         rest_units = max(0.0, float(rest_units))
         self.fatigue = self.fatigue * np.exp(-0.34 * rest_units)
-        self.injury_load = float(np.clip(self.injury_load * np.exp(-0.22 * rest_units), 0.0, 1.0))
+        self.injury_load = float(
+            np.clip(self.injury_load * np.exp(-0.22 * rest_units), 0.0, 1.0)
+        )
         self.readiness = float(np.exp(-0.9 * self.fatigue - 1.35 * self.injury_load))
 
     def get_effective_status(self, matchup_bonus=0.0):
         # Smooth match-day strength mapping with logistic envelope.
         morale_bonus = 0.07 * np.tanh(self.hidden_state[0])
         stability_bonus = 0.05 * np.tanh(self.hidden_state[1])
-        governance_term = 0.12 * (self.coach_authority - self.icon_influence) + 0.10 * self.team_cohesion - 0.08 * self.conflict_heat
+        governance_term = (
+            0.12 * (self.coach_authority - self.icon_influence)
+            + 0.10 * self.team_cohesion
+            - 0.08 * self.conflict_heat
+        )
         condition_core = (
             1.0
             - 0.42 * np.tanh(self.fatigue)
@@ -583,20 +796,31 @@ class SocietyAgent(
             + stability_bonus
             + governance_term
         )
-        multiplier = 0.52 + 0.56 * (1.0 / (1.0 + np.exp(-3.0 * (condition_core - 0.64))))
+        multiplier = 0.52 + 0.56 * (
+            1.0 / (1.0 + np.exp(-3.0 * (condition_core - 0.64)))
+        )
         return max(12.0, self.status_score * multiplier + matchup_bonus)
 
     def coach_intervention(self, verdict_str):
-        try:
-            parts = verdict_str.split('|')
-            for p in parts:
-                if 'Formation:' in p: self.formation = p.split(':')[1].strip()
-        except: pass
+        if not isinstance(verdict_str, str):
+            return
+        marker = "Formation:"
+        for part in verdict_str.split("|"):
+            if marker not in part:
+                continue
+            formation = part.split(marker, 1)[1].strip()
+            if formation:
+                self.formation = formation
 
     def get_context_for_llm(self):
         hs = self.hidden_state
         morale = "High" if hs[0] > 0.4 else "Low"
-        top_beliefs = [b.get("claim", "")[:60] for b in sorted(self.beliefs, key=lambda x: x.get("confidence", 0.0), reverse=True)[:2]]
+        top_beliefs = [
+            b.get("claim", "")[:60]
+            for b in sorted(
+                self.beliefs, key=lambda x: x.get("confidence", 0.0), reverse=True
+            )[:2]
+        ]
         coach_line = f"Coach: {self.coach_name}"
         if self.coach_profile is not None:
             cp = self.coach_profile
@@ -609,6 +833,7 @@ class SocietyAgent(
             f"Cohesion: {self.team_cohesion:.2f}, ConflictHeat: {self.conflict_heat:.2f}, RefTrust: {self.referee_trust:.2f}, "
             f"EmotionProfile: {self.emotion_profile}, Beliefs: {top_beliefs}, Controls: {self.tactical_controls}"
         )
+
     @property
     def morale(self):
         return float(np.tanh(self.z_state["morale"]))
@@ -623,5 +848,7 @@ class SocietyAgent(
         # Compatibility read view: [morale, stability, media_pressure]
         morale = float(np.tanh(self.z_state["morale"]))
         stability = float(np.tanh(self.z_state["stability"]))
-        media_pressure = float(2.0 * self._sigmoid(self.z_state["media_sensitivity"]) - 1.0)
+        media_pressure = float(
+            2.0 * self._sigmoid(self.z_state["media_sensitivity"]) - 1.0
+        )
         return np.array([morale, stability, media_pressure], dtype=float)
