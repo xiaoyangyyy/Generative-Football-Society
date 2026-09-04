@@ -345,6 +345,9 @@ def main() -> int:
     product_value_study = (
         ROOT / "scripts/product_value_study.py"
     ).read_text(encoding="utf-8")
+    study_delivery = (
+        ROOT / "src/product/study_delivery.py"
+    ).read_text(encoding="utf-8")
     product_validation_protocol = _read(
         "data/evaluation/product_validation_protocol_v1.json"
     )
@@ -353,6 +356,9 @@ def main() -> int:
     )
     product_value_cases = _read(
         "data/evaluation/product_value_case_packs_v1.json"
+    )
+    product_value_scoring_seal = _read(
+        "data/evaluation/product_value_scoring_seal_v1.json"
     )
     runtime = (ROOT / "src/simulation/runtime.py").read_text(encoding="utf-8")
     gateway = (ROOT / "src/simulation/llm_gateway.py").read_text(encoding="utf-8")
@@ -1829,6 +1835,70 @@ def main() -> int:
             and product_value_cases.get("current_execution", {}).get(
                 "participants_exposed"
             ) == 0
+        ),
+        "product_value_delivery_is_blinded_scoring_sealed_and_product_visible": (
+            all(token in study_delivery for token in (
+                "class ProductValueStudyDelivery:",
+                "def status(self)",
+                "def register(",
+                "def packet(",
+                "def materialize_packet(",
+                "participant packet contains forbidden fields",
+                "_reject_existing_symlink_components",
+                "os.link(temporary, target)",
+                '"scoring_material_included": False',
+                '"moderator_identity_included": False',
+            ))
+            and all(token in cli for token in (
+                "p_value_study = studio_sub.add_parser(",
+                "value_study_sub = p_value_study.add_subparsers(",
+                "p_value_status = value_study_sub.add_parser(",
+                "p_value_register = value_study_sub.add_parser(",
+                "p_value_packet = value_study_sub.add_parser(",
+                "cmd_studio_value_study_packet",
+            ))
+            and all(token in web for token in (
+                'path == "/api/v1/studies/product-value"',
+                'path == "/api/v1/studies/product-value/registrations"',
+                'r"/api/v1/studies/product-value/packets/',
+                'id="product-value-study-panel"',
+                "X-GFS-Blinded-Study-Packet",
+            ))
+            and all(token in evidence_kit for token in (
+                "participant_case_authority_excludes_scoring_material",
+                "moderator_scoring_seal_is_excluded_from_kit",
+            ))
+            and all(
+                token not in json.dumps(product_value_cases)
+                for token in ('"scoring_key"', '"scoring_keys"')
+            )
+            and product_value_cases.get("delivery_contract", {}).get(
+                "participant_manifest_contains_scoring_keys"
+            ) is False
+            and product_value_protocol.get("integrity", {}).get(
+                "participant_delivery_excludes_scoring_material"
+            ) is True
+            and product_value_protocol.get("integrity", {}).get(
+                "scoring_seal_is_separate_and_case_hash_bound"
+            ) is True
+            and product_value_protocol.get("outputs", {}).get("scoring_seal")
+            == "data/evaluation/product_value_scoring_seal_v1.json"
+            and product_value_scoring_seal.get("case_pack_manifest_sha256")
+            == file_sha256(
+                ROOT / "data/evaluation/product_value_case_packs_v1.json"
+            )
+            and product_value_scoring_seal.get("access_contract")
+            == {
+                "participant_delivery_forbidden": True,
+                "moderator_analysis_only": True,
+                "repository_is_not_a_participant_delivery_channel": True,
+            }
+            and product_value_scoring_seal.get("current_execution")
+            == {
+                "participants_exposed": 0,
+                "measured_sessions": 0,
+                "results_available": False,
+            }
         ),
         "release_readiness_separates_code_contract_from_external_results": (
             all(token in control_plane for token in (

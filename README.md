@@ -192,6 +192,12 @@ pseudonymous session registry, role-stratified permuted-block allocation,
 concrete scored product-value cases and byte-verified content-addressed
 evidence. Comparative correctness is recomputed from frozen structured
 receipts; no participant session has been executed.
+V3.99 physically separates participant case content from a case-hash-bound
+moderator scoring seal and connects deterministic blinded packet delivery to
+both the Studio CLI and authenticated Web evidence workspace. Packets exclude
+moderator identity and scoring material, use confined atomic no-overwrite
+materialization, and expose only aggregate status. The evidence kit excludes
+the seal. This is still zero-participant preparation, not user-value evidence.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

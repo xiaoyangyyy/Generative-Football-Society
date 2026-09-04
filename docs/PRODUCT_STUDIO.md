@@ -380,6 +380,17 @@ noninferiority and zero GFS critical errors. See
 `docs/PRODUCT_VALUE_STUDY.md`. No participants have yet been observed, so this
 gate also remains open.
 
+The Evidence workspace now connects that frozen protocol to a moderator-facing
+delivery boundary. It shows aggregate role and AB/BA registration counts,
+registers only consented pseudonymous participants under CSRF protection, and
+downloads a deterministic identity-bound packet. Participant cases contain no
+answer key; final scoring uses a separate case-hash-bound moderator seal. The
+same flow is available under `studio value-study status|register|packet`.
+Generated packets exclude moderator identity and scoring material, while the
+source repository and scoring seal remain explicitly outside the participant
+delivery channel. This is operational preparation, not a claim that any user
+study or product-value result exists.
+
 Remote sessions are independent and process-local. Each has an eight-hour
 absolute lifetime, a thirty-minute idle lifetime, and can be revoked with the
 Studio “安全退出” control. At most 64 sessions are retained; creating another

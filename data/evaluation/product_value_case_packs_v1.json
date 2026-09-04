@@ -8,6 +8,7 @@
     "gfs_studio": "Present the participant packet in the integrated evidence workspace with navigation, provenance and limitation surfaces enabled.",
     "manual_baseline": "Present the same participant packet as a flat read-only document with no GFS navigation or computed assistance.",
     "operator_scoring_keys_hidden_until_condition_submission": true,
+    "participant_manifest_contains_scoring_keys": false,
     "same_pack_in_both_conditions_forbidden": true,
     "training_case_is_separate_and_unscored": true
   },
@@ -54,11 +55,6 @@
           {"id": "supported_claim", "prompt": "What is the strongest supported claim?", "allowed_answers": ["best_frozen_simulator_branch", "proven_real_world_tactic", "guaranteed_match_win"]},
           {"id": "next_evidence_action", "prompt": "What should happen before any broader effectiveness claim?", "allowed_answers": ["preregistered_paired_validation", "automatic_production_promotion", "remove_negative_results"]}
         ]
-      },
-      "scoring_key": {
-        "recommended_intervention": "wide_overload",
-        "supported_claim": "best_frozen_simulator_branch",
-        "next_evidence_action": "preregistered_paired_validation"
       }
     },
     {
@@ -84,11 +80,6 @@
           {"id": "supported_claim", "prompt": "What is the strongest supported claim?", "allowed_answers": ["best_frozen_simulator_branch", "proven_real_world_tactic", "guaranteed_match_win"]},
           {"id": "next_evidence_action", "prompt": "What should happen before any broader effectiveness claim?", "allowed_answers": ["preregistered_paired_validation", "automatic_production_promotion", "remove_negative_results"]}
         ]
-      },
-      "scoring_key": {
-        "recommended_intervention": "controlled_possession",
-        "supported_claim": "best_frozen_simulator_branch",
-        "next_evidence_action": "preregistered_paired_validation"
       }
     }
   ],

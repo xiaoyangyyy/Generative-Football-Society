@@ -32,6 +32,7 @@ from src.product.human_study import (  # noqa: E402
 
 PROTOCOL_PATH = ROOT / "data/evaluation/product_value_validation_protocol_v1.json"
 CASE_PACK_PATH = ROOT / "data/evaluation/product_value_case_packs_v1.json"
+SCORING_SEAL_PATH = ROOT / "data/evaluation/product_value_scoring_seal_v1.json"
 DEFAULT_REGISTRY_PATH = (
     ROOT / "data/evaluation/product_value_validation_v1/session_registry.json"
 )
@@ -146,6 +147,10 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             and integrity.get("record_identity_bound_to_registration") is True
             and integrity.get("sequence_assigned_by_frozen_allocation") is True
             and integrity.get("case_pack_identity_bound_at_registration") is True
+            and integrity.get("participant_delivery_excludes_scoring_material")
+            is True
+            and integrity.get("scoring_seal_is_separate_and_case_hash_bound")
+            is True
             and integrity.get("evidence_hashes_verified_against_real_files") is True
             and integrity.get("correctness_recomputed_from_structured_receipts")
             is True
@@ -175,18 +180,31 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
             is True
         ),
         "preexecution_amendment_is_zero_participant": (
-            len(amendments) == 1
-            and amendments[0].get("amendment_id")
-            == "authoritative-randomized-value-study-v1"
-            and amendments[0].get("participants_observed_before_amendment") == 0
-            and amendments[0].get("sessions_executed_before_amendment") == 0
-            and amendments[0].get("results_available_before_amendment") is False
+            [row.get("amendment_id") for row in amendments]
+            == [
+                "authoritative-randomized-value-study-v1",
+                "blinded-delivery-and-scoring-seal-v1",
+            ]
+            and all(
+                row.get("participants_observed_before_amendment") == 0
+                and row.get("sessions_executed_before_amendment") == 0
+                and row.get("results_available_before_amendment") is False
+                for row in amendments
+            )
         ),
         "outputs_are_confined_and_exact": (
             set(outputs)
-            == {"session_registry", "case_pack_manifest", "raw_records", "decision"}
+            == {
+                "session_registry",
+                "case_pack_manifest",
+                "scoring_seal",
+                "raw_records",
+                "decision",
+            }
             and outputs.get("case_pack_manifest")
             == "data/evaluation/product_value_case_packs_v1.json"
+            and outputs.get("scoring_seal")
+            == "data/evaluation/product_value_scoring_seal_v1.json"
             and all(
                 isinstance(outputs.get(name), str)
                 and outputs[name].startswith(
@@ -209,7 +227,10 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
 
 def validate_case_packs(
     manifest: dict[str, Any],
+    scoring_seal: dict[str, Any],
     protocol: dict[str, Any],
+    *,
+    case_pack_sha256: str,
 ) -> dict[str, bool]:
     packs = manifest.get("packs") or []
     delivery = manifest.get("delivery_contract") or {}
@@ -227,19 +248,20 @@ def validate_case_packs(
             "case_pack_id",
             "revision",
             "participant_packet",
-            "scoring_key",
         }
         for pack in packs
     )
+    scoring_keys = scoring_seal.get("scoring_keys") or {}
     question_contract = exact_pack_fields and all(
         [
             row.get("id")
             for row in (pack.get("participant_packet") or {}).get("questions", [])
         ]
         == expected_questions
-        and set(pack.get("scoring_key") or {}) == set(expected_questions)
+        and set(scoring_keys.get(pack.get("case_pack_id"), {}))
+        == set(expected_questions)
         and all(
-            (pack.get("scoring_key") or {}).get(question["id"])
+            scoring_keys.get(pack.get("case_pack_id"), {}).get(question["id"])
             in question.get("allowed_answers", [])
             for question in (pack.get("participant_packet") or {}).get(
                 "questions", []
@@ -318,13 +340,62 @@ def validate_case_packs(
             numeric_contract_valid
             and len(derived_winners) == len(packs)
             and all(
-                pack["scoring_key"]["recommended_intervention"] == winner
+                scoring_keys[pack["case_pack_id"]]["recommended_intervention"]
+                == winner
                 for pack, winner in zip(packs, derived_winners)
             )
+        ),
+        "claim_boundary_scoring_keys_are_exact": (
+            bool(packs)
+            and all(
+                scoring_keys.get(pack.get("case_pack_id"), {}).get(
+                    "supported_claim"
+                )
+                == "best_frozen_simulator_branch"
+                and scoring_keys.get(pack.get("case_pack_id"), {}).get(
+                    "next_evidence_action"
+                )
+                == "preregistered_paired_validation"
+                for pack in packs
+            )
+        ),
+        "scoring_seal_is_exact_hash_bound_and_unexecuted": (
+            set(scoring_seal)
+            == {
+                "schema_version",
+                "seal_id",
+                "protocol_id",
+                "state",
+                "case_pack_manifest_sha256",
+                "scoring_keys",
+                "access_contract",
+                "current_execution",
+            }
+            and scoring_seal.get("schema_version") == 1
+            and scoring_seal.get("seal_id")
+            == "gfs-studio-product-value-scoring-seal-v1"
+            and scoring_seal.get("protocol_id") == protocol.get("protocol_id")
+            and scoring_seal.get("state") == "frozen_preexecution"
+            and scoring_seal.get("case_pack_manifest_sha256")
+            == case_pack_sha256
+            and set(scoring_keys) == {pack.get("case_pack_id") for pack in packs}
+            and scoring_seal.get("access_contract")
+            == {
+                "participant_delivery_forbidden": True,
+                "moderator_analysis_only": True,
+                "repository_is_not_a_participant_delivery_channel": True,
+            }
+            and scoring_seal.get("current_execution")
+            == {
+                "participants_exposed": 0,
+                "measured_sessions": 0,
+                "results_available": False,
+            }
         ),
         "delivery_prevents_key_and_case_leakage": (
             delivery.get("operator_scoring_keys_hidden_until_condition_submission")
             is True
+            and delivery.get("participant_manifest_contains_scoring_keys") is False
             and delivery.get("same_pack_in_both_conditions_forbidden") is True
             and delivery.get("training_case_is_separate_and_unscored") is True
             and bool(delivery.get("gfs_studio"))
@@ -367,7 +438,12 @@ def validate_case_packs(
 def protocol_report(protocol_path: Path = PROTOCOL_PATH) -> dict[str, Any]:
     protocol = _read_json(protocol_path)
     checks = validate_protocol(protocol)
-    case_pack_checks = validate_case_packs(_read_json(CASE_PACK_PATH), protocol)
+    case_pack_checks = validate_case_packs(
+        _read_json(CASE_PACK_PATH),
+        _read_json(SCORING_SEAL_PATH),
+        protocol,
+        case_pack_sha256=file_sha256(CASE_PACK_PATH),
+    )
     combined_checks = {
         **checks,
         **{f"case_pack_{key}": value for key, value in case_pack_checks.items()},
@@ -390,6 +466,9 @@ def protocol_report(protocol_path: Path = PROTOCOL_PATH) -> dict[str, Any]:
             "docs/PRODUCT_VALUE_STUDY.md": file_sha256(ROOT / "docs/PRODUCT_VALUE_STUDY.md"),
             "data/evaluation/product_value_case_packs_v1.json": file_sha256(
                 CASE_PACK_PATH
+            ),
+            "data/evaluation/product_value_scoring_seal_v1.json": file_sha256(
+                SCORING_SEAL_PATH
             ),
             "src/product/human_study.py": file_sha256(
                 ROOT / "src/product/human_study.py"
@@ -552,6 +631,7 @@ def _score_receipt(
     record: dict[str, Any],
     condition_name: str,
     manifest: dict[str, Any],
+    scoring_seal: dict[str, Any],
 ) -> bool:
     try:
         receipt = json.loads(content.decode("utf-8"))
@@ -611,7 +691,8 @@ def _score_receipt(
             f"{record['participant_id']}"
         )
     return all(
-        answers[question_id] == pack["scoring_key"][question_id]
+        answers[question_id]
+        == scoring_seal["scoring_keys"][condition["case_pack"]][question_id]
         for question_id in contract["answer_fields"]
     )
 
@@ -622,12 +703,19 @@ def analyze(
     evidence_root: Path,
     protocol_path: Path = PROTOCOL_PATH,
     case_pack_path: Path = CASE_PACK_PATH,
+    scoring_seal_path: Path = SCORING_SEAL_PATH,
 ) -> dict[str, Any]:
     protocol = _read_json(protocol_path)
     if not all(validate_protocol(protocol).values()):
         raise ValueError("product value protocol is invalid or has drifted")
     case_manifest = _read_json(case_pack_path)
-    case_pack_checks = validate_case_packs(case_manifest, protocol)
+    scoring_seal = _read_json(scoring_seal_path)
+    case_pack_checks = validate_case_packs(
+        case_manifest,
+        scoring_seal,
+        protocol,
+        case_pack_sha256=file_sha256(case_pack_path),
+    )
     if not all(case_pack_checks.values()):
         raise ValueError("product value case packs are invalid or have drifted")
     normalized = [_validate_record(row, protocol) for row in _load_records(records_path)]
@@ -662,6 +750,7 @@ def analyze(
                     row,
                     condition_name,
                     case_manifest,
+                    scoring_seal,
                 )
                 if condition["correct"] is not derived_correct:
                     raise ValueError(
@@ -761,6 +850,7 @@ def analyze(
         "artifact_sha256": {
             "protocol": file_sha256(protocol_path),
             "case_pack_manifest": file_sha256(case_pack_path),
+            "scoring_seal": file_sha256(scoring_seal_path),
             "session_registry": file_sha256(registry_path),
             "participant_records": file_sha256(records_path),
             "analyzer": file_sha256(Path(__file__)),
@@ -802,6 +892,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--registry", type=Path)
     parser.add_argument("--evidence-root", type=Path)
     parser.add_argument("--case-pack-manifest", type=Path, default=CASE_PACK_PATH)
+    parser.add_argument("--scoring-seal", type=Path, default=SCORING_SEAL_PATH)
     parser.add_argument("--participant-id")
     parser.add_argument("--target-role")
     parser.add_argument("--moderator-id")
@@ -823,9 +914,12 @@ def main(argv: list[str] | None = None) -> int:
         protocol = _read_json(PROTOCOL_PATH)
         if not all(validate_protocol(protocol).values()):
             raise ValueError("cannot register under an invalid or drifted protocol")
-        if not all(
-            validate_case_packs(_read_json(args.case_pack_manifest), protocol).values()
-        ):
+        if not all(validate_case_packs(
+            _read_json(args.case_pack_manifest),
+            _read_json(args.scoring_seal),
+            protocol,
+            case_pack_sha256=file_sha256(args.case_pack_manifest),
+        ).values()):
             raise ValueError("cannot register under invalid or drifted case packs")
         result = register_participant(
             project_root=ROOT,
@@ -860,7 +954,11 @@ def main(argv: list[str] | None = None) -> int:
                 args.target_role,
                 args.moderator_id,
             )
-        ) or args.confirm_consent or args.case_pack_manifest != CASE_PACK_PATH:
+        ) or (
+            args.confirm_consent
+            or args.case_pack_manifest != CASE_PACK_PATH
+            or args.scoring_seal != SCORING_SEAL_PATH
+        ):
             parser.error("study inputs require --register or --analyze")
         report = protocol_report()
         if args.out:
@@ -883,6 +981,7 @@ def main(argv: list[str] | None = None) -> int:
         args.registry,
         args.evidence_root,
         case_pack_path=args.case_pack_manifest,
+        scoring_seal_path=args.scoring_seal,
     )
     _atomic_write(args.out, decision, overwrite=args.overwrite)
     print(json.dumps(decision, ensure_ascii=False, indent=2))

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_value_preregistration",
-  "generated_at": "2026-09-04T18:55:03.475039+00:00",
+  "generated_at": "2026-09-04T19:35:56.596141+00:00",
   "status": "passed_preregistered_not_executed",
   "passed": true,
   "study_executed": false,
@@ -24,16 +24,19 @@
     "case_pack_two_named_packs_are_exact": true,
     "case_pack_questions_and_scoring_keys_are_exact": true,
     "case_pack_recommended_interventions_are_numerically_derived": true,
+    "case_pack_claim_boundary_scoring_keys_are_exact": true,
+    "case_pack_scoring_seal_is_exact_hash_bound_and_unexecuted": true,
     "case_pack_delivery_prevents_key_and_case_leakage": true,
     "case_pack_structured_receipt_contract_is_exact": true,
     "case_pack_case_balance_is_explicit": true,
     "case_pack_execution_remains_zero": true
   },
   "artifact_sha256": {
-    "data/evaluation/product_value_validation_protocol_v1.json": "f8f3ec1f9c6c2e6e787d9cf170db9ba5a27dc3fd89b7f16ee807d76523eb853a",
-    "scripts/product_value_study.py": "2492db565efc4b80536572d727a67efeaf2949078c533fb6e6ffe599d14aa2c9",
-    "docs/PRODUCT_VALUE_STUDY.md": "87d577c09cfd5c6f3e39ba7c73266069278fbfda249a83908dfe3de02a9433c1",
-    "data/evaluation/product_value_case_packs_v1.json": "c78595346d209ad8fb309e0599ed26368225d39e7062b76970003c3acdc2900f",
+    "data/evaluation/product_value_validation_protocol_v1.json": "441c1a1048762bd93602d7f41244c7022c69be5792798974da315e57ab0f2e1e",
+    "scripts/product_value_study.py": "5776bfa0dc82a5cb71c0c5e2ca274f3ead31f36d4bda0f08f5b1278fe9d7a158",
+    "docs/PRODUCT_VALUE_STUDY.md": "36144bad2175074c4341dd13cc0c0d1346fbde3530f15fe8c0d8a39bd56a01bd",
+    "data/evaluation/product_value_case_packs_v1.json": "2c683fe25545362661c3baa6600c2482b45cfcbe32fa908b5deebb8b5ed09173",
+    "data/evaluation/product_value_scoring_seal_v1.json": "71277f9415c8348eec0cf08a40555453d2ad7125c76bc2744f205585118188fe",
     "src/product/human_study.py": "446fc3a975d45b40948eef51848106e06db025db39fb6056a46658d890b5064f"
   },
   "external_calls_made": false,

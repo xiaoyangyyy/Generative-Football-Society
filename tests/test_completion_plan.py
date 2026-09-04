@@ -57,6 +57,12 @@ def test_dependency_completion_unblocks_downstream_without_marking_it_passed():
     assert "--finalize" in production_commands[2]
     assert "--restore-scratch" in production_commands[2]
     assert rows["user_value_validation"]["state"] == "external_evidence_required"
+    value_commands = rows["user_value_validation"]["commands"]
+    assert len(value_commands) == 4
+    assert value_commands[0].endswith("studio value-study status")
+    assert "studio value-study register" in value_commands[1]
+    assert "studio value-study packet" in value_commands[2]
+    assert "--scoring-seal" in value_commands[3]
     assert rows["independent_reproduction"]["state"] == "external_evidence_required"
     assert rows["completed_manuscript"]["state"] == "blocked_by_dependency"
     assert not rows["completed_manuscript"]["passed"]

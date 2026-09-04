@@ -78,12 +78,15 @@
     "record_identity_bound_to_registration": true,
     "sequence_assigned_by_frozen_allocation": true,
     "case_pack_identity_bound_at_registration": true,
+    "participant_delivery_excludes_scoring_material": true,
+    "scoring_seal_is_separate_and_case_hash_bound": true,
     "evidence_hashes_verified_against_real_files": true,
     "correctness_recomputed_from_structured_receipts": true
   },
   "outputs": {
     "session_registry": "data/evaluation/product_value_validation_v1/session_registry.json",
     "case_pack_manifest": "data/evaluation/product_value_case_packs_v1.json",
+    "scoring_seal": "data/evaluation/product_value_scoring_seal_v1.json",
     "raw_records": "data/evaluation/product_value_validation_v1/participant_records.jsonl",
     "decision": "data/evaluation/product_value_validation_v1/decision.json"
   },
@@ -91,6 +94,13 @@
     {
       "amendment_id": "authoritative-randomized-value-study-v1",
       "reason": "Freeze role-stratified allocation, concrete scored case packs, session identity and byte-level evidence verification before the first participant.",
+      "participants_observed_before_amendment": 0,
+      "sessions_executed_before_amendment": 0,
+      "results_available_before_amendment": false
+    },
+    {
+      "amendment_id": "blinded-delivery-and-scoring-seal-v1",
+      "reason": "Physically separate participant-visible case content from the case-hash-bound scoring keys and freeze a moderator delivery surface before the first participant.",
       "participants_observed_before_amendment": 0,
       "sessions_executed_before_amendment": 0,
       "results_available_before_amendment": false

@@ -8,6 +8,7 @@ from scripts.product_value_study import (
     CASE_PACK_PATH,
     OBSERVER_ATTESTATION,
     PROTOCOL_PATH,
+    SCORING_SEAL_PATH,
     analyze,
     protocol_report,
 )
@@ -129,11 +130,22 @@ def _write_study(tmp_path, *, gfs_seconds=400.0):
 
 def test_product_value_protocol_and_case_packs_are_frozen_and_unexecuted():
     report = protocol_report()
+    cases = json.loads(CASE_PACK_PATH.read_text(encoding="utf-8"))
+    scoring_seal = json.loads(SCORING_SEAL_PATH.read_text(encoding="utf-8"))
     assert report["passed"] is True
     assert report["study_executed"] is False
     assert report["participants_observed"] == 0
     assert report["matches_executed"] == 0
     assert all(report["checks"].values())
+    assert '"scoring_key"' not in json.dumps(cases)
+    assert '"scoring_keys"' not in json.dumps(cases)
+    assert scoring_seal["access_contract"]["participant_delivery_forbidden"]
+    assert scoring_seal["case_pack_manifest_sha256"] == hashlib.sha256(
+        CASE_PACK_PATH.read_bytes()
+    ).hexdigest()
+    assert "data/evaluation/product_value_scoring_seal_v1.json" in report[
+        "artifact_sha256"
+    ]
 
 
 def test_product_value_analysis_passes_registered_rescored_evidence(tmp_path):

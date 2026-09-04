@@ -13,6 +13,7 @@ from scripts.build_excellence_evidence_kit import (
 from scripts.product_validation_study import _validate_record as validate_product
 from scripts.product_value_study import _validate_record as validate_value
 from src.cli import build_parser
+from src.product.study_delivery import SCORING_SEAL_RELATIVE
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,12 +37,17 @@ def test_template_kit_is_deterministic_secret_free_and_zero_execution():
     assert "security/deepseek_api_credential_receipt.template.json" in files
     assert "security/github_classic_pat_receipt.template.json" in files
     assert "product_value/condition_receipt.template.json" in files
+    assert SCORING_SEAL_RELATIVE.as_posix() not in PROTOCOLS.values()
     security = json.loads(files["security/attestation.template.json"])
     assert security["schema_version"] == 2
     assert {
         row["incident_id"] for row in security["incidents"]
     } == {"deepseek_api_credential", "github_classic_pat"}
     assert all(report["checks"].values())
+    assert report["checks"][
+        "participant_case_authority_excludes_scoring_material"
+    ]
+    assert report["checks"]["moderator_scoring_seal_is_excluded_from_kit"]
     assert report["external_calls_made"] is False
     assert report["matches_executed"] == 0
     assert report["training_executed"] is False

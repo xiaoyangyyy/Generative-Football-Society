@@ -32,6 +32,10 @@ from scripts.verify_security_closure import (  # noqa: E402
     SECRET_PATTERNS,
 )
 from src.infrastructure import file_sha256  # noqa: E402
+from src.product.study_delivery import (  # noqa: E402
+    FORBIDDEN_DELIVERY_FIELDS,
+    SCORING_SEAL_RELATIVE,
+)
 
 KIT_ID = "gfs-excellence-evidence-kit-v1"
 KIT_ROOT = Path("build/evidence-kits")
@@ -56,6 +60,18 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 def _json_bytes(payload: dict[str, Any]) -> bytes:
     return (json.dumps(payload, ensure_ascii=False, indent=2) + "\n").encode()
+
+
+def _json_keys(value: Any) -> set[str]:
+    keys: set[str] = set()
+    if isinstance(value, dict):
+        for key, child in value.items():
+            keys.add(str(key))
+            keys.update(_json_keys(child))
+    elif isinstance(value, list):
+        for child in value:
+            keys.update(_json_keys(child))
+    return keys
 
 
 def _template_header(protocol_id: str) -> dict[str, Any]:
@@ -402,6 +418,7 @@ def build_archive(root: Path = ROOT) -> tuple[bytes, dict[str, bytes]]:
 
 def verify_kit(root: Path = ROOT) -> dict[str, Any]:
     archive, files = build_archive(root)
+    participant_cases = _read_json(root / PROTOCOLS["value_cases"])
     json_templates = [
         json.loads(content) for path, content in files.items()
         if path.endswith(".template.json")
@@ -439,6 +456,16 @@ def verify_kit(root: Path = ROOT) -> dict[str, Any]:
             for path in files
         ),
         "archive_is_deterministic": archive == build_archive_once(files),
+        "participant_case_authority_excludes_scoring_material": not (
+            FORBIDDEN_DELIVERY_FIELDS.intersection(_json_keys(participant_cases))
+        ),
+        "moderator_scoring_seal_is_excluded_from_kit": (
+            SCORING_SEAL_RELATIVE.as_posix() not in PROTOCOLS.values()
+            and all(
+                b"gfs-studio-product-value-scoring-seal-v1" not in content
+                for content in files.values()
+            )
+        ),
     }
     passed = all(checks.values())
     return {

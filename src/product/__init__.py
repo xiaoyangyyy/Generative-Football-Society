@@ -10,11 +10,13 @@ from src.product.telemetry import ProductTelemetry
 from src.product.season import SeasonPlan
 from src.product.season_commitments import SeasonCommitmentPlan
 from src.product.player_promises import PlayerPromisePlan, PlayerRolePromise
+from src.product.study_delivery import ProductValueStudyDelivery
 
 __all__ = [
     "BackgroundMatchWorker", "PilotProtocol", "ProductControlPlane",
     "ProductTaskQueue", "ProductTelemetry", "ProductWorkspace", "TaskConflict",
     "PlayerPromisePlan", "PlayerRolePromise", "ProductRecovery", "ProductWebApp",
     "ProspectivePilot", "StudioConfig",
+    "ProductValueStudyDelivery",
     "SeasonCommitmentPlan", "SeasonPlan", "create_product_web_server",
 ]

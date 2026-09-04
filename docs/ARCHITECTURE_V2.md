@@ -3831,3 +3831,38 @@ retry, post-measurement registration refusal, protocol/case/allocation/time
 tampering, privacy allowlists, missing and modified evidence, and positive and
 negative analyses. This stage observes no participant, runs no match or
 training, and makes no provider call; user value remains an external gate.
+
+## 117. V3.99 Blinded product-value delivery and scoring authority
+
+The comparative study previously placed participant cases and moderator answer
+keys in one repository artifact. Runtime instructions said to hide the keys,
+but no product boundary made that separation enforceable. A participant-facing
+copy could therefore leak correctness while still satisfying the analysis
+schema.
+
+The case manifest now contains only case content, answer choices, numeric
+decision rules and the receipt contract. A separate moderator scoring seal
+binds its exact SHA-256, protocol identity, frozen zero-execution state and
+analysis-only access contract. Both the protocol audit and product delivery
+service recompute the unique numeric winner and reject a mismatched, incomplete
+or broadened key. Repository access is explicitly not a participant delivery
+channel.
+
+`ProductValueStudyDelivery` joins the frozen authority to the shared
+registration primitive. It exposes aggregate-only status, deterministic
+registration-bound AB/BA packets and confined materialization. Packets contain
+neither moderator identity nor any scoring field. Materialization rejects path
+escape and existing symbolic-link components, requires JSON output and uses an
+atomic create-if-absent boundary unless overwrite is explicit.
+
+Studio CLI exposes `value-study status`, `register` and `packet`; the
+authenticated Web evidence workspace exposes equivalent status, CSRF-bound
+registration and digest-labelled packet download. Telemetry persists only the
+normalized packet route. The participant evidence kit independently verifies
+that case authority is key-free and that the moderator seal is absent.
+
+The service reports zero observed participants only while no measurement
+record file exists. Once records appear it closes registration and reports that
+analysis is required instead of inventing a live count. This stage runs no
+participant, match, training, formal experiment or provider call and does not
+change the open user-value gate.

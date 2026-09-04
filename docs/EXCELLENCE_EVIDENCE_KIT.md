@@ -43,6 +43,13 @@ under that digest in the controlled evidence archive. The final analyzer takes
 both `--registry` and `--evidence-root`; a syntactically plausible digest with
 no matching file is rejected.
 
+The participant case manifest is scoring-key-free. The separate moderator
+scoring seal is deliberately excluded from the evidence kit and from every
+generated participant packet; the kit verifier checks both properties. Use the
+Studio `value-study packet` command or authenticated Web download for delivery,
+and never give a participant repository access as a substitute for a blinded
+packet. Final analysis receives the seal explicitly with `--scoring-seal`.
+
 The archive contains no credential value or direct participant identifier and
 must never be used to collect names, email addresses, access tokens, API keys,
 raw free text, or host identifiers. Building or auditing it performs no study,

@@ -34,6 +34,7 @@ from src.product.season import ManagerDecision, SeasonPlan
 from src.product.player_promises import PlayerPromisePlan
 from src.product.tactical_study import TacticalStudyPlan
 from src.product.recovery import ProductRecovery
+from src.product.study_delivery import ProductValueStudyDelivery
 from src.product.tasks import (
     COUNTERFACTUAL_FUTURE_STATUSES,
     BackgroundMatchWorker, ProductTaskQueue, TaskConflict,
@@ -359,6 +360,17 @@ class ProductWebApp:
             return self._json_response(200, self.telemetry.snapshot())
         if method == "GET" and path == "/api/v1/excellence/evidence-kit.zip":
             return self._evidence_kit_response()
+        if method == "GET" and path == "/api/v1/studies/product-value":
+            return self._product_value_study_status()
+        if method == "POST" and path == "/api/v1/studies/product-value/registrations":
+            self._require_csrf(environ)
+            return self._register_product_value_participant(self._read_json(environ))
+        value_packet = re.fullmatch(
+            r"/api/v1/studies/product-value/packets/(REG-[0-9A-F]{24})\.json",
+            path,
+        )
+        if method == "GET" and value_packet:
+            return self._product_value_packet_response(value_packet.group(1))
         if method == "GET" and path == "/api/v1/recovery":
             return self._recovery_status()
         if method == "POST" and path == "/api/v1/studio":
@@ -462,7 +474,9 @@ class ProductWebApp:
             "/api/v1/tasks",
             "/api/v1/recovery", "/api/v1/backups",
             "/api/v1/excellence/evidence-kit.zip",
-        } or backup_action or task_requeue:
+            "/api/v1/studies/product-value",
+            "/api/v1/studies/product-value/registrations",
+        } or backup_action or task_requeue or value_packet:
             raise WebRequestError(405, "method_not_allowed", "Method not allowed")
         raise WebRequestError(404, "not_found", "Resource not found")
 
@@ -504,6 +518,102 @@ class ProductWebApp:
             ("X-GFS-Artifact-SHA256", digest),
             ("X-GFS-Template-Only", "true"),
         ], archive
+
+    def _product_value_study_status(
+        self,
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        try:
+            status = ProductValueStudyDelivery(self.root).status()
+        except (OSError, ValueError) as exc:
+            raise WebRequestError(
+                503,
+                "product_value_study_unavailable",
+                "The blinded product-value study authority failed validation",
+            ) from exc
+        return self._json_response(200, status, csrf=True)
+
+    def _register_product_value_participant(
+        self,
+        payload: dict[str, Any],
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        if set(payload) != {
+            "participant_id", "target_role", "moderator_id", "consent_recorded",
+        }:
+            raise WebRequestError(
+                422,
+                "invalid_study_registration",
+                "Study registration fields are not exact",
+            )
+        participant_id = self._text_field(payload, "participant_id", maximum=52)
+        target_role = self._text_field(payload, "target_role", maximum=32)
+        moderator_id = self._text_field(payload, "moderator_id", maximum=52)
+        if payload.get("consent_recorded") is not True:
+            raise WebRequestError(
+                422,
+                "consent_required",
+                "Recorded informed consent is required before registration",
+            )
+        if not self._mutation_lock.acquire(blocking=False):
+            raise WebRequestError(
+                409, "operation_in_progress", "Another mutation is running",
+            )
+        try:
+            try:
+                result = ProductValueStudyDelivery(self.root).register(
+                    participant_id=participant_id,
+                    target_role=target_role,
+                    moderator_id=moderator_id,
+                    consent_recorded=True,
+                )
+            except (OSError, ValueError) as exc:
+                raise WebRequestError(
+                    422,
+                    "study_registration_rejected",
+                    "Registration was rejected by the frozen study authority",
+                ) from exc
+            return self._json_response(201 if result["created"] else 200, {
+                "schema_version": 1,
+                "status": "registered" if result["created"] else "already_registered",
+                "created": result["created"],
+                "registration": result["registration"],
+                "packet_url": (
+                    "/api/v1/studies/product-value/packets/"
+                    f"{result['registration']['registration_id']}.json"
+                ),
+                "scoring_material_exposed": False,
+                "external_calls_made": False,
+                "matches_executed": 0,
+                "training_executed": False,
+            })
+        finally:
+            self._mutation_lock.release()
+
+    def _product_value_packet_response(
+        self,
+        registration_id: str,
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        import hashlib
+
+        try:
+            content = ProductValueStudyDelivery(self.root).packet_bytes(
+                registration_id
+            )
+        except (OSError, ValueError) as exc:
+            raise WebRequestError(
+                404,
+                "participant_packet_unavailable",
+                "No valid blinded packet exists for this registration",
+            ) from exc
+        digest = hashlib.sha256(content).hexdigest()
+        return 200, [
+            ("Content-Type", "application/json; charset=utf-8"),
+            (
+                "Content-Disposition",
+                f'attachment; filename="{registration_id}.json"',
+            ),
+            ("X-GFS-Artifact-SHA256", digest),
+            ("X-GFS-Blinded-Study-Packet", "true"),
+        ], content
 
     def _html_response(self) -> tuple[int, list[tuple[str, str]], bytes]:
         nonce = secrets.token_urlsafe(18)
@@ -2385,6 +2495,20 @@ _INDEX_HTML = """<!doctype html>
     <p id="release-summary" class="status" role="status" aria-live="polite" aria-atomic="true">正在读取发布状态……</p>
     <div id="release-gates" class="cards" role="list" aria-label="发布门禁列表"></div></section>
   <section id="operations-detail-panel" class="wide" data-workspace-area="operations" aria-labelledby="evidence-title"><h2 id="evidence-title">证据与运行详情</h2><pre id="details" tabindex="0" aria-label="当前工作区和任务的 JSON 证据">正在读取……</pre></section>
+  <section id="product-value-study-panel" class="wide" data-workspace-area="evidence" aria-labelledby="product-value-study-title">
+    <h2 id="product-value-study-title">Product-value study operations</h2>
+    <p>Moderator-only registration and scoring-key-free packet delivery. This panel does not run participants, matches, training, or analysis.</p>
+    <p id="product-value-study-summary" class="status" role="status" aria-live="polite" aria-atomic="true">Loading blinded study authority...</p>
+    <div id="product-value-study-counts" class="cards" role="list" aria-label="Aggregate product-value study registration counts"></div>
+    <form id="product-value-study-form" aria-labelledby="product-value-study-register-title">
+      <h3 id="product-value-study-register-title">Register a consented pseudonymous participant</h3>
+      <div class="row"><label>Participant pseudonym<input name="participant_id" pattern="participant-[a-z0-9]{8,40}" maxlength="52" autocomplete="off" required></label><label>Target role<select name="target_role"><option value="football_analyst">Football analyst</option><option value="research_engineer">Research engineer</option><option value="product_operator">Product operator</option></select></label></div>
+      <label>Moderator pseudonym<input name="moderator_id" pattern="moderator-[a-z0-9]{8,40}" maxlength="52" autocomplete="off" required></label>
+      <label class="check"><input name="consent_recorded" type="checkbox" required>Recorded informed consent was obtained before this registration</label>
+      <div class="toolbar"><button type="submit">Register and prepare blinded packet</button><a id="product-value-study-packet" hidden>Download blinded participant packet</a></div>
+    </form>
+    <p id="product-value-study-message" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+  </section>
 </main>
 <noscript><p role="alert" aria-live="assertive" aria-atomic="true">GFS Studio 需要 JavaScript 才能执行受控工作流。</p></noscript>
 <script nonce="__NONCE__">
@@ -2404,6 +2528,7 @@ const clubSituationFieldset=document.querySelector('#club-situation-fieldset'),c
 const playerPromiseForm=document.querySelector('#player-promise-form'),playerPromiseRows=[...playerPromiseForm.querySelectorAll('.player-promise-row')],playerPromiseSummary=document.querySelector('#player-promise-summary');
 const managerFutureSet=document.querySelector('#manager-future-set'),managerInterventionWorkspace=document.querySelector('#manager-intervention-workspace'),managerFutureSetSummary=document.querySelector('#manager-future-set-summary'),managerFutureSetMinutes=document.querySelector('#manager-future-set-minutes'),requestManagerFutureSet=document.querySelector('#request-manager-future-set'),managerFutureSetList=document.querySelector('#manager-future-set-list');
 const releaseSummary=document.querySelector('#release-summary'),releaseGates=document.querySelector('#release-gates');
+const productValueStudySummary=document.querySelector('#product-value-study-summary'),productValueStudyCounts=document.querySelector('#product-value-study-counts'),productValueStudyForm=document.querySelector('#product-value-study-form'),productValueStudyMessage=document.querySelector('#product-value-study-message'),productValueStudyPacket=document.querySelector('#product-value-study-packet');
 const evidenceKitDownload=document.createElement('a'),evidenceKitRow=document.createElement('p');evidenceKitDownload.id='evidence-kit-download';evidenceKitDownload.href='/api/v1/excellence/evidence-kit.zip';evidenceKitDownload.download='gfs-excellence-evidence-kit-v1.zip';evidenceKitDownload.setAttribute('aria-describedby','release-summary');evidenceKitDownload.textContent='Download template-only evidence kit';evidenceKitRow.append(evidenceKitDownload);releaseSummary.insertAdjacentElement('afterend',evidenceKitRow);
 const message=document.querySelector('#message'),details=document.querySelector('#details'),workflow=document.querySelector('#workflow'),workflowAction=document.querySelector('#workflow-action'),report=document.querySelector('#report-link'),logoutButton=document.querySelector('#logout-button');
 const adoptionSummary=document.querySelector('#action-adoption-summary'),adoptionMetrics=document.querySelector('#action-adoption-metrics'),adoptionEvidence=document.querySelector('#action-adoption-evidence');
@@ -2428,6 +2553,9 @@ function setBusy(node,busy){node.setAttribute('aria-busy',busy?'true':'false')}
 function card(label,value){const el=document.createElement('div');el.className='card';const a=document.createElement('span');a.className='label';a.textContent=label;const b=document.createElement('strong');b.className='value';b.textContent=esc(value);el.append(a,b);return el}
 function renderRelease(data){releaseGates.replaceChildren();const cp=data.control_plane||data.studio?.control_plane||{},release=cp.release,ex=cp.excellence||{};if(!release){releaseSummary.textContent='发布状态尚不可用。';return}const product=release.scores?.product??ex.tracks?.product?.score??'—',academic=release.scores?.academic??ex.tracks?.academic?.score??'—',plan=release.completion_plan||{},actions=new Map((plan.steps||[]).map(step=>[step.gate_id,step])),kit=plan.evidence_kit?.ready?'就绪':'待检查';releaseSummary.textContent=`产品 ${product}/100 · 学术 ${academic}/100 · 代码契约${release.code_ready?'通过':'未通过'} · 最终发布${release.release_ready?'就绪':'未就绪'} · 证据包${kit} · ${release.open_gate_count} 个开放门禁 · 下一步 ${plan.recommended_gate_id||'无'}`;for(const gate of release.gates||[]){const action=actions.get(gate.id),state=gate.passed?'通过':action?.state||'待完成',detail=action&&!gate.passed?`${state} · 责任角色 ${action.operator}`:state,item=card(gate.label,detail);item.setAttribute('role','listitem');item.dataset.gateId=gate.id;if(action)item.dataset.actionState=action.state;releaseGates.append(item)}}
 function showReport(url,comparisonUrl,studyUrl,baselineUrl){report.replaceChildren();if(!url&&!comparisonUrl&&!studyUrl&&!baselineUrl){report.hidden=true;return}const links=[[baselineUrl,'打开配对基线（新窗口）'],[url,'打开比赛/处理场仪表板（新窗口）'],[comparisonUrl,'打开双世界/战术配对比较（新窗口）'],[studyUrl,'打开固定预算战术研究（新窗口）']];for(const [href,label] of links){if(!href)continue;if(report.childNodes.length)report.append(document.createTextNode(' · '));const link=document.createElement('a');link.href=href;link.target='_blank';link.rel='noopener';link.textContent=label;report.append(link)}report.hidden=false}
+function renderProductValueStudy(data){productValueStudyCounts.replaceChildren();const measurement=data.measurement_records_present?'measurement records present; analysis required':'no measurement records';productValueStudySummary.textContent=`Frozen blinded delivery ready - ${Number(data.registration_count||0)}/${Number(data.minimum_valid_participants||24)} registrations - ${measurement}`;productValueStudyCounts.append(card('Registrations',Number(data.registration_count||0)),card('AB / BA',`${Number(data.sequence_counts?.AB||0)} / ${Number(data.sequence_counts?.BA||0)}`),card('Registration',data.registration_open?'Open':'Closed after measurement'),card('Scoring material','Not exposed'));for(const item of productValueStudyCounts.children)item.setAttribute('role','listitem')}
+async function refreshProductValueStudy(){try{renderProductValueStudy(await api('/api/v1/studies/product-value'))}catch(error){productValueStudyCounts.replaceChildren();productValueStudySummary.textContent=`Blinded study delivery unavailable: ${error.message}`}}
+productValueStudyForm.addEventListener('submit',async event=>{event.preventDefault();const button=productValueStudyForm.querySelector('button[type="submit"]'),form=new FormData(productValueStudyForm);button.disabled=true;productValueStudyForm.setAttribute('aria-busy','true');productValueStudyPacket.hidden=true;announce(productValueStudyMessage,'Registering against the frozen authority...');try{const data=await api('/api/v1/studies/product-value/registrations',{method:'POST',body:JSON.stringify({participant_id:String(form.get('participant_id')||''),target_role:String(form.get('target_role')||''),moderator_id:String(form.get('moderator_id')||''),consent_recorded:form.get('consent_recorded')==='on'})});productValueStudyPacket.href=data.packet_url;productValueStudyPacket.download=data.registration.registration_id+'.json';productValueStudyPacket.hidden=false;announce(productValueStudyMessage,`${data.status}: ${data.registration.registration_id}. Download contains no moderator identity or scoring key.`,'success',true);await refreshProductValueStudy()}catch(error){announce(productValueStudyMessage,error.message,'error',true)}finally{button.disabled=false;productValueStudyForm.setAttribute('aria-busy','false')}});
 function populateTactics(select,tactics){const selected=select.value;select.replaceChildren();for(const tactic of tactics||[]){const option=document.createElement('option');option.value=tactic.id;option.textContent=tactic.label;option.title=tactic.description||'';select.append(option)}if([...select.options].some(option=>option.value===selected))select.value=selected}
 function configureMatchPlan(capabilities,mode){currentMatchCapabilities=capabilities||currentMatchCapabilities||{};currentStudioMode=mode||currentStudioMode;populateTactics(homeTactic,currentMatchCapabilities.tactics);populateTactics(awayTactic,currentMatchCapabilities.tactics);const labOption=[...experienceSelect.options].find(option=>option.value==='tactical_lab'),labAllowed=['research','cognitive'].includes(currentStudioMode);labOption.disabled=!labAllowed;if(!labAllowed&&experienceSelect.value==='tactical_lab')experienceSelect.value='observational';const lab=experienceSelect.value==='tactical_lab';if(lab&&homeTactic.value==='team_identity'&&awayTactic.value==='team_identity')homeTactic.value='balanced';tacticalOptions.hidden=!lab;homeTactic.disabled=!lab;awayTactic.disabled=!lab;reuseSeed.disabled=!lab;if(!lab)reuseSeed.checked=false;planGuidance.textContent=lab?'战术实验使用物理比分。单场结果只作描述；复用上一场随机条件后才能进行配对归因。':'原生观赛保留球队自身体系和稳定比分路径。'}
 function configureTacticalStudy(capabilities,mode){const tactics=capabilities?.tactics||[];for(const select of [baselineTactic,treatmentTactic,opponentTactic])populateTactics(select,tactics);if(!baselineTactic.dataset.initialized){baselineTactic.value='balanced';treatmentTactic.value='gegenpress';opponentTactic.value='low_block_counter';baselineTactic.dataset.initialized='true'}studyPanel.hidden=mode!=='research'}
@@ -2756,7 +2884,7 @@ restoreForm.addEventListener('submit',async e=>{e.preventDefault();const id=rest
 cancelRestore.addEventListener('click',()=>closeRestore(true));
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!restoreForm.hidden){event.preventDefault();closeRestore(true)}});
 logoutButton.addEventListener('click',async()=>{logoutButton.disabled=true;logoutButton.setAttribute('aria-busy','true');try{await api('/api/v1/logout',{method:'POST',body:'{}'});location.replace('/login')}catch(e){announce(message,e.message,'error',true);logoutButton.disabled=false;logoutButton.setAttribute('aria-busy','false')}});
-void Promise.all([refresh(),refreshRecovery()]);
+void Promise.all([refresh(),refreshRecovery(),refreshProductValueStudy()]);
 </script>
 </body></html>"""
 

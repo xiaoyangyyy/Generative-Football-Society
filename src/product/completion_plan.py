@@ -121,20 +121,26 @@ STEPS = (
     CompletionStep(
         "user_value_validation", "product_validation", 70, "human_study",
         "study_lead", ("target_user_validation",),
-        ("python scripts/product_value_study.py --register "
+        ("python gfs.py --base-dir . studio value-study status",
+         "python gfs.py --base-dir . studio value-study register "
          "--participant-id participant-replace0001 "
          "--target-role football_analyst "
          "--moderator-id moderator-replace0001 --confirm-consent",
+         "python gfs.py --base-dir . studio value-study packet "
+         "--registration-id REG-000000000000000000000000",
          "python scripts/product_value_study.py --analyze --records "
          "data/evaluation/product_value_validation_v1/participant_records.jsonl "
          "--registry data/evaluation/product_value_validation_v1/session_registry.json "
          "--evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE "
+         "--scoring-seal data/evaluation/product_value_scoring_seal_v1.json "
          "--out data/evaluation/product_value_validation_v1/decision.json",),
         required_inputs=(
             "data/evaluation/product_value_validation_v1/session_registry.json",
             "data/evaluation/product_value_case_packs_v1.json",
+            "data/evaluation/product_value_scoring_seal_v1.json",
             "data/evaluation/product_value_validation_v1/participant_records.jsonl",
             "controlled content-addressed structured receipt archive",
+            "identity-bound scoring-key-free participant packets",
             "valid registry-assigned comparative target-user records",
         ),
     ),

@@ -51,6 +51,8 @@
     "product_value_validation_guide": "docs/PRODUCT_VALUE_STUDY.md",
     "product_value_validation_analyzer": "scripts/product_value_study.py",
     "product_value_case_pack_manifest": "data/evaluation/product_value_case_packs_v1.json",
+    "product_value_scoring_seal": "data/evaluation/product_value_scoring_seal_v1.json",
+    "product_value_study_delivery": "src/product/study_delivery.py",
     "independent_reproduction_protocol": "data/evaluation/independent_action_reproduction_protocol_v2.json",
     "independent_reproduction_protocol_verification": "data/evaluation/independent_action_reproduction_protocol_verification_v2.json",
     "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
@@ -227,8 +229,22 @@
       "explicit_authority_required": true
     },
     {
+      "id": "product_value_delivery_status",
+      "command": "python gfs.py --base-dir . studio value-study status",
+      "effect": "read_only_aggregate_blinded_delivery_status",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "product_value_packet_delivery",
+      "command": "python gfs.py --base-dir . studio value-study packet --registration-id REG-000000000000000000000000",
+      "effect": "materialize_identity_bound_scoring_key_free_participant_packet",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
       "id": "product_value_analysis",
-      "command": "python scripts/product_value_study.py --analyze --records data/evaluation/product_value_validation_v1/participant_records.jsonl --registry data/evaluation/product_value_validation_v1/session_registry.json --evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE --out data/evaluation/product_value_validation_v1/decision.json",
+      "command": "python scripts/product_value_study.py --analyze --records data/evaluation/product_value_validation_v1/participant_records.jsonl --registry data/evaluation/product_value_validation_v1/session_registry.json --evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE --scoring-seal data/evaluation/product_value_scoring_seal_v1.json --out data/evaluation/product_value_validation_v1/decision.json",
       "effect": "analyze_registered_randomized_byte_verified_rescored_human_evidence",
       "runs_simulation": false,
       "explicit_authority_required": true
@@ -416,6 +432,8 @@
     "production_matches_executed": 0,
     "product_value_protocol": "data/evaluation/product_value_validation_protocol_v1.json",
     "product_value_case_packs": "data/evaluation/product_value_case_packs_v1.json",
+    "product_value_scoring_seal": "data/evaluation/product_value_scoring_seal_v1.json",
+    "product_value_delivery_service": "src/product/study_delivery.py",
     "product_value_session_registry": "data/evaluation/product_value_validation_v1/session_registry.json",
     "product_value_status": "preregistered_not_executed",
     "product_value_participants_observed": 0

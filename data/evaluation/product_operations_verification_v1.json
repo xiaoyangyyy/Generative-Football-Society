@@ -10,7 +10,7 @@
     "failed": 3,
     "interrupted": 2
   },
-  "elapsed_seconds": 4.349,
+  "elapsed_seconds": 5.619,
   "checks": {
     "all_submission_threads_stopped": true,
     "no_submission_exceptions": true,

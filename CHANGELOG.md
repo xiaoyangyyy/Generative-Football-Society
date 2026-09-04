@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Separated product-value participant cases from a case-hash-bound moderator
+  scoring seal and added deterministic blinded packet delivery through Studio
+  CLI/Web with aggregate-only status, CSRF, normalized telemetry, symlink-safe
+  confinement, atomic no-overwrite writes and evidence-kit exclusion.
 - Replaced self-declared human-study sequence, correctness and digest-only
   evidence with an OS-serialized pseudonymous registry, role-stratified
   permuted-block allocation, frozen scored case packs, structured receipt

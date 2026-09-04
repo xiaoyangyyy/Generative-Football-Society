@@ -26,6 +26,9 @@ ROUTES = {
     "/", "/healthz", "/login", "/readyz", "/api/v1/login",
     "/api/v1/logout",
     "/api/v1/excellence/evidence-kit.zip",
+    "/api/v1/studies/product-value",
+    "/api/v1/studies/product-value/registrations",
+    "/api/v1/studies/product-value/packets/{registration_id}",
     "/api/v1/studio", "/api/v1/matches", "/api/v1/paired-matches",
     "/api/v1/tactical-studies",
     "/api/v1/seasons", "/api/v1/seasons/decision",
@@ -82,6 +85,8 @@ def route_template(path: str) -> str:
         return "/api/v1/tasks/{task_id}/requeue"
     if path.startswith("/api/v1/tasks/"):
         return "/api/v1/tasks/{task_id}"
+    if path.startswith("/api/v1/studies/product-value/packets/"):
+        return "/api/v1/studies/product-value/packets/{registration_id}"
     if path.startswith("/api/v1/recruitment-markets/"):
         return "/api/v1/recruitment-markets/{team}"
     if re.fullmatch(r"/api/v1/backups/[^/]+/verify", path):

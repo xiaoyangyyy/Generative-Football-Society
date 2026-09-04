@@ -305,6 +305,68 @@ def cmd_studio_evidence_kit(args: argparse.Namespace) -> int:
     return 0 if report["passed"] else 1
 
 
+def cmd_studio_value_study_status(args: argparse.Namespace) -> int:
+    """Audit blinded product-value delivery without exposing registrations."""
+    import json
+    from src.product import ProductValueStudyDelivery
+
+    result = ProductValueStudyDelivery(args.base_dir).status()
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_studio_value_study_register(args: argparse.Namespace) -> int:
+    """Register one pseudonymous participant before any measured record."""
+    import json
+    from src.product import ProductValueStudyDelivery
+
+    result = ProductValueStudyDelivery(args.base_dir).register(
+        participant_id=args.participant_id,
+        target_role=args.target_role,
+        moderator_id=args.moderator_id,
+        consent_recorded=args.confirm_consent,
+    )
+    print(json.dumps({
+        "schema_version": 1,
+        "status": "registered" if result["created"] else "already_registered",
+        "created": result["created"],
+        "registration": result["registration"],
+        "scoring_material_exposed": False,
+        "external_calls_made": False,
+        "matches_executed": 0,
+        "training_executed": False,
+    }, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_studio_value_study_packet(args: argparse.Namespace) -> int:
+    """Materialize one deterministic participant packet without scoring keys."""
+    import json
+    from src.product import ProductValueStudyDelivery
+
+    service = ProductValueStudyDelivery(args.base_dir)
+    target = service.materialize_packet(
+        args.registration_id,
+        args.out,
+        overwrite=args.overwrite,
+    )
+    content = target.read_bytes()
+    import hashlib
+
+    print(json.dumps({
+        "schema_version": 1,
+        "status": "blinded_packet_materialized",
+        "path": target.relative_to(Path(args.base_dir).resolve()).as_posix(),
+        "sha256": hashlib.sha256(content).hexdigest(),
+        "size_bytes": len(content),
+        "scoring_material_exposed": False,
+        "external_calls_made": False,
+        "matches_executed": 0,
+        "training_executed": False,
+    }, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_studio_stop_job(args: argparse.Namespace) -> int:
     path = ProductControlPlane(args.base_dir).request_stop(args.run_id)
     print(f"Cooperative stop requested: {path}")
@@ -449,6 +511,39 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_studio_evidence_kit.add_argument("--overwrite", action="store_true")
     p_studio_evidence_kit.set_defaults(func=cmd_studio_evidence_kit)
+    p_value_study = studio_sub.add_parser(
+        "value-study",
+        help="Operate blinded, preregistered product-value study delivery",
+    )
+    value_study_sub = p_value_study.add_subparsers(
+        dest="value_study_command", required=True,
+    )
+    p_value_status = value_study_sub.add_parser(
+        "status", help="Show aggregate registration and delivery readiness",
+    )
+    p_value_status.set_defaults(func=cmd_studio_value_study_status)
+    p_value_register = value_study_sub.add_parser(
+        "register", help="Register one consented pseudonymous participant",
+    )
+    p_value_register.add_argument("--participant-id", required=True)
+    p_value_register.add_argument(
+        "--target-role",
+        required=True,
+        choices=("football_analyst", "research_engineer", "product_operator"),
+    )
+    p_value_register.add_argument("--moderator-id", required=True)
+    p_value_register.add_argument("--confirm-consent", action="store_true")
+    p_value_register.set_defaults(func=cmd_studio_value_study_register)
+    p_value_packet = value_study_sub.add_parser(
+        "packet", help="Materialize one scoring-key-free participant packet",
+    )
+    p_value_packet.add_argument("--registration-id", required=True)
+    p_value_packet.add_argument(
+        "--out",
+        help="Optional path confined under build/study-delivery/product-value-v1",
+    )
+    p_value_packet.add_argument("--overwrite", action="store_true")
+    p_value_packet.set_defaults(func=cmd_studio_value_study_packet)
     p_studio_stop = studio_sub.add_parser(
         "stop-job", help="Request a safe stop at the next epoch boundary",
     )

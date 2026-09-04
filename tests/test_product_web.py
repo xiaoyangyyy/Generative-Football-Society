@@ -15,6 +15,9 @@ from src.product.web import ProductWebApp, _is_loopback_host, create_product_web
 from src.product.web_security import WebAccessPolicy
 from src.product.tasks import BackgroundMatchWorker
 from src.product.tactical_study import TacticalStudyPlan
+from src.product.study_delivery import (
+    CASE_PACK_RELATIVE, PROTOCOL_RELATIVE, SCORING_SEAL_RELATIVE,
+)
 from scripts.build_excellence_evidence_kit import PROTOCOLS, SECRET_PATTERNS
 
 
@@ -29,6 +32,15 @@ def _copy_evidence_kit_inputs(target):
     guide = target / "docs/EXCELLENCE_EVIDENCE_KIT.md"
     guide.parent.mkdir(parents=True, exist_ok=True)
     guide.write_bytes((ROOT / "docs/EXCELLENCE_EVIDENCE_KIT.md").read_bytes())
+
+
+def _copy_value_study_authority(target):
+    for relative in (
+        PROTOCOL_RELATIVE, CASE_PACK_RELATIVE, SCORING_SEAL_RELATIVE,
+    ):
+        destination = target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((ROOT / relative).read_bytes())
 
 
 def _request(
@@ -162,7 +174,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert document.count('data-workspace-view=') == 4
     assert 'data-workspace-area="career"' in document
     assert document.count('data-workspace-area="lab"') == 4
-    assert document.count('data-workspace-area="evidence"') == 3
+    assert document.count('data-workspace-area="evidence"') == 4
     assert document.count('data-workspace-area="operations"') == 2
     assert "function applyWorkspaceArea(" in document
     assert "function workflowWorkspaceArea(" in document
@@ -660,6 +672,56 @@ def test_evidence_kit_download_is_deterministic_secret_free_and_memory_only(tmp_
     wrong_method = _request(
         app, method="POST", path="/api/v1/excellence/evidence-kit.zip",
     )
+    assert wrong_method["status"].startswith("405")
+
+
+def test_blinded_product_value_web_workflow_is_csrf_bound_and_privacy_safe(tmp_path):
+    _copy_value_study_authority(tmp_path)
+    app = ProductWebApp(tmp_path)
+    status = _request(app, path="/api/v1/studies/product-value")
+    assert status["status"].startswith("200")
+    assert status["json"]["registration_count"] == 0
+    assert status["json"]["scoring_material_exposed"] is False
+
+    payload = {
+        "participant_id": "participant-00000001",
+        "target_role": "football_analyst",
+        "moderator_id": "moderator-12345678",
+        "consent_recorded": True,
+    }
+    rejected = _request(
+        app, "POST", "/api/v1/studies/product-value/registrations", payload,
+    )
+    assert rejected["status"].startswith("403")
+    registered = _request(
+        app, "POST", "/api/v1/studies/product-value/registrations", payload,
+        csrf=app.csrf_token,
+    )
+    assert registered["status"].startswith("201")
+    assert registered["json"]["scoring_material_exposed"] is False
+    packet_url = registered["json"]["packet_url"]
+    packet = _request(app, path=packet_url)
+    assert packet["status"].startswith("200")
+    assert packet["headers"]["X-GFS-Blinded-Study-Packet"] == "true"
+    assert packet["headers"]["X-GFS-Artifact-SHA256"] == hashlib.sha256(
+        packet["body"]
+    ).hexdigest()
+    assert packet["json"]["delivery_boundary"]["scoring_material_included"] is False
+    serialized = json.dumps(packet["json"])
+    assert '"scoring_key"' not in serialized
+    assert '"scoring_keys"' not in serialized
+    assert '"moderator_id"' not in serialized
+
+    aggregate = _request(app, path="/api/v1/studies/product-value")["json"]
+    assert aggregate["registration_count"] == 1
+    assert payload["participant_id"] not in json.dumps(aggregate)
+    metrics = _request(app, path="/api/v1/operations")["json"]
+    route = "/api/v1/studies/product-value/packets/{registration_id}"
+    assert metrics["requests"]["routes"][route] == 1
+    assert registered["json"]["registration"]["registration_id"] not in json.dumps(
+        metrics
+    )
+    wrong_method = _request(app, "POST", packet_url, {})
     assert wrong_method["status"].startswith("405")
 
 

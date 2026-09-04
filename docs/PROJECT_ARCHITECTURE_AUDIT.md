@@ -222,6 +222,15 @@ not quality signals by themselves.
     from frozen numeric case contracts instead of trusting `correct=true`.
     The amendments record zero prior participants and remain preparation, not
     user-value evidence.
+48. Physically separated comparative participant cases from the moderator
+    scoring seal. The seal binds the exact case-manifest SHA-256, remains
+    analysis-only and is excluded from the participant evidence kit. Studio CLI
+    and authenticated Web now provide aggregate status, consent-bound
+    registration and deterministic blinded packet download. Packet writes are
+    confined, symlink-safe and atomic no-overwrite; Web telemetry normalizes
+    registration IDs. Live status stops asserting zero observations when a
+    measurement record file appears. This closes delivery leakage and manual
+    handoff gaps but records no participant or product-value result.
 
 ## LLM Scope Decision
 
