@@ -97,6 +97,7 @@ def run_physics_first_micro(
     stage_name: str = "match",
     neutral_venue: bool = False,
     match_seconds: Optional[float] = None,
+    base_dir: str | os.PathLike[str] | None = None,
 ) -> Any:
     """
     Run full spatial micro match first (spectate). Score emerges from shot physics when
@@ -125,6 +126,7 @@ def run_physics_first_micro(
         stage_name=stage_name,
         neutral_venue=neutral_venue,
         match_seconds=match_seconds,
+        base_dir=base_dir,
     )
 
 
@@ -144,6 +146,7 @@ def run_extra_time_micro(
     seed: int,
     stage_name: str = "match",
     neutral_venue: bool = False,
+    base_dir: str | os.PathLike[str] | None = None,
 ) -> Any:
     """30-minute extra time via full micro simulation (no macro ET shortcut)."""
     from src.memory_engine.macro_goal_dynamics import EXTRA_TIME_MINUTES
@@ -167,6 +170,7 @@ def run_extra_time_micro(
         stage_name=f"{stage_name}_AET",
         neutral_venue=neutral_venue,
         match_seconds=et_sec,
+        base_dir=base_dir,
     )
 
 
@@ -229,6 +233,7 @@ def run_micro_layer(
     internal_away: Dict,
     seed: int,
     stage_name: str = "match",
+    base_dir: str | os.PathLike[str] | None = None,
 ) -> Any:
     from src.match_engine.match_micro_runner import run_match_micro_simulation
 
@@ -249,6 +254,7 @@ def run_micro_layer(
         seed=seed,
         writeback_agents=True,
         stage_name=stage_name,
+        base_dir=base_dir,
     )
 
 

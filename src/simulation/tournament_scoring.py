@@ -62,6 +62,7 @@ class TournamentScoringMixin:
                 referee=referee, stage_pressure=pressure, drama_score=drama_pre,
                 internal_home=internal_micro_h, internal_away=internal_micro_a,
                 seed=seed, stage_name=stage_name, neutral_venue=neutral_venue,
+                base_dir=self.base_dir,
             )
             print_micro_match_logs(micro_summary, home_micro, away_micro, ah, aa)
             s1, s2, xg1, xg2, score_meta = finalize_official_score_from_micro(
@@ -187,6 +188,7 @@ class TournamentScoringMixin:
                     seed=seed,
                     stage_name=stage_name,
                     neutral_venue=neutral_venue,
+                    base_dir=self.base_dir,
                 )
                 et_gh, et_ga = int(et_summary.goals_micro_home), int(et_summary.goals_micro_away)
                 et_xgh, et_xga = float(et_summary.micro_xg_home), float(et_summary.micro_xg_away)

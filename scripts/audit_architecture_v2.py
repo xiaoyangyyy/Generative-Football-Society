@@ -212,6 +212,21 @@ def main() -> int:
     match_micro_runner = (
         ROOT / "src/match_engine/match_micro_runner.py"
     ).read_text(encoding="utf-8")
+    match_affective_runner = (
+        ROOT / "src/match_engine/match_affective_runner.py"
+    ).read_text(encoding="utf-8")
+    internal_signals = (
+        ROOT / "src/match_engine/internal_signals.py"
+    ).read_text(encoding="utf-8")
+    match_pipeline = (
+        ROOT / "src/simulation/match_pipeline.py"
+    ).read_text(encoding="utf-8")
+    tournament_scoring = (
+        ROOT / "src/simulation/tournament_scoring.py"
+    ).read_text(encoding="utf-8")
+    tournament_reporting = (
+        ROOT / "src/simulation/tournament_reporting.py"
+    ).read_text(encoding="utf-8")
     wm_decision_support = (
         ROOT / "src/match_engine/world_model/decision_support.py"
     ).read_text(encoding="utf-8")
@@ -1699,6 +1714,31 @@ def main() -> int:
                 "research_synthetic_roster_fallback",
                 "base_dir=self.root",
             ))
+        ),
+        "match_runtime_inputs_are_side_isolated_and_root_bound": (
+            all(token in internal_signals for token in (
+                "def normalize_internal_match_signals(",
+                "coordination_away=_bounded_signal(",
+                "internal_away,\n            \"coordination\"",
+                "conflict_away=_bounded_signal(",
+                "internal_away,\n            \"conflict_heat\"",
+                "math.isfinite(value)",
+                "MAX_CONFLICT_HEAT = 1.05",
+            ))
+            and all(token in match_micro_runner for token in (
+                "normalize_internal_match_signals(",
+                "conflict_away = internal_signals.conflict_away",
+            ))
+            and all(token in match_affective_runner for token in (
+                "normalize_internal_match_signals(",
+                "base_dir=base_dir",
+            ))
+            and match_pipeline.count(
+                "base_dir: str | os.PathLike[str] | None = None"
+            ) >= 3
+            and match_pipeline.count("base_dir=base_dir") >= 3
+            and tournament_scoring.count("base_dir=self.base_dir") >= 2
+            and tournament_reporting.count("base_dir=self.base_dir") >= 2
         ),
         "wheel_preserves_src_console_namespace": (
             pyproject.get("project", {}).get("scripts", {}).get("gfs") == "src.cli:main"

@@ -129,6 +129,7 @@ class TournamentReportingMixin:
                         internal_away=internal_2,
                         seed=seed,
                         stage_name=stage_name,
+                        base_dir=self.base_dir,
                     )
                     print_micro_match_logs(aff, t1_name, t2_name, a1, a2)
                     print(
@@ -152,6 +153,7 @@ class TournamentReportingMixin:
                         internal_away=internal_2,
                         seed=seed,
                         writeback_agents=True,
+                        base_dir=self.base_dir,
                     )
                     print(
                         f"  [AFFECTIVE] ψ={aff.final_psi:+.2f} | coach stress {aff.home_coach_stress:.2f}/{aff.away_coach_stress:.2f} "

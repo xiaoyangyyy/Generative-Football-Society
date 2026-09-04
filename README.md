@@ -155,6 +155,10 @@ V3.90 binds effective squad construction to the caller's project root. Missing
 rosters use a visible deterministic fallback, while malformed or
 XI-incomplete rosters fail closed; exact roster provenance reaches match and
 product reports.
+V3.91 completes that root boundary across tournament regulation, extra time,
+micro replay and affective replay. A shared finite, bounded signal contract now
+keeps each team's coordination and conflict inputs side-specific; the away
+team can no longer inherit the home team's conflict state.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

@@ -15,6 +15,7 @@ from src.match_engine.action_engine import ActionEngine
 from src.match_engine.affective_coupling import AffectiveSpatialCoupling
 from src.match_engine.event_schedule import build_event_schedule
 from src.match_engine.goal_generator import lambdas_from_micro
+from src.match_engine.internal_signals import normalize_internal_match_signals
 from src.match_engine.kinematic_position import KinematicPositionLayer
 from src.match_engine.macro_bridge import apply_affective_endstate_to_agents, build_match_affective_state
 from src.match_engine.meso_aggregator import MesoAggregator, icon_emotion_shock
@@ -846,14 +847,13 @@ def _initialize_micro_match_state(
         if tactical_override_away:
             apply_vector_to_team_coach(state.away, tactical_override_away)
 
-    home_internal = internal_home or {}
-    away_internal = internal_away or {}
-    coordination_home = float(home_internal.get("coordination", 0.6))
-    coordination_away = float(away_internal.get("coordination", 0.6))
-    conflict_home = float(home_internal.get("conflict_heat", 0.12))
-    # Compatibility: the existing model currently derives both conflict inputs
-    # from the home internal state. Correct this only with a calibrated baseline.
-    conflict_away = float(home_internal.get("conflict_heat", 0.12))
+    internal_signals = normalize_internal_match_signals(
+        internal_home, internal_away,
+    )
+    coordination_home = internal_signals.coordination_home
+    coordination_away = internal_signals.coordination_away
+    conflict_home = internal_signals.conflict_home
+    conflict_away = internal_signals.conflict_away
     referee_strictness = float((referee or {}).get("strictness", 0.55))
     dt = cfg.dt_default
     duration = float(match_seconds if match_seconds is not None else cfg.match_seconds)

@@ -4,6 +4,7 @@ Run full-match Phase 1b affective simulation driven by score/xG-calibrated event
 
 from __future__ import annotations
 
+import os
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 import numpy as np
@@ -11,6 +12,7 @@ import numpy as np
 from src.match_engine.affective_coupling import AffectiveSpatialCoupling
 from src.match_engine.config import AffectiveConfig
 from src.match_engine.event_schedule import build_event_schedule
+from src.match_engine.internal_signals import normalize_internal_match_signals
 from src.match_engine.macro_bridge import apply_affective_endstate_to_agents, build_match_affective_state
 from src.match_engine.meso_aggregator import MesoAggregator, icon_emotion_shock
 from src.match_engine.state import AffectiveMatchSummary, MatchAffectiveState
@@ -37,6 +39,7 @@ def run_match_affective_simulation(
     seed: int = 42,
     writeback_agents: bool = True,
     blend: float = 0.35,
+    base_dir: str | os.PathLike[str] | None = None,
 ) -> AffectiveMatchSummary:
     cfg = config or AffectiveConfig()
     rng = np.random.default_rng(seed)
@@ -49,13 +52,15 @@ def run_match_affective_simulation(
         stage_pressure=stage_pressure,
         neutral_venue=neutral_venue,
         rng=rng,
+        base_dir=base_dir,
     )
-    ih = internal_home or {}
-    ia = internal_away or {}
-    coord_h = float(ih.get("coordination", 0.6))
-    coord_a = float(ia.get("coordination", 0.6))
-    conflict_h = float(ih.get("conflict_heat", 0.12))
-    conflict_a = float(ia.get("conflict_heat", 0.12))
+    internal_signals = normalize_internal_match_signals(
+        internal_home, internal_away,
+    )
+    coord_h = internal_signals.coordination_home
+    coord_a = internal_signals.coordination_away
+    conflict_h = internal_signals.conflict_home
+    conflict_a = internal_signals.conflict_away
 
     ref_strict = float((referee or {}).get("strictness", 0.55))
     schedule = build_event_schedule(

@@ -2,6 +2,9 @@
 
 ## Unreleased - v7 candidate
 
+- Completed workspace-root propagation through tournament regulation, extra
+  time and both replay paths, and isolated finite, bounded home/away internal
+  match signals behind one shared contract.
 - Bound squad construction to the caller's project root, made malformed or
   XI-incomplete rosters fail closed, and surfaced exact roster/fallback
   provenance through match and product reports.

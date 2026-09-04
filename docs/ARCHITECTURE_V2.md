@@ -3550,3 +3550,34 @@ research and cognitive reports that actually observe one fail integrity with
 This is a portability and evidence-correctness change. It performs no
 training, provider request or formal match study and changes no frozen
 world-model promotion decision.
+
+## 109. V3.91 Side-isolated tournament runtime inputs
+
+V3.90 corrected the public micro entry and prematch planning path, but an audit
+of the complete tournament runtime found that four downstream execution paths
+still omitted the caller's project root: physics-official regulation, micro
+extra time, macro-anchored micro replay and affective-only replay. Those paths
+could consequently rebuild squads or load model artifacts from the source
+checkout instead of the tournament manager's workspace.
+
+All three shared match-pipeline helpers now accept and forward `base_dir`, and
+both tournament mixins pass their manager-owned root through regulation, extra
+time and replay. The affective runner follows the same root-aware squad
+construction contract as the full micro runner. Direct callers retain the
+existing optional default for compatibility, while managed execution always
+uses the explicit workspace root.
+
+The same audit exposed a historical home/away leak in full micro
+initialization: `conflict_away` was read from the home team's internal state.
+Both micro and affective runners now consume one shared signal normalizer.
+Coordination is finite and bounded to `[0, 1]`; conflict heat is finite and
+bounded to its declared `[0, 1.05]` scale; invalid values use explicit defaults.
+Each side is read only from its own payload, and swap-symmetry plus schedule
+integration tests protect that invariant.
+
+The architecture audit covers the shared contract and every managed call
+site, complementing behavioral tests for regulation, extra time and both
+replay modes. This correctness change intentionally invalidates assumptions
+that mutable development-branch simulations are identity-equivalent to older
+sealed results. It runs no training, provider call or formal match experiment,
+and does not alter the active stable release pointer or any promotion claim.
