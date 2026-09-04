@@ -1116,6 +1116,7 @@ def test_executor_uses_only_matching_held_out_critic_as_safety_brake():
     class CautiousCriticLLM:
         def coach_in_match_plan(self, team_name, facts, kind):
             packet = facts["world_model_decision_support"]
+            assert packet["llm_semantic_critic_memory"]["active_profiles"] == 1
             return json.dumps({
                 "reasoning": "Apply a previously validated semantic warning.",
                 "confidence": 1.0,

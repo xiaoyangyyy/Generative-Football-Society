@@ -12,7 +12,7 @@ import pandas as pd
 
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))
 from src.data_engine.dataset_registry import write_json_atomic
-from src.match_engine.frame_world.actions import ACTION_NAMES,TimedAction,write_actions
+from src.match_engine.frame_world.actions import ACTION_NAMES,TimedAction
 from src.match_engine.frame_world.schema import MAX_TEAM_PLAYERS
 
 OUT=ROOT/"data/frame_world/v82_actions"; PRESSURE={"pressure","pressing","recovery_press","counter_press"}
@@ -101,7 +101,7 @@ def entity_mapping(provider,match_id):
     return {person:i*MAX_TEAM_PLAYERS+j for i,team in enumerate(teams[:2]) for j,person in enumerate(unique[team][:MAX_TEAM_PLAYERS])}
 
 def align(actions,frame_file,mapping):
-    raw=np.load(frame_file,allow_pickle=False); times=raw["timestamps"].astype(float); labels=np.zeros((len(times),len(ACTION_NAMES)),np.uint8); directions=np.zeros((len(times),2),np.float32); actor_indices=np.full((len(times),3),-1,np.int8); target_indices=np.full((len(times),3),-1,np.int8); known=np.zeros(len(ACTION_NAMES),np.uint8); errors=[]; aligned=[]
+    raw=np.load(frame_file,allow_pickle=False); times=raw["timestamps"].astype(float); labels=np.zeros((len(times),len(ACTION_NAMES)),np.uint8); directions=np.zeros((len(times),2),np.float32); actor_indices=np.full((len(times),3),-1,np.int8); target_indices=np.full((len(times),3),-1,np.int8); errors=[]; aligned=[]
     for action in actions:
         index=int(np.searchsorted(times,action.start_s)); choices=[i for i in (index-1,index) if 0<=i<len(times)]; nearest=min(choices,key=lambda i:abs(times[i]-action.start_s)); error=abs(times[nearest]-action.start_s)
         if error>.061: continue

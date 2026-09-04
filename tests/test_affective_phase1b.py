@@ -13,7 +13,7 @@ if ROOT not in sys.path:
 from src.match_engine.affective_coupling import AffectiveSpatialCoupling
 from src.match_engine.config import AffectiveConfig
 from src.match_engine.math_utils import softmax
-from src.match_engine.micro_events import MicroEvent, MicroEventType, apply_micro_event
+from src.match_engine.micro_events import MicroEvent, MicroEventType
 from src.match_engine.macro_bridge import build_match_affective_state
 from src.match_engine.event_schedule import build_event_schedule
 
@@ -67,10 +67,9 @@ class TestAffectivePhase1b(unittest.TestCase):
             player_id=st.player_id,
             opponent_team_id="Argentina",
         )
-        g = apply_micro_event(state, ev, AffectiveConfig())
-        self.assertGreater(g, 0)
         engine = AffectiveSpatialCoupling(AffectiveConfig())
-        engine.step(state, 10.0, events=[])
+        engine.step(state, 10.0, events=[ev])
+        self.assertGreater(state.crowd.psi, psi0)
         self.assertTrue(np.any(st.z_emo > z0))
 
     def test_fear_increases_tau_dec(self):
@@ -117,6 +116,7 @@ class TestAffectivePhase1b(unittest.TestCase):
                 conflict_home=0.2,
                 conflict_away=0.1,
             )
+        self.assertGreater(state.home.coach.stress(), s0)
         self.assertGreater(state.home.coach.z_stress, state.home.coach.z_trust - 0.5)
 
 

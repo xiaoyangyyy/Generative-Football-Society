@@ -31,7 +31,6 @@ def main():
         train_parts.append(provider[~provider.match_id.astype(str).isin(chosen)])
     train=pd.concat(train_parts); test=pd.concat(test_parts)
     model=fit_event_transition_model(train.action.to_numpy(), train.outcome.to_numpy())
-    index={event:i for i,event in enumerate(EVENTS)}
     probability=np.array([model.predict(a)[o] for a,o in zip(test.action,test.outcome)])
     global_probability=np.array([model.predict("other")[o] for o in test.outcome])
     log_loss=float(-np.log(np.clip(probability,1e-9,1)).mean()); baseline=float(-np.log(np.clip(global_probability,1e-9,1)).mean())

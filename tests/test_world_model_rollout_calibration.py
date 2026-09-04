@@ -35,7 +35,7 @@ def test_select_rollout_blend_rejects_shape_mismatch():
 
 
 def test_runtime_imagination_applies_blend_only_to_multi_step_rollout():
-    torch = pytest.importorskip("torch")
+    pytest.importorskip("torch")
     from src.match_engine.world_model.action_codec import ACTION_DIM
     from src.match_engine.world_model.config import WorldModelConfig
     from src.match_engine.world_model.model import build_model

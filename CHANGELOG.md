@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Eliminated all remaining unused-local findings across source, scripts and
+  tests; restored missing crowd-response and coach-stress assertions, bound v7
+  readiness to its actual frozen parent, and expanded active research-script
+  parse regression coverage without executing training.
 - Removed the remaining unused-local assignments from active runtime modules,
   including a long-dead uncalibrated duplicate psychology vector, while adding
   direct FM-only roster provenance coverage and preserving canonical appraisal,

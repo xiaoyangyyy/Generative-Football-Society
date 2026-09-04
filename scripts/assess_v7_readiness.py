@@ -22,7 +22,7 @@ def main() -> int:
     pass_gain = float(pass_metrics["auc"] - pass_metrics["physics_prior_auc"])
     report = {
         "target": "7.0.0-candidate",
-        "frozen_parent": "6.0.0",
+        "frozen_parent": str(frozen["release"]),
         "capabilities": {
             "tracking_contract": {"implemented": True, "evidence_ready": data["tracking_evidence_ready"], "skillcorner_ready": skill_tracking["candidate_ready"]},
             "joint_pass_model": {"implemented": True, "evidence_ready": joint["candidate_ready"], "observed_auc_gain": pass_gain, "balanced_accuracy": pass_metrics["balanced_accuracy"]},

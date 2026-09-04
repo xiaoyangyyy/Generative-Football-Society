@@ -101,7 +101,6 @@ def main():
     if args.resume and checkpoint.is_file():
         saved=json.loads(checkpoint.read_text())
         old=saved.get('protocol',{})
-        aliases=lambda values:[value.replace('_',' ') for value in values]
         compatible=old==checkpoint_protocol
         if not compatible:raise ValueError('checkpoint protocol does not match requested shadow')
         rows=saved['rows']

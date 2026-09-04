@@ -52,7 +52,7 @@ def skillcorner():
 
 
 def action_after(events,start_index,receipt):
-    player=(receipt.get("player") or {}).get("id"); team=(receipt.get("team") or {}).get("id"); start=seconds(receipt["timestamp"]); period=receipt["period"]
+    player=(receipt.get("player") or {}).get("id"); start=seconds(receipt["timestamp"]); period=receipt["period"]
     for event in events[start_index+1:]:
         if event.get("period")!=period: break
         delay=seconds(event["timestamp"])-start

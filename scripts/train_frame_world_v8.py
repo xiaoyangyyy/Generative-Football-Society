@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Train and evaluate the v8 frame-level graph-temporal world model."""
 from __future__ import annotations
-import argparse,json,random,sys,time
+import argparse,json,random,sys
 from pathlib import Path
 import numpy as np
 import torch
@@ -47,7 +47,7 @@ def evaluate(model,loader,device):
     model.eval(); sums={"n":0,"model":0.,"base":0.,"ball_n":0,"ball":0.,"ball_base":0.,"cover50":0.,"cover90":0.}; by_h=[{"n":0,"m":0.,"b":0.} for _ in model.cfg.horizons]
     for batch in loader:
         _,pred,base,error,logvar,mask=loss_batch(model,batch,device); target=batch[4].to(device); dist=lambda x:torch.sqrt((x[...,0]*105)**2+(x[...,1]*68)**2)
-        md,bd=dist(pred-target),dist(base-target); sigma=torch.sqrt(torch.exp(logvar)); standardized=torch.sqrt((error.square()/torch.exp(logvar)).sum(-1))
+        md,bd=dist(pred-target),dist(base-target); standardized=torch.sqrt((error.square()/torch.exp(logvar)).sum(-1))
         sums["n"]+=int(mask.sum()); sums["model"]+=float((md*mask).sum()); sums["base"]+=float((bd*mask).sum()); sums["cover50"]+=float(((standardized<=1.177)*mask).sum()); sums["cover90"]+=float(((standardized<=2.146)*mask).sum())
         bm=mask[:,:,BALL_INDEX]; sums["ball_n"]+=int(bm.sum()); sums["ball"]+=float((md[:,:,BALL_INDEX]*bm).sum()); sums["ball_base"]+=float((bd[:,:,BALL_INDEX]*bm).sum())
         for i in range(len(by_h)):

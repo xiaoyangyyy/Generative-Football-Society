@@ -53,9 +53,6 @@ def main() -> None:
     from src.match_engine.micro_config import MicroMatchConfig
     from src.match_engine.world_model.recorder import TransitionRecorder
     from src.match_engine.world_model.config import default_trace_dir
-    from src.match_engine.world_model.observation import encode_observation
-    from src.match_engine.world_model.action_codec import zero_action
-    from src.match_engine.world_model.config import WorldModelConfig
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     teams = [t for group in WORLD_CUP_2026_GROUPS.values() for t in group]
@@ -64,7 +61,6 @@ def main() -> None:
     cfg = MicroMatchConfig() if args.full_resolution else MicroMatchConfig.fast_demo()
     cfg.use_micro_goals = True
     cfg.action_shot_base += float(args.shot_boost)
-    wm_cfg = WorldModelConfig.from_env()
     trace_root = default_trace_dir(base_dir)
     total = 0
 
