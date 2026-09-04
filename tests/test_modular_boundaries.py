@@ -5,6 +5,7 @@ import random
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from src.simulation.agent import SocietyAgent
 from src.simulation.agent_dynamics import AgentMatchDynamicsMixin
@@ -281,6 +282,17 @@ def test_result_reporting_stays_decomposed():
         "_audit_match_debug",
         "_run_report_replay",
     }.issubset(TournamentReportingMixin.__dict__)
+
+
+def test_reporting_stage_contexts_reject_missing_and_unknown_fields():
+    with pytest.raises(TypeError, match="missing="):
+        TournamentReportingMixin._report_match_result(object())
+    with pytest.raises(TypeError, match="unexpected="):
+        TournamentReportingMixin._report_match_result(object(), unknown=True)
+    with pytest.raises(TypeError, match="missing="):
+        TournamentReportingMixin._run_narrative_and_social(object())
+    with pytest.raises(TypeError, match="unexpected="):
+        TournamentReportingMixin._run_narrative_and_social(object(), unknown=True)
 
 
 def test_referee_weights_are_normalized_without_manager_state():

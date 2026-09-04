@@ -18,10 +18,16 @@ import numpy as np
 
 from src.data_engine.entity_dynamics import PLAYER_CONDITION_KEYS
 from src.infrastructure.locking import FileLease
+from src.match_engine.math_utils import sigmoid, tanh_clip
 from src.simulation.random_control import named_rng
 
-TEAM_STATE_KEYS = ("attack", "defense", "press", "morale_field", "institutional_pressure")
-from src.match_engine.math_utils import sigmoid, tanh_clip
+TEAM_STATE_KEYS = (
+    "attack",
+    "defense",
+    "press",
+    "morale_field",
+    "institutional_pressure",
+)
 
 if TYPE_CHECKING:
     from src.simulation.agent import SocietyAgent
@@ -66,7 +72,9 @@ class PlayerCarryover:
             medical_recovery_credit=float(d.get("medical_recovery_credit", 0)),
             form_ema=float(d.get("form_ema", 0.55)),
             media_sentiment=float(d.get("media_sentiment", 0)),
-            condition_delta={k: float(v) for k, v in (d.get("condition_delta") or {}).items()},
+            condition_delta={
+                k: float(v) for k, v in (d.get("condition_delta") or {}).items()
+            },
             last_rating=float(d.get("last_rating", 0.5)),
         )
 
@@ -98,16 +106,22 @@ class TeamSquadCarryover:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "TeamSquadCarryover":
-        players = {k: PlayerCarryover.from_dict(v) for k, v in (d.get("players") or {}).items()}
+        players = {
+            k: PlayerCarryover.from_dict(v) for k, v in (d.get("players") or {}).items()
+        }
         return cls(
             team_id=str(d.get("team_id", "")),
             players=players,
             team_media_pressure=float(d.get("team_media_pressure", 0)),
             squad_morale_ema=float(d.get("squad_morale_ema", 0.55)),
             team_fatigue_ema=float(d.get("team_fatigue_ema", 0.0)),
-            team_dynamics_delta={k: float(v) for k, v in (d.get("team_dynamics_delta") or {}).items()},
+            team_dynamics_delta={
+                k: float(v) for k, v in (d.get("team_dynamics_delta") or {}).items()
+            },
             last_match_stage=str(d.get("last_match_stage", "")),
-            settled_match_ids=[str(value) for value in (d.get("settled_match_ids") or [])][-256:],
+            settled_match_ids=[
+                str(value) for value in (d.get("settled_match_ids") or [])
+            ][-256:],
             recovery_ids=[str(value) for value in (d.get("recovery_ids") or [])][-256:],
         )
 
@@ -150,7 +164,9 @@ def sync_carryover_from_roster(agent: "SocietyAgent", roster: Dict[str, Any]) ->
         if not pid:
             continue
         if pid not in carry.players:
-            carry.players[pid] = PlayerCarryover(player_id=pid, name=str(p.get("name", "")))
+            carry.players[pid] = PlayerCarryover(
+                player_id=pid, name=str(p.get("name", ""))
+            )
 
 
 def apply_carryover_to_agent(agent: "SocietyAgent") -> None:
@@ -159,10 +175,22 @@ def apply_carryover_to_agent(agent: "SocietyAgent") -> None:
     n_inj = sum(1 for p in carry.players.values() if p.injury_matches_left > 0)
     n_susp = sum(1 for p in carry.players.values() if p.suspension_matches_left > 0)
     squad_size = max(1, len(carry.players))
-    persistent_load = carry.team_fatigue_ema + 0.08 * (n_inj / squad_size) + 0.05 * carry.team_media_pressure
+    persistent_load = (
+        carry.team_fatigue_ema
+        + 0.08 * (n_inj / squad_size)
+        + 0.05 * carry.team_media_pressure
+    )
     agent.fatigue = float(tanh_clip(max(float(agent.fatigue), persistent_load)))
-    agent.injury_load = float(tanh_clip(0.35 * n_inj / squad_size + 0.15 * carry.team_media_pressure))
-    agent.readiness = float(sigmoid(2.2 * (carry.squad_morale_ema - 0.45) - 0.4 * agent.fatigue - 0.35 * agent.injury_load))
+    agent.injury_load = float(
+        tanh_clip(0.35 * n_inj / squad_size + 0.15 * carry.team_media_pressure)
+    )
+    agent.readiness = float(
+        sigmoid(
+            2.2 * (carry.squad_morale_ema - 0.45)
+            - 0.4 * agent.fatigue
+            - 0.35 * agent.injury_load
+        )
+    )
     if hasattr(agent, "team_dynamics") and agent.team_dynamics:
         td = dict(agent.team_dynamics)
         for k in TEAM_STATE_KEYS:
@@ -175,8 +203,12 @@ def apply_carryover_to_agent(agent: "SocietyAgent") -> None:
 def carryover_snapshot(agent: "SocietyAgent") -> Dict[str, Any]:
     """Small, product-safe view of the state that can affect the next match."""
     carry = ensure_team_carryover(agent)
-    injured = sum(1 for player in carry.players.values() if player.injury_matches_left > 0)
-    suspended = sum(1 for player in carry.players.values() if player.suspension_matches_left > 0)
+    injured = sum(
+        1 for player in carry.players.values() if player.injury_matches_left > 0
+    )
+    suspended = sum(
+        1 for player in carry.players.values() if player.suspension_matches_left > 0
+    )
     return {
         "team_id": carry.team_id,
         "team_fatigue_ema": float(carry.team_fatigue_ema),
@@ -190,8 +222,10 @@ def carryover_snapshot(agent: "SocietyAgent") -> Dict[str, Any]:
 
 
 def recover_carryover(
-    agent: "SocietyAgent", rest_units: float = 1.0,
-    *, medical_recovery_credit: float = 0.0,
+    agent: "SocietyAgent",
+    rest_units: float = 1.0,
+    *,
+    medical_recovery_credit: float = 0.0,
     transaction_id: str | None = None,
 ) -> None:
     """Apply deterministic recovery between fixtures without erasing match history."""
@@ -203,11 +237,11 @@ def recover_carryover(
     if not math.isfinite(rest) or not 0.0 <= rest <= 4.0:
         raise ValueError("rest_units must be finite and between 0 and 4")
     if not math.isfinite(medical) or not 0.0 <= medical <= 1.0:
-        raise ValueError(
-            "medical_recovery_credit must be finite and between 0 and 1"
-        )
+        raise ValueError("medical_recovery_credit must be finite and between 0 and 1")
     carry.team_fatigue_ema = float(carry.team_fatigue_ema * math.exp(-0.42 * rest))
-    carry.team_media_pressure = float(carry.team_media_pressure * math.exp(-0.18 * rest))
+    carry.team_media_pressure = float(
+        carry.team_media_pressure * math.exp(-0.18 * rest)
+    )
     for player in carry.players.values():
         if player.injury_matches_left <= 0:
             player.medical_recovery_credit = 0.0
@@ -216,7 +250,8 @@ def recover_carryover(
         extra_matches = int(player.medical_recovery_credit + 1e-12)
         if extra_matches:
             player.injury_matches_left = max(
-                0, player.injury_matches_left - extra_matches,
+                0,
+                player.injury_matches_left - extra_matches,
             )
             player.medical_recovery_credit -= extra_matches
         player.injury_severity *= math.exp(-0.25 * medical)
@@ -251,7 +286,14 @@ def apply_carryover_to_roster_dict(roster: Dict[str, Any]) -> Dict[str, Any]:
             delta = float(carry.condition_delta.get(k, 0))
             inj_pen = 0.12 * carry.injury_severity if carry.injury_matches_left else 0
             form_boost = 0.08 * (carry.form_ema - 0.5)
-            cond[k] = float(sigmoid(math.log(base / (1 - base + 1e-6) + 1e-6) + delta + form_boost - inj_pen))
+            cond[k] = float(
+                sigmoid(
+                    math.log(base / (1 - base + 1e-6) + 1e-6)
+                    + delta
+                    + form_boost
+                    - inj_pen
+                )
+            )
         rec["condition"] = cond
         rec["form_ema"] = carry.form_ema
         rec["media_sentiment"] = carry.media_sentiment
@@ -265,14 +307,18 @@ def _get_carryover_player(team_id: str, pid: str, name: str) -> PlayerCarryover:
     return PlayerCarryover(player_id=pid, name=name)
 
 
-def apply_carryover_to_roster_for_agent(agent: "SocietyAgent", roster: Dict[str, Any]) -> Dict[str, Any]:
+def apply_carryover_to_roster_for_agent(
+    agent: "SocietyAgent", roster: Dict[str, Any]
+) -> Dict[str, Any]:
     carry = ensure_team_carryover(agent)
     sync_carryover_from_roster(agent, roster)
     players_out = []
     for p in roster.get("players", []):
         rec = dict(p)
         pid = str(rec.get("player_id", ""))
-        pc = carry.players.get(pid) or PlayerCarryover(player_id=pid, name=str(rec.get("name", "")))
+        pc = carry.players.get(pid) or PlayerCarryover(
+            player_id=pid, name=str(rec.get("name", ""))
+        )
         if pc.suspension_matches_left > 0:
             rec["squad_role"] = "suspended"
             rec["availability"] = 0.0
@@ -283,7 +329,9 @@ def apply_carryover_to_roster_for_agent(agent: "SocietyAgent", roster: Dict[str,
         cond = dict(rec.get("condition", {}))
         for k in PLAYER_CONDITION_KEYS:
             v = float(cond.get(k, 0.5))
-            v = float(tanh_clip(v + pc.condition_delta.get(k, 0) + 0.06 * (pc.form_ema - 0.5)))
+            v = float(
+                tanh_clip(v + pc.condition_delta.get(k, 0) + 0.06 * (pc.form_ema - 0.5))
+            )
             if pc.injury_matches_left > 0:
                 v = float(v * (1.0 - 0.35 * pc.injury_severity))
             cond[k] = v
@@ -320,24 +368,33 @@ def ingest_match_result(
         return
     rng = rng or named_rng(
         getattr(agent, "random_root_seed", 42),
-        "cross_match_settlement", transaction_id or stage_name,
+        "cross_match_settlement",
+        transaction_id or stage_name,
         agent.team_name,
     )
     if roster:
         sync_carryover_from_roster(agent, roster)
     won = result == "win"
     form_team = 0.55 + (0.12 if won else (-0.08 if result == "loss" else 0))
-    form_team += 0.06 * tanh_clip(score_diff / 2.0) + 0.04 * tanh_clip(xg_for - xg_against)
+    form_team += 0.06 * tanh_clip(score_diff / 2.0) + 0.04 * tanh_clip(
+        xg_for - xg_against
+    )
     carry.squad_morale_ema = float(0.72 * carry.squad_morale_ema + 0.28 * form_team)
     carry.team_media_pressure = float(
-        tanh_clip(0.65 * carry.team_media_pressure + 0.25 * abs(social_chaos) / 5.0 + 0.1 * abs(prof_score) / 2.0)
+        tanh_clip(
+            0.65 * carry.team_media_pressure
+            + 0.25 * abs(social_chaos) / 5.0
+            + 0.1 * abs(prof_score) / 2.0
+        )
     )
     played_minutes = [
         max(0.0, min(120.0, float(stats.get("minutes", 0.0))))
         for stats in (micro_player_stats or {}).values()
         if float(stats.get("minutes", 0.0)) > 0.0
     ]
-    match_load = min(1.0, sum(played_minutes) / (11.0 * 90.0)) if played_minutes else 0.72
+    match_load = (
+        min(1.0, sum(played_minutes) / (11.0 * 90.0)) if played_minutes else 0.72
+    )
     load_multiplier = max(0.5, min(2.0, float(fatigue_load_multiplier)))
     effective_load = min(1.5, match_load * load_multiplier)
     carry.team_fatigue_ema = float(
@@ -376,7 +433,9 @@ def ingest_match_result(
             pc.red_cards += rc
             pc.suspension_matches_left = max(pc.suspension_matches_left, 1)
         if pid in injury_ids:
-            pc.injury_matches_left = max(pc.injury_matches_left, int(1 + 2 * agent.injury_load))
+            pc.injury_matches_left = max(
+                pc.injury_matches_left, int(1 + 2 * agent.injury_load)
+            )
             pc.injury_severity = float(tanh_clip(0.4 + agent.injury_load))
         minutes = max(0.0, float(stats.get("minutes", 0.0)))
         if minutes > 0.0:
@@ -391,7 +450,9 @@ def ingest_match_result(
         ):
             if pid not in injury_ids:
                 injury_ids.add(pid)
-                pc.injury_matches_left = max(pc.injury_matches_left, int(1 + 2 * agent.injury_load))
+                pc.injury_matches_left = max(
+                    pc.injury_matches_left, int(1 + 2 * agent.injury_load)
+                )
                 pc.injury_severity = float(tanh_clip(0.4 + agent.injury_load))
         rating = _rating_from_performance(
             goals=int(stats.get("goals", 0)),
@@ -403,13 +464,19 @@ def ingest_match_result(
         pc.last_rating = rating
         pc.form_ema = float(0.7 * pc.form_ema + 0.3 * rating)
         pc.media_sentiment = float(
-            tanh_clip(0.8 * pc.media_sentiment + 0.15 * prof_score / 2.0 + 0.05 * social_chaos / 5.0)
+            tanh_clip(
+                0.8 * pc.media_sentiment
+                + 0.15 * prof_score / 2.0
+                + 0.05 * social_chaos / 5.0
+            )
         )
         for k in PLAYER_CONDITION_KEYS:
             drift = 0.04 * (rating - 0.5)
             if k == "composure":
                 drift += 0.03 * pc.media_sentiment
-            pc.condition_delta[k] = float(tanh_clip(pc.condition_delta.get(k, 0) + drift))
+            pc.condition_delta[k] = float(
+                tanh_clip(pc.condition_delta.get(k, 0) + drift)
+            )
     if transaction_id:
         carry.settled_match_ids = [
             *[value for value in carry.settled_match_ids if value != transaction_id],
@@ -447,7 +514,10 @@ def save_persistence(base_dir: str, agents: Dict[str, "SocietyAgent"]) -> None:
 
 
 def recover_persisted_teams(
-    base_dir: str, team_ids: List[str], *, rest_units: float = 1.0,
+    base_dir: str,
+    team_ids: List[str],
+    *,
+    rest_units: float = 1.0,
     medical_recovery_credit: float = 0.0,
     transaction_id: str,
 ) -> None:
@@ -468,7 +538,8 @@ def recover_persisted_teams(
             proxy.team_name = team_id
             proxy.squad_carryover = carry
             recover_carryover(
-                proxy, rest_units=rest_units,
+                proxy,
+                rest_units=rest_units,
                 medical_recovery_credit=medical_recovery_credit,
                 transaction_id=transaction_id,
             )
@@ -479,7 +550,9 @@ def recover_persisted_teams(
 def _atomic_carryover_json(path: Path, raw: Dict[str, Any]) -> None:
     payload = json.dumps(raw, ensure_ascii=False, indent=2)
     handle, temp_name = tempfile.mkstemp(
-        prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent),
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=str(path.parent),
     )
     try:
         with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:

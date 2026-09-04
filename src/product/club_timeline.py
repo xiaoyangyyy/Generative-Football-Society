@@ -23,10 +23,15 @@ _HASH = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _identity(value: Mapping[str, Any]) -> str:
-    return hashlib.sha256(json.dumps(
-        dict(value), sort_keys=True, ensure_ascii=False,
-        separators=(",", ":"), allow_nan=False,
-    ).encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        json.dumps(
+            dict(value),
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -55,8 +60,10 @@ class ClubEventChoice:
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "schema_version": 1, "event_id": self.event_id,
-            "event_identity": self.event_identity, "choice_id": self.choice_id,
+            "schema_version": 1,
+            "event_id": self.event_id,
+            "event_identity": self.event_identity,
+            "choice_id": self.choice_id,
         }
 
 
@@ -72,7 +79,9 @@ def _result(fixture: Mapping[str, Any], team: str) -> tuple[str, int]:
     return "loss", 0
 
 
-def _standings(fixtures: Sequence[Mapping[str, Any]], teams: Sequence[str]) -> list[dict[str, Any]]:
+def _standings(
+    fixtures: Sequence[Mapping[str, Any]], teams: Sequence[str]
+) -> list[dict[str, Any]]:
     rows = {
         team: {"team": team, "points": 0, "goals_for": 0, "goals_against": 0}
         for team in teams
@@ -82,30 +91,44 @@ def _standings(fixtures: Sequence[Mapping[str, Any]], teams: Sequence[str]) -> l
             continue
         home, away = fixture["home"], fixture["away"]
         hg, ag = fixture["score"]["home"], fixture["score"]["away"]
-        rows[home]["goals_for"] += hg; rows[home]["goals_against"] += ag
-        rows[away]["goals_for"] += ag; rows[away]["goals_against"] += hg
+        rows[home]["goals_for"] += hg
+        rows[home]["goals_against"] += ag
+        rows[away]["goals_for"] += ag
+        rows[away]["goals_against"] += hg
         rows[home]["points"] += 3 if hg > ag else 1 if hg == ag else 0
         rows[away]["points"] += 3 if ag > hg else 1 if hg == ag else 0
-    ordered = sorted(rows.values(), key=lambda row: (
-        -row["points"], -(row["goals_for"] - row["goals_against"]),
-        -row["goals_for"], row["team"].casefold(),
-    ))
+    ordered = sorted(
+        rows.values(),
+        key=lambda row: (
+            -row["points"],
+            -(row["goals_for"] - row["goals_against"]),
+            -row["goals_for"],
+            row["team"].casefold(),
+        ),
+    )
     for index, row in enumerate(ordered, 1):
         row["position"] = index
     return ordered
 
 
 def _choice(
-    choice_id: str, *, label: str, constraint: Mapping[str, Any], tradeoff: str,
+    choice_id: str,
+    *,
+    label: str,
+    constraint: Mapping[str, Any],
+    tradeoff: str,
 ) -> dict[str, Any]:
     return {
-        "choice_id": choice_id, "label": label,
-        "constraint": dict(constraint), "tradeoff": tradeoff,
+        "choice_id": choice_id,
+        "label": label,
+        "constraint": dict(constraint),
+        "tradeoff": tradeoff,
     }
 
 
 def derive_club_situation(
-    state: Mapping[str, Any], fixture_id: str | None = None,
+    state: Mapping[str, Any],
+    fixture_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Derive at most one situation from evidence preceding a managed fixture."""
     plan = state.get("plan") if isinstance(state, Mapping) else None
@@ -115,20 +138,21 @@ def derive_club_situation(
     if not team or not isinstance(teams, list) or not isinstance(fixtures, list):
         return None
     managed = [
-        row for row in fixtures if isinstance(row, Mapping)
-        and team in {row.get("home"), row.get("away")}
+        row
+        for row in fixtures
+        if isinstance(row, Mapping) and team in {row.get("home"), row.get("away")}
     ]
-    target = next((
-        row for row in managed
-        if row.get("fixture_id") == fixture_id
-    ), None) if fixture_id is not None else next((
-        row for row in managed if row.get("state") != "completed"
-    ), None)
+    target = (
+        next((row for row in managed if row.get("fixture_id") == fixture_id), None)
+        if fixture_id is not None
+        else next((row for row in managed if row.get("state") != "completed"), None)
+    )
     if target is None or fixture_id is None and target.get("state") == "completed":
         return None
     target_order = (int(target["matchday"]), int(target["order"]))
     prior = [
-        row for row in managed
+        row
+        for row in managed
         if row.get("state") == "completed"
         and (int(row["matchday"]), int(row["order"])) < target_order
         and isinstance(row.get("manager_decision"), Mapping)
@@ -144,14 +168,29 @@ def derive_club_situation(
     trigger: dict[str, Any]
     choices: list[dict[str, Any]]
     if all(row.get("rotation") == "strongest" for row in decisions):
-        kind, title, recommended = "squad_load", "Repeated strongest-lineup load", "protect_squad"
+        kind, title, recommended = (
+            "squad_load",
+            "Repeated strongest-lineup load",
+            "protect_squad",
+        )
         trigger = {
             "source": "two_prior_completed_manager_decisions",
-            "fixture_ids": completed_ids, "strongest_rotations": 2,
+            "fixture_ids": completed_ids,
+            "strongest_rotations": 2,
         }
         choices = [
-            _choice("protect_squad", label="Protect the squad", constraint={"rotation_in": ["balanced", "rotate"]}, tradeoff="reduces selection strength to use existing lower-load rotation mechanics"),
-            _choice("push_starters", label="Push the starters", constraint={"rotation_in": ["strongest"]}, tradeoff="keeps the strongest selection and accepts its existing load tradeoff"),
+            _choice(
+                "protect_squad",
+                label="Protect the squad",
+                constraint={"rotation_in": ["balanced", "rotate"]},
+                tradeoff="reduces selection strength to use existing lower-load rotation mechanics",
+            ),
+            _choice(
+                "push_starters",
+                label="Push the starters",
+                constraint={"rotation_in": ["strongest"]},
+                tradeoff="keeps the strongest selection and accepts its existing load tradeoff",
+            ),
         ]
     else:
         objective = str(plan.get("manager_objective") or "top_half")
@@ -174,50 +213,103 @@ def derive_club_situation(
         )[0]
         last_tactic = str(decisions[-1]["tactic"])
         if completed_count >= midpoint and not objective_met:
-            kind, title, recommended = "objective_pressure", "Objective checkpoint requires a response", "change_approach"
+            kind, title, recommended = (
+                "objective_pressure",
+                "Objective checkpoint requires a response",
+                "change_approach",
+            )
             trigger = {
                 "source": "persisted_standings_and_frozen_objective",
-                "fixture_ids": completed_ids, "completed_managed_matches": completed_count,
-                "midpoint": midpoint, "objective": objective,
-                "position": manager_row["position"], "points": manager_row["points"],
+                "fixture_ids": completed_ids,
+                "completed_managed_matches": completed_count,
+                "midpoint": midpoint,
+                "objective": objective,
+                "position": manager_row["position"],
+                "points": manager_row["points"],
                 "reference_tactic": dominant,
             }
             choices = [
-                _choice("hold_course", label="Hold the course", constraint={"tactic_equals": dominant}, tradeoff="preserves the season's most-used tactical identity"),
-                _choice("change_approach", label="Change the approach", constraint={"tactic_not_equals": dominant}, tradeoff="requires a different supported tactic for the next fixture"),
+                _choice(
+                    "hold_course",
+                    label="Hold the course",
+                    constraint={"tactic_equals": dominant},
+                    tradeoff="preserves the season's most-used tactical identity",
+                ),
+                _choice(
+                    "change_approach",
+                    label="Change the approach",
+                    constraint={"tactic_not_equals": dominant},
+                    tradeoff="requires a different supported tactic for the next fixture",
+                ),
             ]
         elif sum(points for _outcome, points in results) <= 1:
-            kind, title, recommended = "form_response", "Poor recent form requires a response", "reset_approach"
+            kind, title, recommended = (
+                "form_response",
+                "Poor recent form requires a response",
+                "reset_approach",
+            )
             trigger = {
-                "source": "two_prior_completed_results", "fixture_ids": completed_ids,
+                "source": "two_prior_completed_results",
+                "fixture_ids": completed_ids,
                 "recent_points": sum(points for _outcome, points in results),
                 "outcomes": [outcome for outcome, _points in results],
                 "reference_tactic": last_tactic,
             }
             choices = [
-                _choice("stabilize", label="Stabilize the team", constraint={"tactic_equals": last_tactic}, tradeoff="keeps the last supported tactic despite recent results"),
-                _choice("reset_approach", label="Reset the approach", constraint={"tactic_not_equals": last_tactic}, tradeoff="requires a different supported tactic for the next fixture"),
+                _choice(
+                    "stabilize",
+                    label="Stabilize the team",
+                    constraint={"tactic_equals": last_tactic},
+                    tradeoff="keeps the last supported tactic despite recent results",
+                ),
+                _choice(
+                    "reset_approach",
+                    label="Reset the approach",
+                    constraint={"tactic_not_equals": last_tactic},
+                    tradeoff="requires a different supported tactic for the next fixture",
+                ),
             ]
         elif all(outcome == "win" for outcome, _points in results):
-            kind, title, recommended = "momentum_management", "Winning momentum creates an identity choice", "keep_identity"
+            kind, title, recommended = (
+                "momentum_management",
+                "Winning momentum creates an identity choice",
+                "keep_identity",
+            )
             trigger = {
-                "source": "two_prior_completed_results", "fixture_ids": completed_ids,
-                "recent_points": 6, "outcomes": ["win", "win"],
+                "source": "two_prior_completed_results",
+                "fixture_ids": completed_ids,
+                "recent_points": 6,
+                "outcomes": ["win", "win"],
                 "reference_tactic": last_tactic,
             }
             choices = [
-                _choice("keep_identity", label="Keep the identity", constraint={"tactic_equals": last_tactic}, tradeoff="retains the last supported tactic"),
-                _choice("surprise_opponent", label="Change before opponents adapt", constraint={"tactic_not_equals": last_tactic}, tradeoff="requires a different supported tactic without claiming a counter advantage"),
+                _choice(
+                    "keep_identity",
+                    label="Keep the identity",
+                    constraint={"tactic_equals": last_tactic},
+                    tradeoff="retains the last supported tactic",
+                ),
+                _choice(
+                    "surprise_opponent",
+                    label="Change before opponents adapt",
+                    constraint={"tactic_not_equals": last_tactic},
+                    tradeoff="requires a different supported tactic without claiming a counter advantage",
+                ),
             ]
         else:
             return None
     event = {
         "schema_version": 1,
         "event_id": f"{state['season_id']}:{target['fixture_id']}:{kind}",
-        "season_id": state["season_id"], "team": team,
-        "fixture_id": target["fixture_id"], "matchday": target["matchday"],
-        "kind": kind, "title": title, "trigger": trigger,
-        "choices": choices, "recommended_choice": recommended,
+        "season_id": state["season_id"],
+        "team": team,
+        "fixture_id": target["fixture_id"],
+        "matchday": target["matchday"],
+        "kind": kind,
+        "title": title,
+        "trigger": trigger,
+        "choices": choices,
+        "recommended_choice": recommended,
         "claim_boundary": CLAIM_BOUNDARY,
     }
     event["event_identity"] = _identity(event)
@@ -228,31 +320,50 @@ def derive_club_situation(
 def validate_club_situation(event: Mapping[str, Any]) -> None:
     if not isinstance(event, Mapping):
         raise ValueError("invalid club situation")
-    frozen = copy.deepcopy(dict(event)); identity = frozen.pop("event_identity", None)
+    frozen = copy.deepcopy(dict(event))
+    identity = frozen.pop("event_identity", None)
     choices = event.get("choices")
     if (
-        set(event) != {
-            "schema_version", "event_id", "event_identity", "season_id", "team",
-            "fixture_id", "matchday", "kind", "title", "trigger", "choices",
-            "recommended_choice", "claim_boundary",
+        set(event)
+        != {
+            "schema_version",
+            "event_id",
+            "event_identity",
+            "season_id",
+            "team",
+            "fixture_id",
+            "matchday",
+            "kind",
+            "title",
+            "trigger",
+            "choices",
+            "recommended_choice",
+            "claim_boundary",
         }
         or event.get("schema_version") != 1
-        or _HASH.fullmatch(str(identity or "")) is None or identity != _identity(frozen)
+        or _HASH.fullmatch(str(identity or "")) is None
+        or identity != _identity(frozen)
         or not str(event.get("event_id") or "").strip()
         or not str(event.get("season_id") or "").strip()
         or not str(event.get("team") or "").strip()
         or not str(event.get("fixture_id") or "").strip()
-        or isinstance(event.get("matchday"), bool) or not isinstance(event.get("matchday"), int)
+        or isinstance(event.get("matchday"), bool)
+        or not isinstance(event.get("matchday"), int)
         or event["matchday"] < 1
-        or event.get("kind") not in {
-            "squad_load", "objective_pressure", "form_response", "momentum_management",
+        or event.get("kind")
+        not in {
+            "squad_load",
+            "objective_pressure",
+            "form_response",
+            "momentum_management",
         }
         or not isinstance(event.get("trigger"), Mapping)
-        or not isinstance(choices, list) or len(choices) != 2
-        or len({row.get("choice_id") for row in choices if isinstance(row, Mapping)}) != 2
-        or event.get("recommended_choice") not in {
-            row.get("choice_id") for row in choices if isinstance(row, Mapping)
-        }
+        or not isinstance(choices, list)
+        or len(choices) != 2
+        or len({row.get("choice_id") for row in choices if isinstance(row, Mapping)})
+        != 2
+        or event.get("recommended_choice")
+        not in {row.get("choice_id") for row in choices if isinstance(row, Mapping)}
         or event.get("claim_boundary") != CLAIM_BOUNDARY
     ):
         raise ValueError("invalid club situation identity")
@@ -260,7 +371,9 @@ def validate_club_situation(event: Mapping[str, Any]) -> None:
         if (
             not isinstance(row, Mapping)
             or set(row) != {"choice_id", "label", "constraint", "tradeoff"}
-            or not re.fullmatch(r"[a-z][a-z0-9_]{1,63}", str(row.get("choice_id") or ""))
+            or not re.fullmatch(
+                r"[a-z][a-z0-9_]{1,63}", str(row.get("choice_id") or "")
+            )
             or not str(row.get("label") or "").strip()
             or not isinstance(row.get("constraint"), Mapping)
             or not str(row.get("tradeoff") or "").strip()
@@ -269,10 +382,17 @@ def validate_club_situation(event: Mapping[str, Any]) -> None:
 
 
 def choice_matches_decision(
-    event: Mapping[str, Any], choice: ClubEventChoice, *, tactic: str, rotation: str,
+    event: Mapping[str, Any],
+    choice: ClubEventChoice,
+    *,
+    tactic: str,
+    rotation: str,
 ) -> bool:
     validate_club_situation(event)
-    if choice.event_id != event["event_id"] or choice.event_identity != event["event_identity"]:
+    if (
+        choice.event_id != event["event_id"]
+        or choice.event_identity != event["event_identity"]
+    ):
         return False
     rows = [row for row in event["choices"] if row["choice_id"] == choice.choice_id]
     if len(rows) != 1:
@@ -281,35 +401,52 @@ def choice_matches_decision(
     return (
         ("rotation_in" not in constraint or rotation in constraint["rotation_in"])
         and ("tactic_equals" not in constraint or tactic == constraint["tactic_equals"])
-        and ("tactic_not_equals" not in constraint or tactic != constraint["tactic_not_equals"])
+        and (
+            "tactic_not_equals" not in constraint
+            or tactic != constraint["tactic_not_equals"]
+        )
     )
 
 
-def compatible_choice(event: Mapping[str, Any], *, tactic: str, rotation: str) -> ClubEventChoice:
+def compatible_choice(
+    event: Mapping[str, Any], *, tactic: str, rotation: str
+) -> ClubEventChoice:
     matches = [
         ClubEventChoice(event["event_id"], event["event_identity"], row["choice_id"])
         for row in event["choices"]
         if choice_matches_decision(
-            event, ClubEventChoice(event["event_id"], event["event_identity"], row["choice_id"]),
-            tactic=tactic, rotation=rotation,
+            event,
+            ClubEventChoice(
+                event["event_id"], event["event_identity"], row["choice_id"]
+            ),
+            tactic=tactic,
+            rotation=rotation,
         )
     ]
     if len(matches) != 1:
-        raise ValueError("manager decision does not resolve the club situation unambiguously")
+        raise ValueError(
+            "manager decision does not resolve the club situation unambiguously"
+        )
     return matches[0]
 
 
 def build_timeline_resolution(
-    event: Mapping[str, Any], choice: ClubEventChoice, *, tactic: str,
-    rotation: str, control: str,
+    event: Mapping[str, Any],
+    choice: ClubEventChoice,
+    *,
+    tactic: str,
+    rotation: str,
+    control: str,
 ) -> dict[str, Any]:
     if control not in {"manager", "deterministic_compatibility"}:
         raise ValueError("invalid club situation control boundary")
     if not choice_matches_decision(event, choice, tactic=tactic, rotation=rotation):
         raise ValueError("manager decision conflicts with the club situation choice")
     resolution = {
-        "schema_version": 1, "event": copy.deepcopy(dict(event)),
-        "choice": choice.as_dict(), "control": control,
+        "schema_version": 1,
+        "event": copy.deepcopy(dict(event)),
+        "choice": choice.as_dict(),
+        "control": control,
         "decision": {"tactic": tactic, "rotation": rotation},
         "claim_boundary": RESOLUTION_BOUNDARY,
     }
@@ -330,8 +467,10 @@ def validate_club_timeline(state: Mapping[str, Any]) -> None:
         return
     events = timeline.get("events") if isinstance(timeline, Mapping) else None
     if (
-        not isinstance(timeline, Mapping) or set(timeline) != {"schema_version", "events"}
-        or timeline.get("schema_version") != 1 or not isinstance(events, list)
+        not isinstance(timeline, Mapping)
+        or set(timeline) != {"schema_version", "events"}
+        or timeline.get("schema_version") != 1
+        or not isinstance(events, list)
         or len(events) > len(state.get("fixtures") or [])
     ):
         raise ValueError("invalid club timeline")
@@ -339,19 +478,29 @@ def validate_club_timeline(state: Mapping[str, Any]) -> None:
     for resolution in events:
         if not isinstance(resolution, Mapping):
             raise ValueError("invalid club timeline resolution")
-        frozen = copy.deepcopy(dict(resolution)); resolution_id = frozen.pop("resolution_id", None)
-        event = resolution.get("event"); choice_payload = resolution.get("choice")
+        frozen = copy.deepcopy(dict(resolution))
+        resolution_id = frozen.pop("resolution_id", None)
+        event = resolution.get("event")
+        choice_payload = resolution.get("choice")
         decision = resolution.get("decision")
         if (
-            set(resolution) != {
-                "schema_version", "resolution_id", "event", "choice", "control",
-                "decision", "claim_boundary",
+            set(resolution)
+            != {
+                "schema_version",
+                "resolution_id",
+                "event",
+                "choice",
+                "control",
+                "decision",
+                "claim_boundary",
             }
             or resolution.get("schema_version") != 1
             or _HASH.fullmatch(str(resolution_id or "")) is None
             or resolution_id != _identity(frozen)
-            or not isinstance(event, Mapping) or not isinstance(choice_payload, Mapping)
-            or resolution.get("control") not in {"manager", "deterministic_compatibility"}
+            or not isinstance(event, Mapping)
+            or not isinstance(choice_payload, Mapping)
+            or resolution.get("control")
+            not in {"manager", "deterministic_compatibility"}
             or not isinstance(decision, Mapping)
             or set(decision) != {"tactic", "rotation"}
             or resolution.get("claim_boundary") != RESOLUTION_BOUNDARY
@@ -363,22 +512,37 @@ def validate_club_timeline(state: Mapping[str, Any]) -> None:
             raise ValueError("duplicate club situation resolution")
         by_fixture[fixture_id] = resolution
         expected_event = derive_club_situation(state, fixture_id)
-        fixture = next((row for row in state["fixtures"] if row["fixture_id"] == fixture_id), None)
-        payload = fixture.get("manager_decision") if isinstance(fixture, Mapping) else None
+        fixture = next(
+            (row for row in state["fixtures"] if row["fixture_id"] == fixture_id), None
+        )
+        payload = (
+            fixture.get("manager_decision") if isinstance(fixture, Mapping) else None
+        )
         if expected_event != event or not isinstance(payload, Mapping):
             raise ValueError("club situation source replay mismatch")
         choice = ClubEventChoice.from_payload(choice_payload)
         if payload.get("club_event_choice") != choice.as_dict():
             raise ValueError("club situation decision identity mismatch")
-        if decision != {"tactic": payload.get("tactic"), "rotation": payload.get("rotation")}:
+        if decision != {
+            "tactic": payload.get("tactic"),
+            "rotation": payload.get("rotation"),
+        }:
             raise ValueError("club situation decision replay mismatch")
         if not choice_matches_decision(
-            event, choice, tactic=str(decision["tactic"]), rotation=str(decision["rotation"]),
+            event,
+            choice,
+            tactic=str(decision["tactic"]),
+            rotation=str(decision["rotation"]),
         ):
             raise ValueError("club situation choice constraint mismatch")
     for fixture in state.get("fixtures") or []:
-        payload = fixture.get("manager_decision") if isinstance(fixture, Mapping) else None
-        if isinstance(payload, Mapping) and payload.get("club_event_choice") is not None:
+        payload = (
+            fixture.get("manager_decision") if isinstance(fixture, Mapping) else None
+        )
+        if (
+            isinstance(payload, Mapping)
+            and payload.get("club_event_choice") is not None
+        ):
             if fixture["fixture_id"] not in by_fixture:
                 raise ValueError("manager decision club event is missing from timeline")
 
@@ -392,7 +556,8 @@ def club_timeline_view(state: Mapping[str, Any]) -> dict[str, Any]:
     ):
         current = None
     return {
-        "schema_version": 1, "available": bool(current or events),
+        "schema_version": 1,
+        "available": bool(current or events),
         "current_situation": current,
         "resolved_count": len(events),
         "history": list(reversed(copy.deepcopy(events[-12:]))),
@@ -401,6 +566,10 @@ def club_timeline_view(state: Mapping[str, Any]) -> dict[str, Any]:
 
 
 __all__ = [
-    "ClubEventChoice", "build_timeline_resolution", "club_timeline_view",
-    "compatible_choice", "derive_club_situation", "validate_club_timeline",
+    "ClubEventChoice",
+    "build_timeline_resolution",
+    "club_timeline_view",
+    "compatible_choice",
+    "derive_club_situation",
+    "validate_club_timeline",
 ]

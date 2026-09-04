@@ -38,10 +38,15 @@ _OUTCOME_BOUNDARY = (
 
 
 def _identity(value: Mapping[str, Any]) -> str:
-    return hashlib.sha256(json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
-        allow_nan=False,
-    ).encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -59,10 +64,7 @@ class PlayerRolePromise:
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerRolePromise":
-        if (
-            not isinstance(payload, Mapping)
-            or set(payload) != {"player_id", "role"}
-        ):
+        if not isinstance(payload, Mapping) or set(payload) != {"player_id", "role"}:
             raise ValueError("player promise must contain player_id and role")
         return cls(str(payload.get("player_id") or ""), str(payload.get("role") or ""))
 
@@ -95,9 +97,9 @@ class PlayerPromisePlan:
             or not isinstance(payload.get("promises"), list)
         ):
             raise ValueError("player promise plan must be a versioned object")
-        return cls(tuple(
-            PlayerRolePromise.from_payload(item) for item in payload["promises"]
-        ))
+        return cls(
+            tuple(PlayerRolePromise.from_payload(item) for item in payload["promises"])
+        )
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -127,14 +129,19 @@ def _player_snapshot(player: Mapping[str, Any], promised_role: str) -> dict[str,
 
 
 def build_player_promise_contract(
-    *, season_id: str, team: str, total_managed_matches: int,
-    roster: Mapping[str, Any] | None, plan: PlayerPromisePlan | None,
+    *,
+    season_id: str,
+    team: str,
+    total_managed_matches: int,
+    roster: Mapping[str, Any] | None,
+    plan: PlayerPromisePlan | None,
     control: str,
 ) -> dict[str, Any]:
     if control not in {"manager", "deterministic_compatibility"}:
         raise ValueError("invalid player promise control")
     if (
-        not season_id or not team
+        not season_id
+        or not team
         or isinstance(total_managed_matches, bool)
         or not isinstance(total_managed_matches, int)
         or total_managed_matches < 3
@@ -153,7 +160,8 @@ def build_player_promise_contract(
             raise ValueError("player promise roster is invalid")
         by_id = {
             str(player.get("player_id") or ""): player
-            for player in raw_players if isinstance(player, Mapping)
+            for player in raw_players
+            if isinstance(player, Mapping)
         }
         if len(by_id) != len(raw_players) or "" in by_id:
             raise ValueError("player promise roster identities are invalid")
@@ -177,7 +185,8 @@ def build_player_promise_contract(
         "total_managed_matches": total_managed_matches,
         "players": players,
         "board_consequence": {
-            "fulfilled_confidence": 1, "missed_confidence": -2,
+            "fulfilled_confidence": 1,
+            "missed_confidence": -2,
             "reputation_change": 0,
         },
         "claim_boundary": _CONTRACT_BOUNDARY,
@@ -194,10 +203,19 @@ def validate_player_promise_contract(contract: Mapping[str, Any]) -> None:
     contract_id = frozen.pop("contract_id", None)
     players = contract.get("players")
     if (
-        set(contract) != {
-            "schema_version", "contract_id", "season_id", "team", "control",
-            "roster_identity", "roster_evidence", "total_managed_matches",
-            "players", "board_consequence", "claim_boundary",
+        set(contract)
+        != {
+            "schema_version",
+            "contract_id",
+            "season_id",
+            "team",
+            "control",
+            "roster_identity",
+            "roster_evidence",
+            "total_managed_matches",
+            "players",
+            "board_consequence",
+            "claim_boundary",
         }
         or contract.get("schema_version") != 1
         or _HASH.fullmatch(str(contract_id or "")) is None
@@ -209,9 +227,12 @@ def validate_player_promise_contract(contract: Mapping[str, Any]) -> None:
         or isinstance(contract.get("total_managed_matches"), bool)
         or not isinstance(contract.get("total_managed_matches"), int)
         or contract["total_managed_matches"] < 3
-        or not isinstance(players, list) or len(players) > MAX_PLAYER_PROMISES
-        or contract.get("board_consequence") != {
-            "fulfilled_confidence": 1, "missed_confidence": -2,
+        or not isinstance(players, list)
+        or len(players) > MAX_PLAYER_PROMISES
+        or contract.get("board_consequence")
+        != {
+            "fulfilled_confidence": 1,
+            "missed_confidence": -2,
             "reputation_change": 0,
         }
         or contract.get("claim_boundary") != _CONTRACT_BOUNDARY
@@ -228,43 +249,57 @@ def validate_player_promise_contract(contract: Mapping[str, Any]) -> None:
     ids, roles = [], []
     for row in players:
         if not isinstance(row, Mapping) or set(row) != {
-            "player_id", "name", "position", "age", "promised_role",
-            "minimum_start_share", "minimum_minute_share",
+            "player_id",
+            "name",
+            "position",
+            "age",
+            "promised_role",
+            "minimum_start_share",
+            "minimum_minute_share",
         }:
             raise ValueError("invalid promised player snapshot")
         player_id = row.get("player_id")
         promised_role = row.get("promised_role")
         age = row.get("age")
         if (
-            not isinstance(player_id, str) or not player_id or len(player_id) > 128
+            not isinstance(player_id, str)
+            or not player_id
+            or len(player_id) > 128
             or not isinstance(row.get("name"), str)
-            or not isinstance(row.get("position"), str) or not row["position"]
+            or not isinstance(row.get("position"), str)
+            or not row["position"]
             or promised_role not in PROMISE_ROLES
             or row.get("minimum_start_share")
             != _POLICY[promised_role]["minimum_start_share"]
             or row.get("minimum_minute_share")
             != _POLICY[promised_role]["minimum_minute_share"]
             or (
-                age is not None and (
-                    isinstance(age, bool) or not isinstance(age, int)
+                age is not None
+                and (
+                    isinstance(age, bool)
+                    or not isinstance(age, int)
                     or not 15 <= age <= 70
                 )
             )
             or (promised_role == "development" and (age is None or age > 23))
         ):
             raise ValueError("invalid promised player evidence")
-        ids.append(player_id); roles.append(promised_role)
+        ids.append(player_id)
+        roles.append(promised_role)
     if len(ids) != len(set(ids)) or len(roles) != len(set(roles)):
         raise ValueError("duplicate player promise identity")
 
 
 def player_promise_progress(
-    contract: Mapping[str, Any], *, fixtures: Sequence[Mapping[str, Any]],
+    contract: Mapping[str, Any],
+    *,
+    fixtures: Sequence[Mapping[str, Any]],
     final: bool,
 ) -> dict[str, Any]:
     validate_player_promise_contract(contract)
     managed = [
-        row for row in fixtures
+        row
+        for row in fixtures
         if isinstance(row, Mapping)
         and contract["team"] in {row.get("home"), row.get("away")}
         and row.get("state") == "completed"
@@ -283,8 +318,10 @@ def player_promise_progress(
         fixture_id = str(fixture.get("fixture_id") or "")
         matchday = fixture.get("matchday")
         if (
-            not fixture_id or fixture_id in seen
-            or isinstance(matchday, bool) or not isinstance(matchday, int)
+            not fixture_id
+            or fixture_id in seen
+            or isinstance(matchday, bool)
+            or not isinstance(matchday, int)
             or matchday < 1
         ):
             raise ValueError("duplicate player promise fixture evidence")
@@ -300,21 +337,26 @@ def player_promise_progress(
             availability = None
         parsed_lineup = (
             LineupSelection.from_payload(lineup)
-            if isinstance(lineup, Mapping) else None
+            if isinstance(lineup, Mapping)
+            else None
         )
         starters = set(parsed_lineup.starters) if parsed_lineup is not None else set()
         substitutes = set(parsed_lineup.bench) if parsed_lineup is not None else set()
-        evidence.append({
-            "fixture_id": fixture_id, "matchday": matchday,
-            "lineup_available": isinstance(lineup, Mapping),
-            "availability_available": isinstance(availability, Mapping),
-            "promised_starters": sorted(starters & set(starts)),
-            "promised_bench": sorted(substitutes & set(bench)),
-            "excused_unavailable": sorted(
-                player_id for player_id in starts
-                if isinstance(availability, Mapping) and not availability[player_id]
-            ),
-        })
+        evidence.append(
+            {
+                "fixture_id": fixture_id,
+                "matchday": matchday,
+                "lineup_available": isinstance(lineup, Mapping),
+                "availability_available": isinstance(availability, Mapping),
+                "promised_starters": sorted(starters & set(starts)),
+                "promised_bench": sorted(substitutes & set(bench)),
+                "excused_unavailable": sorted(
+                    player_id
+                    for player_id in starts
+                    if isinstance(availability, Mapping) and not availability[player_id]
+                ),
+            }
+        )
         for player_id in starts:
             if not isinstance(availability, Mapping) or not isinstance(lineup, Mapping):
                 unavailable[player_id].append(fixture_id)
@@ -329,41 +371,60 @@ def player_promise_progress(
     entries = []
     for player in contract["players"]:
         player_id = player["player_id"]
-        known = (
-            len(managed) - len(unavailable[player_id]) - len(excused[player_id])
-        )
+        known = len(managed) - len(unavailable[player_id]) - len(excused[player_id])
         start_share = len(starts[player_id]) / known if known else 0.0
         met = start_share >= player["minimum_start_share"]
         status = (
-            "excused" if known == 0 and len(excused[player_id]) == len(managed) and managed
-            else "evidence_unavailable" if known == 0 and managed
-            else "fulfilled" if final and met
-            else "missed" if final
-            else "pending" if known == 0
-            else "on_track" if met else "at_risk"
+            "excused"
+            if known == 0 and len(excused[player_id]) == len(managed) and managed
+            else "evidence_unavailable"
+            if known == 0 and managed
+            else "fulfilled"
+            if final and met
+            else "missed"
+            if final
+            else "pending"
+            if known == 0
+            else "on_track"
+            if met
+            else "at_risk"
         )
-        entries.append({
-            **copy.deepcopy(player), "status": status,
-            "completed_matches": len(managed), "known_lineups": known,
-            "starts": len(starts[player_id]), "bench": len(bench[player_id]),
-            "excused_unavailable": len(excused[player_id]),
-            "start_share": round(start_share, 6),
-            "start_fixture_ids": starts[player_id],
-            "bench_fixture_ids": bench[player_id],
-            "excused_fixture_ids": excused[player_id],
-            "unavailable_fixture_ids": unavailable[player_id],
-        })
+        entries.append(
+            {
+                **copy.deepcopy(player),
+                "status": status,
+                "completed_matches": len(managed),
+                "known_lineups": known,
+                "starts": len(starts[player_id]),
+                "bench": len(bench[player_id]),
+                "excused_unavailable": len(excused[player_id]),
+                "start_share": round(start_share, 6),
+                "start_fixture_ids": starts[player_id],
+                "bench_fixture_ids": bench[player_id],
+                "excused_fixture_ids": excused[player_id],
+                "unavailable_fixture_ids": unavailable[player_id],
+            }
+        )
     statuses = [row["status"] for row in entries]
     return {
         "schema_version": PLAYER_PROMISE_SCHEMA_VERSION,
-        "contract_id": contract["contract_id"], "season_id": contract["season_id"],
-        "team": contract["team"], "control": contract["control"],
-        "final": final, "completed_matches": len(managed),
+        "contract_id": contract["contract_id"],
+        "season_id": contract["season_id"],
+        "team": contract["team"],
+        "control": contract["control"],
+        "final": final,
+        "completed_matches": len(managed),
         "remaining_matches": contract["total_managed_matches"] - len(managed),
-        "entries": entries, "evidence": evidence,
+        "entries": entries,
+        "evidence": evidence,
         "summary": {
-            key: statuses.count(key) for key in (
-                "fulfilled", "missed", "on_track", "at_risk", "pending",
+            key: statuses.count(key)
+            for key in (
+                "fulfilled",
+                "missed",
+                "on_track",
+                "at_risk",
+                "pending",
                 "evidence_unavailable",
                 "excused",
             )
@@ -374,7 +435,8 @@ def player_promise_progress(
 
 
 def settle_player_promise_outcomes(
-    contract: Mapping[str, Any], progress: Mapping[str, Any],
+    contract: Mapping[str, Any],
+    progress: Mapping[str, Any],
     participation: Mapping[str, Any],
 ) -> dict[str, Any] | None:
     validate_player_promise_contract(contract)
@@ -397,41 +459,58 @@ def settle_player_promise_outcomes(
         minutes = round(float(total["minutes"]), 3)
         share = min(1.0, minutes / max(90.0, scheduled * 90.0))
         observed_status = (
-            "evidence_partial" if coverage == "partial"
-            else "evidence_unavailable" if coverage == "unavailable"
-            else "fulfilled" if share >= player["minimum_minute_share"]
+            "evidence_partial"
+            if coverage == "partial"
+            else "evidence_unavailable"
+            if coverage == "unavailable"
+            else "fulfilled"
+            if share >= player["minimum_minute_share"]
             else "missed"
         )
         selection = next(
-            row for row in progress["entries"]
+            row
+            for row in progress["entries"]
             if row["player_id"] == player["player_id"]
         )
-        rows.append({
-            "player_id": player["player_id"], "name": player["name"],
-            "position": player["position"], "age": player["age"],
-            "promised_role": player["promised_role"],
-            "selection_status": selection["status"],
-            "start_share": selection["start_share"],
-            "minutes": minutes, "appearances": int(total["appearances"]),
-            "scheduled_matches": scheduled, "minute_share": round(share, 6),
-            "minimum_minute_share": player["minimum_minute_share"],
-            "observed_status": observed_status,
-        })
+        rows.append(
+            {
+                "player_id": player["player_id"],
+                "name": player["name"],
+                "position": player["position"],
+                "age": player["age"],
+                "promised_role": player["promised_role"],
+                "selection_status": selection["status"],
+                "start_share": selection["start_share"],
+                "minutes": minutes,
+                "appearances": int(total["appearances"]),
+                "scheduled_matches": scheduled,
+                "minute_share": round(share, 6),
+                "minimum_minute_share": player["minimum_minute_share"],
+                "observed_status": observed_status,
+            }
+        )
     outcome = {
         "schema_version": PLAYER_PROMISE_SCHEMA_VERSION,
-        "outcome_id": "", "season_id": contract["season_id"],
-        "team": contract["team"], "contract_id": contract["contract_id"],
+        "outcome_id": "",
+        "season_id": contract["season_id"],
+        "team": contract["team"],
+        "contract_id": contract["contract_id"],
         "participation_identity": _identity(participation),
-        "coverage": coverage, "players": rows,
+        "coverage": coverage,
+        "players": rows,
         "claim_boundary": _OUTCOME_BOUNDARY,
     }
-    frozen = dict(outcome); frozen.pop("outcome_id")
+    frozen = dict(outcome)
+    frozen.pop("outcome_id")
     outcome["outcome_id"] = _identity(frozen)
     return outcome
 
 
 __all__ = [
-    "PlayerPromisePlan", "PlayerRolePromise", "build_player_promise_contract",
-    "player_promise_progress", "settle_player_promise_outcomes",
+    "PlayerPromisePlan",
+    "PlayerRolePromise",
+    "build_player_promise_contract",
+    "player_promise_progress",
+    "settle_player_promise_outcomes",
     "validate_player_promise_contract",
 ]

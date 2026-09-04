@@ -14,6 +14,10 @@ from src.simulation.cross_match_state import (
     ingest_match_result,
     sync_carryover_from_roster,
 )
+from src.simulation.score_path import (
+    ScorePathMode,
+    resolve_score_path_mode,
+)
 from src.simulation.squad_registry import load_effective_roster
 
 if TYPE_CHECKING:
@@ -52,12 +56,6 @@ def prepare_match_agents(
             ra = apply_lineup_selection(ra, LineupSelection.from_payload(away_lineup))
         away._roster_carryover_snapshot = ra
     return rh, ra
-
-
-from src.simulation.score_path import (
-    ScorePathMode,
-    resolve_score_path_mode,
-)
 
 
 def micro_layer_enabled() -> bool:
@@ -171,7 +169,9 @@ def run_extra_time_micro(
     )
 
 
-def print_micro_match_logs(aff: Any, t1_name: str, t2_name: str, a1: "SocietyAgent", a2: "SocietyAgent") -> None:
+def print_micro_match_logs(
+    aff: Any, t1_name: str, t2_name: str, a1: "SocietyAgent", a2: "SocietyAgent"
+) -> None:
     print(
         f"  [MICRO] poss={aff.possession_home:.0%} | passes {aff.passes_home}/{aff.passes_away} "
         f"cmp {aff.pass_completion_home:.0%}/{aff.pass_completion_away:.0%} | "
@@ -210,7 +210,9 @@ def print_micro_match_logs(aff: Any, t1_name: str, t2_name: str, a1: "SocietyAge
         print(f"  [AFFECTIVE-EVT] {' | '.join(aff.timeline_snippet[:8])}")
     if getattr(aff, "xg_supplement_applied", False):
         meta = getattr(aff, "xg_supplement_meta", {}) or {}
-        print(f"  [XG-SUPPLEMENT] physics {meta.get('physics')} μxG {meta.get('micro_xg')} → final {meta.get('final')}")
+        print(
+            f"  [XG-SUPPLEMENT] physics {meta.get('physics')} μxG {meta.get('micro_xg')} → final {meta.get('final')}"
+        )
     if getattr(aff, "ball_log_path", ""):
         print(f"  [BALL-LOG] {aff.ball_log_path}")
 
@@ -255,7 +257,9 @@ def run_micro_layer(
     )
 
 
-def extract_micro_player_stats(summary: Any, team_id: str) -> Dict[str, Dict[str, float]]:
+def extract_micro_player_stats(
+    summary: Any, team_id: str
+) -> Dict[str, Dict[str, float]]:
     if summary is None:
         return {}
     ps = getattr(summary, "player_stats", None) or {}
@@ -348,13 +352,19 @@ def _save_cognitive_match_log(
         "cognitive_plans": getattr(micro_summary, "cognitive_plans", []),
         "cognitive_tier_usage": getattr(micro_summary, "cognitive_tier_usage", {}),
         "world_model_online_calibration": getattr(
-            micro_summary, "world_model_online_calibration", {},
+            micro_summary,
+            "world_model_online_calibration",
+            {},
         ),
         "world_model_decision_adoption": getattr(
-            micro_summary, "world_model_decision_adoption", {},
+            micro_summary,
+            "world_model_decision_adoption",
+            {},
         ),
         "world_model_action_adoption": getattr(
-            micro_summary, "world_model_action_adoption", {},
+            micro_summary,
+            "world_model_action_adoption",
+            {},
         ),
     }
     path = log_dir / f"{key}.json"

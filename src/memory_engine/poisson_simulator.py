@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from src.memory_engine.macro_goal_dynamics import (
@@ -29,7 +28,9 @@ def simulate_match_score(status_a, status_b, is_knockout=False, rng=None):
     if not _use_legacy_status_poisson():
         x_a = team_vector_from_status(status_a)
         x_b = team_vector_from_status(status_b)
-        return simulate_match_score_from_vectors(x_a, x_b, is_knockout=is_knockout, rng=rng)
+        return simulate_match_score_from_vectors(
+            x_a, x_b, is_knockout=is_knockout, rng=rng
+        )
 
     rng = rng or np.random.default_rng()
 
@@ -63,7 +64,11 @@ def simulate_extra_time_score(status_a, status_b, rng=None):
     Extra time (30') via shortened λ dynamics integration.
     """
     if not _use_legacy_status_poisson():
-        from src.memory_engine.macro_goal_dynamics import EXTRA_TIME_MINUTES, integrate_match_xg, sample_goals_from_xg
+        from src.memory_engine.macro_goal_dynamics import (
+            EXTRA_TIME_MINUTES,
+            integrate_match_xg,
+            sample_goals_from_xg,
+        )
 
         x_a = team_vector_from_status(status_a)
         x_b = team_vector_from_status(status_b)
@@ -78,7 +83,12 @@ def simulate_extra_time_score(status_a, status_b, rng=None):
     rng = rng or np.random.default_rng()
     goals_a = _soft_goal_cap(int(rng.poisson(lambda_a)), lambda_a)
     goals_b = _soft_goal_cap(int(rng.poisson(lambda_b)), lambda_b)
-    return int(goals_a), int(goals_b), round(float(lambda_a), 2), round(float(lambda_b), 2)
+    return (
+        int(goals_a),
+        int(goals_b),
+        round(float(lambda_a), 2),
+        round(float(lambda_b), 2),
+    )
 
 
 def score_xg_anomaly_note(team_a, team_b, ga, gb, xa, xb):
@@ -89,9 +99,13 @@ def score_xg_anomaly_note(team_a, team_b, ga, gb, xa, xb):
     for name, g, x in ((team_a, ga, xa), (team_b, gb, xb)):
         delta = float(g - x)
         if delta >= 2.0 or (g >= 4 and x <= 1.75):
-            parts.append(f"{name} over-performed xG ({g} goals vs {x:.2f} xG; finishing/low-block collapse proxy)")
+            parts.append(
+                f"{name} over-performed xG ({g} goals vs {x:.2f} xG; finishing/low-block collapse proxy)"
+            )
         elif delta <= -2.0 or (g == 0 and x >= 1.4):
-            parts.append(f"{name} under-performed xG ({g} goals vs {x:.2f} xG; woodwork/keeper proxy)")
+            parts.append(
+                f"{name} under-performed xG ({g} goals vs {x:.2f} xG; woodwork/keeper proxy)"
+            )
     tot_g = ga + gb
     tot_x = xa + xb
     if tot_x > 0.5 and abs(tot_g - tot_x) >= 3.2:
@@ -125,7 +139,9 @@ def finalize_stage_xg_context(team_a, team_b, ga, gb, xa, xb, went_to_penalties=
     tot_g = int(ga + gb)
     tot_x = float(xa + xb)
     if tot_x > 0.4 and abs(tot_g - tot_x) >= 2.35:
-        parts.append(f"combined goals ({tot_g}) swung wide of combined xG ({tot_x:.2f})")
+        parts.append(
+            f"combined goals ({tot_g}) swung wide of combined xG ({tot_x:.2f})"
+        )
     if went_to_penalties:
         parts.append("survival through penalty variance")
     if not parts:
@@ -142,9 +158,11 @@ def simulate_penalty_shootout(rng=None):
     pa, pb = 0, 0
     # First 5 rounds
     for _ in range(5):
-        if rng.random() > 0.25: pa += 1 # 75% conversion rate
-        if rng.random() > 0.25: pb += 1
-    
+        if rng.random() > 0.25:
+            pa += 1  # 75% conversion rate
+        if rng.random() > 0.25:
+            pb += 1
+
     # Sudden death with mild tail damping to avoid frequent extreme lengths.
     sudden_round = 0
     while pa == pb:
@@ -161,5 +179,5 @@ def simulate_penalty_shootout(rng=None):
                 pa += 1
             else:
                 pb += 1
-        
+
     return pa, pb

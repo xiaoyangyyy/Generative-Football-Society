@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Made all production `src` modules pass the default Ruff gate by formatting
+  the remaining data, memory, product, simulation, and visualization debt,
+  moving three cycle-free imports to their standard boundary, and replacing
+  line-count-compressed reporting with strict 29/37-line stage orchestrators.
 - Reformatted the complete remaining frame-world and subtick-reception core
   debt, making all of `src/match_engine` pass the default Ruff gate while
   preserving exact ASTs for action routing, continuous/temporal state,

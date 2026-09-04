@@ -6,6 +6,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
+
+from src.match_engine.calibration.narrative_gate import anomalies_from_match
 from src.simulation.runtime import environment_snapshot, env_bool
 
 if TYPE_CHECKING:
@@ -89,9 +91,6 @@ def log_llm_tactics(
     _write_record(rec)
 
 
-from src.match_engine.calibration.narrative_gate import anomalies_from_match
-
-
 def _anomalies(
     *,
     s_home: int,
@@ -155,9 +154,14 @@ def log_match_debug(
             "possession_home": round(micro.possession_home, 3),
             "cognitive_plans": len(micro.cognitive_plans),
             "cognitive_tiers": dict(micro.cognitive_tier_usage),
-            "phi_integral": [round(micro.phi_integral_home, 3), round(micro.phi_integral_away, 3)],
+            "phi_integral": [
+                round(micro.phi_integral_home, 3),
+                round(micro.phi_integral_away, 3),
+            ],
             "ball_log": micro.ball_log_path,
         }
     _write_record(rec)
     if anomalies:
-        print(f"  [DEBUG-NARRATIVE] anomalies={anomalies} | {home} {score_home}-{score_away} {away}")
+        print(
+            f"  [DEBUG-NARRATIVE] anomalies={anomalies} | {home} {score_home}-{score_away} {away}"
+        )
