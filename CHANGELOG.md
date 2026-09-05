@@ -2,6 +2,17 @@
 
 ## Unreleased - v7 candidate
 
+- Completed the behavior-preserving `SocietyAgent` facade decomposition. The
+  remaining 22 governance, tactics, reflection and physical-condition methods
+  now live in four cohesive mixins; the 127-line facade owns only construction,
+  finite-value normalization and identity-derived region/style helpers. AST
+  comparison, direct ownership tests and a machine architecture gate protect
+  the boundary. The prospective M2 identity was refreshed by its zero-training
+  preflight; no checkpoint, match, study, participant session or provider call
+  was created. The participant-session test clock now starts after its actual
+  registration timestamp instead of a hard-coded calendar instant, removing a
+  date-dependent false failure without weakening the production time-order gate.
+  The complete suite passes with 1,408 tests and three declared skips.
 - Extracted the complete latent appraisal, emotion, coping and compatibility-
   state projection from the `SocietyAgent` facade into a dedicated psychology
   mixin. All 15 moved methods and properties are AST-equivalent to their prior

@@ -10,14 +10,18 @@ import numpy as np
 import pytest
 
 from src.simulation.agent import SocietyAgent
+from src.simulation.agent_condition import AgentConditionMixin
 from src.simulation.agent_dynamics import AgentMatchDynamicsMixin
+from src.simulation.agent_governance import AgentGovernanceMixin
 from src.simulation.agent_initialization import AgentInitializationMixin
 from src.simulation.agent_memory import AgentMemoryMixin
 from src.simulation.agent_memory_beliefs import AgentBeliefMemoryMixin
 from src.simulation.agent_memory_retrieval import AgentMemoryRetrievalMixin
 from src.simulation.agent_memory_write import AgentMemoryWriteMixin
 from src.simulation.agent_psychology import AgentPsychologyMixin
+from src.simulation.agent_reflection import AgentReflectionMixin
 from src.simulation.agent_social import SocialAgentMixin
+from src.simulation.agent_tactics import AgentTacticsMixin
 from src.simulation.referee_policy import RefereePolicy, normalize_weights
 from src.simulation.tournament_2026 import TournamentManager
 from src.simulation.tournament_finalize import TournamentFinalizeMixin
@@ -190,6 +194,76 @@ def test_agent_psychology_projection_remains_finite_and_normalized():
         1.0,
     )
     assert -1.0 <= coping["risk_shift"] <= 1.0
+
+
+@pytest.mark.parametrize(
+    ("mixin", "method_names"),
+    (
+        (
+            AgentGovernanceMixin,
+            {
+                "simulate_internal_game",
+                "apply_referee_dynamics",
+                "relax_referee_grievance_post_match",
+                "update_governance_post_match",
+                "_bounded_sigmoid",
+            },
+        ),
+        (
+            AgentTacticsMixin,
+            {
+                "_clip01",
+                "set_tactical_controls",
+                "refresh_tactical_vector",
+                "tactical_effects",
+                "coach_intervention",
+            },
+        ),
+        (
+            AgentReflectionMixin,
+            {
+                "_reflection_context_payload",
+                "request_reflection_payload",
+                "apply_reflection_payload",
+                "perform_reflection",
+                "ingest_micro_cognitive_memory",
+                "apply_llm_reflection",
+                "get_context_for_llm",
+            },
+        ),
+        (
+            AgentConditionMixin,
+            {
+                "locker_room_tension",
+                "rare_locker_room_explosion",
+                "apply_match_wear",
+                "recover",
+                "get_effective_status",
+            },
+        ),
+    ),
+)
+def test_agent_behavior_layers_are_inherited_from_dedicated_mixins(
+    mixin, method_names
+):
+    assert issubclass(SocietyAgent, mixin)
+    for method_name in method_names:
+        assert method_name not in SocietyAgent.__dict__
+        assert getattr(SocietyAgent, method_name) is getattr(mixin, method_name)
+
+
+def test_society_agent_facade_only_owns_identity_and_construction_methods():
+    owned = {
+        name
+        for name, value in SocietyAgent.__dict__.items()
+        if inspect.isfunction(value) or isinstance(value, staticmethod)
+    }
+    assert owned == {
+        "_finite",
+        "__init__",
+        "_infer_region",
+        "_infer_style_archetype",
+    }
 
 
 def test_agent_local_initialization_rng_is_replayable_and_does_not_touch_global_rng():

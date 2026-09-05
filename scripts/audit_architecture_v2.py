@@ -88,6 +88,26 @@ def _read(relative: str) -> dict:
     return json.loads((ROOT / relative).read_text(encoding="utf-8-sig"))
 
 
+def _class_methods(source: str, class_name: str) -> set[str]:
+    tree = ast.parse(source)
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return {
+                child.name
+                for child in node.body
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
+            }
+    return set()
+
+
+def _class_bases(source: str, class_name: str) -> set[str]:
+    tree = ast.parse(source)
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return {ast.unparse(base) for base in node.bases}
+    return set()
+
+
 def _artifact_inside_root(value: str | None) -> Path | None:
     if not value:
         return None
@@ -290,6 +310,53 @@ def main() -> int:
     agent_psychology = (
         ROOT / "src/simulation/agent_psychology.py"
     ).read_text(encoding="utf-8")
+    agent_governance = (
+        ROOT / "src/simulation/agent_governance.py"
+    ).read_text(encoding="utf-8")
+    agent_tactics = (
+        ROOT / "src/simulation/agent_tactics.py"
+    ).read_text(encoding="utf-8")
+    agent_reflection = (
+        ROOT / "src/simulation/agent_reflection.py"
+    ).read_text(encoding="utf-8")
+    agent_condition = (
+        ROOT / "src/simulation/agent_condition.py"
+    ).read_text(encoding="utf-8")
+    agent_facade_methods = _class_methods(agent, "SocietyAgent")
+    agent_facade_bases = _class_bases(agent, "SocietyAgent")
+    agent_behavior_layers = {
+        "AgentGovernanceMixin": (
+            agent_governance,
+            {
+                "simulate_internal_game", "apply_referee_dynamics",
+                "relax_referee_grievance_post_match", "update_governance_post_match",
+                "_bounded_sigmoid",
+            },
+        ),
+        "AgentTacticsMixin": (
+            agent_tactics,
+            {
+                "_clip01", "set_tactical_controls", "refresh_tactical_vector",
+                "tactical_effects", "coach_intervention",
+            },
+        ),
+        "AgentReflectionMixin": (
+            agent_reflection,
+            {
+                "_reflection_context_payload", "request_reflection_payload",
+                "apply_reflection_payload", "perform_reflection",
+                "ingest_micro_cognitive_memory", "apply_llm_reflection",
+                "get_context_for_llm",
+            },
+        ),
+        "AgentConditionMixin": (
+            agent_condition,
+            {
+                "locker_room_tension", "rare_locker_room_explosion",
+                "apply_match_wear", "recover", "get_effective_status",
+            },
+        ),
+    }
     world_runner = (
         ROOT / "src/simulation/world_cup_runner.py"
     ).read_text(encoding="utf-8")
@@ -448,6 +515,20 @@ def main() -> int:
                 "def _memory_salience(",
                 "def hidden_state(",
             ))
+        ),
+        "society_agent_facade_has_dedicated_behavior_layers": (
+            set(agent_behavior_layers).issubset(agent_facade_bases)
+            and all(
+                methods.issubset(_class_methods(source, mixin))
+                for mixin, (source, methods) in agent_behavior_layers.items()
+            )
+            and all(
+                not methods.intersection(agent_facade_methods)
+                for _, methods in agent_behavior_layers.values()
+            )
+            and agent_facade_methods == {
+                "_finite", "__init__", "_infer_region", "_infer_style_archetype",
+            }
         ),
         "training_has_exclusive_process_lease": "FileLease" in job,
         "training_stop_forces_exact_checkpoint": (
@@ -1812,7 +1893,7 @@ def main() -> int:
                 'journal["applied"].append(operation_id)',
                 "def _record_final_result(",
             ))
-            and all(token in agent for token in (
+            and all(token in agent_reflection for token in (
                 "def request_reflection_payload(",
                 "def apply_reflection_payload(",
                 'record.get("operation_id") == operation_id',

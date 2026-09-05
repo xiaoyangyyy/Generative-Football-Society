@@ -263,6 +263,13 @@ dedicated mixin. The 15 moved definitions are AST-equivalent to their previous
 implementations, while structural and finite/probability-invariant tests keep
 the ownership explicit. The prospective M2 preflight was refreshed without
 training so its transitive code identity includes the new runtime module.
+V4.09 completes that facade decomposition. Governance/referee behavior,
+tactical controls, reflection/cognitive ingestion and physical condition now
+belong to four dedicated mixins containing the remaining 22 behavior methods.
+The 127-line facade owns only construction, finite-value normalization and
+identity-derived region/style helpers. A machine AST ownership gate prevents
+those responsibilities from drifting back into the facade, and the refreshed
+M2 receipt remains zero-training readiness evidence only.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

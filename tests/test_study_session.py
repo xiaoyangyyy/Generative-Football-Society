@@ -4,7 +4,7 @@ import json
 import re
 import shutil
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 from wsgiref.util import setup_testing_defaults
@@ -47,8 +47,8 @@ CORRECT = {
 
 
 class Clock:
-    def __init__(self):
-        self.value = datetime(2026, 9, 5, 8, 0, tzinfo=timezone.utc)
+    def __init__(self, value):
+        self.value = value
 
     def __call__(self):
         return self.value
@@ -78,7 +78,10 @@ def _setup(tmp_path, *, participant_index=1):
         moderator_id="moderator-12345678",
         consent_recorded=True,
     )["registration"]
-    clock = Clock()
+    registered_at = datetime.fromisoformat(
+        registration["registered_at"].replace("Z", "+00:00")
+    )
+    clock = Clock(registered_at + timedelta(seconds=1))
     provisioned = provision_participant_session(
         project,
         registration_id=registration["registration_id"],

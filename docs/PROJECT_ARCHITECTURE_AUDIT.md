@@ -246,6 +246,14 @@ not quality signals by themselves.
     enforce the ownership. The prospective M2 import closure now binds the new
     module through the real runtime path; its refreshed receipt remains an
     explicit zero-training preflight rather than model or outcome evidence.
+51. Completed the remaining behavior-preserving `SocietyAgent` facade split.
+    Governance/referee response, tactical controls, reflection/cognitive
+    ingestion and physical condition now live in four dedicated mixins with 22
+    AST-equivalent methods. The facade is 127 lines and owns only construction,
+    finite-value normalization and identity-derived region/style helpers. Tests
+    and an AST-based architecture gate enforce inheritance, exclusive method
+    ownership and the closed facade surface; the zero-training M2 import closure
+    now binds all four modules without creating a model or outcome result.
 
 ## LLM Scope Decision
 
@@ -268,10 +276,9 @@ cleaning, or direct unaudited state mutation.
 1. Collect balanced cross, shot and goal transitions; produce a new checkpoint
    that passes the registered cross gate and recalibrate the shot branch before
    broader promotion. Do not retrofit authority onto the current v9 checkpoint.
-2. Continue the gradual `SocietyAgent` facade split only when another
-   behavior-preserving boundary is available; latent psychology is now
-   separated, while governance, tactics, reflection and physical condition
-   remain candidates for later cohesive extraction.
+2. Keep the completed `SocietyAgent` facade closed: new governance, tactics,
+   reflection, condition, psychology, memory, social or match behavior belongs
+   to its existing dedicated layer and must not re-enter the facade.
 3. Collect real failed-pass labels for an external completion benchmark.
 4. Split `TournamentManager` into scheduler, match service, standings, narrative orchestration, and repository.
 5. Add matched-seed intervention tests for cognition, narrative persistence, memory, and meta-learning.

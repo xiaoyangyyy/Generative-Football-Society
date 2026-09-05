@@ -4123,3 +4123,31 @@ automatically. This is a maintainability and reviewability increment only. It
 does not change psychological equations, random draws, model authority or any
 research result, and it executes no training, match, participant session or
 provider call.
+
+## 127. V4.09 Complete SocietyAgent behavior facade decomposition
+
+After the psychology extraction, `SocietyAgent` still directly owned four
+cohesive behavior groups: governance/referee response, tactical controls,
+LLM-reflection receipt application and physical condition. Keeping those
+unrelated transitions beside construction made the facade the default home for
+future behavior and obscured the state boundary used by tournament recovery.
+
+`AgentGovernanceMixin`, `AgentTacticsMixin`, `AgentReflectionMixin` and
+`AgentConditionMixin` now own those groups. The 22 moved method definitions are
+AST-equivalent to their previous definitions, including their random-stream
+selection, clipping, mutation order and reflection idempotency checks. The
+127-line facade now owns exactly `_finite`, `__init__`, `_infer_region` and
+`_infer_style_archetype`; all other behavior is inherited from a named layer.
+
+Direct tests require exact method ownership for every new mixin and enforce the
+four-method facade surface. The architecture audit parses class definitions and
+requires every behavior layer to be inherited, every declared method to exist
+in its layer and no moved method to return to the facade. Dynamic-world recovery
+continues to inspect the reflection layer explicitly. The prospective M2 local-
+import closure discovers all four modules and its refreshed receipt records
+`training_executed=false` and `checkpoint_written=false`.
+
+This is a maintainability and reviewability increment. It changes no numerical
+equation, random draw, persistence schema, action authority, model result or
+product claim, and it executes no training, match, formal study, participant
+session or provider call.
