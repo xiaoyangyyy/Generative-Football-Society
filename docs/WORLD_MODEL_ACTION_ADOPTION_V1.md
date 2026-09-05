@@ -108,4 +108,17 @@ python scripts/manager_advisor_study.py --status
 python scripts/manager_advisor_study.py --analyze --base-dir <studio-directory>
 ```
 
+## V4.05 progress-ledger integrity
+
+The current runner validates persisted progress before status, authorized
+resume, analysis, or export can consume it. Rows must follow the exact frozen
+fixture/sample schedule prefix in the preregistered arm order, contain finite
+analysis metrics, satisfy nested mechanism-count bounds, and agree with both
+arm and overall completion markers. An invalid ledger is reported as
+`blocked_invalid_progress`; a structurally valid historical ledger whose code
+identity is old remains `blocked_identity_drift`. No historical result is
+silently promoted to the current controller identity. A complete matching
+ledger returns idempotently, and every arm must prove its full budget before
+the following arm can start.
+
 该协议只能确认或否定采纳取证链是否完整。它不计算赛果效应，不授权因果结论、现实足球推广、产品晋级或论文晋级。当前只完成代码和预注册，尚未收集 12 条经理建议决策。

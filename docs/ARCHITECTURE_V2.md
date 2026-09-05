@@ -4017,3 +4017,32 @@ This creates an immutable reviewability floor for the two most sensitive
 product-to-policy boundaries without changing their public schemas, random
 draws or causal authority. This stage executes no match, model training,
 formal study, participant session or external provider call.
+
+## 123. V4.05 Fail-closed action-adoption progress ledger
+
+The fixed-budget action-adoption runner already bound protocol, checkpoint and
+code identity, but its status, resume, analysis and export paths did not share
+one structural validator for persisted progress. A corrupted ledger could
+therefore surface inconsistent remaining counts or reach a later stage before
+duplicate, reordered, out-of-schedule or non-finite rows were rejected.
+
+The runner now derives the only valid fixture/sample schedule directly from
+the frozen protocol. Each arm may contain only an exact prefix of that
+schedule. Every retained row must be an object with finite values for all 15
+descriptive comparison metrics and the five mechanism estimands. Mechanism
+counts must satisfy `realized, expected <= eligible <= influenced <=
+opportunities`. The negative-control arm must complete before the action-policy
+arm begins, arm-level completion markers require the full per-arm budget, and
+an overall completed state requires both exact arms and all 24 rows.
+
+Status separates structural corruption from code-identity drift and never
+reports a negative remaining budget. Authorized resume rejects invalid
+progress before invoking the match runner. Each callback row is validated
+against the next frozen schedule position before it is durably appended, while
+each arm must validate its full budget before the next arm starts. A completed,
+identity-matched ledger returns idempotently without rebuilding a match
+environment. Analysis and export independently require the complete ledger
+again. The historical 24-run artifact passes every structural check but remains
+blocked by current controller identity drift, which is the intended truthful
+state. This stage executes no match, training, formal study, participant
+session or external provider call.

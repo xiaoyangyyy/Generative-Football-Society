@@ -2,6 +2,12 @@
 
 ## Unreleased - v7 candidate
 
+- Added one fail-closed validator for the action-adoption study ledger across
+  status, authorized resume, analysis, and export. It enforces the exact frozen
+  fixture/sample prefix, arm order, numeric metrics, nested action-count
+  bounds, completion markers, and fixed budget before any match runner or
+  statistical result can consume persisted progress; completed ledgers return
+  idempotently and each arm must prove its full budget before the next starts.
 - Consolidated fixture request validation and separated result-link, tactical-
   study, and fork-set progress projection in the Web gateway; the complete Web
   product and action-adoption core now pass a focused complexity gate that is

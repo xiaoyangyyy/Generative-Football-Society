@@ -581,6 +581,23 @@ def main() -> int:
                 "runs_executed"
             ) == 0
         ),
+        "action_adoption_progress_is_fixed_schedule_and_fail_closed": (
+            all(token in action_adoption_study for token in (
+                "def validate_progress(",
+                '"rows_follow_exact_schedule_prefix"',
+                '"analysis_metrics_are_finite"',
+                '"action_counts_are_bounded"',
+                '"arm_order_is_resumable"',
+                '"required_complete_budget"',
+                '"blocked_invalid_progress"',
+                '"inspect_invalid_progress"',
+                "candidate_rows = [*rows, dict(row)]",
+                "_require_valid_progress(validate_progress(",
+            ))
+            and action_adoption_study.count(
+                "_require_valid_progress(validate_progress("
+            ) >= 3
+        ),
         "world_model_action_authority_uses_validated_feasible_simplex": (
             all(token in action_adoption_controller for token in (
                 "validated_action_simplex_v3",

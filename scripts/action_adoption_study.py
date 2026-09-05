@@ -7,6 +7,7 @@ import argparse
 import csv
 import io
 import json
+import math
 import os
 import sys
 import tempfile
@@ -46,6 +47,14 @@ SMOKE_ARM_IDS = (
 )
 SMOKE_OUTPUT = (
     ROOT / "data/evaluation/action_adoption_v1/smoke_verification.json"
+)
+PROGRESS_STATES = frozenset({"running", "failed", "completed"})
+ACTION_ANALYSIS_METRICS = (
+    "wm_action_opportunities",
+    "wm_action_influenced_opportunities",
+    "wm_action_attribution_eligible_opportunities",
+    "wm_action_expected_counterfactual_changes",
+    "wm_action_counterfactual_changes",
 )
 
 
@@ -87,6 +96,205 @@ def _atomic_text(path: Path, payload: str) -> None:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _expected_schedule(protocol: dict[str, Any]) -> list[tuple[str, int]]:
+    design = protocol["design"]
+    return [
+        (f"{home}_vs_{away}", int(sample_index))
+        for home, away in design["fixtures"]
+        for sample_index in design["sample_indices"]
+    ]
+
+
+def _finite_number(value: Any) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(float(value))
+    )
+
+
+def _validate_progress_rows(
+    rows: Any,
+    *,
+    expected_schedule: list[tuple[str, int]],
+) -> dict[str, bool]:
+    if not isinstance(rows, list):
+        return {
+            "rows_are_a_list": False,
+            "rows_are_objects": False,
+            "rows_follow_exact_schedule_prefix": False,
+            "analysis_metrics_are_finite": False,
+            "action_counts_are_bounded": False,
+        }
+    keys: list[tuple[str, int] | None] = []
+    rows_are_objects = True
+    metrics_are_finite = True
+    action_counts_are_bounded = True
+    required_metrics = (*METRICS, *ACTION_ANALYSIS_METRICS)
+    for row in rows:
+        if not isinstance(row, dict):
+            rows_are_objects = False
+            keys.append(None)
+            metrics_are_finite = False
+            action_counts_are_bounded = False
+            continue
+        fixture = row.get("fixture")
+        sample_index = row.get("sample_index")
+        keys.append(
+            (fixture, sample_index)
+            if isinstance(fixture, str)
+            and isinstance(sample_index, int)
+            and not isinstance(sample_index, bool)
+            else None
+        )
+        if not all(_finite_number(row.get(name)) for name in required_metrics):
+            metrics_are_finite = False
+            action_counts_are_bounded = False
+            continue
+        opportunities = float(row["wm_action_opportunities"])
+        influenced = float(row["wm_action_influenced_opportunities"])
+        eligible = float(row["wm_action_attribution_eligible_opportunities"])
+        expected = float(row["wm_action_expected_counterfactual_changes"])
+        realized = float(row["wm_action_counterfactual_changes"])
+        if not (
+            opportunities >= 0.0
+            and 0.0 <= influenced <= opportunities
+            and 0.0 <= eligible <= influenced
+            and 0.0 <= expected <= eligible
+            and 0.0 <= realized <= eligible
+        ):
+            action_counts_are_bounded = False
+    return {
+        "rows_are_a_list": True,
+        "rows_are_objects": rows_are_objects,
+        "rows_follow_exact_schedule_prefix": (
+            len(keys) <= len(expected_schedule)
+            and keys == expected_schedule[:len(keys)]
+        ),
+        "analysis_metrics_are_finite": metrics_are_finite,
+        "action_counts_are_bounded": action_counts_are_bounded,
+    }
+
+
+def validate_progress(
+    protocol: dict[str, Any],
+    state: dict[str, Any],
+    *,
+    expected_identity: dict[str, Any] | None = None,
+    require_complete: bool = False,
+) -> dict[str, Any]:
+    """Validate a resumable fixed-budget ledger without executing a match."""
+    expected_schedule = _expected_schedule(protocol)
+    runs_per_arm = int(protocol["design"]["runs_per_arm"])
+    runs_total = int(protocol["design"]["runs_total"])
+    arms = state.get("arms")
+    arms_are_exact = (
+        isinstance(arms, dict) and set(arms) == set(ARM_IDS)
+    )
+    row_checks: dict[str, dict[str, bool]] = {}
+    completed_runs: dict[str, int] = {}
+    arm_states: dict[str, Any] = {}
+    for arm in ARM_IDS:
+        arm_payload = arms.get(arm) if arms_are_exact else None
+        rows = arm_payload.get("rows") if isinstance(arm_payload, dict) else None
+        row_checks[arm] = _validate_progress_rows(
+            rows, expected_schedule=expected_schedule,
+        )
+        completed_runs[arm] = len(rows) if isinstance(rows, list) else 0
+        arm_states[arm] = (
+            arm_payload.get("state") if isinstance(arm_payload, dict) else None
+        )
+    row_checks_pass = all(
+        all(checks.values()) for checks in row_checks.values()
+    )
+    arm_completion_is_consistent = all(
+        arm_states[arm] in {None, "completed"}
+        and (
+            arm_states[arm] != "completed"
+            or completed_runs[arm] == runs_per_arm
+        )
+        for arm in ARM_IDS
+    )
+    first_arm, second_arm = ARM_IDS
+    arm_order_is_resumable = not (
+        completed_runs[first_arm] < runs_per_arm
+        and (
+            completed_runs[second_arm] > 0
+            or arm_states[second_arm] == "completed"
+        )
+    ) and not (
+        completed_runs[second_arm] > 0
+        and arm_states[first_arm] != "completed"
+    )
+    fixed_budget_complete = (
+        all(completed_runs[arm] == runs_per_arm for arm in ARM_IDS)
+        and all(arm_states[arm] == "completed" for arm in ARM_IDS)
+    )
+    overall_completion_is_consistent = (
+        state.get("state") != "completed" or fixed_budget_complete
+    )
+    checks = {
+        "schema_and_protocol_match": (
+            state.get("schema_version") == 1
+            and state.get("protocol_id") == protocol["protocol_id"]
+        ),
+        "state_is_resumable": state.get("state") in PROGRESS_STATES,
+        "material_deviations_are_a_list": isinstance(
+            state.get("material_deviations"), list,
+        ),
+        "arms_are_exact": arms_are_exact,
+        "rows_follow_frozen_contract": row_checks_pass,
+        "arm_completion_is_consistent": arm_completion_is_consistent,
+        "arm_order_is_resumable": arm_order_is_resumable,
+        "overall_completion_is_consistent": overall_completion_is_consistent,
+        "required_complete_budget": (
+            not require_complete
+            or (state.get("state") == "completed" and fixed_budget_complete)
+        ),
+        "recorded_rows_do_not_exceed_budget": (
+            sum(completed_runs.values()) <= runs_total
+        ),
+    }
+    identity_matches = (
+        expected_identity is None
+        or state.get("execution_identity") == expected_identity
+    )
+    structural_valid = all(checks.values())
+    return {
+        "structural_valid": structural_valid,
+        "identity_matches": identity_matches,
+        "valid": structural_valid and identity_matches,
+        "checks": checks,
+        "row_checks": row_checks,
+        "completed_runs": completed_runs,
+        "fixed_run_budget": runs_total,
+        "remaining_runs": max(0, runs_total - sum(completed_runs.values())),
+    }
+
+
+def _require_valid_progress(
+    report: dict[str, Any],
+    *,
+    require_identity: bool = True,
+) -> None:
+    if not report["structural_valid"]:
+        failures = [
+            name for name, passed in report["checks"].items() if not passed
+        ]
+        row_failures = [
+            f"{arm}.{name}"
+            for arm, checks in report["row_checks"].items()
+            for name, passed in checks.items()
+            if not passed
+        ]
+        raise ValueError(
+            "action-adoption progress is invalid: "
+            + ", ".join([*failures, *row_failures])
+        )
+    if require_identity and not report["identity_matches"]:
+        raise ValueError("action-adoption progress identity drift")
 
 
 def validate_protocol(protocol: dict[str, Any]) -> dict[str, bool]:
@@ -210,27 +418,48 @@ def status(root: Path = ROOT) -> dict[str, Any]:
     identity = execution_identity(PROTOCOL_PATH, protocol, root)
     progress_path = root / protocol["outputs"]["progress"]
     progress = _read_json(progress_path) if progress_path.is_file() else {}
-    completed = {
-        arm: len(((progress.get("arms") or {}).get(arm) or {}).get("rows") or [])
-        for arm in ARM_IDS
-    }
-    identity_matches = not progress or progress.get("execution_identity") == identity
+    validation = (
+        validate_progress(protocol, progress, expected_identity=identity)
+        if progress else None
+    )
+    completed = (
+        validation["completed_runs"]
+        if validation else {arm: 0 for arm in ARM_IDS}
+    )
+    progress_valid = validation is None or validation["structural_valid"]
+    identity_matches = validation is None or validation["identity_matches"]
+    current_state = (
+        "ready_not_started"
+        if validation is None
+        else "blocked_invalid_progress"
+        if not progress_valid
+        else "blocked_identity_drift"
+        if not identity_matches
+        else str(progress.get("state"))
+    )
+    next_action = (
+        "inspect_invalid_progress"
+        if not progress_valid
+        else "inspect_identity_drift"
+        if not identity_matches
+        else "python scripts/action_adoption_study.py --analyze"
+        if progress.get("state") == "completed"
+        else "explicitly_authorize_bounded_mechanism_execution"
+    )
+    runs_total = int(protocol["design"]["runs_total"])
     return {
         "schema_version": 1,
         "protocol_id": protocol["protocol_id"],
-        "state": (
-            progress.get("state", "ready_not_started")
-            if identity_matches else "blocked_identity_drift"
-        ),
+        "state": current_state,
         "completed_runs": completed,
-        "remaining_runs": 24 - sum(completed.values()),
+        "fixed_run_budget": runs_total,
+        "remaining_runs": max(0, runs_total - sum(completed.values())),
+        "progress_present": validation is not None,
+        "progress_valid": progress_valid,
+        "progress_checks": validation["checks"] if validation else {},
+        "row_checks": validation["row_checks"] if validation else {},
         "identity_matches_progress": identity_matches,
-        "next_action": (
-            "inspect_identity_drift" if not identity_matches
-            else "python scripts/action_adoption_study.py --analyze"
-            if progress.get("state") == "completed"
-            else "explicitly_authorize_bounded_mechanism_execution"
-        ),
+        "next_action": next_action,
         "matches_executed": sum(completed.values()),
         "training_executed": False,
         "provider_calls_made": False,
@@ -398,11 +627,18 @@ def execute(
             "material_deviations": [],
             "arms": {arm: {"rows": []} for arm in ARM_IDS},
         }
-        if state.get("execution_identity") != identity:
-            raise ValueError("action-adoption progress identity drift")
+        initial_validation = validate_progress(
+            protocol, state, expected_identity=identity,
+        )
+        _require_valid_progress(initial_validation)
+        if state.get("state") == "completed":
+            return state
+        state["state"] = "running"
+        state["updated_at"] = _now()
         _atomic_json(progress_path, state)
         fixtures = [tuple(pair) for pair in protocol["design"]["fixtures"]]
         checkpoint = root / protocol["candidate"]["checkpoint"]
+        expected_schedule = _expected_schedule(protocol)
         try:
             for arm in protocol["design"]["arm_order"]:
                 rows = state["arms"][arm]["rows"]
@@ -412,7 +648,16 @@ def execute(
                     checkpoint, planning=arm == "M1_action_policy",
                 ):
                     def append_row(row: dict[str, Any]) -> None:
-                        rows.append(row)
+                        candidate_rows = [*rows, dict(row)]
+                        row_report = _validate_progress_rows(
+                            candidate_rows,
+                            expected_schedule=expected_schedule,
+                        )
+                        if not all(row_report.values()):
+                            raise RuntimeError(
+                                "action-adoption runner emitted an invalid row"
+                            )
+                        rows.append(dict(row))
                         state["updated_at"] = _now()
                         _atomic_json(progress_path, state)
 
@@ -425,11 +670,23 @@ def execute(
                         row_callback=append_row,
                     )
                 state["arms"][arm]["state"] = "completed"
-            if any(len(state["arms"][arm]["rows"]) != 12 for arm in ARM_IDS):
-                raise RuntimeError("fixed action-adoption run budget was not completed")
+                _require_valid_progress(validate_progress(
+                    protocol, state, expected_identity=identity,
+                ))
             if execution_identity(PROTOCOL_PATH, protocol, root) != identity:
                 raise RuntimeError("action-adoption execution identity drifted")
             state.update({"state": "completed", "completed_at": _now()})
+            try:
+                _require_valid_progress(validate_progress(
+                    protocol,
+                    state,
+                    expected_identity=identity,
+                    require_complete=True,
+                ))
+            except ValueError as exc:
+                raise RuntimeError(
+                    "fixed action-adoption run budget was not completed"
+                ) from exc
             _atomic_json(progress_path, state)
             return state
         except BaseException as exc:
@@ -451,14 +708,18 @@ def analyze(
 ) -> dict[str, Any]:
     if state.get("state") != "completed":
         raise ValueError("action-adoption study must be complete before analysis")
-    if state.get("execution_identity") != expected_identity:
+    validation = validate_progress(
+        protocol,
+        state,
+        expected_identity=expected_identity,
+        require_complete=True,
+    )
+    if not validation["structural_valid"]:
+        _require_valid_progress(validation, require_identity=False)
+    if not validation["identity_matches"]:
         raise ValueError("completed action-adoption identity is stale")
     rows = {arm: state["arms"][arm]["rows"] for arm in ARM_IDS}
-    if any(len(rows[arm]) != 12 for arm in ARM_IDS):
-        raise ValueError("action-adoption study lacks the fixed 12 pairs per arm")
     keyed = {arm: _keyed(rows[arm]) for arm in ARM_IDS}
-    if set(keyed[ARM_IDS[0]]) != set(keyed[ARM_IDS[1]]):
-        raise ValueError("action-adoption arms are not exactly paired")
     candidate = rows["M1_action_policy"]
     negative = rows["M1_predict_only"]
     opportunities = sum(float(row["wm_action_opportunities"]) for row in candidate)
@@ -484,6 +745,8 @@ def analyze(
         for key in keyed["M1_action_policy"]
     )
     settings = protocol["analysis"]
+    pairs_per_arm = int(protocol["design"]["runs_per_arm"])
+    runs_total = int(protocol["design"]["runs_total"])
     gates = {
         "fixed_complete_paired_budget": True,
         "execution_identity_verified": True,
@@ -498,7 +761,7 @@ def analyze(
         >= float(settings["minimum_expected_counterfactual_changes"]),
         "minimum_realized_counterfactual_changes": realized_changes
         >= float(settings["minimum_realized_counterfactual_changes"]),
-        "minimum_changed_match_pair_fraction": changed_pairs / 12
+        "minimum_changed_match_pair_fraction": changed_pairs / pairs_per_arm
         >= float(settings["minimum_changed_match_pair_fraction"]),
         "negative_control_has_zero_influenced_opportunities": sum(
             float(row["wm_action_influenced_opportunities"]) for row in negative
@@ -514,8 +777,8 @@ def analyze(
         "status": "mechanism_confirmed" if passed else "mechanism_not_confirmed",
         "passed": passed,
         "claim_scope": protocol["claim_scope"],
-        "runs_executed": 24,
-        "pairs_per_arm": 12,
+        "runs_executed": runs_total,
+        "pairs_per_arm": pairs_per_arm,
         "mechanism": {
             "action_opportunities": opportunities,
             "influenced_opportunities": influenced,
@@ -523,7 +786,7 @@ def analyze(
             "expected_counterfactual_action_changes": expected_changes,
             "realized_counterfactual_action_changes": realized_changes,
             "changed_match_pairs": changed_pairs,
-            "changed_match_pair_fraction": changed_pairs / 12,
+            "changed_match_pair_fraction": changed_pairs / pairs_per_arm,
         },
         "gates": gates,
         "execution_identity": expected_identity,
@@ -539,6 +802,12 @@ def export_analysis_artifacts(
     result: dict[str, Any], *, root: Path = ROOT,
 ) -> dict[str, Any]:
     """Export reviewer-readable rows and a bounded decision summary."""
+    _require_valid_progress(validate_progress(
+        protocol,
+        state,
+        expected_identity=result.get("execution_identity"),
+        require_complete=True,
+    ))
     rows = [
         {"arm": arm, **dict(row)}
         for arm in ARM_IDS

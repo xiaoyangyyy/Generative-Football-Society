@@ -42,8 +42,12 @@ def _state(protocol, *, realized_changes: float = 1.0):
         "execution_identity": {"identity": "frozen"},
         "material_deviations": [],
         "arms": {
-            "M1_predict_only": {"rows": _rows(protocol, candidate=False)},
+            "M1_predict_only": {
+                "state": "completed",
+                "rows": _rows(protocol, candidate=False),
+            },
             "M1_action_policy": {
+                "state": "completed",
                 "rows": _rows(
                     protocol, candidate=True,
                     realized_changes=realized_changes,
@@ -70,21 +74,182 @@ def _legacy_preexecution_assertions():
 
 def test_completed_mechanism_result_is_blocked_after_controller_identity_drift():
     from scripts.verify_action_adoption_result import verify
+
     report = study.protocol_report()
     current = study.status()
-    assert report['passed'] is True
-    assert report['ready_to_start'] is True
-    assert all(report['checks'].values())
-    assert current['state'] == 'blocked_identity_drift'
-    assert current['completed_runs'] == dict(
+    assert report["passed"] is True
+    assert report["ready_to_start"] is True
+    assert all(report["checks"].values())
+    assert current["state"] == "blocked_identity_drift"
+    assert current["progress_valid"] is True
+    assert all(current["progress_checks"].values())
+    assert all(
+        all(checks.values()) for checks in current["row_checks"].values()
+    )
+    assert current["completed_runs"] == dict(
         M1_predict_only=12,
         M1_action_policy=12,
     )
-    assert current['remaining_runs'] == 0
-    assert current['identity_matches_progress'] is False
-    assert current['next_action'] == 'inspect_identity_drift'
-    with pytest.raises(ValueError, match='identity'):
+    assert current["remaining_runs"] == 0
+    assert current["identity_matches_progress"] is False
+    assert current["next_action"] == "inspect_identity_drift"
+    with pytest.raises(ValueError, match="identity"):
         verify()
+
+
+def test_progress_validator_accepts_only_a_resumable_schedule_prefix():
+    protocol = study._read_json(study.PROTOCOL_PATH)
+    identity = {"identity": "frozen"}
+    state = _state(protocol)
+    state["state"] = "running"
+    state["arms"]["M1_predict_only"].pop("state")
+    state["arms"]["M1_predict_only"]["rows"] = state["arms"][
+        "M1_predict_only"
+    ]["rows"][:3]
+    state["arms"]["M1_action_policy"].pop("state")
+    state["arms"]["M1_action_policy"]["rows"] = []
+
+    report = study.validate_progress(
+        protocol, state, expected_identity=identity,
+    )
+
+    assert report["valid"] is True
+    assert report["completed_runs"] == {
+        "M1_predict_only": 3,
+        "M1_action_policy": 0,
+    }
+    assert report["remaining_runs"] == 21
+
+    state["arms"]["M1_action_policy"]["rows"] = _rows(
+        protocol, candidate=True,
+    )[:1]
+    rejected = study.validate_progress(
+        protocol, state, expected_identity=identity,
+    )
+    assert rejected["structural_valid"] is False
+    assert rejected["checks"]["arm_order_is_resumable"] is False
+
+
+def test_status_distinguishes_invalid_progress_from_identity_drift(
+    tmp_path, monkeypatch,
+):
+    protocol = study._read_json(study.PROTOCOL_PATH)
+    identity = {"identity": "frozen"}
+    state = _state(protocol)
+    state["arms"]["M1_action_policy"]["rows"].append(dict(
+        state["arms"]["M1_action_policy"]["rows"][0]
+    ))
+    progress_path = tmp_path / protocol["outputs"]["progress"]
+    study._atomic_json(progress_path, state)
+    monkeypatch.setattr(study, "execution_identity", lambda *args, **kwargs: identity)
+
+    current = study.status(root=tmp_path)
+
+    assert current["state"] == "blocked_invalid_progress"
+    assert current["progress_valid"] is False
+    assert current["identity_matches_progress"] is True
+    assert current["next_action"] == "inspect_invalid_progress"
+    assert current["remaining_runs"] == 0
+    assert current["progress_checks"][
+        "recorded_rows_do_not_exceed_budget"
+    ] is False
+
+
+def test_analysis_rejects_duplicate_or_nonfinite_fixed_schedule_rows():
+    protocol = study._read_json(study.PROTOCOL_PATH)
+    identity = {"identity": "frozen"}
+    duplicate = _state(protocol)
+    duplicate["arms"]["M1_action_policy"]["rows"][-1] = dict(
+        duplicate["arms"]["M1_action_policy"]["rows"][0]
+    )
+    with pytest.raises(ValueError, match="rows_follow_frozen_contract"):
+        study.analyze(protocol, duplicate, expected_identity=identity)
+
+    nonfinite = _state(protocol)
+    nonfinite["arms"]["M1_action_policy"]["rows"][0][
+        "wm_action_opportunities"
+    ] = float("nan")
+    with pytest.raises(ValueError, match="analysis_metrics_are_finite"):
+        study.analyze(protocol, nonfinite, expected_identity=identity)
+
+    impossible_counts = _state(protocol)
+    impossible_counts["arms"]["M1_action_policy"]["rows"][0][
+        "wm_action_attribution_eligible_opportunities"
+    ] = 101.0
+    with pytest.raises(ValueError, match="action_counts_are_bounded"):
+        study.analyze(protocol, impossible_counts, expected_identity=identity)
+
+
+def test_execute_rejects_invalid_progress_before_match_runner(
+    tmp_path, monkeypatch,
+):
+    protocol = study._read_json(study.PROTOCOL_PATH)
+    identity = {"identity": "frozen"}
+    state = _state(protocol)
+    state["state"] = "running"
+    state["arms"]["M1_predict_only"].pop("state")
+    state["arms"]["M1_predict_only"]["rows"] = state["arms"][
+        "M1_predict_only"
+    ]["rows"][:2]
+    state["arms"]["M1_action_policy"].pop("state")
+    state["arms"]["M1_action_policy"]["rows"] = state["arms"][
+        "M1_action_policy"
+    ]["rows"][:1]
+    progress_path = tmp_path / protocol["outputs"]["progress"]
+    study._atomic_json(progress_path, state)
+    monkeypatch.setattr(study, "execution_identity", lambda *args, **kwargs: identity)
+
+    def forbidden_runner(**_kwargs):
+        raise AssertionError("invalid progress reached the match runner")
+
+    monkeypatch.setattr(study, "run_micro_benchmark_rows", forbidden_runner)
+    with pytest.raises(ValueError, match="arm_order_is_resumable"):
+        study.execute(authorization=study.AUTHORIZATION, root=tmp_path)
+
+
+def test_execute_is_idempotent_for_a_complete_identity_matched_ledger(
+    tmp_path, monkeypatch,
+):
+    protocol = study._read_json(study.PROTOCOL_PATH)
+    identity = {"identity": "frozen"}
+    state = _state(protocol)
+    progress_path = tmp_path / protocol["outputs"]["progress"]
+    study._atomic_json(progress_path, state)
+    monkeypatch.setattr(study, "execution_identity", lambda *args, **kwargs: identity)
+
+    def forbidden_runner(**_kwargs):
+        raise AssertionError("complete progress reached the match runner")
+
+    monkeypatch.setattr(study, "run_micro_benchmark_rows", forbidden_runner)
+    result = study.execute(authorization=study.AUTHORIZATION, root=tmp_path)
+
+    assert result == state
+    assert study._read_json(progress_path) == state
+
+
+def test_execute_rejects_an_incomplete_arm_before_starting_the_next(
+    tmp_path, monkeypatch,
+):
+    protocol = study._read_json(study.PROTOCOL_PATH)
+    identity = {"identity": "frozen"}
+    monkeypatch.setattr(study, "execution_identity", lambda *args, **kwargs: identity)
+    calls = []
+
+    def incomplete_runner(**kwargs):
+        calls.append(kwargs["spec"].name)
+        return []
+
+    monkeypatch.setattr(study, "run_micro_benchmark_rows", incomplete_runner)
+    with pytest.raises(ValueError, match="arm_completion_is_consistent"):
+        study.execute(authorization=study.AUTHORIZATION, root=tmp_path)
+
+    assert calls == ["M1"]
+    progress_path = tmp_path / protocol["outputs"]["progress"]
+    progress = study._read_json(progress_path)
+    assert progress["state"] == "failed"
+    assert progress["arms"]["M1_action_policy"]["rows"] == []
+
+
 def test_execution_requires_exact_explicit_authorization():
     with pytest.raises(PermissionError, match="explicit action-adoption"):
         study.execute(authorization="yes")

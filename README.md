@@ -232,6 +232,15 @@ action-adoption core pass the focused complexity, branch and statement gate;
 CI and the immutable reproduction verifier require that exact gate. This is a
 maintainability and reviewability increment only, not new model, match, causal,
 user-value or deployment evidence.
+V4.05 hardens the current-code action-adoption experiment boundary without
+executing it. One progress validator now protects status, authorized resume,
+analysis and reviewer export. It requires the exact frozen fixture/sample
+prefix and arm order, finite analysis metrics, nested action-count bounds,
+consistent completion markers and the fixed 24-run budget. Historical evidence
+remains structurally valid but identity-stale after controller refactoring, so
+it cannot be replayed as a current result. An identity-matched completed ledger
+returns without rebuilding a match environment, and an incomplete arm cannot
+advance into the next arm.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
