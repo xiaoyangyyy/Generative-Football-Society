@@ -8,8 +8,10 @@ attestation, logs, screenshots, issue text, command arguments, or a remote URL.
 
 After both revocations, place one distinct redacted provider receipt per
 incident under `data/evaluation/security_closure_v2/`. Each receipt may be
-JSON, PDF, or PNG, must not show any credential value, and is addressed only
-by SHA-256. Create the single multi-incident attestation described by
+JSON, PDF, or PNG, must be non-empty and no larger than 10 MiB, must not show
+any credential value, and is addressed only by SHA-256. Different filenames
+with identical bytes do not count as distinct receipts. Create the single
+multi-incident attestation described by
 `data/evaluation/security_closure_protocol_v2.json`, tied to the current Git
 commit, then verify it:
 
@@ -27,6 +29,8 @@ attestation. The runtime check also rejects credentials embedded in the
 HTTPS origin URL without printing that URL. A replacement may be marked
 `not_generated`; if generated, its
 only permitted recorded location is `local_environment_only`.
+Every revocation timestamp must be timezone-aware, no later than the signature,
+and neither the revocation nor signature may be in the future.
 
 The repository scan cannot prove provider-side revocation. The credential
 owner must perform revocation in the official consoles and supply genuinely

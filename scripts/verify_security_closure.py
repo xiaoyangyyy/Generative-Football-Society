@@ -20,6 +20,7 @@ PROTOCOL_PATH = ROOT / "data/evaluation/security_closure_protocol_v2.json"
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
 SECRET_PATTERN_VERSION = "gfs_known_credentials_v2"
+MAX_RECEIPT_BYTES = 10 * 1024 * 1024
 SECRET_PATTERNS = {
     "openai_compatible_api_key": re.compile(
         rb"(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}"
@@ -77,14 +78,27 @@ def _confined(root: Path, relative: Any) -> Path | None:
     return path
 
 
-def _timestamp(value: Any) -> bool:
+def _parsed_timestamp(value: Any) -> datetime | None:
     if not isinstance(value, str):
-        return False
+        return None
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc)
+
+
+def _timestamp(value: Any) -> bool:
+    return _parsed_timestamp(value) is not None
+
+
+def _receipt_size_is_bounded(path: Path, maximum_bytes: int) -> bool:
+    try:
+        return path.is_file() and 0 < path.stat().st_size <= maximum_bytes
+    except OSError:
         return False
-    return parsed.tzinfo is not None
 
 
 def _current_revision(root: Path) -> str | None:
@@ -176,6 +190,9 @@ def validate_protocol(protocol: dict[str, Any], root: Path = ROOT) -> dict[str, 
                 "allowed_extensions": [".json", ".pdf", ".png"],
                 "redaction_required": True,
                 "distinct_receipt_per_incident_required": True,
+                "distinct_receipt_content_required": True,
+                "maximum_receipt_bytes": MAX_RECEIPT_BYTES,
+                "chronological_timestamps_required": True,
                 "current_commit_scan_required": True,
                 "origin_remote_credential_forbidden": True,
                 "secret_pattern_version": SECRET_PATTERN_VERSION,
@@ -239,6 +256,7 @@ def protocol_report(
             "scripts/verify_security_closure.py": _sha256(Path(__file__)),
         },
         "secret_pattern_version": SECRET_PATTERN_VERSION,
+        "maximum_receipt_bytes": MAX_RECEIPT_BYTES,
         "boundary_aware_secret_match_count": sum(secret_counts.values()),
         "boundary_aware_secret_matches_by_family": secret_counts,
         "origin_has_embedded_credential": origin_has_credential,
@@ -255,6 +273,7 @@ def verify_closure(
     root: Path = ROOT,
     protocol_path: Path = PROTOCOL_PATH,
     revision: str | None = None,
+    current_time: datetime | None = None,
 ) -> dict[str, Any]:
     protocol = _read_json(protocol_path)
     protocol_checks = validate_protocol(protocol, root)
@@ -299,15 +318,36 @@ def verify_closure(
         )
     )
     receipts: list[Path] = []
+    receipt_digests: list[str] = []
     revoked_incident_count = 0
     every_receipt_valid = all_known_incidents_present
     every_replacement_safe = all_known_incidents_present
+    signed_at = _parsed_timestamp(attestation.get("signed_at"))
+    current_time = current_time or datetime.now(timezone.utc)
+    if current_time.tzinfo is None:
+        raise ValueError("current audit time must be timezone-aware")
+    current_time = current_time.astimezone(timezone.utc)
+    timestamps_are_chronological = bool(
+        all_known_incidents_present
+        and signed_at is not None
+        and signed_at <= current_time
+    )
     for incident_id, expected in expected_by_id.items():
         row = observed_by_id.get(incident_id) or {}
+        revoked_at = _parsed_timestamp(row.get("revoked_at"))
+        revocation_is_chronological = bool(
+            revoked_at is not None
+            and signed_at is not None
+            and revoked_at <= signed_at
+            and revoked_at <= current_time
+        )
+        timestamps_are_chronological = (
+            timestamps_are_chronological and revocation_is_chronological
+        )
         if (
             row.get("provider") == expected["provider"]
             and row.get("credential_revoked") is True
-            and _timestamp(row.get("revoked_at"))
+            and revoked_at is not None
         ):
             revoked_incident_count += 1
         evidence_path = _confined(root, row.get("revocation_evidence"))
@@ -325,7 +365,9 @@ def verify_closure(
         receipt_valid = bool(
             evidence_is_bounded
             and evidence_path is not None
-            and evidence_path.is_file()
+            and _receipt_size_is_bounded(
+                evidence_path, int(evidence["maximum_receipt_bytes"])
+            )
             and SHA256.fullmatch(
                 str(row.get("revocation_evidence_sha256") or "")
             )
@@ -337,6 +379,9 @@ def verify_closure(
         every_receipt_valid = every_receipt_valid and receipt_valid
         if receipt_valid and evidence_path is not None:
             receipts.append(evidence_path)
+            receipt_digests.append(
+                str(row["revocation_evidence_sha256"])
+            )
         replacement_safe = (
             isinstance(row.get("replacement_credential_generated"), bool)
             and row.get("replacement_storage")
@@ -352,6 +397,7 @@ def verify_closure(
     receipts_are_distinct = (
         len(receipts) == len(KNOWN_INCIDENTS)
         and len({path.resolve() for path in receipts}) == len(KNOWN_INCIDENTS)
+        and len(set(receipt_digests)) == len(KNOWN_INCIDENTS)
     )
     scan = attestation.get("repository_secret_scan") or {}
     actual_revision = revision if revision is not None else _current_revision(root)
@@ -373,6 +419,9 @@ def verify_closure(
             revoked_incident_count == len(KNOWN_INCIDENTS)
             and _timestamp(attestation.get("signed_at"))
             and attestation.get("attestation") == ATTESTATION
+        ),
+        "revocation_and_signature_timestamps_are_chronological": (
+            timestamps_are_chronological
         ),
         "every_redacted_receipt_is_distinct_confined_and_content_addressed": (
             every_receipt_valid and receipts_are_distinct
@@ -422,6 +471,7 @@ def verify_closure(
         "checks": checks,
         "artifact_sha256": artifacts,
         "secret_pattern_version": SECRET_PATTERN_VERSION,
+        "maximum_receipt_bytes": MAX_RECEIPT_BYTES,
         "boundary_aware_secret_match_count": actual_matches,
         "boundary_aware_secret_matches_by_family": actual_match_counts,
         "origin_has_embedded_credential": origin_has_credential,

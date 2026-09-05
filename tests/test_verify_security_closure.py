@@ -1,5 +1,6 @@
 import hashlib
 import json
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 import scripts.verify_security_closure as security_closure
 from scripts.verify_security_closure import (
     ATTESTATION,
+    MAX_RECEIPT_BYTES,
     PROTOCOL_PATH,
     protocol_report,
     verify_closure,
@@ -110,6 +112,7 @@ def test_redacted_revocation_attestation_verifies(tmp_path):
         root=tmp_path,
         protocol_path=protocol_path,
         revision=revision,
+        current_time=datetime(2026, 8, 11, tzinfo=timezone.utc),
     )
     assert report["passed"] is True
     assert report["status"] == "verified_closed"
@@ -215,6 +218,81 @@ def test_incidents_cannot_reuse_one_receipt(tmp_path):
     assert report["passed"] is False
     assert report["checks"][
         "every_redacted_receipt_is_distinct_confined_and_content_addressed"
+    ] is False
+
+
+def test_incidents_cannot_reuse_identical_receipt_content(tmp_path):
+    protocol_path, attestation_path, attestation, revision = _fixture(tmp_path)
+    first = attestation["incidents"][0]
+    second = attestation["incidents"][1]
+    first_path = tmp_path / first["revocation_evidence"]
+    second_path = tmp_path / second["revocation_evidence"]
+    second_path.write_bytes(first_path.read_bytes())
+    second["revocation_evidence_sha256"] = _sha(second_path)
+    _write_json(attestation_path, attestation)
+
+    report = verify_closure(
+        attestation_path,
+        root=tmp_path,
+        protocol_path=protocol_path,
+        revision=revision,
+    )
+
+    assert report["passed"] is False
+    assert report["checks"][
+        "every_redacted_receipt_is_distinct_confined_and_content_addressed"
+    ] is False
+
+
+def test_receipt_size_is_bounded(tmp_path):
+    protocol_path, attestation_path, attestation, revision = _fixture(tmp_path)
+    incident = attestation["incidents"][0]
+    receipt = tmp_path / incident["revocation_evidence"]
+    with receipt.open("wb") as handle:
+        handle.seek(MAX_RECEIPT_BYTES)
+        handle.write(b"x")
+    incident["revocation_evidence_sha256"] = _sha(receipt)
+    _write_json(attestation_path, attestation)
+
+    report = verify_closure(
+        attestation_path,
+        root=tmp_path,
+        protocol_path=protocol_path,
+        revision=revision,
+    )
+
+    assert report["passed"] is False
+    assert report["checks"][
+        "every_redacted_receipt_is_distinct_confined_and_content_addressed"
+    ] is False
+
+
+@pytest.mark.parametrize(
+    ("revoked_at", "signed_at"),
+    [
+        ("2026-08-10T12:10:00+08:00", "2026-08-10T12:05:00+08:00"),
+        ("2099-08-10T12:00:00+08:00", "2099-08-10T12:05:00+08:00"),
+    ],
+)
+def test_revocation_timestamps_must_be_chronological_and_not_future(
+    tmp_path, revoked_at, signed_at,
+):
+    protocol_path, attestation_path, attestation, revision = _fixture(tmp_path)
+    attestation["incidents"][0]["revoked_at"] = revoked_at
+    attestation["signed_at"] = signed_at
+    _write_json(attestation_path, attestation)
+
+    report = verify_closure(
+        attestation_path,
+        root=tmp_path,
+        protocol_path=protocol_path,
+        revision=revision,
+        current_time=datetime(2026, 8, 11, tzinfo=timezone.utc),
+    )
+
+    assert report["passed"] is False
+    assert report["checks"][
+        "revocation_and_signature_timestamps_are_chronological"
     ] is False
 
 

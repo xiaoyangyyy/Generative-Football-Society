@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_evidence_derived_excellence_score",
-  "generated_at": "2026-09-05T01:44:29.538435+00:00",
+  "generated_at": "2026-09-05T06:18:05.626319+00:00",
   "status": "passed_dynamic_scoring",
   "passed": true,
   "scores": {
@@ -242,7 +242,7 @@
     "src/product/web.py": "38ed6d894bc71cea8cdf6221c89e6d08fd821620eb603558be5d536fa4d36e46",
     "src/product/telemetry.py": "c0a83e77309403e2db44ba0cc4c5ec22889c72dba9faff8557892c61bf7a7327",
     "scripts/build_excellence_evidence_kit.py": "fe62af989a58c7d6eb3f64192917b81e9d2aeb4b6468bbae021a20804e88354f",
-    "data/evaluation/excellence_evidence_kit_verification_v1.json": "e983b13c88ba570e1bb83b2221b46a0bbd5da3b9b1e13c8d969a5f15aa21fdeb",
+    "data/evaluation/excellence_evidence_kit_verification_v1.json": "fad653ce9ce44985c00363f134c7f9db7503e47e92fb8e1cde339c7ba4acb21a",
     "scripts/verify_excellence_score.py": "6310d79bce04964bb41b1d4fae3a20c5ed330c8d9c3b0efadd2f583d966ae173"
   },
   "external_calls_made": false,

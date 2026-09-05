@@ -1526,6 +1526,15 @@ def main() -> int:
                 "distinct_receipt_per_incident_required"
             ) is True
             and security_protocol.get("evidence_contract", {}).get(
+                "distinct_receipt_content_required"
+            ) is True
+            and security_protocol.get("evidence_contract", {}).get(
+                "maximum_receipt_bytes"
+            ) == 10 * 1024 * 1024
+            and security_protocol.get("evidence_contract", {}).get(
+                "chronological_timestamps_required"
+            ) is True
+            and security_protocol.get("evidence_contract", {}).get(
                 "secret_pattern_version"
             ) == "gfs_known_credentials_v2"
             and security_protocol.get("evidence_contract", {}).get(
@@ -1536,6 +1545,9 @@ def main() -> int:
                 '"github_fine_grained_pat": re.compile(',
                 '"all_known_incidents_are_present_exactly_once"',
                 '"every_redacted_receipt_is_distinct_confined_and_content_addressed"',
+                "len(set(receipt_digests)) == len(KNOWN_INCIDENTS)",
+                "_receipt_size_is_bounded(",
+                '"revocation_and_signature_timestamps_are_chronological"',
                 '"known_incidents_complete": passed',
                 '"origin_remote_contains_no_embedded_credential"',
             ))

@@ -2,6 +2,11 @@
 
 ## Unreleased - v7 candidate
 
+- Hardened credential-closure evidence so separate incident filenames must
+  also contain different receipt bytes, each non-empty receipt is capped at
+  10 MiB, and timezone-aware revocation timestamps must precede a non-future
+  signature. These checks remain zero-provider and cannot replace real
+  provider-side revocation evidence.
 - Hardened the 60-run full-match outcome experiment with an exact frozen
   schedule ledger, complete calibration/action row validation, M0 treatment-
   leakage rejection, per-arm durable completion, idempotent resume, and code,

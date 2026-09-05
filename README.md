@@ -250,6 +250,12 @@ the simulations or writing their decision requires the exact explicit
 authorization phrase declared in the reproduction manifest; status and result
 verification remain read-only. Historical rows pass structural validation but
 remain identity-stale and cannot support a current promotion claim.
+V4.07 closes three remaining credential-evidence loopholes before any user
+receipt is accepted. Distinct incident paths must also have distinct content
+hashes, each non-empty receipt is capped at 10 MiB, and timezone-aware
+revocation times must not follow the signature or lie in the future. The
+protocol audit still performs zero provider calls and cannot assert that any
+credential was revoked without genuine redacted provider receipts.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

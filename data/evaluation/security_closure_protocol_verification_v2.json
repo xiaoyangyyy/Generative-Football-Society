@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "verification": "gfs_all_known_credential_closure_preregistration",
-  "generated_at": "2026-09-02T07:56:01.859444+00:00",
+  "generated_at": "2026-09-05T06:04:19.364554+00:00",
   "status": "registered_waiting_for_all_user_revocations",
   "passed": true,
   "closure_complete": false,
@@ -22,11 +22,12 @@
     "origin_remote_contains_no_embedded_credential": true
   },
   "artifact_sha256": {
-    "data/evaluation/security_closure_protocol_v2.json": "3f97b83f214a3d2cc0466022f96d0cdc6fca765a1cc9e77da115ab4cc4a66777",
-    "docs/SECURITY_CREDENTIAL_CLOSURE.md": "c80a28522f4e512712adffcfe62d4172e64e6482b23fdff523827c72d6a8fe74",
-    "scripts/verify_security_closure.py": "57017a18256141d9d9b277943dbb0c8b93e0749b22b69edb47f545827eb156d8"
+    "data/evaluation/security_closure_protocol_v2.json": "6c59150d8709e6ef2f8889ae81fd327c719b80e807dbfe59e82aa5deeb55d0e3",
+    "docs/SECURITY_CREDENTIAL_CLOSURE.md": "9945bfc1a12b9fe26f5e6fb02b2b1e354a5752eac90c0f24afae1b78df8940a4",
+    "scripts/verify_security_closure.py": "da7884078407c3344f6bc2e667bebf27d916d836a400fba18abb19d83b501da1"
   },
   "secret_pattern_version": "gfs_known_credentials_v2",
+  "maximum_receipt_bytes": 10485760,
   "boundary_aware_secret_match_count": 0,
   "boundary_aware_secret_matches_by_family": {
     "openai_compatible_api_key": 0,

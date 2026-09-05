@@ -4077,3 +4077,25 @@ from ordinary code-identity drift in status. Both the simulation-starting
 verification remain read-only. The historical 60-run ledger passes structural
 validation but remains identity-stale. This stage executes no match, training,
 formal study, participant session or external provider call.
+
+## 125. V4.07 Credential-evidence semantic closure
+
+The V2 credential protocol already required one confined, content-addressed
+redacted receipt for each known incident. Its distinctness check compared only
+resolved paths, however, so identical receipt bytes copied to two filenames
+could satisfy the path rule. Receipt size was unbounded, and timestamps were
+validated only as timezone-aware strings without proving that revocation
+preceded the signature or that neither time was in the future.
+
+The evidence contract now requires both distinct resolved paths and distinct
+SHA-256 content identities. Every receipt must be a non-empty regular file no
+larger than 10 MiB. The verifier parses every timestamp to UTC, requires each
+revocation at or before the attestation signature, and rejects future
+revocation or signature times. Architecture audit tokens bind all three
+constraints so a later refactor cannot silently weaken them.
+
+This remains an evidence validator, not a revocation mechanism. It performs no
+provider call, stores no credential, creates no receipt and cannot prove
+provider-side revocation without the credential owner's genuine redacted
+evidence. This stage executes no match, training, formal study or participant
+session.

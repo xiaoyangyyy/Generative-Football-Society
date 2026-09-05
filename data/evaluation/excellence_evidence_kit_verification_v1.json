@@ -5,7 +5,7 @@
   "passed": true,
   "kit_id": "gfs-excellence-evidence-kit-v1",
   "template_count": 9,
-  "archive_sha256": "b9661ec185fc9f9a82f3cccca22bc889ac84c6a299730c6b4c82c8c9b851f7b1",
+  "archive_sha256": "58a15da793961a5981529c21c49587aba334b588491c49fe79a4c819717e259e",
   "checks": {
     "template_inventory_is_exact": true,
     "all_json_templates_are_explicitly_non_evidence": true,
@@ -18,7 +18,7 @@
     "participant_value_templates_require_session_runner": true
   },
   "artifact_sha256": {
-    "data/evaluation/security_closure_protocol_v2.json": "3f97b83f214a3d2cc0466022f96d0cdc6fca765a1cc9e77da115ab4cc4a66777",
+    "data/evaluation/security_closure_protocol_v2.json": "6c59150d8709e6ef2f8889ae81fd327c719b80e807dbfe59e82aa5deeb55d0e3",
     "data/evaluation/product_validation_protocol_v1.json": "3cdbc8c0569a822bbf97e094667d97645b44fedf2a830bf91d18ce7072e6d322",
     "data/evaluation/production_validation_protocol_v1.json": "0f411e08287e5abec4f9549d960d35e45dd2c1ccb886c7bf2ae7283ca99b95eb",
     "data/evaluation/product_value_validation_protocol_v1.json": "3983a821044173b89c3fc31a3f3f0df7227f4728ac7b19d555766819984dec7b",
