@@ -1,7 +1,9 @@
 """Regression tests for the boundaries extracted from former god objects."""
 
+import ast
 import inspect
 import random
+import textwrap
 from types import SimpleNamespace
 
 import numpy as np
@@ -14,6 +16,7 @@ from src.simulation.agent_memory import AgentMemoryMixin
 from src.simulation.agent_memory_beliefs import AgentBeliefMemoryMixin
 from src.simulation.agent_memory_retrieval import AgentMemoryRetrievalMixin
 from src.simulation.agent_memory_write import AgentMemoryWriteMixin
+from src.simulation.agent_psychology import AgentPsychologyMixin
 from src.simulation.agent_social import SocialAgentMixin
 from src.simulation.referee_policy import RefereePolicy, normalize_weights
 from src.simulation.tournament_2026 import TournamentManager
@@ -90,8 +93,10 @@ def test_match_dynamics_are_inherited_and_stage_driven():
 
 def test_agent_initialization_is_ordered_and_decomposed():
     assert issubclass(SocietyAgent, AgentInitializationMixin)
-    source_lines, _ = inspect.getsourcelines(SocietyAgent.__init__)
-    assert len(source_lines) <= 10
+    source = textwrap.dedent(inspect.getsource(SocietyAgent.__init__))
+    method = ast.parse(source).body[0]
+    assert isinstance(method, ast.FunctionDef)
+    assert len(method.body) <= 7
     assert {
         "_initialize_identity",
         "_initialize_roles_and_strategy",
@@ -130,6 +135,61 @@ def test_agent_initialization_preserves_required_state_contract():
     }
     assert agent.episodic_memory == []
     assert agent.memory_event_log == []
+
+
+def test_agent_psychology_is_inherited_from_dedicated_mixin():
+    assert issubclass(SocietyAgent, AgentPsychologyMixin)
+    for method_name in {
+        "_initialize_psychology_from_history",
+        "_initialize_latent_states",
+        "_project_latents_to_states",
+        "_appraise_event",
+        "_emotion_from_appraisal",
+        "_coping_from_appraisal_emotion",
+        "_memory_salience",
+    }:
+        assert method_name not in SocietyAgent.__dict__
+        assert getattr(SocietyAgent, method_name) is getattr(
+            AgentPsychologyMixin, method_name
+        )
+    assert SocietyAgent.morale is AgentPsychologyMixin.morale
+    assert SocietyAgent.hidden_state is AgentPsychologyMixin.hidden_state
+
+
+def test_agent_psychology_projection_remains_finite_and_normalized():
+    agent = SocietyAgent(
+        "Psychology FC",
+        {
+            "tier": "Semi-Core",
+            "final_status_score": 57.0,
+            "c1_win_rate": 51.0,
+            "c3_major_exp": 43.0,
+            "c5_pressure": 48.0,
+        },
+        random_root_seed=77,
+    )
+    appraisal = agent._appraise_event(
+        {
+            "result": "loss",
+            "score_diff": -1.0,
+            "stage_pressure": 0.8,
+            "referee_controversy": 0.4,
+            "upset_factor": 0.2,
+            "social_chaos": 0.3,
+        }
+    )
+    emotion = agent._emotion_from_appraisal(appraisal)
+    coping = agent._coping_from_appraisal_emotion(appraisal, emotion)
+
+    assert np.isfinite(agent.hidden_state).all()
+    assert np.isclose(sum(emotion.values()), 1.0)
+    assert np.isclose(
+        coping["planning"]
+        + coping["self_correction"]
+        + coping["external_blame"],
+        1.0,
+    )
+    assert -1.0 <= coping["risk_shift"] <= 1.0
 
 
 def test_agent_local_initialization_rng_is_replayable_and_does_not_touch_global_rng():

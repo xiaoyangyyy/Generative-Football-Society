@@ -287,6 +287,9 @@ def main() -> int:
         ROOT / "src/match_engine/world_model/decision_support.py"
     ).read_text(encoding="utf-8")
     agent = (ROOT / "src/simulation/agent.py").read_text(encoding="utf-8")
+    agent_psychology = (
+        ROOT / "src/simulation/agent_psychology.py"
+    ).read_text(encoding="utf-8")
     world_runner = (
         ROOT / "src/simulation/world_cup_runner.py"
     ).read_text(encoding="utf-8")
@@ -420,6 +423,32 @@ def main() -> int:
         "infrastructure_has_no_upward_dependencies": not infrastructure_violations,
         "training_lifecycle_has_no_domain_or_product_dependencies": not training_violations,
         "product_does_not_import_training_implementation": not product_training_violations,
+        "society_agent_psychology_is_dedicated_and_inherited": (
+            "from src.simulation.agent_psychology import AgentPsychologyMixin"
+            in agent
+            and "    AgentPsychologyMixin," in agent
+            and all(token in agent_psychology for token in (
+                "class AgentPsychologyMixin:",
+                "def _initialize_psychology_from_history(",
+                "def _initialize_latent_states(",
+                "def _project_latents_to_states(",
+                "def _appraise_event(",
+                "def _emotion_from_appraisal(",
+                "def _coping_from_appraisal_emotion(",
+                "def _memory_salience(",
+                "def hidden_state(",
+            ))
+            and all(token not in agent for token in (
+                "def _initialize_psychology_from_history(",
+                "def _initialize_latent_states(",
+                "def _project_latents_to_states(",
+                "def _appraise_event(",
+                "def _emotion_from_appraisal(",
+                "def _coping_from_appraisal_emotion(",
+                "def _memory_salience(",
+                "def hidden_state(",
+            ))
+        ),
         "training_has_exclusive_process_lease": "FileLease" in job,
         "training_stop_forces_exact_checkpoint": (
             "or stop_requested" in trainer

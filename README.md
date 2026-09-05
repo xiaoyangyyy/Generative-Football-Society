@@ -256,6 +256,13 @@ hashes, each non-empty receipt is capped at 10 MiB, and timezone-aware
 revocation times must not follow the signature or lie in the future. The
 protocol audit still performs zero provider calls and cannot assert that any
 credential was revoked without genuine redacted provider receipts.
+V4.08 continues the gradual `SocietyAgent` facade split at a behavior-preserving
+boundary. Latent psychology initialization, state projection, appraisal,
+emotion, coping, salience and the compatibility state views now belong to a
+dedicated mixin. The 15 moved definitions are AST-equivalent to their previous
+implementations, while structural and finite/probability-invariant tests keep
+the ownership explicit. The prospective M2 preflight was refreshed without
+training so its transitive code identity includes the new runtime module.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

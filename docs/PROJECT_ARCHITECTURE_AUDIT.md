@@ -239,6 +239,13 @@ not quality signals by themselves.
     reads the scoring seal. A moderator-attested import revalidates the complete
     byte and identity chain before repository mutation. This closes the study
     execution handoff without claiming that a participant was observed.
+50. Extracted the coherent latent-psychology boundary from `SocietyAgent` into
+    `AgentPsychologyMixin`. Historical initialization, latent projection,
+    appraisal, emotion, coping, salience and compatibility state views retain
+    AST-equivalent definitions, while structural and numeric-invariant tests
+    enforce the ownership. The prospective M2 import closure now binds the new
+    module through the real runtime path; its refreshed receipt remains an
+    explicit zero-training preflight rather than model or outcome evidence.
 
 ## LLM Scope Decision
 
@@ -261,7 +268,10 @@ cleaning, or direct unaudited state mutation.
 1. Collect balanced cross, shot and goal transitions; produce a new checkpoint
    that passes the registered cross gate and recalibrate the shot branch before
    broader promotion. Do not retrofit authority onto the current v9 checkpoint.
-2. Continue the gradual `SocietyAgent` facade split only when a behavior-preserving boundary is available.
+2. Continue the gradual `SocietyAgent` facade split only when another
+   behavior-preserving boundary is available; latent psychology is now
+   separated, while governance, tactics, reflection and physical condition
+   remain candidates for later cohesive extraction.
 3. Collect real failed-pass labels for an external completion benchmark.
 4. Split `TournamentManager` into scheduler, match service, standings, narrative orchestration, and repository.
 5. Add matched-seed intervention tests for cognition, narrative persistence, memory, and meta-learning.

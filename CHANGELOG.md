@@ -2,6 +2,14 @@
 
 ## Unreleased - v7 candidate
 
+- Extracted the complete latent appraisal, emotion, coping and compatibility-
+  state projection from the `SocietyAgent` facade into a dedicated psychology
+  mixin. All 15 moved methods and properties are AST-equivalent to their prior
+  definitions, the facade is 250 lines smaller, numeric invariants have direct
+  regression coverage, and the new module is bound by both the architecture
+  audit and the prospective M2 transitive code identity. No training, match,
+  participant session or provider call was executed; the complete suite passes
+  with 1,403 tests and three declared skips.
 - Hardened credential-closure evidence so separate incident filenames must
   also contain different receipt bytes, each non-empty receipt is capped at
   10 MiB, and timezone-aware revocation timestamps must precede a non-future

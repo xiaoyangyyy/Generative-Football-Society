@@ -4099,3 +4099,27 @@ provider call, stores no credential, creates no receipt and cannot prove
 provider-side revocation without the credential owner's genuine redacted
 evidence. This stage executes no match, training, formal study or participant
 session.
+
+## 126. V4.08 Dedicated Agent psychology boundary
+
+`SocietyAgent` remained a broad facade after initialization, match dynamics,
+memory and social behavior had moved into dedicated mixins. One cohesive block
+still owned historical psychology initialization, latent-state projection,
+event appraisal, emotion, coping, memory salience and the compatibility views
+consumed by those other layers.
+
+`AgentPsychologyMixin` now owns that complete state transformation boundary.
+The facade retains construction and the still-coupled governance, tactics,
+reflection and physical-condition behavior; it no longer duplicates any of
+the psychology definitions. All 15 moved method/property definitions are
+AST-equivalent to the previous `SocietyAgent` implementation. Direct tests
+also require finite hidden state, normalized emotion and coping distributions,
+and bounded risk shift.
+
+The architecture audit requires both inheritance and exclusive ownership.
+Because the M2 identity follows the local import closure from the real match
+runner, its zero-training preflight now includes `agent_psychology.py`
+automatically. This is a maintainability and reviewability increment only. It
+does not change psychological equations, random draws, model authority or any
+research result, and it executes no training, match, participant session or
+provider call.
