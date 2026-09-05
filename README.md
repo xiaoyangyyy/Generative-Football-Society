@@ -215,6 +215,11 @@ recording have separate internal stages. The probability equations, one shared
 uniform draw, feasible-action masking, scheduled override semantics and
 world-model adoption fields are unchanged; this is a behavior-preserving code
 quality increment, not new model or outcome evidence.
+V4.02 applies the same discipline to the Web security gateway. Liveness,
+Host/HTTPS enforcement, authentication, GET and POST routing, CSRF-gated
+mutation, task lookup, readiness and method-error classification now have
+separate boundaries. The endpoint set and response contracts are unchanged;
+this is product maintainability evidence, not a production-deployment claim.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

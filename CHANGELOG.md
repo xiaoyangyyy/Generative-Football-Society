@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Replaced the monolithic Web request dispatcher with explicit liveness,
+  access-policy, authentication, GET, POST, task, readiness, and method-error
+  stages while preserving anonymous health checks, Host/HTTPS precedence,
+  pre-body CSRF validation, route responses, and existing 404/405 semantics.
 - Split the high-level action engine into explicit clock, context, utility,
   world-model sampling, evidence-recording, and action-execution stages without
   changing probability formulas or random draws; the public orchestrator now

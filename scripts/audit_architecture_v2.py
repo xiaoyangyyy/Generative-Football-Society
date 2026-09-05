@@ -446,6 +446,24 @@ def main() -> int:
             and "simulation_completed_at" in workspace
             and '"state": "failed"' in workspace
         ),
+        "web_request_gateway_is_layered_and_security_ordered": (
+            all(token in web for token in (
+                "def _health_response(",
+                "def _require_allowed_access(",
+                "def _authentication_response(",
+                "def _get_response(",
+                "def _post_response(",
+                "def _is_method_restricted_path(",
+                "payload_handler(self._read_json(environ))",
+                "queued_handler(environ, self._read_json(environ))",
+            ))
+            and web.index("health = self._health_response(")
+            < web.index("self._require_allowed_access(environ)")
+            < web.index("authentication = self._authentication_response(")
+            and web.index(
+                "self._require_csrf(environ)", web.index("def _post_response(")
+            ) < web.index("payload_handler(self._read_json(environ))")
+        ),
         "studio_restore_is_crash_convergent": (
             all(token in product_recovery for token in (
                 'RESTORE_TRANSACTION_RELATIVE =',
@@ -618,7 +636,7 @@ def main() -> int:
             and "_atomic_json(self.session_path, session)"
             not in manager_decision_preview
             and all(token in web for token in (
-                'path == "/api/v1/seasons/decision-preview"',
+                '"/api/v1/seasons/decision-preview": self._preview_season_decision',
                 "function managerDecisionPayload(includeRevision=false)",
                 "function refreshManagerDecisionPreview()",
                 "++managerPreviewSequence",
@@ -710,7 +728,7 @@ def main() -> int:
             ))
             and "world_model_decision_support" in decision_ledger
             and all(token in web for token in (
-                'path == "/api/v1/seasons/decision-advice"',
+                '"/api/v1/seasons/decision-advice": self._request_season_decision_advice',
                 'id="manager-world-model-advice"',
                 "function requestManagerWorldModelAdvice()",
                 "function adoptCurrentManagerAdvice()",
@@ -1864,8 +1882,8 @@ def main() -> int:
                 "cmd_studio_value_study_packet",
             ))
             and all(token in web for token in (
-                'path == "/api/v1/studies/product-value"',
-                'path == "/api/v1/studies/product-value/registrations"',
+                '"/api/v1/studies/product-value": self._product_value_study_status',
+                '"/api/v1/studies/product-value/registrations": (',
                 'r"/api/v1/studies/product-value/packets/',
                 'id="product-value-study-panel"',
                 "X-GFS-Blinded-Study-Packet",

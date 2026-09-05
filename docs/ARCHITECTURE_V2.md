@@ -3940,3 +3940,27 @@ action branch. Focused complexity checks now accept the orchestrator, and
 same-seed pre/post refactor traces were compared during implementation. This is
 structural evidence only: no model was trained, no formal match was executed,
 and no historical outcome result is made current by the refactor.
+
+## 120. V4.02 Layered Web request gateway
+
+The Web product previously sent every liveness, authentication, read, mutation,
+artifact, task and method-error route through one 51-branch dispatcher. Its
+behavior was covered, but reviewing the order of security decisions required
+reading the complete endpoint catalog.
+
+The WSGI entry now delegates to explicit liveness, access-policy,
+authentication, GET, POST, task and readiness stages. Exact routes are resolved
+through typed handler tables, while the small number of identity-bearing
+resource paths remain bounded regular-expression matches. The final known-path
+classifier retains the existing 404 versus 405 contract instead of silently
+broadening which endpoints are disclosed.
+
+Security ordering is unchanged. `/healthz` remains the sole pre-Host liveness
+exception; all other requests validate Host and trusted HTTPS before login or
+session handling; mutations validate CSRF before reading JSON; task and
+artifact paths retain their confinement checks in the existing handlers. The
+focused complexity scan no longer reports `_dispatch`, and the Web,
+authenticated-access, security, product-verification and accessibility suites
+exercise the refactored route path. No match, training, formal study,
+participant session or provider call was executed, and deployment readiness is
+unchanged.

@@ -51,6 +51,26 @@ from src.simulation.llm_gateway import provider_preflight
 LOGGER = logging.getLogger(__name__)
 MAX_REQUEST_BYTES = 64 * 1024
 JSON_HEADERS = [("Content-Type", "application/json; charset=utf-8")]
+_WebResponse = tuple[int, list[tuple[str, str]], bytes]
+_METHOD_RESTRICTED_EXACT_PATHS = frozenset({
+    "/api/v1/studio",
+    "/api/v1/matches",
+    "/api/v1/paired-matches",
+    "/api/v1/world-model-forks",
+    "/api/v1/world-model-fork-sets",
+    "/api/v1/seasons/world-model-future-set",
+    "/api/v1/seasons/world-model-future-review",
+    "/api/v1/tactical-studies",
+    "/api/v1/seasons",
+    "/api/v1/seasons/next-matchday",
+    "/api/v1/seasons/decision",
+    "/api/v1/tasks",
+    "/api/v1/recovery",
+    "/api/v1/backups",
+    "/api/v1/excellence/evidence-kit.zip",
+    "/api/v1/studies/product-value",
+    "/api/v1/studies/product-value/registrations",
+})
 STATUS_TEXT = {
     200: "OK", 201: "Created", 202: "Accepted", 302: "Found",
     400: "Bad Request", 401: "Unauthorized", 403: "Forbidden",
@@ -260,9 +280,38 @@ class ProductWebApp:
 
     def _dispatch(
         self, environ: dict[str, Any],
-    ) -> tuple[int, list[tuple[str, str]], bytes]:
+    ) -> _WebResponse:
         method = str(environ.get("REQUEST_METHOD", "GET")).upper()
         path = str(environ.get("PATH_INFO", "/"))
+
+        health = self._health_response(method, path)
+        if health is not None:
+            return health
+        self._require_allowed_access(environ)
+        authentication = self._authentication_response(environ, method, path)
+        if authentication is not None:
+            return authentication
+        if not self.access_policy.authenticated(environ):
+            if method == "GET" and path == "/":
+                return self._redirect_response("/login")
+            raise WebRequestError(
+                401, "authentication_required", "Authentication required",
+            )
+
+        response = None
+        if method == "GET":
+            response = self._get_response(path)
+        elif method == "POST":
+            response = self._post_response(environ, path)
+        if response is not None:
+            return response
+        if self._is_method_restricted_path(path):
+            raise WebRequestError(405, "method_not_allowed", "Method not allowed")
+        raise WebRequestError(404, "not_found", "Resource not found")
+
+    def _health_response(
+        self, method: str, path: str,
+    ) -> _WebResponse | None:
         if method == "GET" and path == "/healthz":
             return self._json_response(200, {
                 "schema_version": 1,
@@ -273,12 +322,22 @@ class ProductWebApp:
                     self.task_worker.is_alive if self.task_worker is not None else None
                 ),
             })
+        return None
+
+    def _require_allowed_access(self, environ: dict[str, Any]) -> None:
         if not self.access_policy.host_allowed(environ):
             raise WebRequestError(400, "invalid_host", "Host is not allowed")
         if not self.access_policy.secure_transport(environ):
             raise WebRequestError(
                 426, "https_required", "Remote Web access requires the trusted HTTPS proxy",
             )
+
+    def _authentication_response(
+        self,
+        environ: dict[str, Any],
+        method: str,
+        path: str,
+    ) -> _WebResponse | None:
         if method == "GET" and path == "/login":
             if not self.access_policy.remote:
                 return self._redirect_response("/")
@@ -298,187 +357,172 @@ class ProductWebApp:
             }, headers=[
                 ("Set-Cookie", self.access_policy.clear_session_cookie_header()),
             ])
-        if not self.access_policy.authenticated(environ):
-            if method == "GET" and path == "/":
-                return self._redirect_response("/login")
-            raise WebRequestError(401, "authentication_required", "Authentication required")
-        if method == "GET" and path == "/":
-            return self._html_response()
-        if method == "GET" and path == "/readyz":
-            payload = self._studio_status()
-            ready = bool(payload.get("configured") and (
-                payload.get("studio", {}).get("readiness", {}).get("ready")
-            ))
-            worker_ready = self.task_worker is None or self.task_worker.is_alive
-            operations = payload["operations"]
-            telemetry_ready = (
-                operations["retention"]["corrupt_records"] == 0
-                and operations["retention"]["write_failures_since_start"] == 0
-            )
-            ready = ready and worker_ready and telemetry_ready
-            blockers = list(
-                payload.get("studio", {}).get("readiness", {}).get("blockers", []),
-            )
-            if not worker_ready:
-                blockers.append("background_worker_not_alive")
-            if not telemetry_ready:
-                blockers.append("product_telemetry_degraded")
-            return self._json_response(200 if ready else 503, {
-                "schema_version": 1, "ready": ready,
-                "configured": payload["configured"],
-                "blockers": blockers, "telemetry_ready": telemetry_ready,
-            })
-        if method == "GET" and path == "/api/v1/studio":
-            return self._json_response(200, self._studio_status(), csrf=True)
-        sporting_plan = re.fullmatch(
-            r"/api/v1/sporting-plans/([^/]+)", path,
+        return None
+
+    def _ready_response(self) -> _WebResponse:
+        payload = self._studio_status()
+        ready = bool(
+            payload.get("configured")
+            and payload.get("studio", {}).get("readiness", {}).get("ready")
         )
-        if method == "GET" and sporting_plan:
-            return self._sporting_plan(unquote(sporting_plan.group(1)))
-        recruitment_market = re.fullmatch(
-            r"/api/v1/recruitment-markets/([^/]+)", path,
+        worker_ready = self.task_worker is None or self.task_worker.is_alive
+        operations = payload["operations"]
+        telemetry_ready = (
+            operations["retention"]["corrupt_records"] == 0
+            and operations["retention"]["write_failures_since_start"] == 0
         )
-        if method == "GET" and recruitment_market:
-            return self._recruitment_market(
-                unquote(recruitment_market.group(1)),
-            )
-        lifecycle_preview = re.fullmatch(
-            r"/api/v1/lifecycle-previews/([^/]+)", path,
+        ready = ready and worker_ready and telemetry_ready
+        blockers = list(
+            payload.get("studio", {}).get("readiness", {}).get("blockers", []),
         )
-        if method == "GET" and lifecycle_preview:
-            return self._lifecycle_preview(
-                unquote(lifecycle_preview.group(1)),
-            )
-        free_agent_market = re.fullmatch(
-            r"/api/v1/free-agent-markets/([^/]+)", path,
+        if not worker_ready:
+            blockers.append("background_worker_not_alive")
+        if not telemetry_ready:
+            blockers.append("product_telemetry_degraded")
+        return self._json_response(200 if ready else 503, {
+            "schema_version": 1,
+            "ready": ready,
+            "configured": payload["configured"],
+            "blockers": blockers,
+            "telemetry_ready": telemetry_ready,
+        })
+
+    def _studio_status_response(self) -> _WebResponse:
+        return self._json_response(200, self._studio_status(), csrf=True)
+
+    def _tasks_response(self) -> _WebResponse:
+        return self._json_response(200, {
+            "schema_version": 1,
+            "tasks": [
+                self._task_for_web(task) for task in self.task_queue.list_tasks()
+            ],
+        })
+
+    def _get_response(self, path: str) -> _WebResponse | None:
+        exact_routes: dict[str, Callable[[], _WebResponse]] = {
+            "/": self._html_response,
+            "/readyz": self._ready_response,
+            "/api/v1/studio": self._studio_status_response,
+            "/api/v1/operations": lambda: self._json_response(
+                200, self.telemetry.snapshot(),
+            ),
+            "/api/v1/excellence/evidence-kit.zip": self._evidence_kit_response,
+            "/api/v1/studies/product-value": self._product_value_study_status,
+            "/api/v1/recovery": self._recovery_status,
+            "/api/v1/tasks": self._tasks_response,
+        }
+        handler = exact_routes.get(path)
+        if handler is not None:
+            return handler()
+
+        resource_routes = (
+            (r"/api/v1/sporting-plans/([^/]+)", self._sporting_plan),
+            (r"/api/v1/recruitment-markets/([^/]+)", self._recruitment_market),
+            (r"/api/v1/lifecycle-previews/([^/]+)", self._lifecycle_preview),
+            (r"/api/v1/free-agent-markets/([^/]+)", self._free_agent_market),
         )
-        if method == "GET" and free_agent_market:
-            return self._free_agent_market(
-                unquote(free_agent_market.group(1)),
-            )
-        if method == "GET" and path == "/api/v1/operations":
-            return self._json_response(200, self.telemetry.snapshot())
-        if method == "GET" and path == "/api/v1/excellence/evidence-kit.zip":
-            return self._evidence_kit_response()
-        if method == "GET" and path == "/api/v1/studies/product-value":
-            return self._product_value_study_status()
-        if method == "POST" and path == "/api/v1/studies/product-value/registrations":
-            self._require_csrf(environ)
-            return self._register_product_value_participant(self._read_json(environ))
+        for pattern, resource_handler in resource_routes:
+            match = re.fullmatch(pattern, path)
+            if match is not None:
+                return resource_handler(unquote(match.group(1)))
+
         value_packet = re.fullmatch(
             r"/api/v1/studies/product-value/packets/(REG-[0-9A-F]{24})\.json",
             path,
         )
-        if method == "GET" and value_packet:
+        if value_packet is not None:
             return self._product_value_packet_response(value_packet.group(1))
-        if method == "GET" and path == "/api/v1/recovery":
-            return self._recovery_status()
-        if method == "POST" and path == "/api/v1/studio":
+        if path.startswith("/api/v1/tasks/"):
+            return self._task_response(path.removeprefix("/api/v1/tasks/"))
+        if path.startswith("/artifacts/"):
+            return self._artifact_response(path.removeprefix("/artifacts/"))
+        return None
+
+    def _task_response(self, task_id: str) -> _WebResponse:
+        if "/" in task_id:
+            raise WebRequestError(404, "task_not_found", "Task not found")
+        try:
+            task = self.task_queue.get_task(task_id)
+        except (FileNotFoundError, ValueError) as exc:
+            raise WebRequestError(404, "task_not_found", "Task not found") from exc
+        return self._json_response(200, {"task": self._task_for_web(task)})
+
+    def _post_response(
+        self, environ: dict[str, Any], path: str,
+    ) -> _WebResponse | None:
+        payload_routes: dict[str, Callable[[dict[str, Any]], _WebResponse]] = {
+            "/api/v1/studies/product-value/registrations": (
+                self._register_product_value_participant
+            ),
+            "/api/v1/studio": self._create_studio,
+            "/api/v1/seasons": self._create_season,
+            "/api/v1/scouting-reports": self._scout_free_agent,
+            "/api/v1/seasons/decision": self._set_season_decision,
+            "/api/v1/seasons/decision-preview": self._preview_season_decision,
+            "/api/v1/seasons/decision-advice": self._request_season_decision_advice,
+            "/api/v1/seasons/player-promises": self._set_player_promises,
+            "/api/v1/seasons/world-model-future-review": (
+                self._review_manager_world_model_future_set
+            ),
+        }
+        payload_handler = payload_routes.get(path)
+        if payload_handler is not None:
             self._require_csrf(environ)
-            return self._create_studio(self._read_json(environ))
-        if method == "POST" and path == "/api/v1/seasons":
+            return payload_handler(self._read_json(environ))
+
+        queued_routes: dict[
+            str, Callable[[dict[str, Any], dict[str, Any]], _WebResponse]
+        ] = {
+            "/api/v1/matches": self._queue_match,
+            "/api/v1/paired-matches": self._queue_paired_match,
+            "/api/v1/world-model-forks": self._queue_world_model_fork,
+            "/api/v1/world-model-fork-sets": self._queue_world_model_fork_set,
+            "/api/v1/seasons/world-model-future-set": (
+                self._queue_manager_world_model_future_set
+            ),
+            "/api/v1/tactical-studies": self._queue_tactical_study,
+        }
+        queued_handler = queued_routes.get(path)
+        if queued_handler is not None:
             self._require_csrf(environ)
-            return self._create_season(self._read_json(environ))
-        if method == "POST" and path == "/api/v1/scouting-reports":
-            self._require_csrf(environ)
-            return self._scout_free_agent(self._read_json(environ))
-        if method == "POST" and path == "/api/v1/seasons/next-matchday":
+            return queued_handler(environ, self._read_json(environ))
+        if path == "/api/v1/seasons/next-matchday":
             self._require_csrf(environ)
             return self._queue_season_matchday(environ)
-        if method == "POST" and path == "/api/v1/seasons/decision":
-            self._require_csrf(environ)
-            return self._set_season_decision(self._read_json(environ))
-        if method == "POST" and path == "/api/v1/seasons/decision-preview":
-            self._require_csrf(environ)
-            return self._preview_season_decision(self._read_json(environ))
-        if method == "POST" and path == "/api/v1/seasons/decision-advice":
-            self._require_csrf(environ)
-            return self._request_season_decision_advice(self._read_json(environ))
-        if method == "POST" and path == "/api/v1/seasons/player-promises":
-            self._require_csrf(environ)
-            return self._set_player_promises(self._read_json(environ))
-        if method == "POST" and path == "/api/v1/matches":
-            self._require_csrf(environ)
-            return self._queue_match(environ, self._read_json(environ))
-        if method == "POST" and path == "/api/v1/paired-matches":
-            self._require_csrf(environ)
-            return self._queue_paired_match(environ, self._read_json(environ))
-        if method == "POST" and path == "/api/v1/world-model-forks":
-            self._require_csrf(environ)
-            return self._queue_world_model_fork(
-                environ, self._read_json(environ),
-            )
-        if method == "POST" and path == "/api/v1/world-model-fork-sets":
-            self._require_csrf(environ)
-            return self._queue_world_model_fork_set(
-                environ, self._read_json(environ),
-            )
-        if method == "POST" and path == "/api/v1/seasons/world-model-future-set":
-            self._require_csrf(environ)
-            return self._queue_manager_world_model_future_set(
-                environ, self._read_json(environ),
-            )
-        if method == "POST" and path == "/api/v1/seasons/world-model-future-review":
-            self._require_csrf(environ)
-            return self._review_manager_world_model_future_set(
-                self._read_json(environ),
-            )
-        if method == "POST" and path == "/api/v1/tactical-studies":
-            self._require_csrf(environ)
-            return self._queue_tactical_study(environ, self._read_json(environ))
-        if method == "POST" and path == "/api/v1/backups":
+        if path == "/api/v1/backups":
             self._require_csrf(environ)
             return self._create_managed_backup()
+
         backup_action = re.fullmatch(
             r"/api/v1/backups/([^/]+)/(verify|restore)", path,
         )
-        if method == "POST" and backup_action:
+        if backup_action is not None:
             self._require_csrf(environ)
             backup_id, action = backup_action.groups()
             if action == "verify":
                 return self._verify_managed_backup(backup_id)
-            return self._restore_managed_backup(
-                backup_id, self._read_json(environ),
-            )
-        if method == "GET" and path == "/api/v1/tasks":
-            return self._json_response(200, {
-                "schema_version": 1,
-                "tasks": [self._task_for_web(task) for task in self.task_queue.list_tasks()],
-            })
-        task_requeue = re.fullmatch(r"/api/v1/tasks/([a-zA-Z0-9]+)/requeue", path)
-        if method == "POST" and task_requeue:
+            return self._restore_managed_backup(backup_id, self._read_json(environ))
+        task_requeue = re.fullmatch(
+            r"/api/v1/tasks/([a-zA-Z0-9]+)/requeue", path,
+        )
+        if task_requeue is not None:
             self._require_csrf(environ)
             return self._requeue_task(
                 task_requeue.group(1), self._read_json(environ),
             )
-        if method == "GET" and path.startswith("/api/v1/tasks/"):
-            task_id = path.removeprefix("/api/v1/tasks/")
-            if "/" in task_id:
-                raise WebRequestError(404, "task_not_found", "Task not found")
-            try:
-                task = self.task_queue.get_task(task_id)
-            except (FileNotFoundError, ValueError) as exc:
-                raise WebRequestError(404, "task_not_found", "Task not found") from exc
-            return self._json_response(200, {"task": self._task_for_web(task)})
-        if method == "GET" and path.startswith("/artifacts/"):
-            return self._artifact_response(path.removeprefix("/artifacts/"))
-        if path in {
-            "/api/v1/studio", "/api/v1/matches", "/api/v1/paired-matches",
-            "/api/v1/world-model-forks",
-            "/api/v1/world-model-fork-sets",
-            "/api/v1/seasons/world-model-future-set",
-            "/api/v1/seasons/world-model-future-review",
-            "/api/v1/tactical-studies",
-            "/api/v1/seasons", "/api/v1/seasons/next-matchday",
-            "/api/v1/seasons/decision",
-            "/api/v1/tasks",
-            "/api/v1/recovery", "/api/v1/backups",
-            "/api/v1/excellence/evidence-kit.zip",
-            "/api/v1/studies/product-value",
-            "/api/v1/studies/product-value/registrations",
-        } or backup_action or task_requeue or value_packet:
-            raise WebRequestError(405, "method_not_allowed", "Method not allowed")
-        raise WebRequestError(404, "not_found", "Resource not found")
+        return None
+
+    @staticmethod
+    def _is_method_restricted_path(path: str) -> bool:
+        return bool(
+            path in _METHOD_RESTRICTED_EXACT_PATHS
+            or re.fullmatch(r"/api/v1/backups/([^/]+)/(verify|restore)", path)
+            or re.fullmatch(r"/api/v1/tasks/([a-zA-Z0-9]+)/requeue", path)
+            or re.fullmatch(
+                r"/api/v1/studies/product-value/packets/(REG-[0-9A-F]{24})\.json",
+                path,
+            )
+        )
 
     def _json_response(
         self, status: int, payload: Any, *, csrf: bool = False,
