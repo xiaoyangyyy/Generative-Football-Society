@@ -220,6 +220,10 @@ Host/HTTPS enforcement, authentication, GET and POST routing, CSRF-gated
 mutation, task lookup, readiness and method-error classification now have
 separate boundaries. The endpoint set and response contracts are unchanged;
 this is product maintainability evidence, not a production-deployment claim.
+V4.03 decomposes the matching Studio status response into safe artifact links,
+typed evidence-library projections and the manager future/world-navigation
+assembly. Malformed task plans retain their prior fail-soft behavior, causal
+claim flags remain false, and the returned JSON schema is unchanged.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

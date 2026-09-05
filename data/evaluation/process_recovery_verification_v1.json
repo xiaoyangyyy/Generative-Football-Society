@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "verification": "gfs_cross_process_recovery_drill",
-  "generated_at": "2026-09-05T00:59:54.038416+00:00",
+  "generated_at": "2026-09-05T01:25:25.134064+00:00",
   "status": "passed_local_process_kill_recovery",
   "passed": true,
-  "recovery_time_seconds": 2.351,
+  "recovery_time_seconds": 2.352,
   "recovery_point": "zero_loss_for_files_committed_before_kill",
   "external_calls_made": false,
   "matches_executed": 0,

@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Decomposed the Web Studio status aggregator into safe artifact projection,
+  typed match/fork/fork-set/pair/study evidence builders, manager-future binding,
+  and world-navigator assembly; the top-level status method now passes the
+  focused Ruff complexity gate without changing its public JSON contract.
 - Replaced the monolithic Web request dispatcher with explicit liveness,
   access-policy, authentication, GET, POST, task, readiness, and method-error
   stages while preserving anonymous health checks, Host/HTTPS precedence,

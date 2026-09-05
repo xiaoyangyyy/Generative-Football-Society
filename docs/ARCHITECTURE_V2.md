@@ -3964,3 +3964,28 @@ authenticated-access, security, product-verification and accessibility suites
 exercise the refactored route path. No match, training, formal study,
 participant session or provider call was executed, and deployment readiness is
 unchanged.
+
+## 121. V4.03 Typed Studio status projection
+
+The authenticated Studio status endpoint still combined persisted-session
+loading, artifact confinement, four research-task schemas, counterfactual
+propagation, manager-future binding and world-navigation validation in one
+large response builder. This did not create a second source of product truth,
+but it made the most important read model harder to change safely.
+
+The response now has explicit projections for unconfigured state, active and
+archived artifact links, match history, paired matches, single forks, fork
+sets, tactical studies and manager-bound future sets. Each research task is
+parsed through its canonical plan type. Invalid historical plans remain
+omitted, invalid scenario evidence remains an empty bounded sample, and
+unknown future statuses remain explicitly normalized rather than invented.
+
+Manager future sets are still derived from the current season and task
+evidence, then normalized against the canonical intervention workspace before
+the manager world navigator is built and validated. No new state is persisted
+by the Web projection. The public response keys, truncation limits, safe URL
+rules, ranking prohibition and non-causal flags are unchanged. The top-level
+`_studio_status` now passes the focused complexity, branch and statement gates,
+and the full Web suite exercises configured, unconfigured, malformed-evidence
+and manager-world cases. This stage executes no match, training, formal study,
+participant session or provider call.

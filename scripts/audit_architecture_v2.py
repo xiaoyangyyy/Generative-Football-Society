@@ -464,6 +464,25 @@ def main() -> int:
                 "self._require_csrf(environ)", web.index("def _post_response(")
             ) < web.index("payload_handler(self._read_json(environ))")
         ),
+        "studio_status_projection_is_typed_layered_and_noncausal": (
+            all(token in web for token in (
+                "def _unconfigured_studio_status(",
+                "def _attach_status_artifact_urls(",
+                "def _library_matches(",
+                "def _fork_set_library_item(",
+                "def _fork_propagation_for_web(",
+                "def _fork_library_item(",
+                "def _pair_library_item(",
+                "def _study_library_item(",
+                "def _library_task_groups(",
+                "def _attach_manager_world_views(",
+                '"ranking_performed": False',
+                '"downstream_causal_attribution_authorized": False',
+                '"match_outcome_causality": False',
+                '"real_football_causality": False',
+                "self._attach_manager_world_views(season, library_fork_sets)",
+            ))
+        ),
         "studio_restore_is_crash_convergent": (
             all(token in product_recovery for token in (
                 'RESTORE_TRANSACTION_RELATIVE =',

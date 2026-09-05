@@ -756,70 +756,60 @@ class ProductWebApp:
             raise WebRequestError(422, f"invalid_{key}", f"{key} is not valid")
         return value
 
-    def _studio_status(self) -> dict[str, Any]:
-        session_path = self.root / "data/persistence/product_session.json"
-        provider = provider_preflight()
-        raw_tasks = self.task_queue.list_tasks(limit=51)
-        task_history_truncated = len(raw_tasks) > 50
-        web_tasks = [
-            self._task_for_web(task)
-            for task in raw_tasks[:50]
-        ]
-        if not session_path.is_file():
-            return {
-                "schema_version": 1, "configured": False,
-                "studio": None,
-                "match_capabilities": _match_capabilities(),
-                "control_plane": ProductControlPlane(self.root).snapshot(),
-                "provider": provider,
-                "access": self.access_policy.public_summary(),
-                "operations": self.telemetry.snapshot(),
-                "tasks": web_tasks[:20],
-                "evidence_library": {
-                    "schema_version": 1, "limit": 50,
-                    "matches": [], "pairs": [], "forks": [],
-                    "fork_sets": [], "studies": [],
-                    "truncated": False,
-                },
-            }
-        try:
-            status = ProductWorkspace.load(self.root).status()
-        except (OSError, ValueError) as exc:
-            raise WebRequestError(
-                409, "invalid_session", "The persisted Studio session is invalid",
-            ) from exc
-        last_match = status.get("last_match") or {}
-        if isinstance(last_match, dict):
-            dashboard_url = self._safe_artifact_url(last_match.get("dashboard"))
-            comparison_url = self._safe_artifact_url(
-                last_match.get("comparison_dashboard")
-            )
+    def _unconfigured_studio_status(
+        self,
+        *,
+        provider: dict[str, Any],
+        web_tasks: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "configured": False,
+            "studio": None,
+            "match_capabilities": _match_capabilities(),
+            "control_plane": ProductControlPlane(self.root).snapshot(),
+            "provider": provider,
+            "access": self.access_policy.public_summary(),
+            "operations": self.telemetry.snapshot(),
+            "tasks": web_tasks[:20],
+            "evidence_library": {
+                "schema_version": 1,
+                "limit": 50,
+                "matches": [],
+                "pairs": [],
+                "forks": [],
+                "fork_sets": [],
+                "studies": [],
+                "truncated": False,
+            },
+        }
+
+    def _attach_active_season_artifact_urls(
+        self, season: dict[str, Any],
+    ) -> None:
+        for fixture in season.get("fixtures") or []:
+            if not isinstance(fixture, dict):
+                continue
+            dashboard_url = self._safe_artifact_url(fixture.get("dashboard"))
             if dashboard_url:
-                last_match["dashboard_url"] = dashboard_url
-            if comparison_url:
-                last_match["comparison_url"] = comparison_url
-        season = status.get("season")
-        if isinstance(season, dict):
-            for fixture in season.get("fixtures") or []:
-                if not isinstance(fixture, dict):
-                    continue
-                dashboard_url = self._safe_artifact_url(fixture.get("dashboard"))
-                if dashboard_url:
-                    fixture["dashboard_url"] = dashboard_url
-            profile = season.get("manager_profile") or {}
-            journal = profile.get("journal") if isinstance(profile, dict) else None
-            if isinstance(journal, list):
-                safe_by_fixture = {
-                    fixture.get("fixture_id"): fixture.get("dashboard_url")
-                    for fixture in season.get("fixtures") or []
-                    if isinstance(fixture, dict) and fixture.get("dashboard_url")
-                }
-                for entry in journal:
-                    if isinstance(entry, dict):
-                        entry["dashboard_url"] = safe_by_fixture.get(
-                            entry.get("fixture_id")
-                        )
-        for archived in status.get("season_history") or []:
+                fixture["dashboard_url"] = dashboard_url
+        profile = season.get("manager_profile") or {}
+        journal = profile.get("journal") if isinstance(profile, dict) else None
+        if not isinstance(journal, list):
+            return
+        safe_by_fixture = {
+            fixture.get("fixture_id"): fixture.get("dashboard_url")
+            for fixture in season.get("fixtures") or []
+            if isinstance(fixture, dict) and fixture.get("dashboard_url")
+        }
+        for entry in journal:
+            if isinstance(entry, dict):
+                entry["dashboard_url"] = safe_by_fixture.get(entry.get("fixture_id"))
+
+    def _attach_archived_season_artifact_urls(
+        self, season_history: Any,
+    ) -> None:
+        for archived in season_history or []:
             if not isinstance(archived, dict):
                 continue
             profile = archived.get("manager_profile") or {}
@@ -834,8 +824,31 @@ class ProductWebApp:
                 dashboard_url = self._safe_artifact_url(entry.get("dashboard"))
                 if dashboard_url:
                     entry["dashboard_url"] = dashboard_url
+
+    def _attach_status_artifact_urls(
+        self, status: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        last_match = status.get("last_match") or {}
+        if isinstance(last_match, dict):
+            dashboard_url = self._safe_artifact_url(last_match.get("dashboard"))
+            comparison_url = self._safe_artifact_url(
+                last_match.get("comparison_dashboard")
+            )
+            if dashboard_url:
+                last_match["dashboard_url"] = dashboard_url
+            if comparison_url:
+                last_match["comparison_url"] = comparison_url
+        season = status.get("season")
+        if isinstance(season, dict):
+            self._attach_active_season_artifact_urls(season)
+        self._attach_archived_season_artifact_urls(status.get("season_history"))
+        return season if isinstance(season, dict) else None
+
+    def _library_matches(
+        self, match_history: Any,
+    ) -> list[dict[str, Any]]:
         library_matches = []
-        for match in status.get("match_history") or []:
+        for match in match_history or []:
             if not isinstance(match, Mapping):
                 continue
             item = {
@@ -844,317 +857,372 @@ class ProductWebApp:
                     "integrity", "experience", "home_tactic", "away_tactic",
                 )
             }
-            item["dashboard_url"] = self._safe_artifact_url(
-                match.get("dashboard")
-            )
+            item["dashboard_url"] = self._safe_artifact_url(match.get("dashboard"))
             item["comparison_url"] = self._safe_artifact_url(
                 match.get("comparison_dashboard")
             )
             library_matches.append(item)
-        library_studies = []
-        library_pairs = []
-        library_forks = []
-        library_fork_sets = []
-        for task in web_tasks:
-            if task.get("kind") == "world_model_fork_set":
-                request = task.get("request") or {}
-                try:
-                    plan = WorldModelForkSetPlan.from_payload(
-                        request.get("plan") or {},
-                    )
-                except ValueError:
-                    continue
-                result = task.get("result") or {}
-                progress = task.get("fork_set_progress") or {}
-                aggregate = result.get("aggregate") or {}
-                try:
-                    scenario_evidence = (
-                        validate_fork_set_scenario_evidence(
-                            result.get("scenario_evidence"),
-                            plan.branch_times_sec,
-                        )
-                        if result.get("scenario_evidence") is not None else []
-                    )
-                except ValueError:
-                    scenario_evidence = []
-                raw_manager_context = (
-                    result.get("manager_context")
-                    or request.get("manager_context")
+        return library_matches
+
+    @staticmethod
+    def _manager_context_for_web(raw_context: Any) -> dict[str, Any] | None:
+        if not isinstance(raw_context, Mapping):
+            return None
+        raw_fixture = raw_context.get("fixture") or {}
+        return {
+            "season_id": raw_context.get("season_id"),
+            "season_revision": raw_context.get("season_revision"),
+            "fixture_id": (
+                raw_context.get("fixture_id") or raw_fixture.get("fixture_id")
+            ),
+            "matchday": raw_context.get("matchday") or raw_fixture.get("matchday"),
+            "manager_team": raw_context.get("manager_team"),
+            "decision_identity": raw_context.get("decision_identity"),
+            "context_identity": raw_context.get("context_identity"),
+            "claim_boundary": raw_context.get("claim_boundary"),
+        }
+
+    def _fork_set_library_item(
+        self, task: Mapping[str, Any],
+    ) -> dict[str, Any] | None:
+        request = task.get("request") or {}
+        try:
+            plan = WorldModelForkSetPlan.from_payload(request.get("plan") or {})
+        except ValueError:
+            return None
+        result = task.get("result") or {}
+        progress = task.get("fork_set_progress") or {}
+        aggregate = result.get("aggregate") or {}
+        try:
+            scenario_evidence = (
+                validate_fork_set_scenario_evidence(
+                    result.get("scenario_evidence"), plan.branch_times_sec,
                 )
-                manager_context = None
-                if isinstance(raw_manager_context, Mapping):
-                    raw_fixture = raw_manager_context.get("fixture") or {}
-                    manager_context = {
-                        "season_id": raw_manager_context.get("season_id"),
-                        "season_revision": raw_manager_context.get(
-                            "season_revision"
-                        ),
-                        "fixture_id": (
-                            raw_manager_context.get("fixture_id")
-                            or raw_fixture.get("fixture_id")
-                        ),
-                        "matchday": (
-                            raw_manager_context.get("matchday")
-                            or raw_fixture.get("matchday")
-                        ),
-                        "manager_team": raw_manager_context.get("manager_team"),
-                        "decision_identity": raw_manager_context.get(
-                            "decision_identity"
-                        ),
-                        "context_identity": raw_manager_context.get(
-                            "context_identity"
-                        ),
-                        "claim_boundary": raw_manager_context.get(
-                            "claim_boundary"
-                        ),
-                    }
-                library_fork_sets.append({
-                    "task_id": task.get("task_id"),
-                    "home": request.get("home"), "away": request.get("away"),
-                    "seed": plan.seed,
-                    "branch_times_sec": list(plan.branch_times_sec),
-                    "home_tactic": plan.home_tactic,
-                    "away_tactic": plan.away_tactic,
-                    "state": task.get("state"),
-                    "scenarios_completed": progress.get("scenarios_completed", 0),
-                    "fixed_scenario_budget": len(plan.branch_times_sec),
-                    "timing_sensitivity_observed": (
-                        aggregate.get("timing_sensitivity_observed") is True
-                    ),
-                    "action_divergence_scenarios": _bounded_public_count(
-                        aggregate.get("action_divergence_scenarios", 0)
-                    ),
-                    "local_attribution_scenarios": _bounded_public_count(
-                        aggregate.get("local_attribution_scenarios", 0)
-                    ),
-                    "descriptive_future_difference_scenarios": _bounded_public_count(
-                        aggregate.get(
-                            "descriptive_future_difference_scenarios", 0,
-                        )
-                    ),
-                    "scenario_evidence": scenario_evidence,
-                    "scenario_evidence_available": bool(scenario_evidence),
-                    "ranking_performed": False,
-                    "fork_set_url": result.get("fork_set_url"),
-                    "manager_context": manager_context,
-                })
-                continue
-            if task.get("kind") == "world_model_fork":
-                request = task.get("request") or {}
-                try:
-                    plan = WorldModelForkPlan.from_payload(
-                        request.get("plan") or {},
-                    )
-                except ValueError:
-                    continue
-                result = task.get("result") or {}
-                raw_propagation = result.get("propagation") or {}
-                raw_future = (
-                    raw_propagation.get("future_summary") or {}
-                    if isinstance(raw_propagation, Mapping) else {}
-                )
-                if not isinstance(raw_future, Mapping):
-                    raw_future = {}
-                future_status = str(raw_future.get("status") or "")
-                if future_status not in COUNTERFACTUAL_FUTURE_STATUSES:
-                    future_status = "unknown_future_status"
-                propagation = (
-                    {
-                        "available": bool(raw_propagation.get("available")),
-                        "status": str(
-                            raw_propagation.get("status") or "unknown"
-                        )[:80],
-                        "changed_decisions": _bounded_public_count(
-                            raw_propagation.get("changed_decisions"),
-                        ),
-                        "directly_observed_changes": _bounded_public_count(
-                            raw_propagation.get("directly_observed_changes"),
-                        ),
-                        "locally_attributable_changes": _bounded_public_count(
-                            raw_propagation.get("locally_attributable_changes"),
-                        ),
-                        "replay_windows_available": bool(
-                            raw_propagation.get("replay_windows_available") is True
-                        ),
-                        "downstream_causal_attribution_authorized": False,
-                        "future_summary": {
-                            "available": raw_future.get("available") is True,
-                            "status": future_status,
-                            "changed_actions": _bounded_public_count(
-                                raw_future.get("changed_actions")
-                            ),
-                            "descriptive_outcome_difference_count": (
-                                _bounded_public_count(raw_future.get(
-                                    "descriptive_outcome_difference_count"
-                                ))
-                            ),
-                            "simulator_local_action_attribution": (
-                                raw_future.get(
-                                    "simulator_local_action_attribution"
-                                ) is True
-                            ),
-                            "match_outcome_causality": False,
-                            "real_football_causality": False,
-                        },
-                        **({
-                            "branch_at_sec": raw_propagation.get("branch_at_sec"),
-                            "branch_anchor_verified": bool(
-                                raw_propagation.get("branch_anchor_verified")
-                            ),
-                            "branch_state_identity": str(
-                                raw_propagation.get("branch_state_identity") or ""
-                            )[:64],
-                        } if raw_propagation.get("branch_at_sec") is not None else {}),
-                    }
-                    if isinstance(raw_propagation, Mapping) else
-                    {"available": False, "status": "unavailable"}
-                )
-                library_forks.append({
-                    "task_id": task.get("task_id"),
-                    "home": request.get("home"), "away": request.get("away"),
-                    "seed": plan.seed,
-                    "branch_at_sec": float(plan.branch_at_sec),
-                    "home_tactic": plan.home_tactic,
-                    "away_tactic": plan.away_tactic,
-                    "state": task.get("state"),
-                    "baseline_match_id": result.get("baseline_match_id"),
-                    "treatment_match_id": result.get("treatment_match_id"),
-                    "baseline_url": result.get("baseline_url"),
-                    "treatment_url": result.get("treatment_url"),
-                    "comparison_url": result.get("comparison_url"),
-                    "propagation": propagation,
-                })
-                continue
-            if task.get("kind") == "paired_match":
-                request = task.get("request") or {}
-                raw_plan = request.get("plan") or {}
-                try:
-                    plan = PairedMatchPlan.from_payload(raw_plan)
-                except ValueError:
-                    continue
-                result = task.get("result") or {}
-                library_pairs.append({
-                    "task_id": task.get("task_id"),
-                    "home": request.get("home"), "away": request.get("away"),
-                    "seed": plan.seed, "focus_side": plan.focus_side,
-                    "baseline_tactic": getattr(
-                        plan, f"baseline_{plan.focus_side}_tactic"
-                    ),
-                    "treatment_tactic": getattr(
-                        plan, f"treatment_{plan.focus_side}_tactic"
-                    ),
-                    "state": task.get("state"),
-                    "baseline_match_id": result.get("baseline_match_id"),
-                    "treatment_match_id": result.get("treatment_match_id"),
-                    "baseline_url": result.get("baseline_url"),
-                    "treatment_url": result.get("treatment_url"),
-                    "comparison_url": result.get("comparison_url"),
-                })
-                continue
-            if task.get("kind") != "tactical_study":
-                continue
-            raw_plan = ((task.get("request") or {}).get("plan") or {})
-            try:
-                plan = TacticalStudyPlan.from_payload(raw_plan)
-            except ValueError:
-                continue
-            progress = task.get("study_progress") or {}
-            library_studies.append({
-                "task_id": task.get("task_id"),
-                "study_id": plan.study_id,
-                "home": plan.home, "away": plan.away,
-                "focus_side": plan.focus_side,
-                "baseline_tactic": getattr(
-                    plan, f"baseline_{plan.focus_side}_tactic"
+                if result.get("scenario_evidence") is not None
+                else []
+            )
+        except ValueError:
+            scenario_evidence = []
+        manager_context = self._manager_context_for_web(
+            result.get("manager_context") or request.get("manager_context")
+        )
+        return {
+            "task_id": task.get("task_id"),
+            "home": request.get("home"),
+            "away": request.get("away"),
+            "seed": plan.seed,
+            "branch_times_sec": list(plan.branch_times_sec),
+            "home_tactic": plan.home_tactic,
+            "away_tactic": plan.away_tactic,
+            "state": task.get("state"),
+            "scenarios_completed": progress.get("scenarios_completed", 0),
+            "fixed_scenario_budget": len(plan.branch_times_sec),
+            "timing_sensitivity_observed": (
+                aggregate.get("timing_sensitivity_observed") is True
+            ),
+            "action_divergence_scenarios": _bounded_public_count(
+                aggregate.get("action_divergence_scenarios", 0)
+            ),
+            "local_attribution_scenarios": _bounded_public_count(
+                aggregate.get("local_attribution_scenarios", 0)
+            ),
+            "descriptive_future_difference_scenarios": _bounded_public_count(
+                aggregate.get("descriptive_future_difference_scenarios", 0)
+            ),
+            "scenario_evidence": scenario_evidence,
+            "scenario_evidence_available": bool(scenario_evidence),
+            "ranking_performed": False,
+            "fork_set_url": result.get("fork_set_url"),
+            "manager_context": manager_context,
+        }
+
+    @staticmethod
+    def _fork_propagation_for_web(result: Mapping[str, Any]) -> dict[str, Any]:
+        raw_propagation = result.get("propagation") or {}
+        if not isinstance(raw_propagation, Mapping):
+            return {"available": False, "status": "unavailable"}
+        raw_future = raw_propagation.get("future_summary") or {}
+        if not isinstance(raw_future, Mapping):
+            raw_future = {}
+        future_status = str(raw_future.get("status") or "")
+        if future_status not in COUNTERFACTUAL_FUTURE_STATUSES:
+            future_status = "unknown_future_status"
+        propagation = {
+            "available": bool(raw_propagation.get("available")),
+            "status": str(raw_propagation.get("status") or "unknown")[:80],
+            "changed_decisions": _bounded_public_count(
+                raw_propagation.get("changed_decisions")
+            ),
+            "directly_observed_changes": _bounded_public_count(
+                raw_propagation.get("directly_observed_changes")
+            ),
+            "locally_attributable_changes": _bounded_public_count(
+                raw_propagation.get("locally_attributable_changes")
+            ),
+            "replay_windows_available": (
+                raw_propagation.get("replay_windows_available") is True
+            ),
+            "downstream_causal_attribution_authorized": False,
+            "future_summary": {
+                "available": raw_future.get("available") is True,
+                "status": future_status,
+                "changed_actions": _bounded_public_count(
+                    raw_future.get("changed_actions")
                 ),
-                "treatment_tactic": getattr(
-                    plan, f"treatment_{plan.focus_side}_tactic"
+                "descriptive_outcome_difference_count": _bounded_public_count(
+                    raw_future.get("descriptive_outcome_difference_count")
                 ),
-                "state": task.get("state"),
-                "pairs_completed": progress.get("pairs_completed", 0),
-                "fixed_pair_budget": len(plan.seeds),
-                "analysis_withheld": (
-                    task.get("state") != "completed"
-                    or not (task.get("result") or {}).get("study_url")
+                "simulator_local_action_attribution": (
+                    raw_future.get("simulator_local_action_attribution") is True
                 ),
-                "study_url": (task.get("result") or {}).get("study_url"),
+                "match_outcome_causality": False,
+                "real_football_causality": False,
+            },
+        }
+        if raw_propagation.get("branch_at_sec") is not None:
+            propagation.update({
+                "branch_at_sec": raw_propagation.get("branch_at_sec"),
+                "branch_anchor_verified": bool(
+                    raw_propagation.get("branch_anchor_verified")
+                ),
+                "branch_state_identity": str(
+                    raw_propagation.get("branch_state_identity") or ""
+                )[:64],
             })
-        if isinstance(season, dict):
-            season_id = str(season.get("season_id") or "")
-            season_revision = int(season.get("revision", -1))
-            next_fixture = season.get("next_manager_fixture") or {}
-            review_by_task = {
-                review.get("task_id"): review
-                for fixture in season.get("fixtures") or []
-                for review in fixture.get("manager_future_reviews") or []
-                if isinstance(fixture, Mapping)
-                and isinstance(review, Mapping)
-                and isinstance(review.get("task_id"), str)
-            }
-            manager_sets = []
-            for item in library_fork_sets:
-                context = item.get("manager_context")
-                if not isinstance(context, Mapping) or context.get(
-                    "season_id"
-                ) != season_id:
-                    continue
-                manager_sets.append({
-                    **item,
-                    "review_receipt": review_by_task.get(item.get("task_id")),
-                    "binding_current": bool(
-                        context.get("season_revision") == season_revision
-                        and context.get("fixture_id")
-                        == next_fixture.get("fixture_id")
-                    ),
-                    "claim_boundary": (
-                        "simulator exploration bound to one frozen manager decision; "
-                        "never score prediction or causal coaching evidence"
-                    ),
-                })
-            season["manager_future_sets"] = manager_sets
+        return propagation
+
+    def _fork_library_item(
+        self, task: Mapping[str, Any],
+    ) -> dict[str, Any] | None:
+        request = task.get("request") or {}
+        try:
+            plan = WorldModelForkPlan.from_payload(request.get("plan") or {})
+        except ValueError:
+            return None
+        result = task.get("result") or {}
+        return {
+            "task_id": task.get("task_id"),
+            "home": request.get("home"),
+            "away": request.get("away"),
+            "seed": plan.seed,
+            "branch_at_sec": float(plan.branch_at_sec),
+            "home_tactic": plan.home_tactic,
+            "away_tactic": plan.away_tactic,
+            "state": task.get("state"),
+            "baseline_match_id": result.get("baseline_match_id"),
+            "treatment_match_id": result.get("treatment_match_id"),
+            "baseline_url": result.get("baseline_url"),
+            "treatment_url": result.get("treatment_url"),
+            "comparison_url": result.get("comparison_url"),
+            "propagation": self._fork_propagation_for_web(result),
+        }
+
+    @staticmethod
+    def _pair_library_item(
+        task: Mapping[str, Any],
+    ) -> dict[str, Any] | None:
+        request = task.get("request") or {}
+        try:
+            plan = PairedMatchPlan.from_payload(request.get("plan") or {})
+        except ValueError:
+            return None
+        result = task.get("result") or {}
+        return {
+            "task_id": task.get("task_id"),
+            "home": request.get("home"),
+            "away": request.get("away"),
+            "seed": plan.seed,
+            "focus_side": plan.focus_side,
+            "baseline_tactic": getattr(
+                plan, f"baseline_{plan.focus_side}_tactic"
+            ),
+            "treatment_tactic": getattr(
+                plan, f"treatment_{plan.focus_side}_tactic"
+            ),
+            "state": task.get("state"),
+            "baseline_match_id": result.get("baseline_match_id"),
+            "treatment_match_id": result.get("treatment_match_id"),
+            "baseline_url": result.get("baseline_url"),
+            "treatment_url": result.get("treatment_url"),
+            "comparison_url": result.get("comparison_url"),
+        }
+
+    @staticmethod
+    def _study_library_item(
+        task: Mapping[str, Any],
+    ) -> dict[str, Any] | None:
+        raw_plan = (task.get("request") or {}).get("plan") or {}
+        try:
+            plan = TacticalStudyPlan.from_payload(raw_plan)
+        except ValueError:
+            return None
+        progress = task.get("study_progress") or {}
+        result = task.get("result") or {}
+        return {
+            "task_id": task.get("task_id"),
+            "study_id": plan.study_id,
+            "home": plan.home,
+            "away": plan.away,
+            "focus_side": plan.focus_side,
+            "baseline_tactic": getattr(
+                plan, f"baseline_{plan.focus_side}_tactic"
+            ),
+            "treatment_tactic": getattr(
+                plan, f"treatment_{plan.focus_side}_tactic"
+            ),
+            "state": task.get("state"),
+            "pairs_completed": progress.get("pairs_completed", 0),
+            "fixed_pair_budget": len(plan.seeds),
+            "analysis_withheld": (
+                task.get("state") != "completed" or not result.get("study_url")
+            ),
+            "study_url": result.get("study_url"),
+        }
+
+    def _library_task_groups(
+        self, web_tasks: list[dict[str, Any]],
+    ) -> dict[str, list[dict[str, Any]]]:
+        groups: dict[str, list[dict[str, Any]]] = {
+            "studies": [],
+            "pairs": [],
+            "forks": [],
+            "fork_sets": [],
+        }
+        builders = {
+            "world_model_fork_set": ("fork_sets", self._fork_set_library_item),
+            "world_model_fork": ("forks", self._fork_library_item),
+            "paired_match": ("pairs", self._pair_library_item),
+            "tactical_study": ("studies", self._study_library_item),
+        }
+        for task in web_tasks:
+            kind = task.get("kind")
+            selected = builders.get(kind) if isinstance(kind, str) else None
+            if selected is None:
+                continue
+            group, builder = selected
+            item = builder(task)
+            if item is not None:
+                groups[group].append(item)
+        return groups
+
+    @staticmethod
+    def _manager_future_sets_for_web(
+        season: Mapping[str, Any],
+        fork_sets: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        season_id = str(season.get("season_id") or "")
+        season_revision = int(season.get("revision", -1))
+        next_fixture = season.get("next_manager_fixture") or {}
+        review_by_task = {
+            review.get("task_id"): review
+            for fixture in season.get("fixtures") or []
+            for review in fixture.get("manager_future_reviews") or []
+            if isinstance(fixture, Mapping)
+            and isinstance(review, Mapping)
+            and isinstance(review.get("task_id"), str)
+        }
+        manager_sets = []
+        for item in fork_sets:
+            context = item.get("manager_context")
+            if (
+                not isinstance(context, Mapping)
+                or context.get("season_id") != season_id
+            ):
+                continue
+            manager_sets.append({
+                **item,
+                "review_receipt": review_by_task.get(item.get("task_id")),
+                "binding_current": bool(
+                    context.get("season_revision") == season_revision
+                    and context.get("fixture_id")
+                    == next_fixture.get("fixture_id")
+                ),
+                "claim_boundary": (
+                    "simulator exploration bound to one frozen manager decision; "
+                    "never score prediction or causal coaching evidence"
+                ),
+            })
+        return manager_sets
+
+    @staticmethod
+    def _normalize_manager_set_bindings(
+        manager_sets: list[dict[str, Any]],
+        intervention_workspace: Mapping[str, Any],
+    ) -> bool:
+        canonical_binding = {
+            row["task_id"]: row["current_binding"]
+            for row in intervention_workspace["explorations"]
+        }
+        normalized = False
+        for item in manager_sets:
+            task_id = item.get("task_id")
+            if (
+                task_id in canonical_binding
+                and item.get("binding_current") is not canonical_binding[task_id]
+            ):
+                item["binding_current"] = canonical_binding[task_id]
+                normalized = True
+        return normalized
+
+    def _attach_manager_world_views(
+        self,
+        season: dict[str, Any],
+        fork_sets: list[dict[str, Any]],
+    ) -> None:
+        manager_sets = self._manager_future_sets_for_web(season, fork_sets)
+        season["manager_future_sets"] = manager_sets
+        intervention_workspace = build_manager_intervention_workspace(
+            season, manager_sets,
+        )
+        if self._normalize_manager_set_bindings(
+            manager_sets, intervention_workspace,
+        ):
             intervention_workspace = build_manager_intervention_workspace(
                 season, manager_sets,
             )
-            canonical_binding = {
-                row["task_id"]: row["current_binding"]
-                for row in intervention_workspace["explorations"]
-            }
-            binding_normalized = False
-            for item in manager_sets:
-                task_id = item.get("task_id")
-                if (
-                    task_id in canonical_binding
-                    and item.get("binding_current")
-                    is not canonical_binding[task_id]
-                ):
-                    item["binding_current"] = canonical_binding[task_id]
-                    binding_normalized = True
-            if binding_normalized:
-                intervention_workspace = (
-                    build_manager_intervention_workspace(
-                        season, manager_sets,
-                    )
-                )
-            validate_manager_intervention_workspace(
-                intervention_workspace,
-                season=season,
-                manager_future_sets=manager_sets,
+        validate_manager_intervention_workspace(
+            intervention_workspace,
+            season=season,
+            manager_future_sets=manager_sets,
+        )
+        season["manager_intervention_workspace"] = intervention_workspace
+        world_navigator = build_manager_world_navigator(season)
+        validate_manager_world_navigator(world_navigator, season=season)
+        season["manager_world_navigator"] = world_navigator
+        command = season.get("matchday_command_center")
+        if isinstance(command, dict):
+            command["manager_future_sets"] = manager_sets
+            command["manager_intervention_workspace"] = intervention_workspace
+            command["manager_world_navigator"] = world_navigator
+
+    def _studio_status(self) -> dict[str, Any]:
+        session_path = self.root / "data/persistence/product_session.json"
+        provider = provider_preflight()
+        raw_tasks = self.task_queue.list_tasks(limit=51)
+        task_history_truncated = len(raw_tasks) > 50
+        web_tasks = [
+            self._task_for_web(task)
+            for task in raw_tasks[:50]
+        ]
+        if not session_path.is_file():
+            return self._unconfigured_studio_status(
+                provider=provider, web_tasks=web_tasks,
             )
-            season["manager_intervention_workspace"] = (
-                intervention_workspace
-            )
-            world_navigator = build_manager_world_navigator(season)
-            validate_manager_world_navigator(
-                world_navigator, season=season,
-            )
-            season["manager_world_navigator"] = world_navigator
-            command = season.get("matchday_command_center")
-            if isinstance(command, dict):
-                command["manager_future_sets"] = manager_sets
-                command["manager_intervention_workspace"] = (
-                    intervention_workspace
-                )
-                command["manager_world_navigator"] = world_navigator
+        try:
+            status = ProductWorkspace.load(self.root).status()
+        except (OSError, ValueError) as exc:
+            raise WebRequestError(
+                409, "invalid_session", "The persisted Studio session is invalid",
+            ) from exc
+        season = self._attach_status_artifact_urls(status)
+        library_matches = self._library_matches(status.get("match_history"))
+        library_tasks = self._library_task_groups(web_tasks)
+        library_studies = library_tasks["studies"]
+        library_pairs = library_tasks["pairs"]
+        library_forks = library_tasks["forks"]
+        library_fork_sets = library_tasks["fork_sets"]
+        if season is not None:
+            self._attach_manager_world_views(season, library_fork_sets)
         return {
             "schema_version": 1, "configured": True,
             "studio": status, "provider": provider,
