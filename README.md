@@ -270,6 +270,18 @@ The 127-line facade owns only construction, finite-value normalization and
 identity-derived region/style helpers. A machine AST ownership gate prevents
 those responsibilities from drifting back into the facade, and the refreshed
 M2 receipt remains zero-training readiness evidence only.
+V4.10 applies the same cohesion rule to `TournamentManager` without creating
+more feature fragments. Full-tournament scheduling, advancement and receipted
+reflection now live in one lifecycle layer; run identity, checkpoint persistence
+and world restoration live in one state layer. The 10 moved methods are AST-
+equivalent, the facade shrinks from 404 to 130 lines, and its existing match,
+referee and score adapters remain compatible. The refreshed M2 identity is
+again zero-training readiness evidence, not a model or tournament result. The
+full regression exposed and closed a shared-host timing flaw in the real
+process-kill recovery drill: functional recovery remains fail-closed under a
+bounded 45-second readiness timeout, while the observed 15-second local target
+is now reported separately and cannot masquerade as data-integrity failure.
+The complete suite passes with 1,411 tests and three declared skips.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

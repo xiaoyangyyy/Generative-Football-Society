@@ -27,6 +27,9 @@ def test_architecture_v2_machine_audit_passes():
     assert report["checks"][
         "society_agent_facade_has_dedicated_behavior_layers"
     ]
+    assert report["checks"][
+        "tournament_manager_facade_has_dedicated_lifecycle_and_state"
+    ]
     assert report["integrity"]["release_artifacts"]["ok"]
     assert report["integrity"]["world_model_identity_chain_verified"]
     assert report["checks"]["studio_exposes_one_guided_end_to_end_workflow"]

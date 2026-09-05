@@ -70,6 +70,7 @@
     "studio_restore_is_crash_convergent": true,
     "studio_status_projection_is_typed_layered_and_noncausal": true,
     "studio_uses_context_local_configuration": true,
+    "tournament_manager_facade_has_dedicated_lifecycle_and_state": true,
     "tournament_match_is_one_verified_rollback_complete_transaction": true,
     "tournament_resume_binds_portable_run_input_identity": true,
     "tournament_resume_binds_random_world_identity": true,

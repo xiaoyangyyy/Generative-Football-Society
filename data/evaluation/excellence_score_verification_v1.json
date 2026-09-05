@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_evidence_derived_excellence_score",
-  "generated_at": "2026-09-05T10:53:16.340042+00:00",
+  "generated_at": "2026-09-05T11:29:34.888940+00:00",
   "status": "passed_dynamic_scoring",
   "passed": true,
   "scores": {

@@ -25,10 +25,12 @@ from src.simulation.agent_tactics import AgentTacticsMixin
 from src.simulation.referee_policy import RefereePolicy, normalize_weights
 from src.simulation.tournament_2026 import TournamentManager
 from src.simulation.tournament_finalize import TournamentFinalizeMixin
+from src.simulation.tournament_lifecycle import TournamentLifecycleMixin
 from src.simulation.tournament_match import TournamentMatchMixin
 from src.simulation.tournament_reporting import TournamentReportingMixin
 from src.simulation.tournament_scoring import TournamentScoringMixin
 from src.simulation.tournament_setup import TournamentSetupMixin
+from src.simulation.tournament_state import TournamentStateMixin
 
 
 def test_social_behaviour_is_inherited_from_dedicated_mixin():
@@ -305,6 +307,57 @@ def test_match_execution_is_inherited_from_dedicated_mixin():
     assert issubclass(TournamentManager, TournamentMatchMixin)
     assert "play_match" not in TournamentManager.__dict__
     assert TournamentManager.play_match is TournamentMatchMixin.play_match
+
+
+@pytest.mark.parametrize(
+    ("mixin", "method_names"),
+    (
+        (
+            TournamentLifecycleMixin,
+            {
+                "_reflection_with_retry",
+                "run_full_tournament",
+                "simulate_group_stage",
+                "update_standings",
+                "resolve_advancements",
+                "simulate_knockout_round",
+                "_record_final_result",
+            },
+        ),
+        (
+            TournamentStateMixin,
+            {
+                "_save_checkpoint",
+                "_restore_from_checkpoint",
+                "_require_run_identity",
+            },
+        ),
+    ),
+)
+def test_tournament_lifecycle_and_state_are_inherited_from_dedicated_mixins(
+    mixin, method_names,
+):
+    assert issubclass(TournamentManager, mixin)
+    for method_name in method_names:
+        assert method_name not in TournamentManager.__dict__
+        assert getattr(TournamentManager, method_name) is getattr(mixin, method_name)
+
+
+def test_tournament_manager_facade_only_owns_construction_and_policy_adapters():
+    owned = {
+        name
+        for name, value in TournamentManager.__dict__.items()
+        if inspect.isfunction(value) or isinstance(value, staticmethod)
+    }
+    assert owned == {
+        "__init__",
+        "_match_key",
+        "_map_micro_score",
+        "_stage_pressure",
+        "_normalize_weights",
+        "_stage_referee_distribution",
+        "_sample_referee_profile",
+    }
 
 
 def test_match_orchestrator_stays_small_and_stage_driven():

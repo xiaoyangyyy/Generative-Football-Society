@@ -2,6 +2,18 @@
 
 ## Unreleased - v7 candidate
 
+- Split the remaining `TournamentManager` orchestration debt into two cohesive,
+  behavior-preserving boundaries. `TournamentLifecycleMixin` owns tournament
+  scheduling, advancement and receipted reflection; `TournamentStateMixin`
+  owns run identity, checkpoint persistence and world restoration. Ten moved
+  methods are AST-equivalent, the facade fell from 404 to 130 lines, and direct
+  ownership plus machine architecture gates keep the split closed. The M2
+  transitive identity was refreshed by a zero-training preflight that executed
+  no match, study, participant session, checkpoint or provider call. The
+  cross-process recovery drill now separates its observed 15-second local
+  objective from functional recovery correctness while retaining a bounded
+  45-second fail-closed readiness timeout. The complete suite passes with 1,411
+  tests and three declared skips.
 - Completed the behavior-preserving `SocietyAgent` facade decomposition. The
   remaining 22 governance, tactics, reflection and physical-condition methods
   now live in four cohesive mixins; the 127-line facade owns only construction,

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_code_only_reproduction_release_contract",
-  "generated_at": "2026-09-05T10:53:01.978012+00:00",
+  "generated_at": "2026-09-05T11:29:17.743837+00:00",
   "status": "failed",
   "passed": false,
   "release_ready": false,

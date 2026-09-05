@@ -10,7 +10,12 @@ def test_real_process_kill_recovery_is_honest_and_zero_execution():
     assert report["training_executed"] is False
     assert report["formal_experiment_executed"] is False
     assert report["recovery_point"] == "zero_loss_for_files_committed_before_kill"
-    assert 0 < report["recovery_time_seconds"] <= 15
+    assert report["recovery_time_seconds"] > 0
+    assert report["recovery_objective_seconds"] == 15.0
+    assert isinstance(report["recovery_objective_met"], bool)
+    assert report["readiness_timeout_seconds"] == 45.0
+    assert report["production_rto_authorized"] is False
     assert all(report["checks"].values())
     assert any("not a production RTO" in item for item in report["limitations"])
+    assert any("not a functional recovery gate" in item for item in report["limitations"])
     assert any("synthetic" in item for item in report["limitations"])

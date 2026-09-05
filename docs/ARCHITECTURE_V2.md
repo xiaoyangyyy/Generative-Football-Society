@@ -4151,3 +4151,43 @@ This is a maintainability and reviewability increment. It changes no numerical
 equation, random draw, persistence schema, action authority, model result or
 product claim, and it executes no training, match, formal study, participant
 session or provider call.
+
+## 128. V4.10 Cohesive Tournament lifecycle and state boundaries
+
+`TournamentManager` already delegated single-match preparation, scoring,
+reporting, finalization and rollback, but its 404-line facade still combined
+full-competition scheduling with checkpoint serialization and dynamic-world
+restore. Those responsibilities have different change rates and failure modes:
+lifecycle code decides what happens next, while state code proves which world
+may safely continue.
+
+`TournamentLifecycleMixin` now owns the seven scheduling, advancement,
+knockout and receipted-reflection methods. `TournamentStateMixin` owns the three
+run-identity, checkpoint-save and checkpoint-restore methods. Their definitions
+are AST-equivalent to the former facade implementation, preserving fixture seed
+derivation, match ordering, retry delays, provider-receipt-before-mutation,
+checkpoint ordering and fail-closed restore identity checks. The 130-line
+facade retains construction and six small cross-layer match/referee adapters.
+
+Direct tests require exact inherited method identity and an exact seven-method
+facade surface. The machine architecture audit parses all three classes,
+requires both layers and their complete method sets, rejects moved methods in
+the facade, and reads recovery tokens from their true owners. The prospective
+M2 local-import closure now binds both modules; its refreshed preflight records
+`training_executed=false` and `checkpoint_written=false`.
+
+The complete regression also exposed a test-contract defect rather than a
+recovery defect: the real process-kill drill treated a 15-second shared-host
+wall-clock observation as part of functional correctness. Readiness now retains
+a bounded, fail-closed 45-second timeout and more diagnostic timeout errors;
+recovery integrity still requires service restart, orphan reconciliation,
+committed-file identity, clean shutdown and lease release. The 15-second local
+objective remains visible as a non-authoritative observation and explicitly
+cannot authorize a production RTO. The complete suite passes with 1,411 tests
+and three declared skips.
+
+This refactor changes no tournament schedule, random draw, score path,
+reflection semantics, persistence schema, world-model authority or research
+claim. Outside automated tests and the zero-match recovery drill, it executes
+no training, product/formal tournament run, formal study, participant session
+or external provider call.

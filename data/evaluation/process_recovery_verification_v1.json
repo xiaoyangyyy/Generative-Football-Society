@@ -1,10 +1,14 @@
 {
   "schema_version": 1,
   "verification": "gfs_cross_process_recovery_drill",
-  "generated_at": "2026-09-05T01:44:19.332907+00:00",
+  "generated_at": "2026-09-05T11:28:26.878943+00:00",
   "status": "passed_local_process_kill_recovery",
   "passed": true,
-  "recovery_time_seconds": 2.356,
+  "recovery_time_seconds": 2.822,
+  "recovery_objective_seconds": 15.0,
+  "recovery_objective_met": true,
+  "readiness_timeout_seconds": 45.0,
+  "production_rto_authorized": false,
   "recovery_point": "zero_loss_for_files_committed_before_kill",
   "external_calls_made": false,
   "matches_executed": 0,
@@ -36,6 +40,7 @@
     "the drill uses a temporary local filesystem, not a deployment volume or container orchestrator",
     "the forced kill occurs between committed requests, not during backup, restore, or filesystem replacement",
     "the running task is synthetic and claimed only after the match worker is stopped",
-    "the measured local recovery time is evidence for this run, not a production RTO or SLA"
+    "the measured local recovery time is evidence for this run, not a production RTO or SLA",
+    "the 15-second local objective is reported separately and is not a functional recovery gate"
   ]
 }

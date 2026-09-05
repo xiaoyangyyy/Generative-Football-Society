@@ -236,7 +236,9 @@ def test_reflection_parsing_retries_then_commits_one_durable_operation(
     manager = _manager(tmp_path)
     agent = manager.world.agents["Alpha"]
     llm = _ReflectionLLM(["not-json", "[]", _valid_reflection()])
-    monkeypatch.setattr("src.simulation.tournament_2026.time.sleep", lambda _: None)
+    monkeypatch.setattr(
+        "src.simulation.tournament_lifecycle.time.sleep", lambda _: None,
+    )
 
     manager._reflection_with_retry(
         agent, llm, "post_group:Alpha", attempts=3,

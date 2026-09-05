@@ -367,12 +367,42 @@ def main() -> int:
     tournament_match = (
         ROOT / "src/simulation/tournament_match.py"
     ).read_text(encoding="utf-8")
+    tournament_lifecycle = (
+        ROOT / "src/simulation/tournament_lifecycle.py"
+    ).read_text(encoding="utf-8")
+    tournament_state = (
+        ROOT / "src/simulation/tournament_state.py"
+    ).read_text(encoding="utf-8")
     tournament_transaction = (
         ROOT / "src/simulation/tournament_transaction.py"
     ).read_text(encoding="utf-8")
     tournament_runtime = (
         ROOT / "src/simulation/tournament_2026.py"
     ).read_text(encoding="utf-8")
+    tournament_facade_methods = _class_methods(
+        tournament_runtime, "TournamentManager",
+    )
+    tournament_facade_bases = _class_bases(
+        tournament_runtime, "TournamentManager",
+    )
+    tournament_behavior_layers = {
+        "TournamentLifecycleMixin": (
+            tournament_lifecycle,
+            {
+                "_reflection_with_retry", "run_full_tournament",
+                "simulate_group_stage", "update_standings",
+                "resolve_advancements", "simulate_knockout_round",
+                "_record_final_result",
+            },
+        ),
+        "TournamentStateMixin": (
+            tournament_state,
+            {
+                "_save_checkpoint", "_restore_from_checkpoint",
+                "_require_run_identity",
+            },
+        ),
+    }
     tournament_world_state = (
         ROOT / "src/simulation/world_state.py"
     ).read_text(encoding="utf-8")
@@ -528,6 +558,22 @@ def main() -> int:
             )
             and agent_facade_methods == {
                 "_finite", "__init__", "_infer_region", "_infer_style_archetype",
+            }
+        ),
+        "tournament_manager_facade_has_dedicated_lifecycle_and_state": (
+            set(tournament_behavior_layers).issubset(tournament_facade_bases)
+            and all(
+                methods.issubset(_class_methods(source, mixin))
+                for mixin, (source, methods) in tournament_behavior_layers.items()
+            )
+            and all(
+                not methods.intersection(tournament_facade_methods)
+                for _, methods in tournament_behavior_layers.values()
+            )
+            and tournament_facade_methods == {
+                "__init__", "_match_key", "_map_micro_score",
+                "_stage_pressure", "_normalize_weights",
+                "_stage_referee_distribution", "_sample_referee_profile",
             }
         ),
         "training_has_exclusive_process_lease": "FileLease" in job,
@@ -1816,10 +1862,13 @@ def main() -> int:
                 "config = SimulationConfig.from_mapping(runtime_values)",
             ))
             and all(token in tournament_runtime for token in (
+                'self.root_seed = int(getattr(world_engine, "root_seed", 42))',
+                "base_dir=None",
+            ))
+            and all(token in tournament_state for token in (
                 "root_seed=self.root_seed",
                 "stored_seed = checkpoint_root_seed(ckpt)",
                 "does not match the current world",
-                "base_dir=None",
             ))
             and all(token in world_runner for token in (
                 "TournamentManager(", "engine, base_dir=base_dir",
@@ -1856,7 +1905,7 @@ def main() -> int:
                 "def _tournament_input_paths(",
                 'root / "data" / "rosters"',
             ))
-            and all(token in tournament_runtime for token in (
+            and all(token in tournament_state for token in (
                 "self._require_run_identity()",
                 "def _require_run_identity(",
                 "checkpoint_run_identity(ckpt) != self.run_identity_sha256",
@@ -1885,9 +1934,11 @@ def main() -> int:
                 '"data/persistence/tactical_counterfactuals.jsonl"',
                 "Tournament checkpoint V3 lacks dynamic world state",
             ))
-            and all(token in tournament_runtime for token in (
+            and all(token in tournament_state for token in (
                 "world_state=snapshot_world_state(self)",
                 'ckpt["world_state"]',
+            ))
+            and all(token in tournament_lifecycle for token in (
                 "Persist the provider result before it can mutate the world",
                 "agent.request_reflection_payload(llm)",
                 'journal["applied"].append(operation_id)',

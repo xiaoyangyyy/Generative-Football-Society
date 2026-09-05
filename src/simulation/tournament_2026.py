@@ -1,29 +1,15 @@
-import json
 import os
-import time
+
 import numpy as np
-from src.simulation.group_context import snapshot_standings_table
-from src.simulation.knockout_bracket import build_qualified_entries, build_r32_pairings
-from src.simulation.tournament_checkpoint import (
-    checkpoint_root_seed,
-    checkpoint_run_identity,
-    load_checkpoint,
-    new_reflection_journal,
-    restore_r32_fixtures,
-    save_checkpoint,
-    validate_reflection_journal,
-    verify_state_artifacts,
-)
-from src.simulation.world_state import (
-    preflight_world_state, restore_world_state, snapshot_world_state,
-)
-from src.simulation.social_dialogue import SocialDialogueEngine
+
 from src.simulation.fusion_controller import FusionController
 from src.simulation.narrative_events import NarrativeEventBus
-from src.simulation.standings import apply_group_result
 from src.simulation.referee_policy import RefereePolicy
+from src.simulation.social_dialogue import SocialDialogueEngine
+from src.simulation.tournament_checkpoint import new_reflection_journal
+from src.simulation.tournament_lifecycle import TournamentLifecycleMixin
 from src.simulation.tournament_match import TournamentMatchMixin
-from src.simulation.random_control import derive_seed, named_py_rng
+from src.simulation.tournament_state import TournamentStateMixin
 
 # Note:
 # These 48-team groups follow the 2026 final draw structure, while play-off slots
@@ -46,7 +32,11 @@ WORLD_CUP_2026_GROUPS = {
     "Group L": ["England", "Croatia", "Ghana", "Panama"]
 }
 
-class TournamentManager(TournamentMatchMixin):
+class TournamentManager(
+    TournamentLifecycleMixin,
+    TournamentStateMixin,
+    TournamentMatchMixin,
+):
     def __init__(
         self,
         world_engine,
@@ -101,210 +91,11 @@ class TournamentManager(TournamentMatchMixin):
             return int(goals_home), int(goals_away)
         return int(goals_away), int(goals_home)
 
-    def _reflection_with_retry(
-        self, agent, llm, operation_id: str, attempts: int = 6,
-    ) -> None:
-        if (
-            not isinstance(operation_id, str)
-            or not operation_id
-            or len(operation_id) > 512
-        ):
-            raise ValueError("Invalid reflection operation ID")
-        journal = validate_reflection_journal(self.reflection_journal)
-        if operation_id in journal["applied"]:
-            return
-        receipt = journal["receipts"].get(operation_id)
-        if receipt is None:
-            for i in range(attempts):
-                try:
-                    payload = agent.request_reflection_payload(llm)
-                    encoded = json.dumps(
-                        payload, ensure_ascii=False, allow_nan=False,
-                    ).encode("utf-8")
-                    if len(encoded) > 256 * 1024:
-                        raise ValueError("Reflection response exceeds 256 KiB")
-                    break
-                except Exception as exc:
-                    wait = min(24.0, 2.0 * (2 ** i))
-                    print(
-                        f"  [REFLECTION] {agent.name} attempt {i + 1}/{attempts} "
-                        f"failed: {exc} (retry in {wait:.0f}s)"
-                    )
-                    if i + 1 < attempts:
-                        time.sleep(wait)
-            else:
-                raise RuntimeError(
-                    f"Reflection failed for {agent.name} after {attempts} attempts"
-                )
-            receipt = {"agent": agent.name, "payload": payload}
-            journal["receipts"][operation_id] = receipt
-            # Persist the provider result before it can mutate the world.
-            self._save_checkpoint()
-        if receipt["agent"] != agent.name:
-            raise ValueError("Reflection receipt agent identity mismatch")
-        agent.apply_reflection_payload(
-            receipt["payload"], operation_id=operation_id,
-        )
-        journal["applied"].append(operation_id)
-        self._save_checkpoint()
 
-    def _save_checkpoint(self) -> None:
-        self._require_run_identity()
-        save_checkpoint(
-            self.base_dir,
-            standings=self.standings,
-            qualified_teams=self.qualified_teams,
-            phase=self.phase,
-            group_schedule_progress={},
-            ko_round=self.ko_round,
-            ko_fixture_index=self.ko_fixture_index,
-            r32_fixtures=self.r32_fixtures,
-            completed_matches=self.completed_matches,
-            final_result=self.final_result,
-            match_index=self.match_index,
-            root_seed=self.root_seed,
-            run_identity_sha256=self.run_identity_sha256,
-            match_results=self.match_results,
-            post_group_reflection_done=self.post_group_reflection_done,
-            world_state=snapshot_world_state(self),
-            reflection_journal=self.reflection_journal,
-        )
 
-    def _restore_from_checkpoint(self, ckpt: dict) -> None:
-        self._require_run_identity()
-        stored_seed = checkpoint_root_seed(ckpt)
-        if stored_seed != self.root_seed:
-            raise ValueError(
-                "Tournament checkpoint root seed does not match the current world"
-            )
-        if checkpoint_run_identity(ckpt) != self.run_identity_sha256:
-            raise ValueError(
-                "Tournament checkpoint run identity does not match the current runtime"
-            )
-        # Keep the existing manager untouched when live world identities disagree.
-        preflight_world_state(self, ckpt["world_state"])
-        journal = validate_reflection_journal(ckpt["reflection_journal"])
-        self.standings = ckpt.get("standings", self.standings)
-        self.qualified_teams = ckpt.get("qualified_teams", [])
-        self.phase = ckpt.get("phase", "group")
-        self.completed_matches = list(ckpt.get("completed_matches", []))
-        self.match_results = dict(ckpt.get("match_results", {}))
-        self.ko_round = ckpt.get("ko_round")
-        self.ko_fixture_index = int(ckpt.get("ko_fixture_index", 0))
-        self.r32_fixtures = restore_r32_fixtures(ckpt)
-        self.final_result = ckpt.get("final_result", {})
-        self.match_index = int(ckpt.get("match_index", 0))
-        self.post_group_reflection_done = bool(ckpt.get("post_group_reflection_done", False))
-        self.reflection_journal = journal
-        restore_world_state(self, ckpt["world_state"])
-        print(
-            f"[CHECKPOINT] Resumed phase={self.phase} matches_done={len(self.completed_matches)} "
-            f"qualified={len(self.qualified_teams)}"
-        )
 
-    def run_full_tournament(
-        self, *, resume: bool = False, checkpoint: dict | None = None,
-    ):
-        from src.match_engine.calibration.narrative_isolation import resolve_tournament_llm
 
-        self._require_run_identity()
-        llm = resolve_tournament_llm()
-        if resume:
-            ckpt = checkpoint
-            if ckpt is None:
-                ckpt = load_checkpoint(self.base_dir)
-            else:
-                # The application parsed and validated this payload before
-                # identity-gated recovery; require the restored files to match.
-                verify_state_artifacts(self.base_dir, ckpt)
-            if ckpt:
-                self._restore_from_checkpoint(ckpt)
-            else:
-                print("[CHECKPOINT] No checkpoint found — starting fresh.")
 
-        if self.phase == "complete":
-            print("[CHECKPOINT] Tournament already marked complete.")
-            return
-
-        print("[METRICS] conflict_heat scale: 0.00-1.05 (saturation above 1.00 is allowed by design).")
-        if self.phase == "group":
-            self.simulate_group_stage(llm)
-            self.resolve_advancements()
-            self.phase = "post_group"
-            self._save_checkpoint()
-
-        if not self.post_group_reflection_done:
-            print("\n" + "*"*60 + "\n[V13 GLOBAL SUMMIT] Teams performing deep reflection...\n" + "*"*60)
-            for t_name in self.qualified_teams:
-                self._reflection_with_retry(
-                    self.world.agents[t_name], llm,
-                    f"post_group:{t_name}",
-                )
-            self.post_group_reflection_done = True
-            self._save_checkpoint()
-
-        self.phase = "knockout"
-        for round_name, num_teams in [
-            ("Round of 32", 32),
-            ("Round of 16", 16),
-            ("Quarter-Finals", 8),
-            ("Semi-Finals", 4),
-            ("Final", 2),
-        ]:
-            if len(self.qualified_teams) < num_teams:
-                continue
-            self.ko_round = round_name
-            self.simulate_knockout_round(round_name, num_teams, llm)
-            self._save_checkpoint()
-
-        self.phase = "complete"
-        self._save_checkpoint()
-
-    def _require_run_identity(self) -> None:
-        value = self.run_identity_sha256
-        if not isinstance(value, str) or len(value) != 64 or any(
-            char not in "0123456789abcdef" for char in value
-        ):
-            raise RuntimeError(
-                "Full tournament execution requires a verified run identity"
-            )
-
-    def simulate_group_stage(self, llm):
-        print("\n" + "="*60 + "\n🚀 PHASE 1: GROUP STAGE (CINDERELLA FIELD ACTIVE)\n" + "="*60)
-        from src.simulation.wc2026_schedule import official_group_matchdays, fixture_meta, validate_groups
-
-        validate_groups(self.groups)
-
-        for g_name, teams in self.groups.items():
-            matchdays = official_group_matchdays(g_name)
-            for md_idx, md_matches in enumerate(matchdays, start=1):
-                standings_snapshot = snapshot_standings_table(self.standings, g_name)
-                print(f"\n  [GROUP {g_name}] Matchday {md_idx}/3 (parallel kickoff snapshot)")
-                for t1, t2 in md_matches:
-                    mk = self._match_key(g_name, t1, t2)
-                    if mk in self.completed_matches:
-                        continue
-                    meta = fixture_meta(g_name, t1, t2)
-                    if meta is not None:
-                        print(
-                            f"  [FIXTURE] #{meta.match_number} {meta.date} "
-                            f"{t1} vs {t2} @ {meta.venue}, {meta.city}"
-                        )
-                    fixture_seed = derive_seed(
-                        self.root_seed, "group_fixture",
-                        g_name, md_idx, t1, t2,
-                    )
-                    self.play_match(
-                        t1,
-                        t2,
-                        g_name,
-                        llm,
-                        is_knockout=False,
-                        matchday=md_idx,
-                        standings_snapshot=standings_snapshot,
-                        fixture_seed=fixture_seed,
-                        scheduled_home=t1,
-                    )
 
     def _stage_pressure(self, stage_name, is_knockout):
         # Continuous round-depth pressure, no discrete threshold jumps.
@@ -337,68 +128,3 @@ class TournamentManager(TournamentMatchMixin):
         return self.referee_policy.sample(
             a1, a2, stage_pressure, rng=rng,
         )
-
-
-    def update_standings(self, g, t1, t2, s1, s2):
-        apply_group_result(self.standings[g], t1, t2, int(s1), int(s2))
-
-    def resolve_advancements(self):
-        self.qualified_entries = build_qualified_entries(self.groups, self.standings)
-        self.qualified_teams = [e.team for e in self.qualified_entries]
-        self.r32_fixtures = build_r32_pairings(
-            self.qualified_entries,
-            rng=named_py_rng(self.root_seed, "round_of_32_pairings"),
-        )
-        print(f"[ADVANCE] {len(self.qualified_teams)} teams qualified; R32 bracket seeded ({len(self.r32_fixtures)} fixtures).")
-
-    def simulate_knockout_round(self, round_name, num_teams, llm):
-        print("\n" + "="*60 + f"\n🏆 {round_name.upper()}\n" + "="*60)
-        next_round = []
-        current_batch = self.qualified_teams[:num_teams]
-        if round_name == "Round of 32" and self.r32_fixtures:
-            fixtures = list(self.r32_fixtures)
-        else:
-            fixtures = [
-                (current_batch[i], current_batch[i + 1])
-                for i in range(0, len(current_batch), 2)
-            ]
-        for t1, t2 in fixtures:
-            mk = self._match_key(round_name, t1, t2)
-            if mk in self.completed_matches:
-                winner = self.match_results.get(mk)
-                if winner:
-                    self._record_final_result(
-                        round_name, t1=t1, t2=t2, winner=winner,
-                    )
-                    self._reflection_with_retry(
-                        self.world.agents[winner], llm,
-                        f"knockout:{mk}:{winner}",
-                    )
-                    print(f"  [SKIP] {t1} vs {t2} (checkpoint) → {winner}")
-                    next_round.append(winner)
-                    continue
-            fixture_seed = derive_seed(
-                self.root_seed, "knockout_fixture", round_name, t1, t2,
-            )
-            winner = self.play_match(
-                t1,
-                t2,
-                round_name,
-                llm,
-                is_knockout=True,
-                fixture_seed=fixture_seed,
-            )
-            next_round.append(winner)
-            self._record_final_result(
-                round_name, t1=t1, t2=t2, winner=winner,
-            )
-            self._reflection_with_retry(
-                self.world.agents[winner], llm,
-                f"knockout:{mk}:{winner}",
-            )
-        self.qualified_teams = next_round
-
-    def _record_final_result(self, round_name, *, t1, t2, winner):
-        if round_name == "Final":
-            runner_up = t2 if winner == t1 else t1
-            self.final_result = {"champion": winner, "runner_up": runner_up}

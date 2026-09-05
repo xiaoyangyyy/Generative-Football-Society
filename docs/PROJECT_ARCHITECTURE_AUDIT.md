@@ -254,6 +254,19 @@ not quality signals by themselves.
     and an AST-based architecture gate enforce inheritance, exclusive method
     ownership and the closed facade surface; the zero-training M2 import closure
     now binds all four modules without creating a model or outcome result.
+52. Split the remaining `TournamentManager` facade debt into two cohesive
+    layers instead of additional feature fragments. The lifecycle layer owns
+    scheduling, advancement, knockout and receipted reflection; the state layer
+    owns run identity, checkpoint persistence and world restoration. Ten moved
+    methods remain AST-equivalent, direct tests enforce exact ownership, and the
+    machine audit keeps the 130-line facade limited to construction plus six
+    cross-layer adapters. The zero-training M2 identity now binds both modules.
+53. Corrected the real process-kill recovery drill's evidence boundary. A
+    bounded 45-second readiness timeout still fails closed, but the observed
+    15-second local objective is reported separately from functional recovery
+    correctness and cannot authorize a production RTO. Service restart, orphan
+    reconciliation, committed-file identity, clean shutdown and lease release
+    remain hard gates; the full suite passes with 1,411 tests and three skips.
 
 ## LLM Scope Decision
 
@@ -280,7 +293,10 @@ cleaning, or direct unaudited state mutation.
    reflection, condition, psychology, memory, social or match behavior belongs
    to its existing dedicated layer and must not re-enter the facade.
 3. Collect real failed-pass labels for an external completion benchmark.
-4. Split `TournamentManager` into scheduler, match service, standings, narrative orchestration, and repository.
+4. Keep the completed `TournamentManager` boundaries closed: lifecycle owns
+   scheduling/advancement/reflection, state owns checkpoint/restore, the match
+   service owns execution stages, and standings/bracket/referee logic stays in
+   its existing domain modules.
 5. Add matched-seed intervention tests for cognition, narrative persistence, memory, and meta-learning.
 6. Fit macro intensity and micro action parameters against held-out event data with uncertainty intervals.
 7. Keep v7 deployed and v6 as rollback; v8.9 remains evaluated until continuous-time LODO beats the continuous baseline.
