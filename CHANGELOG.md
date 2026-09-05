@@ -2,6 +2,12 @@
 
 ## Unreleased - v7 candidate
 
+- Hardened the 60-run full-match outcome experiment with an exact frozen
+  schedule ledger, complete calibration/action row validation, M0 treatment-
+  leakage rejection, per-arm durable completion, idempotent resume, and code,
+  checkpoint, protocol plus calibration-input identity. Execution and decision
+  writes now require the exact authority phrase claimed by the reproduction
+  manifest, and the runner itself passes the focused complexity gate.
 - Added one fail-closed validator for the action-adoption study ledger across
   status, authorized resume, analysis, and export. It enforces the exact frozen
   fixture/sample prefix, arm order, numeric metrics, nested action-count

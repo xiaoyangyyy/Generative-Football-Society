@@ -61,17 +61,31 @@ python scripts/run_formal_experiment.py
 Run or resume the fixed experiment:
 
 ```bash
-python scripts/run_formal_experiment.py --execute
+python scripts/run_formal_experiment.py --execute --authorization I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2
 ```
 
 Analyze only after all sixty runs are present:
 
 ```bash
-python scripts/run_formal_experiment.py --analyze
+python scripts/run_formal_experiment.py --analyze --authorization I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2
 ```
 
 Neither status nor analysis can start simulation. Analysis refuses partial,
 unpaired, or identity-mismatched evidence.
+
+## V4.06 ledger and authority hardening
+
+The runner now validates the exact frozen fixture/sample prefix, M0-then-M1 arm
+order, all calibration inputs consumed by the loss, bounded action-mechanism
+counts and exact arm/overall completion before resume or analysis. M0 rows with
+world-model action activity fail closed. Execution identity also binds the
+observable contract, StatsBomb match baselines and joint baselines.
+
+`--execute` cannot start simulations without the exact authorization phrase.
+The CLI form of `--analyze` requires the same phrase because it writes the
+decision artifact; pure status and independent verification remain read-only.
+Structurally valid historical rows keep their historical identity and cannot
+be relabelled as current evidence.
 
 ## Paper package
 

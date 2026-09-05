@@ -236,6 +236,8 @@ def _ci_workflow_is_locked(action_lock: dict, workflow: str) -> bool:
                 "--require-hashes -r requirements-ci-linux-py312.lock",
                 "python -m ruff check src",
                 "python -m ruff check src/product/web.py src/match_engine/action_engine.py --select C901,PLR0912,PLR0915",
+                "python -m ruff check scripts/action_adoption_study.py scripts/run_formal_experiment.py",
+                "python -m ruff check scripts/action_adoption_study.py scripts/run_formal_experiment.py --select C901,PLR0912,PLR0915",
                 'python-version: "3.12.11"',
                 "runs-on: ubuntu-24.04",
                 "--deselect tests/test_world_model_semantic_event_training.py::test_trainer_persists_real_one_and_two_step_event_evidence",

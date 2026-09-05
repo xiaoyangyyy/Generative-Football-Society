@@ -241,6 +241,15 @@ remains structurally valid but identity-stale after controller refactoring, so
 it cannot be replayed as a current result. An identity-matched completed ledger
 returns without rebuilding a match environment, and an incomplete arm cannot
 advance into the next arm.
+V4.06 applies the same fail-closed standard to the downstream 60-run full-match
+outcome experiment. Its ledger accepts only the frozen M0-then-M1 schedule,
+finite calibration and action metrics, zero world-model activity in M0, exact
+arm completion and the fixed budget. Execution identity now includes the
+observable calibration contract and both external baseline inputs. Starting
+the simulations or writing their decision requires the exact explicit
+authorization phrase declared in the reproduction manifest; status and result
+verification remain read-only. Historical rows pass structural validation but
+remain identity-stale and cannot support a current promotion claim.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

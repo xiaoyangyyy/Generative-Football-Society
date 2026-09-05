@@ -14,6 +14,7 @@
     "domain_does_not_depend_on_product_or_training": true,
     "formal_experiment_fails_closed_on_identity_or_partial_evidence": true,
     "formal_experiment_is_preregistered_and_compute_bounded": true,
+    "formal_outcome_ledger_is_fixed_authorized_and_input_bound": true,
     "historical_navigator_preserves_v2_action_semantics": true,
     "hold_is_reference_only_not_direct_model_authority": true,
     "human_studies_are_registered_allocated_and_byte_verified": true,

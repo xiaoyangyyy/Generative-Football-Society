@@ -217,7 +217,7 @@ def verify_paper_package() -> dict:
         and {
             row.get("command") for row in simulation_commands
         } == {
-            "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --execute",
+            "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --execute --authorization I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2",
             "python scripts/run_production_validation.py --execute --workspace . --authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION --deployment-instance-id instance-replace",
             "python scripts/academic_replication_study.py --execute --authorization I_AUTHORIZE_GFS_ACTION_REPLICATION_V2",
         }

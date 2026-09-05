@@ -39,6 +39,8 @@ jobs:
         run: |
           python -m ruff check src
           python -m ruff check src/product/web.py src/match_engine/action_engine.py --select C901,PLR0912,PLR0915
+          python -m ruff check scripts/action_adoption_study.py scripts/run_formal_experiment.py
+          python -m ruff check scripts/action_adoption_study.py scripts/run_formal_experiment.py --select C901,PLR0912,PLR0915
 
       - name: Compile project
         run: |

@@ -366,14 +366,14 @@
     },
     {
       "id": "confirmatory_execution",
-      "command": "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --execute",
+      "command": "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --execute --authorization I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2",
       "effect": "fixed_60_run_simulation",
       "runs_simulation": true,
       "explicit_authority_required": true
     },
     {
       "id": "complete_only_analysis",
-      "command": "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --analyze",
+      "command": "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --analyze --authorization I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2",
       "effect": "analysis_only_after_complete_identity_matched_evidence",
       "runs_simulation": false,
       "explicit_authority_required": true

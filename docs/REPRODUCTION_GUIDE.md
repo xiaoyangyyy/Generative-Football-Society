@@ -84,6 +84,8 @@ python -m pip install --require-hashes -r requirements-ci-linux-py312.lock
 python -m pip install --no-build-isolation --no-deps -e .
 python -m ruff check src
 python -m ruff check src/product/web.py src/match_engine/action_engine.py --select C901,PLR0912,PLR0915
+python -m ruff check scripts/action_adoption_study.py scripts/run_formal_experiment.py
+python -m ruff check scripts/action_adoption_study.py scripts/run_formal_experiment.py --select C901,PLR0912,PLR0915
 python -m pytest -q
 ```
 
@@ -124,6 +126,7 @@ The pinned GitHub Actions handoff in `.github/workflows/ci.yml` uses exact
 official action commits, Ubuntu 24.04, exact CPython 3.12.11, the hashed Linux
 runtime and CI-tool closures, a mandatory default source-health gate, a focused
 complexity/branch/statement gate for the Web product and action-adoption core,
+default plus focused complexity gates for both fixed-budget research runners,
 and the same explicitly non-training test boundary. It
 does not perform an unpinned pip self-upgrade. A successful push run uploads the
 runtime and deployment reports and produces a GitHub artifact provenance
@@ -162,15 +165,18 @@ This section is intentionally not part of package verification. It runs 60
 full-length simulations and requires explicit authorization:
 
 ```bash
-python scripts/run_formal_experiment.py --execute
+python scripts/run_formal_experiment.py --execute --authorization I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2
 ```
 
 The workflow is resumable only under identical protocol, checkpoint, and
-critical-code identity. It prohibits interim analysis and optional stopping.
+critical-code identity. The identity also binds the observable calibration
+contract, StatsBomb baselines, and joint baselines. The exact authorization
+phrase is checked by the runner, not merely documented by this guide. It
+prohibits interim analysis and optional stopping.
 After all 60 runs are complete:
 
 ```bash
-python scripts/run_formal_experiment.py --analyze
+python scripts/run_formal_experiment.py --analyze --authorization I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2
 ```
 
 Analysis writes the decision only after exact pairing, sample-budget, validity,

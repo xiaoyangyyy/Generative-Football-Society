@@ -4046,3 +4046,34 @@ again. The historical 24-run artifact passes every structural check but remains
 blocked by current controller identity drift, which is the intended truthful
 state. This stage executes no match, training, formal study, participant
 session or external provider call.
+
+## 124. V4.06 Full-match outcome ledger and authority closure
+
+The downstream M0-versus-M1 outcome runner previously checked row counts and
+paired keys only at analysis time. Resume trusted any identity-matched JSON
+shape, arm completion was not committed independently, status could report a
+negative remaining budget, and the CLI documentation claimed explicit
+authority even though `--execute` alone could start all 60 full-length runs.
+The loss calculation also consumed the observable contract, StatsBomb
+baselines and joint baselines without naming their hashes in execution
+identity.
+
+The runner now validates one exact protocol-derived fixture/sample prefix per
+arm before status, resume, analysis or decision writing. Rows must contain
+finite values for every direct and indirect calibration input used by the
+frozen loss plus the action mechanism estimands. Action counts satisfy
+`realized, expected <= eligible <= influenced <= opportunities`, and every M0
+row must retain zero world-model action activity. M0 must complete and be
+durably committed before M1 begins; each completion marker requires its exact
+30-row budget, and the overall completed state requires all 60 rows.
+
+Execution identity now includes hashes for the observable calibration
+contract, StatsBomb match baselines and joint baselines in addition to the
+protocol, checkpoint and critical code. The complete ledger is idempotent,
+invalid callback rows are rejected before append, and corruption is separated
+from ordinary code-identity drift in status. Both the simulation-starting
+`--execute` path and the decision-writing `--analyze` CLI path require
+`I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2`; pure status and independent result
+verification remain read-only. The historical 60-run ledger passes structural
+validation but remains identity-stale. This stage executes no match, training,
+formal study, participant session or external provider call.

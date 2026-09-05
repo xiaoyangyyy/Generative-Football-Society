@@ -1637,6 +1637,27 @@ def main() -> int:
             and "experimental units do not match exactly" in formal_runner
             and 'actions.add_argument("--execute"' in formal_runner
         ),
+        "formal_outcome_ledger_is_fixed_authorized_and_input_bound": (
+            all(token in formal_runner for token in (
+                'AUTHORIZATION = "I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2"',
+                "def _require_formal_authorization(",
+                "def validate_progress(",
+                '"rows_follow_exact_schedule_prefix"',
+                '"calibration_and_action_metrics_are_finite"',
+                '"action_counts_are_bounded"',
+                '"baseline_has_zero_action_activity"',
+                '"arm_order_is_resumable"',
+                '"blocked_invalid_progress"',
+                '"analysis_input_sha256"',
+                'candidate_rows = [*arm_state["rows"], dict(row)]',
+                'if not validation["structural_valid"]',
+                "require_complete=True",
+                "_require_valid_progress(validate_progress(",
+            ))
+            and formal_runner.count(
+                "_require_valid_progress(validate_progress("
+            ) >= 3
+        ),
         "runtime_random_draws_are_identity_scoped": (
             not global_rng_draw_violations
             and "def named_py_rng(" in (
