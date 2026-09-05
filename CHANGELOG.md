@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Split the high-level action engine into explicit clock, context, utility,
+  world-model sampling, evidence-recording, and action-execution stages without
+  changing probability formulas or random draws; the public orchestrator now
+  passes the focused Ruff complexity gate and has a forced-hold encoding test.
 - Added a separate seven-package, fully hashed Linux CI-tool lock for pytest and
   Ruff, removed reliance on GitHub runner preinstalls, and made production
   source health a mandatory immutable-workflow and reproduction-contract gate.

@@ -3915,3 +3915,28 @@ server deadlines, concurrent submissions, receipt hashing, attestation,
 idempotent import and end-to-end compatibility with the existing analyzer. No
 participant session, match, model training, formal study or provider call was
 executed, so the user-value gate and all empirical product claims remain open.
+
+## 119. V4.01 Explicit high-level action-adoption pipeline
+
+The high-level match action path previously concentrated clock gating, player
+context, utility construction, feasible-action masking, world-model
+probability control, coach-policy cointervention, shared-random sampling,
+evidence recording and four execution branches inside one method. The ordering
+was correct, but the monolith made the most important prediction-to-action
+boundary unnecessarily difficult to review.
+
+ActionEngine.step is now a small four-stage orchestrator: consume the
+continuous-clock decision, build one immutable action context, sample one
+auditable decision and execute it. Utility construction is separated into
+shot, pass, cross, hold and hierarchical components. World-model mixing,
+coach-policy bias and evidence recording have named boundaries, while pass,
+shot, cross and hold own their execution and state-transition details.
+
+This refactor deliberately preserves the existing equations, feasible set,
+maximum authority, shared inverse-CDF draw, draw count, scheduled pass/shot
+override, shot-cooldown fallback, ball-log snapshots and adoption record
+fields. A forced-hold public-path test closes the previously implicit reference
+action branch. Focused complexity checks now accept the orchestrator, and
+same-seed pre/post refactor traces were compared during implementation. This is
+structural evidence only: no model was trained, no formal match was executed,
+and no historical outcome result is made current by the refactor.

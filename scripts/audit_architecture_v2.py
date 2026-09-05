@@ -561,7 +561,10 @@ def main() -> int:
                 '"no_action_specific_validation"',
             ))
             and all(token in action_engine for token in (
-                'labels = ["pass", "shot", "cross", "hold"]',
+                '_ACTION_LABELS = ("pass", "shot", "cross", "hold")',
+                "def _sample_action(",
+                "def _record_policy_result(",
+                "def _execute_sampled_action(",
                 "mask_infeasible_action_probabilities(",
                 "mix_direct_action_probabilities(",
                 "sampling_uniform = float(rng.random())",

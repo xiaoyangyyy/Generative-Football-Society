@@ -78,7 +78,7 @@
       "src/infrastructure/integrity.py": "77cf99c664abc6419ddf334418bb52c1dd010de181f010787cd2388ce3dde89b",
       "src/infrastructure/locking.py": "a85ffddfb744c4b4357e2b9422cdfc0b267015c3bcf56ec03a3e4faaf92858b5",
       "src/match_engine/__init__.py": "98718074c272cc0228575608e77ce30be302d47d2f5b9c5689b7b48f1a8814b2",
-      "src/match_engine/action_engine.py": "97c82d8b958eb536d4c7c96058f9271cd283bd465a115577d9b846e48961db04",
+      "src/match_engine/action_engine.py": "87cefbe983aa5ad9240ee5a41f1432667a5f82adad8724eb7919e47edcb14083",
       "src/match_engine/adapter.py": "df89a89cbe9033b35a1729ec7a6d98d0886cc2bfc22326bbd614cc8e67cf3ca4",
       "src/match_engine/aerial_duel.py": "7d7c6e993e2c662cfc36a2c753494066c080e221c570587df36575c0668d0081",
       "src/match_engine/affective_coupling.py": "6cd325b5db9bc6ef5722a3c8cde1e31e96dd7fcca3444afb1970bbc824724154",
@@ -333,7 +333,7 @@
   "next_action": "run the frozen M2 training command",
   "protocol_id": "m2-mirrored-policy-v1",
   "ready": true,
-  "recorded_at": "2026-09-04T23:29:25.587959+00:00",
+  "recorded_at": "2026-09-05T00:37:50.906615+00:00",
   "schema_version": 1,
   "sealed_test": {
     "rows_loaded_for_model_selection": 0,

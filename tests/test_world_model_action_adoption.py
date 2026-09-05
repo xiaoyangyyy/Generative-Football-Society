@@ -638,6 +638,42 @@ def test_action_engine_resolves_direct_policy_against_actual_sample(monkeypatch)
     assert record["resolution"] == "sampled_after_world_model_adjustment"
 
 
+def test_action_engine_executes_and_encodes_hold_when_hold_has_all_mass():
+    cfg = MicroMatchConfig.fast_demo()
+    cfg.enable_wall_pass = False
+    cfg.action_pass_base = -100.0
+    cfg.action_shot_base = -100.0
+    cfg.action_cross_base = -100.0
+    rng = np.random.default_rng(909)
+    state = build_match_affective_state(
+        _FakeAgent("Home"), _FakeAgent("Away"), rng=rng,
+    )
+    _init_micro_state(state, cfg, rng)
+    state.clock_seconds = 11.0
+    state._wm_last_action = None
+    spatial = SpatialIntelligenceEngine(cfg)
+    engine = ActionEngine(
+        cfg,
+        PassingEngine(cfg, spatial),
+        ShotEngine(cfg, spatial),
+        AerialDuelEngine(cfg),
+    )
+    mod_home = [
+        PlayerModulators(player_id=player.player_id)
+        for player in state.home.players
+    ]
+    mod_away = [
+        PlayerModulators(player_id=player.player_id)
+        for player in state.away.players
+    ]
+
+    actual_action, events = engine.step(state, mod_home, mod_away, rng)
+
+    assert actual_action == "hold"
+    assert events == []
+    assert decode_action_kind(state._wm_last_action) == "hold"
+
+
 def test_benchmark_row_exports_action_adoption_mechanism_metrics():
     summary = SimpleNamespace(
         passes_home=1, passes_away=1,

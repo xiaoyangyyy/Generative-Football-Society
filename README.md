@@ -208,6 +208,13 @@ study end-to-end executable but does not execute it or create user-value
 evidence. Completion is state-first and restart-recoverable, submission-ID
 retries require exact receipt-backed answers, and remote delivery remains
 loopback-bound behind a same-host trusted HTTPS proxy.
+V4.01 makes the match action-adoption boundary structurally explicit. The
+previous monolithic action step is now a small clock/context/sample/execute
+orchestrator, while pass, shot, cross and hold resolution and policy evidence
+recording have separate internal stages. The probability equations, one shared
+uniform draw, feasible-action masking, scheduled override semantics and
+world-model adoption fields are unchanged; this is a behavior-preserving code
+quality increment, not new model or outcome evidence.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
