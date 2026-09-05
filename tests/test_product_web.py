@@ -798,6 +798,46 @@ def test_match_route_validates_input_before_domain_execution(tmp_path):
     assert response["json"]["error"]["code"] == "same_team"
 
 
+@pytest.mark.parametrize(
+    ("path", "same_team_message"),
+    [
+        ("/api/v1/matches", "Home and away teams must differ"),
+        ("/api/v1/paired-matches", "Teams must differ"),
+        ("/api/v1/world-model-forks", "Teams must differ"),
+        ("/api/v1/world-model-fork-sets", "Teams must differ"),
+    ],
+)
+def test_fixture_queue_routes_share_strict_field_validation(
+    tmp_path, path, same_team_message,
+):
+    app = ProductWebApp(tmp_path)
+    same_team = _request(
+        app,
+        "POST",
+        path,
+        {"home": "Brazil", "away": "brazil", "fast": True},
+        csrf=app.csrf_token,
+    )
+    assert same_team["status"].startswith("422")
+    assert same_team["json"]["error"] == {
+        "code": "same_team",
+        "message": same_team_message,
+    }
+
+    invalid_fast = _request(
+        app,
+        "POST",
+        path,
+        {"home": "Brazil", "away": "Argentina", "fast": "true"},
+        csrf=app.csrf_token,
+    )
+    assert invalid_fast["status"].startswith("422")
+    assert invalid_fast["json"]["error"] == {
+        "code": "invalid_fast",
+        "message": "fast must be boolean",
+    }
+
+
 def test_season_routes_create_and_idempotently_queue_next_matchday(
     tmp_path, monkeypatch,
 ):

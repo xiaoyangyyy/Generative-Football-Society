@@ -3989,3 +3989,31 @@ rules, ranking prohibition and non-causal flags are unchanged. The top-level
 and the full Web suite exercises configured, unconfigured, malformed-evidence
 and manager-world cases. This stage executes no match, training, formal study,
 participant session or provider call.
+
+## 122. V4.04 Core complexity closure and immutable gate
+
+After the dispatcher and status projection were decomposed, four public queue
+handlers still repeated the same home-team, away-team and fast-mode checks.
+The task read model also retained two independent progress protocols inside one
+method: tactical studies must withhold interim analysis, while world-model fork
+sets must withhold interim ranking. Their public contracts were already safe,
+but the remaining duplication left five focused complexity findings in the Web
+product.
+
+The four queue handlers now use one strict fixture-field validator. It retains
+the existing field bounds, case-insensitive same-team rejection, boolean-only
+fast flag and endpoint-specific error text. Public task projection is split
+into result-link attachment, tactical-study progress and fork-set progress.
+Each progress projector validates the canonical frozen plan, exact fixed
+budget, bounded completed count and non-disclosure marker. Missing, malformed
+or inconsistent completed-task evidence still fails soft to
+`invalid_progress`; queued tasks retain their prior zero-progress response.
+
+The complete `src/product/web.py` file and the high-level
+`src/match_engine/action_engine.py` boundary now pass Ruff's `C901`, `PLR0912`
+and `PLR0915` rules. The exact focused command is mandatory in GitHub Actions,
+and the reproduction verifier rejects a workflow that weakens or removes it.
+This creates an immutable reviewability floor for the two most sensitive
+product-to-policy boundaries without changing their public schemas, random
+draws or causal authority. This stage executes no match, model training,
+formal study, participant session or external provider call.

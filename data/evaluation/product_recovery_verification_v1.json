@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_recovery",
-  "generated_at": "2026-09-05T01:25:32.680845+00:00",
+  "generated_at": "2026-09-05T01:44:26.948837+00:00",
   "status": "passed_local_recovery",
   "process_crash_verified": true,
   "passed": true,
@@ -32,7 +32,7 @@
     "src/infrastructure/atomic_io.py": "c48c27e0739dcf1203e95f1869259ee17669bda3646cac4d946be2e44397c4d6",
     "src/product/workspace.py": "782321d5fc0e4ea6db6bcf419c7e2e4923507fa31072dfec8ada9cbfe541713e",
     "src/product/recovery.py": "8c664c22619a3a90f0875a1d50a5097a2464e9527e28b914f224bf96fa4fabcf",
-    "src/product/web.py": "fb61d07184ee3924cea95f8f37821feaef83af1debca93c4d55ceab58ff345f5",
+    "src/product/web.py": "38ed6d894bc71cea8cdf6221c89e6d08fd821620eb603558be5d536fa4d36e46",
     "src/cli.py": "3b73f103325ab7a60bae04f0efeeb6da70f9e31da30173dfee2d3770c9808ab9",
     "scripts/verify_product_recovery.py": "725e58bb0f1291246e6d83a1852960d5cc3b041565fd7741256bc7611bfd89ea"
   },

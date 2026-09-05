@@ -224,6 +224,14 @@ V4.03 decomposes the matching Studio status response into safe artifact links,
 typed evidence-library projections and the manager future/world-navigation
 assembly. Malformed task plans retain their prior fail-soft behavior, causal
 claim flags remain false, and the returned JSON schema is unchanged.
+V4.04 closes the remaining focused complexity debt in the Web product. Match,
+paired-match, single-fork and fork-set requests now share one strict fixture
+validator, while public result links, tactical-study progress and fork-set
+progress have separate fail-soft projections. The whole Web product and the
+action-adoption core pass the focused complexity, branch and statement gate;
+CI and the immutable reproduction verifier require that exact gate. This is a
+maintainability and reviewability increment only, not new model, match, causal,
+user-value or deployment evidence.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

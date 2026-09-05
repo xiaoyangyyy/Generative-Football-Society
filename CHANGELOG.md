@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Consolidated fixture request validation and separated result-link, tactical-
+  study, and fork-set progress projection in the Web gateway; the complete Web
+  product and action-adoption core now pass a focused complexity gate that is
+  enforced by both CI and the immutable reproduction contract.
 - Decomposed the Web Studio status aggregator into safe artifact projection,
   typed match/fork/fork-set/pair/study evidence builders, manager-future binding,
   and world-navigator assembly; the top-level status method now passes the

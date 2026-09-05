@@ -1590,16 +1590,27 @@ class ProductWebApp:
         finally:
             self._mutation_lock.release()
 
-    def _queue_match(
-        self, environ: dict[str, Any], payload: dict[str, Any],
-    ) -> tuple[int, list[tuple[str, str]], bytes]:
+    def _fixture_request_fields(
+        self,
+        payload: dict[str, Any],
+        *,
+        same_team_message: str,
+    ) -> tuple[str, str, bool]:
         home = self._text_field(payload, "home", maximum=80)
         away = self._text_field(payload, "away", maximum=80)
         if home.casefold() == away.casefold():
-            raise WebRequestError(422, "same_team", "Home and away teams must differ")
+            raise WebRequestError(422, "same_team", same_team_message)
         fast = payload.get("fast", False)
         if not isinstance(fast, bool):
             raise WebRequestError(422, "invalid_fast", "fast must be boolean")
+        return home, away, fast
+
+    def _queue_match(
+        self, environ: dict[str, Any], payload: dict[str, Any],
+    ) -> tuple[int, list[tuple[str, str]], bytes]:
+        home, away, fast = self._fixture_request_fields(
+            payload, same_team_message="Home and away teams must differ",
+        )
         try:
             plan = MatchPlan.from_payload(payload.get("plan"))
         except ValueError as exc:
@@ -1735,13 +1746,9 @@ class ProductWebApp:
     def _queue_paired_match(
         self, environ: dict[str, Any], payload: dict[str, Any],
     ) -> tuple[int, list[tuple[str, str]], bytes]:
-        home = self._text_field(payload, "home", maximum=80)
-        away = self._text_field(payload, "away", maximum=80)
-        if home.casefold() == away.casefold():
-            raise WebRequestError(422, "same_team", "Teams must differ")
-        fast = payload.get("fast", False)
-        if not isinstance(fast, bool):
-            raise WebRequestError(422, "invalid_fast", "fast must be boolean")
+        home, away, fast = self._fixture_request_fields(
+            payload, same_team_message="Teams must differ",
+        )
         try:
             plan = PairedMatchPlan.from_payload(payload.get("plan"))
         except ValueError as exc:
@@ -1797,13 +1804,9 @@ class ProductWebApp:
     def _queue_world_model_fork(
         self, environ: dict[str, Any], payload: dict[str, Any],
     ) -> tuple[int, list[tuple[str, str]], bytes]:
-        home = self._text_field(payload, "home", maximum=80)
-        away = self._text_field(payload, "away", maximum=80)
-        if home.casefold() == away.casefold():
-            raise WebRequestError(422, "same_team", "Teams must differ")
-        fast = payload.get("fast", False)
-        if not isinstance(fast, bool):
-            raise WebRequestError(422, "invalid_fast", "fast must be boolean")
+        home, away, fast = self._fixture_request_fields(
+            payload, same_team_message="Teams must differ",
+        )
         try:
             plan = WorldModelForkPlan.from_payload(payload.get("plan"))
         except ValueError as exc:
@@ -1861,13 +1864,9 @@ class ProductWebApp:
     def _queue_world_model_fork_set(
         self, environ: dict[str, Any], payload: dict[str, Any],
     ) -> tuple[int, list[tuple[str, str]], bytes]:
-        home = self._text_field(payload, "home", maximum=80)
-        away = self._text_field(payload, "away", maximum=80)
-        if home.casefold() == away.casefold():
-            raise WebRequestError(422, "same_team", "Teams must differ")
-        fast = payload.get("fast", False)
-        if not isinstance(fast, bool):
-            raise WebRequestError(422, "invalid_fast", "fast must be boolean")
+        home, away, fast = self._fixture_request_fields(
+            payload, same_team_message="Teams must differ",
+        )
         try:
             plan = WorldModelForkSetPlan.from_payload(payload.get("plan"))
         except ValueError as exc:
@@ -2070,8 +2069,8 @@ class ProductWebApp:
             return "/artifacts/" + relative
         return None
 
-    def _task_for_web(self, task: dict[str, Any]) -> dict[str, Any]:
-        payload = json.loads(json.dumps(task, ensure_ascii=False, default=str))
+    @staticmethod
+    def _attach_task_result_urls(payload: dict[str, Any]) -> None:
         result = payload.get("result") or {}
         for field, url_field in (
             ("dashboard", "dashboard_url"),
@@ -2084,89 +2083,112 @@ class ProductWebApp:
             dashboard_url = ProductWebApp._safe_artifact_url(result.get(field))
             if dashboard_url:
                 result[url_field] = dashboard_url
-        if payload.get("kind") == "tactical_study":
-            plan_payload = ((payload.get("request") or {}).get("plan") or {})
-            try:
-                validated_plan = TacticalStudyPlan.from_payload(plan_payload)
-                study_id = validated_plan.study_id
-                if payload.get("state") == "queued":
-                    payload["study_progress"] = {
-                        "state": "queued",
-                        "pairs_completed": 0,
-                        "fixed_pair_budget": len(validated_plan.seeds),
-                        "analysis_withheld": True,
-                    }
-                    return payload
-                workspace = ProductWorkspace.load(self.root)
-                progress_path = (
-                    workspace.output_root / "studies" / study_id / "progress.json"
-                )
-                progress = json.loads(progress_path.read_text(encoding="utf-8"))
-                completed = int(progress.get("pairs_completed", 0))
-                budget = int(progress.get("fixed_pair_budget", 0))
-                if (
-                    progress.get("analysis") is not None
-                    or progress.get("interim_effects_disclosed") is not False
-                    or not 0 <= completed <= budget
-                    or budget != len(validated_plan.seeds)
-                ):
-                    raise ValueError("invalid public study progress")
+
+    def _attach_study_progress(self, payload: dict[str, Any]) -> None:
+        plan_payload = (payload.get("request") or {}).get("plan") or {}
+        try:
+            validated_plan = TacticalStudyPlan.from_payload(plan_payload)
+            if payload.get("state") == "queued":
                 payload["study_progress"] = {
-                    "state": str(progress.get("state") or "unknown"),
-                    "pairs_completed": completed,
-                    "fixed_pair_budget": budget,
+                    "state": "queued",
+                    "pairs_completed": 0,
+                    "fixed_pair_budget": len(validated_plan.seeds),
                     "analysis_withheld": True,
                 }
-            except (
-                OSError, ValueError, TypeError, AttributeError,
-                json.JSONDecodeError,
+                return
+            workspace = ProductWorkspace.load(self.root)
+            progress_path = (
+                workspace.output_root
+                / "studies"
+                / validated_plan.study_id
+                / "progress.json"
+            )
+            progress = json.loads(progress_path.read_text(encoding="utf-8"))
+            completed = int(progress.get("pairs_completed", 0))
+            budget = int(progress.get("fixed_pair_budget", 0))
+            if (
+                progress.get("analysis") is not None
+                or progress.get("interim_effects_disclosed") is not False
+                or not 0 <= completed <= budget
+                or budget != len(validated_plan.seeds)
             ):
-                if payload.get("state") != "queued":
-                    payload["study_progress"] = {
-                        "state": "invalid_progress",
-                        "analysis_withheld": True,
-                    }
-        if payload.get("kind") == "world_model_fork_set":
-            plan_payload = ((payload.get("request") or {}).get("plan") or {})
-            try:
-                validated_plan = WorldModelForkSetPlan.from_payload(plan_payload)
-                budget = len(validated_plan.branch_times_sec)
-                if payload.get("state") == "queued":
-                    payload["fork_set_progress"] = {
-                        "state": "queued", "scenarios_completed": 0,
-                        "fixed_scenario_budget": budget,
-                        "ranking_withheld": True,
-                    }
-                    return payload
-                workspace = ProductWorkspace.load(self.root)
-                progress_path = (
-                    workspace.output_root / "fork_sets"
-                    / str(payload.get("task_id")) / "progress.json"
-                )
-                progress = json.loads(progress_path.read_text(encoding="utf-8"))
-                completed = int(progress.get("scenarios_completed", 0))
-                reported_budget = int(progress.get("fixed_scenario_budget", 0))
-                if (
-                    progress.get("analysis") is not None
-                    or progress.get("interim_ranking_disclosed") is not False
-                    or not 0 <= completed <= reported_budget
-                    or reported_budget != budget
-                ):
-                    raise ValueError("invalid public fork-set progress")
+                raise ValueError("invalid public study progress")
+            payload["study_progress"] = {
+                "state": str(progress.get("state") or "unknown"),
+                "pairs_completed": completed,
+                "fixed_pair_budget": budget,
+                "analysis_withheld": True,
+            }
+        except (
+            OSError,
+            ValueError,
+            TypeError,
+            AttributeError,
+            json.JSONDecodeError,
+        ):
+            if payload.get("state") != "queued":
+                payload["study_progress"] = {
+                    "state": "invalid_progress",
+                    "analysis_withheld": True,
+                }
+
+    def _attach_fork_set_progress(self, payload: dict[str, Any]) -> None:
+        plan_payload = (payload.get("request") or {}).get("plan") or {}
+        try:
+            validated_plan = WorldModelForkSetPlan.from_payload(plan_payload)
+            budget = len(validated_plan.branch_times_sec)
+            if payload.get("state") == "queued":
                 payload["fork_set_progress"] = {
-                    "state": str(progress.get("state") or "unknown"),
-                    "scenarios_completed": completed,
-                    "fixed_scenario_budget": reported_budget,
+                    "state": "queued",
+                    "scenarios_completed": 0,
+                    "fixed_scenario_budget": budget,
                     "ranking_withheld": True,
                 }
-            except (
-                OSError, ValueError, TypeError, AttributeError,
-                json.JSONDecodeError,
+                return
+            workspace = ProductWorkspace.load(self.root)
+            progress_path = (
+                workspace.output_root
+                / "fork_sets"
+                / str(payload.get("task_id"))
+                / "progress.json"
+            )
+            progress = json.loads(progress_path.read_text(encoding="utf-8"))
+            completed = int(progress.get("scenarios_completed", 0))
+            reported_budget = int(progress.get("fixed_scenario_budget", 0))
+            if (
+                progress.get("analysis") is not None
+                or progress.get("interim_ranking_disclosed") is not False
+                or not 0 <= completed <= reported_budget
+                or reported_budget != budget
             ):
-                if payload.get("state") != "queued":
-                    payload["fork_set_progress"] = {
-                        "state": "invalid_progress", "ranking_withheld": True,
-                    }
+                raise ValueError("invalid public fork-set progress")
+            payload["fork_set_progress"] = {
+                "state": str(progress.get("state") or "unknown"),
+                "scenarios_completed": completed,
+                "fixed_scenario_budget": reported_budget,
+                "ranking_withheld": True,
+            }
+        except (
+            OSError,
+            ValueError,
+            TypeError,
+            AttributeError,
+            json.JSONDecodeError,
+        ):
+            if payload.get("state") != "queued":
+                payload["fork_set_progress"] = {
+                    "state": "invalid_progress",
+                    "ranking_withheld": True,
+                }
+
+    def _task_for_web(self, task: dict[str, Any]) -> dict[str, Any]:
+        payload = json.loads(json.dumps(task, ensure_ascii=False, default=str))
+        self._attach_task_result_urls(payload)
+        kind = payload.get("kind")
+        if kind == "tactical_study":
+            self._attach_study_progress(payload)
+        elif kind == "world_model_fork_set":
+            self._attach_fork_set_progress(payload)
         return payload
 
     def _artifact_response(

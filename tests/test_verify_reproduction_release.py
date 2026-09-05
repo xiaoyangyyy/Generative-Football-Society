@@ -121,6 +121,14 @@ def test_ci_gate_rejects_action_commit_drift():
     assert not _ci_workflow_is_locked(
         action_lock,
         workflow.replace(
+            "python -m ruff check src/product/web.py "
+            "src/match_engine/action_engine.py --select C901,PLR0912,PLR0915",
+            "python -m ruff check src/product/web.py",
+        ),
+    )
+    assert not _ci_workflow_is_locked(
+        action_lock,
+        workflow.replace(
             "--require-hashes -r requirements-ci-linux-py312.lock",
             "ruff==0.15.17",
         ),

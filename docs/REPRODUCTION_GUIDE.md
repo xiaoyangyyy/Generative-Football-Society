@@ -83,6 +83,7 @@ python -m pip install --require-hashes -r requirements-linux-py312.lock
 python -m pip install --require-hashes -r requirements-ci-linux-py312.lock
 python -m pip install --no-build-isolation --no-deps -e .
 python -m ruff check src
+python -m ruff check src/product/web.py src/match_engine/action_engine.py --select C901,PLR0912,PLR0915
 python -m pytest -q
 ```
 
@@ -121,8 +122,9 @@ temporary container and image. It does not run a match or train a model.
 
 The pinned GitHub Actions handoff in `.github/workflows/ci.yml` uses exact
 official action commits, Ubuntu 24.04, exact CPython 3.12.11, the hashed Linux
-runtime and CI-tool closures, a mandatory `python -m ruff check src` gate, and
-the same explicitly non-training test boundary. It
+runtime and CI-tool closures, a mandatory default source-health gate, a focused
+complexity/branch/statement gate for the Web product and action-adoption core,
+and the same explicitly non-training test boundary. It
 does not perform an unpinned pip self-upgrade. A successful push run uploads the
 runtime and deployment reports and produces a GitHub artifact provenance
 attestation. An uploaded artifact is evidence for its recorded commit only; it
