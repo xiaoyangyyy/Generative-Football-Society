@@ -23,6 +23,8 @@
     "requirements.txt",
     "requirements-linux-py312.in",
     "requirements-linux-py312.lock",
+    "requirements-ci-linux-py312.in",
+    "requirements-ci-linux-py312.lock",
     "requirements-windows-py313.in",
     "requirements-windows-py313.lock",
     "Dockerfile",
@@ -75,6 +77,23 @@
       "tzdata": "2026.3",
       "colorama": "0.4.6"
     }
+  },
+  "ci_tooling": {
+    "python": "3.12",
+    "platform": "x86_64-manylinux_2_28",
+    "input": "requirements-ci-linux-py312.in",
+    "lock": "requirements-ci-linux-py312.lock",
+    "install": "python -m pip install --require-hashes -r requirements-ci-linux-py312.lock",
+    "direct_dependencies": {
+      "pytest": "9.0.3",
+      "ruff": "0.15.17"
+    },
+    "package_count": 7,
+    "portability_shims": {
+      "colorama": "0.4.6"
+    },
+    "source_gate": "python -m ruff check src",
+    "runtime_dependency_boundary": "separate"
   },
   "windows_reference_lock": {
     "python": "3.13",

@@ -8,6 +8,8 @@ import pytest
 
 from scripts.verify_reproduction_release import (
     CI_ACTION_LOCK,
+    CI_TOOL_INPUT,
+    CI_TOOL_LOCK,
     LICENSE_REGISTRY,
     _ci_workflow_is_locked,
     _license_checks,
@@ -49,6 +51,12 @@ def test_code_release_contract_blocks_on_stale_formal_paper_identity():
     assert report["checks"][
         "excellence_evidence_kit_is_current_template_only_and_zero_execution"
     ] is True
+    assert report["checks"][
+        "ci_tooling_lock_is_exact_hashed_and_runtime_separate"
+    ] is True
+    assert report["checks"]["source_health_gate_is_read_only"] is True
+    assert "requirements-ci-linux-py312.in" in report["artifact_sha256"]
+    assert "requirements-ci-linux-py312.lock" in report["artifact_sha256"]
     assert "src/product/completion_plan.py" in report["artifact_sha256"]
     assert "src/product/control_plane.py" in report["artifact_sha256"]
     assert "src/cli.py" in report["artifact_sha256"]
@@ -106,3 +114,31 @@ def test_ci_gate_rejects_action_commit_drift():
     tampered = copy.deepcopy(action_lock)
     tampered["actions"][0]["resolved_commit"] = "0" * 40
     assert not _ci_workflow_is_locked(tampered, workflow)
+    assert not _ci_workflow_is_locked(
+        action_lock,
+        workflow.replace("python -m ruff check src", "python -m ruff check scripts"),
+    )
+    assert not _ci_workflow_is_locked(
+        action_lock,
+        workflow.replace(
+            "--require-hashes -r requirements-ci-linux-py312.lock",
+            "ruff==0.15.17",
+        ),
+    )
+
+
+def test_ci_tooling_is_exact_hashed_and_separate_from_runtime():
+    direct = _parse_exact_requirements(CI_TOOL_INPUT.read_text(encoding="utf-8"))
+    assert direct == {
+        "colorama": "0.4.6",
+        "pytest": "9.0.3",
+        "ruff": "0.15.17",
+    }
+    lock = CI_TOOL_LOCK.read_text(encoding="utf-8")
+    assert lock.count("--hash=sha256:") >= 7
+    assert "colorama==0.4.6" in lock
+    assert "pytest==9.0.3" in lock
+    assert "ruff==0.15.17" in lock
+    runtime_lock = Path("requirements-linux-py312.lock").read_text(encoding="utf-8")
+    assert "\npytest==" not in runtime_lock
+    assert "\nruff==" not in runtime_lock

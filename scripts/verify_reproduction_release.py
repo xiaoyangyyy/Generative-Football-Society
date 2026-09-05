@@ -62,6 +62,8 @@ REQUIREMENTS = ROOT / "requirements.txt"
 DOCKERFILE = ROOT / "Dockerfile"
 TARGET_LOCK_INPUT = ROOT / "requirements-linux-py312.in"
 TARGET_LOCK = ROOT / "requirements-linux-py312.lock"
+CI_TOOL_INPUT = ROOT / "requirements-ci-linux-py312.in"
+CI_TOOL_LOCK = ROOT / "requirements-ci-linux-py312.lock"
 TARGET_VALIDATION = ROOT / "data/evaluation/target_lock_validation_v1.json"
 SBOM = ROOT / "data/evaluation/supply_chain_sbom_v1.cdx.json"
 WINDOWS_LOCK = ROOT / "requirements-windows-py313.lock"
@@ -231,6 +233,8 @@ def _ci_workflow_is_locked(action_lock: dict, workflow: str) -> bool:
             marker in workflow
             for marker in (
                 "--require-hashes -r requirements-linux-py312.lock",
+                "--require-hashes -r requirements-ci-linux-py312.lock",
+                "python -m ruff check src",
                 'python-version: "3.12.11"',
                 "runs-on: ubuntu-24.04",
                 "--deselect tests/test_world_model_semantic_event_training.py::test_trainer_persists_real_one_and_two_step_event_evidence",
@@ -292,6 +296,23 @@ def verify_reproduction_release() -> dict:
     lock_text = TARGET_LOCK.read_text(encoding="utf-8")
     locked_packages = parse_hashed_lock(lock_text)
     locked = {row["name"]: row for row in locked_packages}
+    ci_tool_input = _parse_exact_requirements(
+        CI_TOOL_INPUT.read_text(encoding="utf-8")
+    )
+    ci_tool_packages = parse_hashed_lock(CI_TOOL_LOCK.read_text(encoding="utf-8"))
+    ci_tools = {row["name"]: row for row in ci_tool_packages}
+    ci_tool_contract = contract.get("ci_tooling") or {}
+    expected_ci_tools = {
+        _normalized_name(name): str(version)
+        for name, version in (ci_tool_contract.get("direct_dependencies") or {}).items()
+    }
+    expected_ci_input = {
+        **expected_ci_tools,
+        **{
+            _normalized_name(name): str(version)
+            for name, version in (ci_tool_contract.get("portability_shims") or {}).items()
+        },
+    }
     validation = _read_json(TARGET_VALIDATION)
     sbom = _read_json(SBOM)
     expected_sbom = build_cyclonedx_sbom(
@@ -362,6 +383,23 @@ def verify_reproduction_release() -> dict:
                 for name in ("tzdata", "colorama")
             }
             == contract.get("target_lock", {}).get("portability_shims")
+        ),
+        "ci_tooling_lock_is_exact_hashed_and_runtime_separate": (
+            ci_tool_input == expected_ci_input
+            and len(ci_tool_packages)
+            == ci_tool_contract.get("package_count")
+            == 7
+            and all(row["sha256"] for row in ci_tool_packages)
+            and all(
+                name in ci_tools
+                and _base_version(str(ci_tools[name]["version"])) == version
+                for name, version in expected_ci_tools.items()
+            )
+            and not (set(expected_ci_tools) & set(locked))
+            and ci_tool_contract.get("runtime_dependency_boundary") == "separate"
+            and ci_tool_contract.get("install")
+            == "python -m pip install --require-hashes -r requirements-ci-linux-py312.lock"
+            and ci_tool_contract.get("source_gate") == "python -m ruff check src"
         ),
         "target_lock_validation_matches_artifacts": (
             validation.get("passed") is True
@@ -519,6 +557,8 @@ def verify_reproduction_release() -> dict:
                 "release_verifier": "scripts/verify_reproduction_release.py",
                 "target_runtime_lock": "requirements-linux-py312.lock",
                 "target_lock_input": "requirements-linux-py312.in",
+                "ci_tool_lock": "requirements-ci-linux-py312.lock",
+                "ci_tool_lock_input": "requirements-ci-linux-py312.in",
                 "target_lock_validation": "data/evaluation/target_lock_validation_v1.json",
                 "supply_chain_sbom": "data/evaluation/supply_chain_sbom_v1.cdx.json",
                 "windows_runtime_lock": "requirements-windows-py313.lock",
@@ -588,6 +628,14 @@ def verify_reproduction_release() -> dict:
         "release_audit_is_read_only": any(
             row.get("id") == "reproduction_release_audit"
             and row.get("command") == "python scripts/verify_reproduction_release.py"
+            and row.get("effect") == "read_only"
+            and row.get("runs_simulation") is False
+            and row.get("explicit_authority_required") is False
+            for row in commands
+        ),
+        "source_health_gate_is_read_only": any(
+            row.get("id") == "source_health"
+            and row.get("command") == "python -m ruff check src"
             and row.get("effect") == "read_only"
             and row.get("runs_simulation") is False
             and row.get("explicit_authority_required") is False

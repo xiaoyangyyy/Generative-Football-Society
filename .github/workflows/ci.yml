@@ -25,12 +25,19 @@ jobs:
         with:
           python-version: "3.12.11"
           cache: pip
-          cache-dependency-path: requirements-linux-py312.lock
+          cache-dependency-path: |
+            requirements-linux-py312.lock
+            requirements-ci-linux-py312.lock
 
       - name: Install dependencies
         run: |
           python -m pip install --require-hashes -r requirements-linux-py312.lock
+          python -m pip install --require-hashes -r requirements-ci-linux-py312.lock
           python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Source health
+        run: |
+          python -m ruff check src
 
       - name: Compile project
         run: |

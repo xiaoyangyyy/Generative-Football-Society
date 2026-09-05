@@ -1,0 +1,7 @@
+# CI-only verification tools for CPython 3.12 on Linux x86_64.
+# Keep these separate from the product runtime dependency lock.
+pytest==9.0.3
+ruff==0.15.17
+
+# pip evaluates markers against the Windows audit host even with --platform.
+colorama==0.4.6

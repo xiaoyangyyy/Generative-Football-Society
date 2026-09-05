@@ -2,6 +2,9 @@
 
 ## Unreleased - v7 candidate
 
+- Added a separate seven-package, fully hashed Linux CI-tool lock for pytest and
+  Ruff, removed reliance on GitHub runner preinstalls, and made production
+  source health a mandatory immutable-workflow and reproduction-contract gate.
 - Made all production `src` modules pass the default Ruff gate by formatting
   the remaining data, memory, product, simulation, and visualization debt,
   moving three cycle-free imports to their standard boundary, and replacing

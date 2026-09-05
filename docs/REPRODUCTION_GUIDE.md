@@ -80,7 +80,10 @@ For the deployment target, install inside Python 3.12 x86_64 Linux with:
 
 ```bash
 python -m pip install --require-hashes -r requirements-linux-py312.lock
+python -m pip install --require-hashes -r requirements-ci-linux-py312.lock
 python -m pip install --no-build-isolation --no-deps -e .
+python -m ruff check src
+python -m pytest -q
 ```
 
 For the Windows development reference profile, use CPython 3.13 x86_64:
@@ -90,11 +93,14 @@ python -m pip install --require-hashes -r requirements-windows-py313.lock
 python -m pip install --no-build-isolation --no-deps -e .
 ```
 
-The target lock contains 64 exact packages, includes the CPU Torch wheel,
+The target runtime lock contains 64 exact packages, includes the CPU Torch wheel,
 records all accepted distribution SHA-256 values, and has passed both uv and
 pip dry-run resolution. `tzdata` and `colorama` are deliberate shims so pip can
 also audit the Linux lock from a Windows host whose marker evaluation follows
-the host. The matrix intentionally defines two reference profiles; it does not
+the host. The separate CI-only Linux lock contains exact hashed pytest and Ruff
+closures, so neither test execution nor the `src` static gate depends on tools
+that happen to be preinstalled on the GitHub runner. The matrix intentionally
+defines two runtime reference profiles; it does not
 claim every Python/OS combination permitted by `pyproject.toml`. The observed
 Windows import smoke is direct runtime evidence, but it is not a Linux import
 test or an independent clean-room reproduction.
@@ -115,7 +121,8 @@ temporary container and image. It does not run a match or train a model.
 
 The pinned GitHub Actions handoff in `.github/workflows/ci.yml` uses exact
 official action commits, Ubuntu 24.04, exact CPython 3.12.11, the hashed Linux
-dependency closure, and the same explicitly non-training test boundary. It
+runtime and CI-tool closures, a mandatory `python -m ruff check src` gate, and
+the same explicitly non-training test boundary. It
 does not perform an unpinned pip self-upgrade. A successful push run uploads the
 runtime and deployment reports and produces a GitHub artifact provenance
 attestation. An uploaded artifact is evidence for its recorded commit only; it

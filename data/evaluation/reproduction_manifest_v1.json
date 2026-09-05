@@ -23,6 +23,8 @@
     "dependency_lock_contract": "data/evaluation/dependency_lock_contract_v1.json",
     "target_lock_input": "requirements-linux-py312.in",
     "target_runtime_lock": "requirements-linux-py312.lock",
+    "ci_tool_lock_input": "requirements-ci-linux-py312.in",
+    "ci_tool_lock": "requirements-ci-linux-py312.lock",
     "target_lock_validation": "data/evaluation/target_lock_validation_v1.json",
     "supply_chain_sbom": "data/evaluation/supply_chain_sbom_v1.cdx.json",
     "windows_lock_input": "requirements-windows-py313.in",
@@ -113,6 +115,13 @@
     {
       "id": "reproduction_release_audit",
       "command": "python scripts/verify_reproduction_release.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "source_health",
+      "command": "python -m ruff check src",
       "effect": "read_only",
       "runs_simulation": false,
       "explicit_authority_required": false
@@ -393,6 +402,7 @@
     "direct_dependencies_pinned": true,
     "full_transitive_hash_lock": true,
     "target_runtime_lock": "requirements-linux-py312.lock",
+    "ci_tooling_lock": "requirements-ci-linux-py312.lock",
     "windows_reference_runtime_lock": "requirements-windows-py313.lock",
     "cross_platform_lock_matrix": true,
     "cyclonedx_sbom_current": true,
