@@ -341,6 +341,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "sample.semantic_example_coverage_complete" in document
     assert "appendManagerWorldEvolutionThreadWithoutReviewedFutures" in document
     assert "appendManagerWorldEvolutionThreadWithoutOfficialActionSemantics" in document
+    assert "renderManagerDecisionLedgerWithoutMetaLearningSummary" in document
+    assert "summary?.meta_learning_pending" in document
+    assert "meta_learning_after" in document
     assert "stage.retained_semantic_examples" in document
     assert "stage.semantic_direct_cross_ball_event_examples" in document
     assert "appendManagerWorldEvolutionThreadWithoutRetainedRecordSemantics" in document

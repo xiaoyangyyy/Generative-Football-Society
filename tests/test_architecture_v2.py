@@ -55,6 +55,9 @@ def test_architecture_v2_machine_audit_passes():
         "society_cognition_persists_into_next_match_and_product_thread"
     ]
     assert report["checks"][
+        "meta_learning_is_delayed_identity_bound_and_product_visible"
+    ]
+    assert report["checks"][
         "manager_counterfactual_workbench_is_one_replayable_workflow"
     ]
     assert report["checks"][

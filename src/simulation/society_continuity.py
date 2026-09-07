@@ -117,6 +117,14 @@ PUBLIC_BOUNDARY = (
     "simulator-owned social, psychological and cognitive continuity; memory text "
     "is not exposed here and no score or real-world causal claim is authorized"
 )
+META_PUBLIC_STATUSES = (
+    "shadow",
+    "observed_pending_evaluation",
+    "committed",
+    "rejected",
+    "rolled_back",
+    "expired",
+)
 
 
 def _identity(payload: Mapping[str, Any]) -> str:
@@ -273,6 +281,14 @@ def validate_society_continuity_state(
         raise ValueError("society continuity semantic memory is invalid")
     for field in MEMORY_LIMITS:
         canonical[field] = _bounded_records(canonical[field], field=field)
+    from src.simulation.meta_learning import validate_meta_proposal
+
+    for audit in canonical["reflection_audit"]:
+        if "meta_proposal" not in audit:
+            continue
+        proposal = validate_meta_proposal(audit["meta_proposal"])
+        if proposal.agent != canonical["team_id"]:
+            raise ValueError("society meta-learning agent identity mismatch")
     if not isinstance(canonical["reflection_diary"], str):
         raise ValueError("society continuity reflection diary is invalid")
     rivalry = canonical["rivalry_database"]
@@ -571,12 +587,26 @@ def society_public_snapshot(
             "social_narrative_state": {},
             "psychological_state": {},
             "referee_grievance": None,
+            "meta_learning": {
+                "total": 0,
+                **{status: 0 for status in META_PUBLIC_STATUSES},
+            },
             "claim_boundary": PUBLIC_BOUNDARY,
         }
     state = validate_society_continuity_state(
         payload, expected_team=team_id,
     )
     memories = state["episodic_memory"] + state["procedural_memory"]
+    from src.simulation.meta_learning import validate_meta_proposal
+
+    meta_counts = {status: 0 for status in META_PUBLIC_STATUSES}
+    for audit in state["reflection_audit"]:
+        if "meta_proposal" not in audit:
+            continue
+        proposal = validate_meta_proposal(audit["meta_proposal"])
+        if proposal.agent != team_id:
+            raise ValueError("society meta-learning agent identity mismatch")
+        meta_counts[proposal.status] += 1
     return {
         "available": True,
         "state_identity": state["state_identity"],
@@ -594,22 +624,28 @@ def society_public_snapshot(
         ),
         "psychological_state": copy.deepcopy(state["psychological_state"]),
         "referee_grievance": state["scalars"]["referee_grievance"],
+        "meta_learning": {
+            "total": sum(meta_counts.values()),
+            **meta_counts,
+        },
         "claim_boundary": PUBLIC_BOUNDARY,
     }
 
 
 def validate_society_public_snapshot(payload: Mapping[str, Any]) -> None:
     """Validate the content-free projection embedded in product evidence."""
-    expected = {
+    legacy_expected = {
         "available", "state_identity", "source_transaction_id",
         "memory_records", "cognitive_memory_records", "beliefs",
         "reflections", "tactical_controls", "emotion_profile",
         "social_narrative_state", "psychological_state",
         "referee_grievance", "claim_boundary",
     }
+    expected = legacy_expected | {"meta_learning"}
     if (
         not isinstance(payload, Mapping)
-        or set(payload) != expected
+        or frozenset(payload)
+        not in {frozenset(legacy_expected), frozenset(expected)}
         or not isinstance(payload.get("available"), bool)
         or payload.get("claim_boundary") != PUBLIC_BOUNDARY
     ):
@@ -629,6 +665,22 @@ def validate_society_public_snapshot(payload: Mapping[str, Any]) -> None:
         raise ValueError("society public snapshot count exceeds limit")
     if payload["cognitive_memory_records"] > payload["memory_records"]:
         raise ValueError("society public cognitive count is invalid")
+    meta = payload.get("meta_learning")
+    if meta is not None:
+        meta_fields = {"total", *META_PUBLIC_STATUSES}
+        if (
+            not isinstance(meta, Mapping)
+            or set(meta) != meta_fields
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or not 0 <= value <= MEMORY_LIMITS["reflection_audit"]
+                for value in meta.values()
+            )
+            or meta["total"]
+            != sum(meta[status] for status in META_PUBLIC_STATUSES)
+        ):
+            raise ValueError("society public meta-learning summary is invalid")
     if payload["available"] is False:
         if (
             payload["state_identity"] is not None
@@ -642,6 +694,7 @@ def validate_society_public_snapshot(payload: Mapping[str, Any]) -> None:
                 "social_narrative_state", "psychological_state",
             ))
             or payload["referee_grievance"] is not None
+            or meta is not None and any(meta.values())
         ):
             raise ValueError("unavailable society public snapshot is not empty")
         return
@@ -721,6 +774,28 @@ def society_public_transition(
         - int(before.get("reflections") or 0),
         "changed_state_fields": changed,
         "claim_boundary": PUBLIC_BOUNDARY,
+        **(
+            {
+                "meta_learning_before": copy.deepcopy(
+                    before.get("meta_learning") or {
+                        "total": 0,
+                        **{status: 0 for status in META_PUBLIC_STATUSES},
+                    }
+                ),
+                "meta_learning_after": copy.deepcopy(
+                    after.get("meta_learning") or {
+                        "total": 0,
+                        **{status: 0 for status in META_PUBLIC_STATUSES},
+                    }
+                ),
+                "meta_learning_delta": {
+                    field: int((after.get("meta_learning") or {}).get(field, 0))
+                    - int((before.get("meta_learning") or {}).get(field, 0))
+                    for field in ("total", *META_PUBLIC_STATUSES)
+                },
+            }
+            if "meta_learning" in before or "meta_learning" in after else {}
+        ),
     }
 
 

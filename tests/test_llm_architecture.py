@@ -76,12 +76,16 @@ def test_meta_learning_uses_slower_step_for_model_weights():
             "suggested_adjustments": {"pressing_intensity": 1.0, "w_h_delta": 1.0},
         },
     )
-    fast = audit["applied_adjustments"]["pressing_intensity"]
-    slow = audit["applied_adjustments"]["w_h_delta"]
+    fast = audit["proposed_adjustments"]["pressing_intensity"]
+    slow = audit["proposed_adjustments"]["w_h_delta"]
     assert fast["time_scale"] == "fast"
     assert slow["time_scale"] == "slow"
-    assert abs(slow["applied_delta"]) < abs(fast["applied_delta"])
+    assert abs(slow["proposed_delta"]) < abs(fast["proposed_delta"])
     assert audit["evidence_verified"] == ["A-7"]
+    assert audit["proposal_status"] == "shadow"
+    assert audit["applied_adjustments"] == {}
+    assert agent.tactical_controls["pressing_intensity"] == 0.5
+    assert agent.W_h == 0.8
 
 
 class _NarrativeAgent:

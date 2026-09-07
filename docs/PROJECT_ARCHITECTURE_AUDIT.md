@@ -279,6 +279,24 @@ not quality signals by themselves.
     privacy, tamper, compaction and next-decision tests establish the software
     mechanism but do not claim outcome improvement or real-world causality.
     The complete 197-file regression passes with 1,422 tests and three skips.
+55. Replaced the production meta-learning shortcut with a delayed authority
+    lifecycle. Reflection now persists a content-addressed shadow proposal and
+    cannot mutate parameters. Later settlements attach idempotent descriptive
+    observations without treating them as effect evidence. Authorization
+    requires at least eight identity-bound matched-seed rows; the validator
+    independently replays the source identity, paired effects, ATE and 95%
+    interval before a positive lower bound may commit. Utility rows are bound
+    to the runtime `[-5, 5]` scale, caller thresholds cannot be negative, and
+    no-effect reflections remain audit-only rather than creating pending
+    authority. Negative intervals, stale parameters, duplicate rows, boolean
+    adjustment/lifecycle values, operation reuse and nested/receipt tampering
+    fail closed.
+    Proposal status survives through the existing
+    reflection/society/checkpoint state and is projected without private text
+    into world-state V3 and the existing six-stage manager thread. V1/V2 remain
+    replay-compatible, and no formal effect result is claimed. The final
+    198-file regression passes 1,433 tests with three declared skips, and every
+    Python file modified by this stage passes Ruff.
 
 ## LLM Scope Decision
 
@@ -309,9 +327,9 @@ cleaning, or direct unaudited state mutation.
    scheduling/advancement/reflection, state owns checkpoint/restore, the match
    service owns execution stages, and standings/bracket/referee logic stays in
    its existing domain modules.
-5. Keep the new matched-seed cognition, narrative and memory continuity tests
-   as release invariants; extend the same selective-change contract to
-   meta-learning proposals before granting them cross-match authority.
+5. Keep the matched-seed cognition, narrative, memory and meta-learning
+   authority tests as release invariants. Do not promote any meta proposal
+   without a replayable current-identity evaluation receipt.
 6. Fit macro intensity and micro action parameters against held-out event data with uncertainty intervals.
 7. Keep v7 deployed and v6 as rollback; v8.9 remains evaluated until continuous-time LODO beats the continuous baseline.
 

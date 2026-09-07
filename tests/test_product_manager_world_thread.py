@@ -480,6 +480,15 @@ def test_world_evolution_thread_keeps_society_continuity_inside_world_state():
         "cognitive_memory_delta": 2,
         "belief_delta": 1,
         "reflection_delta": 0,
+        "meta_learning_after": {
+            "total": 2,
+            "shadow": 1,
+            "observed_pending_evaluation": 1,
+            "committed": 0,
+            "rejected": 0,
+            "rolled_back": 0,
+            "expired": 0,
+        },
         "changed_state_fields": ["emotion_profile", "tactical_controls"],
         "claim_boundary": "persisted simulator state only",
     }
@@ -498,3 +507,5 @@ def test_world_evolution_thread_keeps_society_continuity_inside_world_state():
     entry["world_evolution_thread"] = thread
     summary = manager_world_evolution_summary([entry])
     assert summary["society_continuity_transitions"] == 1
+    assert summary["meta_learning_pending"] == 2
+    assert summary["meta_learning_authorized"] == 0

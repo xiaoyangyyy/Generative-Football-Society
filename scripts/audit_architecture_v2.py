@@ -272,11 +272,17 @@ def main() -> int:
     society_continuity = (
         ROOT / "src/simulation/society_continuity.py"
     ).read_text(encoding="utf-8")
+    meta_learning = (
+        ROOT / "src/simulation/meta_learning.py"
+    ).read_text(encoding="utf-8")
     cognitive_executor = (
         ROOT / "src/match_engine/cognitive/executor.py"
     ).read_text(encoding="utf-8")
     society_continuity_tests = (
         ROOT / "tests/test_society_continuity.py"
+    ).read_text(encoding="utf-8")
+    meta_learning_tests = (
+        ROOT / "tests/test_meta_learning_continuity.py"
     ).read_text(encoding="utf-8")
     tournament_scoring = (
         ROOT / "src/simulation/tournament_scoring.py"
@@ -1308,7 +1314,7 @@ def main() -> int:
                 'continuity.get("psychological_decision_modifiers")',
             ))
             and all(token in world_state_evidence for token in (
-                "WORLD_STATE_SCHEMA_VERSION = 2",
+                "WORLD_STATE_SCHEMA_VERSION = 3",
                 "society_public_snapshot(",
                 "society_public_transition(",
                 'result["society_transition"]',
@@ -1327,6 +1333,69 @@ def main() -> int:
                 "test_society_state_rejects_identity_semantic_and_size_tampering",
                 "test_match_settlement_captures_society_state_and_is_cognitively_idempotent",
                 "test_cognitive_runtime_packet_is_compacted_before_cross_match_persistence",
+            ))
+        ),
+        "meta_learning_is_delayed_identity_bound_and_product_visible": (
+            all(token in meta_learning for token in (
+                "META_PROPOSAL_VERSION = 2",
+                "MIN_MATCHED_EVALUATION_UNITS = 8",
+                "MIN_SIMULATOR_UTILITY = -5.0",
+                "MAX_SIMULATOR_UTILITY = 5.0",
+                "def validate_meta_proposal(",
+                "def build_meta_evaluation_receipt(",
+                "def validate_meta_evaluation_receipt(",
+                "def _normalize_matched_rows(",
+                "def _evaluation_statistics(",
+                "def observe_agent_meta_proposals(",
+                '"authorization_required": True',
+                '"matched_seed_counterfactual_v1"',
+                '"matched_rows": rows',
+                '"matched_unit_normal_95_v1"',
+                '"observed_without_effect_authority"',
+                '"committed_by_matched_evaluation"',
+                '"reflection_recorded_without_actionable_meta_adjustment"',
+            ))
+            and "self.commit(agent, proposal)" not in meta_learning
+            and "def authorize_meta_proposal(" in agent_reflection
+            and all(token in match_pipeline for token in (
+                "observe_agent_meta_proposals(",
+                "result_utility=float(np.clip(",
+                "operation_id=source_transaction_id",
+            ))
+            and all(token in society_continuity for token in (
+                'META_PUBLIC_STATUSES = (',
+                '"meta_learning": {',
+                '"meta_learning_before":',
+                '"meta_learning_after":',
+                '"meta_learning_delta":',
+            ))
+            and all(token in world_state_evidence for token in (
+                "SOCIETY_WORLD_STATE_SCHEMA_VERSION = 2",
+                "WORLD_STATE_SCHEMA_VERSION = 3",
+                "society projection version mismatch",
+            ))
+            and all(token in manager_world_thread for token in (
+                '"meta_learning_pending": (',
+                'int(latest_meta.get("shadow", 0))',
+                'int(latest_meta.get("observed_pending_evaluation", 0))',
+                '"meta_learning_authorized": int(',
+            ))
+            and all(token in web for token in (
+                "renderManagerDecisionLedgerWithoutMetaLearningSummary",
+                "summary?.meta_learning_pending",
+                "meta_learning_after",
+            ))
+            and all(token in meta_learning_tests for token in (
+                "test_reflection_stages_identity_bound_shadow_without_parameter_authority",
+                "test_post_match_observation_is_noncausal_idempotent_and_cross_match",
+                "test_matched_evaluation_receipt_is_required_and_idempotently_authorizes",
+                "test_nonpositive_interval_rejects_without_mutation",
+                "test_proposal_and_evaluation_tampering_fail_closed",
+                "test_parameter_drift_blocks_authorization_without_partial_mutation",
+                "test_empty_reflection_is_audited_without_creating_meta_authority",
+                "test_boolean_lifecycle_values_fail_closed",
+                'minimum_effect=-0.01',
+                'out_of_range[0]["treated_utility"] = 5.01',
             ))
         ),
         "manager_product_exposes_one_replayable_world_evolution_thread": (

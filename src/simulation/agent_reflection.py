@@ -140,6 +140,14 @@ class AgentReflectionMixin:
         self.llm_reflection_audit.append(audit_log)
         return audit_log
 
+    def authorize_meta_proposal(self, proposal_id, evaluation_receipt):
+        """Apply one persisted proposal only through validated effect evidence."""
+        from src.simulation.meta_learning import MetaLearningController
+
+        return MetaLearningController().authorize_from_agent_audit(
+            self, str(proposal_id), evaluation_receipt,
+        )
+
     def get_context_for_llm(self):
         hs = self.hidden_state
         morale = "High" if hs[0] > 0.4 else "Low"

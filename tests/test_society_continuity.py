@@ -275,6 +275,25 @@ def test_society_state_rejects_identity_semantic_and_size_tampering():
     with pytest.raises(ValueError, match="identity mismatch"):
         capture_society_continuity(_agent("Alpha"), source_transaction_id="")
 
+    meta_agent = _agent("Alpha")
+    meta_agent.apply_reflection_payload({
+        "reflection": "Keep this proposal in shadow.",
+        "suggested_adjustments": {"risk_budget": -0.04},
+    }, operation_id="reflection:tamper")
+    nested_tamper = capture_society_continuity(
+        meta_agent, source_transaction_id="season-1:fixture-1",
+    )
+    nested_tamper["reflection_audit"][0]["meta_proposal"]["changes"][
+        "risk_budget"
+    ]["after"] = 0.99
+    _rehash(nested_tamper)
+    with pytest.raises(
+        ValueError, match="change is out of bounds|proposal identity",
+    ):
+        validate_society_continuity_state(
+            nested_tamper, expected_team="Alpha",
+        )
+
 
 def test_public_society_snapshot_never_exposes_memory_text():
     agent = _agent("Alpha")

@@ -552,6 +552,15 @@ def manager_world_evolution_summary(
         }
         for thread in threads
     ]
+    meta_after = []
+    for row in stages:
+        transition = row.get("persistent_world_state", {}).get(
+            "society_transition"
+        )
+        transition = transition if isinstance(transition, Mapping) else {}
+        meta = transition.get("meta_learning_after")
+        meta_after.append(meta if isinstance(meta, Mapping) else {})
+    latest_meta = meta_after[-1] if meta_after else {}
     payload = {
         "schema_version": 1,
         "fixtures_with_world_evolution_thread": len(threads),
@@ -623,6 +632,11 @@ def manager_world_evolution_summary(
             ) is True
             for row in stages
         ),
+        "meta_learning_pending": (
+            int(latest_meta.get("shadow", 0))
+            + int(latest_meta.get("observed_pending_evaluation", 0))
+        ),
+        "meta_learning_authorized": int(latest_meta.get("committed", 0)),
         "threads_with_continuity_gaps": sum(
             bool(thread.get("continuity_gaps")) for thread in threads
         ),

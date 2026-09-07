@@ -10,7 +10,10 @@ from src.match_engine.world_model.active_sampling import ActiveSamplingQueue
 from src.match_engine.world_model.graph import build_interaction_graph
 from src.match_engine.world_model.observation import OBS_DIM
 from src.simulation.counterfactual import evaluate_intervention
-from src.simulation.meta_learning import MetaLearningController
+from src.simulation.meta_learning import (
+    MetaLearningController,
+    build_meta_evaluation_receipt,
+)
 from src.simulation.runtime import (
     SimulationConfig, build_run_manifest, environment_snapshot,
     run_manifest_identity, write_manifest,
@@ -132,7 +135,18 @@ def test_meta_proposal_is_shadow_until_evaluated_and_can_rollback():
         "suggested_adjustments": {"risk_budget": 0.1},
     })
     assert agent.tactical_controls["risk_budget"] == 0.5
-    controller.commit(agent, proposal)
+    receipt = build_meta_evaluation_receipt(
+        proposal,
+        matched_rows=[{
+            "unit_id": f"unit-{index}",
+            "seed": index,
+            "control_utility": 0.0,
+            "treated_utility": 0.05,
+            "control_source_identity": f"{index + 1:064x}",
+            "treated_source_identity": f"{index + 101:064x}",
+        } for index in range(8)],
+    )
+    proposal = controller.evaluate_and_commit(agent, proposal, receipt)
     assert agent.tactical_controls["risk_budget"] > 0.5
     controller.rollback(agent, proposal)
     assert agent.tactical_controls["risk_budget"] == 0.5

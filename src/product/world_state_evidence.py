@@ -20,7 +20,8 @@ from src.simulation.squad_registry import load_effective_roster
 
 
 LEGACY_WORLD_STATE_SCHEMA_VERSION = 1
-WORLD_STATE_SCHEMA_VERSION = 2
+SOCIETY_WORLD_STATE_SCHEMA_VERSION = 2
+WORLD_STATE_SCHEMA_VERSION = 3
 _METRICS = (
     "team_fatigue_ema", "squad_morale_ema", "team_media_pressure",
     "injured_players", "suspended_players", "unavailable_players",
@@ -166,12 +167,16 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
         "schema_version", "team_id", "source", "metrics",
         "team_dynamics_delta", "last_match_stage", "players", "source_identity",
     }
-    if schema_version == WORLD_STATE_SCHEMA_VERSION:
+    if schema_version in {
+        SOCIETY_WORLD_STATE_SCHEMA_VERSION, WORLD_STATE_SCHEMA_VERSION,
+    }:
         expected_fields.add("society")
     if (
         set(snapshot) != expected_fields
         or schema_version not in {
-            LEGACY_WORLD_STATE_SCHEMA_VERSION, WORLD_STATE_SCHEMA_VERSION,
+            LEGACY_WORLD_STATE_SCHEMA_VERSION,
+            SOCIETY_WORLD_STATE_SCHEMA_VERSION,
+            WORLD_STATE_SCHEMA_VERSION,
         }
         or snapshot.get("team_id") != team
         or snapshot.get("source") not in {
@@ -187,8 +192,15 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
         or identity != _identity(frozen)
     ):
         raise ValueError("team world-state snapshot identity mismatch")
-    if schema_version == WORLD_STATE_SCHEMA_VERSION:
+    if schema_version in {
+        SOCIETY_WORLD_STATE_SCHEMA_VERSION, WORLD_STATE_SCHEMA_VERSION,
+    }:
         validate_society_public_snapshot(snapshot["society"])
+        has_meta = "meta_learning" in snapshot["society"]
+        if has_meta != (schema_version == WORLD_STATE_SCHEMA_VERSION):
+            raise ValueError(
+                "team world-state society projection version mismatch"
+            )
     for key, value in metrics.items():
         if key in {"injured_players", "suspended_players", "unavailable_players"}:
             valid = not isinstance(value, bool) and isinstance(value, int) and value >= 0
@@ -366,7 +378,7 @@ def _build_fixture_world_state_transition(
         team: _team_diff(
             phases["before_match"][team],
             phases["after_match"][team],
-            include_society=schema_version == WORLD_STATE_SCHEMA_VERSION,
+            include_society=schema_version >= SOCIETY_WORLD_STATE_SCHEMA_VERSION,
         )
         for team in teams
     }
@@ -375,7 +387,9 @@ def _build_fixture_world_state_transition(
             team: _team_diff(
                 phases["after_match"][team],
                 phases["after_recovery"][team],
-                include_society=schema_version == WORLD_STATE_SCHEMA_VERSION,
+                include_society=(
+                    schema_version >= SOCIETY_WORLD_STATE_SCHEMA_VERSION
+                ),
             )
             for team in teams
         }
@@ -428,7 +442,9 @@ def validate_fixture_world_state_transition(
             "claim_boundary", "transition_identity",
         }
         or transition.get("schema_version") not in {
-            LEGACY_WORLD_STATE_SCHEMA_VERSION, WORLD_STATE_SCHEMA_VERSION,
+            LEGACY_WORLD_STATE_SCHEMA_VERSION,
+            SOCIETY_WORLD_STATE_SCHEMA_VERSION,
+            WORLD_STATE_SCHEMA_VERSION,
         }
         or transition.get("season_id") != season_id
         or transition.get("fixture_id") != fixture_id

@@ -328,10 +328,32 @@ def finalize_match_feedback(
         )
         _save_cognitive_match_log(base_dir, home, away, micro_summary, stage_name)
 
+    source_transaction_id = str(transaction_id or stage_name)
+    from src.simulation.meta_learning import observe_agent_meta_proposals
+
+    xg_difference = float(xg_home) - float(xg_away)
+    observe_agent_meta_proposals(
+        home,
+        operation_id=source_transaction_id,
+        result_utility=float(np.clip(
+            float(score_diff_home) + 0.35 * xg_difference, -5.0, 5.0,
+        )),
+        goal_difference=float(score_diff_home),
+        xg_difference=xg_difference,
+    )
+    observe_agent_meta_proposals(
+        away,
+        operation_id=source_transaction_id,
+        result_utility=float(np.clip(
+            -float(score_diff_home) - 0.35 * xg_difference, -5.0, 5.0,
+        )),
+        goal_difference=-float(score_diff_home),
+        xg_difference=-xg_difference,
+    )
+
     from src.simulation.cross_match_state import ensure_team_carryover
     from src.simulation.society_continuity import capture_society_continuity
 
-    source_transaction_id = str(transaction_id or stage_name)
     ensure_team_carryover(home).society_state = capture_society_continuity(
         home, source_transaction_id=source_transaction_id,
     )

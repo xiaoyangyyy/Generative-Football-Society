@@ -4234,3 +4234,73 @@ skips; it was executed in four disjoint processes to bound runner memory.
 This stage establishes a real cross-match causal software path, not evidence
 of improved match outcomes or real-football causality. It executes no training,
 product/formal match, participant session or external provider call.
+
+## 130. V4.12 Delayed, replayable meta-learning authority
+
+The previous meta-learning class exposed shadow and evaluation methods, but
+the production reflection path instantiated a temporary controller and called
+its compatibility entry point, which immediately committed every bounded
+change. Proposal lifecycle state was then discarded. The evaluation method
+also trusted three aggregate numbers returned by an arbitrary callback. This
+did not satisfy the documented promise of evidence-gated delayed adaptation.
+
+Reflection now records an identity-bound V2 shadow proposal and changes no
+parameter. Proposal identity covers the Agent, bounded reflection, verified
+memory evidence, exact before/after values, scope and observation window.
+Operation IDs are deterministic and idempotent; reusing one operation for
+different proposal content fails closed. Invalid, non-finite, oversized,
+unknown or sealed-data inputs cannot create authority.
+
+After each later match, the existing settlement transaction attaches one
+content-addressed descriptive observation to every eligible shadow proposal.
+It contains goal difference, xG difference and bounded simulator utility from
+the Agent's perspective, but is explicitly not treatment-effect evidence.
+Repeated settlement of the same transaction is idempotent. A proposal remains
+pending through its declared observation window and expires without mutation
+when a later unmatched transaction exceeds that window.
+
+Parameter authority requires a V1 evaluation receipt containing at least eight
+unique matched-seed control/treatment rows. Every row binds both source
+identities. The validator independently sorts and replays the rows, their
+source evidence identity, paired effects, mean effect and registered 95%
+matched-unit interval. Callers can no longer supply ATE or confidence bounds
+directly. The lower bound must exceed the receipt's minimum effect, the current
+parameter must still equal the proposal baseline, and the receipt must bind the
+same proposal and Agent. A non-positive interval rejects without mutation;
+state drift, row duplication, aggregate tampering, receipt tampering and
+cross-proposal reuse fail closed. Reapplying the same valid authorization is
+idempotent, while rollback refuses to overwrite later parameter changes.
+
+The complete proposal and observation lifecycle travels inside the existing
+reflection audit and therefore inherits V4.11 society continuity, tournament
+checkpointing and bounded persistence without a second state store. Public
+world-state evidence is V3 and exposes only status counts for shadow, pending,
+committed, rejected, rolled-back and expired proposals. V1 remains the
+pre-society format and V2 remains replay-compatible without meta summaries.
+The same six-stage manager world thread and Studio summary render pending and
+authorized counts; no seventh product stage or private reflection text is
+introduced.
+
+The simulator outcome utility contract is fixed to the runtime scale of
+`[-5, 5]`, and an evaluation threshold must stay within the non-negative
+achievable effect range. A caller therefore cannot authorize a harmful change
+by supplying a negative minimum effect or manufacture authority with
+out-of-range utility rows. Reflections with no effective bounded adjustment
+remain ordinary cognitive audit records: they create no proposal, observation
+window, pending product count or authorization surface. Boolean adjustment,
+confidence and lifecycle values are rejected or normalized without being
+coerced into numeric authority.
+
+This is code and replay-contract evidence. Synthetic matched rows in unit tests
+prove authorization semantics but are not a formal meta-learning result and do
+not establish improved actions, match outcomes or real-football causality. No
+training, product/formal match, participant session or provider call is
+executed in this stage.
+
+Final verification covers all 198 test files in four disjoint processes:
+1,433 tests pass and three declared tests skip, with no failures. Ruff passes
+for every Python file modified by V4.12, the complete architecture audit is
+green, local crash recovery is reverified, and the M2 transitive code identity
+is refreshed. Those verification paths execute zero training, write no
+checkpoint, run no product/formal match and make no provider or participant
+call.

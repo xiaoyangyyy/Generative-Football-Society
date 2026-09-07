@@ -14,7 +14,10 @@ from src.match_engine.joint_pass_model import JointPassModel, PASS_FEATURES, fit
 from src.match_engine.shot_decision import SHOT_FEATURES, ShotEvidence, ShotProbabilityModel, fit_shot_probability_model, shot_counterfactual_value
 from src.match_engine.world_model.probabilistic import EVENTS, EventTransitionModel, fit_event_transition_model, future_from_ensemble
 from src.model_registry import ModelRegistry
-from src.simulation.meta_learning import MetaLearningController
+from src.simulation.meta_learning import (
+    MetaLearningController,
+    build_meta_evaluation_receipt,
+)
 from src.simulation.psychological_state import PsychologicalState
 from src.simulation.regression_gate import benchmark_latency, distribution_gate
 
@@ -141,7 +144,18 @@ def test_meta_adaptation_expires_audits_and_rejects_sealed_data(tmp_path):
         "suggested_adjustments": {"risk_budget": 0.1},
         "evidence_memory_ids": ["e1"], "created_step": 2, "expires_after": 2,
     })
-    controller.commit(agent, proposal)
+    receipt = build_meta_evaluation_receipt(
+        proposal,
+        matched_rows=[{
+            "unit_id": f"unit-{index}",
+            "seed": index,
+            "control_utility": 0.0,
+            "treated_utility": 0.04,
+            "control_source_identity": f"{index + 1:064x}",
+            "treated_source_identity": f"{index + 101:064x}",
+        } for index in range(8)],
+    )
+    controller.evaluate_and_commit(agent, proposal, receipt)
     assert not controller.expire(agent, current_step=3)
     assert controller.expire(agent, current_step=4) == [proposal.proposal_id]
     assert (tmp_path / "audit.jsonl").read_text().count("\n") == 3

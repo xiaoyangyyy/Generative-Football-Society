@@ -6,6 +6,7 @@ import pytest
 
 from src.product.world_state_evidence import (
     WORLD_STATE_SCHEMA_VERSION,
+    _build_fixture_world_state_transition,
     build_fixture_world_state_transition,
     capture_world_state,
     validate_fixture_world_state_transition,
@@ -151,7 +152,7 @@ def test_world_state_snapshot_rejects_malformed_player_as_validation_error(tmp_p
         validate_team_state_snapshot(snapshot, team="Brazil")
 
 
-def test_world_state_v2_exposes_replayable_content_free_society_transition(tmp_path):
+def test_world_state_v3_exposes_replayable_content_free_society_transition(tmp_path):
     for team in ("Brazil", "Argentina"):
         _roster(tmp_path, team)
     before = capture_world_state(tmp_path, ("Brazil", "Argentina"))
@@ -162,6 +163,11 @@ def test_world_state_v2_exposes_replayable_content_free_society_transition(tmp_p
         "A private prior-world narrative",
         event_type="micro_cognitive",
     )
+    agent.apply_reflection_payload({
+        "reflection": "A private shadow adjustment proposal",
+        "confidence": 0.8,
+        "suggested_adjustments": {"risk_budget": -0.04},
+    }, operation_id="reflection:md01")
     society_state = capture_society_continuity(
         agent, source_transaction_id="season-0001:md01-fx01",
     )
@@ -183,13 +189,15 @@ def test_world_state_v2_exposes_replayable_content_free_society_transition(tmp_p
         after_match=after,
     )
 
-    assert transition["schema_version"] == WORLD_STATE_SCHEMA_VERSION == 2
+    assert transition["schema_version"] == WORLD_STATE_SCHEMA_VERSION == 3
     society = transition["match_delta"]["Brazil"]["society_transition"]
     assert society["available"] is True
     assert society["before_available"] is False
     assert society["after_available"] is True
-    assert society["memory_record_delta"] == 1
+    assert society["memory_record_delta"] >= 1
     assert society["cognitive_memory_delta"] == 1
+    assert society["meta_learning_after"]["shadow"] == 1
+    assert society["meta_learning_delta"]["shadow"] == 1
     assert "private prior-world narrative" not in json.dumps(
         transition, ensure_ascii=False,
     ).lower()
@@ -216,3 +224,39 @@ def test_world_state_v2_exposes_replayable_content_free_society_transition(tmp_p
             home="Brazil",
             away="Argentina",
         )
+
+
+def test_legacy_world_state_v2_without_meta_summary_remains_replayable(tmp_path):
+    for team in ("Brazil", "Argentina"):
+        _roster(tmp_path, team)
+    before = capture_world_state(tmp_path, ("Brazil", "Argentina"))
+    _write_carryover(tmp_path, fatigue=0.2, injured=0)
+    after = capture_world_state(tmp_path, ("Brazil", "Argentina"))
+    for phase in (before, after):
+        for snapshot in phase.values():
+            snapshot["schema_version"] = 2
+            snapshot["society"].pop("meta_learning")
+            _rehash_snapshot(snapshot)
+
+    transition = _build_fixture_world_state_transition(
+        season_id="season-legacy",
+        fixture_id="md01-fx01",
+        match_id="legacy-match",
+        home="Brazil",
+        away="Argentina",
+        before_match=before,
+        after_match=after,
+        schema_version=2,
+    )
+
+    assert "meta_learning_delta" not in (
+        transition["match_delta"]["Brazil"]["society_transition"]
+    )
+    validate_fixture_world_state_transition(
+        transition,
+        season_id="season-legacy",
+        fixture_id="md01-fx01",
+        match_id="legacy-match",
+        home="Brazil",
+        away="Argentina",
+    )
