@@ -467,3 +467,34 @@ def test_world_evolution_thread_pending_summary_and_rehashed_tamper_fail_closed(
         validate_manager_world_evolution_thread(
             certificate_tampered, entry=complete_entry,
         )
+
+
+def test_world_evolution_thread_keeps_society_continuity_inside_world_state():
+    entry = _entry()
+    society = {
+        "available": True,
+        "before_state_identity": "b" * 64,
+        "after_state_identity": "a" * 64,
+        "source_transaction_id": "season-1:fixture-1",
+        "memory_record_delta": 3,
+        "cognitive_memory_delta": 2,
+        "belief_delta": 1,
+        "reflection_delta": 0,
+        "changed_state_fields": ["emotion_profile", "tactical_controls"],
+        "claim_boundary": "persisted simulator state only",
+    }
+    entry["long_term_accounting"]["persistent_team_state_delta"][
+        "match_delta"
+    ]["society_transition"] = society
+
+    thread = build_manager_world_evolution_thread(entry)
+    persistent = thread["stages"][-1]
+
+    assert persistent["stage_id"] == "persistent_world_state"
+    assert persistent["society_transition"] == society
+    assert len(thread["stages"]) == 6
+    assert len(thread["links"]) == 5
+    validate_manager_world_evolution_thread(thread, entry=entry)
+    entry["world_evolution_thread"] = thread
+    summary = manager_world_evolution_summary([entry])
+    assert summary["society_continuity_transitions"] == 1

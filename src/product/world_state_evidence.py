@@ -11,10 +11,16 @@ from typing import Any, Mapping, Sequence
 
 from src.infrastructure import FileLease
 from src.simulation.cross_match_state import PlayerCarryover, TeamSquadCarryover
+from src.simulation.society_continuity import (
+    society_public_snapshot,
+    society_public_transition,
+    validate_society_public_snapshot,
+)
 from src.simulation.squad_registry import load_effective_roster
 
 
-WORLD_STATE_SCHEMA_VERSION = 1
+LEGACY_WORLD_STATE_SCHEMA_VERSION = 1
+WORLD_STATE_SCHEMA_VERSION = 2
 _METRICS = (
     "team_fatigue_ema", "squad_morale_ema", "team_media_pressure",
     "injured_players", "suspended_players", "unavailable_players",
@@ -105,6 +111,9 @@ def _snapshot(team: str, carry: TeamSquadCarryover, *, source: str) -> dict[str,
         },
         "last_match_stage": str(carry.last_match_stage),
         "players": players,
+        "society": society_public_snapshot(
+            carry.society_state, team_id=team,
+        ),
     }
     payload["source_identity"] = _identity(payload)
     return payload
@@ -152,12 +161,18 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
     identity = frozen.pop("source_identity", None)
     players = snapshot.get("players")
     metrics = snapshot.get("metrics")
+    schema_version = snapshot.get("schema_version")
+    expected_fields = {
+        "schema_version", "team_id", "source", "metrics",
+        "team_dynamics_delta", "last_match_stage", "players", "source_identity",
+    }
+    if schema_version == WORLD_STATE_SCHEMA_VERSION:
+        expected_fields.add("society")
     if (
-        set(snapshot) != {
-            "schema_version", "team_id", "source", "metrics",
-            "team_dynamics_delta", "last_match_stage", "players", "source_identity",
+        set(snapshot) != expected_fields
+        or schema_version not in {
+            LEGACY_WORLD_STATE_SCHEMA_VERSION, WORLD_STATE_SCHEMA_VERSION,
         }
-        or snapshot.get("schema_version") != WORLD_STATE_SCHEMA_VERSION
         or snapshot.get("team_id") != team
         or snapshot.get("source") not in {
             "deterministic_team_baseline", "deterministic_roster_baseline",
@@ -172,6 +187,8 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
         or identity != _identity(frozen)
     ):
         raise ValueError("team world-state snapshot identity mismatch")
+    if schema_version == WORLD_STATE_SCHEMA_VERSION:
+        validate_society_public_snapshot(snapshot["society"])
     for key, value in metrics.items():
         if key in {"injured_players", "suspended_players", "unavailable_players"}:
             valid = not isinstance(value, bool) and isinstance(value, int) and value >= 0
@@ -245,7 +262,12 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
         raise ValueError("team world-state availability summary mismatch")
 
 
-def _team_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> dict[str, Any]:
+def _team_diff(
+    before: Mapping[str, Any],
+    after: Mapping[str, Any],
+    *,
+    include_society: bool,
+) -> dict[str, Any]:
     before_players = {row["player_id"]: row for row in before["players"]}
     after_players = {row["player_id"]: row for row in after["players"]}
     changes = []
@@ -278,7 +300,7 @@ def _team_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> dict[str,
         key: round(float(after["metrics"][key]) - float(before["metrics"][key]), 6)
         for key in _METRICS
     }
-    return {
+    result = {
         "metrics_delta": deltas,
         "players_changed": changes,
         "summary": {
@@ -305,14 +327,22 @@ def _team_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> dict[str,
             ),
         },
     }
+    if include_society:
+        unavailable = society_public_snapshot(None, team_id=str(after["team_id"]))
+        result["society_transition"] = society_public_transition(
+            before.get("society", unavailable),
+            after.get("society", unavailable),
+        )
+    return result
 
 
-def build_fixture_world_state_transition(
+def _build_fixture_world_state_transition(
     *, season_id: str, fixture_id: str, match_id: str,
     home: str, away: str,
     before_match: Mapping[str, Mapping[str, Any]],
     after_match: Mapping[str, Mapping[str, Any]],
     after_recovery: Mapping[str, Mapping[str, Any]] | None = None,
+    schema_version: int,
 ) -> dict[str, Any]:
     teams = (home, away)
     for snapshots in (before_match, after_match):
@@ -333,18 +363,26 @@ def build_fixture_world_state_transition(
             for team in teams:
                 validate_team_state_snapshot(phase[team], team=team)
     match_delta = {
-        team: _team_diff(phases["before_match"][team], phases["after_match"][team])
+        team: _team_diff(
+            phases["before_match"][team],
+            phases["after_match"][team],
+            include_society=schema_version == WORLD_STATE_SCHEMA_VERSION,
+        )
         for team in teams
     }
     recovery_delta = (
         {
-            team: _team_diff(phases["after_match"][team], phases["after_recovery"][team])
+            team: _team_diff(
+                phases["after_match"][team],
+                phases["after_recovery"][team],
+                include_society=schema_version == WORLD_STATE_SCHEMA_VERSION,
+            )
             for team in teams
         }
         if phases["after_recovery"] is not None else None
     )
     payload = {
-        "schema_version": WORLD_STATE_SCHEMA_VERSION,
+        "schema_version": schema_version,
         "season_id": season_id, "fixture_id": fixture_id, "match_id": match_id,
         "home": home, "away": away, "phases": phases,
         "match_delta": match_delta, "recovery_delta": recovery_delta,
@@ -353,6 +391,26 @@ def build_fixture_world_state_transition(
     }
     payload["transition_identity"] = _identity(payload)
     return payload
+
+
+def build_fixture_world_state_transition(
+    *, season_id: str, fixture_id: str, match_id: str,
+    home: str, away: str,
+    before_match: Mapping[str, Mapping[str, Any]],
+    after_match: Mapping[str, Mapping[str, Any]],
+    after_recovery: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    return _build_fixture_world_state_transition(
+        season_id=season_id,
+        fixture_id=fixture_id,
+        match_id=match_id,
+        home=home,
+        away=away,
+        before_match=before_match,
+        after_match=after_match,
+        after_recovery=after_recovery,
+        schema_version=WORLD_STATE_SCHEMA_VERSION,
+    )
 
 
 def validate_fixture_world_state_transition(
@@ -369,7 +427,9 @@ def validate_fixture_world_state_transition(
             "phases", "match_delta", "recovery_delta", "recovery_complete",
             "claim_boundary", "transition_identity",
         }
-        or transition.get("schema_version") != WORLD_STATE_SCHEMA_VERSION
+        or transition.get("schema_version") not in {
+            LEGACY_WORLD_STATE_SCHEMA_VERSION, WORLD_STATE_SCHEMA_VERSION,
+        }
         or transition.get("season_id") != season_id
         or transition.get("fixture_id") != fixture_id
         or transition.get("match_id") != match_id
@@ -383,10 +443,11 @@ def validate_fixture_world_state_transition(
         "before_match", "after_match", "after_recovery",
     }:
         raise ValueError("fixture world-state phases are invalid")
-    expected = build_fixture_world_state_transition(
+    expected = _build_fixture_world_state_transition(
         season_id=season_id, fixture_id=fixture_id, match_id=match_id,
         home=home, away=away, before_match=phases["before_match"],
         after_match=phases["after_match"], after_recovery=phases["after_recovery"],
+        schema_version=int(transition["schema_version"]),
     )
     if transition != expected:
         raise ValueError("fixture world-state transition replay mismatch")

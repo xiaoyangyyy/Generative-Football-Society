@@ -263,6 +263,21 @@ def main() -> int:
     match_pipeline = (
         ROOT / "src/simulation/match_pipeline.py"
     ).read_text(encoding="utf-8")
+    tournament_finalize = (
+        ROOT / "src/simulation/tournament_finalize.py"
+    ).read_text(encoding="utf-8")
+    cross_match_state = (
+        ROOT / "src/simulation/cross_match_state.py"
+    ).read_text(encoding="utf-8")
+    society_continuity = (
+        ROOT / "src/simulation/society_continuity.py"
+    ).read_text(encoding="utf-8")
+    cognitive_executor = (
+        ROOT / "src/match_engine/cognitive/executor.py"
+    ).read_text(encoding="utf-8")
+    society_continuity_tests = (
+        ROOT / "tests/test_society_continuity.py"
+    ).read_text(encoding="utf-8")
     tournament_scoring = (
         ROOT / "src/simulation/tournament_scoring.py"
     ).read_text(encoding="utf-8")
@@ -859,7 +874,7 @@ def main() -> int:
                 "def build_fixture_world_state_transition(",
                 "def validate_fixture_world_state_transition(",
                 '"before_match":', '"after_match":', '"after_recovery":',
-                "expected = build_fixture_world_state_transition(",
+                "expected = _build_fixture_world_state_transition(",
                 "len(players) > 128",
                 "deterministic_team_baseline",
                 "deterministic_roster_baseline",
@@ -1258,6 +1273,60 @@ def main() -> int:
                 "appendOfficialActionExecutionWithoutPolicySemantics",
                 "example.policy_signal",
                 "reference.received_redistributed_probability",
+            ))
+        ),
+        "society_cognition_persists_into_next_match_and_product_thread": (
+            all(token in society_continuity for token in (
+                "SOCIETY_CONTINUITY_VERSION = 1",
+                "MAX_STATE_BYTES = 262_144",
+                "def capture_society_continuity(",
+                "def validate_society_continuity_state(",
+                "def apply_society_continuity(",
+                "def build_society_decision_context(",
+                "def society_public_snapshot(",
+                "def society_public_transition(",
+                '"memory_text_authority": "untrusted_context_only"',
+                'canonical["state_identity"] = _identity(canonical)',
+            ))
+            and all(token in cross_match_state for token in (
+                "society_state: Optional[Dict[str, Any]] = None",
+                "apply_society_continuity(agent, carry.society_state)",
+                "society_public_snapshot(",
+            ))
+            and all(token in match_pipeline for token in (
+                "operation_id=transaction_id",
+                "capture_society_continuity(",
+                ".society_state = capture_society_continuity(",
+            ))
+            and (
+                'transaction_id=f"{self.match_index}:{stage_name}:'
+                in tournament_finalize
+            )
+            and all(token in cognitive_executor for token in (
+                "build_society_decision_context",
+                'trig.facts["society_continuity_context"]',
+                'continuity.get("psychological_decision_modifiers")',
+            ))
+            and all(token in world_state_evidence for token in (
+                "WORLD_STATE_SCHEMA_VERSION = 2",
+                "society_public_snapshot(",
+                "society_public_transition(",
+                'result["society_transition"]',
+            ))
+            and all(token in manager_world_thread for token in (
+                'society_transition=copy.deepcopy(society_transition)',
+                '"society_continuity_transitions": sum(',
+            ))
+            and all(token in web for token in (
+                "appendManagerWorldEvolutionThreadWithoutSocietyContinuity",
+                "stage?.society_transition",
+            ))
+            and all(token in society_continuity_tests for token in (
+                "test_matched_seed_targeted_narrative_changes_only_targeted_agent_state",
+                "test_restored_psychology_reaches_next_coach_trigger_and_changes_fallback_plan",
+                "test_society_state_rejects_identity_semantic_and_size_tampering",
+                "test_match_settlement_captures_society_state_and_is_cognitively_idempotent",
+                "test_cognitive_runtime_packet_is_compacted_before_cross_match_persistence",
             ))
         ),
         "manager_product_exposes_one_replayable_world_evolution_thread": (

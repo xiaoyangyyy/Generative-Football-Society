@@ -87,11 +87,21 @@ class TeamSquadCarryover:
     squad_morale_ema: float = 0.55
     team_fatigue_ema: float = 0.0
     team_dynamics_delta: Dict[str, float] = field(default_factory=dict)
+    society_state: Optional[Dict[str, Any]] = None
     last_match_stage: str = ""
     settled_match_ids: List[str] = field(default_factory=list)
     recovery_ids: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
+        society_state = None
+        if self.society_state is not None:
+            from src.simulation.society_continuity import (
+                validate_society_continuity_state,
+            )
+
+            society_state = validate_society_continuity_state(
+                self.society_state, expected_team=self.team_id,
+            )
         return {
             "team_id": self.team_id,
             "players": {k: v.to_dict() for k, v in self.players.items()},
@@ -99,6 +109,7 @@ class TeamSquadCarryover:
             "squad_morale_ema": self.squad_morale_ema,
             "team_fatigue_ema": self.team_fatigue_ema,
             "team_dynamics_delta": self.team_dynamics_delta,
+            "society_state": society_state,
             "last_match_stage": self.last_match_stage,
             "settled_match_ids": list(self.settled_match_ids[-256:]),
             "recovery_ids": list(self.recovery_ids[-256:]),
@@ -106,11 +117,21 @@ class TeamSquadCarryover:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "TeamSquadCarryover":
+        society_state = d.get("society_state")
+        team_id = str(d.get("team_id", ""))
+        if society_state is not None:
+            from src.simulation.society_continuity import (
+                validate_society_continuity_state,
+            )
+
+            society_state = validate_society_continuity_state(
+                society_state, expected_team=team_id,
+            )
         players = {
             k: PlayerCarryover.from_dict(v) for k, v in (d.get("players") or {}).items()
         }
         return cls(
-            team_id=str(d.get("team_id", "")),
+            team_id=team_id,
             players=players,
             team_media_pressure=float(d.get("team_media_pressure", 0)),
             squad_morale_ema=float(d.get("squad_morale_ema", 0.55)),
@@ -118,6 +139,7 @@ class TeamSquadCarryover:
             team_dynamics_delta={
                 k: float(v) for k, v in (d.get("team_dynamics_delta") or {}).items()
             },
+            society_state=society_state,
             last_match_stage=str(d.get("last_match_stage", "")),
             settled_match_ids=[
                 str(value) for value in (d.get("settled_match_ids") or [])
@@ -172,6 +194,10 @@ def sync_carryover_from_roster(agent: "SocietyAgent", roster: Dict[str, Any]) ->
 def apply_carryover_to_agent(agent: "SocietyAgent") -> None:
     """Team-level fatigue / morale / dynamics from squad carryover."""
     carry = ensure_team_carryover(agent)
+    if carry.society_state is not None:
+        from src.simulation.society_continuity import apply_society_continuity
+
+        apply_society_continuity(agent, carry.society_state)
     n_inj = sum(1 for p in carry.players.values() if p.injury_matches_left > 0)
     n_susp = sum(1 for p in carry.players.values() if p.suspension_matches_left > 0)
     squad_size = max(1, len(carry.players))
@@ -209,6 +235,8 @@ def carryover_snapshot(agent: "SocietyAgent") -> Dict[str, Any]:
     suspended = sum(
         1 for player in carry.players.values() if player.suspension_matches_left > 0
     )
+    from src.simulation.society_continuity import society_public_snapshot
+
     return {
         "team_id": carry.team_id,
         "team_fatigue_ema": float(carry.team_fatigue_ema),
@@ -218,6 +246,9 @@ def carryover_snapshot(agent: "SocietyAgent") -> Dict[str, Any]:
         "suspended_players": suspended,
         "unavailable_players": injured + suspended,
         "last_match_stage": carry.last_match_stage,
+        "society": society_public_snapshot(
+            carry.society_state, team_id=carry.team_id,
+        ),
     }
 
 
@@ -494,7 +525,10 @@ def load_persistence(base_dir: str, agents: Dict[str, "SocietyAgent"]) -> None:
         raise ValueError(f"invalid squad carryover payload: {path}")
     for team, payload in raw.items():
         if team in agents:
-            agents[team].squad_carryover = TeamSquadCarryover.from_dict(payload)
+            carry = TeamSquadCarryover.from_dict(payload)
+            if carry.team_id != team:
+                raise ValueError("squad carryover team identity mismatch")
+            agents[team].squad_carryover = carry
 
 
 def save_persistence(base_dir: str, agents: Dict[str, "SocietyAgent"]) -> None:

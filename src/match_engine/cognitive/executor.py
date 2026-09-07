@@ -9,7 +9,7 @@ import os
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Mapping, Optional, TYPE_CHECKING
 
 from src.match_engine.cognitive.apply import apply_cognitive_plan
 from src.match_engine.cognitive.config import CognitiveMatchConfig
@@ -75,13 +75,31 @@ def _rule_fallback_plan(trig: CognitiveTriggerEvent) -> Dict[str, Any]:
     kind = trig.kind
     if trig.entity_tier == ENTITY_TIER_COACH:
         press = 0.08 if kind in ("goal", "xg_swing") else (-0.06 if kind == "goal_conceded" else 0.0)
+        risk = 0.05 if kind == "goal" else -0.03
+        continuity = trig.facts.get("society_continuity_context") or {}
+        modifiers = (
+            continuity.get("psychological_decision_modifiers") or {}
+            if isinstance(continuity, Mapping) else {}
+        )
+        if isinstance(modifiers, Mapping):
+            try:
+                coordination = float(modifiers.get("coordination", 0.0))
+                risk_modifier = float(modifiers.get("risk", 0.0))
+            except (TypeError, ValueError):
+                coordination = risk_modifier = 0.0
+            if not math.isfinite(coordination):
+                coordination = 0.0
+            if not math.isfinite(risk_modifier):
+                risk_modifier = 0.0
+            press += 0.35 * min(0.2, max(-0.2, coordination))
+            risk += 0.50 * min(0.2, max(-0.2, risk_modifier))
         return validate_coach_plan(
             {
                 "reasoning": f"Rule fallback: react to {kind}",
                 "confidence": 0.55,
                 "controls_delta": {
                     "pressing_intensity": press,
-                    "risk_budget": 0.05 if kind == "goal" else -0.03,
+                    "risk_budget": risk,
                 },
             }
         )
@@ -534,6 +552,25 @@ class CognitiveExecutor:
                     trig.facts["player_name"] = player.name
                     break
         elif trig.entity_tier == ENTITY_TIER_COACH and trig.team_id:
+            from src.simulation.society_continuity import (
+                build_society_decision_context,
+            )
+
+            agent = next(
+                (
+                    candidate
+                    for candidate in (home_agent, away_agent)
+                    if candidate is not None
+                    and candidate.team_name == trig.team_id
+                ),
+                None,
+            )
+            if agent is not None:
+                continuity_context = build_society_decision_context(agent)
+                if continuity_context is not None:
+                    trig.facts["society_continuity_context"] = (
+                        continuity_context
+                    )
             from src.match_engine.world_model.decision_support import (
                 build_coach_decision_packet,
             )

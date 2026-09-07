@@ -5,12 +5,15 @@ import json
 import pytest
 
 from src.product.world_state_evidence import (
+    WORLD_STATE_SCHEMA_VERSION,
     build_fixture_world_state_transition,
     capture_world_state,
     validate_fixture_world_state_transition,
     validate_team_state_snapshot,
 )
+from src.simulation.agent import SocietyAgent
 from src.simulation.cross_match_state import PlayerCarryover, TeamSquadCarryover
+from src.simulation.society_continuity import capture_society_continuity
 
 
 def _roster(root, team):
@@ -146,3 +149,70 @@ def test_world_state_snapshot_rejects_malformed_player_as_validation_error(tmp_p
 
     with pytest.raises(ValueError, match="player world-state snapshot is invalid"):
         validate_team_state_snapshot(snapshot, team="Brazil")
+
+
+def test_world_state_v2_exposes_replayable_content_free_society_transition(tmp_path):
+    for team in ("Brazil", "Argentina"):
+        _roster(tmp_path, team)
+    before = capture_world_state(tmp_path, ("Brazil", "Argentina"))
+    agent = SocietyAgent(
+        "Brazil", {"final_status_score": 55.0}, random_root_seed=73,
+    )
+    agent._register_memory_event(
+        "A private prior-world narrative",
+        event_type="micro_cognitive",
+    )
+    society_state = capture_society_continuity(
+        agent, source_transaction_id="season-0001:md01-fx01",
+    )
+    carry = TeamSquadCarryover(
+        team_id="Brazil", society_state=society_state,
+    )
+    path = tmp_path / "data/persistence/squad_carryover.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"Brazil": carry.to_dict()}), encoding="utf-8")
+    after = capture_world_state(tmp_path, ("Brazil", "Argentina"))
+
+    transition = build_fixture_world_state_transition(
+        season_id="season-0001",
+        fixture_id="md01-fx01",
+        match_id="0001-match",
+        home="Brazil",
+        away="Argentina",
+        before_match=before,
+        after_match=after,
+    )
+
+    assert transition["schema_version"] == WORLD_STATE_SCHEMA_VERSION == 2
+    society = transition["match_delta"]["Brazil"]["society_transition"]
+    assert society["available"] is True
+    assert society["before_available"] is False
+    assert society["after_available"] is True
+    assert society["memory_record_delta"] == 1
+    assert society["cognitive_memory_delta"] == 1
+    assert "private prior-world narrative" not in json.dumps(
+        transition, ensure_ascii=False,
+    ).lower()
+    validate_fixture_world_state_transition(
+        transition,
+        season_id="season-0001",
+        fixture_id="md01-fx01",
+        match_id="0001-match",
+        home="Brazil",
+        away="Argentina",
+    )
+
+    tampered = copy.deepcopy(transition)
+    tampered["match_delta"]["Brazil"]["society_transition"][
+        "memory_record_delta"
+    ] = 99
+    _rehash(tampered)
+    with pytest.raises(ValueError, match="replay mismatch"):
+        validate_fixture_world_state_transition(
+            tampered,
+            season_id="season-0001",
+            fixture_id="md01-fx01",
+            match_id="0001-match",
+            home="Brazil",
+            away="Argentina",
+        )

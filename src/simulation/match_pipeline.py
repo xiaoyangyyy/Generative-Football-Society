@@ -320,9 +320,24 @@ def finalize_match_feedback(
     )
     if micro_summary is not None:
         plans = getattr(micro_summary, "cognitive_plans", None) or []
-        home.ingest_micro_cognitive_memory(plans, home.team_name)
-        away.ingest_micro_cognitive_memory(plans, away.team_name)
+        home.ingest_micro_cognitive_memory(
+            plans, home.team_name, operation_id=transaction_id,
+        )
+        away.ingest_micro_cognitive_memory(
+            plans, away.team_name, operation_id=transaction_id,
+        )
         _save_cognitive_match_log(base_dir, home, away, micro_summary, stage_name)
+
+    from src.simulation.cross_match_state import ensure_team_carryover
+    from src.simulation.society_continuity import capture_society_continuity
+
+    source_transaction_id = str(transaction_id or stage_name)
+    ensure_team_carryover(home).society_state = capture_society_continuity(
+        home, source_transaction_id=source_transaction_id,
+    )
+    ensure_team_carryover(away).society_state = capture_society_continuity(
+        away, source_transaction_id=source_transaction_id,
+    )
 
     if env_bool(environment_snapshot(), "SAVE_CARRYOVER", True):
         from src.simulation.cross_match_state import save_persistence

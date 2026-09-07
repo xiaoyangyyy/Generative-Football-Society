@@ -4191,3 +4191,46 @@ reflection semantics, persistence schema, world-model authority or research
 claim. Outside automated tests and the zero-match recovery drill, it executes
 no training, product/formal tournament run, formal study, participant session
 or external provider call.
+
+## 129. V4.11 Identity-bound cross-match society continuity
+
+The product previously persisted squad availability and physical team state
+between fixtures, but reconstructed each `SocietyAgent` with fresh cognitive,
+social and psychological state. Memory, beliefs, appraisal, emotion and
+pressure could shape one match and then disappear before the next coach
+decision. This left the advertised persistent football society fragmented at
+the most important product boundary.
+
+The existing authoritative squad carryover now embeds one optional, versioned
+society state per team. It is captured after match settlement and cognitive
+memory ingestion, then restored before the next match applies current physical
+and manager-controlled tactics. The state is team-bound and content-addressed,
+has strict field, numeric, depth, node, string, collection and 256 KiB limits,
+and fails closed on identity drift or malformed input. Retention is bounded to
+the most recent memories, beliefs, decisions, event records and reflections.
+Large runtime trigger and world-model packets are deliberately compacted out.
+
+The cognitive executor derives a bounded, prompt-safe decision context from
+the restored state before cache identity and provider routing. The context
+contains simulator-owned psychological modifiers, social state, tactical
+controls, selected high-salience memories and beliefs, and explicitly labels
+memory text as untrusted context. The deterministic offline fallback consumes
+the same psychological modifiers, so continuity can affect the next bounded
+coach plan without requiring a live LLM. Current match facts, validators and
+score ownership remain authoritative.
+
+Product world-state evidence is now V2. Its public projection exposes only
+content-free state identities, counts and bounded state values; private memory
+text never reaches the product artifact. Society change is rendered inside the
+existing `persistent_world_state` stage of the six-stage manager thread rather
+than introducing another disconnected feature area. Legacy V1 world-state
+artifacts remain replay-verifiable.
+
+Matched-seed unit tests prove selective team change, exact non-target
+stability, round-trip restoration, next-decision consumption, ingestion
+idempotency, content privacy, packet compaction and fail-closed tamper handling.
+The complete 197-file regression passes with 1,422 tests and three declared
+skips; it was executed in four disjoint processes to bound runner memory.
+This stage establishes a real cross-match causal software path, not evidence
+of improved match outcomes or real-football causality. It executes no training,
+product/formal match, participant session or external provider call.

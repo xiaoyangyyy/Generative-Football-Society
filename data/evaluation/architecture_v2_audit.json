@@ -58,6 +58,7 @@
     "shot_head_decision_binds_promoted_artifact": true,
     "society_agent_facade_has_dedicated_behavior_layers": true,
     "society_agent_psychology_is_dedicated_and_inherited": true,
+    "society_cognition_persists_into_next_match_and_product_thread": true,
     "squad_construction_is_root_bound_and_provenance_visible": true,
     "stable_release_artifact_chain_verified": true,
     "stable_release_pointer_identity_verified": true,

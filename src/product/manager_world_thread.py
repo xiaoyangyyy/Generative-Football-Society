@@ -317,6 +317,11 @@ def build_manager_world_evolution_thread(
         persistent_status = "persistent_state_evidence_unavailable"
     match_delta = persistent.get("match_delta")
     match_delta = match_delta if isinstance(match_delta, Mapping) else {}
+    society_transition = match_delta.get("society_transition")
+    society_transition = (
+        society_transition
+        if isinstance(society_transition, Mapping) else None
+    )
     persistent_stage = _stage(
         "persistent_world_state",
         persistent_status,
@@ -324,6 +329,7 @@ def build_manager_world_evolution_thread(
         recovery_complete=persistent.get("recovery_complete") is True,
         metrics_delta=copy.deepcopy(match_delta.get("metrics_delta")),
         transition_summary=copy.deepcopy(match_delta.get("summary")),
+        society_transition=copy.deepcopy(society_transition),
         evidence_authority=(
             "authoritative_simulator_state_transition"
             if persistent.get("available") is True else "unavailable"
@@ -603,6 +609,18 @@ def manager_world_evolution_summary(
         "persistent_world_transitions": sum(
             row.get("persistent_world_state", {}).get("source_identity")
             is not None
+            for row in stages
+        ),
+        "society_continuity_transitions": sum(
+            isinstance(
+                row.get("persistent_world_state", {}).get(
+                    "society_transition"
+                ),
+                Mapping,
+            )
+            and row["persistent_world_state"]["society_transition"].get(
+                "available"
+            ) is True
             for row in stages
         ),
         "threads_with_continuity_gaps": sum(

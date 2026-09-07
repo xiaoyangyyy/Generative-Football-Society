@@ -172,6 +172,7 @@ class TournamentFinalizeMixin:
             xg_home=xg1, xg_away=xg2, prof_score=prof_score,
             social_chaos=social_chaos, stage_name=stage_name,
             micro_summary=micro_summary if micro_layer_enabled() else None,
+            transaction_id=f"{self.match_index}:{stage_name}:{t1_name}:{t2_name}",
             rng_home=named_rng(
                 match_seed, "cross_match_settlement", t1_name,
             ),

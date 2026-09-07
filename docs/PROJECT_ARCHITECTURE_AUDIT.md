@@ -267,6 +267,18 @@ not quality signals by themselves.
     correctness and cannot authorize a production RTO. Service restart, orphan
     reconciliation, committed-file identity, clean shutdown and lease release
     remain hard gates; the full suite passes with 1,411 tests and three skips.
+54. Closed the cross-match society continuity gap without adding another
+    product subsystem. The authoritative squad carryover now stores bounded,
+    versioned, team-bound and content-addressed cognitive, social and
+    psychological state. Settlement captures it after idempotent cognitive
+    ingestion; the next match restores it before coach support and includes it
+    in cache identity. Both live-provider routing and deterministic fallback
+    consume the same prompt-safe context. Product world-state V2 projects only
+    content-free counts and state transitions inside the existing six-stage
+    manager thread, while V1 evidence remains replay-compatible. Matched-seed,
+    privacy, tamper, compaction and next-decision tests establish the software
+    mechanism but do not claim outcome improvement or real-world causality.
+    The complete 197-file regression passes with 1,422 tests and three skips.
 
 ## LLM Scope Decision
 
@@ -297,7 +309,9 @@ cleaning, or direct unaudited state mutation.
    scheduling/advancement/reflection, state owns checkpoint/restore, the match
    service owns execution stages, and standings/bracket/referee logic stays in
    its existing domain modules.
-5. Add matched-seed intervention tests for cognition, narrative persistence, memory, and meta-learning.
+5. Keep the new matched-seed cognition, narrative and memory continuity tests
+   as release invariants; extend the same selective-change contract to
+   meta-learning proposals before granting them cross-match authority.
 6. Fit macro intensity and micro action parameters against held-out event data with uncertainty intervals.
 7. Keep v7 deployed and v6 as rollback; v8.9 remains evaluated until continuous-time LODO beats the continuous baseline.
 

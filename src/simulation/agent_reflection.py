@@ -79,12 +79,16 @@ class AgentReflectionMixin:
         return self.apply_reflection_payload(data, operation_id=operation_id)
 
     def ingest_micro_cognitive_memory(
-        self, cognitive_plans: list, team_name: str = ""
+        self,
+        cognitive_plans: list,
+        team_name: str = "",
+        *,
+        operation_id: str | None = None,
     ) -> None:
         """Absorb in-match System 2 narratives into episodic memory for cross-match continuity."""
         if not cognitive_plans:
             return
-        for rec in cognitive_plans:
+        for index, rec in enumerate(cognitive_plans):
             if not isinstance(rec, dict):
                 continue
             trig = rec.get("trigger") or {}
@@ -99,6 +103,17 @@ class AgentReflectionMixin:
             ).strip()
             if len(narrative) < 8:
                 continue
+            continuity_event_id = (
+                f"{operation_id}:{index}" if operation_id else None
+            )
+            if continuity_event_id and any(
+                isinstance(memory, dict)
+                and isinstance(memory.get("metadata"), dict)
+                and memory["metadata"].get("continuity_event_id")
+                == continuity_event_id
+                for memory in self.episodic_memory
+            ):
+                continue
             self._register_memory_event(
                 content=f"In-match ({trig.get('kind', 'event')}): {narrative[:200]}",
                 layer="episodic",
@@ -107,7 +122,11 @@ class AgentReflectionMixin:
                 event_type="micro_cognitive",
                 tags=["cognitive", str(trig.get("kind", ""))],
                 write_temperature=1.1,
-                metadata={"trigger": trig, "applied": rec.get("applied", False)},
+                metadata={
+                    "trigger": trig,
+                    "applied": rec.get("applied", False),
+                    "continuity_event_id": continuity_event_id,
+                },
             )
 
     def apply_llm_reflection(self, reflection, *, operation_id=None):

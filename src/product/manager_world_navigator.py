@@ -946,6 +946,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     result_source_identity = result_stage.get("source_identity")
     metrics_delta = persistent.get("metrics_delta")
     transition_summary = persistent.get("transition_summary")
+    society_transition = persistent.get("society_transition")
     persistent_state_available = transition_identity is not None
     accounting = entry.get("long_term_accounting")
     accounting = accounting if isinstance(accounting, Mapping) else {}
@@ -1248,6 +1249,8 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
                 )
                 or metrics_delta != source_match_delta.get("metrics_delta")
                 or transition_summary != source_match_delta.get("summary")
+                or society_transition
+                != source_match_delta.get("society_transition")
             )
         )
         or (
@@ -1257,6 +1260,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
                 != "persistent_state_evidence_unavailable"
                 or metrics_delta is not None
                 or transition_summary is not None
+                or society_transition is not None
                 or persistent.get("recovery_complete") is not False
                 or persistent_source.get("available") is True
             )
@@ -1451,6 +1455,12 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
             "transition_summary": (
                 copy.deepcopy(dict(transition_summary))
                 if persistent_state_available else None
+            ),
+            "society_transition": (
+                copy.deepcopy(dict(society_transition))
+                if persistent_state_available
+                and isinstance(society_transition, Mapping)
+                else None
             ),
             "descriptive_cooccurrence_only": True,
             "causal_effect_authorized": False,
