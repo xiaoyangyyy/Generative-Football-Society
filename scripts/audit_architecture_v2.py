@@ -2780,7 +2780,7 @@ def main() -> int:
             and m2_preflight.get("checks", {}).get(
                 "two_step_policy_utility_sequence_objective_will_activate"
             ) is True
-            and (m2_integrity.get("identity_amendment") or {}).get("version") == 3
+            and (m2_integrity.get("identity_amendment") or {}).get("version") == 4
             and (m2_protocol.get("candidate") or {}).get(
                 "required_sealed_validation"
             ) == [
@@ -2807,6 +2807,8 @@ def main() -> int:
                 '"policy_utility_sequence_runtime_contract_missing"',
                 "sequence_authority_method(",
                 "two_step_gate_method()",
+                "sequence_policy = world_model_outcome_aligned_policy_enabled()",
+                "sequence_policy=sequence_policy",
             ))
             and all(token in m2_study for token in (
                 '"sequence_predictor_available"',
@@ -2819,6 +2821,13 @@ def main() -> int:
                 in mirrored_policy_evaluation
             )
             and "def _shared_pass_hold_continuation_policy(" not in world_model_planner
+            and "def pass_imagination_bonuses(" not in world_model_planner
+            and (m2_protocol.get("candidate") or {}).get(
+                "continuation_support_contract", {}
+            ).get("runtime_consumers") == [
+                "high_level_pass_utility",
+                "pass_target_ranking",
+            ]
         ),
         "wheel_preserves_src_console_namespace": (
             pyproject.get("project", {}).get("scripts", {}).get("gfs") == "src.cli:main"

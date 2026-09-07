@@ -208,7 +208,7 @@
     "code_sha256": {
       "scripts/estimate_m2_policy_power.py": "7e455529549df27b8e6318a99774f28bbaa5ed97a1b3afc485ba96de52532e18",
       "scripts/preflight_m2_training.py": "450fd844cbeb48d34880d0214b47be7919d7482ae351dff84a38b232c1a5bfb6",
-      "scripts/run_m2_mirrored_policy_study.py": "d6a5b9ca2f4a7bf918e514a6a4ba77ffacc88b97bbbf57d4c4f76e376da69486",
+      "scripts/run_m2_mirrored_policy_study.py": "bdf7f177be74b39147285f1f820d6d888264878e25edb4c08c4e4eff3a7c3625",
       "scripts/train_world_model.py": "00a11d38b9854a6d4f8afdfb8b95c14ba8d9f297c7a5b68a5b65ab91a763f9d1",
       "scripts/validate_world_model.py": "8d01e2a3fc03de465658b38aec03fa71f7f478963af8fa92d59c0f221a9a0320",
       "src/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -356,7 +356,7 @@
       "src/match_engine/world_model/opponent_meta_memory.py": "9c6f73b8c30025acf5e94c2fa16dc6010d43220632dad983b7ba001ae11ec584",
       "src/match_engine/world_model/opponent_response.py": "edf8cc42b3e69a18654dc34f472077975102b6b8d822b90ca20445a111969287",
       "src/match_engine/world_model/outcome_calibration.py": "1a5f6227a9e7e7495da490a11a5df5b738673b072a3dd8886ad951135aeb76b5",
-      "src/match_engine/world_model/planner.py": "5b3bc0d850cfd764a34e662c988b2fd4cadb40d985fa59e86ebe65298e2f7cf7",
+      "src/match_engine/world_model/planner.py": "9feb652087f0a891d7c8ca1383c679ee1d2da8d150dd413cc937644f19a9bd1d",
       "src/match_engine/world_model/policy_experiment.py": "779f2c70af850a038611ea4a391bc1e26f099d3a6bcb236f53fa0116e4bf5953",
       "src/match_engine/world_model/policy_outcomes.py": "211d99e3a7e28ea773ef269356c2133d3e85ede665ec7c822831f3e7d4940888",
       "src/match_engine/world_model/policy_prediction.py": "b34fae84ebee6436d0bd3ad9c5595a08a5df8e97ec8e38f9fb92d1a9201cae52",
@@ -460,7 +460,7 @@
     "manifest_path": "data/world_model/dataset_manifest_formal_v8_candidate.json",
     "manifest_sha256": "1f3b957ca4fd756c32d30dad2b8ce87c73edab4bb497d8bc12f604a16b717f8d",
     "protocol_path": "data/evaluation/m2_mirrored_policy_protocol_v1.json",
-    "protocol_sha256": "752875181a85a769a862b06902a694d815ab7037ff2843238dc440cf38266902"
+    "protocol_sha256": "82af9a3370fc13757c45810648b167bddc0eef6d1bf136ebdfd7403afc7b5607"
   },
   "frozen_training_command": "python scripts/train_world_model.py --trace-dir data/world_model/traces --dataset-manifest data/world_model/dataset_manifest_formal_v8_candidate.json --epochs 45 --batch-size 128 --lr 0.0003 --transition gru --transition-ensemble-size 3 --multi-step-loss-weight 0.25 --multi-step-warmup-fraction 0.2 --semantic-event-loss-weight 0.2 --policy-utility-loss-weight 0.25 --out data/world_model/m2_outcome_aligned_candidate.pt --run-dir data/training/runs/m2_outcome_aligned_candidate",
   "manifest": "data/world_model/dataset_manifest_formal_v8_candidate.json",
@@ -490,7 +490,7 @@
   "next_action": "run the frozen M2 training command",
   "protocol_id": "m2-mirrored-policy-v1",
   "ready": true,
-  "recorded_at": "2026-09-07T10:12:55.081638+00:00",
+  "recorded_at": "2026-09-07T10:46:09.926515+00:00",
   "schema_version": 1,
   "sealed_test": {
     "rows_loaded_for_model_selection": 0,

@@ -4660,3 +4660,31 @@ execution. The refreshed zero-training preflight passes all 16 checks. It loads
 no sealed rows, writes no checkpoint and makes no model-effect claim. This
 stage repairs support alignment only; model efficacy still requires the future
 frozen checkpoint and complete 360-run study.
+
+## 140. V4.22 End-to-end M2 pass planning depth
+
+The support-qualified sequence contract previously covered the high-level
+pass-versus-persistence decision but not the concrete receiver and target
+ranking performed after pass was sampled. That second stage still called the
+one-step policy-utility predictor. A formal M2 run could therefore combine a
+two-step high-level preference with one-step target selection and make the
+controller's claimed planning depth ambiguous.
+
+When M2 is enabled, every executable pass candidate is now scored through the
+same two-action sequence authority, calibrated two-step state gate and
+development-supported continuation policy as the high-level pass decision.
+Candidate-specific first actions preserve receiver, target, pass kind and
+decision-time success-prior features; only the shared supported continuation is
+marginalized. If the sequence predictor or any identity gate is unavailable,
+the complete target distribution remains the original rule/physics
+distribution. No one-step fallback is allowed. Legacy M1 retains its historical
+one-step behavior.
+
+The unreferenced legacy pass-bonus helper was removed. Direct tests prove that
+each receiver candidate evaluates exactly the supported continuations, that the
+ranking evidence declares two-step utility, and that missing sequence runtime
+fails closed. The architecture audit binds both runtime consumers and rejects a
+return of the dead helper. Protocol amendment V4 occurred before candidate
+binding, training or formal execution. This stage executes no training, match,
+participant session or provider call and establishes no efficacy result. The
+complete 202-file regression passes 1,471 tests with three declared skips.

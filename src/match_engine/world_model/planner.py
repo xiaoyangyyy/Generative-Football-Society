@@ -336,70 +336,6 @@ def _policy_value(
     }
 
 
-def pass_imagination_bonuses(
-    runtime: "WorldModelRuntime",
-    state: "MatchAffectiveState",
-    carrier: "PlayerAffectiveState",
-    meta: List[Tuple],
-    attacking_home: bool,
-    *,
-    blend: float | None = None,
-) -> List[float]:
-    if not world_model_plan_enabled():
-        return [0.0] * len(meta)
-
-    blend = float(blend if blend is not None else runtime.cfg.planner_blend)
-    runtime.reset_hidden()
-    obs = runtime.encode_state(state, attacking_home=attacking_home)
-    authority = _planner_authority(runtime, obs, kind="pass")
-    confidence = float(authority["decision_confidence"])
-    if not authority["authorized"] or confidence <= 0.0:
-        return [0.0] * len(meta)
-    hold_action = encode_high_level_action(
-        "hold",
-        target=np.asarray(state.ball.position),
-        horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
-    )
-    baseline, baseline_certainty, value_gate = _policy_value(
-        runtime, obs, hold_action,
-        action_kind="pass",
-        attacking_home=attacking_home,
-        legacy_authority=authority,
-    )
-    if baseline is None:
-        return [0.0] * len(meta)
-    bonuses: List[float] = []
-
-    for candidate in meta:
-        recv, kind, tgt, _lane, _press, _omega = candidate[:6]
-        success_prior = float(candidate[6]) if len(candidate) > 6 else 0.5
-        act = encode_pass_candidate(
-            state,
-            carrier,
-            recv,
-            kind,
-            tgt,
-            success_p=success_prior,
-            horizon_s=float(getattr(state, "_wm_horizon_s", 10.0)),
-        )
-        val, certainty, _candidate_gate = _policy_value(
-            runtime, obs, act,
-            action_kind="pass",
-            attacking_home=attacking_home,
-            legacy_authority=authority,
-        )
-        if val is None:
-            bonuses.append(0.0)
-            continue
-        confidence = float(value_gate.get(
-            "decision_confidence", confidence,
-        ))
-        certainty = min(certainty, baseline_certainty)
-        advantage = float(np.clip(val - baseline, -0.35, 0.35))
-        bonuses.append(finite_float(blend * confidence * certainty * advantage, 0.0))
-    return bonuses
-
-
 def pass_candidate_policy_probabilities(
     runtime: "WorldModelRuntime",
     state: "MatchAffectiveState",
@@ -428,6 +364,7 @@ def pass_candidate_policy_probabilities(
     values: list[float] = []
     certainties: list[float] = []
     value_gates: list[dict] = []
+    sequence_policy = world_model_outcome_aligned_policy_enabled()
     for candidate in meta:
         recv, kind, tgt, _lane, _press, _omega = candidate[:6]
         success_prior = float(candidate[6]) if len(candidate) > 6 else 0.5
@@ -441,6 +378,7 @@ def pass_candidate_policy_probabilities(
             action_kind="pass",
             attacking_home=attacking_home,
             legacy_authority=authority,
+            sequence_policy=sequence_policy,
         )
         if value is None:
             return base, {
@@ -491,6 +429,10 @@ def pass_candidate_policy_probabilities(
         "model_values": values,
         "value_source": (
             value_gates[0].get("value_source") if value_gates
+            else "unavailable"
+        ),
+        "planning_mode": (
+            value_gates[0].get("planning_mode") if value_gates
             else "unavailable"
         ),
         "policy_utility_gate": value_gates[0] if value_gates else {},

@@ -32,7 +32,10 @@ from src.match_engine.world_model.action_codec import (
 from src.match_engine.world_model.config import world_model_controls_side
 from src.match_engine.world_model.inference import WorldModelRuntime
 from src.match_engine.world_model.observation import OBS_DIM
-from src.match_engine.world_model.planner import action_imagination_adjustments
+from src.match_engine.world_model.planner import (
+    action_imagination_adjustments,
+    pass_candidate_policy_probabilities,
+)
 from src.match_engine.world_model.mirrored_policy_evaluation import (
     fixture_stratified_cluster_interval,
     paired_effect_rows,
@@ -539,6 +542,110 @@ def test_m2_changes_pass_utility_only_when_exact_gate_is_open(monkeypatch):
     assert gate["hold_value"] == 0.0
     assert gate["hold_value_gate"]["reason"] == (
         "exact_zero_persistence_reference"
+    )
+
+
+def _pass_target_state():
+    carrier = SimpleNamespace(
+        team_id="home", player_id="carrier", on_pitch=True,
+        position=np.array([0.5, 0.5]),
+    )
+    receivers = [
+        SimpleNamespace(
+            team_id="home", player_id=f"receiver-{index}", on_pitch=True,
+            position=np.array([target_x, 0.5]),
+        )
+        for index, target_x in enumerate((0.35, 0.80))
+    ]
+    team = SimpleNamespace(players=[carrier, *receivers])
+    state = _planner_state()
+    state.team = lambda team_id: team
+    return state, carrier, receivers
+
+
+def test_m2_pass_target_ranking_uses_the_same_supported_sequence_gate(
+    monkeypatch,
+):
+    monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
+    monkeypatch.setenv("MATCH_WM_PLAN", "1")
+    monkeypatch.setenv("MATCH_WM_OUTCOME_ALIGNED_POLICY", "1")
+    runtime = _M2Runtime(gate_open=True)
+    state, carrier, receivers = _pass_target_state()
+    metadata = [
+        (
+            receiver, "through", receiver.position.copy(),
+            0.8, 0.1, 0.0, 0.75,
+        )
+        for receiver in receivers
+    ]
+
+    def ranked_sequence(
+        observation, actions, *, action_kind, attacking_home,
+    ):
+        sequence = [decode_action_kind(action) for action in actions]
+        runtime.sequence_calls.append(sequence)
+        return {
+            "prediction_source": "explicit_changing_action_sequence_rollout",
+            "planning_mode": "open_loop_evidence_supported_continuation_policy",
+            "rollout_steps": 2,
+            "action_sequence": sequence,
+            "policy_utility": float(actions[0, 6]),
+            "policy_utility_version": POLICY_UTILITY_VERSION,
+            "uncertainty": 0.1,
+            "sequence_gate": runtime.policy_utility_sequence_authority(
+                action_kind, rollout_steps=2,
+            ),
+        }
+
+    runtime.predict_policy_utility_sequence = ranked_sequence
+    base = np.array([0.5, 0.5], dtype=float)
+
+    adjusted, evidence = pass_candidate_policy_probabilities(
+        runtime, state, carrier, metadata, True, base,
+    )
+
+    assert adjusted[1] > base[1]
+    assert runtime.sequence_calls == [
+        ["pass", "pass"],
+        ["pass", "shot"],
+        ["pass", "pass"],
+        ["pass", "shot"],
+    ]
+    assert evidence["value_source"] == (
+        "outcome_aligned_two_step_policy_utility"
+    )
+    assert evidence["planning_mode"] == (
+        "open_loop_evidence_supported_continuation_policy"
+    )
+    assert evidence["policy_utility_gate"]["rollout_steps"] == 2
+
+
+def test_m2_pass_target_ranking_fails_closed_without_sequence_runtime(
+    monkeypatch,
+):
+    monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
+    monkeypatch.setenv("MATCH_WM_PLAN", "1")
+    monkeypatch.setenv("MATCH_WM_OUTCOME_ALIGNED_POLICY", "1")
+    runtime = _M2Runtime(gate_open=True)
+    runtime.predict_policy_utility_sequence = None
+    state, carrier, receivers = _pass_target_state()
+    metadata = [
+        (
+            receiver, "through", receiver.position.copy(),
+            0.8, 0.1, 0.0, 0.75,
+        )
+        for receiver in receivers
+    ]
+    base = np.array([0.4, 0.6], dtype=float)
+
+    adjusted, evidence = pass_candidate_policy_probabilities(
+        runtime, state, carrier, metadata, True, base,
+    )
+
+    assert np.array_equal(adjusted, base)
+    assert evidence["applied"] is False
+    assert evidence["reason"] == (
+        "policy_utility_sequence_runtime_contract_missing"
     )
 
 
@@ -1558,7 +1665,7 @@ def test_m2_protocol_validator_rejects_preregistered_threshold_drift():
     assert protocol["integrity"]["code_identity_mode"] == (
         "transitive_local_imports_v1"
     )
-    assert protocol["integrity"]["identity_amendment"]["version"] == 3
+    assert protocol["integrity"]["identity_amendment"]["version"] == 4
     assert protocol["candidate"]["required_sealed_validation"] == [
         "two_step",
         "policy_utility.pass",
@@ -1572,6 +1679,10 @@ def test_m2_protocol_validator_rejects_preregistered_threshold_drift():
         "minimum_supported_probability_mass": 0.95,
         "action_source": "development_mean_leakage_cleaned_vector",
         "reference_action": "same_state_zero_transition_utility",
+        "runtime_consumers": [
+            "high_level_pass_utility",
+            "pass_target_ranking",
+        ],
     }
     changed = copy.deepcopy(protocol)
     changed["analysis"]["minimum_meaningful_delta"] = 0.09

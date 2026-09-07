@@ -31,7 +31,11 @@
       "minimum_groups": 4,
       "minimum_supported_probability_mass": 0.95,
       "action_source": "development_mean_leakage_cleaned_vector",
-      "reference_action": "same_state_zero_transition_utility"
+      "reference_action": "same_state_zero_transition_utility",
+      "runtime_consumers": [
+        "high_level_pass_utility",
+        "pass_target_ranking"
+      ]
     },
     "shot_authority": "independent_frozen_shot_head_gate"
   },
@@ -108,17 +112,18 @@
     "historical_m1_results_are_current_m2_evidence": false,
     "code_identity_mode": "transitive_local_imports_v1",
     "identity_amendment": {
-      "version": 3,
+      "version": 4,
       "reasons": [
         "manual_roots_did_not_bind_local_import_closure",
         "joint_changing_action_policy_utility_was_not_trained_or_validated",
-        "runtime_continuation_branches_were_not_support_qualified"
+        "runtime_continuation_branches_were_not_support_qualified",
+        "m2_pass_target_ranking_bypassed_sequence_utility"
       ],
       "timing": "before_candidate_binding_training_and_formal_execution",
       "candidate_bound_before_amendment": false,
       "training_runs_before_amendment": 0,
       "formal_runs_before_amendment": 0,
-      "supersedes_version": 2
+      "supersedes_version": 3
     },
     "input_identity_globs": [
       "src/**/*.py",

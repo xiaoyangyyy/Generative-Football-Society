@@ -395,6 +395,16 @@ not quality signals by themselves.
     policy weights and prototypes. Protocol amendment V3 occurred before any
     candidate binding, training or formal execution, and the refreshed
     zero-training preflight passes all 16 checks without loading sealed rows.
+65. Closed the remaining mixed-depth M2 execution path. The high-level pass
+    decision already used the support-qualified two-action utility, but concrete
+    receiver/target ranking still called the one-step predictor. M2 target
+    ranking now uses the identical sequence authority and continuation policy;
+    absent sequence capability fails closed to the unchanged rule distribution.
+    The unused legacy pass-bonus helper was removed. Protocol amendment V4
+    records zero prior candidates, training runs and formal runs, and the
+    architecture audit prevents either one-step bypass or helper restoration.
+    The complete 202-file regression passes 1,471 tests with three declared
+    skips.
 
 ## LLM Scope Decision
 
@@ -416,9 +426,10 @@ cleaning, or direct unaudited state mutation.
 
 1. When training is explicitly authorized, produce one frozen M2 checkpoint
    with the joint changing-action utility objective and support-qualified
-   continuation runtime contract, then require every registered development and
-   sealed gate before the 360-run study. Do not retrofit the new authority onto
-   the current v9 checkpoint.
+   continuation runtime contract across both high-level action choice and
+   receiver/target ranking, then require every registered development and sealed
+   gate before the 360-run study. Do not retrofit the new authority onto the
+   current v9 checkpoint.
 2. Keep the completed `SocietyAgent` facade closed: new governance, tactics,
    reflection, condition, psychology, memory, social or match behavior belongs
    to its existing dedicated layer and must not re-enter the facade.

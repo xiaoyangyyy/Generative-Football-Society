@@ -77,6 +77,14 @@ This is open-loop, development-supported two-action evaluation, not closed-loop
 tree search. It establishes that the evaluated runtime branch matches the
 validated action support contract; it does not establish model efficacy.
 
+The sequence contract applies twice in the executable pass path: first when the
+high-level policy scores pass against zero persistence, and again when the
+passing engine ranks concrete receivers and targets. Under M2, target ranking
+may not call the one-step utility predictor. A missing or invalid sequence
+runtime returns the unchanged physics/rule receiver distribution. Legacy M1
+keeps its historical one-step target ranking. This removes a mixed-depth
+controller without attributing any new effect to the untrained M2 candidate.
+
 ## Environment flags
 
 | Variable | Default | Meaning |
