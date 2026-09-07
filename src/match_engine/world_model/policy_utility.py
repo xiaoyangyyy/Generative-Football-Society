@@ -12,6 +12,17 @@ GOAL_DELTA_WEIGHT = 1.0
 TERRITORIAL_DELTA_WEIGHT = 0.35
 POSSESSION_DELTA_WEIGHT = 0.15
 POLICY_UTILITY_LIMIT = 2.0
+CONTINUATION_SUPPORT_VERSION = 1
+CONTINUATION_ACTION_DIM = 18
+CONTINUATION_ACTION_KINDS = (
+    "pass", "shot", "cross", "hold", "intercept", "tackle", "other",
+)
+PLANNABLE_CONTINUATION_ACTIONS = frozenset({
+    "pass", "shot", "cross", "hold",
+})
+MINIMUM_CONTINUATION_SAMPLES = 32
+MINIMUM_CONTINUATION_GROUPS = 4
+MINIMUM_SUPPORTED_CONTINUATION_MASS = 0.95
 
 
 def _validate_last_dimension(value: Any, *, name: str) -> None:
@@ -139,6 +150,66 @@ def transition_policy_utility_tensor(
     }
 
 
+def build_continuation_support_evidence(
+    first_action_kinds: np.ndarray,
+    continuation_action_kinds: np.ndarray,
+    groups: np.ndarray,
+    continuation_actions: np.ndarray,
+    *,
+    first_action_kind: str,
+) -> dict[str, Any]:
+    """Build grouped second-action support from leakage-cleaned vectors."""
+    first = np.asarray(first_action_kinds).astype("U")
+    second = np.asarray(continuation_action_kinds).astype("U")
+    group_ids = np.asarray(groups).astype("U")
+    vectors = np.asarray(continuation_actions, dtype=np.float64)
+    if not (len(first) == len(second) == len(group_ids) == len(vectors)):
+        raise ValueError("continuation support arrays must align")
+    if vectors.ndim != 2 or vectors.shape[1] != CONTINUATION_ACTION_DIM:
+        raise ValueError("continuation action vectors have invalid shape")
+    selected = first == str(first_action_kind)
+    total = int(selected.sum())
+    actions: dict[str, Any] = {}
+    supported_mass = 0.0
+    for action in CONTINUATION_ACTION_KINDS:
+        mask = selected & (second == action)
+        samples = int(mask.sum())
+        action_groups = int(len(np.unique(group_ids[mask]))) if samples else 0
+        probability = float(samples / total) if total else 0.0
+        prototype = np.mean(vectors[mask], axis=0).tolist() if samples else []
+        supported = bool(
+            action in PLANNABLE_CONTINUATION_ACTIONS
+            and samples >= MINIMUM_CONTINUATION_SAMPLES
+            and action_groups >= MINIMUM_CONTINUATION_GROUPS
+            and len(prototype) == CONTINUATION_ACTION_DIM
+            and np.isfinite(prototype).all()
+        )
+        supported_mass += probability if supported else 0.0
+        actions[action] = {
+            "samples": samples,
+            "groups": action_groups,
+            "empirical_probability": probability,
+            "plannable": action in PLANNABLE_CONTINUATION_ACTIONS,
+            "supported": supported,
+            "action_prototype": prototype,
+        }
+    return {
+        "version": CONTINUATION_SUPPORT_VERSION,
+        "source": "grouped_holdout_observed_second_actions",
+        "first_action_kind": str(first_action_kind),
+        "total_samples": total,
+        "minimum_samples": MINIMUM_CONTINUATION_SAMPLES,
+        "minimum_groups": MINIMUM_CONTINUATION_GROUPS,
+        "minimum_supported_probability_mass": MINIMUM_SUPPORTED_CONTINUATION_MASS,
+        "supported_probability_mass": float(supported_mass),
+        "excluded_probability_mass": float(1.0 - supported_mass if total else 1.0),
+        "sufficient": bool(
+            total and supported_mass >= MINIMUM_SUPPORTED_CONTINUATION_MASS
+        ),
+        "actions": actions,
+    }
+
+
 def policy_utility_validation_gate(
     evidence: dict[str, Any] | None,
     *,
@@ -219,6 +290,123 @@ def policy_utility_validation_gate(
     }
 
 
+def continuation_support_validation_gate(
+    evidence: dict[str, Any] | None,
+    *,
+    first_action_kind: str,
+    expected_samples: int,
+) -> dict[str, Any]:
+    """Recompute a normalized continuation policy from recorded evidence."""
+    contract = evidence if isinstance(evidence, dict) else {}
+    try:
+        actions = contract.get("actions") or {}
+        total = int(contract.get("total_samples", 0) or 0)
+        structural = bool(
+            contract.get("version") == CONTINUATION_SUPPORT_VERSION
+            and contract.get("source")
+            == "grouped_holdout_observed_second_actions"
+            and contract.get("first_action_kind") == str(first_action_kind)
+            and total == int(expected_samples)
+            and set(actions) == set(CONTINUATION_ACTION_KINDS)
+            and contract.get("minimum_samples") == MINIMUM_CONTINUATION_SAMPLES
+            and contract.get("minimum_groups") == MINIMUM_CONTINUATION_GROUPS
+            and contract.get("minimum_supported_probability_mass")
+            == MINIMUM_SUPPORTED_CONTINUATION_MASS
+        )
+        counted = 0
+        probability_sum = 0.0
+        supported_mass = 0.0
+        supported_rows = []
+        for action in CONTINUATION_ACTION_KINDS:
+            row = actions.get(action) or {}
+            samples = int(row.get("samples", 0) or 0)
+            action_groups = int(row.get("groups", 0) or 0)
+            probability = float(row.get("empirical_probability", -1.0))
+            expected_probability = float(samples / total) if total else 0.0
+            prototype = np.asarray(
+                row.get("action_prototype") or [], dtype=np.float64,
+            )
+            prototype_valid = bool(
+                prototype.shape == (CONTINUATION_ACTION_DIM,)
+                and np.isfinite(prototype).all()
+            )
+            expected_supported = bool(
+                action in PLANNABLE_CONTINUATION_ACTIONS
+                and samples >= MINIMUM_CONTINUATION_SAMPLES
+                and action_groups >= MINIMUM_CONTINUATION_GROUPS
+                and prototype_valid
+            )
+            structural = bool(
+                structural
+                and samples >= 0
+                and 0 <= action_groups <= samples
+                and np.isfinite(probability)
+                and abs(probability - expected_probability) <= 1e-12
+                and row.get("plannable")
+                is (action in PLANNABLE_CONTINUATION_ACTIONS)
+                and row.get("supported") is expected_supported
+            )
+            counted += samples
+            probability_sum += probability
+            if expected_supported:
+                supported_mass += expected_probability
+                supported_rows.append({
+                    "action_kind": action,
+                    "samples": samples,
+                    "groups": action_groups,
+                    "empirical_probability": expected_probability,
+                    "action_prototype": prototype.tolist(),
+                })
+        structural = bool(
+            structural
+            and counted == total
+            and abs(probability_sum - (1.0 if total else 0.0)) <= 1e-12
+            and abs(float(contract.get(
+                "supported_probability_mass", -1.0,
+            )) - supported_mass) <= 1e-12
+            and abs(float(contract.get(
+                "excluded_probability_mass", -1.0,
+            )) - (1.0 - supported_mass if total else 1.0)) <= 1e-12
+        )
+    except (TypeError, ValueError, OverflowError):
+        structural = False
+        total = 0
+        supported_mass = 0.0
+        supported_rows = []
+    active = bool(
+        structural
+        and supported_rows
+        and supported_mass >= MINIMUM_SUPPORTED_CONTINUATION_MASS
+        and contract.get("sufficient") is True
+    )
+    policy = []
+    if active:
+        policy = [
+            {
+                **row,
+                "weight": float(row["empirical_probability"] / supported_mass),
+            }
+            for row in supported_rows
+        ]
+    return {
+        "version": CONTINUATION_SUPPORT_VERSION,
+        "active": active,
+        "authorized": active,
+        "reason": (
+            "grouped_holdout_continuation_support"
+            if active else "continuation_support_contract_invalid"
+            if not structural else "continuation_support_mass_insufficient"
+        ),
+        "first_action_kind": str(first_action_kind),
+        "total_samples": total,
+        "supported_probability_mass": float(supported_mass),
+        "minimum_samples": MINIMUM_CONTINUATION_SAMPLES,
+        "minimum_groups": MINIMUM_CONTINUATION_GROUPS,
+        "minimum_supported_probability_mass": MINIMUM_SUPPORTED_CONTINUATION_MASS,
+        "continuation_policy": policy,
+    }
+
+
 def policy_utility_sequence_validation_gate(
     evidence: dict[str, Any] | None,
     *,
@@ -238,6 +426,12 @@ def policy_utility_sequence_validation_gate(
         minimum_groups=minimum_groups,
         minimum_skill=minimum_skill,
     )
+    profile = ((contract.get("actions") or {}).get(str(action_kind)) or {})
+    continuation_gate = continuation_support_validation_gate(
+        profile.get("continuation_support"),
+        first_action_kind=action_kind,
+        expected_samples=int(base.get("samples", 0) or 0),
+    )
     sequence_contract = bool(
         steps == 2
         and contract.get("objective_scope") == "two_step_policy_utility"
@@ -246,10 +440,14 @@ def policy_utility_sequence_validation_gate(
         and contract.get("trained_with_action_sequence_objective") is True
         and contract.get("grouped_holdout") is True
     )
-    active = bool(base["authorized"] and sequence_contract)
+    active = bool(
+        base["authorized"]
+        and sequence_contract
+        and continuation_gate["authorized"]
+    )
     return {
         **base,
-        "version": 2,
+        "version": 3,
         "active": active,
         "authorized": active,
         "authority": base["authority"] if active else 0.0,
@@ -259,11 +457,20 @@ def policy_utility_sequence_validation_gate(
             else "policy_utility_sequence_training_contract_missing"
             if not sequence_contract
             else str(base["reason"])
+            if not base["authorized"]
+            else str(continuation_gate["reason"])
         ),
         "rollout_steps": steps,
         "action_sequence": contract.get("action_sequence"),
         "objective_scope": contract.get("objective_scope"),
         "trained_with_action_sequence_objective": bool(
             contract.get("trained_with_action_sequence_objective") is True
+        ),
+        "continuation_support_authorized": bool(
+            continuation_gate["authorized"]
+        ),
+        "continuation_support_gate": continuation_gate,
+        "continuation_policy": list(
+            continuation_gate.get("continuation_policy") or []
         ),
     }

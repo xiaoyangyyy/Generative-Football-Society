@@ -1,4 +1,4 @@
-# World Model v8
+# World Model v9 / M2 research pipeline
 
 The world model learns action-conditioned match transitions for counterfactual
 pass and shot planning. It is an optional advisory layer: the deterministic
@@ -37,8 +37,8 @@ the model, preventing outcome leakage.
   as fake labels.
 - Weights ball, score, player, and tactical features by semantic importance so
   sparse grids cannot dominate the loss.
-- Uses one-step counterfactual planning. Repeating one action for several latent
-  steps is no longer the default.
+- Keeps one-step scoring for legacy research and executes exactly two explicit
+  cleaned actions for M2 changing-action planning.
 - Stores holdout metrics and a `planner_quality` score in every checkpoint.
 - Scales planner bonuses by checkpoint quality and observation coverage.
 - Loads v2/v3 checkpoints for replay compatibility, but gives them zero planning
@@ -47,12 +47,35 @@ the model, preventing outcome leakage.
 - Excludes aggregate backfill traces when raw ball logs are loaded, preventing
   duplicate training examples.
 - Uses independent pass and shot quality gates; a weak branch contributes zero.
-- Uses a legal hold action as the counterfactual baseline.
+- Keeps legal hold as the legacy M1 counterfactual action; M2 compares learned
+  sequence utility with the exact zero-utility persistence baseline used by
+  training and validation.
 - Uses ensemble disagreement and observation coverage to reduce OOD influence.
 - Trains each dynamics member with independent Bayesian-bootstrap sample
   weights and rolls members forward separately at inference.
 - Territorial progress is exposed only as `progress_delta`; the misleading
   historical xG alias has been removed.
+
+### M2 support-qualified continuation policy
+
+M2 does not derive its second-action distribution from live rule utilities.
+The grouped development report counts every `first -> second` action branch,
+records independent-match groups, and stores the mean leakage-cleaned action
+vector for each branch. A branch is usable only with at least 32 samples and
+four groups; usable branches must cover at least 95% of all second actions for
+that first action. The gate recomputes counts, probabilities, coverage and
+prototype integrity instead of trusting a recorded `authorized` flag.
+
+For the frozen current corpus, development `pass` sequences contain 1,649
+`pass -> pass`, 56 `pass -> shot`, five `pass -> hold`, and four
+`pass -> cross` pairs. Runtime therefore normalizes only `pass` and `shot`,
+covering 99.47% of the observed continuation mass. `hold` and `cross` are
+excluded at runtime rather than extrapolated. Sealed evaluation independently
+rebuilds the same support gate but never supplies the runtime policy.
+
+This is open-loop, development-supported two-action evaluation, not closed-loop
+tree search. It establishes that the evaluated runtime branch matches the
+validated action support contract; it does not establish model efficacy.
 
 ## Environment flags
 

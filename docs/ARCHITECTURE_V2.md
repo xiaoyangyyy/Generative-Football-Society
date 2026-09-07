@@ -4620,3 +4620,43 @@ architecture audit now rejects any return to qualification-only sequence support
 This stage changes code and prospective M2 identity only. It does not train a
 checkpoint, execute a match or establish model efficacy. The complete 202-file
 regression passes 1,467 tests with three declared skips.
+
+## 139. V4.21 Support-qualified M2 continuation control
+
+V4.20 removed the one-step runtime mismatch, but its common continuation policy
+still assigned live rule-derived mass to `pass` and `hold` without proving that
+both second-action branches had enough grouped development evidence. The frozen
+corpus exposes the problem directly: development has 1,649 `pass -> pass` and
+56 `pass -> shot` pairs, but only five `pass -> hold` and four
+`pass -> cross` pairs. First-action aggregation could hide that branch-level
+out-of-distribution use.
+
+Every two-step utility report now carries a continuation-support profile for
+each first action. It includes branch samples, independent groups, empirical
+probability and a mean leakage-cleaned 18-dimensional action prototype. A
+plannable branch requires at least 32 samples and four groups, and supported
+branches must cover at least 95% of the observed second-action mass. The gate
+recomputes the complete profile and normalized policy; malformed counts,
+probabilities, prototypes, supported flags or coverage fail closed.
+
+Runtime consumes only the development gate's normalized action prototypes. For
+the current development split this is `pass` with weight 0.96716 and `shot`
+with weight 0.03284, covering 99.47% of `pass` continuations. Sparse `hold` and
+`cross` continuations receive no model rollout. Sealed validation independently
+rebuilds the same support gate for qualification but never supplies planning
+weights, preserving sealed-test isolation.
+
+M2 now compares the supported two-action value with the exact same-state,
+zero-transition utility baseline registered by training and validation. It no
+longer evaluates an unsupported `hold -> *` model branch. Hold remains an
+explicit counterfactual reference, not direct learned authority. Candidate
+qualification and receipt replay require a finite, positive, normalized
+continuation policy with valid 18-dimensional prototypes in both development
+and sealed evidence.
+
+Because no M2 checkpoint had been trained, no candidate had been bound and no
+formal run had started, the protocol records identity amendment V3 before any
+execution. The refreshed zero-training preflight passes all 16 checks. It loads
+no sealed rows, writes no checkpoint and makes no model-effect claim. This
+stage repairs support alignment only; model efficacy still requires the future
+frozen checkpoint and complete 360-run study.

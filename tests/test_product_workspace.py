@@ -1063,6 +1063,7 @@ def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
                 "two_step",
                 "policy_utility.pass",
                 "policy_utility_two_step.pass",
+                "policy_utility_two_step.pass.continuation_support",
             ],
             "required_policy_utility_branches": ["pass"],
         },
@@ -1078,6 +1079,18 @@ def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
     identity = study_execution_identity(
         tmp_path, protocol_path, protocol, checkpoint,
     )
+    sequence_gate = {
+        "authorized": True,
+        "continuation_support_authorized": True,
+        "continuation_policy": [{
+            "action_kind": "pass",
+            "weight": 1.0,
+            "samples": 96,
+            "groups": 6,
+            "empirical_probability": 1.0,
+            "action_prototype": [1.0] + [0.0] * 17,
+        }],
+    }
     report = {
         "schema_version": 1,
         "protocol_id": "m2-mirrored-policy-v1",
@@ -1089,7 +1102,7 @@ def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
                 "pass": {"authorized": True},
             },
             "required_policy_utility_sequence_gates": {
-                "pass": {"authorized": True},
+                "pass": sequence_gate,
             },
             "sequence_predictor_available": True,
             "two_step_gate": {"active": True},
@@ -1099,7 +1112,7 @@ def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
             "sealed_two_step_active": True,
             "sealed_pass_policy_utility_gate": {"authorized": True},
             "sealed_pass_policy_utility_two_step_gate": {
-                "authorized": True,
+                **sequence_gate,
             },
             "sealed_validation": {"executed": True},
         },

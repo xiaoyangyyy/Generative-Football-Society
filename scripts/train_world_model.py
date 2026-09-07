@@ -33,6 +33,7 @@ from src.match_engine.world_model.state_scales import (
 )
 from src.match_engine.world_model.policy_utility import (
     POLICY_UTILITY_VERSION,
+    build_continuation_support_evidence,
     transition_policy_utility_tensor,
 )
 from src.match_engine.world_model.action_codec import decode_action_kinds
@@ -160,6 +161,8 @@ def _policy_utility_validation(
     rollout_steps: int = 1,
     action_sequence: str = "single_executed_action",
     trained_with_action_sequence_objective: bool = False,
+    continuation_action_kinds: np.ndarray | None = None,
+    continuation_actions: np.ndarray | None = None,
 ) -> dict:
     """Build action-specific grouped holdout evidence for M2 authorization."""
     predictions = np.asarray(predicted_members, dtype=np.float64)
@@ -170,6 +173,13 @@ def _policy_utility_validation(
         raise ValueError("policy utility predictions must be [members, samples]")
     if len(kinds) != len(observed) or len(group_ids) != len(observed):
         raise ValueError("policy utility validation arrays must align")
+    if (continuation_action_kinds is None) != (continuation_actions is None):
+        raise ValueError("continuation kinds and actions must be supplied together")
+    if continuation_action_kinds is not None and (
+        len(continuation_action_kinds) != len(observed)
+        or len(continuation_actions) != len(observed)
+    ):
+        raise ValueError("continuation validation arrays must align")
     ensemble = predictions.mean(axis=0)
     actions = {}
     for action in ("pass", "shot", "cross", "hold"):
@@ -206,6 +216,16 @@ def _policy_utility_validation(
             "prediction_target_correlation": correlation,
             "grouped_holdout": True,
         }
+        if continuation_action_kinds is not None:
+            actions[action]["continuation_support"] = (
+                build_continuation_support_evidence(
+                    kinds,
+                    continuation_action_kinds,
+                    group_ids,
+                    continuation_actions,
+                    first_action_kind=action,
+                )
+            )
     return {
         "version": 1,
         "target_version": POLICY_UTILITY_VERSION,
@@ -1050,6 +1070,10 @@ def main() -> None:
                 trained_with_action_sequence_objective=(
                     policy_utility_two_step_optimization_steps > 0
                 ),
+                continuation_action_kinds=decode_action_kinds(
+                    pair_actions[:, 1]
+                ),
+                continuation_actions=pair_actions[:, 1],
             )
         else:
             two_step_mse = two_step_persistence_mse = two_step_skill = 0.0
@@ -1071,6 +1095,8 @@ def main() -> None:
                 trained_with_action_sequence_objective=(
                     policy_utility_two_step_optimization_steps > 0
                 ),
+                continuation_action_kinds=np.zeros(0, dtype=str),
+                continuation_actions=np.zeros((0, 18), dtype=np.float32),
             )
         progress_target = torch.from_numpy(xg_delta[val_idx]).float().view(-1)
         progress_rmse = float(torch.sqrt(torch.mean(

@@ -153,6 +153,14 @@ def _sealed_evaluation(runtime, trace_dir: Path, manifest_path: Path) -> dict:
         trained_with_action_sequence_objective=bool(
             training.get("trained_with_action_sequence_objective") is True
         ),
+        continuation_action_kinds=(
+            decode_action_kinds(sequences[:, 1])
+            if len(pair_left) else np.zeros(0, dtype=str)
+        ),
+        continuation_actions=(
+            sequences[:, 1]
+            if len(pair_left) else np.zeros((0, 18), dtype=np.float32)
+        ),
     )
     policy_utility_two_step["sealed_test"] = True
     policy_utility_two_step["gates"] = {

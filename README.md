@@ -282,6 +282,17 @@ process-kill recovery drill: functional recovery remains fail-closed under a
 bounded 45-second readiness timeout, while the observed 15-second local target
 is now reported separately and cannot masquerade as data-integrity failure.
 The complete suite passes with 1,411 tests and three declared skips.
+V4.19--V4.21 align prospective M2 training, grouped development evidence,
+sealed qualification and runtime control at the same explicit two-action
+depth. Runtime continuation branches now come only from grouped development
+support (minimum 32 samples, four matches and 95% covered mass) and carry
+leakage-cleaned action prototypes. On the current development split this keeps
+`pass -> pass` and `pass -> shot`, while excluding the five `pass -> hold`
+and four `pass -> cross` examples. M2 compares the supported sequence against
+the exact zero-transition utility baseline and cannot fall back to one-step or
+unsupported hold rollouts. The V3 protocol amendment and 16-check preflight are
+still zero-training readiness evidence: no M2 candidate or efficacy result
+exists yet.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

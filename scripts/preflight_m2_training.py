@@ -39,8 +39,10 @@ from src.match_engine.world_model.mirrored_policy_evaluation import (
     validate_m2_preflight_receipt,
 )
 from src.match_engine.world_model.policy_utility import (
+    build_continuation_support_evidence,
     transition_policy_utility_numpy,
 )
+from src.match_engine.world_model.schema import strip_outcome_leakage
 from src.match_engine.world_model.recorder import load_trace_batches
 
 
@@ -69,7 +71,9 @@ def _split_arrays(trace_dir: Path, manifest: dict, split: str) -> dict[str, Any]
         0.0,
         1.0,
     )
-    actions = np.nan_to_num(actions, nan=0.0, posinf=1.0, neginf=0.0)
+    actions = strip_outcome_leakage(
+        np.nan_to_num(actions, nan=0.0, posinf=1.0, neginf=0.0)
+    )
     groups = np.asarray([_match_group(value) for value in raw_groups], dtype=str)
     valid = (
         (np.std(observations, axis=1) > 0.02)
@@ -83,6 +87,15 @@ def _split_arrays(trace_dir: Path, manifest: dict, split: str) -> dict[str, Any]
     indices = np.arange(len(observations), dtype=int)
     pair_left = _sequential_transition_pairs(
         observations, futures, groups, indices,
+    )
+    pair_first_kinds = kinds[pair_left]
+    pair_second_kinds = kinds[pair_left + 1]
+    pass_continuation_support = build_continuation_support_evidence(
+        pair_first_kinds,
+        pair_second_kinds,
+        groups[pair_left],
+        actions[pair_left + 1],
+        first_action_kind="pass",
     )
     action_counts = {
         action: int(np.sum(kinds == action))
@@ -105,6 +118,7 @@ def _split_arrays(trace_dir: Path, manifest: dict, split: str) -> dict[str, Any]
         "two_step_groups": (
             int(len(np.unique(groups[pair_left]))) if len(pair_left) else 0
         ),
+        "pass_continuation_support": pass_continuation_support,
         "pass_utility_persistence_mse": (
             float(np.mean(pass_utility ** 2)) if len(pass_utility) else 0.0
         ),
@@ -151,6 +165,8 @@ def readiness_checks(
         warmup_fraction=warmup_fraction,
     ) if epochs > 0 else 0.0
     sealed_summary = (manifest.get("summary") or {}).get("sealed_test") or {}
+    train_continuation = train.get("pass_continuation_support") or {}
+    dev_continuation = dev.get("pass_continuation_support") or {}
     return {
         "manifest_schema_and_policy_valid": bool(
             manifest.get("schema_version") == 1
@@ -182,6 +198,12 @@ def readiness_checks(
             dev["two_step_pairs"] >= 32
             and dev["two_step_groups"] >= 4
         ),
+        "training_pass_continuation_support_sufficient": bool(
+            train_continuation.get("sufficient") is True
+        ),
+        "development_pass_continuation_support_sufficient": bool(
+            dev_continuation.get("sufficient") is True
+        ),
         "policy_utility_curriculum_will_activate": final_policy_weight > 0.0,
         "two_step_policy_utility_sequence_objective_will_activate": bool(
             final_policy_weight > 0.0
@@ -189,6 +211,8 @@ def readiness_checks(
             and train["two_step_groups"] >= 4
             and dev["two_step_pairs"] >= 32
             and dev["two_step_groups"] >= 4
+            and train_continuation.get("sufficient") is True
+            and dev_continuation.get("sufficient") is True
         ),
         "two_step_curriculum_will_activate": final_two_step_weight > 0.0,
         "transition_ensemble_supports_uncertainty": transition_ensemble_size >= 2,

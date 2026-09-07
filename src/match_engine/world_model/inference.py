@@ -903,6 +903,10 @@ class WorldModelRuntime:
         ]
         if any(kind == "other" for kind in action_sequence):
             raise ValueError("M2 sequence actions must have explicit action kinds")
+        if action_kind not in {"pass", "cross"}:
+            raise ValueError("M2 sequence authority supports pass or cross")
+        if action_sequence[0] != action_kind:
+            raise ValueError("M2 sequence first action does not match authority")
         with torch.no_grad():
             member_predictions = self.model.transition_rollout_predictions(
                 torch.from_numpy(clean_obs).unsqueeze(0),
@@ -939,7 +943,7 @@ class WorldModelRuntime:
         ]
         return {
             "prediction_source": "explicit_changing_action_sequence_rollout",
-            "planning_mode": "open_loop_shared_continuation_policy",
+            "planning_mode": "open_loop_evidence_supported_continuation_policy",
             "rollout_steps": 2,
             "action_sequence": action_sequence,
             "segment_horizons_s": segment_horizons_s,

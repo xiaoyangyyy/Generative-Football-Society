@@ -383,6 +383,18 @@ not quality signals by themselves.
     predictor before formal execution. No checkpoint was trained and no match
     was executed. The complete 202-file regression passes 1,467 tests with three
     declared skips.
+64. Closed the branch-support gap inside M2 explicit sequence planning. Training,
+    development preflight and sealed validation now record grouped support,
+    empirical mass and leakage-cleaned action prototypes for every observed
+    second action. Runtime recomputes the gate and consumes only the normalized
+    development-supported policy; current `pass` continuation support retains
+    `pass` and `shot` while excluding five development holds and four crosses.
+    M2 compares that supported sequence value with its registered exact-zero
+    persistence baseline and no longer predicts unsupported `hold -> *`
+    branches. Candidate qualification and receipt replay independently validate
+    policy weights and prototypes. Protocol amendment V3 occurred before any
+    candidate binding, training or formal execution, and the refreshed
+    zero-training preflight passes all 16 checks without loading sealed rows.
 
 ## LLM Scope Decision
 
@@ -403,7 +415,7 @@ cleaning, or direct unaudited state mutation.
 ## Priority Research Queue
 
 1. When training is explicitly authorized, produce one frozen M2 checkpoint
-   with the joint changing-action utility objective and explicit shared-
+   with the joint changing-action utility objective and support-qualified
    continuation runtime contract, then require every registered development and
    sealed gate before the 360-run study. Do not retrofit the new authority onto
    the current v9 checkpoint.

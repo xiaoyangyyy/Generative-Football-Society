@@ -336,7 +336,6 @@ class ActionEngine:
                     tac=context.tactics,
                     team_shots=context.team_shots,
                     feasible_actions=context.feasible_actions,
-                    temperature=context.temperature,
                 )
         policy_intent = pending_policy_action_bias(
             state,

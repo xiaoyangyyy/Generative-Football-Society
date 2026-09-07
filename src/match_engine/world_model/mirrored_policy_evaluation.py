@@ -10,6 +10,7 @@ from typing import Any, Callable, Mapping
 import numpy as np
 
 from src.infrastructure import code_identity_manifest, file_sha256
+from src.match_engine.world_model.action_codec import decode_action_kind
 
 
 def validate_m2_preflight_receipt(
@@ -60,6 +61,33 @@ def validate_m2_preflight_receipt(
         raise ValueError("M2 preflight receipt identity is missing")
 
 
+def _receipt_sequence_gate_open(gate: Mapping[str, Any]) -> bool:
+    policy = gate.get("continuation_policy") or []
+    try:
+        weights = np.asarray([row["weight"] for row in policy], dtype=float)
+        prototypes = [
+            np.asarray(row["action_prototype"], dtype=float) for row in policy
+        ]
+        action_kinds = [str(row["action_kind"]) for row in policy]
+    except (KeyError, TypeError, ValueError):
+        return False
+    return bool(
+        gate.get("authorized") is True
+        and gate.get("continuation_support_authorized") is True
+        and len(weights)
+        and np.isfinite(weights).all()
+        and bool((weights > 0.0).all())
+        and abs(float(weights.sum()) - 1.0) <= 1e-12
+        and len(set(action_kinds)) == len(action_kinds)
+        and all(vector.shape == (18,) for vector in prototypes)
+        and all(np.isfinite(vector).all() for vector in prototypes)
+        and all(
+            decode_action_kind(vector) == action
+            for vector, action in zip(prototypes, action_kinds)
+        )
+    )
+
+
 def validate_m2_candidate_receipt(
     receipt: Mapping[str, Any],
     protocol: Mapping[str, Any],
@@ -103,7 +131,7 @@ def validate_m2_candidate_receipt(
                 isinstance(one_step_gates.get(action), Mapping)
                 and one_step_gates[action].get("authorized") is True
                 and isinstance(sequence_gates.get(action), Mapping)
-                and sequence_gates[action].get("authorized") is True
+                and _receipt_sequence_gate_open(sequence_gates[action])
                 for action in required
             )
         )
@@ -123,7 +151,7 @@ def validate_m2_candidate_receipt(
             and eligibility.get("training_configuration_verified") is True
             and eligibility.get("sealed_two_step_active") is True
             and sealed_one_step.get("authorized") is True
-            and sealed_two_step.get("authorized") is True
+            and _receipt_sequence_gate_open(sealed_two_step)
             and sealed_validation.get("executed") is True
         ):
             raise ValueError("M2 eligible receipt contains a closed qualification gate")

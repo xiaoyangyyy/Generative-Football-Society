@@ -16,7 +16,8 @@
     "required_sealed_validation": [
       "two_step",
       "policy_utility.pass",
-      "policy_utility_two_step.pass"
+      "policy_utility_two_step.pass",
+      "policy_utility_two_step.pass.continuation_support"
     ],
     "required_policy_utility_branches": [
       "pass"
@@ -24,6 +25,14 @@
     "optional_policy_utility_branches": [
       "cross"
     ],
+    "continuation_support_contract": {
+      "source": "grouped_holdout_observed_second_actions",
+      "minimum_samples": 32,
+      "minimum_groups": 4,
+      "minimum_supported_probability_mass": 0.95,
+      "action_source": "development_mean_leakage_cleaned_vector",
+      "reference_action": "same_state_zero_transition_utility"
+    },
     "shot_authority": "independent_frozen_shot_head_gate"
   },
   "training": {
@@ -99,16 +108,17 @@
     "historical_m1_results_are_current_m2_evidence": false,
     "code_identity_mode": "transitive_local_imports_v1",
     "identity_amendment": {
-      "version": 2,
+      "version": 3,
       "reasons": [
         "manual_roots_did_not_bind_local_import_closure",
-        "joint_changing_action_policy_utility_was_not_trained_or_validated"
+        "joint_changing_action_policy_utility_was_not_trained_or_validated",
+        "runtime_continuation_branches_were_not_support_qualified"
       ],
       "timing": "before_candidate_binding_training_and_formal_execution",
       "candidate_bound_before_amendment": false,
       "training_runs_before_amendment": 0,
       "formal_runs_before_amendment": 0,
-      "supersedes_version": 1
+      "supersedes_version": 2
     },
     "input_identity_globs": [
       "src/**/*.py",

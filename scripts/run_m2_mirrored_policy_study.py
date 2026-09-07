@@ -9,6 +9,7 @@ import argparse
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
+import numpy as np
 import os
 from pathlib import Path
 import random
@@ -33,6 +34,7 @@ from src.match_engine.calibration.contract import (
 )
 from src.match_engine.calibration.objective import calibration_loss
 from src.match_engine.world_model.inference import WorldModelRuntime
+from src.match_engine.world_model.action_codec import decode_action_kind
 from scripts.validate_world_model import _sealed_evaluation
 from src.match_engine.world_model.m2_contract import (
     FROZEN_FIXTURES,
@@ -145,6 +147,7 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
         "two_step",
         "policy_utility.pass",
         "policy_utility_two_step.pass",
+        "policy_utility_two_step.pass.continuation_support",
     ]:
         raise ValueError("M2 sealed validation requirements changed")
     if candidate.get("pipeline") != "M2":
@@ -157,6 +160,15 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
         raise ValueError("M2 required utility branch changed")
     if candidate.get("optional_policy_utility_branches") != ["cross"]:
         raise ValueError("M2 optional utility branch changed")
+    if candidate.get("continuation_support_contract") != {
+        "source": "grouped_holdout_observed_second_actions",
+        "minimum_samples": 32,
+        "minimum_groups": 4,
+        "minimum_supported_probability_mass": 0.95,
+        "action_source": "development_mean_leakage_cleaned_vector",
+        "reference_action": "same_state_zero_transition_utility",
+    }:
+        raise ValueError("M2 continuation support contract changed")
     if candidate.get("shot_authority") != "independent_frozen_shot_head_gate":
         raise ValueError("M2 shot authority changed")
     training = protocol.get("training") or {}
@@ -225,16 +237,17 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
     if integrity.get("code_identity_mode") != "transitive_local_imports_v1":
         raise ValueError("M2 transitive code identity mode changed")
     if integrity.get("identity_amendment") != {
-        "version": 2,
+        "version": 3,
         "reasons": [
             "manual_roots_did_not_bind_local_import_closure",
             "joint_changing_action_policy_utility_was_not_trained_or_validated",
+            "runtime_continuation_branches_were_not_support_qualified",
         ],
         "timing": "before_candidate_binding_training_and_formal_execution",
         "candidate_bound_before_amendment": False,
         "training_runs_before_amendment": 0,
         "formal_runs_before_amendment": 0,
-        "supersedes_version": 1,
+        "supersedes_version": 2,
     }:
         raise ValueError("M2 pre-execution identity amendment changed")
     power = protocol.get("power_analysis") or {}
@@ -260,6 +273,33 @@ def execution_identity(
 ) -> dict[str, Any]:
     validate_protocol(protocol)
     return study_execution_identity(ROOT, protocol_path, protocol, checkpoint)
+
+
+def _sequence_gate_ready(gate: dict[str, Any]) -> bool:
+    policy = gate.get("continuation_policy") or []
+    try:
+        weights = np.asarray([row["weight"] for row in policy], dtype=float)
+        prototypes = [
+            np.asarray(row["action_prototype"], dtype=float) for row in policy
+        ]
+        action_kinds = [str(row["action_kind"]) for row in policy]
+    except (KeyError, TypeError, ValueError):
+        return False
+    return bool(
+        gate.get("authorized") is True
+        and gate.get("continuation_support_authorized") is True
+        and len(weights)
+        and np.isfinite(weights).all()
+        and bool((weights > 0.0).all())
+        and abs(float(weights.sum()) - 1.0) <= 1e-12
+        and len(set(action_kinds)) == len(action_kinds)
+        and all(vector.shape == (18,) for vector in prototypes)
+        and all(np.isfinite(vector).all() for vector in prototypes)
+        and all(
+            decode_action_kind(vector) == action
+            for vector, action in zip(prototypes, action_kinds)
+        )
+    )
 
 
 def candidate_eligibility(
@@ -329,7 +369,7 @@ def candidate_eligibility(
     sealed_test_unused = meta.get("sealed_test_used") is False
     development_ready = bool(
         all(gate.get("authorized") for gate in gates.values())
-        and all(gate.get("authorized") for gate in sequence_gates.values())
+        and all(_sequence_gate_ready(gate) for gate in sequence_gates.values())
         and sequence_predictor_available
         and two_step.get("active")
         and runtime.pass_quality >= runtime.cfg.min_planner_quality
@@ -376,7 +416,7 @@ def candidate_eligibility(
         and sealed_test_unused
         and sealed_two_step_active
         and sealed_pass_gate.get("authorized") is True
-        and sealed_pass_sequence_gate.get("authorized") is True
+        and _sequence_gate_ready(sealed_pass_sequence_gate)
     )
     return {
         "eligible": eligible,

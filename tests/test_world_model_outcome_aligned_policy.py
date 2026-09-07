@@ -41,6 +41,8 @@ from src.match_engine.world_model.mirrored_policy_evaluation import (
 )
 from src.match_engine.world_model.policy_utility import (
     POLICY_UTILITY_VERSION,
+    build_continuation_support_evidence,
+    continuation_support_validation_gate,
     policy_utility_validation_gate,
     policy_utility_sequence_validation_gate,
     transition_policy_utility_numpy,
@@ -111,7 +113,7 @@ def _valid_evidence() -> dict:
         "optimization_steps": 10,
         "actions": {
             "pass": {
-                "samples": 120,
+                "samples": 128,
                 "groups": 8,
                 "model_mse": 0.08,
                 "persistence_mse": 0.10,
@@ -119,6 +121,52 @@ def _valid_evidence() -> dict:
                 "prediction_target_correlation": 0.30,
             },
         },
+    }
+
+
+def _continuation_support(
+    *, first_action: str = "pass", pass_rows: int = 96, shot_rows: int = 32,
+) -> dict:
+    total = pass_rows + shot_rows
+    first = np.asarray([first_action] * total)
+    second = np.asarray(["pass"] * pass_rows + ["shot"] * shot_rows)
+    groups = np.asarray([f"g{i % 8}" for i in range(total)])
+    actions = np.zeros((total, 18), dtype=np.float32)
+    actions[:pass_rows, 0] = 1.0
+    actions[pass_rows:, 1] = 1.0
+    return build_continuation_support_evidence(
+        first, second, groups, actions, first_action_kind=first_action,
+    )
+
+
+def _sequence_gate(action: str, *, authorized: bool = True) -> dict:
+    support = _continuation_support(first_action=action)
+    policy = []
+    if authorized:
+        mass = support["supported_probability_mass"]
+        policy = [
+            {
+                "action_kind": kind,
+                "weight": row["empirical_probability"] / mass,
+                "samples": row["samples"],
+                "groups": row["groups"],
+                "empirical_probability": row["empirical_probability"],
+                "action_prototype": row["action_prototype"],
+            }
+            for kind, row in support["actions"].items()
+            if row["supported"]
+        ]
+    return {
+        "authorized": authorized,
+        "authority": 0.70 if authorized else 0.0,
+        "action_kind": action,
+        "rollout_steps": 2,
+        "continuation_support_authorized": authorized,
+        "continuation_policy": policy,
+        "reason": (
+            "grouped_heldout_changing_action_policy_utility_gain"
+            if authorized else "policy_utility_sequence_gate_closed"
+        ),
     }
 
 
@@ -141,14 +189,17 @@ def test_sequence_utility_gate_requires_joint_changing_action_evidence():
     assert policy_utility_sequence_validation_gate(
         one_step, action_kind="pass",
     )["authorized"] is False
-    two_step = {
+    two_step = copy.deepcopy({
         **one_step,
         "objective_scope": "two_step_policy_utility",
         "rollout_steps": 2,
         "action_sequence": "observed_changing_actions",
         "trained_with_action_sequence_objective": True,
         "grouped_holdout": True,
-    }
+    })
+    two_step["actions"]["pass"]["continuation_support"] = (
+        _continuation_support()
+    )
     opened = policy_utility_sequence_validation_gate(
         two_step, action_kind="pass",
     )
@@ -159,11 +210,41 @@ def test_sequence_utility_gate_requires_joint_changing_action_evidence():
     assert changed_depth["authorized"] is False
 
 
+def test_continuation_support_gate_rejects_unsupported_mass_and_tampering():
+    first = np.asarray(["pass"] * 128)
+    second = np.asarray(["pass"] * 96 + ["other"] * 32)
+    groups = np.asarray([f"g{i % 8}" for i in range(128)])
+    actions = np.zeros((128, 18), dtype=np.float32)
+    actions[:96, 0] = 1.0
+    evidence = build_continuation_support_evidence(
+        first, second, groups, actions, first_action_kind="pass",
+    )
+    closed = continuation_support_validation_gate(
+        evidence, first_action_kind="pass", expected_samples=128,
+    )
+    assert closed["authorized"] is False
+    assert closed["reason"] == "continuation_support_mass_insufficient"
+
+    tampered = _continuation_support()
+    tampered["actions"]["pass"]["action_prototype"][0] = float("nan")
+    rejected = continuation_support_validation_gate(
+        tampered, first_action_kind="pass", expected_samples=128,
+    )
+    assert rejected["authorized"] is False
+    assert rejected["reason"] == "continuation_support_contract_invalid"
+
+
 def test_training_validation_reports_separate_action_branches():
-    target = np.linspace(-0.3, 0.3, 12)
+    target = np.linspace(-0.3, 0.3, 256)
     predicted = np.stack([target + 0.01, target - 0.01])
-    actions = np.array(["pass"] * 6 + ["hold"] * 6)
-    groups = np.array([f"g{i}" for i in range(12)])
+    actions = np.array(["pass"] * 128 + ["hold"] * 128)
+    groups = np.array([f"g{i % 8}" for i in range(256)])
+    continuation_kinds = np.array(
+        (["pass"] * 96 + ["shot"] * 32) * 2
+    )
+    continuation_actions = np.zeros((256, 18), dtype=np.float32)
+    continuation_actions[continuation_kinds == "pass", 0] = 1.0
+    continuation_actions[continuation_kinds == "shot", 1] = 1.0
 
     report = _policy_utility_validation(
         predicted, target, actions, groups,
@@ -171,8 +252,8 @@ def test_training_validation_reports_separate_action_branches():
     )
 
     assert report["target_version"] == POLICY_UTILITY_VERSION
-    assert report["actions"]["pass"]["samples"] == 6
-    assert report["actions"]["hold"]["samples"] == 6
+    assert report["actions"]["pass"]["samples"] == 128
+    assert report["actions"]["hold"]["samples"] == 128
     assert report["actions"]["cross"]["samples"] == 0
 
     sequence_report = _policy_utility_validation(
@@ -186,14 +267,17 @@ def test_training_validation_reports_separate_action_branches():
         rollout_steps=2,
         action_sequence="observed_changing_actions",
         trained_with_action_sequence_objective=True,
+        continuation_action_kinds=continuation_kinds,
+        continuation_actions=continuation_actions,
     )
     assert sequence_report["grouped_holdout"] is True
-    assert policy_utility_sequence_validation_gate(
-        sequence_report,
-        action_kind="pass",
-        minimum_samples=6,
-        minimum_groups=6,
-    )["authorized"] is True
+    gate = policy_utility_sequence_validation_gate(
+        sequence_report, action_kind="pass",
+    )
+    assert gate["authorized"] is True
+    assert [row["action_kind"] for row in gate["continuation_policy"]] == [
+        "pass", "shot",
+    ]
 
 
 def test_two_step_policy_utility_preserves_member_bootstrap_routing():
@@ -363,18 +447,12 @@ class _M2Runtime:
         }
 
     def policy_utility_sequence_authority(self, action_kind, *, rollout_steps=2):
-        return {
-            "authorized": (
+        return _sequence_gate(
+            action_kind,
+            authorized=(
                 self.gate_open and action_kind == "pass" and rollout_steps == 2
             ),
-            "authority": 0.70 if self.gate_open else 0.0,
-            "action_kind": action_kind,
-            "rollout_steps": rollout_steps,
-            "reason": (
-                "grouped_heldout_changing_action_policy_utility_gain"
-                if self.gate_open else "policy_utility_sequence_gate_closed"
-            ),
-        }
+        )
 
     def two_step_planning_gate(self):
         return {
@@ -393,7 +471,7 @@ class _M2Runtime:
         self.sequence_calls.append(sequence)
         return {
             "prediction_source": "explicit_changing_action_sequence_rollout",
-            "planning_mode": "open_loop_shared_continuation_policy",
+            "planning_mode": "open_loop_evidence_supported_continuation_policy",
             "rollout_steps": 2,
             "action_sequence": sequence,
             "policy_utility": (
@@ -449,17 +527,19 @@ def test_m2_changes_pass_utility_only_when_exact_gate_is_open(monkeypatch):
     assert np.array_equal(closed, base)
     assert runtime.sequence_calls == [
         ["pass", "pass"],
-        ["pass", "hold"],
-        ["hold", "pass"],
-        ["hold", "hold"],
+        ["pass", "shot"],
     ]
     gate = state._wm_pending_direct_action_adoption["quality_gates"]["pass"]
     assert gate["value_source"] == "outcome_aligned_two_step_policy_utility"
-    assert gate["comparison_design"] == "common_continuation_policy"
+    assert gate["comparison_design"] == "action_vs_zero_persistence_reference"
     assert gate["rollout_steps"] == 2
     assert [row["weight"] for row in gate["continuation_policy"]] == [
-        pytest.approx(0.5), pytest.approx(0.5),
+        pytest.approx(0.75), pytest.approx(0.25),
     ]
+    assert gate["hold_value"] == 0.0
+    assert gate["hold_value_gate"]["reason"] == (
+        "exact_zero_persistence_reference"
+    )
 
 
 def test_m2_action_control_fails_closed_without_sequence_runtime(monkeypatch):
@@ -488,13 +568,21 @@ def test_m2_action_control_fails_closed_without_sequence_runtime(monkeypatch):
     assert gate["reason"] == "policy_utility_sequence_runtime_contract_missing"
 
 
-def test_m2_action_control_does_not_fall_back_when_continuation_is_incomplete(
+def test_m2_action_control_rejects_invalid_evidence_continuation_prototype(
     monkeypatch,
 ):
     monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
     monkeypatch.setenv("MATCH_WM_PLAN", "1")
     monkeypatch.setenv("MATCH_WM_OUTCOME_ALIGNED_POLICY", "1")
     runtime = _M2Runtime(gate_open=True)
+    original_authority = runtime.policy_utility_sequence_authority
+
+    def invalid_authority(action_kind, *, rollout_steps=2):
+        gate = original_authority(action_kind, rollout_steps=rollout_steps)
+        gate["continuation_policy"][0]["action_prototype"] = []
+        return gate
+
+    runtime.policy_utility_sequence_authority = invalid_authority
     state = _planner_state()
     base = np.zeros(4)
 
@@ -506,14 +594,14 @@ def test_m2_action_control_does_not_fall_back_when_continuation_is_incomplete(
         base,
         ["pass", "shot", "cross", "hold"],
         dist_goal=0.5,
-        feasible_actions={"pass"},
+        feasible_actions={"pass", "hold"},
     )
 
     assert np.array_equal(adjusted, base)
     assert runtime.sequence_calls == []
     gate = state._wm_pending_direct_action_adoption["quality_gates"]["pass"]
     assert gate["open"] is False
-    assert gate["reason"] == "shared_continuation_policy_invalid"
+    assert gate["reason"] == "evidence_supported_continuation_policy_invalid"
 
 
 @pytest.mark.parametrize(
@@ -581,6 +669,7 @@ def test_runtime_sequence_prediction_uses_explicit_clean_member_rollout():
     runtime.progress_aleatoric_scale = 0.05
     runtime.last_decision_uncertainty = 1.0
     runtime.last_uncertainty = 1.0
+    support = _continuation_support()
     runtime.meta = {
         "validation": {
             "policy_utility_two_step": {
@@ -602,6 +691,7 @@ def test_runtime_sequence_prediction_uses_explicit_clean_member_rollout():
                         "persistence_mse": 0.04,
                         "skill_vs_persistence": 0.5,
                         "prediction_target_correlation": 0.4,
+                        "continuation_support": support,
                     },
                 },
             },
@@ -611,7 +701,7 @@ def test_runtime_sequence_prediction_uses_explicit_clean_member_rollout():
         "pass", np.array([0.65, 0.50]), horizon_s=1.0,
     )
     second = encode_high_level_action(
-        "hold", np.array([0.65, 0.50]), horizon_s=1.0,
+        "pass", np.array([0.65, 0.50]), horizon_s=1.0,
     )
     first[14:17] = 1.0
     second[14:17] = 1.0
@@ -627,9 +717,9 @@ def test_runtime_sequence_prediction_uses_explicit_clean_member_rollout():
         "explicit_changing_action_sequence_rollout"
     )
     assert prediction["planning_mode"] == (
-        "open_loop_shared_continuation_policy"
+        "open_loop_evidence_supported_continuation_policy"
     )
-    assert prediction["action_sequence"] == ["pass", "hold"]
+    assert prediction["action_sequence"] == ["pass", "pass"]
     assert prediction["rollout_steps"] == 2
     assert prediction["horizon_s"] == pytest.approx(2.0)
     assert prediction["policy_utility"] == pytest.approx(0.07)
@@ -660,6 +750,45 @@ def test_runtime_sequence_prediction_rejects_malformed_actions():
             action_kind="pass",
             attacking_home=True,
         )
+    with pytest.raises(ValueError, match="first action does not match authority"):
+        runtime.predict_policy_utility_sequence(
+            _observation(attacking_home=True),
+            np.stack((
+                encode_high_level_action("hold"),
+                encode_high_level_action("pass"),
+            )),
+            action_kind="pass",
+            attacking_home=True,
+        )
+
+
+def test_m2_action_control_fails_closed_when_sequence_prediction_raises(
+    monkeypatch,
+):
+    monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
+    monkeypatch.setenv("MATCH_WM_PLAN", "1")
+    monkeypatch.setenv("MATCH_WM_OUTCOME_ALIGNED_POLICY", "1")
+    runtime = _M2Runtime(gate_open=True)
+
+    def failed_prediction(*_args, **_kwargs):
+        raise RuntimeError("model failure")
+
+    runtime.predict_policy_utility_sequence = failed_prediction
+    state = _planner_state()
+    base = np.zeros(4)
+    adjusted = action_imagination_adjustments(
+        runtime,
+        state,
+        SimpleNamespace(team_id="home", position=np.array([0.5, 0.5])),
+        True,
+        base,
+        ["pass", "shot", "cross", "hold"],
+        dist_goal=0.5,
+        feasible_actions={"pass", "hold"},
+    )
+    assert np.array_equal(adjusted, base)
+    gate = state._wm_pending_direct_action_adoption["quality_gates"]["pass"]
+    assert gate["reason"] == "sequence_prediction_failed_closed"
 
 
 def test_control_scope_supports_mirrored_one_sided_interventions(monkeypatch):
@@ -808,10 +937,9 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
             return {"authorized": action == "pass", "authority": 0.4}
 
         def policy_utility_sequence_authority(self, action, *, rollout_steps=2):
-            return {
-                "authorized": action == "pass" and rollout_steps == 2,
-                "authority": 0.35,
-            }
+            return _sequence_gate(
+                action, authorized=action == "pass" and rollout_steps == 2,
+            )
 
         def predict_policy_utility_sequence(self, *_args, **_kwargs):
             return {}
@@ -831,7 +959,7 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
                 "gates": {"pass": {"authorized": True}},
             },
             "policy_utility_two_step": {
-                "gates": {"pass": {"authorized": True}},
+                "gates": {"pass": _sequence_gate("pass")},
             },
         },
     )
@@ -933,7 +1061,7 @@ def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
             "pass": {"authorized": True},
         },
         "required_policy_utility_sequence_gates": {
-            "pass": {"authorized": True},
+            "pass": _sequence_gate("pass"),
         },
         "sequence_predictor_available": True,
         "two_step_gate": {"active": True},
@@ -942,7 +1070,7 @@ def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
         "training_configuration_verified": True,
         "sealed_two_step_active": True,
         "sealed_pass_policy_utility_gate": {"authorized": True},
-        "sealed_pass_policy_utility_two_step_gate": {"authorized": True},
+        "sealed_pass_policy_utility_two_step_gate": _sequence_gate("pass"),
         "sealed_validation": {"executed": True},
     }
 
@@ -965,6 +1093,15 @@ def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
     ]["authorized"] = False
     with pytest.raises(ValueError, match="closed qualification gate"):
         m2_study.validate_m2_candidate_receipt(contradictory, protocol)
+
+    mislabeled = copy.deepcopy(receipt)
+    mislabeled["candidate_eligibility"][
+        "required_policy_utility_sequence_gates"
+    ]["pass"]["continuation_policy"][0]["action_prototype"] = (
+        [0.0, 1.0] + [0.0] * 16
+    )
+    with pytest.raises(ValueError, match="closed qualification gate"):
+        m2_study.validate_m2_candidate_receipt(mislabeled, protocol)
 
 
 def test_candidate_eligibility_rejects_sealed_policy_failure(
@@ -994,7 +1131,9 @@ def test_candidate_eligibility_rejects_sealed_policy_failure(
             return {"authorized": action == "pass"}
 
         def policy_utility_sequence_authority(self, action, *, rollout_steps=2):
-            return {"authorized": action == "pass" and rollout_steps == 2}
+            return _sequence_gate(
+                action, authorized=action == "pass" and rollout_steps == 2,
+            )
 
         def predict_policy_utility_sequence(self, *_args, **_kwargs):
             return {}
@@ -1012,7 +1151,7 @@ def test_candidate_eligibility_rejects_sealed_policy_failure(
                 "gates": {"pass": {"authorized": False}},
             },
             "policy_utility_two_step": {
-                "gates": {"pass": {"authorized": True}},
+                "gates": {"pass": _sequence_gate("pass")},
             },
         },
     )
@@ -1312,6 +1451,7 @@ def test_m2_training_preflight_requires_real_grouped_action_support():
         "action_groups": {"pass": 8},
         "two_step_pairs": 64,
         "two_step_groups": 5,
+        "pass_continuation_support": {"sufficient": True},
         "pass_utility_persistence_mse": 0.01,
         "pass_utility_standard_deviation": 0.1,
     }
@@ -1321,6 +1461,7 @@ def test_m2_training_preflight_requires_real_grouped_action_support():
         "action_groups": {"pass": 6},
         "two_step_pairs": 40,
         "two_step_groups": 4,
+        "pass_continuation_support": {"sufficient": True},
         "pass_utility_persistence_mse": 0.01,
         "pass_utility_standard_deviation": 0.1,
     }
@@ -1350,6 +1491,23 @@ def test_m2_training_preflight_requires_real_grouped_action_support():
         transition_ensemble_size=3,
     )
     assert failed["development_pass_support_sufficient"] is False
+
+    unsupported = copy.deepcopy(dev)
+    unsupported["pass_continuation_support"]["sufficient"] = False
+    failed = readiness_checks(
+        manifest=manifest,
+        train=train,
+        dev=unsupported,
+        epochs=45,
+        warmup_fraction=0.2,
+        policy_utility_loss_weight=0.25,
+        multi_step_loss_weight=0.25,
+        transition_ensemble_size=3,
+    )
+    assert failed["development_pass_continuation_support_sufficient"] is False
+    assert failed[
+        "two_step_policy_utility_sequence_objective_will_activate"
+    ] is False
 
 
 def test_m2_execution_identity_is_portable_complete_and_root_bounded(tmp_path):
@@ -1400,12 +1558,21 @@ def test_m2_protocol_validator_rejects_preregistered_threshold_drift():
     assert protocol["integrity"]["code_identity_mode"] == (
         "transitive_local_imports_v1"
     )
-    assert protocol["integrity"]["identity_amendment"]["version"] == 2
+    assert protocol["integrity"]["identity_amendment"]["version"] == 3
     assert protocol["candidate"]["required_sealed_validation"] == [
         "two_step",
         "policy_utility.pass",
         "policy_utility_two_step.pass",
+        "policy_utility_two_step.pass.continuation_support",
     ]
+    assert protocol["candidate"]["continuation_support_contract"] == {
+        "source": "grouped_holdout_observed_second_actions",
+        "minimum_samples": 32,
+        "minimum_groups": 4,
+        "minimum_supported_probability_mass": 0.95,
+        "action_source": "development_mean_leakage_cleaned_vector",
+        "reference_action": "same_state_zero_transition_utility",
+    }
     changed = copy.deepcopy(protocol)
     changed["analysis"]["minimum_meaningful_delta"] = 0.09
     with pytest.raises(ValueError, match="threshold is frozen"):

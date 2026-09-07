@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, Tuple
 
 import numpy as np
 
-from src.match_engine.math_utils import finite_float, softmax
+from src.match_engine.math_utils import finite_float
 
 from src.match_engine.world_model.action_codec import (
     decode_action_kind,
@@ -62,7 +62,7 @@ def _policy_value(
     action_kind: str,
     attacking_home: bool,
     legacy_authority: dict,
-    continuation_policy: list[tuple[str, np.ndarray, float]] | None = None,
+    sequence_policy: bool = False,
 ) -> tuple[float | None, float, dict]:
     """Use M2 value only when its exact action-specific evidence gate is open."""
     if not world_model_outcome_aligned_policy_enabled():
@@ -104,11 +104,11 @@ def _policy_value(
             )),
             "value_source": (
                 "outcome_aligned_two_step_policy_utility"
-                if continuation_policy is not None
+                if sequence_policy
                 else "outcome_aligned_policy_utility"
             ),
         }
-    if continuation_policy is not None:
+    if sequence_policy:
         sequence_authority_method = getattr(
             runtime, "policy_utility_sequence_authority", None,
         )
@@ -152,35 +152,78 @@ def _policy_value(
                 "policy_utility_sequence_gate": sequence_authority,
                 "two_step_planning_gate": two_step_gate,
             }
-        weights = np.asarray([
-            float(item[2]) for item in continuation_policy
-        ], dtype=float)
-        if (
-            not len(weights)
-            or not np.isfinite(weights).all()
-            or bool((weights < 0.0).any())
-            or float(weights.sum()) <= 0.0
-        ):
+        continuation_policy = list(
+            sequence_authority.get("continuation_policy") or []
+        )
+        try:
+            weights = np.asarray([
+                float(row["weight"]) for row in continuation_policy
+            ], dtype=float)
+            action_vectors = [
+                np.asarray(row["action_prototype"], dtype=np.float32)
+                for row in continuation_policy
+            ]
+            continuation_kinds = [
+                str(row["action_kind"]) for row in continuation_policy
+            ]
+            policy_valid = bool(
+                sequence_authority.get("continuation_support_authorized")
+                is True
+                and len(weights)
+                and len(set(continuation_kinds)) == len(continuation_kinds)
+                and np.isfinite(weights).all()
+                and bool((weights > 0.0).all())
+                and abs(float(weights.sum()) - 1.0) <= 1e-12
+                and all(
+                    vector.shape == (18,)
+                    and np.isfinite(vector).all()
+                    and decode_action_kind(vector) == kind
+                    for vector, kind in zip(action_vectors, continuation_kinds)
+                )
+            )
+        except (KeyError, TypeError, ValueError):
+            weights = np.zeros(0, dtype=float)
+            action_vectors = []
+            continuation_kinds = []
+            policy_valid = False
+        if not policy_valid:
             return None, 0.0, {
                 **legacy_authority,
                 **policy_authority,
                 "authorized": False,
                 "authority": 0.0,
-                "reason": "shared_continuation_policy_invalid",
+                "reason": "evidence_supported_continuation_policy_invalid",
                 "value_source": "outcome_aligned_two_step_policy_utility",
             }
-        weights = np.clip(weights, 0.0, None)
-        weights /= float(weights.sum())
+        if decode_action_kind(action) != action_kind:
+            return None, 0.0, {
+                **legacy_authority,
+                **policy_authority,
+                "authorized": False,
+                "authority": 0.0,
+                "reason": "sequence_first_action_kind_mismatch",
+                "value_source": "outcome_aligned_two_step_policy_utility",
+            }
         sequence_rows = []
-        for weight, (continuation_kind, continuation_action, _raw_weight) in zip(
-            weights, continuation_policy,
+        for weight, continuation_kind, continuation_action, support_row in zip(
+            weights, continuation_kinds, action_vectors, continuation_policy,
         ):
-            prediction = dict(sequence_predictor(
-                observation,
-                np.stack((action, continuation_action), axis=0),
-                action_kind=action_kind,
-                attacking_home=attacking_home,
-            ))
+            try:
+                prediction = dict(sequence_predictor(
+                    observation,
+                    np.stack((action, continuation_action), axis=0),
+                    action_kind=action_kind,
+                    attacking_home=attacking_home,
+                ))
+            except (KeyError, TypeError, ValueError, RuntimeError):
+                return None, 0.0, {
+                    **legacy_authority,
+                    **policy_authority,
+                    "authorized": False,
+                    "authority": 0.0,
+                    "reason": "sequence_prediction_failed_closed",
+                    "value_source": "outcome_aligned_two_step_policy_utility",
+                }
             prediction_gate = prediction.get("sequence_gate") or {}
             expected_sequence = [
                 decode_action_kind(action), str(continuation_kind),
@@ -190,13 +233,17 @@ def _policy_value(
                 == "explicit_changing_action_sequence_rollout"
                 and prediction.get("rollout_steps") == 2
                 and prediction.get("planning_mode")
-                == "open_loop_shared_continuation_policy"
+                == "open_loop_evidence_supported_continuation_policy"
                 and prediction.get("policy_utility_version")
                 == POLICY_UTILITY_VERSION
                 and prediction.get("action_sequence") == expected_sequence
                 and prediction_gate.get("authorized") is True
                 and prediction_gate.get("action_kind") == action_kind
                 and prediction_gate.get("rollout_steps") == 2
+                and prediction_gate.get("continuation_support_authorized")
+                is True
+                and prediction_gate.get("continuation_policy")
+                == continuation_policy
             ):
                 return None, 0.0, {
                     **legacy_authority,
@@ -217,6 +264,11 @@ def _policy_value(
                     "action_sequence", [],
                 )),
                 "prediction_source": str(prediction["prediction_source"]),
+                "support_samples": int(support_row["samples"]),
+                "support_groups": int(support_row["groups"]),
+                "empirical_probability": float(
+                    support_row["empirical_probability"]
+                ),
             })
         values = np.asarray([
             row["policy_utility"] for row in sequence_rows
@@ -249,8 +301,8 @@ def _policy_value(
             "policy_utility_version": POLICY_UTILITY_VERSION,
             "predicted_policy_utility": value,
             "rollout_steps": 2,
-            "planning_mode": "open_loop_shared_continuation_policy",
-            "comparison_design": "common_continuation_policy",
+            "planning_mode": "open_loop_evidence_supported_continuation_policy",
+            "comparison_design": "action_vs_zero_persistence_reference",
             "continuation_policy": sequence_rows,
             "policy_utility_sequence_gate": sequence_authority,
             "two_step_planning_gate": two_step_gate,
@@ -282,33 +334,6 @@ def _policy_value(
         "policy_utility_version": prediction.get("policy_utility_version"),
         "predicted_policy_utility": float(prediction["policy_utility"]),
     }
-
-
-def _shared_pass_hold_continuation_policy(
-    *,
-    labels: List[str],
-    utilities: np.ndarray,
-    feasible_actions: set[str],
-    temperature: float,
-    pass_action: np.ndarray,
-    hold_action: np.ndarray,
-) -> list[tuple[str, np.ndarray, float]]:
-    """Freeze one common baseline continuation policy for every first action."""
-    continuation_kinds = [
-        action for action in ("pass", "hold")
-        if action in labels and action in feasible_actions
-    ]
-    if len(continuation_kinds) != 2:
-        return []
-    logits = np.asarray([
-        utilities[labels.index(action)] for action in continuation_kinds
-    ], dtype=float)
-    weights = softmax(logits, tau=max(0.2, float(temperature)))
-    action_vectors = {"pass": pass_action, "hold": hold_action}
-    return [
-        (action, action_vectors[action], float(weight))
-        for action, weight in zip(continuation_kinds, weights)
-    ]
 
 
 def pass_imagination_bonuses(
@@ -528,7 +553,6 @@ def action_imagination_adjustments(
     tac: dict | None = None,
     team_shots: int = 0,
     feasible_actions: set[str] | None = None,
-    temperature: float = 1.0,
 ) -> np.ndarray:
     """Adjust high-level actions with action-scoped validated evidence."""
     if not world_model_plan_enabled():
@@ -552,18 +576,6 @@ def action_imagination_adjustments(
         "hold", target=np.asarray(state.ball.position), horizon_s=horizon_s,
     )
     shared_hold_action[13] = 0.90
-    continuation_policy = (
-        _shared_pass_hold_continuation_policy(
-            labels=labels,
-            utilities=utils,
-            feasible_actions=feasible,
-            temperature=temperature,
-            pass_action=shared_pass_action,
-            hold_action=shared_hold_action,
-        )
-        if world_model_outcome_aligned_policy_enabled()
-        else None
-    )
     adjustments = {str(action): 0.0 for action in labels}
     gates = {
         str(action): {
@@ -594,20 +606,32 @@ def action_imagination_adjustments(
         if authority["authorized"] and confidence > 0.0:
             pass_action = shared_pass_action
             hold_action = shared_hold_action
+            m2_enabled = world_model_outcome_aligned_policy_enabled()
             pass_value, pass_certainty, value_gate = _policy_value(
                 runtime, observation, pass_action,
                 action_kind="pass",
                 attacking_home=attacking_home,
                 legacy_authority=authority,
-                continuation_policy=continuation_policy,
+                sequence_policy=m2_enabled,
             )
-            hold_value, hold_certainty, hold_gate = _policy_value(
-                runtime, observation, hold_action,
-                action_kind="pass",
-                attacking_home=attacking_home,
-                legacy_authority=authority,
-                continuation_policy=continuation_policy,
-            )
+            if m2_enabled:
+                hold_value = 0.0
+                hold_certainty = 1.0
+                hold_gate = {
+                    "authorized": False,
+                    "authority": 0.0,
+                    "authority_type": "counterfactual_reference_only",
+                    "reason": "exact_zero_persistence_reference",
+                    "value_source": "same_state_zero_transition_utility",
+                    "baseline": "same_state_zero_transition_utility",
+                }
+            else:
+                hold_value, hold_certainty, hold_gate = _policy_value(
+                    runtime, observation, hold_action,
+                    action_kind="pass",
+                    attacking_home=attacking_home,
+                    legacy_authority=authority,
+                )
             if pass_value is None or hold_value is None:
                 gates["pass"].update({
                     **value_gate,
@@ -641,7 +665,7 @@ def action_imagination_adjustments(
                     "open": True,
                     "direct_action_authorized": True,
                     "reason": (
-                        "validated_outcome_aligned_pass_vs_hold_advantage"
+                        "validated_outcome_aligned_pass_vs_zero_persistence"
                         if world_model_outcome_aligned_policy_enabled()
                         else "validated_pass_vs_hold_advantage"
                     ),
@@ -727,15 +751,18 @@ def action_imagination_adjustments(
                     action_kind="cross",
                     attacking_home=attacking_home,
                     legacy_authority=cross_authority,
-                    continuation_policy=continuation_policy,
+                    sequence_policy=True,
                 )
-                hold_value, hold_certainty, hold_gate = _policy_value(
-                    runtime, observation, hold_action,
-                    action_kind="cross",
-                    attacking_home=attacking_home,
-                    legacy_authority=cross_authority,
-                    continuation_policy=continuation_policy,
-                )
+                hold_value = 0.0
+                hold_certainty = 1.0
+                hold_gate = {
+                    "authorized": False,
+                    "authority": 0.0,
+                    "authority_type": "counterfactual_reference_only",
+                    "reason": "exact_zero_persistence_reference",
+                    "value_source": "same_state_zero_transition_utility",
+                    "baseline": "same_state_zero_transition_utility",
+                }
             else:
                 cross_value = float(runtime.score_cross_action(
                     observation, cross_action, attacking_home=attacking_home,
@@ -793,7 +820,7 @@ def action_imagination_adjustments(
                     "open": True,
                     "direct_action_authorized": True,
                     "reason": (
-                        "validated_outcome_aligned_cross_vs_hold_advantage"
+                        "validated_outcome_aligned_cross_vs_zero_persistence"
                         if world_model_outcome_aligned_policy_enabled()
                         else "validated_cross_vs_continuation_advantage"
                     ),

@@ -2760,11 +2760,14 @@ def main() -> int:
             and "def policy_utility_sequence_authority(" in m2_runtime
             and all(token in m2_policy_utility for token in (
                 "def policy_utility_sequence_validation_gate(",
+                "def build_continuation_support_evidence(",
+                "def continuation_support_validation_gate(",
                 'contract.get("action_sequence") == "observed_changing_actions"',
                 'contract.get("trained_with_action_sequence_objective") is True',
             ))
             and all(token in m2_study for token in (
                 '"policy_utility_two_step.pass"',
+                '"policy_utility_two_step.pass.continuation_support"',
                 '"required_policy_utility_sequence_gates"',
                 '"sealed_pass_policy_utility_two_step_gate"',
             ))
@@ -2772,45 +2775,50 @@ def main() -> int:
                 "two_step_policy_utility_sequence_objective_will_activate"
                 in m2_preflight_source
             )
+            and "development_pass_continuation_support_sufficient"
+            in m2_preflight_source
             and m2_preflight.get("checks", {}).get(
                 "two_step_policy_utility_sequence_objective_will_activate"
             ) is True
-            and (m2_integrity.get("identity_amendment") or {}).get("version") == 2
+            and (m2_integrity.get("identity_amendment") or {}).get("version") == 3
             and (m2_protocol.get("candidate") or {}).get(
                 "required_sealed_validation"
             ) == [
                 "two_step",
                 "policy_utility.pass",
                 "policy_utility_two_step.pass",
+                "policy_utility_two_step.pass.continuation_support",
             ]
         ),
-        "m2_runtime_consumes_explicit_shared_continuation_sequences": (
+        "m2_runtime_consumes_supported_continuation_sequences": (
             all(token in m2_runtime for token in (
                 "def predict_policy_utility_sequence(",
                 "self.model.transition_rollout_predictions(",
                 "strip_outcome_leakage(raw_actions)",
                 '"explicit_changing_action_sequence_rollout"',
-                '"open_loop_shared_continuation_policy"',
+                '"open_loop_evidence_supported_continuation_policy"',
                 "self.policy_utility_sequence_authority(",
             ))
             and all(token in world_model_planner for token in (
-                "def _shared_pass_hold_continuation_policy(",
-                "continuation_policy=continuation_policy",
-                '"common_continuation_policy"',
+                'sequence_authority.get("continuation_policy")',
+                "decode_action_kind(vector) == kind",
+                '"action_vs_zero_persistence_reference"',
+                '"exact_zero_persistence_reference"',
                 '"policy_utility_sequence_runtime_contract_missing"',
                 "sequence_authority_method(",
                 "two_step_gate_method()",
             ))
             and all(token in m2_study for token in (
                 '"sequence_predictor_available"',
+                "def _sequence_gate_ready(",
                 'runtime, "predict_policy_utility_sequence", None',
                 "and sequence_predictor_available",
             ))
             and (
-                'eligibility.get("sequence_predictor_available") is True'
+                "def _receipt_sequence_gate_open("
                 in mirrored_policy_evaluation
             )
-            and "temperature=context.temperature" in action_engine
+            and "def _shared_pass_hold_continuation_policy(" not in world_model_planner
         ),
         "wheel_preserves_src_console_namespace": (
             pyproject.get("project", {}).get("scripts", {}).get("gfs") == "src.cli:main"
