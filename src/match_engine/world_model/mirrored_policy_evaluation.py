@@ -90,6 +90,42 @@ def validate_m2_candidate_receipt(
         or receipt.get("status") != expected_status
     ):
         raise ValueError("M2 candidate receipt eligibility is inconsistent")
+    if eligible:
+        candidate = protocol.get("candidate") or {}
+        required = list(candidate.get("required_policy_utility_branches") or [])
+        one_step_gates = eligibility.get("required_policy_utility_gates") or {}
+        sequence_gates = (
+            eligibility.get("required_policy_utility_sequence_gates") or {}
+        )
+        all_required_gates_open = bool(
+            required
+            and all(
+                isinstance(one_step_gates.get(action), Mapping)
+                and one_step_gates[action].get("authorized") is True
+                and isinstance(sequence_gates.get(action), Mapping)
+                and sequence_gates[action].get("authorized") is True
+                for action in required
+            )
+        )
+        sealed_one_step = (
+            eligibility.get("sealed_pass_policy_utility_gate") or {}
+        )
+        sealed_two_step = (
+            eligibility.get("sealed_pass_policy_utility_two_step_gate") or {}
+        )
+        sealed_validation = eligibility.get("sealed_validation") or {}
+        if not (
+            all_required_gates_open
+            and (eligibility.get("two_step_gate") or {}).get("active") is True
+            and eligibility.get("dataset_manifest_identity_verified") is True
+            and eligibility.get("sealed_test_unused_by_training") is True
+            and eligibility.get("training_configuration_verified") is True
+            and eligibility.get("sealed_two_step_active") is True
+            and sealed_one_step.get("authorized") is True
+            and sealed_two_step.get("authorized") is True
+            and sealed_validation.get("executed") is True
+        ):
+            raise ValueError("M2 eligible receipt contains a closed qualification gate")
     if not isinstance(receipt.get("execution_identity"), Mapping):
         raise ValueError("M2 candidate receipt identity is missing")
 

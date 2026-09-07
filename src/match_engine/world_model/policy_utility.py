@@ -217,3 +217,53 @@ def policy_utility_validation_gate(
         "minimum_groups": minimum_groups,
         "minimum_skill_vs_persistence": minimum_skill,
     }
+
+
+def policy_utility_sequence_validation_gate(
+    evidence: dict[str, Any] | None,
+    *,
+    action_kind: str,
+    rollout_steps: int = 2,
+    minimum_samples: int = 96,
+    minimum_groups: int = 6,
+    minimum_skill: float = 0.02,
+) -> dict[str, Any]:
+    """Authorize utility only for an explicitly trained changing-action depth."""
+    contract = evidence if isinstance(evidence, dict) else {}
+    steps = max(1, int(rollout_steps))
+    base = policy_utility_validation_gate(
+        contract,
+        action_kind=action_kind,
+        minimum_samples=minimum_samples,
+        minimum_groups=minimum_groups,
+        minimum_skill=minimum_skill,
+    )
+    sequence_contract = bool(
+        steps == 2
+        and contract.get("objective_scope") == "two_step_policy_utility"
+        and contract.get("rollout_steps") == steps
+        and contract.get("action_sequence") == "observed_changing_actions"
+        and contract.get("trained_with_action_sequence_objective") is True
+        and contract.get("grouped_holdout") is True
+    )
+    active = bool(base["authorized"] and sequence_contract)
+    return {
+        **base,
+        "version": 2,
+        "active": active,
+        "authorized": active,
+        "authority": base["authority"] if active else 0.0,
+        "reason": (
+            "grouped_heldout_changing_action_policy_utility_gain"
+            if active
+            else "policy_utility_sequence_training_contract_missing"
+            if not sequence_contract
+            else str(base["reason"])
+        ),
+        "rollout_steps": steps,
+        "action_sequence": contract.get("action_sequence"),
+        "objective_scope": contract.get("objective_scope"),
+        "trained_with_action_sequence_objective": bool(
+            contract.get("trained_with_action_sequence_objective") is True
+        ),
+    }

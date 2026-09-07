@@ -156,6 +156,10 @@ def _policy_utility_validation(
     *,
     configured_loss_weight: float,
     optimization_steps: int,
+    objective_scope: str = "one_step_transition_utility",
+    rollout_steps: int = 1,
+    action_sequence: str = "single_executed_action",
+    trained_with_action_sequence_objective: bool = False,
 ) -> dict:
     """Build action-specific grouped holdout evidence for M2 authorization."""
     predictions = np.asarray(predicted_members, dtype=np.float64)
@@ -206,6 +210,13 @@ def _policy_utility_validation(
         "version": 1,
         "target_version": POLICY_UTILITY_VERSION,
         "trained_with_policy_utility_objective": optimization_steps > 0,
+        "objective_scope": str(objective_scope),
+        "rollout_steps": max(1, int(rollout_steps)),
+        "action_sequence": str(action_sequence),
+        "trained_with_action_sequence_objective": bool(
+            trained_with_action_sequence_objective
+        ),
+        "grouped_holdout": True,
         "configured_loss_weight": float(configured_loss_weight),
         "optimization_steps": int(optimization_steps),
         "baseline": "same_state_zero_transition_utility",
@@ -483,6 +494,7 @@ def main() -> None:
     semantic_path_two_step_optimization_steps = 0
     max_semantic_event_weight_applied = 0.0
     policy_utility_optimization_steps = 0
+    policy_utility_two_step_optimization_steps = 0
     max_policy_utility_weight_applied = 0.0
     from src.training import TrainingJob
 
@@ -548,6 +560,9 @@ def main() -> None:
         )
         policy_utility_optimization_steps = int(
             counters.get("policy_utility_optimization_steps", 0)
+        )
+        policy_utility_two_step_optimization_steps = int(
+            counters.get("policy_utility_two_step_optimization_steps", 0)
         )
         max_policy_utility_weight_applied = float(
             counters.get("max_policy_utility_weight_applied", 0.0)
@@ -697,7 +712,11 @@ def main() -> None:
                 )
             if (
                 sequence_iterator is not None
-                and (sequence_weight > 0.0 or semantic_event_weight > 0.0)
+                and (
+                    sequence_weight > 0.0
+                    or semantic_event_weight > 0.0
+                    or policy_utility_weight > 0.0
+                )
             ):
                 try:
                     sequence_batch = next(sequence_iterator)
@@ -735,6 +754,25 @@ def main() -> None:
                     max_sequence_weight_applied = max(
                         max_sequence_weight_applied, sequence_weight,
                     )
+                if policy_utility_weight > 0.0:
+                    sequence_predicted_utility = transition_policy_utility_tensor(
+                        sequence_obs, sequence_predictions,
+                    )["policy_utility"]
+                    sequence_target_utility = transition_policy_utility_tensor(
+                        sequence_obs, sequence_target,
+                    )["policy_utility"]
+                    sequence_utility_loss, _ = _bootstrap_transition_loss(
+                        sequence_predicted_utility.unsqueeze(-1),
+                        sequence_target_utility.unsqueeze(-1),
+                        torch.ones(
+                            1,
+                            dtype=sequence_obs.dtype,
+                            device=sequence_obs.device,
+                        ),
+                        sequence_bootstrap,
+                    )
+                    loss = loss + policy_utility_weight * sequence_utility_loss
+                    policy_utility_two_step_optimization_steps += 1
                 if semantic_event_weight > 0.0:
                     sequence_event_logits = model.semantic_event_logits(
                         sequence_obs,
@@ -819,6 +857,9 @@ def main() -> None:
                     "max_semantic_event_weight_applied": max_semantic_event_weight_applied,
                     "policy_utility_optimization_steps": (
                         policy_utility_optimization_steps
+                    ),
+                    "policy_utility_two_step_optimization_steps": (
+                        policy_utility_two_step_optimization_steps
                     ),
                     "max_policy_utility_weight_applied": (
                         max_policy_utility_weight_applied
@@ -992,6 +1033,24 @@ def main() -> None:
                 two_step_path_projection, train_pair_path_cell_rates,
                 groups[pair_left],
             )
+            two_step_policy_utility_validation = _policy_utility_validation(
+                transition_policy_utility_tensor(
+                    rollout_initial, rollout_members,
+                )["policy_utility"].numpy(),
+                transition_policy_utility_tensor(
+                    rollout_initial, rollout_target,
+                )["policy_utility"].numpy(),
+                decode_action_kinds(pair_actions[:, 0]),
+                groups[pair_left],
+                configured_loss_weight=args.policy_utility_loss_weight,
+                optimization_steps=policy_utility_two_step_optimization_steps,
+                objective_scope="two_step_policy_utility",
+                rollout_steps=2,
+                action_sequence="observed_changing_actions",
+                trained_with_action_sequence_objective=(
+                    policy_utility_two_step_optimization_steps > 0
+                ),
+            )
         else:
             two_step_mse = two_step_persistence_mse = two_step_skill = 0.0
             two_step_member_mean_mse = two_step_ensemble_gain = 0.0
@@ -999,6 +1058,20 @@ def main() -> None:
             two_step_groups = 0
             two_step_event_validation = {"version": 1, "events": {}}
             two_step_path_validation = {"version": 1, "paths": {}}
+            two_step_policy_utility_validation = _policy_utility_validation(
+                np.zeros((model.transition_member_count, 0)),
+                np.zeros(0),
+                np.zeros(0, dtype=str),
+                np.zeros(0, dtype=str),
+                configured_loss_weight=args.policy_utility_loss_weight,
+                optimization_steps=policy_utility_two_step_optimization_steps,
+                objective_scope="two_step_policy_utility",
+                rollout_steps=2,
+                action_sequence="observed_changing_actions",
+                trained_with_action_sequence_objective=(
+                    policy_utility_two_step_optimization_steps > 0
+                ),
+            )
         progress_target = torch.from_numpy(xg_delta[val_idx]).float().view(-1)
         progress_rmse = float(torch.sqrt(torch.mean(
             (vxp.view(-1) - progress_target) ** 2
@@ -1167,6 +1240,7 @@ def main() -> None:
         "shot_planner_quality": shot_planner_quality,
         "cross_action_validation": cross_action_validation,
         "policy_utility": policy_utility_validation,
+        "policy_utility_two_step": two_step_policy_utility_validation,
         "pass_samples": int(pm.sum()),
         "shot_samples": shot_count,
         "shot_goals": shot_goals,
@@ -1237,11 +1311,18 @@ def main() -> None:
                     args.policy_utility_loss_weight
                 ),
                 "optimization_steps": policy_utility_optimization_steps,
+                "two_step_optimization_steps": (
+                    policy_utility_two_step_optimization_steps
+                ),
                 "max_curriculum_weight_applied": (
                     max_policy_utility_weight_applied
                 ),
                 "member_independent_bootstrap": True,
                 "labels": "realized_future_state_only",
+                "action_sequence": "observed_changing_actions",
+                "trained_with_action_sequence_objective": bool(
+                    policy_utility_two_step_optimization_steps > 0
+                ),
             },
             "semantic_event_training": {
                 "events": list(FALSIFIABLE_SEMANTIC_EVENTS),

@@ -27,6 +27,7 @@ def _sealed_evaluation(runtime, trace_dir: Path, manifest_path: Path) -> dict:
     from src.data_engine.dataset_registry import files_for_split, load_manifest, verify_trace_manifest
     from src.match_engine.world_model.action_codec import decode_action_kinds
     from src.match_engine.world_model.policy_utility import (
+        policy_utility_sequence_validation_gate,
         policy_utility_validation_gate,
         transition_policy_utility_tensor,
     )
@@ -119,6 +120,47 @@ def _sealed_evaluation(runtime, trace_dir: Path, manifest_path: Path) -> dict:
         )
         for action in ("pass", "cross", "shot", "hold")
     }
+    if len(pair_left):
+        two_step_predicted_utility = transition_policy_utility_tensor(
+            initial, members,
+        )["policy_utility"].numpy()
+        two_step_realized_utility = transition_policy_utility_tensor(
+            initial, target,
+        )["policy_utility"].numpy()
+        two_step_action_kinds = decode_action_kinds(sequences[:, 0])
+        two_step_groups = groups[pair_left]
+    else:
+        two_step_predicted_utility = np.zeros((
+            int(getattr(runtime.model, "transition_member_count", 1)), 0,
+        ))
+        two_step_realized_utility = np.zeros(0)
+        two_step_action_kinds = np.zeros(0, dtype=str)
+        two_step_groups = np.zeros(0, dtype=str)
+    policy_utility_two_step = _policy_utility_validation(
+        two_step_predicted_utility,
+        two_step_realized_utility,
+        two_step_action_kinds,
+        two_step_groups,
+        configured_loss_weight=float(
+            training.get("configured_loss_weight", 0.0) or 0.0
+        ),
+        optimization_steps=int(
+            training.get("two_step_optimization_steps", 0) or 0
+        ),
+        objective_scope="two_step_policy_utility",
+        rollout_steps=2,
+        action_sequence="observed_changing_actions",
+        trained_with_action_sequence_objective=bool(
+            training.get("trained_with_action_sequence_objective") is True
+        ),
+    )
+    policy_utility_two_step["sealed_test"] = True
+    policy_utility_two_step["gates"] = {
+        action: policy_utility_sequence_validation_gate(
+            policy_utility_two_step, action_kind=action, rollout_steps=2,
+        )
+        for action in ("pass", "cross", "shot", "hold")
+    }
 
     shot_mask = raw_actions[:, 1] > 0.5
     shot_true = raw_actions[shot_mask, SHOT_GOAL_INDEX]
@@ -148,6 +190,7 @@ def _sealed_evaluation(runtime, trace_dir: Path, manifest_path: Path) -> dict:
         "manifest": str(manifest_path),
         "two_step": two_step,
         "policy_utility": policy_utility,
+        "policy_utility_two_step": policy_utility_two_step,
         "shot": shot,
     }
 
@@ -273,9 +316,19 @@ def main() -> int:
         sealed_test and sealed_test["two_step"]["active"]
     )
     development_policy_utility_gate = rt.policy_utility_authority("pass")
+    development_policy_utility_sequence_gate = (
+        rt.policy_utility_sequence_authority("pass", rollout_steps=2)
+    )
     sealed_policy_utility_gate = (
         ((sealed_test or {}).get("policy_utility") or {}).get("gates") or {}
     ).get("pass") or {"authorized": False, "reason": "sealed_test_unavailable"}
+    sealed_policy_utility_sequence_gate = (
+        ((sealed_test or {}).get("policy_utility_two_step") or {}).get("gates")
+        or {}
+    ).get("pass") or {
+        "authorized": False,
+        "reason": "sealed_test_unavailable",
+    }
     effective_shot_active = bool(
         rt.shot_quality >= rt.cfg.min_planner_quality
         and sealed_test and sealed_test["shot"]["learned_head_active"]
@@ -297,6 +350,8 @@ def main() -> int:
         and (
             development_policy_utility_gate.get("authorized") is True
             and sealed_policy_utility_gate.get("authorized") is True
+            and development_policy_utility_sequence_gate.get("authorized") is True
+            and sealed_policy_utility_sequence_gate.get("authorized") is True
             if args.require_policy_utility else True
         )
     )
@@ -319,6 +374,12 @@ def main() -> int:
                     development_policy_utility_gate
                 ),
                 "sealed_policy_utility_gate": sealed_policy_utility_gate,
+                "development_policy_utility_sequence_gate": (
+                    development_policy_utility_sequence_gate
+                ),
+                "sealed_policy_utility_sequence_gate": (
+                    sealed_policy_utility_sequence_gate
+                ),
                 "semantic_event_head_gates": semantic_event_gates,
                 "semantic_event_heads_ready": semantic_event_heads_ready,
                 "pass_planner_quality": rt.pass_quality,

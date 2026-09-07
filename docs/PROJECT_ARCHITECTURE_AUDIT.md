@@ -356,6 +356,19 @@ not quality signals by themselves.
     authority. The complete 201-file regression passes 1,456 tests with three
     declared skips; architecture, HTTP, accessibility, recovery and static
     checks remain green.
+62. Closed the gap between the M2 two-step state objective and its one-step-only
+    policy-utility objective. Training now supervises actor-centred utility at
+    the final state of observed two-action rollouts with independent ensemble
+    bootstrap routing, records separate resumable counters, and emits explicit
+    grouped development evidence. Sealed validation rebuilds the same report;
+    runtime and candidate qualification require both one-step and two-step pass
+    utility gates in addition to two-step state skill. The pre-candidate,
+    zero-training protocol amendment adds the new sealed gate and the refreshed
+    preflight passes fourteen checks without opening sealed model-selection
+    data. Eligible receipts now replay all internal gates instead of trusting a
+    top-level boolean. The complete 202-file regression passes 1,460 tests with
+    three declared skips, and the architecture audit enforces the complete path
+    while making no model-effect or outcome claim.
 
 ## LLM Scope Decision
 
@@ -375,9 +388,10 @@ cleaning, or direct unaudited state mutation.
 
 ## Priority Research Queue
 
-1. Collect balanced cross, shot and goal transitions; produce a new checkpoint
-   that passes the registered cross gate and recalibrate the shot branch before
-   broader promotion. Do not retrofit authority onto the current v9 checkpoint.
+1. When training is explicitly authorized, produce one frozen M2 checkpoint
+   with the joint changing-action utility objective and require every registered
+   development and sealed gate before the 360-run study. Do not retrofit the
+   new authority onto the current v9 checkpoint.
 2. Keep the completed `SocietyAgent` facade closed: new governance, tactics,
    reflection, condition, psychology, memory, social or match behavior belongs
    to its existing dedicated layer and must not re-enter the facade.

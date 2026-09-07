@@ -142,7 +142,9 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
     if candidate.get("trace_dir") != "data/world_model/traces":
         raise ValueError("M2 trace directory identity changed")
     if candidate.get("required_sealed_validation") != [
-        "two_step", "policy_utility.pass",
+        "two_step",
+        "policy_utility.pass",
+        "policy_utility_two_step.pass",
     ]:
         raise ValueError("M2 sealed validation requirements changed")
     if candidate.get("pipeline") != "M2":
@@ -223,12 +225,16 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
     if integrity.get("code_identity_mode") != "transitive_local_imports_v1":
         raise ValueError("M2 transitive code identity mode changed")
     if integrity.get("identity_amendment") != {
-        "version": 1,
-        "reason": "manual_roots_did_not_bind_local_import_closure",
+        "version": 2,
+        "reasons": [
+            "manual_roots_did_not_bind_local_import_closure",
+            "joint_changing_action_policy_utility_was_not_trained_or_validated",
+        ],
         "timing": "before_candidate_binding_training_and_formal_execution",
         "candidate_bound_before_amendment": False,
         "training_runs_before_amendment": 0,
         "formal_runs_before_amendment": 0,
+        "supersedes_version": 1,
     }:
         raise ValueError("M2 pre-execution identity amendment changed")
     power = protocol.get("power_analysis") or {}
@@ -269,6 +275,21 @@ def candidate_eligibility(
         action: runtime.policy_utility_authority(action)
         for action in required
     }
+    sequence_authority = getattr(
+        runtime, "policy_utility_sequence_authority", None,
+    )
+    sequence_gates = {
+        action: (
+            sequence_authority(action, rollout_steps=2)
+            if callable(sequence_authority)
+            else {
+                "authorized": False,
+                "authority": 0.0,
+                "reason": "policy_utility_sequence_authority_unavailable",
+            }
+        )
+        for action in required
+    }
     optional = {
         action: runtime.policy_utility_authority(action)
         for action in candidate["optional_policy_utility_branches"]
@@ -305,6 +326,7 @@ def candidate_eligibility(
     sealed_test_unused = meta.get("sealed_test_used") is False
     development_ready = bool(
         all(gate.get("authorized") for gate in gates.values())
+        and all(gate.get("authorized") for gate in sequence_gates.values())
         and two_step.get("active")
         and runtime.pass_quality >= runtime.cfg.min_planner_quality
         and training_configuration_verified
@@ -315,6 +337,10 @@ def candidate_eligibility(
     }
     sealed_two_step_active = False
     sealed_pass_gate: dict[str, Any] = {
+        "authorized": False,
+        "reason": "sealed_validation_not_executed",
+    }
+    sealed_pass_sequence_gate: dict[str, Any] = {
         "authorized": False,
         "reason": "sealed_validation_not_executed",
     }
@@ -331,16 +357,27 @@ def candidate_eligibility(
             ((sealed_validation.get("policy_utility") or {}).get("gates") or {})
             .get("pass") or sealed_pass_gate
         )
+        sealed_pass_sequence_gate = (
+            (
+                (sealed_validation.get("policy_utility_two_step") or {}).get(
+                    "gates"
+                )
+                or {}
+            ).get("pass")
+            or sealed_pass_sequence_gate
+        )
     eligible = bool(
         development_ready
         and manifest_identity_verified
         and sealed_test_unused
         and sealed_two_step_active
         and sealed_pass_gate.get("authorized") is True
+        and sealed_pass_sequence_gate.get("authorized") is True
     )
     return {
         "eligible": eligible,
         "required_policy_utility_gates": gates,
+        "required_policy_utility_sequence_gates": sequence_gates,
         "optional_policy_utility_gates": optional,
         "two_step_gate": two_step,
         "dataset_manifest": candidate["dataset_manifest"],
@@ -350,6 +387,7 @@ def candidate_eligibility(
         "training_configuration": training_configuration,
         "sealed_two_step_active": sealed_two_step_active,
         "sealed_pass_policy_utility_gate": sealed_pass_gate,
+        "sealed_pass_policy_utility_two_step_gate": sealed_pass_sequence_gate,
         "sealed_validation": sealed_validation,
         "pass_planner_quality": runtime.pass_quality,
         "minimum_planner_quality": runtime.cfg.min_planner_quality,
@@ -766,6 +804,9 @@ def main() -> None:
             "sealed_two_step_active": eligibility["sealed_two_step_active"],
             "sealed_pass_policy_utility_gate": eligibility[
                 "sealed_pass_policy_utility_gate"
+            ],
+            "sealed_pass_policy_utility_two_step_gate": eligibility[
+                "sealed_pass_policy_utility_two_step_gate"
             ],
             "eligibility_report_written": bool(args.eligibility_out),
         }, indent=2))

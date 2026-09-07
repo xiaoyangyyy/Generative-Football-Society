@@ -1058,7 +1058,14 @@ def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
         "protocol_id": "m2-mirrored-policy-v1",
         "claim_scope": "simulator_only",
         "state": "preregistered_code_ready_awaiting_sealed_checkpoint",
-        "candidate": {"required_sealed_validation": []},
+        "candidate": {
+            "required_sealed_validation": [
+                "two_step",
+                "policy_utility.pass",
+                "policy_utility_two_step.pass",
+            ],
+            "required_policy_utility_branches": ["pass"],
+        },
         "training": {},
         "design": {"runs_total": 360},
         "integrity": {
@@ -1076,7 +1083,25 @@ def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
         "protocol_id": "m2-mirrored-policy-v1",
         "status": "eligible_for_m2_execution",
         "candidate_eligible": True,
-        "candidate_eligibility": {"eligible": True},
+        "candidate_eligibility": {
+            "eligible": True,
+            "required_policy_utility_gates": {
+                "pass": {"authorized": True},
+            },
+            "required_policy_utility_sequence_gates": {
+                "pass": {"authorized": True},
+            },
+            "two_step_gate": {"active": True},
+            "dataset_manifest_identity_verified": True,
+            "sealed_test_unused_by_training": True,
+            "training_configuration_verified": True,
+            "sealed_two_step_active": True,
+            "sealed_pass_policy_utility_gate": {"authorized": True},
+            "sealed_pass_policy_utility_two_step_gate": {
+                "authorized": True,
+            },
+            "sealed_validation": {"executed": True},
+        },
         "execution_identity": identity,
         "formal_execution_started": False,
         "formal_result_available": False,

@@ -3478,7 +3478,7 @@ executes a command. The Web evidence centre renders the stages and exact
 operator commands using text-only DOM construction; training and the 360
 formal matches still require an explicit command and authorization.
 
-The current recorded preflight is identity-valid and passes all thirteen
+The current recorded preflight is identity-valid and passes all fourteen
 checks. Therefore the workflow is at stage 3, `awaiting_candidate`, with
 zero of 360 formal matches executed. No training, checkpoint qualification,
 formal match, provider request or promotion occurred in this stage.
@@ -4534,3 +4534,46 @@ declared skips. The one initially stale excellence-snapshot assertion passed
 after its Web hash was refreshed; no behavioral assertion was weakened. Ruff,
 the architecture audit, local HTTP Beta, automated accessibility and recovery
 verification all pass.
+
+## 137. V4.19 Joint changing-action policy utility qualification
+
+M2 previously optimized actor-centred policy utility only for one observed
+transition. Its separate two-step state objective rolled through both observed
+actions, but no joint objective or validation gate proved that two-step policy
+utility was learned under that changing-action sequence. A candidate could
+therefore satisfy one-step utility and two-step state checks independently
+without demonstrating the decision-aligned quantity at the rollout depth.
+
+The trainer now applies the frozen policy-utility curriculum to both the
+one-step prediction and the final state of each observed two-action rollout.
+Both paths retain member-independent bootstrap routing. Resume checkpoints,
+training metadata and development evidence record separate one-step and
+two-step optimization counts. The two-step report explicitly binds the
+`two_step_policy_utility` objective, rollout depth two, observed changing-action
+sequence, grouped holdout and actual sequence-objective participation.
+
+Sealed evaluation independently reconstructs the same action-specific two-step
+utility report. Runtime exposes a dedicated fail-closed sequence authority;
+M2 qualification now requires development and sealed pass gates for one-step
+utility, changing-action two-step utility and two-step state skill. Legacy
+checkpoints have no sequence evidence and remain ineligible. The preregistered
+protocol was amended before candidate binding, training or formal execution;
+its second amendment preserves the earlier transitive-identity correction and
+adds `policy_utility_two_step.pass` to the sealed requirements.
+
+Candidate receipt validation no longer trusts a top-level eligible flag. An
+eligible receipt must carry open required action gates at both depths, active
+two-step state authority, current manifest and training identities, sealed-test
+non-use during training, and an executed sealed validation with both utility
+gates open. Product evidence therefore cannot display a contradictory manually
+constructed receipt as qualified.
+
+The refreshed zero-training preflight passes fourteen checks, including proof
+that the frozen curriculum and available grouped pairs will activate the new
+sequence objective. It binds the amended protocol and complete transitive code
+closure while recording `training_executed=false` and
+`checkpoint_written=false`. The complete 202-file regression passes 1,460 tests
+with three declared skips; Ruff and the architecture audit are green. No
+training, match, formal study, participant session or provider call was
+executed, so this stage establishes code and qualification correctness only,
+not model efficacy.

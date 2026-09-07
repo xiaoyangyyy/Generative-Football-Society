@@ -332,6 +332,21 @@ def main() -> int:
     m2_study = (
         ROOT / "scripts/run_m2_mirrored_policy_study.py"
     ).read_text(encoding="utf-8")
+    m2_trainer = (
+        ROOT / "scripts/train_world_model.py"
+    ).read_text(encoding="utf-8")
+    m2_validator = (
+        ROOT / "scripts/validate_world_model.py"
+    ).read_text(encoding="utf-8")
+    m2_preflight_source = (
+        ROOT / "scripts/preflight_m2_training.py"
+    ).read_text(encoding="utf-8")
+    m2_runtime = (
+        ROOT / "src/match_engine/world_model/inference.py"
+    ).read_text(encoding="utf-8")
+    m2_policy_utility = (
+        ROOT / "src/match_engine/world_model/policy_utility.py"
+    ).read_text(encoding="utf-8")
     m2_protocol_path = ROOT / "data/evaluation/m2_mirrored_policy_protocol_v1.json"
     m2_protocol = _read("data/evaluation/m2_mirrored_policy_protocol_v1.json")
     m2_preflight = _read("data/evaluation/m2_training_preflight_v1.json")
@@ -2728,6 +2743,46 @@ def main() -> int:
                 "src/match_engine/internal_signals.py",
                 "src/simulation/match_pipeline.py",
             }.issubset(m2_preflight_code)
+        ),
+        "m2_joint_changing_action_utility_is_trained_validated_and_gated": (
+            all(token in m2_trainer for token in (
+                'objective_scope="two_step_policy_utility"',
+                'action_sequence="observed_changing_actions"',
+                "policy_utility_two_step_optimization_steps += 1",
+                '"policy_utility_two_step": two_step_policy_utility_validation',
+            ))
+            and all(token in m2_validator for token in (
+                "policy_utility_sequence_validation_gate(",
+                '"policy_utility_two_step": policy_utility_two_step',
+                "development_policy_utility_sequence_gate.get",
+                "sealed_policy_utility_sequence_gate.get",
+            ))
+            and "def policy_utility_sequence_authority(" in m2_runtime
+            and all(token in m2_policy_utility for token in (
+                "def policy_utility_sequence_validation_gate(",
+                'contract.get("action_sequence") == "observed_changing_actions"',
+                'contract.get("trained_with_action_sequence_objective") is True',
+            ))
+            and all(token in m2_study for token in (
+                '"policy_utility_two_step.pass"',
+                '"required_policy_utility_sequence_gates"',
+                '"sealed_pass_policy_utility_two_step_gate"',
+            ))
+            and (
+                "two_step_policy_utility_sequence_objective_will_activate"
+                in m2_preflight_source
+            )
+            and m2_preflight.get("checks", {}).get(
+                "two_step_policy_utility_sequence_objective_will_activate"
+            ) is True
+            and (m2_integrity.get("identity_amendment") or {}).get("version") == 2
+            and (m2_protocol.get("candidate") or {}).get(
+                "required_sealed_validation"
+            ) == [
+                "two_step",
+                "policy_utility.pass",
+                "policy_utility_two_step.pass",
+            ]
         ),
         "wheel_preserves_src_console_namespace": (
             pyproject.get("project", {}).get("scripts", {}).get("gfs") == "src.cli:main"

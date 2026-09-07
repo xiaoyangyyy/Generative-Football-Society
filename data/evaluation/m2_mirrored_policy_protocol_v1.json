@@ -15,7 +15,8 @@
     "trace_dir": "data/world_model/traces",
     "required_sealed_validation": [
       "two_step",
-      "policy_utility.pass"
+      "policy_utility.pass",
+      "policy_utility_two_step.pass"
     ],
     "required_policy_utility_branches": [
       "pass"
@@ -98,12 +99,16 @@
     "historical_m1_results_are_current_m2_evidence": false,
     "code_identity_mode": "transitive_local_imports_v1",
     "identity_amendment": {
-      "version": 1,
-      "reason": "manual_roots_did_not_bind_local_import_closure",
+      "version": 2,
+      "reasons": [
+        "manual_roots_did_not_bind_local_import_closure",
+        "joint_changing_action_policy_utility_was_not_trained_or_validated"
+      ],
       "timing": "before_candidate_binding_training_and_formal_execution",
       "candidate_bound_before_amendment": false,
       "training_runs_before_amendment": 0,
-      "formal_runs_before_amendment": 0
+      "formal_runs_before_amendment": 0,
+      "supersedes_version": 1
     },
     "input_identity_globs": [
       "src/**/*.py",

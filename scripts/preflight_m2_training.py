@@ -183,6 +183,13 @@ def readiness_checks(
             and dev["two_step_groups"] >= 4
         ),
         "policy_utility_curriculum_will_activate": final_policy_weight > 0.0,
+        "two_step_policy_utility_sequence_objective_will_activate": bool(
+            final_policy_weight > 0.0
+            and train["two_step_pairs"] >= 32
+            and train["two_step_groups"] >= 4
+            and dev["two_step_pairs"] >= 32
+            and dev["two_step_groups"] >= 4
+        ),
         "two_step_curriculum_will_activate": final_two_step_weight > 0.0,
         "transition_ensemble_supports_uncertainty": transition_ensemble_size >= 2,
     }

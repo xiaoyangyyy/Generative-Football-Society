@@ -39,6 +39,7 @@ from src.match_engine.world_model.state_scales import (
 )
 from src.match_engine.world_model.policy_utility import (
     POLICY_UTILITY_VERSION,
+    policy_utility_sequence_validation_gate,
     policy_utility_validation_gate,
     transition_policy_utility_numpy,
 )
@@ -341,6 +342,22 @@ class WorldModelRuntime:
         return policy_utility_validation_gate(
             validation.get("policy_utility"),
             action_kind=action_kind,
+        )
+
+    def policy_utility_sequence_authority(
+        self,
+        action_kind: str,
+        *,
+        rollout_steps: int = 2,
+    ) -> dict:
+        """Authorize changing-action utility only at an explicitly proven depth."""
+        validation = self.meta.get("validation", {}) if isinstance(
+            self.meta, dict
+        ) else {}
+        return policy_utility_sequence_validation_gate(
+            validation.get("policy_utility_two_step"),
+            action_kind=action_kind,
+            rollout_steps=rollout_steps,
         )
 
     def observe_transition(

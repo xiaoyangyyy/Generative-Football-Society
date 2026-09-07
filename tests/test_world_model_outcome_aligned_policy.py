@@ -7,11 +7,16 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+import torch
 
-from scripts.train_world_model import _policy_utility_validation
+from scripts.train_world_model import (
+    _bootstrap_transition_loss,
+    _policy_utility_validation,
+)
 import scripts.run_m2_mirrored_policy_study as m2_study
 from scripts.estimate_m2_policy_power import estimate as estimate_power
 from scripts.preflight_m2_training import readiness_checks
+from scripts.validate_world_model import _sealed_evaluation
 import src.match_engine.calibration.benchmark_core as benchmark_core
 from src.match_engine.world_model.action_adoption import (
     direct_action_adoption_diagnostics,
@@ -35,6 +40,7 @@ from src.match_engine.world_model.mirrored_policy_evaluation import (
 from src.match_engine.world_model.policy_utility import (
     POLICY_UTILITY_VERSION,
     policy_utility_validation_gate,
+    policy_utility_sequence_validation_gate,
     transition_policy_utility_numpy,
     transition_policy_utility_tensor,
 )
@@ -128,6 +134,29 @@ def test_policy_utility_evidence_gate_is_action_specific_and_fail_closed():
     assert 0.0 < opened["authority"] <= 1.0
 
 
+def test_sequence_utility_gate_requires_joint_changing_action_evidence():
+    one_step = _valid_evidence()
+    assert policy_utility_sequence_validation_gate(
+        one_step, action_kind="pass",
+    )["authorized"] is False
+    two_step = {
+        **one_step,
+        "objective_scope": "two_step_policy_utility",
+        "rollout_steps": 2,
+        "action_sequence": "observed_changing_actions",
+        "trained_with_action_sequence_objective": True,
+        "grouped_holdout": True,
+    }
+    opened = policy_utility_sequence_validation_gate(
+        two_step, action_kind="pass",
+    )
+    assert opened["authorized"] is True
+    changed_depth = policy_utility_sequence_validation_gate(
+        two_step, action_kind="pass", rollout_steps=3,
+    )
+    assert changed_depth["authorized"] is False
+
+
 def test_training_validation_reports_separate_action_branches():
     target = np.linspace(-0.3, 0.3, 12)
     predicted = np.stack([target + 0.01, target - 0.01])
@@ -143,6 +172,154 @@ def test_training_validation_reports_separate_action_branches():
     assert report["actions"]["pass"]["samples"] == 6
     assert report["actions"]["hold"]["samples"] == 6
     assert report["actions"]["cross"]["samples"] == 0
+
+    sequence_report = _policy_utility_validation(
+        predicted,
+        target,
+        actions,
+        groups,
+        configured_loss_weight=0.25,
+        optimization_steps=4,
+        objective_scope="two_step_policy_utility",
+        rollout_steps=2,
+        action_sequence="observed_changing_actions",
+        trained_with_action_sequence_objective=True,
+    )
+    assert sequence_report["grouped_holdout"] is True
+    assert policy_utility_sequence_validation_gate(
+        sequence_report,
+        action_kind="pass",
+        minimum_samples=6,
+        minimum_groups=6,
+    )["authorized"] is True
+
+
+def test_two_step_policy_utility_preserves_member_bootstrap_routing():
+    current = torch.zeros((3, OBS_DIM), dtype=torch.float32)
+    current[:, 209] = 1.0
+    current[:, -1] = 1.0
+    predicted = current.unsqueeze(0).repeat(2, 1, 1).clone().requires_grad_()
+    target = current.clone()
+    target[:, 200] = torch.tensor([0.2, 0.3, 0.4])
+    predicted_utility = transition_policy_utility_tensor(
+        current, predicted,
+    )["policy_utility"]
+    target_utility = transition_policy_utility_tensor(
+        current, target,
+    )["policy_utility"]
+    bootstrap = torch.tensor([
+        [1.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ])
+
+    loss, _ = _bootstrap_transition_loss(
+        predicted_utility.unsqueeze(-1),
+        target_utility.unsqueeze(-1),
+        torch.ones(1),
+        bootstrap,
+    )
+    loss.backward()
+
+    assert predicted.grad is not None
+    assert predicted.grad[0, :2, 200].abs().sum() > 0
+    assert predicted.grad[0, 2, 200] == 0
+    assert predicted.grad[1, :2, 200].abs().sum() == 0
+    assert predicted.grad[1, 2, 200].abs() > 0
+
+
+def test_sealed_evaluation_builds_independent_two_step_policy_gate(
+    monkeypatch, tmp_path,
+):
+    import src.data_engine.dataset_registry as dataset_registry
+    import src.match_engine.world_model.recorder as recorder
+
+    groups_total = 6
+    rows_per_group = 17
+    row_count = groups_total * rows_per_group
+    observations = np.zeros((row_count, OBS_DIM), dtype=np.float32)
+    observations[:, 209] = 1.0
+    observations[:, -1] = 1.0
+    groups = []
+    for group_index in range(groups_total):
+        start = group_index * rows_per_group
+        stop = start + rows_per_group
+        positions = np.square(np.arange(rows_per_group + 1)) * 0.001
+        observations[start:stop, 200] = positions[:-1]
+        groups.extend([f"sealed-{group_index}"] * rows_per_group)
+    next_observations = observations.copy()
+    actions = np.zeros((row_count, 18), dtype=np.float32)
+    actions[:, 0] = 1.0
+    for group_index in range(groups_total):
+        start = group_index * rows_per_group
+        stop = start + rows_per_group
+        positions = np.square(np.arange(rows_per_group + 1)) * 0.001
+        next_observations[start:stop, 200] = positions[1:]
+        actions[start:stop, 10] = positions[1:]
+
+    monkeypatch.setattr(dataset_registry, "load_manifest", lambda _path: {})
+    monkeypatch.setattr(
+        dataset_registry,
+        "verify_trace_manifest",
+        lambda _manifest, *, base_dir: tmp_path,
+    )
+    monkeypatch.setattr(
+        dataset_registry,
+        "files_for_split",
+        lambda _manifest, _splits: [],
+    )
+    monkeypatch.setattr(
+        recorder,
+        "load_trace_batches",
+        lambda *_args, **_kwargs: (
+            observations,
+            actions,
+            next_observations,
+            np.asarray(groups),
+        ),
+    )
+
+    class Model:
+        transition_member_count = 3
+
+        @staticmethod
+        def transition_predictions(current, clean_actions):
+            future = current.clone()
+            future[:, 200] = clean_actions[:, 10]
+            members = future.unsqueeze(0).repeat(3, 1, 1)
+            return torch.zeros((len(current), 1)), members
+
+        @staticmethod
+        def transition_rollout_predictions(current, sequences):
+            future = current.clone()
+            future[:, 200] = sequences[:, 1, 10]
+            return future.unsqueeze(0).repeat(3, 1, 1)
+
+    runtime = SimpleNamespace(
+        model=Model(),
+        meta={"policy_utility_training": {
+            "configured_loss_weight": 0.25,
+            "optimization_steps": 8,
+            "two_step_optimization_steps": 8,
+            "trained_with_action_sequence_objective": True,
+        }},
+    )
+
+    report = _sealed_evaluation(
+        runtime,
+        tmp_path / "traces",
+        tmp_path / "manifest.json",
+    )
+
+    assert report["two_step"]["samples"] == 96
+    assert report["policy_utility"]["gates"]["pass"]["authorized"] is True
+    sequence = report["policy_utility_two_step"]
+    assert sequence["actions"]["pass"]["samples"] == 96
+    assert sequence["actions"]["pass"]["groups"] == 6
+    assert sequence["gates"]["pass"]["reason"] == (
+        "grouped_heldout_changing_action_policy_utility_gain"
+    ), sequence["gates"]["pass"]
+    assert sequence["gates"]["pass"]["authorized"] is True
+    assert sequence["sealed_test"] is True
 
 
 def test_vectorized_policy_labels_do_not_alias_intercepts_or_unknowns_to_pass():
@@ -368,6 +545,12 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
         def policy_utility_authority(self, action):
             return {"authorized": action == "pass", "authority": 0.4}
 
+        def policy_utility_sequence_authority(self, action, *, rollout_steps=2):
+            return {
+                "authorized": action == "pass" and rollout_steps == 2,
+                "authority": 0.35,
+            }
+
         def two_step_planning_gate(self):
             return {"active": True, "authority": 0.3}
 
@@ -380,6 +563,9 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
         lambda *_args: {
             "two_step": {"active": True},
             "policy_utility": {
+                "gates": {"pass": {"authorized": True}},
+            },
+            "policy_utility_two_step": {
                 "gates": {"pass": {"authorized": True}},
             },
         },
@@ -403,6 +589,12 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
     assert eligibility["sealed_test_unused_by_training"] is True
     assert eligibility["sealed_two_step_active"] is True
     assert eligibility["sealed_pass_policy_utility_gate"]["authorized"] is True
+    assert eligibility["required_policy_utility_sequence_gates"]["pass"][
+        "authorized"
+    ] is True
+    assert eligibility["sealed_pass_policy_utility_two_step_gate"][
+        "authorized"
+    ] is True
 
 
 def test_preflight_identity_binds_protocol_manifest_and_training_code(tmp_path):
@@ -465,10 +657,30 @@ def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
         "checkpoint_path": "data/world_model/m2.pt",
         "checkpoint_sha256": "a" * 64,
     }
-    eligibility = {"eligible": True, "sealed_two_step_active": True}
+    protocol = {
+        "protocol_id": "m2-mirrored-policy-v1",
+        "candidate": {"required_policy_utility_branches": ["pass"]},
+    }
+    eligibility = {
+        "eligible": True,
+        "required_policy_utility_gates": {
+            "pass": {"authorized": True},
+        },
+        "required_policy_utility_sequence_gates": {
+            "pass": {"authorized": True},
+        },
+        "two_step_gate": {"active": True},
+        "dataset_manifest_identity_verified": True,
+        "sealed_test_unused_by_training": True,
+        "training_configuration_verified": True,
+        "sealed_two_step_active": True,
+        "sealed_pass_policy_utility_gate": {"authorized": True},
+        "sealed_pass_policy_utility_two_step_gate": {"authorized": True},
+        "sealed_validation": {"executed": True},
+    }
 
     receipt = m2_study.candidate_eligibility_report(
-        {"protocol_id": "m2-mirrored-policy-v1"},
+        protocol,
         identity,
         eligibility,
     )
@@ -479,6 +691,13 @@ def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
     assert receipt["formal_execution_started"] is False
     assert receipt["formal_result_available"] is False
     assert "no_policy_effect_or_outcome_claim" in receipt["claim_scope"]
+
+    contradictory = copy.deepcopy(receipt)
+    contradictory["candidate_eligibility"][
+        "sealed_pass_policy_utility_two_step_gate"
+    ]["authorized"] = False
+    with pytest.raises(ValueError, match="closed qualification gate"):
+        m2_study.validate_m2_candidate_receipt(contradictory, protocol)
 
 
 def test_candidate_eligibility_rejects_sealed_policy_failure(
@@ -507,6 +726,9 @@ def test_candidate_eligibility_rejects_sealed_policy_failure(
         def policy_utility_authority(self, action):
             return {"authorized": action == "pass"}
 
+        def policy_utility_sequence_authority(self, action, *, rollout_steps=2):
+            return {"authorized": action == "pass" and rollout_steps == 2}
+
         def two_step_planning_gate(self):
             return {"active": True}
 
@@ -518,6 +740,9 @@ def test_candidate_eligibility_rejects_sealed_policy_failure(
             "two_step": {"active": True},
             "policy_utility": {
                 "gates": {"pass": {"authorized": False}},
+            },
+            "policy_utility_two_step": {
+                "gates": {"pass": {"authorized": True}},
             },
         },
     )
@@ -535,6 +760,59 @@ def test_candidate_eligibility_rejects_sealed_policy_failure(
     assert eligibility["eligible"] is False
     assert eligibility["sealed_two_step_active"] is True
     assert eligibility["sealed_pass_policy_utility_gate"]["authorized"] is False
+
+
+def test_candidate_eligibility_rejects_missing_sequence_authority(
+    monkeypatch, tmp_path,
+):
+    checkpoint = tmp_path / "candidate.pt"
+    checkpoint.write_bytes(b"sealed")
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text("{}", encoding="utf-8")
+    traces = tmp_path / "traces"
+    traces.mkdir()
+
+    class LegacyRuntime:
+        pass_quality = 0.2
+        cfg = SimpleNamespace(min_planner_quality=0.15)
+        model = SimpleNamespace(transition_member_count=3)
+        meta = {
+            "dataset_manifest": "manifest.json",
+            "sealed_test_used": False,
+            "training_configuration": {
+                **m2_study.FROZEN_TRAINING_CONFIGURATION,
+                "dataset_manifest": "manifest.json",
+            },
+        }
+
+        def policy_utility_authority(self, action):
+            return {"authorized": action == "pass"}
+
+        def two_step_planning_gate(self):
+            return {"active": True}
+
+    monkeypatch.setattr(
+        m2_study.WorldModelRuntime,
+        "load",
+        lambda _path: LegacyRuntime(),
+    )
+    protocol = {"candidate": {
+        "dataset_manifest": "manifest.json",
+        "trace_dir": "traces",
+        "required_policy_utility_branches": ["pass"],
+        "optional_policy_utility_branches": ["cross"],
+    }}
+
+    eligibility = m2_study.candidate_eligibility(
+        checkpoint, protocol, root=tmp_path,
+    )
+
+    assert eligibility["eligible"] is False
+    sequence_gate = eligibility["required_policy_utility_sequence_gates"]["pass"]
+    assert sequence_gate["authorized"] is False
+    assert sequence_gate["reason"] == (
+        "policy_utility_sequence_authority_unavailable"
+    )
 
 
 def test_formal_rows_prove_checkpoint_and_one_sided_runtime_identity():
@@ -851,6 +1129,12 @@ def test_m2_protocol_validator_rejects_preregistered_threshold_drift():
     assert protocol["integrity"]["code_identity_mode"] == (
         "transitive_local_imports_v1"
     )
+    assert protocol["integrity"]["identity_amendment"]["version"] == 2
+    assert protocol["candidate"]["required_sealed_validation"] == [
+        "two_step",
+        "policy_utility.pass",
+        "policy_utility_two_step.pass",
+    ]
     changed = copy.deepcopy(protocol)
     changed["analysis"]["minimum_meaningful_delta"] = 0.09
     with pytest.raises(ValueError, match="threshold is frozen"):
