@@ -4401,3 +4401,28 @@ green, and the real process-crash recovery receipt now binds both the facade
 and the dedicated session repository. The verification executes zero training,
 zero matches, zero formal experiments, zero participant sessions, and zero
 provider calls.
+
+## 133. V4.15 Bounded Windows registry replacement recovery
+
+The human-study registration path already serialized writers with an operating
+system lease and flushed each temporary JSON file before same-directory atomic
+replacement. Under a 24-registration, eight-thread Windows stress run,
+`os.replace` nevertheless returned one transient `PermissionError`, a known
+sharing-window behavior when another host process briefly opens the target.
+The lease protected logical ordering and no entry was lost, but the unhandled
+replacement error made an otherwise correct registration batch flaky.
+
+The registry writer now retries only `PermissionError`, at most eight attempts,
+with a bounded linear delay. All other filesystem exceptions still fail
+immediately. Exhausting the bounded attempts re-raises the original permission
+error, the temporary file is removed by the existing `finally` boundary, and
+no partial target is created. The underlying operation remains `os.replace`,
+so readers never observe partially written JSON and the registration schema,
+allocation, consent, duplicate and evidence contracts are unchanged.
+
+Tests inject two transient failures before a successful real replacement and
+also inject permanent denial to verify exact failure propagation and complete
+temporary cleanup. The complete human-study suite passes seven tests, and the
+original 24-registration concurrency case passes ten consecutive stress
+runs. Ruff passes for both modified files. No participant session, training,
+match, formal experiment or provider call is executed.

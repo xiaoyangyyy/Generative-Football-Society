@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_value_preregistration",
-  "generated_at": "2026-09-04T20:48:37.022403+00:00",
+  "generated_at": "2026-09-07T06:22:36.401009+00:00",
   "status": "passed_preregistered_not_executed",
   "passed": true,
   "study_executed": false,
@@ -38,7 +38,7 @@
     "docs/PRODUCT_VALUE_STUDY.md": "f936c2cb1fc236907f613af8c3b98ee8c3e664efda12d5b5d8094c20a95a4b5a",
     "data/evaluation/product_value_case_packs_v1.json": "2c683fe25545362661c3baa6600c2482b45cfcbe32fa908b5deebb8b5ed09173",
     "data/evaluation/product_value_scoring_seal_v1.json": "71277f9415c8348eec0cf08a40555453d2ad7125c76bc2744f205585118188fe",
-    "src/product/human_study.py": "446fc3a975d45b40948eef51848106e06db025db39fb6056a46658d890b5064f",
+    "src/product/human_study.py": "964a2ad4e5c9eee91619b922cd31f2d4b104667c92da95845f17a5b7d45e57db",
     "src/product/study_session.py": "7282644d5b5c6717d62f7e07927b415346a4f6f8679390061f9c10cd231096bb"
   },
   "external_calls_made": false,

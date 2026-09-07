@@ -321,6 +321,12 @@ not quality signals by themselves.
     Recovery evidence also binds the new implementation file. No schema,
     workflow, simulator behavior or research authority changes. The complete
     199-file regression passes 1,437 tests with three declared skips.
+58. Hardened authoritative human-study registration against transient Windows
+    sharing violations during same-directory `os.replace`. The writer retries
+    only `PermissionError` with eight bounded attempts; permanent denial is
+    re-raised and temporary state is removed. Injected transient/permanent
+    tests and ten consecutive 24-registration stress runs pass without
+    weakening the existing process lease or atomic-read contract.
 
 ## LLM Scope Decision
 

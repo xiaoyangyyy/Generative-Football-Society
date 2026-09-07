@@ -15,6 +15,7 @@ import os
 import random
 import re
 import tempfile
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +27,8 @@ from src.infrastructure import FileLease, file_sha256, fsync_directory
 REGISTRY_KIND = "gfs_human_study_session_registry_v1"
 ARCHIVE_LAYOUT = "content_addressed_flat_sha256_v1"
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+ATOMIC_REPLACE_ATTEMPTS = 8
+ATOMIC_REPLACE_DELAY_SECONDS = 0.01
 
 
 def _now() -> str:
@@ -58,6 +61,19 @@ def _canonical_sha256(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _replace_with_retry(source: str | Path, target: str | Path) -> None:
+    """Bound transient sharing violations without weakening atomic replace."""
+
+    for attempt in range(ATOMIC_REPLACE_ATTEMPTS):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt + 1 >= ATOMIC_REPLACE_ATTEMPTS:
+                raise
+            time.sleep(ATOMIC_REPLACE_DELAY_SECONDS * (attempt + 1))
+
+
 def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(
@@ -70,7 +86,7 @@ def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary, path)
+        _replace_with_retry(temporary, path)
         fsync_directory(path.parent)
     finally:
         if os.path.exists(temporary):

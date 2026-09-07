@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_validation_preregistration",
-  "generated_at": "2026-09-04T18:54:55.271941+00:00",
+  "generated_at": "2026-09-07T06:22:16.477632+00:00",
   "status": "passed_preregistered_not_executed",
   "passed": true,
   "study_executed": false,
@@ -24,7 +24,7 @@
     "data/evaluation/product_validation_protocol_v1.json": "3cdbc8c0569a822bbf97e094667d97645b44fedf2a830bf91d18ce7072e6d322",
     "docs/PRODUCT_VALIDATION_STUDY.md": "79d2376dd0a5b225e72920f46048eaeb78014b4e06d423e486a800f1ed09c8c1",
     "scripts/product_validation_study.py": "01e1a03c642b65118dc9bfc3e8cdedf7102719b6b901fee7001071905dcd1e92",
-    "src/product/human_study.py": "446fc3a975d45b40948eef51848106e06db025db39fb6056a46658d890b5064f"
+    "src/product/human_study.py": "964a2ad4e5c9eee91619b922cd31f2d4b104667c92da95845f17a5b7d45e57db"
   },
   "external_calls_made": false,
   "participants_observed": 0,

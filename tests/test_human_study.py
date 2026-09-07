@@ -4,16 +4,63 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
+import src.product.human_study as human_study_module
+
 from scripts.product_validation_study import PROTOCOL_PATH as TARGET_PROTOCOL
 from scripts.product_value_study import (
     CASE_PACK_PATH,
     PROTOCOL_PATH as VALUE_PROTOCOL,
 )
 from src.product.human_study import (
+    _atomic_write_json,
     register_participant,
     validate_registry,
     verify_content_addressed_archive,
 )
+
+
+def test_atomic_registry_write_retries_transient_permission_error(
+    monkeypatch, tmp_path,
+):
+    target = tmp_path / "registry.json"
+    real_replace = human_study_module.os.replace
+    attempts = []
+
+    def transient_replace(source, destination):
+        attempts.append((source, destination))
+        if len(attempts) < 3:
+            raise PermissionError("transient sharing violation")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(human_study_module.os, "replace", transient_replace)
+    monkeypatch.setattr(human_study_module.time, "sleep", lambda _delay: None)
+
+    _atomic_write_json(target, {"status": "complete"})
+
+    assert json.loads(target.read_text(encoding="utf-8")) == {
+        "status": "complete",
+    }
+    assert len(attempts) == 3
+
+
+def test_atomic_registry_write_exhaustion_preserves_error_and_cleans_temp(
+    monkeypatch, tmp_path,
+):
+    target = tmp_path / "registry.json"
+    monkeypatch.setattr(
+        human_study_module.os,
+        "replace",
+        lambda _source, _destination: (_ for _ in ()).throw(
+            PermissionError("persistent access denial")
+        ),
+    )
+    monkeypatch.setattr(human_study_module.time, "sleep", lambda _delay: None)
+
+    with pytest.raises(PermissionError, match="persistent access denial"):
+        _atomic_write_json(target, {"status": "blocked"})
+
+    assert not target.exists()
+    assert list(tmp_path.iterdir()) == []
 
 
 def _register_target(tmp_path, index):
