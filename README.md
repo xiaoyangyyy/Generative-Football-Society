@@ -342,6 +342,19 @@ passes 60 tests; CI-equivalent regression passes 1,476 tests with three
 declared skips and one registered training-test deselection. Local HTTP,
 accessibility, recovery and all 92 architecture checks pass.
 
+V4.26 applies the same explicit composition boundary to the manager decision
+ledger. Twelve successive root overrides become named stages in one frozen
+13-stage order spanning advisor evidence, runtime execution, reviewed futures,
+local mechanisms, official actions, world evolution, retained semantics and
+exact shared-draw expectation. The base ledger, entry order, DOM ownership and
+evidence wording remain unchanged. Web, accessibility and architecture gates
+require exactly one root ledger renderer and reject every legacy ledger
+wrapper. This is a behavior-preserving product cohesion increment with zero
+match, future, training, study, participant or provider execution. Focused Web
+regression passes 61 tests; CI-equivalent regression passes 1,477 tests with
+three declared skips and one registered training-test deselection. Local HTTP,
+accessibility, recovery and all 92 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

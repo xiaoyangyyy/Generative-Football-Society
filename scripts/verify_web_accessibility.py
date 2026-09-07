@@ -308,7 +308,7 @@ def verify_web_accessibility() -> dict:
         token in index
         for token in (
             'id="manager-advisor-evidence-summary" class="status"',
-            "renderManagerDecisionLedgerWithoutAdvisorEvidence",
+            "function renderManagerDecisionLedgerAdvisorEvidence(season)",
             "evidence.advised_decisions",
             "evidence.adopted_recommendation",
             "evidence.reviewed_then_selected",

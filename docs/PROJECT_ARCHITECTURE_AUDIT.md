@@ -447,6 +447,18 @@ not quality signals by themselves.
     1,476 with three skips and one registered deselection, and local HTTP,
     accessibility, recovery and all 92 architecture checks are green.
 
+69. Replaced twelve implicit manager decision-ledger overrides with a frozen,
+    named 13-stage renderer. Advisor evidence, runtime execution, reviewed
+    futures, scenario mechanisms, official actions, world evolution, retained
+    semantics and exact action-change expectation now have one visible order.
+    Tests and architecture gates require one root renderer and reject the full
+    legacy ledger-wrapper family. Entry ordering, DOM ownership and evidence
+    boundaries are unchanged, and the refactor runs no match, future,
+    training, formal study, participant session or external call. Focused Web
+    regression passes 61 tests, CI-equivalent regression passes 1,477 with
+    three skips and one registered deselection, and local HTTP, accessibility,
+    recovery and all 92 architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

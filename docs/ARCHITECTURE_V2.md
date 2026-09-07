@@ -4800,3 +4800,42 @@ three declared skips and one registered training-test deselection. Local HTTP
 Beta passes 16/16 checks, automated accessibility passes 41/41 checks,
 process-crash recovery passes every declared check and the architecture audit
 passes 92/92.
+
+## 144. V4.26 Explicit manager decision-ledger composition
+
+The manager decision ledger was the next largest implicit product composition
+chain after V4.25. Its base renderer had accumulated twelve closure overrides
+for advisor adoption, runtime binding, reviewed futures, scenario evidence,
+mechanism examples and semantics, review-to-execution continuity, official
+action adoption, the world-evolution thread, meta-learning status, retained
+record semantics and exact action-change expectation.
+
+V4.26 replaces those overrides with named functions and one frozen 13-stage
+sequence:
+
+1. base decision entries;
+2. aggregate advisor evidence;
+3. advisor-to-runtime execution trace;
+4. future-review history;
+5. per-scenario future evidence;
+6. concrete mechanism examples;
+7. mechanism-signal semantics;
+8. review-to-official execution continuity;
+9. official action execution;
+10. the unified world-evolution thread;
+11. meta-learning status;
+12. retained-record action semantics; and
+13. exact shared-uniform action-change expectation.
+
+Each stage still reads the same validated season projection and enriches the
+same ledger entries in the same order. No second product state is introduced.
+Direct Web tests bind the entire sequence, require exactly one root renderer
+and reject all legacy decision-ledger wrappers. The accessibility verifier and
+architecture audit now bind the named stages as well. This refactor changes no
+decision, evidence schema, state, action authority, result or causal claim. It
+executes no match, future generation, training, formal study, participant
+session or provider call. Focused Web regression passes 61 tests. The
+CI-equivalent suite passes 1,477 tests with three declared skips and one
+registered training-test deselection. Local HTTP Beta passes 16/16 checks,
+automated accessibility passes 41/41 checks, process-crash recovery passes
+every declared check and the architecture audit passes 92/92.

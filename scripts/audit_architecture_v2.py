@@ -1021,9 +1021,13 @@ def main() -> int:
             and "ledger[\"ledger_identity\"] = _identity(ledger)" in decision_ledger
             and "per_fixture_persisted_state_snapshot_not_retained" in decision_ledger
             and "build_manager_decision_ledger(" in workspace
+            and "renderManagerDecisionLedgerWithout" not in web
+            and web.count("function renderManagerDecisionLedger(season)") == 1
             and "live_window: int = 8" in workspace
             and all(token in web for token in (
                 'id="manager-decision-ledger"',
+                "function renderManagerDecisionLedgerBase(season)",
+                "const MANAGER_DECISION_LEDGER_RENDER_STAGES=Object.freeze([",
                 "function renderManagerDecisionLedger(season)",
                 "单场赛果不证明决策效果",
             ))
@@ -1211,7 +1215,7 @@ def main() -> int:
                 '"manager advisor execution trace replay mismatch"',
             ))
             and all(token in web for token in (
-                "renderManagerDecisionLedgerWithoutExecutionTrace",
+                "function renderManagerDecisionLedgerExecutionTrace(season)",
                 "trace.runtime_binding",
                 "binding.initial_vector",
                 "renderManagerIntelligenceWithoutTacticalBinding",
@@ -1276,7 +1280,7 @@ def main() -> int:
             and all(token in web for token in (
                 '"scenario_evidence": scenario_evidence',
                 "renderManagerFutureSetsWithoutScenarioEvidence",
-                "renderManagerDecisionLedgerWithoutFutureScenarioEvidence",
+                "function renderManagerDecisionLedgerFutureScenarioEvidence(season)",
                 "scenario.scenario_identity",
                 "时点之间不排名",
             ))
@@ -1304,7 +1308,7 @@ def main() -> int:
             and all(token in web for token in (
                 "function appendFutureMechanismExamples(",
                 "renderManagerFutureSetsWithoutMechanismExamples",
-                "renderManagerDecisionLedgerWithoutMechanismExamples",
+                "function renderManagerDecisionLedgerMechanismExamples(season)",
                 "不授予下游因果",
                 "v3_preserves_bounded_action_mechanism_examples",
             ))
@@ -1356,7 +1360,7 @@ def main() -> int:
                 'terminal_review.get("nonzero_cross_descriptive_windows")',
             ))
             and all(token in web for token in (
-                "renderManagerDecisionLedgerWithoutMechanismSemantics",
+                "function renderManagerDecisionLedgerMechanismSemantics(season)",
                 "appendManagerWorldEvolutionThreadWithoutMechanismSemantics",
                 "evidence.cross_action_mechanism_examples",
                 "stage.nonzero_cross_descriptive_windows",
@@ -1374,7 +1378,7 @@ def main() -> int:
                 '"manager future review execution trace replay mismatch"',
             ))
             and all(token in web for token in (
-                "renderManagerDecisionLedgerWithoutFutureReviewExecution",
+                "function renderManagerDecisionLedgerFutureReviewExecution(season)",
                 "row.future_review_execution_trace",
                 "trace.runtime_binding.applied_tactic",
                 "不把赛前模拟路径匹配到比分",
@@ -1405,7 +1409,7 @@ def main() -> int:
             ))
             and all(token in web for token in (
                 "function appendOfficialActionExecution(",
-                "renderManagerDecisionLedgerWithoutOfficialActionExecution",
+                "function renderManagerDecisionLedgerOfficialActionExecution(season)",
                 "renderManagerIntelligenceWithoutOfficialActionExecution",
                 "不比较比分、不证明战术质量",
             ))
@@ -1536,7 +1540,7 @@ def main() -> int:
                 '"meta_learning_authorized": int(',
             ))
             and all(token in web for token in (
-                "renderManagerDecisionLedgerWithoutMetaLearningSummary",
+                "function renderManagerDecisionLedgerMetaLearningSummary(season)",
                 "summary?.meta_learning_pending",
                 "meta_learning_after",
             ))
@@ -1648,7 +1652,7 @@ def main() -> int:
             ))
             and all(token in web for token in (
                 "function appendManagerWorldEvolutionThread(",
-                "renderManagerDecisionLedgerWithoutWorldEvolutionThread",
+                "function renderManagerDecisionLedgerWorldEvolutionThread(season)",
                 "renderManagerIntelligenceWithoutWorldEvolutionThread",
                 "appendManagerWorldEvolutionThreadWithoutReviewedFutures",
                 "function appendReviewWorldContinuity(",
@@ -1873,7 +1877,7 @@ def main() -> int:
             and all(token in web for token in (
                 "function retainedActionSemanticText(",
                 "appendOfficialActionExecutionWithoutRetainedRecordSemantics",
-                "renderManagerDecisionLedgerWithoutRetainedRecordSemantics",
+                "function renderManagerDecisionLedgerRetainedRecordSemantics(season)",
                 "appendManagerWorldEvolutionThreadWithoutRetainedRecordSemantics",
                 "function renderManagerWorldRetainedRecordSemantics(season)",
                 "point.official_retained_record_semantics",
@@ -1996,7 +2000,7 @@ def main() -> int:
             ))
             and all(token in web for token in (
                 "retainedActionSemanticTextWithoutExactExpectation",
-                "renderManagerDecisionLedgerWithoutExactActionExpectation",
+                "function renderManagerDecisionLedgerExactActionExpectation(season)",
                 "function renderManagerWorldExactActionExpectation(season)",
                 "V4共享采样期望不可用",
                 "不能解释为零影响",

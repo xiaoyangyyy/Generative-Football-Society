@@ -153,12 +153,12 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "从已验证进度恢复未来生成" in document
     assert "function requestManagerFutureExperiment(" in document
     assert "function reviewManagerFutureEvidence(" in document
-    assert "renderManagerDecisionLedgerWithoutFutureReviews" in document
-    assert "renderManagerDecisionLedgerWithoutFutureScenarioEvidence" in document
+    assert "function renderManagerDecisionLedgerFutureReviews(season)" in document
+    assert "function renderManagerDecisionLedgerFutureScenarioEvidence(season)" in document
     assert "renderManagerFutureSetsWithoutScenarioEvidence" in document
     assert "function appendFutureMechanismExamples(" in document
     assert "renderManagerFutureSetsWithoutMechanismExamples" in document
-    assert "renderManagerDecisionLedgerWithoutMechanismExamples" in document
+    assert "function renderManagerDecisionLedgerMechanismExamples(season)" in document
     assert "已封存的具体动作采用链" in document
     assert "scenario.scenario_identity" in document
     assert "已封存的分叉机制链" in document
@@ -354,7 +354,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "sample.semantic_example_coverage_complete" in document
     assert "appendManagerWorldEvolutionThreadWithoutReviewedFutures" in document
     assert "appendManagerWorldEvolutionThreadWithoutOfficialActionSemantics" in document
-    assert "renderManagerDecisionLedgerWithoutMetaLearningSummary" in document
+    assert "function renderManagerDecisionLedgerMetaLearningSummary(season)" in document
     assert "summary?.meta_learning_pending" in document
     assert "meta_learning_after" in document
     assert "function appendMetaLearningGovernance(" in document
@@ -443,7 +443,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-decision-ledger"' in document
     assert 'id="manager-advisor-evidence-summary"' in document
     assert "function renderManagerDecisionLedger(season)" in document
-    assert "renderManagerDecisionLedgerWithoutAdvisorEvidence" in document
+    assert "function renderManagerDecisionLedgerAdvisorEvidence(season)" in document
     assert "evidence.adopted_recommendation" in document
     assert "evidence.reviewed_then_selected" in document
     assert "单场赛果不证明决策效果" in document
@@ -606,7 +606,7 @@ def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_
     assert "function renderManagerWorldActionTransitionMap(season)" in document
     assert "renderManagerWorldActionTransitionMap," in document
     assert "retainedActionSemanticTextWithoutExactExpectation" in document
-    assert "renderManagerDecisionLedgerWithoutExactActionExpectation" in document
+    assert "function renderManagerDecisionLedgerExactActionExpectation(season)" in document
     assert "function renderManagerWorldExactActionExpectation(season)" in document
     assert "fixtures_with_v4_expectation_semantics" in document
     assert "expected_counterfactual_action_changes" in document
@@ -673,6 +673,36 @@ def test_root_uses_one_explicit_manager_world_render_pipeline(tmp_path):
     ) in document
     assert "renderManagerWorldNavigatorWithout" not in document
     assert "renderManagerWorldReviewedFutureContinuityWithout" not in document
+
+
+def test_root_uses_one_explicit_manager_decision_ledger_render_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_DECISION_LEDGER_RENDER_STAGES=Object.freeze(["
+        "renderManagerDecisionLedgerBase,"
+        "renderManagerDecisionLedgerAdvisorEvidence,"
+        "renderManagerDecisionLedgerExecutionTrace,"
+        "renderManagerDecisionLedgerFutureReviews,"
+        "renderManagerDecisionLedgerFutureScenarioEvidence,"
+        "renderManagerDecisionLedgerMechanismExamples,"
+        "renderManagerDecisionLedgerMechanismSemantics,"
+        "renderManagerDecisionLedgerFutureReviewExecution,"
+        "renderManagerDecisionLedgerOfficialActionExecution,"
+        "renderManagerDecisionLedgerWorldEvolutionThread,"
+        "renderManagerDecisionLedgerMetaLearningSummary,"
+        "renderManagerDecisionLedgerRetainedRecordSemantics,"
+        "renderManagerDecisionLedgerExactActionExpectation]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function renderManagerDecisionLedger(season)") == 1
+    assert (
+        "function renderManagerDecisionLedger(season){for(const renderStage of "
+        "MANAGER_DECISION_LEDGER_RENDER_STAGES)renderStage(season)}"
+    ) in document
+    assert "renderManagerDecisionLedgerWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
