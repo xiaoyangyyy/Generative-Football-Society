@@ -284,6 +284,15 @@ def main() -> int:
     meta_learning_tests = (
         ROOT / "tests/test_meta_learning_continuity.py"
     ).read_text(encoding="utf-8")
+    world_state_evidence_tests = (
+        ROOT / "tests/test_product_world_state_evidence.py"
+    ).read_text(encoding="utf-8")
+    manager_world_thread_tests = (
+        ROOT / "tests/test_product_manager_world_thread.py"
+    ).read_text(encoding="utf-8")
+    web_tests = (
+        ROOT / "tests/test_product_web.py"
+    ).read_text(encoding="utf-8")
     tournament_scoring = (
         ROOT / "src/simulation/tournament_scoring.py"
     ).read_text(encoding="utf-8")
@@ -1314,7 +1323,7 @@ def main() -> int:
                 'continuity.get("psychological_decision_modifiers")',
             ))
             and all(token in world_state_evidence for token in (
-                "WORLD_STATE_SCHEMA_VERSION = 3",
+                "WORLD_STATE_SCHEMA_VERSION = 4",
                 "society_public_snapshot(",
                 "society_public_transition(",
                 'result["society_transition"]',
@@ -1364,14 +1373,15 @@ def main() -> int:
             ))
             and all(token in society_continuity for token in (
                 'META_PUBLIC_STATUSES = (',
-                '"meta_learning": {',
+                '"meta_learning": _meta_public_summary(state)',
                 '"meta_learning_before":',
                 '"meta_learning_after":',
                 '"meta_learning_delta":',
             ))
             and all(token in world_state_evidence for token in (
                 "SOCIETY_WORLD_STATE_SCHEMA_VERSION = 2",
-                "WORLD_STATE_SCHEMA_VERSION = 3",
+                "META_COUNTS_WORLD_STATE_SCHEMA_VERSION = 3",
+                "WORLD_STATE_SCHEMA_VERSION = 4",
                 "society projection version mismatch",
             ))
             and all(token in manager_world_thread for token in (
@@ -1396,6 +1406,63 @@ def main() -> int:
                 "test_boolean_lifecycle_values_fail_closed",
                 'minimum_effect=-0.01',
                 'out_of_range[0]["treated_utility"] = 5.01',
+            ))
+        ),
+        "meta_learning_governance_is_content_free_replayable_and_visible": (
+            all(token in society_continuity for token in (
+                "META_PUBLIC_SCHEMA_VERSION = 2",
+                "META_PUBLIC_RECORD_VERSION = 1",
+                "def _meta_public_record(",
+                "def _validate_meta_public_record(",
+                "def _meta_public_summary(",
+                "def _validate_meta_public_summary(",
+                "def _meta_public_updates(",
+                '"parameter_authority_granted": proposal.status == "committed"',
+                '"identity_bound_matched_evaluation"',
+                '"meta_learning_updates": _meta_public_updates(',
+                "evidence and matched rows are withheld",
+            ))
+            and all(token in world_state_evidence for token in (
+                "META_COUNTS_WORLD_STATE_SCHEMA_VERSION = 3",
+                "WORLD_STATE_SCHEMA_VERSION = 4",
+                '"governance" if isinstance(meta, Mapping) and "records" in meta',
+                'META_COUNTS_WORLD_STATE_SCHEMA_VERSION: "counts"',
+                'WORLD_STATE_SCHEMA_VERSION: "governance"',
+                "fixture world-state phase schema version mismatch",
+            ))
+            and all(token in manager_world_thread for token in (
+                "for thread, row in zip(threads, stages):",
+                "latest_meta = max(meta_after",
+            ))
+            and all(token in web for token in (
+                "function appendMetaLearningGovernance(",
+                "society?.meta_learning_updates",
+                "update.evaluation_after",
+                "update.next_required_evidence",
+                "evaluation.lower_bound_clears_threshold",
+                "appendMetaLearningGovernance(details,society)",
+            ))
+            and all(token in world_state_evidence_tests for token in (
+                "test_world_state_v4_exposes_replayable_content_free_meta_governance",
+                "test_legacy_world_state_v3_count_only_meta_remains_replayable",
+                'record["changes"][0]["proposed_delta"] = 9.0',
+                'match="phase schema version mismatch"',
+            ))
+            and all(token in manager_world_thread_tests for token in (
+                "chronological == display_order",
+                'chronological["meta_learning_authorized"] == 1',
+            ))
+            and all(token in meta_learning_tests for token in (
+                'assert "matched_rows" not in encoded',
+                'assert record["parameter_authority_granted"] is True',
+                'assert record["authority_state"] == "denied"',
+                'assert record["authority_state"] == "expired"',
+                'assert record["evaluation"]["available"] is False',
+            ))
+            and all(token in web_tests for token in (
+                'governance_renderer = document.split(',
+                'assert ".innerHTML" not in governance_renderer',
+                'assert "createElement(\'button\')" not in governance_renderer',
             ))
         ),
         "manager_product_exposes_one_replayable_world_evolution_thread": (

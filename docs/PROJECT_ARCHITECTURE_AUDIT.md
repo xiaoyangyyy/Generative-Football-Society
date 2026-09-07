@@ -297,6 +297,19 @@ not quality signals by themselves.
     replay-compatible, and no formal effect result is claimed. The final
     198-file regression passes 1,433 tests with three declared skips, and every
     Python file modified by this stage passes Ruff.
+56. Made that delayed authority legible without creating another product
+    subsystem. World-state V4 projects content-free proposal identity,
+    bounded parameter direction and time scale, observation progress,
+    evaluation summary, authority state and next required evidence. Reflection
+    text, memory evidence and matched rows remain private. Identity-bound
+    per-match updates appear inside the existing six-stage manager world
+    thread, which has no authorization control and preserves V1/V2/V3 replay.
+    Mixed phase versions, nested rehashing, invalid authority/status pairs and
+    order-dependent season summaries fail closed. This is product-visible
+    governance, not evidence that meta-learning improves simulator outcomes.
+    The complete 198-file regression passes 1,434 tests with three declared
+    skips; touched Python files pass Ruff, the architecture audit is green,
+    and zero-training recovery and M2 identity receipts are current.
 
 ## LLM Scope Decision
 

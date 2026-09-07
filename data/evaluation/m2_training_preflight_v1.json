@@ -286,7 +286,7 @@
       "src/simulation/score_path.py": "dd80ab40f61552bea1fdbdd769dccce8713d0fee92c3de9be9de7604acec7e1d",
       "src/simulation/scouting.py": "051cb9dbabcfdd89a43e3e027cb5857f569755f7df36f724206436f877c969ae",
       "src/simulation/social_dialogue.py": "f8687a692a0cb47235733eb22fcd4b61a8e5f821415a570d0c5ebe06d3d7b5f8",
-      "src/simulation/society_continuity.py": "3bb9f4fb8256e8ebb6fccaa7d8356aae5ecbfac8fb6d76bbe535f3281837becf",
+      "src/simulation/society_continuity.py": "3e6fc4bcbd3355fbe56b23c2adbba2ac1508f5007763911cdc6d9f517b3c5fbd",
       "src/simulation/squad_registry.py": "b765e4a33cc35b4e3cad3746a936b06bc937fa5f7b527a4af69ba594dfdc0d78",
       "src/simulation/standings.py": "71b13915b26cb6a7f962a55e19b59ff827f47c5957e6e603a59ef215f5539fe4",
       "src/simulation/tactical_matchup.py": "5b0b4bd24b79b2b4bab4623ad46d4f879d37ac5d727de33cd3c4dec5e9d176f2",
@@ -341,7 +341,7 @@
   "next_action": "run the frozen M2 training command",
   "protocol_id": "m2-mirrored-policy-v1",
   "ready": true,
-  "recorded_at": "2026-09-07T04:45:44.945183+00:00",
+  "recorded_at": "2026-09-07T05:21:19.557087+00:00",
   "schema_version": 1,
   "sealed_test": {
     "rows_loaded_for_model_selection": 0,

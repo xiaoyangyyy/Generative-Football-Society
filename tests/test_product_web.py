@@ -344,6 +344,18 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "renderManagerDecisionLedgerWithoutMetaLearningSummary" in document
     assert "summary?.meta_learning_pending" in document
     assert "meta_learning_after" in document
+    assert "function appendMetaLearningGovernance(" in document
+    assert "society?.meta_learning_updates" in document
+    assert "update.evaluation_after" in document
+    assert "update.next_required_evidence" in document
+    assert "evaluation.lower_bound_clears_threshold" in document
+    assert "appendMetaLearningGovernance(details,society)" in document
+    governance_renderer = document.split(
+        "function appendMetaLearningGovernance(", 1,
+    )[1].split("appendManagerWorldEvolutionThread=", 1)[0]
+    assert ".textContent" in governance_renderer
+    assert ".innerHTML" not in governance_renderer
+    assert "createElement('button')" not in governance_renderer
     assert "stage.retained_semantic_examples" in document
     assert "stage.semantic_direct_cross_ball_event_examples" in document
     assert "appendManagerWorldEvolutionThreadWithoutRetainedRecordSemantics" in document

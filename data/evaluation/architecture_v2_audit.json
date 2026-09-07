@@ -39,6 +39,7 @@
     "manager_product_exposes_one_replayable_world_evolution_thread": true,
     "manager_season_has_one_current_and_historical_world_navigator": true,
     "match_runtime_inputs_are_side_isolated_and_root_bound": true,
+    "meta_learning_governance_is_content_free_replayable_and_visible": true,
     "meta_learning_is_delayed_identity_bound_and_product_visible": true,
     "official_action_explanation_unifies_cross_signal_and_reference": true,
     "official_action_semantics_are_bounded_not_full_distribution": true,

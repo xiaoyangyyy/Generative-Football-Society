@@ -553,14 +553,24 @@ def manager_world_evolution_summary(
         for thread in threads
     ]
     meta_after = []
-    for row in stages:
+    for thread, row in zip(threads, stages):
         transition = row.get("persistent_world_state", {}).get(
             "society_transition"
         )
         transition = transition if isinstance(transition, Mapping) else {}
         meta = transition.get("meta_learning_after")
-        meta_after.append(meta if isinstance(meta, Mapping) else {})
-    latest_meta = meta_after[-1] if meta_after else {}
+        raw_matchday = thread.get("matchday")
+        matchday = (
+            int(raw_matchday)
+            if isinstance(raw_matchday, int)
+            and not isinstance(raw_matchday, bool)
+            else -1
+        )
+        meta_after.append((
+            (matchday, str(thread.get("fixture_id") or "")),
+            meta if isinstance(meta, Mapping) else {},
+        ))
+    latest_meta = max(meta_after, default=((-1, ""), {}))[1]
     payload = {
         "schema_version": 1,
         "fixtures_with_world_evolution_thread": len(threads),

@@ -566,11 +566,22 @@ bounded signals affect coach pressure, crowd hostility, player anxiety, social
 feedback, memory, and later matches. Raw model output and the publishable version
 are stored separately in generation audits.
 
-Reflection remains a meta-learning mechanism. `MetaLearningController` applies
-LLM proposals at separate time scales: tactical controls are fast variables,
-role dynamics are medium variables, and recurrent weights are slow variables.
-Every update records its proposed delta, applied delta, before/after values, and
-verified memory evidence.
+Reflection remains a meta-learning proposal mechanism, but reflection never
+grants parameter authority by itself. `MetaLearningController` first stores a
+bounded, identity-bound shadow proposal at the parameter's fast, medium, or
+slow time scale. Later matches add descriptive observations without treating
+them as effect evidence. A parameter change requires a separately replayable
+matched-seed evaluation receipt with at least eight unique paired units and a
+95% lower bound above the registered non-negative minimum effect.
+
+Proposal state persists across matches with the existing society state and is
+shown in the manager's existing world-evolution thread. The public projection
+contains only proposal identity, bounded parameter direction, observation
+progress, evaluation summary, authority state, and next required evidence.
+Reflection text, memory evidence, and matched rows remain private, and the Web
+view cannot authorize a change. These contracts establish software behavior;
+they do not establish improved actions, match outcomes, or real-football
+causality.
 
 ## Legacy Entrypoints
 

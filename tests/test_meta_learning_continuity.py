@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -17,6 +18,11 @@ from src.simulation.meta_learning import (
     observe_agent_meta_proposals,
     validate_meta_evaluation_receipt,
     validate_meta_proposal,
+)
+from src.simulation.society_continuity import (
+    capture_society_continuity,
+    society_public_snapshot,
+    society_public_transition,
 )
 
 
@@ -119,6 +125,12 @@ def test_post_match_observation_is_noncausal_idempotent_and_cross_match(
     away = _agent("Beta")
     audit = _reflection(home)
     before = home.tactical_controls["risk_budget"]
+    before_public = society_public_snapshot(
+        capture_society_continuity(
+            home, source_transaction_id="season-1:before-md02",
+        ),
+        team_id="Alpha",
+    )
 
     _settle(tmp_path, home, away, "season-1:md02")
     first_state = copy.deepcopy(home.squad_carryover.society_state)
@@ -133,6 +145,16 @@ def test_post_match_observation_is_noncausal_idempotent_and_cross_match(
     )
     assert home.tactical_controls["risk_budget"] == before
     assert home.squad_carryover.society_state == first_state
+    after_public = society_public_snapshot(
+        home.squad_carryover.society_state, team_id="Alpha",
+    )
+    update = society_public_transition(
+        before_public, after_public,
+    )["meta_learning_updates"][0]
+    assert update["update_kind"] == "status_changed"
+    assert update["before_status"] == "shadow"
+    assert update["after_status"] == "observed_pending_evaluation"
+    assert update["observation_count_delta"] == 1
 
     restored = _agent("Alpha")
     restored.squad_carryover = TeamSquadCarryover.from_dict(
@@ -179,6 +201,20 @@ def test_matched_evaluation_receipt_is_required_and_idempotently_authorizes():
     assert agent.tactical_controls["risk_budget"] == after_first
     assert repeated["authorization_identity"] == receipt["receipt_identity"]
     validate_meta_proposal(repeated["meta_proposal"])
+    state = capture_society_continuity(
+        agent, source_transaction_id="season-1:md02",
+    )
+    public = society_public_snapshot(state, team_id="Alpha")
+    record = public["meta_learning"]["records"][0]
+    assert record["status"] == "committed"
+    assert record["authority_state"] == "granted"
+    assert record["parameter_authority_granted"] is True
+    assert record["evaluation"]["matched_units"] == 12
+    assert record["evaluation"]["lower_bound_clears_threshold"] is True
+    encoded = json.dumps(public, ensure_ascii=False)
+    assert "matched_rows" not in encoded
+    assert "Consider a slightly lower transition risk." not in encoded
+    assert "A verified prior tactical lesson" not in encoded
 
 
 def test_nonpositive_interval_rejects_without_mutation():
@@ -207,6 +243,19 @@ def test_nonpositive_interval_rejects_without_mutation():
     assert rejected["proposal_status"] == "rejected"
     assert rejected["applied_adjustments"] == {}
     assert agent.tactical_controls["risk_budget"] == before
+    public = society_public_snapshot(
+        capture_society_continuity(
+            agent, source_transaction_id="season-1:rejected",
+        ),
+        team_id="Alpha",
+    )
+    record = public["meta_learning"]["records"][0]
+    assert record["status"] == "rejected"
+    assert record["authority_state"] == "denied"
+    assert record["parameter_authority_granted"] is False
+    assert record["evaluation"]["available"] is True
+    assert record["evaluation"]["lower_bound_clears_threshold"] is False
+    assert record["next_required_evidence"] == "new_identity_bound_proposal"
 
 
 def test_proposal_and_evaluation_tampering_fail_closed():
@@ -286,6 +335,15 @@ def test_pending_proposal_expires_after_observation_window(tmp_path):
     assert audit["proposal_status"] == "expired"
     assert audit["observation_count"] == 1
     assert home.tactical_controls["risk_budget"] == 0.5
+    public = society_public_snapshot(
+        home.squad_carryover.society_state, team_id="Alpha",
+    )
+    record = public["meta_learning"]["records"][0]
+    assert record["status"] == "expired"
+    assert record["authority_state"] == "expired"
+    assert record["parameter_authority_granted"] is False
+    assert record["evaluation"]["available"] is False
+    assert record["next_required_evidence"] == "new_identity_bound_proposal"
 
 
 def test_operation_identity_is_idempotent_but_cannot_be_reused_for_new_content():

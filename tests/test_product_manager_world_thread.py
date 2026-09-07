@@ -509,3 +509,25 @@ def test_world_evolution_thread_keeps_society_continuity_inside_world_state():
     assert summary["society_continuity_transitions"] == 1
     assert summary["meta_learning_pending"] == 2
     assert summary["meta_learning_authorized"] == 0
+
+    newer = copy.deepcopy(entry)
+    newer["fixture_id"] = "fixture-2"
+    newer["matchday"] = 2
+    newer_meta = newer["long_term_accounting"][
+        "persistent_team_state_delta"
+    ]["match_delta"]["society_transition"]["meta_learning_after"]
+    newer_meta.update({
+        "total": 1,
+        "shadow": 0,
+        "observed_pending_evaluation": 0,
+        "committed": 1,
+    })
+    newer["world_evolution_thread"] = build_manager_world_evolution_thread(
+        newer
+    )
+    chronological = manager_world_evolution_summary([entry, newer])
+    display_order = manager_world_evolution_summary([newer, entry])
+
+    assert chronological == display_order
+    assert chronological["meta_learning_pending"] == 0
+    assert chronological["meta_learning_authorized"] == 1

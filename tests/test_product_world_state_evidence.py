@@ -60,22 +60,23 @@ def _write_carryover(root, *, fatigue, injured, recovery=False):
     path.write_text(json.dumps(rows), encoding="utf-8")
 
 
+def _identity(payload):
+    return hashlib.sha256(json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")).hexdigest()
+
+
 def _rehash(payload):
     frozen = copy.deepcopy(payload)
     frozen.pop("transition_identity", None)
-    payload["transition_identity"] = hashlib.sha256(json.dumps(
-        frozen, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
-        allow_nan=False,
-    ).encode("utf-8")).hexdigest()
+    payload["transition_identity"] = _identity(frozen)
 
 
 def _rehash_snapshot(payload):
     frozen = copy.deepcopy(payload)
     frozen.pop("source_identity", None)
-    payload["source_identity"] = hashlib.sha256(json.dumps(
-        frozen, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
-        allow_nan=False,
-    ).encode("utf-8")).hexdigest()
+    payload["source_identity"] = _identity(frozen)
 
 
 def test_three_phase_world_state_transition_replays_and_exposes_recovery(tmp_path):
@@ -152,7 +153,7 @@ def test_world_state_snapshot_rejects_malformed_player_as_validation_error(tmp_p
         validate_team_state_snapshot(snapshot, team="Brazil")
 
 
-def test_world_state_v3_exposes_replayable_content_free_society_transition(tmp_path):
+def test_world_state_v4_exposes_replayable_content_free_meta_governance(tmp_path):
     for team in ("Brazil", "Argentina"):
         _roster(tmp_path, team)
     before = capture_world_state(tmp_path, ("Brazil", "Argentina"))
@@ -189,7 +190,7 @@ def test_world_state_v3_exposes_replayable_content_free_society_transition(tmp_p
         after_match=after,
     )
 
-    assert transition["schema_version"] == WORLD_STATE_SCHEMA_VERSION == 3
+    assert transition["schema_version"] == WORLD_STATE_SCHEMA_VERSION == 4
     society = transition["match_delta"]["Brazil"]["society_transition"]
     assert society["available"] is True
     assert society["before_available"] is False
@@ -198,6 +199,19 @@ def test_world_state_v3_exposes_replayable_content_free_society_transition(tmp_p
     assert society["cognitive_memory_delta"] == 1
     assert society["meta_learning_after"]["shadow"] == 1
     assert society["meta_learning_delta"]["shadow"] == 1
+    records = society["meta_learning_after"]["records"]
+    assert len(records) == 1
+    assert records[0]["status"] == "shadow"
+    assert records[0]["changes"][0]["parameter"] == "risk_budget"
+    assert records[0]["evaluation"]["available"] is False
+    assert records[0]["parameter_authority_granted"] is False
+    assert records[0]["next_required_evidence"] == (
+        "identity_bound_matched_evaluation"
+    )
+    updates = society["meta_learning_updates"]
+    assert len(updates) == 1
+    assert updates[0]["update_kind"] == "created"
+    assert updates[0]["after_status"] == "shadow"
     assert "private prior-world narrative" not in json.dumps(
         transition, ensure_ascii=False,
     ).lower()
@@ -209,6 +223,28 @@ def test_world_state_v3_exposes_replayable_content_free_society_transition(tmp_p
         home="Brazil",
         away="Argentina",
     )
+
+    public_record_tamper = copy.deepcopy(transition)
+    record = public_record_tamper["phases"]["after_match"]["Brazil"][
+        "society"
+    ]["meta_learning"]["records"][0]
+    record["changes"][0]["proposed_delta"] = 9.0
+    record_frozen = copy.deepcopy(record)
+    record_frozen.pop("record_identity")
+    record["record_identity"] = _identity(record_frozen)
+    _rehash_snapshot(
+        public_record_tamper["phases"]["after_match"]["Brazil"]
+    )
+    _rehash(public_record_tamper)
+    with pytest.raises(ValueError, match="meta-learning change is invalid"):
+        validate_fixture_world_state_transition(
+            public_record_tamper,
+            season_id="season-0001",
+            fixture_id="md01-fx01",
+            match_id="0001-match",
+            home="Brazil",
+            away="Argentina",
+        )
 
     tampered = copy.deepcopy(transition)
     tampered["match_delta"]["Brazil"]["society_transition"][
@@ -260,3 +296,61 @@ def test_legacy_world_state_v2_without_meta_summary_remains_replayable(tmp_path)
         home="Brazil",
         away="Argentina",
     )
+
+
+def test_legacy_world_state_v3_count_only_meta_remains_replayable(tmp_path):
+    for team in ("Brazil", "Argentina"):
+        _roster(tmp_path, team)
+    before = capture_world_state(tmp_path, ("Brazil", "Argentina"))
+    _write_carryover(tmp_path, fatigue=0.2, injured=0)
+    after = capture_world_state(tmp_path, ("Brazil", "Argentina"))
+    count_fields = {
+        "total", "shadow", "observed_pending_evaluation", "committed",
+        "rejected", "rolled_back", "expired",
+    }
+    for phase in (before, after):
+        for snapshot in phase.values():
+            snapshot["schema_version"] = 3
+            meta = snapshot["society"]["meta_learning"]
+            snapshot["society"]["meta_learning"] = {
+                key: meta[key] for key in count_fields
+            }
+            _rehash_snapshot(snapshot)
+
+    transition = _build_fixture_world_state_transition(
+        season_id="season-legacy-v3",
+        fixture_id="md01-fx01",
+        match_id="legacy-v3-match",
+        home="Brazil",
+        away="Argentina",
+        before_match=before,
+        after_match=after,
+        schema_version=3,
+    )
+
+    society = transition["match_delta"]["Brazil"]["society_transition"]
+    assert "meta_learning_updates" not in society
+    validate_fixture_world_state_transition(
+        transition,
+        season_id="season-legacy-v3",
+        fixture_id="md01-fx01",
+        match_id="legacy-v3-match",
+        home="Brazil",
+        away="Argentina",
+    )
+
+    mixed = copy.deepcopy(after)
+    mixed["Brazil"] = capture_world_state(
+        tmp_path, ("Brazil",)
+    )["Brazil"]
+    with pytest.raises(ValueError, match="phase schema version mismatch"):
+        _build_fixture_world_state_transition(
+            season_id="season-mixed",
+            fixture_id="md01-fx01",
+            match_id="mixed-match",
+            home="Brazil",
+            away="Argentina",
+            before_match=before,
+            after_match=mixed,
+            schema_version=3,
+        )

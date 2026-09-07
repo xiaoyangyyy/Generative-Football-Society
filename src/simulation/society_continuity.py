@@ -125,6 +125,12 @@ META_PUBLIC_STATUSES = (
     "rolled_back",
     "expired",
 )
+META_PUBLIC_SCHEMA_VERSION = 2
+META_PUBLIC_RECORD_VERSION = 1
+META_PUBLIC_BOUNDARY = (
+    "content-free simulator adaptation governance only; proposal text, memory "
+    "evidence and matched rows are withheld, and outcome causality is not authorized"
+)
 
 
 def _identity(payload: Mapping[str, Any]) -> str:
@@ -135,6 +141,371 @@ def _identity(payload: Mapping[str, Any]) -> str:
         ensure_ascii=False,
         allow_nan=False,
     ).encode("utf-8")).hexdigest()
+
+
+def _meta_next_evidence(status: str) -> str:
+    if status in {"shadow", "observed_pending_evaluation"}:
+        return "identity_bound_matched_evaluation"
+    if status == "committed":
+        return "monitor_and_revalidate_before_reuse"
+    return "new_identity_bound_proposal"
+
+
+def _meta_authority_state(status: str) -> str:
+    return {
+        "committed": "granted",
+        "rejected": "denied",
+        "rolled_back": "rolled_back",
+        "expired": "expired",
+    }.get(status, "withheld")
+
+
+def _meta_public_record(proposal: Any) -> dict[str, Any]:
+    from src.simulation.meta_learning import PARAMETERS
+
+    changes = [{
+        "parameter": key,
+        "time_scale": PARAMETERS[key].time_scale,
+        "direction": (
+            "increase" if change["delta"] > 0.0 else "decrease"
+        ),
+        "proposed_delta": float(change["delta"]),
+    } for key, change in sorted(proposal.changes.items())]
+    receipt = proposal.evaluation
+    evaluation_available = bool(receipt)
+    evaluation = {
+        "available": evaluation_available,
+        "evaluator": receipt.get("evaluator") if evaluation_available else None,
+        "matched_units": (
+            int(receipt["matched_units"]) if evaluation_available else 0
+        ),
+        "average_treatment_effect": (
+            float(receipt["average_treatment_effect"])
+            if evaluation_available else None
+        ),
+        "ci_low": float(receipt["ci_low"]) if evaluation_available else None,
+        "ci_high": float(receipt["ci_high"]) if evaluation_available else None,
+        "minimum_effect": (
+            float(receipt["minimum_effect"])
+            if evaluation_available else None
+        ),
+        "lower_bound_clears_threshold": bool(
+            evaluation_available
+            and receipt["ci_low"] > receipt["minimum_effect"]
+        ),
+        "receipt_identity": (
+            receipt.get("receipt_identity") if evaluation_available else None
+        ),
+    }
+    record = {
+        "schema_version": META_PUBLIC_RECORD_VERSION,
+        "proposal_id": proposal.proposal_id,
+        "proposal_identity": proposal.proposal_identity,
+        "status": proposal.status,
+        "scope": proposal.scope,
+        "observation_count": len(proposal.observations),
+        "observation_window": proposal.expires_after,
+        "changes": changes,
+        "evaluation": evaluation,
+        "authority_state": _meta_authority_state(proposal.status),
+        "parameter_authority_granted": proposal.status == "committed",
+        "next_required_evidence": _meta_next_evidence(proposal.status),
+        "claim_boundary": META_PUBLIC_BOUNDARY,
+    }
+    record["record_identity"] = _identity(record)
+    return record
+
+
+def _validate_meta_public_record(payload: Mapping[str, Any]) -> None:
+    from src.simulation.meta_learning import (
+        MAX_PROPOSAL_OBSERVATIONS,
+        MIN_MATCHED_EVALUATION_UNITS,
+        MIN_SIMULATOR_UTILITY,
+        MAX_SIMULATOR_UTILITY,
+        PARAMETERS,
+    )
+
+    expected = {
+        "schema_version", "proposal_id", "proposal_identity", "status",
+        "scope", "observation_count", "observation_window", "changes",
+        "evaluation", "authority_state", "parameter_authority_granted",
+        "next_required_evidence", "claim_boundary", "record_identity",
+    }
+    if not isinstance(payload, Mapping) or set(payload) != expected:
+        raise ValueError("society public meta-learning record fields are invalid")
+    frozen = copy.deepcopy(dict(payload))
+    identity = frozen.pop("record_identity", None)
+    proposal_id = payload.get("proposal_id")
+    proposal_identity = payload.get("proposal_identity")
+    status = payload.get("status")
+    observation_count = payload.get("observation_count")
+    observation_window = payload.get("observation_window")
+    changes = payload.get("changes")
+    if (
+        payload.get("schema_version") != META_PUBLIC_RECORD_VERSION
+        or not isinstance(proposal_id, str)
+        or len(proposal_id) != 32
+        or any(character not in "0123456789abcdef" for character in proposal_id)
+        or not isinstance(proposal_identity, str)
+        or len(proposal_identity) != 64
+        or any(
+            character not in "0123456789abcdef"
+            for character in proposal_identity
+        )
+        or status not in META_PUBLIC_STATUSES
+        or payload.get("scope") not in {"match", "tournament", "long_term"}
+        or isinstance(observation_count, bool)
+        or not isinstance(observation_count, int)
+        or not 0 <= observation_count <= MAX_PROPOSAL_OBSERVATIONS
+        or isinstance(observation_window, bool)
+        or not isinstance(observation_window, int)
+        or not 1 <= observation_window <= 128
+        or observation_count > observation_window
+        or not isinstance(changes, list)
+        or not 1 <= len(changes) <= len(PARAMETERS)
+        or not isinstance(identity, str)
+        or identity != _identity(frozen)
+        or payload.get("claim_boundary") != META_PUBLIC_BOUNDARY
+    ):
+        raise ValueError("society public meta-learning record is invalid")
+    change_keys = []
+    for change in changes:
+        if not isinstance(change, Mapping) or set(change) != {
+            "parameter", "time_scale", "direction", "proposed_delta",
+        }:
+            raise ValueError("society public meta-learning change is invalid")
+        key = change.get("parameter")
+        delta = change.get("proposed_delta")
+        if (
+            key not in PARAMETERS
+            or change.get("time_scale") != PARAMETERS[key].time_scale
+            or change.get("direction") not in {"increase", "decrease"}
+            or isinstance(delta, bool)
+            or not isinstance(delta, Real)
+            or not math.isfinite(float(delta))
+            or math.isclose(float(delta), 0.0, abs_tol=1e-12)
+            or abs(float(delta)) > PARAMETERS[key].max_delta + 1e-12
+            or (float(delta) > 0.0) != (change["direction"] == "increase")
+        ):
+            raise ValueError("society public meta-learning change is invalid")
+        change_keys.append(key)
+    if len(change_keys) != len(set(change_keys)) or change_keys != sorted(change_keys):
+        raise ValueError("society public meta-learning changes are not canonical")
+    evaluation = payload.get("evaluation")
+    evaluation_fields = {
+        "available", "evaluator", "matched_units",
+        "average_treatment_effect", "ci_low", "ci_high",
+        "minimum_effect", "lower_bound_clears_threshold",
+        "receipt_identity",
+    }
+    if not isinstance(evaluation, Mapping) or set(evaluation) != evaluation_fields:
+        raise ValueError("society public meta-learning evaluation is invalid")
+    available = evaluation.get("available")
+    if not isinstance(available, bool):
+        raise ValueError("society public meta-learning evaluation is invalid")
+    evaluated_status = status in {"committed", "rejected", "rolled_back"}
+    if available != evaluated_status:
+        raise ValueError("society public meta-learning evaluation state mismatch")
+    if available:
+        matched_units = evaluation.get("matched_units")
+        values = [
+            evaluation.get("average_treatment_effect"),
+            evaluation.get("ci_low"), evaluation.get("ci_high"),
+            evaluation.get("minimum_effect"),
+        ]
+        if (
+            evaluation.get("evaluator") != "matched_seed_counterfactual_v1"
+            or isinstance(matched_units, bool)
+            or not isinstance(matched_units, int)
+            or not MIN_MATCHED_EVALUATION_UNITS <= matched_units <= 128
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, Real)
+                or not math.isfinite(float(value))
+                for value in values
+            )
+            or not float(evaluation["ci_low"])
+            <= float(evaluation["average_treatment_effect"])
+            <= float(evaluation["ci_high"])
+            or not 0.0 <= float(evaluation["minimum_effect"]) <= (
+                MAX_SIMULATOR_UTILITY - MIN_SIMULATOR_UTILITY
+            )
+            or not isinstance(
+                evaluation.get("lower_bound_clears_threshold"), bool,
+            )
+            or evaluation["lower_bound_clears_threshold"]
+            != (evaluation["ci_low"] > evaluation["minimum_effect"])
+            or not isinstance(evaluation.get("receipt_identity"), str)
+            or len(evaluation["receipt_identity"]) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in evaluation["receipt_identity"]
+            )
+        ):
+            raise ValueError("society public meta-learning evaluation is invalid")
+    elif (
+        evaluation.get("evaluator") is not None
+        or evaluation.get("matched_units") != 0
+        or any(evaluation.get(field) is not None for field in (
+            "average_treatment_effect", "ci_low", "ci_high",
+            "minimum_effect", "receipt_identity",
+        ))
+        or evaluation.get("lower_bound_clears_threshold") is not False
+    ):
+        raise ValueError("empty society meta-learning evaluation is not empty")
+    expected_authority = _meta_authority_state(status)
+    if (
+        payload.get("authority_state") != expected_authority
+        or payload.get("parameter_authority_granted") is not (
+            status == "committed"
+        )
+        or payload.get("next_required_evidence") != _meta_next_evidence(status)
+        or status == "committed"
+        and evaluation["lower_bound_clears_threshold"] is not True
+        or status == "rejected"
+        and evaluation["lower_bound_clears_threshold"] is not False
+        or status == "rolled_back"
+        and evaluation["lower_bound_clears_threshold"] is not True
+    ):
+        raise ValueError("society public meta-learning authority is invalid")
+
+
+def _empty_meta_public_summary() -> dict[str, Any]:
+    return {
+        "schema_version": META_PUBLIC_SCHEMA_VERSION,
+        "total": 0,
+        **{status: 0 for status in META_PUBLIC_STATUSES},
+        "records": [],
+        "claim_boundary": META_PUBLIC_BOUNDARY,
+    }
+
+
+def _meta_public_summary(state: Mapping[str, Any]) -> dict[str, Any]:
+    from src.simulation.meta_learning import validate_meta_proposal
+
+    counts = {status: 0 for status in META_PUBLIC_STATUSES}
+    records = []
+    for audit in state["reflection_audit"]:
+        if "meta_proposal" not in audit:
+            continue
+        proposal = validate_meta_proposal(audit["meta_proposal"])
+        if proposal.agent != state["team_id"]:
+            raise ValueError("society meta-learning agent identity mismatch")
+        counts[proposal.status] += 1
+        records.append(_meta_public_record(proposal))
+    records.sort(key=lambda row: row["proposal_id"])
+    return {
+        "schema_version": META_PUBLIC_SCHEMA_VERSION,
+        "total": sum(counts.values()),
+        **counts,
+        "records": records,
+        "claim_boundary": META_PUBLIC_BOUNDARY,
+    }
+
+
+def _validate_meta_public_summary(payload: Mapping[str, Any]) -> str:
+    count_fields = {"total", *META_PUBLIC_STATUSES}
+    governance_fields = count_fields | {
+        "schema_version", "records", "claim_boundary",
+    }
+    if not isinstance(payload, Mapping) or frozenset(payload) not in {
+        frozenset(count_fields), frozenset(governance_fields),
+    }:
+        raise ValueError("society public meta-learning summary is invalid")
+    if any(
+        isinstance(payload.get(field), bool)
+        or not isinstance(payload.get(field), int)
+        or not 0 <= payload[field] <= MEMORY_LIMITS["reflection_audit"]
+        for field in count_fields
+    ) or payload["total"] != sum(
+        payload[status] for status in META_PUBLIC_STATUSES
+    ):
+        raise ValueError("society public meta-learning summary is invalid")
+    if set(payload) == count_fields:
+        return "counts"
+    records = payload.get("records")
+    if (
+        payload.get("schema_version") != META_PUBLIC_SCHEMA_VERSION
+        or payload.get("claim_boundary") != META_PUBLIC_BOUNDARY
+        or not isinstance(records, list)
+        or len(records) != payload["total"]
+    ):
+        raise ValueError("society public meta-learning governance is invalid")
+    for record in records:
+        _validate_meta_public_record(record)
+    proposal_ids = [record["proposal_id"] for record in records]
+    if (
+        proposal_ids != sorted(proposal_ids)
+        or len(proposal_ids) != len(set(proposal_ids))
+        or any(
+            payload[status]
+            != sum(record["status"] == status for record in records)
+            for status in META_PUBLIC_STATUSES
+        )
+    ):
+        raise ValueError("society public meta-learning records are not canonical")
+    return "governance"
+
+
+def _meta_public_updates(
+    before: Mapping[str, Any], after: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    before_records = {
+        row["proposal_id"]: row for row in before.get("records") or []
+    }
+    after_records = {
+        row["proposal_id"]: row for row in after.get("records") or []
+    }
+    updates = []
+    for proposal_id in sorted(set(before_records) | set(after_records)):
+        left = before_records.get(proposal_id)
+        right = after_records.get(proposal_id)
+        if left == right:
+            continue
+        record = right or left
+        if left is None:
+            kind = "created"
+        elif right is None:
+            kind = "retention_removed"
+        elif left["status"] != right["status"]:
+            kind = "status_changed"
+        elif left["observation_count"] != right["observation_count"]:
+            kind = "observation_recorded"
+        else:
+            kind = "evidence_updated"
+        update = {
+            "proposal_id": proposal_id,
+            "proposal_identity": record["proposal_identity"],
+            "update_kind": kind,
+            "before_status": left["status"] if left else None,
+            "after_status": right["status"] if right else None,
+            "observation_count_before": (
+                left["observation_count"] if left else 0
+            ),
+            "observation_count_after": (
+                right["observation_count"] if right else 0
+            ),
+            "observation_count_delta": (
+                (right["observation_count"] if right else 0)
+                - (left["observation_count"] if left else 0)
+            ),
+            "observation_window": record["observation_window"],
+            "changes": copy.deepcopy(record["changes"]),
+            "evaluation_after": (
+                copy.deepcopy(right["evaluation"]) if right else None
+            ),
+            "authority_state": (
+                right["authority_state"] if right else "not_retained"
+            ),
+            "next_required_evidence": (
+                right["next_required_evidence"]
+                if right else "record_not_retained"
+            ),
+            "claim_boundary": META_PUBLIC_BOUNDARY,
+        }
+        update["update_identity"] = _identity(update)
+        updates.append(update)
+    return updates
 
 
 def _bounded_json(value: Any, *, nodes: list[int], depth: int = 0) -> Any:
@@ -587,26 +958,13 @@ def society_public_snapshot(
             "social_narrative_state": {},
             "psychological_state": {},
             "referee_grievance": None,
-            "meta_learning": {
-                "total": 0,
-                **{status: 0 for status in META_PUBLIC_STATUSES},
-            },
+            "meta_learning": _empty_meta_public_summary(),
             "claim_boundary": PUBLIC_BOUNDARY,
         }
     state = validate_society_continuity_state(
         payload, expected_team=team_id,
     )
     memories = state["episodic_memory"] + state["procedural_memory"]
-    from src.simulation.meta_learning import validate_meta_proposal
-
-    meta_counts = {status: 0 for status in META_PUBLIC_STATUSES}
-    for audit in state["reflection_audit"]:
-        if "meta_proposal" not in audit:
-            continue
-        proposal = validate_meta_proposal(audit["meta_proposal"])
-        if proposal.agent != team_id:
-            raise ValueError("society meta-learning agent identity mismatch")
-        meta_counts[proposal.status] += 1
     return {
         "available": True,
         "state_identity": state["state_identity"],
@@ -624,10 +982,7 @@ def society_public_snapshot(
         ),
         "psychological_state": copy.deepcopy(state["psychological_state"]),
         "referee_grievance": state["scalars"]["referee_grievance"],
-        "meta_learning": {
-            "total": sum(meta_counts.values()),
-            **meta_counts,
-        },
+        "meta_learning": _meta_public_summary(state),
         "claim_boundary": PUBLIC_BOUNDARY,
     }
 
@@ -667,20 +1022,7 @@ def validate_society_public_snapshot(payload: Mapping[str, Any]) -> None:
         raise ValueError("society public cognitive count is invalid")
     meta = payload.get("meta_learning")
     if meta is not None:
-        meta_fields = {"total", *META_PUBLIC_STATUSES}
-        if (
-            not isinstance(meta, Mapping)
-            or set(meta) != meta_fields
-            or any(
-                isinstance(value, bool)
-                or not isinstance(value, int)
-                or not 0 <= value <= MEMORY_LIMITS["reflection_audit"]
-                for value in meta.values()
-            )
-            or meta["total"]
-            != sum(meta[status] for status in META_PUBLIC_STATUSES)
-        ):
-            raise ValueError("society public meta-learning summary is invalid")
+        _validate_meta_public_summary(meta)
     if payload["available"] is False:
         if (
             payload["state_identity"] is not None
@@ -694,7 +1036,9 @@ def validate_society_public_snapshot(payload: Mapping[str, Any]) -> None:
                 "social_narrative_state", "psychological_state",
             ))
             or payload["referee_grievance"] is not None
-            or meta is not None and any(meta.values())
+            or meta is not None and (
+                meta.get("total") != 0 or bool(meta.get("records"))
+            )
         ):
             raise ValueError("unavailable society public snapshot is not empty")
         return
@@ -793,6 +1137,17 @@ def society_public_transition(
                     - int((before.get("meta_learning") or {}).get(field, 0))
                     for field in ("total", *META_PUBLIC_STATUSES)
                 },
+                **(
+                    {
+                        "meta_learning_updates": _meta_public_updates(
+                            before.get("meta_learning") or {},
+                            after.get("meta_learning") or {},
+                        )
+                    }
+                    if "records" in (before.get("meta_learning") or {})
+                    or "records" in (after.get("meta_learning") or {})
+                    else {}
+                ),
             }
             if "meta_learning" in before or "meta_learning" in after else {}
         ),

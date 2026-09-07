@@ -4304,3 +4304,57 @@ green, local crash recovery is reverified, and the M2 transitive code identity
 is refreshed. Those verification paths execute zero training, write no
 checkpoint, run no product/formal match and make no provider or participant
 call.
+
+## 131. V4.13 Content-free adaptation governance in the unified world thread
+
+V4.12 made delayed meta-learning real in persisted simulator state, but its
+product projection exposed only status totals. A manager could see that one
+proposal was pending or committed without seeing which bounded parameter was
+affected, how far its observation window had progressed, whether matched
+evidence existed, why authority was withheld, or what evidence was required
+next. That preserved privacy but left the long-term adaptation mechanism too
+opaque to be a useful part of the product.
+
+Current society projection schema 2 adds a bounded public record for every
+retained proposal. Each record contains stable proposal identities, lifecycle
+status and scope, observation progress, canonical parameter direction and
+delta at its declared time scale, a replayable evaluation summary, parameter
+authority state, and the next required evidence. It deliberately withholds
+reflection text, memory evidence, individual matched rows, prompts, and model
+output. Record and transition identities cover the complete public payload;
+unknown fields, invalid status/evaluation combinations, inconsistent counts,
+out-of-range deltas, false authority, malformed hashes, mixed phase schemas,
+and outer-envelope rehashing all fail closed.
+
+World-state evidence advances to V4 for the governance projection. Stored V1
+evidence remains the pre-society format, V2 remains society-without-meta, and
+V3 remains count-only meta evidence. No historical artifact is silently
+upgraded. A fixture transition requires every retained phase snapshot to use
+the transition's declared version. Per-match society transitions derive a
+bounded update ledger for proposal creation, status change, observation,
+evaluation, or retention removal, so a chapter explains what changed instead
+of merely repeating the latest totals.
+
+Studio renders those updates inside the existing `persistent_world_state`
+stage of the six-stage manager world-evolution thread. It creates text nodes
+only, provides no authorization control, and states the privacy and causality
+boundary beside the evidence. The manager summary now selects the latest meta
+state by matchday and fixture identity rather than input list order, preserving
+the same current result in chronological and display-reversed views. This adds
+no seventh product area and no second source of truth.
+
+Tests cover shadow-to-pending observation, committed, rejected and expired
+public states, content redaction, nested tampering, mixed-version rejection,
+legacy V1/V2/V3 replay, read-only Web rendering, and order-independent season
+summaries. This is code and replay-contract evidence only. It does not prove
+that adaptation improves actions or outcomes and executes no training,
+product/formal match, participant session, future generation, or provider
+call.
+
+Final verification covers all 198 test files in four disjoint processes:
+1,434 tests pass and three declared tests skip, with no failures. Ruff passes
+for every Python file modified by V4.13, the complete architecture audit is
+green, local process-crash recovery is reverified, and the M2 transitive code
+identity is refreshed. The generated receipts record zero training, zero
+checkpoint writes, zero matches, zero formal experiments, zero participant
+sessions, and zero provider calls.

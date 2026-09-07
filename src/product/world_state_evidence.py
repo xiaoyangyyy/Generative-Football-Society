@@ -21,7 +21,8 @@ from src.simulation.squad_registry import load_effective_roster
 
 LEGACY_WORLD_STATE_SCHEMA_VERSION = 1
 SOCIETY_WORLD_STATE_SCHEMA_VERSION = 2
-WORLD_STATE_SCHEMA_VERSION = 3
+META_COUNTS_WORLD_STATE_SCHEMA_VERSION = 3
+WORLD_STATE_SCHEMA_VERSION = 4
 _METRICS = (
     "team_fatigue_ema", "squad_morale_ema", "team_media_pressure",
     "injured_players", "suspended_players", "unavailable_players",
@@ -168,7 +169,9 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
         "team_dynamics_delta", "last_match_stage", "players", "source_identity",
     }
     if schema_version in {
-        SOCIETY_WORLD_STATE_SCHEMA_VERSION, WORLD_STATE_SCHEMA_VERSION,
+        SOCIETY_WORLD_STATE_SCHEMA_VERSION,
+        META_COUNTS_WORLD_STATE_SCHEMA_VERSION,
+        WORLD_STATE_SCHEMA_VERSION,
     }:
         expected_fields.add("society")
     if (
@@ -176,6 +179,7 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
         or schema_version not in {
             LEGACY_WORLD_STATE_SCHEMA_VERSION,
             SOCIETY_WORLD_STATE_SCHEMA_VERSION,
+            META_COUNTS_WORLD_STATE_SCHEMA_VERSION,
             WORLD_STATE_SCHEMA_VERSION,
         }
         or snapshot.get("team_id") != team
@@ -193,11 +197,22 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
     ):
         raise ValueError("team world-state snapshot identity mismatch")
     if schema_version in {
-        SOCIETY_WORLD_STATE_SCHEMA_VERSION, WORLD_STATE_SCHEMA_VERSION,
+        SOCIETY_WORLD_STATE_SCHEMA_VERSION,
+        META_COUNTS_WORLD_STATE_SCHEMA_VERSION,
+        WORLD_STATE_SCHEMA_VERSION,
     }:
         validate_society_public_snapshot(snapshot["society"])
-        has_meta = "meta_learning" in snapshot["society"]
-        if has_meta != (schema_version == WORLD_STATE_SCHEMA_VERSION):
+        meta = snapshot["society"].get("meta_learning")
+        meta_projection = (
+            "governance" if isinstance(meta, Mapping) and "records" in meta
+            else "counts" if isinstance(meta, Mapping) else "none"
+        )
+        expected_projection = {
+            SOCIETY_WORLD_STATE_SCHEMA_VERSION: "none",
+            META_COUNTS_WORLD_STATE_SCHEMA_VERSION: "counts",
+            WORLD_STATE_SCHEMA_VERSION: "governance",
+        }[schema_version]
+        if meta_projection != expected_projection:
             raise ValueError(
                 "team world-state society projection version mismatch"
             )
@@ -374,6 +389,10 @@ def _build_fixture_world_state_transition(
         if phase is not None:
             for team in teams:
                 validate_team_state_snapshot(phase[team], team=team)
+                if phase[team].get("schema_version") != schema_version:
+                    raise ValueError(
+                        "fixture world-state phase schema version mismatch"
+                    )
     match_delta = {
         team: _team_diff(
             phases["before_match"][team],
@@ -444,6 +463,7 @@ def validate_fixture_world_state_transition(
         or transition.get("schema_version") not in {
             LEGACY_WORLD_STATE_SCHEMA_VERSION,
             SOCIETY_WORLD_STATE_SCHEMA_VERSION,
+            META_COUNTS_WORLD_STATE_SCHEMA_VERSION,
             WORLD_STATE_SCHEMA_VERSION,
         }
         or transition.get("season_id") != season_id
