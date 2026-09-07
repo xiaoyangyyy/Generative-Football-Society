@@ -355,6 +355,19 @@ regression passes 61 tests; CI-equivalent regression passes 1,477 tests with
 three declared skips and one registered training-test deselection. Local HTTP,
 accessibility, recovery and all 92 architecture checks pass.
 
+V4.27 makes the action-adoption product surface explicit. Its eight historical
+overrides are now named stages in one frozen nine-stage sequence: base runtime
+observation, per-action signals, shot validation, hold-reference semantics,
+sealed formal evidence, current-code applicability, manager-level protocol,
+prospective M2 status and the M2 research control. Historical and current
+evidence remain visibly separated, and the exact rendering order can no longer
+change through declaration placement. A dedicated architecture gate rejects
+legacy wrappers and duplicate roots. This behavior-preserving refactor executes
+no match, future, training, study, participant session or provider call.
+Focused Web regression passes 62 tests; CI-equivalent regression passes 1,478
+tests with three declared skips and one registered training-test deselection.
+Local HTTP, accessibility, recovery and all 93 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

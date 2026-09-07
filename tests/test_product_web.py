@@ -208,7 +208,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="action-adoption-metrics"' in document
     assert 'id="manager-advisor-protocol-evidence"' in document
     assert "renderActionAdoption(" in document
-    assert "renderActionAdoptionWithoutActionSignals" in document
+    assert "function renderActionAdoptionActionSignals(studio)" in document
     assert "shared_uniform_inverse_cdf_overlap_v1" in document
     assert "共享采样期望改变" in document
     assert "旧版期望改变" in document
@@ -222,7 +222,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "reference_action_breakdown" in document
     assert "reference.redistribution_opportunities" in document
     assert "reference.mean_probability_gain" in document
-    assert "renderActionAdoptionWithoutHoldReference" in document
+    assert "function renderActionAdoptionHoldReference(studio)" in document
     assert "appendOfficialActionExecutionWithoutPolicySemantics" in document
     assert "example.policy_signal" in document
     assert "reference.received_redistributed_probability" in document
@@ -245,12 +245,12 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "example.hold_reference_redistributed" in document
     assert "example.primary_signal_action" in document
     assert "mean_applied_authority" in document
-    assert "renderActionAdoptionWithoutCurrentCodeEvidence" in document
+    assert "function renderActionAdoptionCurrentCodeEvidence(studio)" in document
     assert "mechanism.result_identity_verified" in document
     assert "outcome.result_identity_verified" in document
-    assert "renderActionAdoptionWithoutManagerProtocol" in document
+    assert "function renderActionAdoptionManagerProtocol(studio)" in document
     assert "manager_advisor_adoption" in document
-    assert "renderActionAdoptionWithoutM2Outcome" in document
+    assert "function renderActionAdoptionM2Outcome(studio)" in document
     assert "outcome_aligned_m2_study" in document
     assert "m2.result_applicable_to_current_code" in document
     assert 'id="m2-research-control"' in document
@@ -703,6 +703,29 @@ def test_root_uses_one_explicit_manager_decision_ledger_render_pipeline(tmp_path
         "MANAGER_DECISION_LEDGER_RENDER_STAGES)renderStage(season)}"
     ) in document
     assert "renderManagerDecisionLedgerWithout" not in document
+
+
+def test_root_uses_one_explicit_action_adoption_render_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const ACTION_ADOPTION_RENDER_STAGES=Object.freeze(["
+        "renderActionAdoptionBase,renderActionAdoptionActionSignals,"
+        "renderActionAdoptionShotValidation,renderActionAdoptionHoldReference,"
+        "renderActionAdoptionFormalEvidence,"
+        "renderActionAdoptionCurrentCodeEvidence,"
+        "renderActionAdoptionManagerProtocol,renderActionAdoptionM2Outcome,"
+        "renderActionAdoptionM2ResearchControl]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function renderActionAdoption(studio)") == 1
+    assert (
+        "function renderActionAdoption(studio){for(const renderStage of "
+        "ACTION_ADOPTION_RENDER_STAGES)renderStage(studio)}"
+    ) in document
+    assert "renderActionAdoptionWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):

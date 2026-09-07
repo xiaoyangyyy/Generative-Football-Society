@@ -315,7 +315,7 @@ def verify_web_accessibility() -> dict:
             "evidence.unlinked_advice",
             "evidence.direct_execution_coverage",
             'id="manager-advisor-protocol-evidence" class="status"',
-            "renderActionAdoptionWithoutManagerProtocol",
+            "function renderActionAdoptionManagerProtocol(studio)",
             "studio?.evidence?.manager_advisor_adoption",
             "protocol.fixed_information_windows",
         )

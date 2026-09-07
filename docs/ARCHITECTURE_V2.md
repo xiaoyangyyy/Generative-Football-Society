@@ -4839,3 +4839,37 @@ CI-equivalent suite passes 1,477 tests with three declared skips and one
 registered training-test deselection. Local HTTP Beta passes 16/16 checks,
 automated accessibility passes 41/41 checks, process-crash recovery passes
 every declared check and the architecture audit passes 92/92.
+
+## 145. V4.27 Explicit action-adoption evidence composition
+
+The action-adoption surface combined three different evidence timescales:
+single-match runtime observations, sealed historical mechanism/outcome studies
+and the prospective M2 control plane. Eight successive function overrides made
+their display order implicit. That was especially risky because current-code
+identity warnings must replace historical efficacy wording before M2 status is
+shown; declaration movement could otherwise make stale evidence appear current.
+
+V4.27 names the eight enrichment stages and freezes one nine-stage sequence:
+
+1. base runtime adoption observation;
+2. per-action signal and cross authority;
+3. independently validated shot authority;
+4. hold-reference redistribution;
+5. sealed mechanism and full-match evidence;
+6. current-code identity applicability;
+7. manager-level adoption protocol;
+8. prospective M2 outcome status; and
+9. the read-only M2 research control.
+
+Each stage keeps its prior DOM target, early-return behavior and evidence
+wording. Historical results are still preserved but cannot acquire current
+authority. A new architecture check binds every stage, requires one root
+renderer and rejects the complete legacy wrapper family. Direct Web and
+accessibility tests enforce the same boundary. This refactor changes no action
+probability, experiment status, model authority, decision or claim, and it
+executes no match, future generation, training, formal study, participant
+session or provider call. Focused Web regression passes 62 tests. The
+CI-equivalent suite passes 1,478 tests with three declared skips and one
+registered training-test deselection. Local HTTP Beta passes 16/16 checks,
+automated accessibility passes 41/41 checks, process-crash recovery passes
+every declared check and the expanded architecture audit passes 93/93.

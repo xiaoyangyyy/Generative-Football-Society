@@ -963,10 +963,27 @@ def main() -> int:
                 '"result_applicable_to_current_code"',
             ))
             and all(token in web for token in (
-                "renderActionAdoptionWithoutCurrentCodeEvidence",
+                "function renderActionAdoptionCurrentCodeEvidence(studio)",
                 "mechanism.result_identity_verified",
                 "outcome.result_identity_verified",
             ))
+        ),
+        "action_adoption_product_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderActionAdoptionBase(studio)",
+                "const ACTION_ADOPTION_RENDER_STAGES=Object.freeze([",
+                "renderActionAdoptionActionSignals",
+                "renderActionAdoptionShotValidation",
+                "renderActionAdoptionHoldReference",
+                "renderActionAdoptionFormalEvidence",
+                "renderActionAdoptionCurrentCodeEvidence",
+                "renderActionAdoptionManagerProtocol",
+                "renderActionAdoptionM2Outcome",
+                "renderActionAdoptionM2ResearchControl",
+                "function renderActionAdoption(studio){for(const renderStage of ",
+            ))
+            and "renderActionAdoptionWithout" not in web
+            and web.count("function renderActionAdoption(studio)") == 1
         ),
         "hold_is_reference_only_not_direct_model_authority": (
             all(token in action_adoption_controller for token in (
@@ -991,7 +1008,7 @@ def main() -> int:
                 '"mean_probability_gain"',
             ))
             and all(token in web for token in (
-                "renderActionAdoptionWithoutHoldReference",
+                "function renderActionAdoptionHoldReference(studio)",
                 "reference.redistribution_opportunities",
                 "reference.mean_probability_gain",
             ))

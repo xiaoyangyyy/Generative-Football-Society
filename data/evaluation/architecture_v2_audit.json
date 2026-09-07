@@ -2,6 +2,7 @@
   "all_pass": true,
   "architecture": "gfs-layered-product-v2.1",
   "checks": {
+    "action_adoption_product_render_pipeline_is_explicit": true,
     "action_adoption_progress_is_fixed_schedule_and_fail_closed": true,
     "action_adoption_smoke_is_four_arm_and_zero_training": true,
     "action_change_expectation_matches_shared_uniform_sampler": true,

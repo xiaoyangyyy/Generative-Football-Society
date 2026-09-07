@@ -459,6 +459,18 @@ not quality signals by themselves.
     three skips and one registered deselection, and local HTTP, accessibility,
     recovery and all 92 architecture checks are green.
 
+70. Replaced eight implicit action-adoption view overrides with a frozen,
+    named nine-stage renderer. Runtime signals, cross and shot authority,
+    hold-reference semantics, sealed historical evidence, current-code
+    applicability, the manager protocol and prospective M2 control now have one
+    reviewable order. A dedicated architecture gate requires one root renderer
+    and rejects every legacy action-adoption wrapper. Evidence wording,
+    identity boundaries and model authority remain unchanged; no match,
+    future, training, study, participant session or external call is executed.
+    Focused Web regression passes 62 tests, CI-equivalent regression passes
+    1,478 with three skips and one registered deselection, and local HTTP,
+    accessibility, recovery and all 93 architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model
