@@ -84,7 +84,19 @@ def _policy_value(
             "reason": "policy_utility_runtime_contract_missing",
             "value_source": "outcome_aligned_policy_utility",
         }
-    policy_authority = dict(authority_method(action_kind))
+    try:
+        policy_authority = dict(authority_method(
+            action_kind,
+            attacking_home=attacking_home,
+        ))
+    except TypeError:
+        return None, 0.0, {
+            **legacy_authority,
+            "authorized": False,
+            "authority": 0.0,
+            "reason": "perspective_policy_utility_runtime_contract_missing",
+            "value_source": "outcome_aligned_policy_utility",
+        }
     authorized = bool(
         legacy_authority.get("authorized")
         and policy_authority.get("authorized")
@@ -127,9 +139,21 @@ def _policy_value(
                 "reason": "policy_utility_sequence_runtime_contract_missing",
                 "value_source": "outcome_aligned_two_step_policy_utility",
             }
-        sequence_authority = dict(sequence_authority_method(
-            action_kind, rollout_steps=2,
-        ))
+        try:
+            sequence_authority = dict(sequence_authority_method(
+                action_kind,
+                rollout_steps=2,
+                attacking_home=attacking_home,
+            ))
+        except TypeError:
+            return None, 0.0, {
+                **legacy_authority,
+                **policy_authority,
+                "authorized": False,
+                "authority": 0.0,
+                "reason": "perspective_sequence_runtime_contract_missing",
+                "value_source": "outcome_aligned_two_step_policy_utility",
+            }
         two_step_gate = dict(two_step_gate_method())
         sequence_authorized = bool(
             sequence_authority.get("authorized")
@@ -239,6 +263,7 @@ def _policy_value(
                 and prediction.get("action_sequence") == expected_sequence
                 and prediction_gate.get("authorized") is True
                 and prediction_gate.get("action_kind") == action_kind
+                and prediction_gate.get("attacking_home") is attacking_home
                 and prediction_gate.get("rollout_steps") == 2
                 and prediction_gate.get("continuation_support_authorized")
                 is True

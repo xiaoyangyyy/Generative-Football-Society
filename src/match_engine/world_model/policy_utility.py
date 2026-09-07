@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
@@ -12,7 +13,7 @@ GOAL_DELTA_WEIGHT = 1.0
 TERRITORIAL_DELTA_WEIGHT = 0.35
 POSSESSION_DELTA_WEIGHT = 0.15
 POLICY_UTILITY_LIMIT = 2.0
-CONTINUATION_SUPPORT_VERSION = 1
+CONTINUATION_SUPPORT_VERSION = 2
 CONTINUATION_ACTION_DIM = 18
 CONTINUATION_ACTION_KINDS = (
     "pass", "shot", "cross", "hold", "intercept", "tackle", "other",
@@ -23,6 +24,9 @@ PLANNABLE_CONTINUATION_ACTIONS = frozenset({
 MINIMUM_CONTINUATION_SAMPLES = 32
 MINIMUM_CONTINUATION_GROUPS = 4
 MINIMUM_SUPPORTED_CONTINUATION_MASS = 0.95
+MINIMUM_POLICY_UTILITY_SAMPLES = 96
+MINIMUM_POLICY_UTILITY_GROUPS = 6
+MINIMUM_POLICY_UTILITY_SKILL = 0.02
 
 
 def _validate_last_dimension(value: Any, *, name: str) -> None:
@@ -157,6 +161,7 @@ def build_continuation_support_evidence(
     continuation_actions: np.ndarray,
     *,
     first_action_kind: str,
+    actor_perspective: str = "pooled",
 ) -> dict[str, Any]:
     """Build grouped second-action support from leakage-cleaned vectors."""
     first = np.asarray(first_action_kinds).astype("U")
@@ -167,6 +172,8 @@ def build_continuation_support_evidence(
         raise ValueError("continuation support arrays must align")
     if vectors.ndim != 2 or vectors.shape[1] != CONTINUATION_ACTION_DIM:
         raise ValueError("continuation action vectors have invalid shape")
+    if actor_perspective not in {"pooled", "home", "away"}:
+        raise ValueError("continuation actor perspective is invalid")
     selected = first == str(first_action_kind)
     total = int(selected.sum())
     actions: dict[str, Any] = {}
@@ -197,6 +204,7 @@ def build_continuation_support_evidence(
         "version": CONTINUATION_SUPPORT_VERSION,
         "source": "grouped_holdout_observed_second_actions",
         "first_action_kind": str(first_action_kind),
+        "actor_perspective": actor_perspective,
         "total_samples": total,
         "minimum_samples": MINIMUM_CONTINUATION_SAMPLES,
         "minimum_groups": MINIMUM_CONTINUATION_GROUPS,
@@ -210,28 +218,33 @@ def build_continuation_support_evidence(
     }
 
 
-def policy_utility_validation_gate(
-    evidence: dict[str, Any] | None,
+def _policy_utility_profile_gate(
+    contract: dict[str, Any],
+    profile: dict[str, Any],
     *,
     action_kind: str,
-    minimum_samples: int = 96,
-    minimum_groups: int = 6,
-    minimum_skill: float = 0.02,
+    actor_perspective: str,
+    minimum_samples: int,
+    minimum_groups: int,
+    minimum_skill: float,
 ) -> dict[str, Any]:
-    """Fail closed unless an exact action branch beats zero persistence."""
-    contract = evidence if isinstance(evidence, dict) else {}
-    actions = contract.get("actions") or {}
-    profile = actions.get(str(action_kind)) or {}
-    samples = int(profile.get("samples", 0) or 0)
-    groups = int(profile.get("groups", 0) or 0)
-    model_mse = float(profile.get("model_mse", float("inf")))
-    persistence_mse = float(profile.get(
-        "persistence_mse", float("inf"),
-    ))
-    skill = float(profile.get("skill_vs_persistence", 0.0) or 0.0)
-    correlation = float(profile.get(
-        "prediction_target_correlation", -1.0,
-    ))
+    """Validate one recorded action-and-perspective utility profile."""
+    try:
+        samples = int(profile.get("samples", 0) or 0)
+        groups = int(profile.get("groups", 0) or 0)
+        model_mse = float(profile.get("model_mse", float("inf")))
+        persistence_mse = float(profile.get(
+            "persistence_mse", float("inf"),
+        ))
+        skill = float(profile.get("skill_vs_persistence", 0.0) or 0.0)
+        correlation = float(profile.get(
+            "prediction_target_correlation", -1.0,
+        ))
+    except (TypeError, ValueError, OverflowError):
+        samples = groups = 0
+        model_mse = persistence_mse = float("inf")
+        skill = 0.0
+        correlation = -1.0
     trained = bool(
         contract.get("version") == 1
         and contract.get("target_version") == POLICY_UTILITY_VERSION
@@ -242,9 +255,19 @@ def policy_utility_validation_gate(
     finite = all(np.isfinite(value) for value in (
         model_mse, persistence_mse, skill, correlation,
     ))
+    expected_skill = (
+        (persistence_mse - model_mse) / persistence_mse
+        if finite and persistence_mse > 1e-12 else 0.0
+    )
+    metric_identity_verified = bool(
+        finite
+        and persistence_mse > 1e-12
+        and abs(skill - expected_skill) <= 1e-9
+    )
     active = bool(
         trained
         and finite
+        and metric_identity_verified
         and samples >= minimum_samples
         and groups >= minimum_groups
         and persistence_mse > 1e-12
@@ -273,6 +296,7 @@ def policy_utility_validation_gate(
             "policy_utility_evidence_gate_closed"
         ),
         "action_kind": str(action_kind),
+        "actor_perspective": actor_perspective,
         "target_version": contract.get("target_version"),
         "samples": samples,
         "groups": groups,
@@ -284,10 +308,272 @@ def policy_utility_validation_gate(
         "prediction_target_correlation": (
             correlation if np.isfinite(correlation) else None
         ),
+        "metric_identity_verified": metric_identity_verified,
         "minimum_samples": minimum_samples,
         "minimum_groups": minimum_groups,
         "minimum_skill_vs_persistence": minimum_skill,
     }
+
+
+def _perspective_profiles_consistent(
+    root_profile: dict[str, Any],
+    perspective_profiles: dict[str, Any],
+) -> bool:
+    """Replay pooled counts and additive errors from the two actor partitions."""
+    if set(perspective_profiles) != {"home", "away"}:
+        return False
+    try:
+        root_samples = int(root_profile.get("samples", 0) or 0)
+        root_groups = int(root_profile.get("groups", 0) or 0)
+        side_samples = {
+            label: int((perspective_profiles[label]).get("samples", 0) or 0)
+            for label in ("home", "away")
+        }
+        side_groups = {
+            label: int((perspective_profiles[label]).get("groups", 0) or 0)
+            for label in ("home", "away")
+        }
+        if (
+            root_samples <= 0
+            or any(value < 0 for value in side_samples.values())
+            or sum(side_samples.values()) != root_samples
+            or root_groups < max(side_groups.values())
+            or root_groups > sum(side_groups.values())
+        ):
+            return False
+        for metric in ("model_mse", "persistence_mse"):
+            pooled = float(root_profile.get(metric, float("nan")))
+            weighted = sum(
+                side_samples[label]
+                * float(perspective_profiles[label].get(metric, float("nan")))
+                for label in ("home", "away")
+            ) / root_samples
+            if (
+                not np.isfinite(pooled)
+                or not np.isfinite(weighted)
+                or abs(pooled - weighted) > 1e-9
+            ):
+                return False
+    except (TypeError, ValueError, OverflowError):
+        return False
+    return True
+
+
+def policy_utility_validation_gate(
+    evidence: dict[str, Any] | None,
+    *,
+    action_kind: str,
+    attacking_home: bool | None = None,
+    minimum_samples: int = MINIMUM_POLICY_UTILITY_SAMPLES,
+    minimum_groups: int = MINIMUM_POLICY_UTILITY_GROUPS,
+    minimum_skill: float = MINIMUM_POLICY_UTILITY_SKILL,
+) -> dict[str, Any]:
+    """Fail closed unless an exact action branch beats zero persistence."""
+    contract = evidence if isinstance(evidence, dict) else {}
+    actions = contract.get("actions") or {}
+    root_profile = actions.get(str(action_kind)) or {}
+    perspective_profiles = root_profile.get("perspectives") or {}
+    perspectives_consistent = _perspective_profiles_consistent(
+        root_profile, perspective_profiles,
+    )
+    if attacking_home is None and set(perspective_profiles) == {"home", "away"}:
+        perspective_gates = {
+            label: _policy_utility_profile_gate(
+                contract,
+                perspective_profiles.get(label) or {},
+                action_kind=action_kind,
+                actor_perspective=label,
+                minimum_samples=minimum_samples,
+                minimum_groups=minimum_groups,
+                minimum_skill=minimum_skill,
+            )
+            for label in ("home", "away")
+        }
+        overall = _policy_utility_profile_gate(
+            contract,
+            root_profile,
+            action_kind=action_kind,
+            actor_perspective="pooled",
+            minimum_samples=minimum_samples,
+            minimum_groups=minimum_groups,
+            minimum_skill=minimum_skill,
+        )
+        active = bool(
+            overall["authorized"]
+            and perspectives_consistent
+            and all(gate["authorized"] for gate in perspective_gates.values())
+        )
+        return {
+            **overall,
+            "version": 2,
+            "active": active,
+            "authorized": active,
+            "authority": (
+                min(gate["authority"] for gate in perspective_gates.values())
+                if active else 0.0
+            ),
+            "reason": (
+                "perspective_conditioned_policy_utility_gain"
+                if active else "perspective_conditioned_policy_utility_gate_closed"
+            ),
+            "perspective_conditioned": True,
+            "perspective_profile_identity_verified": perspectives_consistent,
+            "perspective_gates": perspective_gates,
+        }
+    if attacking_home is not None:
+        label = "home" if attacking_home else "away"
+        result = _policy_utility_profile_gate(
+            contract,
+            perspective_profiles.get(label) or {},
+            action_kind=action_kind,
+            actor_perspective=label,
+            minimum_samples=minimum_samples,
+            minimum_groups=minimum_groups,
+            minimum_skill=minimum_skill,
+        )
+        active = bool(result["authorized"] and perspectives_consistent)
+        return {
+            **result,
+            "version": 2,
+            "active": active,
+            "authorized": active,
+            "authority": result["authority"] if active else 0.0,
+            "reason": (
+                str(result["reason"])
+                if active or not result["authorized"]
+                else "perspective_profile_identity_invalid"
+            ),
+            "perspective_conditioned": bool(perspectives_consistent),
+            "perspective_profile_identity_verified": perspectives_consistent,
+        }
+    return {
+        **_policy_utility_profile_gate(
+            contract,
+            root_profile,
+            action_kind=action_kind,
+            actor_perspective="pooled",
+            minimum_samples=minimum_samples,
+            minimum_groups=minimum_groups,
+            minimum_skill=minimum_skill,
+        ),
+        "perspective_conditioned": False,
+        "perspective_profile_identity_verified": False,
+    }
+
+
+def _policy_gate_metrics_integrity(gate: Mapping[str, Any]) -> bool:
+    try:
+        samples = int(gate.get("samples", 0) or 0)
+        groups = int(gate.get("groups", 0) or 0)
+        model_mse = float(gate.get("model_mse", float("nan")))
+        persistence_mse = float(gate.get(
+            "persistence_mse", float("nan"),
+        ))
+        skill = float(gate.get("skill_vs_persistence", float("nan")))
+        correlation = float(gate.get(
+            "prediction_target_correlation", float("nan"),
+        ))
+        authority = float(gate.get("authority", float("nan")))
+        expected_skill = (persistence_mse - model_mse) / persistence_mse
+    except (TypeError, ValueError, OverflowError, ZeroDivisionError):
+        return False
+    return bool(
+        gate.get("active") is True
+        and gate.get("authorized") is True
+        and gate.get("metric_identity_verified") is True
+        and gate.get("target_version") == POLICY_UTILITY_VERSION
+        and gate.get("minimum_samples") == MINIMUM_POLICY_UTILITY_SAMPLES
+        and gate.get("minimum_groups") == MINIMUM_POLICY_UTILITY_GROUPS
+        and gate.get("minimum_skill_vs_persistence")
+        == MINIMUM_POLICY_UTILITY_SKILL
+        and samples >= MINIMUM_POLICY_UTILITY_SAMPLES
+        and groups >= MINIMUM_POLICY_UTILITY_GROUPS
+        and all(np.isfinite(value) for value in (
+            model_mse,
+            persistence_mse,
+            skill,
+            correlation,
+            authority,
+        ))
+        and persistence_mse > 1e-12
+        and model_mse < persistence_mse
+        and abs(skill - expected_skill) <= 1e-9
+        and skill >= MINIMUM_POLICY_UTILITY_SKILL
+        and correlation >= 0.0
+        and 0.0 < authority <= 1.0
+    )
+
+
+def policy_utility_perspective_gate_integrity(
+    gate: Mapping[str, Any] | None,
+    *,
+    actor_perspective: str,
+) -> bool:
+    """Replay one side's emitted authority fields without source evidence."""
+    contract = gate if isinstance(gate, Mapping) else {}
+    return bool(
+        actor_perspective in {"home", "away"}
+        and contract.get("perspective_conditioned") is True
+        and contract.get("perspective_profile_identity_verified") is True
+        and contract.get("actor_perspective") == actor_perspective
+        and _policy_gate_metrics_integrity(contract)
+    )
+
+
+def policy_utility_aggregate_gate_integrity(
+    gate: Mapping[str, Any] | None,
+) -> bool:
+    """Replay pooled and home/away authority arithmetic from an emitted gate."""
+    contract = gate if isinstance(gate, Mapping) else {}
+    perspective_gates = contract.get("perspective_gates") or {}
+    if (
+        contract.get("perspective_conditioned") is not True
+        or contract.get("perspective_profile_identity_verified") is not True
+        or contract.get("actor_perspective") != "pooled"
+        or set(perspective_gates) != {"home", "away"}
+        or not _policy_gate_metrics_integrity(contract)
+        or not all(
+            isinstance(perspective_gates.get(label), Mapping)
+            and policy_utility_perspective_gate_integrity(
+                perspective_gates[label],
+                actor_perspective=label,
+            )
+            for label in ("home", "away")
+        )
+    ):
+        return False
+    try:
+        root_samples = int(contract["samples"])
+        root_groups = int(contract["groups"])
+        side_samples = {
+            label: int(perspective_gates[label]["samples"])
+            for label in ("home", "away")
+        }
+        side_groups = {
+            label: int(perspective_gates[label]["groups"])
+            for label in ("home", "away")
+        }
+        if (
+            sum(side_samples.values()) != root_samples
+            or root_groups < max(side_groups.values())
+            or root_groups > sum(side_groups.values())
+        ):
+            return False
+        for metric in ("model_mse", "persistence_mse"):
+            pooled = float(contract[metric])
+            weighted = sum(
+                side_samples[label] * float(perspective_gates[label][metric])
+                for label in ("home", "away")
+            ) / root_samples
+            if abs(pooled - weighted) > 1e-9:
+                return False
+        expected_authority = min(
+            float(perspective_gates[label]["authority"])
+            for label in ("home", "away")
+        )
+        return abs(float(contract["authority"]) - expected_authority) <= 1e-12
+    except (KeyError, TypeError, ValueError, OverflowError, ZeroDivisionError):
+        return False
 
 
 def continuation_support_validation_gate(
@@ -295,6 +581,7 @@ def continuation_support_validation_gate(
     *,
     first_action_kind: str,
     expected_samples: int,
+    actor_perspective: str = "pooled",
 ) -> dict[str, Any]:
     """Recompute a normalized continuation policy from recorded evidence."""
     contract = evidence if isinstance(evidence, dict) else {}
@@ -306,6 +593,7 @@ def continuation_support_validation_gate(
             and contract.get("source")
             == "grouped_holdout_observed_second_actions"
             and contract.get("first_action_kind") == str(first_action_kind)
+            and contract.get("actor_perspective") == actor_perspective
             and total == int(expected_samples)
             and set(actions) == set(CONTINUATION_ACTION_KINDS)
             and contract.get("minimum_samples") == MINIMUM_CONTINUATION_SAMPLES
@@ -398,6 +686,7 @@ def continuation_support_validation_gate(
             if not structural else "continuation_support_mass_insufficient"
         ),
         "first_action_kind": str(first_action_kind),
+        "actor_perspective": actor_perspective,
         "total_samples": total,
         "supported_probability_mass": float(supported_mass),
         "minimum_samples": MINIMUM_CONTINUATION_SAMPLES,
@@ -412,26 +701,16 @@ def policy_utility_sequence_validation_gate(
     *,
     action_kind: str,
     rollout_steps: int = 2,
-    minimum_samples: int = 96,
-    minimum_groups: int = 6,
-    minimum_skill: float = 0.02,
+    attacking_home: bool | None = None,
+    minimum_samples: int = MINIMUM_POLICY_UTILITY_SAMPLES,
+    minimum_groups: int = MINIMUM_POLICY_UTILITY_GROUPS,
+    minimum_skill: float = MINIMUM_POLICY_UTILITY_SKILL,
 ) -> dict[str, Any]:
     """Authorize utility only for an explicitly trained changing-action depth."""
     contract = evidence if isinstance(evidence, dict) else {}
     steps = max(1, int(rollout_steps))
-    base = policy_utility_validation_gate(
-        contract,
-        action_kind=action_kind,
-        minimum_samples=minimum_samples,
-        minimum_groups=minimum_groups,
-        minimum_skill=minimum_skill,
-    )
     profile = ((contract.get("actions") or {}).get(str(action_kind)) or {})
-    continuation_gate = continuation_support_validation_gate(
-        profile.get("continuation_support"),
-        first_action_kind=action_kind,
-        expected_samples=int(base.get("samples", 0) or 0),
-    )
+    perspective_profiles = profile.get("perspectives") or {}
     sequence_contract = bool(
         steps == 2
         and contract.get("objective_scope") == "two_step_policy_utility"
@@ -440,14 +719,99 @@ def policy_utility_sequence_validation_gate(
         and contract.get("trained_with_action_sequence_objective") is True
         and contract.get("grouped_holdout") is True
     )
+    if attacking_home is None and set(perspective_profiles) == {"home", "away"}:
+        perspective_gates = {
+            label: policy_utility_sequence_validation_gate(
+                contract,
+                action_kind=action_kind,
+                rollout_steps=steps,
+                attacking_home=(label == "home"),
+                minimum_samples=minimum_samples,
+                minimum_groups=minimum_groups,
+                minimum_skill=minimum_skill,
+            )
+            for label in ("home", "away")
+        }
+        base = policy_utility_validation_gate(
+            contract,
+            action_kind=action_kind,
+            minimum_samples=minimum_samples,
+            minimum_groups=minimum_groups,
+            minimum_skill=minimum_skill,
+        )
+        active = bool(
+            base["authorized"]
+            and sequence_contract
+            and all(gate["authorized"] for gate in perspective_gates.values())
+        )
+        return {
+            **base,
+            "version": 4,
+            "active": active,
+            "authorized": active,
+            "authority": (
+                min(gate["authority"] for gate in perspective_gates.values())
+                if active else 0.0
+            ),
+            "reason": (
+                "perspective_conditioned_changing_action_policy_utility_gain"
+                if active
+                else "policy_utility_sequence_training_contract_missing"
+                if not sequence_contract
+                else "perspective_conditioned_sequence_gate_closed"
+            ),
+            "rollout_steps": steps,
+            "action_sequence": contract.get("action_sequence"),
+            "objective_scope": contract.get("objective_scope"),
+            "trained_with_action_sequence_objective": bool(
+                contract.get("trained_with_action_sequence_objective") is True
+            ),
+            "perspective_conditioned": True,
+            "perspective_gates": perspective_gates,
+            "continuation_support_authorized": bool(
+                all(
+                    gate["continuation_support_authorized"]
+                    for gate in perspective_gates.values()
+                )
+            ),
+            "continuation_support_gate": {},
+            "continuation_policy": [],
+        }
+    base = policy_utility_validation_gate(
+        contract,
+        action_kind=action_kind,
+        attacking_home=attacking_home,
+        minimum_samples=minimum_samples,
+        minimum_groups=minimum_groups,
+        minimum_skill=minimum_skill,
+    )
+    label = (
+        "home" if attacking_home is True
+        else "away" if attacking_home is False
+        else "pooled"
+    )
+    selected_profile = (
+        perspective_profiles.get(label) or {}
+        if attacking_home is not None else profile
+    )
+    continuation_gate = continuation_support_validation_gate(
+        selected_profile.get("continuation_support"),
+        first_action_kind=action_kind,
+        expected_samples=int(base.get("samples", 0) or 0),
+        actor_perspective=label,
+    )
     active = bool(
         base["authorized"]
         and sequence_contract
         and continuation_gate["authorized"]
+        and (
+            base.get("perspective_conditioned") is True
+            if attacking_home is not None else True
+        )
     )
     return {
         **base,
-        "version": 3,
+        "version": 4,
         "active": active,
         "authorized": active,
         "authority": base["authority"] if active else 0.0,
@@ -466,6 +830,8 @@ def policy_utility_sequence_validation_gate(
         "trained_with_action_sequence_objective": bool(
             contract.get("trained_with_action_sequence_objective") is True
         ),
+        "actor_perspective": label,
+        "attacking_home": attacking_home,
         "continuation_support_authorized": bool(
             continuation_gate["authorized"]
         ),

@@ -4688,3 +4688,46 @@ return of the dead helper. Protocol amendment V4 occurred before candidate
 binding, training or formal execution. This stage executes no training, match,
 participant session or provider call and establishes no efficacy result. The
 complete 202-file regression passes 1,471 tests with three declared skips.
+
+## 141. V4.23 Perspective-conditioned M2 evidence and control
+
+V4.22 used one pooled development continuation distribution for both mirrored
+M2 arms. That was structurally invalid because observations and action targets
+use absolute pitch coordinates and carry `attacking_home` as an explicit
+feature. Pooling could authorize an away `pass -> shot` branch using home
+samples and could give both teams the same spatial action prototype.
+
+V4.23 retains the pooled report only as a diagnostic and builds independent
+`home` and `away` policy-utility profiles and continuation-support
+contracts. The actual frozen development split demonstrates why this matters:
+
+| Perspective | Pass continuations | Supported actions | Supported mass | Supported pass target x |
+|---|---:|---|---:|---:|
+| home | 929 | 886 pass, 38 shot | 0.994618 | 0.227180 |
+| away | 785 | 763 pass | 0.971975 | 0.453189 |
+
+The away partition's 18 shots, three crosses and one hold remain below branch
+support even though pooled evidence contains 56 shots. The home partition
+excludes one cross and four holds. Training support shows the same direction
+separation while passing both coverage gates: home covers 0.994415 of 5,013
+continuations and away covers 0.992439 of 4,100.
+
+One-step and two-step validation now record both profiles. Runtime authority
+requires the exact acting perspective and returns its own continuation policy;
+the pass target planner verifies the same `attacking_home` identity on every
+prediction. Candidate qualification and sealed validation require both sides,
+and the stored receipt replays both side gates and every action prototype.
+Legacy pooled-only checkpoints fail closed at the runtime boundary.
+
+The gate also replays the evidence arithmetic. Home and away sample counts must
+sum to the pooled count, pooled model and persistence MSE must equal the
+sample-weighted side values, group bounds must be possible, and reported skill
+must equal the MSE-derived value. Changing a top-level authorization flag,
+side label, prototype, count or derived metric cannot manufacture authority.
+
+Protocol amendment V5 records this correction before candidate binding,
+training or formal execution. The refreshed zero-training preflight passes all
+18 checks, binds a 250-file local import closure, reads zero sealed rows and
+writes no checkpoint. Architecture audit remains 92/92. The complete 202-file
+regression passes 1,474 tests with three declared skips. No M2 model efficacy,
+action effect or outcome claim is created by this stage.

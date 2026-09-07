@@ -61,17 +61,31 @@ the model, preventing outcome leakage.
 M2 does not derive its second-action distribution from live rule utilities.
 The grouped development report counts every `first -> second` action branch,
 records independent-match groups, and stores the mean leakage-cleaned action
-vector for each branch. A branch is usable only with at least 32 samples and
-four groups; usable branches must cover at least 95% of all second actions for
-that first action. The gate recomputes counts, probabilities, coverage and
-prototype integrity instead of trusting a recorded `authorized` flag.
+vector for each branch. Because observations and action targets remain in
+absolute pitch coordinates, this evidence is partitioned by the observation's
+`attacking_home` flag before it can control a runtime action. A branch is
+usable only with at least 32 samples and four groups; usable branches must
+cover at least 95% of all second actions for each perspective. The gate
+recomputes counts, probabilities, coverage, prototype identity, pooled error
+arithmetic and perspective membership instead of trusting a recorded
+`authorized` flag.
 
-For the frozen current corpus, development `pass` sequences contain 1,649
-`pass -> pass`, 56 `pass -> shot`, five `pass -> hold`, and four
-`pass -> cross` pairs. Runtime therefore normalizes only `pass` and `shot`,
-covering 99.47% of the observed continuation mass. `hold` and `cross` are
-excluded at runtime rather than extrapolated. Sealed evaluation independently
-rebuilds the same support gate but never supplies the runtime policy.
+For the frozen current corpus, pooled development `pass` sequences contain
+1,649 `pass -> pass`, 56 `pass -> shot`, five `pass -> hold`, and four
+`pass -> cross` pairs, but that pooled distribution is diagnostic only. The
+home partition contains 929 pass continuations: 886 passes and 38 shots are
+supported, covering 99.46%, while one cross and four holds are excluded. The
+away partition contains 785: only 763 passes are supported, covering 97.20%;
+18 shots, three crosses and one hold are excluded. Its shot count cannot borrow
+the home rows to cross the 32-sample threshold. The corresponding supported
+pass target x-coordinate is 0.2272 at home and 0.4532 away, rather than the
+physically ambiguous pooled prototype.
+
+Runtime asks for the gate matching the acting side. Candidate qualification
+and receipt replay require both home and away development and sealed gates;
+an old checkpoint without both perspective profiles fails closed. Sealed
+evaluation independently rebuilds the same two partitions but never supplies
+the runtime policy.
 
 This is open-loop, development-supported two-action evaluation, not closed-loop
 tree search. It establishes that the evaluated runtime branch matches the

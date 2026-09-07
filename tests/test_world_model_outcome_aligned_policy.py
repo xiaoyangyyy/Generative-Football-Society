@@ -108,6 +108,14 @@ def test_tensor_utility_broadcast_matches_numpy():
 
 
 def _valid_evidence() -> dict:
+    profile = {
+        "samples": 128,
+        "groups": 8,
+        "model_mse": 0.08,
+        "persistence_mse": 0.10,
+        "skill_vs_persistence": 0.20,
+        "prediction_target_correlation": 0.30,
+    }
     return {
         "version": 1,
         "target_version": POLICY_UTILITY_VERSION,
@@ -116,19 +124,23 @@ def _valid_evidence() -> dict:
         "optimization_steps": 10,
         "actions": {
             "pass": {
-                "samples": 128,
-                "groups": 8,
-                "model_mse": 0.08,
-                "persistence_mse": 0.10,
-                "skill_vs_persistence": 0.20,
-                "prediction_target_correlation": 0.30,
+                **profile,
+                "samples": 256,
+                "perspectives": {
+                    "home": dict(profile),
+                    "away": dict(profile),
+                },
             },
         },
     }
 
 
 def _continuation_support(
-    *, first_action: str = "pass", pass_rows: int = 96, shot_rows: int = 32,
+    *,
+    first_action: str = "pass",
+    pass_rows: int = 96,
+    shot_rows: int = 32,
+    actor_perspective: str = "pooled",
 ) -> dict:
     total = pass_rows + shot_rows
     first = np.asarray([first_action] * total)
@@ -138,12 +150,91 @@ def _continuation_support(
     actions[:pass_rows, 0] = 1.0
     actions[pass_rows:, 1] = 1.0
     return build_continuation_support_evidence(
-        first, second, groups, actions, first_action_kind=first_action,
+        first,
+        second,
+        groups,
+        actions,
+        first_action_kind=first_action,
+        actor_perspective=actor_perspective,
     )
 
 
-def _sequence_gate(action: str, *, authorized: bool = True) -> dict:
-    support = _continuation_support(first_action=action)
+def _policy_gate(
+    action: str,
+    *,
+    authorized: bool = True,
+    attacking_home: bool | None = None,
+) -> dict:
+    def profile(*, samples: int, actor_perspective: str) -> dict:
+        return {
+            "active": authorized,
+            "authorized": authorized,
+            "authority": 0.70 if authorized else 0.0,
+            "action_kind": action,
+            "actor_perspective": actor_perspective,
+            "target_version": POLICY_UTILITY_VERSION,
+            "samples": samples,
+            "groups": 8,
+            "model_mse": 0.08,
+            "persistence_mse": 0.10,
+            "skill_vs_persistence": 0.20,
+            "prediction_target_correlation": 0.30,
+            "metric_identity_verified": True,
+            "minimum_samples": 96,
+            "minimum_groups": 6,
+            "minimum_skill_vs_persistence": 0.02,
+            "perspective_conditioned": True,
+            "perspective_profile_identity_verified": True,
+        }
+
+    if attacking_home is None:
+        perspectives = {
+            label: _policy_gate(
+                action,
+                authorized=authorized,
+                attacking_home=side,
+            )
+            for label, side in (("home", True), ("away", False))
+        }
+        return {
+            **profile(samples=256, actor_perspective="pooled"),
+            "perspective_gates": perspectives,
+        }
+    label = "home" if attacking_home else "away"
+    return profile(samples=128, actor_perspective=label)
+
+
+def _sequence_gate(
+    action: str,
+    *,
+    authorized: bool = True,
+    attacking_home: bool | None = None,
+) -> dict:
+    if attacking_home is None:
+        perspectives = {
+            label: _sequence_gate(
+                action,
+                authorized=authorized,
+                attacking_home=side,
+            )
+            for label, side in (("home", True), ("away", False))
+        }
+        return {
+            **_policy_gate(action, authorized=authorized),
+            "rollout_steps": 2,
+            "perspective_gates": perspectives,
+            "continuation_support_authorized": authorized,
+            "continuation_policy": [],
+            "reason": (
+                "perspective_conditioned_changing_action_policy_utility_gain"
+                if authorized else "perspective_conditioned_sequence_gate_closed"
+            ),
+        }
+    label = "home" if attacking_home else "away"
+    support = _continuation_support(
+        first_action=action,
+        actor_perspective=label,
+    )
     policy = []
     if authorized:
         mass = support["supported_probability_mass"]
@@ -160,10 +251,13 @@ def _sequence_gate(action: str, *, authorized: bool = True) -> dict:
             if row["supported"]
         ]
     return {
-        "authorized": authorized,
-        "authority": 0.70 if authorized else 0.0,
-        "action_kind": action,
+        **_policy_gate(
+            action,
+            authorized=authorized,
+            attacking_home=attacking_home,
+        ),
         "rollout_steps": 2,
+        "attacking_home": attacking_home,
         "continuation_support_authorized": authorized,
         "continuation_policy": policy,
         "reason": (
@@ -187,6 +281,41 @@ def test_policy_utility_evidence_gate_is_action_specific_and_fail_closed():
     assert 0.0 < opened["authority"] <= 1.0
 
 
+def test_perspective_policy_gate_rejects_legacy_pooled_checkpoint():
+    legacy = _valid_evidence()
+    legacy["actions"]["pass"].pop("perspectives")
+
+    pooled = policy_utility_validation_gate(
+        legacy, action_kind="pass",
+    )
+    home = policy_utility_validation_gate(
+        legacy, action_kind="pass", attacking_home=True,
+    )
+
+    assert pooled["authorized"] is True
+    assert pooled["perspective_conditioned"] is False
+    assert home["authorized"] is False
+    assert home["perspective_conditioned"] is False
+
+
+def test_perspective_policy_gate_replays_metric_and_partition_identity():
+    evidence = _valid_evidence()
+    evidence["actions"]["pass"]["samples"] += 1
+    assert policy_utility_validation_gate(
+        evidence, action_kind="pass", attacking_home=True,
+    )["authorized"] is False
+
+    evidence = _valid_evidence()
+    evidence["actions"]["pass"]["perspectives"]["home"][
+        "skill_vs_persistence"
+    ] = 0.30
+    gate = policy_utility_validation_gate(
+        evidence, action_kind="pass", attacking_home=True,
+    )
+    assert gate["authorized"] is False
+    assert gate["metric_identity_verified"] is False
+
+
 def test_sequence_utility_gate_requires_joint_changing_action_evidence():
     one_step = _valid_evidence()
     assert policy_utility_sequence_validation_gate(
@@ -203,6 +332,12 @@ def test_sequence_utility_gate_requires_joint_changing_action_evidence():
     two_step["actions"]["pass"]["continuation_support"] = (
         _continuation_support()
     )
+    two_step["actions"]["pass"]["perspectives"]["home"][
+        "continuation_support"
+    ] = _continuation_support(actor_perspective="home")
+    two_step["actions"]["pass"]["perspectives"]["away"][
+        "continuation_support"
+    ] = _continuation_support(actor_perspective="away")
     opened = policy_utility_sequence_validation_gate(
         two_step, action_kind="pass",
     )
@@ -232,6 +367,16 @@ def test_continuation_support_gate_rejects_unsupported_mass_and_tampering():
     tampered["actions"]["pass"]["action_prototype"][0] = float("nan")
     rejected = continuation_support_validation_gate(
         tampered, first_action_kind="pass", expected_samples=128,
+    )
+    assert rejected["authorized"] is False
+    assert rejected["reason"] == "continuation_support_contract_invalid"
+
+    mislabeled = _continuation_support(actor_perspective="home")
+    rejected = continuation_support_validation_gate(
+        mislabeled,
+        first_action_kind="pass",
+        expected_samples=128,
+        actor_perspective="away",
     )
     assert rejected["authorized"] is False
     assert rejected["reason"] == "continuation_support_contract_invalid"
@@ -283,6 +428,59 @@ def test_training_validation_reports_separate_action_branches():
     ]
 
 
+def test_perspective_validation_keeps_continuations_and_targets_separate():
+    target = np.linspace(-0.3, 0.3, 256)
+    predicted = np.stack([target + 0.01, target - 0.01])
+    actions = np.asarray(["pass"] * 256)
+    groups = np.asarray([f"g{i % 8}" for i in range(256)])
+    attacking_home = np.asarray([True] * 128 + [False] * 128)
+    continuation_kinds = np.asarray(
+        ["pass"] * 96 + ["shot"] * 32
+        + ["pass"] * 126 + ["shot"] * 2
+    )
+    continuation_actions = np.zeros((256, 18), dtype=np.float32)
+    continuation_actions[continuation_kinds == "pass", 0] = 1.0
+    continuation_actions[continuation_kinds == "shot", 1] = 1.0
+    continuation_actions[:128, 6] = 0.20
+    continuation_actions[128:, 6] = 0.80
+
+    report = _policy_utility_validation(
+        predicted,
+        target,
+        actions,
+        groups,
+        configured_loss_weight=0.25,
+        optimization_steps=4,
+        objective_scope="two_step_policy_utility",
+        rollout_steps=2,
+        action_sequence="observed_changing_actions",
+        trained_with_action_sequence_objective=True,
+        continuation_action_kinds=continuation_kinds,
+        continuation_actions=continuation_actions,
+        attacking_home=attacking_home,
+    )
+
+    gate = policy_utility_sequence_validation_gate(
+        report, action_kind="pass",
+    )
+    assert gate["authorized"] is True
+    assert gate["perspective_conditioned"] is True
+    home = gate["perspective_gates"]["home"]
+    away = gate["perspective_gates"]["away"]
+    assert [row["action_kind"] for row in home["continuation_policy"]] == [
+        "pass", "shot",
+    ]
+    assert [row["action_kind"] for row in away["continuation_policy"]] == [
+        "pass",
+    ]
+    assert home["continuation_policy"][0]["action_prototype"][6] == (
+        pytest.approx(0.20)
+    )
+    assert away["continuation_policy"][0]["action_prototype"][6] == (
+        pytest.approx(0.80)
+    )
+
+
 def test_two_step_policy_utility_preserves_member_bootstrap_routing():
     current = torch.zeros((3, OBS_DIM), dtype=torch.float32)
     current[:, 209] = 1.0
@@ -322,12 +520,12 @@ def test_sealed_evaluation_builds_independent_two_step_policy_gate(
     import src.data_engine.dataset_registry as dataset_registry
     import src.match_engine.world_model.recorder as recorder
 
-    groups_total = 6
+    groups_total = 12
     rows_per_group = 17
     row_count = groups_total * rows_per_group
     observations = np.zeros((row_count, OBS_DIM), dtype=np.float32)
     observations[:, 209] = 1.0
-    observations[:, -1] = 1.0
+    observations[: 6 * rows_per_group, -1] = 1.0
     groups = []
     for group_index in range(groups_total):
         start = group_index * rows_per_group
@@ -399,15 +597,19 @@ def test_sealed_evaluation_builds_independent_two_step_policy_gate(
         tmp_path / "manifest.json",
     )
 
-    assert report["two_step"]["samples"] == 96
+    assert report["two_step"]["samples"] == 192
     assert report["policy_utility"]["gates"]["pass"]["authorized"] is True
     sequence = report["policy_utility_two_step"]
-    assert sequence["actions"]["pass"]["samples"] == 96
-    assert sequence["actions"]["pass"]["groups"] == 6
+    assert sequence["actions"]["pass"]["samples"] == 192
+    assert sequence["actions"]["pass"]["groups"] == 12
     assert sequence["gates"]["pass"]["reason"] == (
-        "grouped_heldout_changing_action_policy_utility_gain"
+        "perspective_conditioned_changing_action_policy_utility_gain"
     ), sequence["gates"]["pass"]
     assert sequence["gates"]["pass"]["authorized"] is True
+    assert all(
+        gate["authorized"]
+        for gate in sequence["gates"]["pass"]["perspective_gates"].values()
+    )
     assert sequence["sealed_test"] is True
 
 
@@ -439,22 +641,24 @@ class _M2Runtime:
     def planner_confidence(self, observation, kind="general"):
         return 0.8 if kind == "pass" else 0.0
 
-    def policy_utility_authority(self, action_kind):
-        return {
-            "authorized": self.gate_open and action_kind == "pass",
-            "authority": 0.75 if self.gate_open else 0.0,
-            "reason": (
-                "grouped_heldout_policy_utility_gain"
-                if self.gate_open else "policy_utility_evidence_gate_closed"
-            ),
-        }
+    def policy_utility_authority(
+        self, action_kind, *, attacking_home=None,
+    ):
+        return _policy_gate(
+            action_kind,
+            authorized=self.gate_open and action_kind == "pass",
+            attacking_home=attacking_home,
+        )
 
-    def policy_utility_sequence_authority(self, action_kind, *, rollout_steps=2):
+    def policy_utility_sequence_authority(
+        self, action_kind, *, rollout_steps=2, attacking_home=None,
+    ):
         return _sequence_gate(
             action_kind,
             authorized=(
                 self.gate_open and action_kind == "pass" and rollout_steps == 2
             ),
+            attacking_home=attacking_home,
         )
 
     def two_step_planning_gate(self):
@@ -483,7 +687,9 @@ class _M2Runtime:
             "policy_utility_version": POLICY_UTILITY_VERSION,
             "uncertainty": 0.1,
             "sequence_gate": self.policy_utility_sequence_authority(
-                action_kind, rollout_steps=2,
+                action_kind,
+                rollout_steps=2,
+                attacking_home=attacking_home,
             ),
         }
 
@@ -592,9 +798,11 @@ def test_m2_pass_target_ranking_uses_the_same_supported_sequence_gate(
             "policy_utility": float(actions[0, 6]),
             "policy_utility_version": POLICY_UTILITY_VERSION,
             "uncertainty": 0.1,
-            "sequence_gate": runtime.policy_utility_sequence_authority(
-                action_kind, rollout_steps=2,
-            ),
+                "sequence_gate": runtime.policy_utility_sequence_authority(
+                    action_kind,
+                    rollout_steps=2,
+                    attacking_home=attacking_home,
+                ),
         }
 
     runtime.predict_policy_utility_sequence = ranked_sequence
@@ -684,8 +892,14 @@ def test_m2_action_control_rejects_invalid_evidence_continuation_prototype(
     runtime = _M2Runtime(gate_open=True)
     original_authority = runtime.policy_utility_sequence_authority
 
-    def invalid_authority(action_kind, *, rollout_steps=2):
-        gate = original_authority(action_kind, rollout_steps=rollout_steps)
+    def invalid_authority(
+        action_kind, *, rollout_steps=2, attacking_home=None,
+    ):
+        gate = original_authority(
+            action_kind,
+            rollout_steps=rollout_steps,
+            attacking_home=attacking_home,
+        )
         gate["continuation_policy"][0]["action_prototype"] = []
         return gate
 
@@ -776,7 +990,8 @@ def test_runtime_sequence_prediction_uses_explicit_clean_member_rollout():
     runtime.progress_aleatoric_scale = 0.05
     runtime.last_decision_uncertainty = 1.0
     runtime.last_uncertainty = 1.0
-    support = _continuation_support()
+    home_support = _continuation_support(actor_perspective="home")
+    away_support = _continuation_support(actor_perspective="away")
     runtime.meta = {
         "validation": {
             "policy_utility_two_step": {
@@ -792,13 +1007,32 @@ def test_runtime_sequence_prediction_uses_explicit_clean_member_rollout():
                 "grouped_holdout": True,
                 "actions": {
                     "pass": {
-                        "samples": 128,
+                        "samples": 256,
                         "groups": 8,
                         "model_mse": 0.02,
                         "persistence_mse": 0.04,
                         "skill_vs_persistence": 0.5,
                         "prediction_target_correlation": 0.4,
-                        "continuation_support": support,
+                        "perspectives": {
+                            "home": {
+                                "samples": 128,
+                                "groups": 8,
+                                "model_mse": 0.02,
+                                "persistence_mse": 0.04,
+                                "skill_vs_persistence": 0.5,
+                                "prediction_target_correlation": 0.4,
+                                "continuation_support": home_support,
+                            },
+                            "away": {
+                                "samples": 128,
+                                "groups": 8,
+                                "model_mse": 0.02,
+                                "persistence_mse": 0.04,
+                                "skill_vs_persistence": 0.5,
+                                "prediction_target_correlation": 0.4,
+                                "continuation_support": away_support,
+                            },
+                        },
                     },
                 },
             },
@@ -1041,7 +1275,7 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
         }
 
         def policy_utility_authority(self, action):
-            return {"authorized": action == "pass", "authority": 0.4}
+            return _policy_gate(action, authorized=action == "pass")
 
         def policy_utility_sequence_authority(self, action, *, rollout_steps=2):
             return _sequence_gate(
@@ -1063,7 +1297,7 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
         lambda *_args: {
             "two_step": {"active": True},
             "policy_utility": {
-                "gates": {"pass": {"authorized": True}},
+                "gates": {"pass": _policy_gate("pass")},
             },
             "policy_utility_two_step": {
                 "gates": {"pass": _sequence_gate("pass")},
@@ -1165,7 +1399,7 @@ def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
     eligibility = {
         "eligible": True,
         "required_policy_utility_gates": {
-            "pass": {"authorized": True},
+            "pass": _policy_gate("pass"),
         },
         "required_policy_utility_sequence_gates": {
             "pass": _sequence_gate("pass"),
@@ -1176,7 +1410,7 @@ def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
         "sealed_test_unused_by_training": True,
         "training_configuration_verified": True,
         "sealed_two_step_active": True,
-        "sealed_pass_policy_utility_gate": {"authorized": True},
+        "sealed_pass_policy_utility_gate": _policy_gate("pass"),
         "sealed_pass_policy_utility_two_step_gate": _sequence_gate("pass"),
         "sealed_validation": {"executed": True},
     }
@@ -1204,9 +1438,18 @@ def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
     mislabeled = copy.deepcopy(receipt)
     mislabeled["candidate_eligibility"][
         "required_policy_utility_sequence_gates"
-    ]["pass"]["continuation_policy"][0]["action_prototype"] = (
+    ]["pass"]["perspective_gates"]["home"]["continuation_policy"][0][
+        "action_prototype"
+    ] = (
         [0.0, 1.0] + [0.0] * 16
     )
+    with pytest.raises(ValueError, match="closed qualification gate"):
+        m2_study.validate_m2_candidate_receipt(mislabeled, protocol)
+
+    mislabeled = copy.deepcopy(receipt)
+    mislabeled["candidate_eligibility"][
+        "required_policy_utility_sequence_gates"
+    ]["pass"]["perspective_gates"]["home"]["actor_perspective"] = "away"
     with pytest.raises(ValueError, match="closed qualification gate"):
         m2_study.validate_m2_candidate_receipt(mislabeled, protocol)
 
@@ -1235,7 +1478,7 @@ def test_candidate_eligibility_rejects_sealed_policy_failure(
         }
 
         def policy_utility_authority(self, action):
-            return {"authorized": action == "pass"}
+            return _policy_gate(action, authorized=action == "pass")
 
         def policy_utility_sequence_authority(self, action, *, rollout_steps=2):
             return _sequence_gate(
@@ -1255,7 +1498,7 @@ def test_candidate_eligibility_rejects_sealed_policy_failure(
         lambda *_args: {
             "two_step": {"active": True},
             "policy_utility": {
-                "gates": {"pass": {"authorized": False}},
+                "gates": {"pass": _policy_gate("pass", authorized=False)},
             },
             "policy_utility_two_step": {
                 "gates": {"pass": _sequence_gate("pass")},
@@ -1302,7 +1545,7 @@ def test_candidate_eligibility_rejects_missing_sequence_authority(
         }
 
         def policy_utility_authority(self, action):
-            return {"authorized": action == "pass"}
+            return _policy_gate(action, authorized=action == "pass")
 
         def two_step_planning_gate(self):
             return {"active": True}
@@ -1559,6 +1802,10 @@ def test_m2_training_preflight_requires_real_grouped_action_support():
         "two_step_pairs": 64,
         "two_step_groups": 5,
         "pass_continuation_support": {"sufficient": True},
+        "pass_continuation_support_by_perspective": {
+            "home": {"sufficient": True},
+            "away": {"sufficient": True},
+        },
         "pass_utility_persistence_mse": 0.01,
         "pass_utility_standard_deviation": 0.1,
     }
@@ -1569,6 +1816,10 @@ def test_m2_training_preflight_requires_real_grouped_action_support():
         "two_step_pairs": 40,
         "two_step_groups": 4,
         "pass_continuation_support": {"sufficient": True},
+        "pass_continuation_support_by_perspective": {
+            "home": {"sufficient": True},
+            "away": {"sufficient": True},
+        },
         "pass_utility_persistence_mse": 0.01,
         "pass_utility_standard_deviation": 0.1,
     }
@@ -1612,6 +1863,25 @@ def test_m2_training_preflight_requires_real_grouped_action_support():
         transition_ensemble_size=3,
     )
     assert failed["development_pass_continuation_support_sufficient"] is False
+    assert failed[
+        "two_step_policy_utility_sequence_objective_will_activate"
+    ] is False
+
+    unsupported = copy.deepcopy(dev)
+    unsupported["pass_continuation_support_by_perspective"]["away"][
+        "sufficient"
+    ] = False
+    failed = readiness_checks(
+        manifest=manifest,
+        train=train,
+        dev=unsupported,
+        epochs=45,
+        warmup_fraction=0.2,
+        policy_utility_loss_weight=0.25,
+        multi_step_loss_weight=0.25,
+        transition_ensemble_size=3,
+    )
+    assert failed["development_pass_perspective_support_sufficient"] is False
     assert failed[
         "two_step_policy_utility_sequence_objective_will_activate"
     ] is False
@@ -1665,19 +1935,25 @@ def test_m2_protocol_validator_rejects_preregistered_threshold_drift():
     assert protocol["integrity"]["code_identity_mode"] == (
         "transitive_local_imports_v1"
     )
-    assert protocol["integrity"]["identity_amendment"]["version"] == 4
+    assert protocol["integrity"]["identity_amendment"]["version"] == 5
     assert protocol["candidate"]["required_sealed_validation"] == [
         "two_step",
         "policy_utility.pass",
+        "policy_utility.pass.perspectives.home",
+        "policy_utility.pass.perspectives.away",
         "policy_utility_two_step.pass",
-        "policy_utility_two_step.pass.continuation_support",
+        "policy_utility_two_step.pass.perspectives.home.continuation_support",
+        "policy_utility_two_step.pass.perspectives.away.continuation_support",
     ]
     assert protocol["candidate"]["continuation_support_contract"] == {
         "source": "grouped_holdout_observed_second_actions",
         "minimum_samples": 32,
         "minimum_groups": 4,
         "minimum_supported_probability_mass": 0.95,
-        "action_source": "development_mean_leakage_cleaned_vector",
+        "action_source": "perspective_development_mean_leakage_cleaned_vector",
+        "coordinate_system": "absolute_pitch_with_attacking_home_flag",
+        "runtime_partition": "attacking_home",
+        "qualification_requires": ["home", "away"],
         "reference_action": "same_state_zero_transition_utility",
         "runtime_consumers": [
             "high_level_pass_utility",

@@ -9,6 +9,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -163,6 +164,7 @@ def _policy_utility_validation(
     trained_with_action_sequence_objective: bool = False,
     continuation_action_kinds: np.ndarray | None = None,
     continuation_actions: np.ndarray | None = None,
+    attacking_home: np.ndarray | None = None,
 ) -> dict:
     """Build action-specific grouped holdout evidence for M2 authorization."""
     predictions = np.asarray(predicted_members, dtype=np.float64)
@@ -180,10 +182,15 @@ def _policy_utility_validation(
         or len(continuation_actions) != len(observed)
     ):
         raise ValueError("continuation validation arrays must align")
+    if attacking_home is not None and len(attacking_home) != len(observed):
+        raise ValueError("policy utility perspectives must align")
+    perspectives = (
+        np.asarray(attacking_home, dtype=bool)
+        if attacking_home is not None else None
+    )
     ensemble = predictions.mean(axis=0)
-    actions = {}
-    for action in ("pass", "shot", "cross", "hold"):
-        mask = kinds == action
+
+    def profile(mask: np.ndarray) -> dict[str, Any]:
         count = int(mask.sum())
         if count:
             target = observed[mask]
@@ -196,7 +203,8 @@ def _policy_utility_validation(
             ]))
             correlation = (
                 float(np.corrcoef(prediction, target)[0, 1])
-                if np.std(prediction) > 1e-12 and np.std(target) > 1e-12
+                if np.std(prediction) > 1e-12
+                and np.std(target) > 1e-12
                 else 0.0
             )
             skill = float(
@@ -205,9 +213,11 @@ def _policy_utility_validation(
         else:
             model_mse = persistence_mse = member_mean_mse = 0.0
             correlation = skill = 0.0
-        actions[action] = {
+        return {
             "samples": count,
-            "groups": int(len(np.unique(group_ids[mask]))) if count else 0,
+            "groups": (
+                int(len(np.unique(group_ids[mask]))) if count else 0
+            ),
             "model_mse": model_mse,
             "persistence_mse": persistence_mse,
             "skill_vs_persistence": skill,
@@ -216,6 +226,11 @@ def _policy_utility_validation(
             "prediction_target_correlation": correlation,
             "grouped_holdout": True,
         }
+
+    actions = {}
+    for action in ("pass", "shot", "cross", "hold"):
+        mask = kinds == action
+        actions[action] = profile(mask)
         if continuation_action_kinds is not None:
             actions[action]["continuation_support"] = (
                 build_continuation_support_evidence(
@@ -224,8 +239,27 @@ def _policy_utility_validation(
                     group_ids,
                     continuation_actions,
                     first_action_kind=action,
+                    actor_perspective="pooled",
                 )
             )
+        if perspectives is not None:
+            actions[action]["perspectives"] = {}
+            for label, side in (("home", True), ("away", False)):
+                perspective_mask = mask & (perspectives == side)
+                perspective_profile = profile(perspective_mask)
+                if continuation_action_kinds is not None:
+                    side_rows = perspectives == side
+                    perspective_profile["continuation_support"] = (
+                        build_continuation_support_evidence(
+                            kinds[side_rows],
+                            continuation_action_kinds[side_rows],
+                            group_ids[side_rows],
+                            continuation_actions[side_rows],
+                            first_action_kind=action,
+                            actor_perspective=label,
+                        )
+                    )
+                actions[action]["perspectives"][label] = perspective_profile
     return {
         "version": 1,
         "target_version": POLICY_UTILITY_VERSION,
@@ -1074,6 +1108,7 @@ def main() -> None:
                     pair_actions[:, 1]
                 ),
                 continuation_actions=pair_actions[:, 1],
+                attacking_home=obs[pair_left, -1] > 0.5,
             )
         else:
             two_step_mse = two_step_persistence_mse = two_step_skill = 0.0
@@ -1097,6 +1132,7 @@ def main() -> None:
                 ),
                 continuation_action_kinds=np.zeros(0, dtype=str),
                 continuation_actions=np.zeros((0, 18), dtype=np.float32),
+                attacking_home=np.zeros(0, dtype=bool),
             )
         progress_target = torch.from_numpy(xg_delta[val_idx]).float().view(-1)
         progress_rmse = float(torch.sqrt(torch.mean(
@@ -1128,6 +1164,7 @@ def main() -> None:
             groups[val_idx],
             configured_loss_weight=args.policy_utility_loss_weight,
             optimization_steps=policy_utility_optimization_steps,
+            attacking_home=obs[val_idx, -1] > 0.5,
         )
         pass_logits = vpass_all[:, :, torch.from_numpy(pm), :].squeeze(-1)
         pass_targets = torch.from_numpy(pass_success[val_idx][pm]).float()

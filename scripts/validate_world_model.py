@@ -112,6 +112,7 @@ def _sealed_evaluation(runtime, trace_dir: Path, manifest_path: Path) -> dict:
             training.get("configured_loss_weight", 0.0) or 0.0
         ),
         optimization_steps=int(training.get("optimization_steps", 0) or 0),
+        attacking_home=obs[:, -1] > 0.5,
     )
     policy_utility["sealed_test"] = True
     policy_utility["gates"] = {
@@ -160,6 +161,10 @@ def _sealed_evaluation(runtime, trace_dir: Path, manifest_path: Path) -> dict:
         continuation_actions=(
             sequences[:, 1]
             if len(pair_left) else np.zeros((0, 18), dtype=np.float32)
+        ),
+        attacking_home=(
+            obs[pair_left, -1] > 0.5
+            if len(pair_left) else np.zeros(0, dtype=bool)
         ),
     )
     policy_utility_two_step["sealed_test"] = True

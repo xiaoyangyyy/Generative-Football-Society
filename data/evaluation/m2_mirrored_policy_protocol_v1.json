@@ -16,8 +16,11 @@
     "required_sealed_validation": [
       "two_step",
       "policy_utility.pass",
+      "policy_utility.pass.perspectives.home",
+      "policy_utility.pass.perspectives.away",
       "policy_utility_two_step.pass",
-      "policy_utility_two_step.pass.continuation_support"
+      "policy_utility_two_step.pass.perspectives.home.continuation_support",
+      "policy_utility_two_step.pass.perspectives.away.continuation_support"
     ],
     "required_policy_utility_branches": [
       "pass"
@@ -30,7 +33,13 @@
       "minimum_samples": 32,
       "minimum_groups": 4,
       "minimum_supported_probability_mass": 0.95,
-      "action_source": "development_mean_leakage_cleaned_vector",
+      "action_source": "perspective_development_mean_leakage_cleaned_vector",
+      "coordinate_system": "absolute_pitch_with_attacking_home_flag",
+      "runtime_partition": "attacking_home",
+      "qualification_requires": [
+        "home",
+        "away"
+      ],
       "reference_action": "same_state_zero_transition_utility",
       "runtime_consumers": [
         "high_level_pass_utility",
@@ -112,18 +121,19 @@
     "historical_m1_results_are_current_m2_evidence": false,
     "code_identity_mode": "transitive_local_imports_v1",
     "identity_amendment": {
-      "version": 4,
+      "version": 5,
       "reasons": [
         "manual_roots_did_not_bind_local_import_closure",
         "joint_changing_action_policy_utility_was_not_trained_or_validated",
         "runtime_continuation_branches_were_not_support_qualified",
-        "m2_pass_target_ranking_bypassed_sequence_utility"
+        "m2_pass_target_ranking_bypassed_sequence_utility",
+        "pooled_home_away_continuation_support_was_not_valid_for_mirrored_control"
       ],
       "timing": "before_candidate_binding_training_and_formal_execution",
       "candidate_bound_before_amendment": false,
       "training_runs_before_amendment": 0,
       "formal_runs_before_amendment": 0,
-      "supersedes_version": 3
+      "supersedes_version": 4
     },
     "input_identity_globs": [
       "src/**/*.py",

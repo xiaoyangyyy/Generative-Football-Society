@@ -335,7 +335,12 @@ class WorldModelRuntime:
             "decision_confidence": decision_confidence,
         }
 
-    def policy_utility_authority(self, action_kind: str) -> dict:
+    def policy_utility_authority(
+        self,
+        action_kind: str,
+        *,
+        attacking_home: bool | None = None,
+    ) -> dict:
         """Authorize M2 value use only from action-specific grouped holdout."""
         validation = self.meta.get("validation", {}) if isinstance(
             self.meta, dict
@@ -343,6 +348,7 @@ class WorldModelRuntime:
         return policy_utility_validation_gate(
             validation.get("policy_utility"),
             action_kind=action_kind,
+            attacking_home=attacking_home,
         )
 
     def policy_utility_sequence_authority(
@@ -350,6 +356,7 @@ class WorldModelRuntime:
         action_kind: str,
         *,
         rollout_steps: int = 2,
+        attacking_home: bool | None = None,
     ) -> dict:
         """Authorize changing-action utility only at an explicitly proven depth."""
         validation = self.meta.get("validation", {}) if isinstance(
@@ -359,6 +366,7 @@ class WorldModelRuntime:
             validation.get("policy_utility_two_step"),
             action_kind=action_kind,
             rollout_steps=rollout_steps,
+            attacking_home=attacking_home,
         )
 
     def observe_transition(
@@ -972,7 +980,9 @@ class WorldModelRuntime:
             ),
             "uncertainty_components": ensemble,
             "sequence_gate": self.policy_utility_sequence_authority(
-                action_kind, rollout_steps=2,
+                action_kind,
+                rollout_steps=2,
+                attacking_home=attacking_home,
             ),
         }
 

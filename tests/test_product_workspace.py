@@ -1079,17 +1079,57 @@ def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
     identity = study_execution_identity(
         tmp_path, protocol_path, protocol, checkpoint,
     )
+    def policy_profile(label, samples):
+        return {
+            "active": True,
+            "authorized": True,
+            "authority": 0.70,
+            "actor_perspective": label,
+            "target_version": "actor_centered_transition_utility_v1",
+            "samples": samples,
+            "groups": 8,
+            "model_mse": 0.08,
+            "persistence_mse": 0.10,
+            "skill_vs_persistence": 0.20,
+            "prediction_target_correlation": 0.30,
+            "metric_identity_verified": True,
+            "minimum_samples": 96,
+            "minimum_groups": 6,
+            "minimum_skill_vs_persistence": 0.02,
+            "perspective_conditioned": True,
+            "perspective_profile_identity_verified": True,
+        }
+
+    perspective_policy_gates = {
+        label: policy_profile(label, 128)
+        for label in ("home", "away")
+    }
+    policy_gate = {
+        **policy_profile("pooled", 256),
+        "perspective_gates": perspective_policy_gates,
+    }
+    perspective_sequence_gates = {
+        label: {
+            **perspective_policy_gates[label],
+            "authorized": True,
+            "attacking_home": label == "home",
+            "continuation_support_authorized": True,
+            "continuation_policy": [{
+                "action_kind": "pass",
+                "weight": 1.0,
+                "samples": 96,
+                "groups": 6,
+                "empirical_probability": 1.0,
+                "action_prototype": [1.0] + [0.0] * 17,
+            }],
+        }
+        for label in ("home", "away")
+    }
     sequence_gate = {
-        "authorized": True,
+        **policy_gate,
         "continuation_support_authorized": True,
-        "continuation_policy": [{
-            "action_kind": "pass",
-            "weight": 1.0,
-            "samples": 96,
-            "groups": 6,
-            "empirical_probability": 1.0,
-            "action_prototype": [1.0] + [0.0] * 17,
-        }],
+        "continuation_policy": [],
+        "perspective_gates": perspective_sequence_gates,
     }
     report = {
         "schema_version": 1,
@@ -1099,7 +1139,7 @@ def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
         "candidate_eligibility": {
             "eligible": True,
             "required_policy_utility_gates": {
-                "pass": {"authorized": True},
+                "pass": policy_gate,
             },
             "required_policy_utility_sequence_gates": {
                 "pass": sequence_gate,
@@ -1110,7 +1150,7 @@ def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
             "sealed_test_unused_by_training": True,
             "training_configuration_verified": True,
             "sealed_two_step_active": True,
-            "sealed_pass_policy_utility_gate": {"authorized": True},
+            "sealed_pass_policy_utility_gate": policy_gate,
             "sealed_pass_policy_utility_two_step_gate": {
                 **sequence_gate,
             },

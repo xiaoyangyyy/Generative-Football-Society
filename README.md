@@ -296,6 +296,22 @@ one-step values after selecting pass. The V4 protocol amendment and 16-check
 preflight are still zero-training readiness evidence: no M2 candidate or
 efficacy result exists yet. The complete regression passes 1,471 tests with
 three declared skips.
+V4.23 closes a direction-of-play leakage gap in that prospective controller.
+Observations and action targets use absolute pitch coordinates plus an
+`attacking_home` flag, so pooled home/away continuation prototypes were not
+valid runtime controls. Development evidence is now partitioned before
+qualification: the home perspective retains 886 passes and 38 shots, covering
+99.46% of 929 pass continuations, while the away perspective retains only 763
+passes, covering 97.20% of 785; its 18 shots are below the registered
+32-sample gate. The supported pass target x-coordinate is 0.2272 for home and
+0.4532 for away instead of one pooled prototype. Training, sealed validation,
+runtime planning, candidate qualification and receipt replay all bind the same
+side. Pooled metrics remain diagnostic, both sides must independently pass,
+and legacy checkpoints without perspective evidence receive zero M2
+authority. Protocol amendment V5 precedes candidate binding, training and all
+formal runs. The refreshed zero-training preflight passes 18/18 checks, binds
+250 Python files, loads zero sealed rows and writes no checkpoint. The complete
+202-file regression passes 1,474 tests with three declared skips.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

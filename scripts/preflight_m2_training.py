@@ -96,7 +96,22 @@ def _split_arrays(trace_dir: Path, manifest: dict, split: str) -> dict[str, Any]
         groups[pair_left],
         actions[pair_left + 1],
         first_action_kind="pass",
+        actor_perspective="pooled",
     )
+    pair_attacking_home = observations[pair_left, -1] > 0.5
+    pass_continuation_support_by_perspective = {}
+    for label, side in (("home", True), ("away", False)):
+        side_rows = pair_attacking_home == side
+        pass_continuation_support_by_perspective[label] = (
+            build_continuation_support_evidence(
+                pair_first_kinds[side_rows],
+                pair_second_kinds[side_rows],
+                groups[pair_left][side_rows],
+                actions[pair_left + 1][side_rows],
+                first_action_kind="pass",
+                actor_perspective=label,
+            )
+        )
     action_counts = {
         action: int(np.sum(kinds == action))
         for action in ("pass", "shot", "hold", "cross", "intercept", "tackle")
@@ -119,6 +134,9 @@ def _split_arrays(trace_dir: Path, manifest: dict, split: str) -> dict[str, Any]
             int(len(np.unique(groups[pair_left]))) if len(pair_left) else 0
         ),
         "pass_continuation_support": pass_continuation_support,
+        "pass_continuation_support_by_perspective": (
+            pass_continuation_support_by_perspective
+        ),
         "pass_utility_persistence_mse": (
             float(np.mean(pass_utility ** 2)) if len(pass_utility) else 0.0
         ),
@@ -167,6 +185,26 @@ def readiness_checks(
     sealed_summary = (manifest.get("summary") or {}).get("sealed_test") or {}
     train_continuation = train.get("pass_continuation_support") or {}
     dev_continuation = dev.get("pass_continuation_support") or {}
+    train_perspectives = (
+        train.get("pass_continuation_support_by_perspective") or {}
+    )
+    dev_perspectives = (
+        dev.get("pass_continuation_support_by_perspective") or {}
+    )
+    train_perspectives_sufficient = bool(
+        set(train_perspectives) == {"home", "away"}
+        and all(
+            (train_perspectives.get(label) or {}).get("sufficient") is True
+            for label in ("home", "away")
+        )
+    )
+    dev_perspectives_sufficient = bool(
+        set(dev_perspectives) == {"home", "away"}
+        and all(
+            (dev_perspectives.get(label) or {}).get("sufficient") is True
+            for label in ("home", "away")
+        )
+    )
     return {
         "manifest_schema_and_policy_valid": bool(
             manifest.get("schema_version") == 1
@@ -204,6 +242,12 @@ def readiness_checks(
         "development_pass_continuation_support_sufficient": bool(
             dev_continuation.get("sufficient") is True
         ),
+        "training_pass_perspective_support_sufficient": (
+            train_perspectives_sufficient
+        ),
+        "development_pass_perspective_support_sufficient": (
+            dev_perspectives_sufficient
+        ),
         "policy_utility_curriculum_will_activate": final_policy_weight > 0.0,
         "two_step_policy_utility_sequence_objective_will_activate": bool(
             final_policy_weight > 0.0
@@ -213,6 +257,8 @@ def readiness_checks(
             and dev["two_step_groups"] >= 4
             and train_continuation.get("sufficient") is True
             and dev_continuation.get("sufficient") is True
+            and train_perspectives_sufficient
+            and dev_perspectives_sufficient
         ),
         "two_step_curriculum_will_activate": final_two_step_weight > 0.0,
         "transition_ensemble_supports_uncertainty": transition_ensemble_size >= 2,

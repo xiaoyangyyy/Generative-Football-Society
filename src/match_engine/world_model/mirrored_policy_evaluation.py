@@ -11,6 +11,10 @@ import numpy as np
 
 from src.infrastructure import code_identity_manifest, file_sha256
 from src.match_engine.world_model.action_codec import decode_action_kind
+from src.match_engine.world_model.policy_utility import (
+    policy_utility_aggregate_gate_integrity,
+    policy_utility_perspective_gate_integrity,
+)
 
 
 def validate_m2_preflight_receipt(
@@ -61,7 +65,15 @@ def validate_m2_preflight_receipt(
         raise ValueError("M2 preflight receipt identity is missing")
 
 
-def _receipt_sequence_gate_open(gate: Mapping[str, Any]) -> bool:
+def _receipt_policy_gate_open(gate: Mapping[str, Any]) -> bool:
+    return policy_utility_aggregate_gate_integrity(gate)
+
+
+def _receipt_single_sequence_gate_open(
+    gate: Mapping[str, Any],
+    *,
+    actor_perspective: str,
+) -> bool:
     policy = gate.get("continuation_policy") or []
     try:
         weights = np.asarray([row["weight"] for row in policy], dtype=float)
@@ -72,7 +84,11 @@ def _receipt_sequence_gate_open(gate: Mapping[str, Any]) -> bool:
     except (KeyError, TypeError, ValueError):
         return False
     return bool(
-        gate.get("authorized") is True
+        policy_utility_perspective_gate_integrity(
+            gate,
+            actor_perspective=actor_perspective,
+        )
+        and gate.get("attacking_home") is (actor_perspective == "home")
         and gate.get("continuation_support_authorized") is True
         and len(weights)
         and np.isfinite(weights).all()
@@ -84,6 +100,23 @@ def _receipt_sequence_gate_open(gate: Mapping[str, Any]) -> bool:
         and all(
             decode_action_kind(vector) == action
             for vector, action in zip(prototypes, action_kinds)
+        )
+    )
+
+
+def _receipt_sequence_gate_open(gate: Mapping[str, Any]) -> bool:
+    perspective_gates = gate.get("perspective_gates") or {}
+    return bool(
+        policy_utility_aggregate_gate_integrity(gate)
+        and gate.get("continuation_support_authorized") is True
+        and set(perspective_gates) == {"home", "away"}
+        and all(
+            isinstance(perspective_gates.get(label), Mapping)
+            and _receipt_single_sequence_gate_open(
+                perspective_gates[label],
+                actor_perspective=label,
+            )
+            for label in ("home", "away")
         )
     )
 
@@ -129,7 +162,7 @@ def validate_m2_candidate_receipt(
             required
             and all(
                 isinstance(one_step_gates.get(action), Mapping)
-                and one_step_gates[action].get("authorized") is True
+                and _receipt_policy_gate_open(one_step_gates[action])
                 and isinstance(sequence_gates.get(action), Mapping)
                 and _receipt_sequence_gate_open(sequence_gates[action])
                 for action in required
@@ -150,7 +183,7 @@ def validate_m2_candidate_receipt(
             and eligibility.get("sealed_test_unused_by_training") is True
             and eligibility.get("training_configuration_verified") is True
             and eligibility.get("sealed_two_step_active") is True
-            and sealed_one_step.get("authorized") is True
+            and _receipt_policy_gate_open(sealed_one_step)
             and _receipt_sequence_gate_open(sealed_two_step)
             and sealed_validation.get("executed") is True
         ):

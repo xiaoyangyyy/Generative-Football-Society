@@ -35,6 +35,10 @@ from src.match_engine.calibration.contract import (
 from src.match_engine.calibration.objective import calibration_loss
 from src.match_engine.world_model.inference import WorldModelRuntime
 from src.match_engine.world_model.action_codec import decode_action_kind
+from src.match_engine.world_model.policy_utility import (
+    policy_utility_aggregate_gate_integrity,
+    policy_utility_perspective_gate_integrity,
+)
 from scripts.validate_world_model import _sealed_evaluation
 from src.match_engine.world_model.m2_contract import (
     FROZEN_FIXTURES,
@@ -146,8 +150,11 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
     if candidate.get("required_sealed_validation") != [
         "two_step",
         "policy_utility.pass",
+        "policy_utility.pass.perspectives.home",
+        "policy_utility.pass.perspectives.away",
         "policy_utility_two_step.pass",
-        "policy_utility_two_step.pass.continuation_support",
+        "policy_utility_two_step.pass.perspectives.home.continuation_support",
+        "policy_utility_two_step.pass.perspectives.away.continuation_support",
     ]:
         raise ValueError("M2 sealed validation requirements changed")
     if candidate.get("pipeline") != "M2":
@@ -165,7 +172,10 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
         "minimum_samples": 32,
         "minimum_groups": 4,
         "minimum_supported_probability_mass": 0.95,
-        "action_source": "development_mean_leakage_cleaned_vector",
+        "action_source": "perspective_development_mean_leakage_cleaned_vector",
+        "coordinate_system": "absolute_pitch_with_attacking_home_flag",
+        "runtime_partition": "attacking_home",
+        "qualification_requires": ["home", "away"],
         "reference_action": "same_state_zero_transition_utility",
         "runtime_consumers": [
             "high_level_pass_utility",
@@ -241,18 +251,22 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
     if integrity.get("code_identity_mode") != "transitive_local_imports_v1":
         raise ValueError("M2 transitive code identity mode changed")
     if integrity.get("identity_amendment") != {
-        "version": 4,
+        "version": 5,
         "reasons": [
             "manual_roots_did_not_bind_local_import_closure",
             "joint_changing_action_policy_utility_was_not_trained_or_validated",
             "runtime_continuation_branches_were_not_support_qualified",
             "m2_pass_target_ranking_bypassed_sequence_utility",
+            (
+                "pooled_home_away_continuation_support_was_not_valid_"
+                "for_mirrored_control"
+            ),
         ],
         "timing": "before_candidate_binding_training_and_formal_execution",
         "candidate_bound_before_amendment": False,
         "training_runs_before_amendment": 0,
         "formal_runs_before_amendment": 0,
-        "supersedes_version": 3,
+        "supersedes_version": 4,
     }:
         raise ValueError("M2 pre-execution identity amendment changed")
     power = protocol.get("power_analysis") or {}
@@ -280,7 +294,15 @@ def execution_identity(
     return study_execution_identity(ROOT, protocol_path, protocol, checkpoint)
 
 
-def _sequence_gate_ready(gate: dict[str, Any]) -> bool:
+def _perspective_policy_gate_ready(gate: dict[str, Any]) -> bool:
+    return policy_utility_aggregate_gate_integrity(gate)
+
+
+def _single_sequence_gate_ready(
+    gate: dict[str, Any],
+    *,
+    actor_perspective: str,
+) -> bool:
     policy = gate.get("continuation_policy") or []
     try:
         weights = np.asarray([row["weight"] for row in policy], dtype=float)
@@ -291,7 +313,11 @@ def _sequence_gate_ready(gate: dict[str, Any]) -> bool:
     except (KeyError, TypeError, ValueError):
         return False
     return bool(
-        gate.get("authorized") is True
+        policy_utility_perspective_gate_integrity(
+            gate,
+            actor_perspective=actor_perspective,
+        )
+        and gate.get("attacking_home") is (actor_perspective == "home")
         and gate.get("continuation_support_authorized") is True
         and len(weights)
         and np.isfinite(weights).all()
@@ -303,6 +329,23 @@ def _sequence_gate_ready(gate: dict[str, Any]) -> bool:
         and all(
             decode_action_kind(vector) == action
             for vector, action in zip(prototypes, action_kinds)
+        )
+    )
+
+
+def _sequence_gate_ready(gate: dict[str, Any]) -> bool:
+    perspective_gates = gate.get("perspective_gates") or {}
+    return bool(
+        policy_utility_aggregate_gate_integrity(gate)
+        and gate.get("continuation_support_authorized") is True
+        and set(perspective_gates) == {"home", "away"}
+        and all(
+            isinstance(perspective_gates.get(label), dict)
+            and _single_sequence_gate_ready(
+                perspective_gates[label],
+                actor_perspective=label,
+            )
+            for label in ("home", "away")
         )
     )
 
@@ -373,7 +416,7 @@ def candidate_eligibility(
     )
     sealed_test_unused = meta.get("sealed_test_used") is False
     development_ready = bool(
-        all(gate.get("authorized") for gate in gates.values())
+        all(_perspective_policy_gate_ready(gate) for gate in gates.values())
         and all(_sequence_gate_ready(gate) for gate in sequence_gates.values())
         and sequence_predictor_available
         and two_step.get("active")
@@ -420,7 +463,7 @@ def candidate_eligibility(
         and manifest_identity_verified
         and sealed_test_unused
         and sealed_two_step_active
-        and sealed_pass_gate.get("authorized") is True
+        and _perspective_policy_gate_ready(sealed_pass_gate)
         and _sequence_gate_ready(sealed_pass_sequence_gate)
     )
     return {

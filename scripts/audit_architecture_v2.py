@@ -2762,12 +2762,21 @@ def main() -> int:
                 "def policy_utility_sequence_validation_gate(",
                 "def build_continuation_support_evidence(",
                 "def continuation_support_validation_gate(",
+                "def policy_utility_perspective_gate_integrity(",
+                "def policy_utility_aggregate_gate_integrity(",
                 'contract.get("action_sequence") == "observed_changing_actions"',
                 'contract.get("trained_with_action_sequence_objective") is True',
             ))
             and all(token in m2_study for token in (
                 '"policy_utility_two_step.pass"',
-                '"policy_utility_two_step.pass.continuation_support"',
+                (
+                    '"policy_utility_two_step.pass.perspectives.home.'
+                    'continuation_support"'
+                ),
+                (
+                    '"policy_utility_two_step.pass.perspectives.away.'
+                    'continuation_support"'
+                ),
                 '"required_policy_utility_sequence_gates"',
                 '"sealed_pass_policy_utility_two_step_gate"',
             ))
@@ -2777,17 +2786,28 @@ def main() -> int:
             )
             and "development_pass_continuation_support_sufficient"
             in m2_preflight_source
+            and "development_pass_perspective_support_sufficient"
+            in m2_preflight_source
             and m2_preflight.get("checks", {}).get(
                 "two_step_policy_utility_sequence_objective_will_activate"
             ) is True
-            and (m2_integrity.get("identity_amendment") or {}).get("version") == 4
+            and (m2_integrity.get("identity_amendment") or {}).get("version") == 5
             and (m2_protocol.get("candidate") or {}).get(
                 "required_sealed_validation"
             ) == [
                 "two_step",
                 "policy_utility.pass",
+                "policy_utility.pass.perspectives.home",
+                "policy_utility.pass.perspectives.away",
                 "policy_utility_two_step.pass",
-                "policy_utility_two_step.pass.continuation_support",
+                (
+                    "policy_utility_two_step.pass.perspectives.home."
+                    "continuation_support"
+                ),
+                (
+                    "policy_utility_two_step.pass.perspectives.away."
+                    "continuation_support"
+                ),
             ]
         ),
         "m2_runtime_consumes_supported_continuation_sequences": (
@@ -2812,6 +2832,10 @@ def main() -> int:
             ))
             and all(token in m2_study for token in (
                 '"sequence_predictor_available"',
+                "policy_utility_aggregate_gate_integrity(",
+                "policy_utility_perspective_gate_integrity(",
+                "def _perspective_policy_gate_ready(",
+                "def _single_sequence_gate_ready(",
                 "def _sequence_gate_ready(",
                 'runtime, "predict_policy_utility_sequence", None',
                 "and sequence_predictor_available",
@@ -2819,6 +2843,20 @@ def main() -> int:
             and (
                 "def _receipt_sequence_gate_open("
                 in mirrored_policy_evaluation
+            )
+            and (
+                "def _receipt_policy_gate_open("
+                in mirrored_policy_evaluation
+            )
+            and (
+                "def _receipt_single_sequence_gate_open("
+                in mirrored_policy_evaluation
+            )
+            and "policy_utility_aggregate_gate_integrity(" in (
+                mirrored_policy_evaluation
+            )
+            and "policy_utility_perspective_gate_integrity(" in (
+                mirrored_policy_evaluation
             )
             and "def _shared_pass_hold_continuation_policy(" not in world_model_planner
             and "def pass_imagination_bonuses(" not in world_model_planner
@@ -2828,6 +2866,12 @@ def main() -> int:
                 "high_level_pass_utility",
                 "pass_target_ranking",
             ]
+            and (m2_protocol.get("candidate") or {}).get(
+                "continuation_support_contract", {}
+            ).get("runtime_partition") == "attacking_home"
+            and (m2_protocol.get("candidate") or {}).get(
+                "continuation_support_contract", {}
+            ).get("qualification_requires") == ["home", "away"]
         ),
         "wheel_preserves_src_console_namespace": (
             pyproject.get("project", {}).get("scripts", {}).get("gfs") == "src.cli:main"

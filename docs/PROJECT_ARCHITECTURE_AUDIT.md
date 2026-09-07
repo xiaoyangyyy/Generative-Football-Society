@@ -405,6 +405,21 @@ not quality signals by themselves.
     architecture audit prevents either one-step bypass or helper restoration.
     The complete 202-file regression passes 1,471 tests with three declared
     skips.
+66. Removed home/away evidence leakage from the prospective mirrored M2
+    controller. Absolute-coordinate observations and action targets now produce
+    separate perspective policy-utility profiles, continuation support and
+    action prototypes. Runtime passes the acting perspective through one-step,
+    explicit two-step and pass-target planning; candidate qualification,
+    sealed evaluation and receipt replay require both sides and reject
+    pooled-only legacy checkpoints. The gate replays sample totals,
+    sample-weighted pooled MSE, MSE-derived skill, perspective labels, support
+    mass and action prototypes. On frozen development data, home supports pass
+    and shot at 99.46% mass, while away supports pass only at 97.20%; away
+    cannot borrow home shots to cross the branch threshold. Protocol amendment
+    V5 occurred before any candidate, training or formal run. The zero-training
+    preflight passes 18/18 checks with a 250-file identity closure, architecture
+    audit passes 92/92, and the complete 202-file regression passes 1,474 tests
+    with three declared skips.
 
 ## LLM Scope Decision
 
