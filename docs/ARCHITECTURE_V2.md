@@ -4731,3 +4731,34 @@ training or formal execution. The refreshed zero-training preflight passes all
 writes no checkpoint. Architecture audit remains 92/92. The complete 202-file
 regression passes 1,474 tests with three declared skips. No M2 model efficacy,
 action effect or outcome claim is created by this stage.
+
+## 142. V4.24 Active-first manager world story continuity
+
+The five-stage contribution story originally selected the newest completed
+history chapter whenever any history existed. That was correct after a season
+ended, but wrong during an active season: from matchday two onward the latest
+completed fixture displaced the current intervention, future-review and
+official-world workflow from a panel titled as the current round.
+
+Story schema V2 makes chapter state explicit. An active fixture is always the
+primary story and binds the navigator's current chapter identity, frozen
+intervention stages and fixture identity. Its official action, persistence and
+result stages remain pending, and the active source is never declared
+navigable as a completed chapter. Exactly one latest completed predecessor is
+retained with its own source identity, action state, persistent-world state,
+descriptive-result state and bounded metrics. Studio renders that predecessor
+as chronology and opens its historical chapter without replacing the active
+rail. When no active fixture exists, the latest completed chapter remains the
+primary story; an empty completed season produces no invented chapter.
+
+Both primary and predecessor values are rebuilt from the already validated
+navigator. The projection stores no second season state, compares no outcomes,
+ranks no intervention and keeps outcome-improvement and causal authority false.
+Direct tests cover active-over-history precedence, exact predecessor binding,
+completed-season fallback, empty-season fail closure, replay validation and Web
+navigation selection. This stage executes no future, match, training, formal
+study, participant session or provider call. Focused story, navigator and Web
+regression passes 110 tests. The CI-equivalent suite passes 1,475 tests with
+three declared skips and one registered training-test deselection. Local HTTP
+Beta, automated accessibility, process-crash recovery and all 92 architecture
+checks pass.

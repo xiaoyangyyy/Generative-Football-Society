@@ -46,14 +46,19 @@ def test_world_story_uses_one_latest_chapter_and_stays_noncausal():
     validate_manager_world_story(story, navigator=navigator)
 
     assert navigator == original
+    assert story["schema_version"] == 2
+    assert story["view_mode"] == "latest_completed_chapter"
     assert story["story_state"] == "local_action_change_observed"
     assert story["source"] == {
         "season_id": "season-1",
         "navigator_identity": "a" * 64,
         "chapter_identity": "b" * 64,
+        "chapter_state": "completed",
+        "navigable": True,
         "fixture_id": "fixture-3",
         "matchday": 3,
     }
+    assert story["previous_completed"] is None
     assert [row["status"] for row in story["stages"]] == [
         "complete",
         "selected",
@@ -80,6 +85,7 @@ def test_world_story_exposes_current_review_without_fake_result():
         "navigator_identity": "d" * 64,
         "history_chapters": [],
         "current_chapter": {
+            "current_chapter_identity": "f" * 64,
             "workflow_state": "review_recorded_decision_refrozen",
             "frozen_decision_identity": "e" * 64,
             "fixture": {
@@ -96,7 +102,11 @@ def test_world_story_exposes_current_review_without_fake_result():
     story = build_manager_world_story(navigator)
 
     assert story["story_state"] == "awaiting_official_world"
-    assert story["source"]["chapter_identity"] is None
+    assert story["view_mode"] == "active_chapter"
+    assert story["source"]["chapter_identity"] == "f" * 64
+    assert story["source"]["chapter_state"] == "active"
+    assert story["source"]["navigable"] is False
+    assert story["previous_completed"] is None
     assert [row["status"] for row in story["stages"]] == [
         "complete", "selected", "pending", "pending", "pending",
     ]
@@ -111,6 +121,8 @@ def test_world_story_unavailable_state_is_fresh_and_fail_closed():
     first["metrics"]["influenced_decisions"] = 99
 
     assert second["available"] is False
+    assert second["view_mode"] == "unavailable"
+    assert second["previous_completed"] is None
     assert second["metrics"]["influenced_decisions"] == 0
     assert second["outcome_improvement_authorized"] is False
     assert second["causal_effect_authorized"] is False
@@ -186,3 +198,60 @@ def test_world_story_bounds_public_counts_and_never_infers_missing_world():
     assert story["metrics"]["locally_attributable_action_changes"] == 0
     assert story["stages"][3]["status"] == "evidence_unavailable"
     assert story["stages"][4]["status"] == "evidence_unavailable"
+
+
+def test_world_story_prioritizes_active_chapter_and_binds_previous_world():
+    navigator = _completed_navigator()
+    navigator["current_chapter"] = {
+        "current_chapter_identity": "d" * 64,
+        "workflow_state": "ready_to_explore",
+        "frozen_decision_identity": "e" * 64,
+        "fixture": {
+            "fixture_id": "fixture-4",
+            "matchday": 4,
+        },
+        "stages": [],
+    }
+    original = copy.deepcopy(navigator)
+
+    story = build_manager_world_story(navigator)
+    validate_manager_world_story(story, navigator=navigator)
+
+    assert navigator == original
+    assert story["view_mode"] == "active_chapter"
+    assert story["source"]["fixture_id"] == "fixture-4"
+    assert story["source"]["chapter_identity"] == "d" * 64
+    assert story["source"]["navigable"] is False
+    assert story["story_state"] == "awaiting_official_world"
+    assert [row["status"] for row in story["stages"]] == [
+        "complete", "pending", "pending", "pending", "pending",
+    ]
+    previous = story["previous_completed"]
+    assert previous["source"]["fixture_id"] == "fixture-3"
+    assert previous["source"]["chapter_identity"] == "b" * 64
+    assert previous["source"]["navigable"] is True
+    assert previous["story_state"] == "local_action_change_observed"
+    assert previous["action_status"] == "changed"
+    assert previous["persistent_world_status"] == "world_persisted"
+    assert previous["outcome_status"] == "descriptive_result_only"
+    assert previous["metrics"]["locally_attributable_action_changes"] == 2
+    assert previous["same_chapter_evidence"] is True
+
+
+def test_world_story_empty_completed_season_has_no_invented_chapter():
+    navigator = {
+        "available": True,
+        "season_id": "empty-season",
+        "navigator_identity": "1" * 64,
+        "current_chapter": {
+            "workflow_state": "season_complete",
+            "fixture": None,
+        },
+        "history_chapters": [],
+    }
+
+    story = build_manager_world_story(navigator)
+
+    assert story["available"] is False
+    assert story["view_mode"] == "unavailable"
+    assert story["source"] is None

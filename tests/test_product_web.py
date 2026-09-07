@@ -295,6 +295,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "function renderManagerWorldStory(" in document
     assert "renderManagerWorldNavigatorWithoutStory" in document
     assert "season?.manager_world_story" in document
+    assert "story.view_mode==='active_chapter'" in document
+    assert "const openSource=source.navigable?source:previous?.source" in document
+    assert "openSource?.navigable&&openSource.chapter_identity" in document
     assert 'id="manager-world-navigator-action"' in document
     assert 'id="manager-world-navigator-secondary"' in document
     assert 'id="manager-world-navigator-gaps"' in document

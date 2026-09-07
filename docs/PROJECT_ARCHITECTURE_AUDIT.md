@@ -420,6 +420,19 @@ not quality signals by themselves.
     preflight passes 18/18 checks with a 250-file identity closure, architecture
     audit passes 92/92, and the complete 202-file regression passes 1,474 tests
     with three declared skips.
+67. Closed the chronology break in the manager-facing world-model contribution
+    story. The old projection preferred any completed history row over the
+    active next fixture, so the current five-stage workflow disappeared after
+    matchday one. Story V2 now makes the active chapter primary, binds its
+    current identity, keeps official-world stages pending, and retains one
+    completed predecessor with same-chapter action, persistence and descriptive
+    result evidence. Studio opens only a completed navigable source; completed
+    seasons fall back to their latest world and empty seasons invent nothing.
+    Replay validation and non-causal boundaries remain unchanged. No match,
+    future generation, training or external call is executed by the change.
+    Focused product regression passes 110 tests, CI-equivalent regression
+    passes 1,475 with three skips and one registered deselection, and local
+    HTTP, accessibility, recovery and all 92 architecture checks are green.
 
 ## LLM Scope Decision
 

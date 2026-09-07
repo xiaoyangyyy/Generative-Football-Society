@@ -312,6 +312,21 @@ authority. Protocol amendment V5 precedes candidate binding, training and all
 formal runs. The refreshed zero-training preflight passes 18/18 checks, binds
 250 Python files, loads zero sealed rows and writes no checkpoint. The complete
 202-file regression passes 1,474 tests with three declared skips.
+V4.24 fixes the remaining chronology break in the manager-facing contribution
+story. Once a season had one completed fixture, the earlier projection always
+preferred that history row and could hide the active next-fixture intervention.
+The V2 story now keeps the active fixture and its five-stage workflow in the
+primary rail, binds its current chapter identity, and retains exactly one latest
+completed predecessor as a compact same-chapter evidence link. Studio opens the
+predecessor only when it is a completed navigable chapter; an active identity is
+never sent to the historical navigator. Completed seasons still show their
+latest completed world, while an empty completed season fails closed. This is a
+read-only product projection change: it executes no match, future generation,
+training, participant session or provider call and creates no causal claim.
+Focused story, navigator and Web regression passes 110 tests; CI-equivalent
+regression passes 1,475 tests with three declared skips and one registered
+training-test deselection. Local HTTP, accessibility, recovery and all 92
+architecture checks pass.
 
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.

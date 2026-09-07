@@ -854,6 +854,10 @@ def main() -> int:
             and all(token in manager_world_story for token in (
                 "def build_manager_world_story(",
                 "def validate_manager_world_story(",
+                'view_mode = "active_chapter"',
+                '"previous_completed": previous_completed',
+                'current.get("current_chapter_identity")',
+                'current.get("workflow_state") != "season_complete"',
                 '"same_chapter_evidence": True',
                 '"outcome_improvement_authorized": False',
                 '"causal_effect_authorized": False',
@@ -862,12 +866,21 @@ def main() -> int:
             and all(token in manager_world_story_tests for token in (
                 "test_world_story_uses_one_latest_chapter_and_stays_noncausal",
                 "test_world_story_exposes_current_review_without_fake_result",
+                "test_world_story_prioritizes_active_chapter_and_binds_previous_world",
+                "test_world_story_empty_completed_season_has_no_invented_chapter",
                 "test_world_story_unavailable_state_is_fresh_and_fail_closed",
                 "test_world_story_validation_rejects_projection_drift",
                 '"src/product/manager_world_story.py" in CODE_IDENTITY_FILES',
             ))
             and all(token in web_tests for token in (
                 'reviewed_projection["manager_world_story"]',
+                '"story.view_mode===\'active_chapter\'"',
+                '"const openSource=source.navigable?source:previous?.source"',
+            ))
+            and all(token in web for token in (
+                "story.view_mode==='active_chapter'",
+                "const openSource=source.navigable?source:previous?.source",
+                "openSource?.navigable&&openSource.chapter_identity",
             ))
             and "innerHTML" not in web
         ),
