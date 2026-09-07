@@ -328,6 +328,20 @@ regression passes 1,475 tests with three declared skips and one registered
 training-test deselection. Local HTTP, accessibility, recovery and all 92
 architecture checks pass.
 
+V4.25 replaces the manager-world page's implicit renderer override chain with
+one frozen, named 13-stage composition. Base navigation, the active-first
+story, action-adoption evidence, trajectory, reviewed futures, archive,
+certificates, retained semantics, transition propagation, the action matrix,
+exact shared-draw expectation and drill-down now execute in one reviewable
+order. The DOM contract and stage order are unchanged, while tests and the
+architecture audit reject either legacy wrapper family or a second root
+renderer. This is a behavior-preserving product maintainability increment. It
+executes no match, future generation, training, participant session or provider
+call and creates no model, causal or outcome evidence. Focused Web regression
+passes 60 tests; CI-equivalent regression passes 1,476 tests with three
+declared skips and one registered training-test deselection. Local HTTP,
+accessibility, recovery and all 92 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

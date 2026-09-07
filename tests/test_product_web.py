@@ -293,7 +293,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-world-story-stages" class="world-story-rail"' in document
     assert 'id="manager-world-story-open"' in document
     assert "function renderManagerWorldStory(" in document
-    assert "renderManagerWorldNavigatorWithoutStory" in document
+    assert "function renderManagerWorldNavigatorBase(season)" in document
     assert "season?.manager_world_story" in document
     assert "story.view_mode==='active_chapter'" in document
     assert "const openSource=source.navigable?source:previous?.source" in document
@@ -329,13 +329,13 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "renderManagerWorldActionAdoptionLedgerWithoutBoundedSemantics" in document
     assert "ledger?.bounded_semantic_examples" in document
     assert "sample.fixtures_with_truncated_examples" in document
-    assert "renderManagerWorldNavigatorWithoutRetainedRecordSemantics" in document
+    assert "function renderManagerWorldRetainedRecordSemantics(season)" in document
     assert "world_model_action_adoption_ledger?.retained_record_semantics" in document
     assert "ledger.fixtures_without_v3_transition_semantics" in document
     assert "ledger.full_source_transition_distribution_authorized" in document
     assert "function renderManagerWorldTransitionPropagation(" in document
     assert "local_transition_descriptive_propagation" in document
-    assert "renderManagerWorldNavigatorWithoutTransitionPropagation" in document
+    assert "renderManagerWorldTransitionPropagation," in document
     assert "row.descriptive_world_after" in document
     assert "row.chapters_with_other_local_transitions" in document
     assert "分层可重叠" in document
@@ -345,11 +345,11 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "chapter.descriptive_world_after" in document
     assert "function renderManagerWorldTrajectory(season)" in document
     assert "function renderManagerWorldReviewedFutureContinuity(season)" in document
-    assert "renderManagerWorldReviewedFutureContinuityWithoutMechanismSemantics" in document
+    assert "function renderManagerWorldReviewedFutureMechanismSemantics(season)" in document
     assert "trajectory.cross_action_mechanism_examples" in document
     assert "future.suppression_only_mechanism_examples" in document
     assert "future.nonzero_cross_descriptive_windows" in document
-    assert "renderManagerWorldReviewedFutureContinuityWithoutOfficialActionSemantics" in document
+    assert "function renderManagerWorldReviewedFutureOfficialActionSemantics(season)" in document
     assert "point.bounded_official_action_semantics" in document
     assert "sample.semantic_example_coverage_complete" in document
     assert "appendManagerWorldEvolutionThreadWithoutReviewedFutures" in document
@@ -375,15 +375,15 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "stage?.retained_record_semantics" in document
     assert "function appendReviewedScenarioArchive(" in document
     assert "appendManagerWorldEvolutionThreadWithoutScenarioArchive" in document
-    assert "renderManagerWorldNavigatorWithoutScenarioArchive" in document
+    assert "function renderManagerWorldScenarioArchive(season)" in document
     assert "reviewed_scenario_archives" in document
     assert "source_scenario_identity" in document
     assert "archive_identity" in document
     assert "不排名、不与观察比分匹配" in document
     assert "function appendReviewWorldContinuity(" in document
     assert "appendManagerWorldEvolutionThreadWithoutReviewWorldCertificate" in document
-    assert "renderManagerWorldNavigatorWithoutReviewWorldCertificate" in document
-    assert "renderManagerWorldNavigatorWithoutReviewWorldInfluence" in document
+    assert "function renderManagerWorldReviewCertificate(season)" in document
+    assert "function renderManagerWorldReviewInfluence(season)" in document
     assert "complete_reviewed_world_model_chains" in document
     assert "不会把赛前模拟分叉中的机会逐条匹配" in document
     assert "future.action_divergence_scenarios" in document
@@ -604,10 +604,10 @@ def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_
     assert ".transition-map-scroll { max-width:100%; overflow-x:auto" in document
     assert '.transition-map td[data-active="true"]' in document
     assert "function renderManagerWorldActionTransitionMap(season)" in document
-    assert "renderManagerWorldNavigatorWithoutActionTransitionMap" in document
+    assert "renderManagerWorldActionTransitionMap," in document
     assert "retainedActionSemanticTextWithoutExactExpectation" in document
     assert "renderManagerDecisionLedgerWithoutExactActionExpectation" in document
-    assert "renderManagerWorldNavigatorWithoutExactActionExpectation" in document
+    assert "function renderManagerWorldExactActionExpectation(season)" in document
     assert "fixtures_with_v4_expectation_semantics" in document
     assert "expected_counterfactual_action_changes" in document
     assert "V4共享采样期望不可用" in document
@@ -617,7 +617,7 @@ def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_
     assert 'aria-live="polite" aria-atomic="true" tabindex="-1"' in document
     assert 'id="manager-world-action-transition-open"' in document
     assert "function renderManagerWorldActionTransitionDrilldown(season)" in document
-    assert "renderManagerWorldNavigatorWithoutActionTransitionDrilldown" in document
+    assert "renderManagerWorldActionTransitionDrilldown]" in document
     assert "new Map(rows.map(row=>[row.transition_id,row]))" in document
     assert "button.className='transition-cell-button'" in document
     assert "button.setAttribute('aria-controls','manager-world-action-transition-detail')" in document
@@ -629,7 +629,7 @@ def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_
     renderer = document.split(
         "function renderManagerWorldActionTransitionMap(season)", 1
     )[1].split(
-        "const renderManagerWorldNavigatorWithoutActionTransitionMap", 1
+        "const retainedActionSemanticTextWithoutExactExpectation", 1
     )[0]
     assert "managerWorldActionTransitionTableBody.replaceChildren()" in renderer
     assert "managerWorldActionTransitionTable.hidden=true" in renderer
@@ -645,6 +645,34 @@ def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_
     assert "cell.textContent=String(count)" in renderer
     assert "cell.setAttribute('aria-label'" in renderer
     assert "innerHTML" not in renderer
+
+
+def test_root_uses_one_explicit_manager_world_render_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_WORLD_RENDER_STAGES=Object.freeze(["
+        "renderManagerWorldNavigatorBase,renderManagerWorldStory,"
+        "renderManagerWorldActionAdoptionLedger,renderManagerWorldTrajectory,"
+        "renderManagerWorldReviewedFutureContinuity,"
+        "renderManagerWorldScenarioArchive,renderManagerWorldReviewCertificate,"
+        "renderManagerWorldReviewInfluence,"
+        "renderManagerWorldRetainedRecordSemantics,"
+        "renderManagerWorldTransitionPropagation,"
+        "renderManagerWorldActionTransitionMap,"
+        "renderManagerWorldExactActionExpectation,"
+        "renderManagerWorldActionTransitionDrilldown]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function renderManagerWorldNavigator(season)") == 1
+    assert (
+        "function renderManagerWorldNavigator(season){for(const renderStage of "
+        "MANAGER_WORLD_RENDER_STAGES)renderStage(season)}"
+    ) in document
+    assert "renderManagerWorldNavigatorWithout" not in document
+    assert "renderManagerWorldReviewedFutureContinuityWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):

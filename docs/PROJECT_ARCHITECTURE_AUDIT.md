@@ -434,6 +434,19 @@ not quality signals by themselves.
     passes 1,475 with three skips and one registered deselection, and local
     HTTP, accessibility, recovery and all 92 architecture checks are green.
 
+68. Replaced the manager-world Studio's implicit renderer override chain with
+    one frozen, named 13-stage composition. The exact historical order is now
+    visible at one boundary, including reviewed-future semantic enrichments,
+    retained-record semantics, transition propagation, the action matrix,
+    exact shared-draw expectation and drill-down. Tests require one root
+    renderer and reject both legacy wrapper families, so a declaration move
+    cannot silently detach a product evidence layer. DOM ownership, chapter
+    restoration and all evidence semantics remain unchanged. The change runs
+    no match, future generation, training, formal study or external call.
+    Focused Web regression passes 60 tests, CI-equivalent regression passes
+    1,476 with three skips and one registered deselection, and local HTTP,
+    accessibility, recovery and all 92 architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

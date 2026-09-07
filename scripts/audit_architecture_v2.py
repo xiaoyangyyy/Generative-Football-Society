@@ -846,9 +846,14 @@ def main() -> int:
                 'command["manager_world_story"] = world_story',
                 'id="manager-world-story"',
                 "function renderManagerWorldStory(",
-                "renderManagerWorldNavigatorWithoutStory",
+                "function renderManagerWorldNavigatorBase(season)",
+                "const MANAGER_WORLD_RENDER_STAGES=Object.freeze([",
+                "function renderManagerWorldNavigator(season){for(const renderStage of ",
             ))
             and "def _manager_world_story_for_web(" not in web
+            and "renderManagerWorldNavigatorWithout" not in web
+            and "renderManagerWorldReviewedFutureContinuityWithout" not in web
+            and web.count("function renderManagerWorldNavigator(season)") == 1
             and "from src.product.web" not in manager_world_story
             and manager_world_story.count("\n") < 260
             and all(token in manager_world_story for token in (
@@ -1799,7 +1804,7 @@ def main() -> int:
                 '"reviewed_future_nonzero_cross_windows"',
             ))
             and all(token in web for token in (
-                "renderManagerWorldReviewedFutureContinuityWithoutMechanismSemantics",
+                "function renderManagerWorldReviewedFutureMechanismSemantics(season)",
                 "trajectory.cross_action_mechanism_examples",
                 "future.direct_preference_mechanism_examples",
                 "future.suppression_only_mechanism_examples",
@@ -1832,7 +1837,7 @@ def main() -> int:
             and all(token in web for token in (
                 "appendManagerWorldEvolutionThreadWithoutOfficialActionSemantics",
                 "renderManagerWorldActionAdoptionLedgerWithoutBoundedSemantics",
-                "renderManagerWorldReviewedFutureContinuityWithoutOfficialActionSemantics",
+                "function renderManagerWorldReviewedFutureOfficialActionSemantics(season)",
                 "sample.semantic_examples_truncated",
                 "point.bounded_official_action_semantics",
             ))
@@ -1870,7 +1875,7 @@ def main() -> int:
                 "appendOfficialActionExecutionWithoutRetainedRecordSemantics",
                 "renderManagerDecisionLedgerWithoutRetainedRecordSemantics",
                 "appendManagerWorldEvolutionThreadWithoutRetainedRecordSemantics",
-                "renderManagerWorldNavigatorWithoutRetainedRecordSemantics",
+                "function renderManagerWorldRetainedRecordSemantics(season)",
                 "point.official_retained_record_semantics",
             ))
         ),
@@ -1917,7 +1922,7 @@ def main() -> int:
             and all(token in web for token in (
                 "function renderManagerWorldTransitionPropagation(",
                 "local_transition_descriptive_propagation",
-                "renderManagerWorldNavigatorWithoutTransitionPropagation",
+                "renderManagerWorldTransitionPropagation,",
                 "row.chapters_with_other_local_transitions",
                 "分层可重叠",
                 "不排名、不比较效果、不归因赛果",
@@ -1937,7 +1942,7 @@ def main() -> int:
                 "managerWorldActionTransitionTable.hidden=true",
                 "这里显示的是证据缺口，不是“世界模型没有改变动作”",
                 "矩阵格是计数，不是效果值",
-                "renderManagerWorldNavigatorWithoutActionTransitionMap",
+                "renderManagerWorldActionTransitionMap,",
                 ".transition-map-scroll { max-width:100%; overflow-x:auto",
             ))
         ),
@@ -1992,7 +1997,7 @@ def main() -> int:
             and all(token in web for token in (
                 "retainedActionSemanticTextWithoutExactExpectation",
                 "renderManagerDecisionLedgerWithoutExactActionExpectation",
-                "renderManagerWorldNavigatorWithoutExactActionExpectation",
+                "function renderManagerWorldExactActionExpectation(season)",
                 "V4共享采样期望不可用",
                 "不能解释为零影响",
             ))

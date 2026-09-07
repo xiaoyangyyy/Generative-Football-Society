@@ -4762,3 +4762,41 @@ regression passes 110 tests. The CI-equivalent suite passes 1,475 tests with
 three declared skips and one registered training-test deselection. Local HTTP
 Beta, automated accessibility, process-crash recovery and all 92 architecture
 checks pass.
+
+## 143. V4.25 Explicit manager-world render composition
+
+The manager-world page accumulated twelve successive root-renderer wrappers
+and two reviewed-future wrappers as evidence views were added. Runtime behavior
+was deterministic because each closure captured the previous function, but the
+actual execution order was distributed across distant declarations. Moving or
+removing one declaration could silently skip a later projection, and reviewers
+could not verify the complete product story from one boundary.
+
+V4.25 names every projection and freezes one explicit 13-stage sequence:
+
+1. base navigator and current workflow;
+2. active-first contribution story;
+3. action-adoption ledger;
+4. chronological world trajectory;
+5. reviewed-future continuity and its two semantic enrichments;
+6. scenario archive;
+7. review certificate;
+8. review influence;
+9. retained-record semantics;
+10. local transition propagation;
+11. action-transition matrix;
+12. exact shared-uniform change expectation; and
+13. transition drill-down.
+
+The base renderer still restores chapter location at the same point and every
+enrichment keeps its prior DOM ownership and fail-soft boundary. Direct Web
+tests bind the exact order, require one root renderer and reject both legacy
+wrapper name families. The architecture audit applies the same structural
+contract. This refactor changes no evidence schema, navigation semantics,
+authority, state or output claim. It executes no match, future generation,
+training, formal study, participant session or provider call. Focused Web
+regression passes 60 tests. The CI-equivalent suite passes 1,476 tests with
+three declared skips and one registered training-test deselection. Local HTTP
+Beta passes 16/16 checks, automated accessibility passes 41/41 checks,
+process-crash recovery passes every declared check and the architecture audit
+passes 92/92.
