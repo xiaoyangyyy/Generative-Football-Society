@@ -203,6 +203,7 @@ def main() -> int:
         "src/product/workspace.py",
         "src/product/workspace_session.py",
         "src/product/workspace_evidence.py",
+        "src/product/manager_world_story.py",
         "src/product/recovery.py",
         "src/product/web.py",
         "src/cli.py",
@@ -265,6 +266,9 @@ def main() -> int:
     manager_world_navigator = (
         ROOT / "src/product/manager_world_navigator.py"
     ).read_text(encoding="utf-8")
+    manager_world_story = (
+        ROOT / "src/product/manager_world_story.py"
+    ).read_text(encoding="utf-8")
     match_micro_runner = (
         ROOT / "src/match_engine/match_micro_runner.py"
     ).read_text(encoding="utf-8")
@@ -303,6 +307,9 @@ def main() -> int:
     ).read_text(encoding="utf-8")
     manager_world_thread_tests = (
         ROOT / "tests/test_product_manager_world_thread.py"
+    ).read_text(encoding="utf-8")
+    manager_world_story_tests = (
+        ROOT / "tests/test_product_manager_world_story.py"
     ).read_text(encoding="utf-8")
     web_tests = (
         ROOT / "tests/test_product_web.py"
@@ -817,18 +824,34 @@ def main() -> int:
                 "renderUnifiedWorkflowWithoutManagerJourney",
                 "item.dataset.stage=id",
                 "item.dataset.status=status",
-                "def _manager_world_story_for_web(",
-                '"same_chapter_evidence": True',
-                '"outcome_improvement_authorized": False',
+                "from src.product.manager_world_story import (",
+                "build_manager_world_story(world_navigator)",
+                "validate_manager_world_story(world_story, navigator=world_navigator)",
                 'season["manager_world_story"] = world_story',
                 'command["manager_world_story"] = world_story',
                 'id="manager-world-story"',
                 "function renderManagerWorldStory(",
                 "renderManagerWorldNavigatorWithoutStory",
             ))
+            and "def _manager_world_story_for_web(" not in web
+            and "from src.product.web" not in manager_world_story
+            and manager_world_story.count("\n") < 260
+            and all(token in manager_world_story for token in (
+                "def build_manager_world_story(",
+                "def validate_manager_world_story(",
+                '"same_chapter_evidence": True',
+                '"outcome_improvement_authorized": False',
+                '"causal_effect_authorized": False',
+                "if dict(story) != expected:",
+            ))
+            and all(token in manager_world_story_tests for token in (
+                "test_world_story_uses_one_latest_chapter_and_stays_noncausal",
+                "test_world_story_exposes_current_review_without_fake_result",
+                "test_world_story_unavailable_state_is_fresh_and_fail_closed",
+                "test_world_story_validation_rejects_projection_drift",
+                '"src/product/manager_world_story.py" in CODE_IDENTITY_FILES',
+            ))
             and all(token in web_tests for token in (
-                "test_manager_world_story_uses_one_latest_chapter_and_stays_noncausal",
-                "test_manager_world_story_exposes_current_review_without_fake_result",
                 'reviewed_projection["manager_world_story"]',
             ))
             and "innerHTML" not in web

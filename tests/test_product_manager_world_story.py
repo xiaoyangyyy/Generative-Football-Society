@@ -1,0 +1,188 @@
+import copy
+
+import pytest
+
+from scripts.verify_product_recovery import CODE_IDENTITY_FILES
+from src.product.manager_world_story import (
+    CLAIM_BOUNDARY,
+    build_manager_world_story,
+    validate_manager_world_story,
+)
+
+
+def _completed_navigator() -> dict:
+    return {
+        "available": True,
+        "season_id": "season-1",
+        "navigator_identity": "a" * 64,
+        "current_chapter": {},
+        "history_chapters": [{
+            "chapter_identity": "b" * 64,
+            "fixture_id": "fixture-3",
+            "matchday": 3,
+            "reviewed_future_context": {
+                "available": True,
+                "selected_for_fixture": True,
+            },
+            "action_adoption": {
+                "state": "realized_action_change",
+                "influenced_decisions": 4,
+            },
+            "descriptive_world_after": {
+                "result_available": True,
+                "persistent_state_available": True,
+            },
+            "locally_attributable_action_changes": 2,
+            "persistent_transition_identity": "c" * 64,
+        }],
+    }
+
+
+def test_world_story_uses_one_latest_chapter_and_stays_noncausal():
+    navigator = _completed_navigator()
+    original = copy.deepcopy(navigator)
+
+    story = build_manager_world_story(navigator)
+    validate_manager_world_story(story, navigator=navigator)
+
+    assert navigator == original
+    assert story["story_state"] == "local_action_change_observed"
+    assert story["source"] == {
+        "season_id": "season-1",
+        "navigator_identity": "a" * 64,
+        "chapter_identity": "b" * 64,
+        "fixture_id": "fixture-3",
+        "matchday": 3,
+    }
+    assert [row["status"] for row in story["stages"]] == [
+        "complete",
+        "selected",
+        "changed",
+        "world_persisted",
+        "descriptive_result_only",
+    ]
+    assert story["metrics"] == {
+        "influenced_decisions": 4,
+        "locally_attributable_action_changes": 2,
+        "result_available": True,
+        "persistent_state_available": True,
+    }
+    assert story["same_chapter_evidence"] is True
+    assert story["outcome_improvement_authorized"] is False
+    assert story["causal_effect_authorized"] is False
+    assert story["claim_boundary"] == CLAIM_BOUNDARY
+
+
+def test_world_story_exposes_current_review_without_fake_result():
+    navigator = {
+        "available": True,
+        "season_id": "season-2",
+        "navigator_identity": "d" * 64,
+        "history_chapters": [],
+        "current_chapter": {
+            "workflow_state": "review_recorded_decision_refrozen",
+            "frozen_decision_identity": "e" * 64,
+            "fixture": {
+                "fixture_id": "fixture-1",
+                "matchday": 1,
+            },
+            "stages": [{
+                "stage_id": "record_manager_review",
+                "status": "review_recorded",
+            }],
+        },
+    }
+
+    story = build_manager_world_story(navigator)
+
+    assert story["story_state"] == "awaiting_official_world"
+    assert story["source"]["chapter_identity"] is None
+    assert [row["status"] for row in story["stages"]] == [
+        "complete", "selected", "pending", "pending", "pending",
+    ]
+    assert story["metrics"]["result_available"] is False
+    assert story["outcome_improvement_authorized"] is False
+
+
+def test_world_story_unavailable_state_is_fresh_and_fail_closed():
+    first = build_manager_world_story(None)
+    second = build_manager_world_story({"available": False})
+
+    first["metrics"]["influenced_decisions"] = 99
+
+    assert second["available"] is False
+    assert second["metrics"]["influenced_decisions"] == 0
+    assert second["outcome_improvement_authorized"] is False
+    assert second["causal_effect_authorized"] is False
+
+
+def test_world_story_validation_rejects_projection_drift():
+    navigator = _completed_navigator()
+    story = build_manager_world_story(navigator)
+    story["outcome_improvement_authorized"] = True
+
+    with pytest.raises(ValueError, match="replay mismatch"):
+        validate_manager_world_story(story, navigator=navigator)
+
+
+def test_world_story_is_bound_into_product_recovery_identity():
+    assert "src/product/manager_world_story.py" in CODE_IDENTITY_FILES
+
+
+@pytest.mark.parametrize((
+    "action_state", "stage_status", "story_state",
+), (
+    ("realized_action_change", "changed", "local_action_change_observed"),
+    ("probability_influence_only", "influenced_only", "probability_influence_only"),
+    ("no_nonzero_influence", "no_influence", "no_nonzero_influence"),
+    ("not_applicable_stable_mode", "not_applicable", "not_applicable"),
+    ("evidence_unavailable", "evidence_unavailable", "evidence_gap"),
+))
+def test_world_story_preserves_every_official_action_state(
+    action_state, stage_status, story_state,
+):
+    navigator = _completed_navigator()
+    navigator["history_chapters"][0]["action_adoption"]["state"] = action_state
+
+    story = build_manager_world_story(navigator)
+
+    assert story["stages"][2]["status"] == stage_status
+    assert story["story_state"] == story_state
+    assert story["outcome_improvement_authorized"] is False
+
+
+@pytest.mark.parametrize(("reviewed", "status"), (
+    ({"available": True, "selected_for_fixture": True}, "selected"),
+    ({"available": True, "selected_for_fixture": False}, "reviewed_not_selected"),
+    ({"available": False, "selected_for_fixture": False}, "not_used"),
+))
+def test_world_story_keeps_review_use_distinct_from_review_availability(
+    reviewed, status,
+):
+    navigator = _completed_navigator()
+    navigator["history_chapters"][0]["reviewed_future_context"] = reviewed
+
+    story = build_manager_world_story(navigator)
+
+    assert story["stages"][1]["status"] == status
+
+
+def test_world_story_bounds_public_counts_and_never_infers_missing_world():
+    navigator = _completed_navigator()
+    chapter = navigator["history_chapters"][0]
+    chapter["matchday"] = float("inf")
+    chapter["action_adoption"]["influenced_decisions"] = 1_000_001
+    chapter["locally_attributable_action_changes"] = -8
+    chapter["persistent_transition_identity"] = None
+    chapter["descriptive_world_after"] = {
+        "result_available": False,
+        "persistent_state_available": False,
+    }
+
+    story = build_manager_world_story(navigator)
+
+    assert story["source"]["matchday"] == 0
+    assert story["metrics"]["influenced_decisions"] == 100_000
+    assert story["metrics"]["locally_attributable_action_changes"] == 0
+    assert story["stages"][3]["status"] == "evidence_unavailable"
+    assert story["stages"][4]["status"] == "evidence_unavailable"

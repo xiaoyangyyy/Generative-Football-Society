@@ -14,7 +14,6 @@ from src.infrastructure import FileLease
 from src.product.web import (
     ProductWebApp,
     _is_loopback_host,
-    _manager_world_story_for_web,
     create_product_web_server,
 )
 from src.product.web_security import WebAccessPolicy
@@ -37,90 +36,6 @@ def _copy_evidence_kit_inputs(target):
     guide = target / "docs/EXCELLENCE_EVIDENCE_KIT.md"
     guide.parent.mkdir(parents=True, exist_ok=True)
     guide.write_bytes((ROOT / "docs/EXCELLENCE_EVIDENCE_KIT.md").read_bytes())
-
-
-def test_manager_world_story_uses_one_latest_chapter_and_stays_noncausal():
-    navigator = {
-        "available": True,
-        "season_id": "season-1",
-        "navigator_identity": "a" * 64,
-        "current_chapter": {},
-        "history_chapters": [{
-            "chapter_identity": "b" * 64,
-            "fixture_id": "fixture-3",
-            "matchday": 3,
-            "reviewed_future_context": {
-                "available": True,
-                "selected_for_fixture": True,
-            },
-            "action_adoption": {
-                "state": "realized_action_change",
-                "influenced_decisions": 4,
-            },
-            "descriptive_world_after": {
-                "result_available": True,
-                "persistent_state_available": True,
-            },
-            "locally_attributable_action_changes": 2,
-            "persistent_transition_identity": "c" * 64,
-        }],
-    }
-
-    story = _manager_world_story_for_web(navigator)
-
-    assert story["story_state"] == "local_action_change_observed"
-    assert story["source"] == {
-        "season_id": "season-1",
-        "navigator_identity": "a" * 64,
-        "chapter_identity": "b" * 64,
-        "fixture_id": "fixture-3",
-        "matchday": 3,
-    }
-    assert [row["status"] for row in story["stages"]] == [
-        "complete",
-        "selected",
-        "changed",
-        "world_persisted",
-        "descriptive_result_only",
-    ]
-    assert story["metrics"] == {
-        "influenced_decisions": 4,
-        "locally_attributable_action_changes": 2,
-        "result_available": True,
-        "persistent_state_available": True,
-    }
-    assert story["same_chapter_evidence"] is True
-    assert story["outcome_improvement_authorized"] is False
-    assert story["causal_effect_authorized"] is False
-
-
-def test_manager_world_story_exposes_current_review_without_fake_result():
-    story = _manager_world_story_for_web({
-        "available": True,
-        "season_id": "season-2",
-        "navigator_identity": "d" * 64,
-        "history_chapters": [],
-        "current_chapter": {
-            "workflow_state": "review_recorded_decision_refrozen",
-            "frozen_decision_identity": "e" * 64,
-            "fixture": {
-                "fixture_id": "fixture-1",
-                "matchday": 1,
-            },
-            "stages": [{
-                "stage_id": "record_manager_review",
-                "status": "review_recorded",
-            }],
-        },
-    })
-
-    assert story["story_state"] == "awaiting_official_world"
-    assert story["source"]["chapter_identity"] is None
-    assert [row["status"] for row in story["stages"]] == [
-        "complete", "selected", "pending", "pending", "pending",
-    ]
-    assert story["metrics"]["result_available"] is False
-    assert story["outcome_improvement_authorized"] is False
 
 
 def _copy_value_study_authority(target):

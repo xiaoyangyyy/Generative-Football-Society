@@ -345,6 +345,17 @@ not quality signals by themselves.
     accessibility checks cover the projection and responsive UI. The complete
     200-file V4.17 regression passes 1,444 tests with three declared skips, and
     the refreshed architecture audit remains fully green.
+61. Moved the world-model contribution story out of the HTTP monolith into a
+    dedicated pure product read model. The Web boundary now builds, validates,
+    attaches and renders it, while exact replay rejects semantic or authority
+    drift. The existing manager-journey gate rejects reverse Web dependencies,
+    an oversized module or a returning inline implementation. Product recovery
+    identity binds the new source directly. Fourteen direct tests cover every
+    action state, review-use state, missing evidence, count bound, immutability,
+    fresh unavailable state and tamper rejection without adding another state
+    authority. The complete 201-file regression passes 1,456 tests with three
+    declared skips; architecture, HTTP, accessibility, recovery and static
+    checks remain green.
 
 ## LLM Scope Decision
 

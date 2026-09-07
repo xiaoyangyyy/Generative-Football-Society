@@ -4499,3 +4499,38 @@ Final V4.17 regression covers all 200 test files: 1,444 tests pass and three
 are declared skips. The refreshed architecture audit is fully green and keeps
 the story inside the existing unified-manager-journey gate rather than adding
 a parallel evidence authority.
+
+## 136. V4.18 Replay-validated manager world-story projection
+
+V4.17 made the world-model contribution chain legible, but its semantic
+projection still lived inside the large HTTP module. That left a product rule --
+how one validated chapter becomes the five-stage contribution story -- owned by
+the presentation boundary and made reuse or independent integrity checks
+unnecessarily difficult.
+
+`src/product/manager_world_story.py` now owns the pure read model. It converts
+one already validated navigator into the current or latest completed story,
+preserves every official action-adoption state, distinguishes selected reviews
+from available-but-unused reviews, bounds public counts and refuses to infer a
+result or persistent transition when either is missing. A separate validator
+rebuilds the complete projection and rejects any field drift, including an
+attempt to enable outcome-improvement or causal authority.
+
+The Web layer now only builds, replay-validates, attaches and renders the read
+model. The old inline helper is removed. The existing unified-manager-journey
+architecture gate enforces the module boundary, its size, the lack of a reverse
+Web dependency and the absence of the old implementation. Product recovery
+identity now includes the new module, so changing its semantics invalidates the
+local recovery receipt instead of inheriting trust through `web.py` alone.
+
+Direct tests cover all five official action states, all three review-use states,
+pre-match behavior, missing result and persistence evidence, fresh unavailable
+objects, bounded counts, source immutability, exact replay and tamper rejection.
+This refactor adds no state, action authority, training, match, formal study,
+participant session, provider call or outcome claim.
+
+Final verification covers all 201 test files: 1,456 tests pass and three are
+declared skips. The one initially stale excellence-snapshot assertion passed
+after its Web hash was refreshed; no behavioral assertion was weakened. Ruff,
+the architecture audit, local HTTP Beta, automated accessibility and recovery
+verification all pass.
