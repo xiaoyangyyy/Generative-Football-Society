@@ -4426,3 +4426,37 @@ temporary cleanup. The complete human-study suite passes seven tests, and the
 original 24-registration concurrency case passes ten consecutive stress
 runs. Ruff passes for both modified files. No participant session, training,
 match, formal experiment or provider call is executed.
+
+## 134. V4.16 Dedicated workspace evidence and readiness projection
+
+`ProductWorkspace` previously owned 575 lines of research-evidence assembly,
+180 lines of mode-specific readiness evaluation, and the formal-result identity
+helper inside the same module as mutable product workflows. That placement made
+an otherwise read-only projection depend on a large orchestration surface and
+made recovery identity changes harder to review.
+
+The implementation now lives in `src/product/workspace_evidence.py`. Its two
+public builders receive only the resolved project root, the current mode, the
+already-built evidence value where applicable, and the existing confined
+artifact resolver. The workspace keeps compatibility facades and explicitly
+re-exports `_formal_evidence_identity` for existing callers. Readiness obtains
+the current evidence exactly once before forwarding it. The new module never
+imports `src.product.workspace`, mutates workspace state, executes a match,
+starts training, registers a participant, or calls an external provider.
+
+A normalized extraction comparison confirms that the formal identity helper
+and both method bodies are otherwise unchanged after replacing `self.root` and
+`self.config.mode` with explicit arguments. Direct tests cover fail-closed empty
+authority, exact facade dependency forwarding, single evidence evaluation, and
+recovery identity inclusion. The architecture audit limits the module size,
+rejects reverse imports and inline evidence reconstruction, and moves three
+existing evidence-owner checks to the dedicated implementation. Product
+recovery now binds both extracted workspace repositories. This stage changes
+no schema, readiness rule, research authority, simulator behavior, or claim
+boundary.
+
+Final verification covers all 200 test files: 1,442 tests pass and three are
+declared skips. Ruff passes every modified Python file, the architecture audit
+is fully green, and the local recovery receipt is current. These checks execute
+zero training, zero matches, zero formal experiments, zero participant
+sessions, and zero provider calls.

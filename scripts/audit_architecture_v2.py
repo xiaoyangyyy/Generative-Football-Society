@@ -159,6 +159,12 @@ def main() -> int:
     workspace_session_tests = (
         ROOT / "tests/test_product_workspace_session.py"
     ).read_text(encoding="utf-8")
+    workspace_evidence = (
+        ROOT / "src/product/workspace_evidence.py"
+    ).read_text(encoding="utf-8")
+    workspace_evidence_tests = (
+        ROOT / "tests/test_product_workspace_evidence.py"
+    ).read_text(encoding="utf-8")
     web = (ROOT / "src/product/web.py").read_text(encoding="utf-8")
     decision_ledger = (
         ROOT / "src/product/decision_ledger.py"
@@ -196,6 +202,7 @@ def main() -> int:
         "src/infrastructure/atomic_io.py",
         "src/product/workspace.py",
         "src/product/workspace_session.py",
+        "src/product/workspace_evidence.py",
         "src/product/recovery.py",
         "src/product/web.py",
         "src/cli.py",
@@ -589,6 +596,36 @@ def main() -> int:
                 '"src/product/workspace_session.py" in CODE_IDENTITY_FILES',
             ))
         ),
+        "product_workspace_evidence_projection_is_dedicated_and_read_only": (
+            all(token in workspace_evidence for token in (
+                "def _formal_evidence_identity(",
+                "def build_workspace_evidence(",
+                "def build_workspace_readiness(",
+                "ArtifactResolver = Callable[[Path, Any], Path | None]",
+                "validate_m2_preflight_receipt(",
+                "validate_m2_candidate_receipt(",
+                "portable_text_hash_matches(",
+                "verify_artifact_manifest(",
+                "environment_snapshot()",
+            ))
+            and "src.product.workspace" not in workspace_evidence
+            and len(workspace_evidence.splitlines()) <= 900
+            and all(token in workspace for token in (
+                "from src.product.workspace_evidence import ( build_workspace_evidence, build_workspace_readiness, )",
+                "def evidence(self) -> dict[str, Any]: return build_workspace_evidence(",
+                "def readiness(self) -> dict[str, Any]: return build_workspace_readiness(",
+                "evidence=self.evidence()",
+                "from src.product.workspace_evidence import ( # noqa: F401 _formal_evidence_identity, )",
+            ))
+            and "def read(relative: str) -> dict:" not in workspace
+            and "LLMGatewayConfig" not in workspace
+            and all(token in workspace_evidence_tests for token in (
+                "test_workspace_evidence_repository_fails_closed_without_authority",
+                "test_product_workspace_evidence_facade_forwards_exact_dependencies",
+                "test_product_workspace_readiness_facade_uses_current_evidence_once",
+                '"src/product/workspace_evidence.py" in CODE_IDENTITY_FILES',
+            ))
+        ),
         "society_agent_psychology_is_dedicated_and_inherited": (
             "from src.simulation.agent_psychology import AgentPsychologyMixin"
             in agent
@@ -849,7 +886,7 @@ def main() -> int:
                 "sampling_uniform = float(rng.random())",
                 "counterfactual_baseline_action = sample_action_from_uniform(",
             ))
-            and all(token in workspace for token in (
+            and all(token in workspace_evidence for token in (
                 "def _formal_evidence_identity(",
                 '"result_identity_verified": mechanism_current',
                 '"result_identity_verified": outcome_current',
@@ -1024,7 +1061,7 @@ def main() -> int:
                 '"matches_executed_by_analyzer": 0',
                 '"outcome_effect_estimate": None',
             ))
-            and all(token in workspace for token in (
+            and all(token in workspace_evidence for token in (
                 '"data/evaluation/manager_advisor_protocol_v1.json"',
                 '"manager_advisor_adoption": {',
                 '"results_available": (',
@@ -2515,7 +2552,7 @@ def main() -> int:
             and (candidate.get("sealed_test") or {}).get("shot", {}).get(
                 "skill_vs_physics_xg_prior", 0.0
             ) < 0.0
-            and all(token in workspace for token in (
+            and all(token in workspace_evidence for token in (
                 '"shot_action_validation": {',
                 '"joint_head_authorized": False',
                 '"physics_xg_fallback_joint_head_not_authorized"',

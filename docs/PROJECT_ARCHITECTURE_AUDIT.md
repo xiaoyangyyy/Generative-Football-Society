@@ -327,6 +327,14 @@ not quality signals by themselves.
     re-raised and temporary state is removed. Injected transient/permanent
     tests and ten consecutive 24-registration stress runs pass without
     weakening the existing process lease or atomic-read contract.
+59. Extracted workspace research-evidence assembly, formal-result identity and
+    mode-specific readiness into a dedicated read-only repository. The facade
+    forwards only root, mode, one current evidence value and the confined
+    artifact resolver, retains the historical helper import, and has no reverse
+    workspace dependency. Direct tests and the architecture audit enforce
+    fail-closed authority, exact forwarding, single evidence evaluation and
+    recovery identity coverage without changing schemas or research gates. The
+    complete 200-file regression passes 1,442 tests with three declared skips.
 
 ## LLM Scope Decision
 

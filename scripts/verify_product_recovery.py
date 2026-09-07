@@ -25,6 +25,7 @@ CODE_IDENTITY_FILES = (
     "src/infrastructure/atomic_io.py",
     "src/product/workspace.py",
     "src/product/workspace_session.py",
+    "src/product/workspace_evidence.py",
     "src/product/recovery.py",
     "src/product/web.py",
     "src/cli.py",
