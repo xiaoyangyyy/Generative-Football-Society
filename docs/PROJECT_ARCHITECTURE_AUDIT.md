@@ -335,6 +335,16 @@ not quality signals by themselves.
     fail-closed authority, exact forwarding, single evidence evaluation and
     recovery identity coverage without changing schemas or research gates. The
     complete 200-file regression passes 1,442 tests with three declared skips.
+60. Added one same-chapter world-model contribution story to the existing
+    matchday command center. It compresses intervention, reviewed futures,
+    official action adoption, persistent world transition and descriptive
+    result evidence without combining independent aggregate populations. The
+    latest source season, navigator, chapter, fixture and matchday remain
+    explicit; pre-match stages never synthesize future evidence; outcome
+    improvement and causal authority remain false. Direct, end-to-end, HTTP and
+    accessibility checks cover the projection and responsive UI. The complete
+    200-file V4.17 regression passes 1,444 tests with three declared skips, and
+    the refreshed architecture audit remains fully green.
 
 ## LLM Scope Decision
 

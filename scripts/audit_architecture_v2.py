@@ -817,6 +817,19 @@ def main() -> int:
                 "renderUnifiedWorkflowWithoutManagerJourney",
                 "item.dataset.stage=id",
                 "item.dataset.status=status",
+                "def _manager_world_story_for_web(",
+                '"same_chapter_evidence": True',
+                '"outcome_improvement_authorized": False',
+                'season["manager_world_story"] = world_story',
+                'command["manager_world_story"] = world_story',
+                'id="manager-world-story"',
+                "function renderManagerWorldStory(",
+                "renderManagerWorldNavigatorWithoutStory",
+            ))
+            and all(token in web_tests for token in (
+                "test_manager_world_story_uses_one_latest_chapter_and_stays_noncausal",
+                "test_manager_world_story_exposes_current_review_without_fake_result",
+                'reviewed_projection["manager_world_story"]',
             ))
             and "innerHTML" not in web
         ),

@@ -4460,3 +4460,42 @@ declared skips. Ruff passes every modified Python file, the architecture audit
 is fully green, and the local recovery receipt is current. These checks execute
 zero training, zero matches, zero formal experiments, zero participant
 sessions, and zero provider calls.
+
+## 135. V4.17 Same-chapter world-model contribution story
+
+The manager surface already exposed intervention sessions, future reviews,
+official action records, persistent transitions and season trajectories, but a
+user still had to reconcile several detailed panels to answer one product
+question: what did the world model visibly contribute in the latest football
+world? Aggregating independent season counts into a funnel would be misleading,
+because each count can cover a different set of fixtures.
+
+Studio now derives one read-only `manager_world_story` from the already
+validated manager world navigator. When a completed chapter exists, all five
+stages come from the same latest chapter: manager intervention, counterfactual
+review, official action adoption, persistent world transition and descriptive
+outcome evidence. The source carries the exact season, navigator, chapter,
+fixture and matchday identities. It distinguishes a realized local action
+change, probability influence without a sampled change, no observed non-zero
+influence, stable-mode non-applicability and missing evidence. A reviewed future
+that was not selected remains distinct from a review that was never used.
+
+Before the first official world is complete, the story uses only the current
+intervention-workspace stages. Action, persistence and result remain pending;
+no future result is synthesized. The five-stage responsive rail is embedded in
+the existing matchday command center and opens the exact source chapter when
+one exists. It adds no second persisted state, recommendation, branch ranking,
+effect estimate or authorization control. `outcome_improvement_authorized` and
+`causal_effect_authorized` are always false.
+
+Two direct projection tests cover a same-chapter realized action change and a
+reviewed pre-match world with no fake result. The existing future-review
+end-to-end test proves the story and command center share the same projection;
+the complete 61-test Web file, real local HTTP Beta verifier and automated
+accessibility contract pass. No match, training, formal experiment, participant
+session or provider call is executed.
+
+Final V4.17 regression covers all 200 test files: 1,444 tests pass and three
+are declared skips. The refreshed architecture audit is fully green and keeps
+the story inside the existing unified-manager-journey gate rather than adding
+a parallel evidence authority.

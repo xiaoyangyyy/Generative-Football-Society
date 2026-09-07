@@ -89,6 +89,172 @@ def _bounded_public_count(value: Any) -> int:
     return max(0, min(100_000, int(number))) if math.isfinite(number) else 0
 
 
+def _manager_world_story_for_web(
+    navigator: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Compress one validated world chapter without inventing a causal funnel."""
+
+    unavailable = {
+        "schema_version": 1,
+        "available": False,
+        "story_state": "unavailable",
+        "source": None,
+        "stages": [],
+        "metrics": {
+            "influenced_decisions": 0,
+            "locally_attributable_action_changes": 0,
+            "result_available": False,
+            "persistent_state_available": False,
+        },
+        "same_chapter_evidence": True,
+        "outcome_improvement_authorized": False,
+        "causal_effect_authorized": False,
+        "claim_boundary": (
+            "same_simulator_chapter_descriptive_chain_not_outcome_causality"
+        ),
+    }
+    if not isinstance(navigator, Mapping) or navigator.get("available") is not True:
+        return unavailable
+
+    current = navigator.get("current_chapter")
+    current = current if isinstance(current, Mapping) else {}
+    history = navigator.get("history_chapters")
+    history = history if isinstance(history, list) else []
+    latest = next((row for row in history if isinstance(row, Mapping)), None)
+    stages: list[dict[str, str]]
+    metrics = dict(unavailable["metrics"])
+
+    if latest is None:
+        current_stages = current.get("stages")
+        current_stages = current_stages if isinstance(current_stages, list) else []
+        stage_status = {
+            str(row.get("stage_id")): str(row.get("status"))
+            for row in current_stages
+            if isinstance(row, Mapping)
+        }
+        intervention = (
+            "complete"
+            if current.get("frozen_decision_identity")
+            else "action_required"
+            if current.get("workflow_state") == "decision_required"
+            else "pending"
+        )
+        review_status = stage_status.get("record_manager_review")
+        future = (
+            "selected"
+            if review_status == "review_recorded"
+            else "available"
+            if stage_status.get("inspect_local_mechanism")
+            in {"scenario_evidence_available", "aggregate_only"}
+            else "pending"
+        )
+        stages = [
+            {"stage_id": "manager_intervention", "status": intervention},
+            {"stage_id": "counterfactual_review", "status": future},
+            {"stage_id": "official_action_adoption", "status": "pending"},
+            {"stage_id": "persistent_world_transition", "status": "pending"},
+            {"stage_id": "outcome_evidence", "status": "pending"},
+        ]
+        source = {
+            "season_id": str(navigator.get("season_id") or ""),
+            "navigator_identity": str(navigator.get("navigator_identity") or ""),
+            "chapter_identity": None,
+            "fixture_id": str(
+                (current.get("fixture") or {}).get("fixture_id") or ""
+            ) if isinstance(current.get("fixture"), Mapping) else "",
+            "matchday": _bounded_public_count(
+                (current.get("fixture") or {}).get("matchday")
+            ) if isinstance(current.get("fixture"), Mapping) else 0,
+        }
+        story_state = "awaiting_official_world"
+    else:
+        reviewed = latest.get("reviewed_future_context")
+        reviewed = reviewed if isinstance(reviewed, Mapping) else {}
+        adoption = latest.get("action_adoption")
+        adoption = adoption if isinstance(adoption, Mapping) else {}
+        world = latest.get("descriptive_world_after")
+        world = world if isinstance(world, Mapping) else {}
+        action_state = str(adoption.get("state") or "evidence_unavailable")
+        action_status = {
+            "realized_action_change": "changed",
+            "probability_influence_only": "influenced_only",
+            "no_nonzero_influence": "no_influence",
+            "not_applicable_stable_mode": "not_applicable",
+            "evidence_unavailable": "evidence_unavailable",
+        }.get(action_state, "evidence_unavailable")
+        stages = [
+            {"stage_id": "manager_intervention", "status": "complete"},
+            {
+                "stage_id": "counterfactual_review",
+                "status": (
+                    "selected"
+                    if reviewed.get("selected_for_fixture") is True
+                    else "reviewed_not_selected"
+                    if reviewed.get("available") is True
+                    else "not_used"
+                ),
+            },
+            {"stage_id": "official_action_adoption", "status": action_status},
+            {
+                "stage_id": "persistent_world_transition",
+                "status": (
+                    "world_persisted"
+                    if latest.get("persistent_transition_identity")
+                    and world.get("persistent_state_available") is True
+                    else "evidence_unavailable"
+                ),
+            },
+            {
+                "stage_id": "outcome_evidence",
+                "status": (
+                    "descriptive_result_only"
+                    if world.get("result_available") is True
+                    else "evidence_unavailable"
+                ),
+            },
+        ]
+        metrics = {
+            "influenced_decisions": _bounded_public_count(
+                adoption.get("influenced_decisions")
+            ),
+            "locally_attributable_action_changes": _bounded_public_count(
+                latest.get("locally_attributable_action_changes")
+            ),
+            "result_available": world.get("result_available") is True,
+            "persistent_state_available": (
+                world.get("persistent_state_available") is True
+            ),
+        }
+        source = {
+            "season_id": str(navigator.get("season_id") or ""),
+            "navigator_identity": str(navigator.get("navigator_identity") or ""),
+            "chapter_identity": str(latest.get("chapter_identity") or ""),
+            "fixture_id": str(latest.get("fixture_id") or ""),
+            "matchday": _bounded_public_count(latest.get("matchday")),
+        }
+        story_state = {
+            "realized_action_change": "local_action_change_observed",
+            "probability_influence_only": "probability_influence_only",
+            "no_nonzero_influence": "no_nonzero_influence",
+            "not_applicable_stable_mode": "not_applicable",
+        }.get(action_state, "evidence_gap")
+
+    return {
+        "schema_version": 1,
+        "available": True,
+        "story_state": story_state,
+        "source": source,
+        "stages": stages,
+        "metrics": metrics,
+        "same_chapter_evidence": True,
+        "outcome_improvement_authorized": False,
+        "causal_effect_authorized": False,
+        "claim_boundary": (
+            "same_simulator_chapter_descriptive_chain_not_outcome_causality"
+        ),
+    }
+
+
 def _match_capabilities() -> dict[str, Any]:
     return {
         "schema_version": 1,
@@ -1189,11 +1355,14 @@ class ProductWebApp:
         world_navigator = build_manager_world_navigator(season)
         validate_manager_world_navigator(world_navigator, season=season)
         season["manager_world_navigator"] = world_navigator
+        world_story = _manager_world_story_for_web(world_navigator)
+        season["manager_world_story"] = world_story
         command = season.get("matchday_command_center")
         if isinstance(command, dict):
             command["manager_future_sets"] = manager_sets
             command["manager_intervention_workspace"] = intervention_workspace
             command["manager_world_navigator"] = world_navigator
+            command["manager_world_story"] = world_story
 
     def _studio_status(self) -> dict[str, Any]:
         session_path = self.root / "data/persistence/product_session.json"
@@ -2334,6 +2503,21 @@ _INDEX_HTML = """<!doctype html>
     .manager-product-step[data-status="available"] { color:var(--accent) }
     .manager-product-step[data-status="action_required"] {
       color:var(--warn); border-color:var(--warn) }
+    .world-story { margin:.8rem 0 1rem; padding:1rem; border:1px solid #49695b;
+      border-radius:12px; background:#0a1210 }
+    .world-story h5 { margin:.1rem 0 .35rem }
+    .world-story-rail { display:grid; grid-template-columns:repeat(5,1fr);
+      gap:.45rem; padding:0; margin:.8rem 0; list-style:none }
+    .world-story-step { padding:.65rem; border:1px solid var(--line);
+      border-radius:9px; color:var(--muted); text-align:center; background:#0c1210 }
+    .world-story-step[data-status="complete"],
+    .world-story-step[data-status="selected"],
+    .world-story-step[data-status="changed"],
+    .world-story-step[data-status="world_persisted"] { color:var(--accent) }
+    .world-story-step[data-status="action_required"],
+    .world-story-step[data-status="available"],
+    .world-story-step[data-status="influenced_only"] {
+      color:var(--warn); border-color:var(--warn) }
     .matchday-step { padding:.55rem; border:1px solid var(--line); border-radius:9px;
       color:var(--muted); text-align:center }
     .matchday-step[data-status="complete"],.matchday-step[data-status="available"] { color:var(--accent) }
@@ -2379,7 +2563,8 @@ _INDEX_HTML = """<!doctype html>
     pre { max-height:340px; overflow:auto; padding:1rem; border-radius:10px; background:#070a09;
       color:#cbd5d0; white-space:pre-wrap; overflow-wrap:anywhere }
     [hidden] { display:none!important }
-    @media(max-width:520px){ .row,.matchday-journey,.manager-product-journey { grid-template-columns:1fr } header { padding-top:2rem }
+    @media(max-width:520px){ .row,.matchday-journey,.manager-product-journey,
+      .world-story-rail { grid-template-columns:1fr } header { padding-top:2rem }
       .workspace-nav { position:static } .workspace-nav button { flex:1 1 45% }
       .workspace-nav .status { flex-basis:100%; text-align:left } }
     @media(prefers-reduced-motion:no-preference){ section { animation:rise .45s ease both }
@@ -2456,6 +2641,13 @@ _INDEX_HTML = """<!doctype html>
       <section id="manager-world-navigator" aria-labelledby="manager-world-navigator-title" hidden>
         <h4 id="manager-world-navigator-title">赛季世界导航</h4>
         <p id="manager-world-navigator-summary" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+        <section id="manager-world-story" class="world-story" aria-labelledby="manager-world-story-title" hidden>
+          <h5 id="manager-world-story-title">&#26412;&#36718;&#19990;&#30028;&#27169;&#22411;&#36129;&#29486;&#38142;</h5>
+          <p id="manager-world-story-summary" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <ol id="manager-world-story-stages" class="world-story-rail" aria-label="&#26412;&#36718;&#19990;&#30028;&#27169;&#22411;&#36129;&#29486;&#38142;"></ol>
+          <button id="manager-world-story-open" type="button" class="secondary" hidden>&#25171;&#24320;&#26412;&#36718;&#23436;&#25972;&#19990;&#30028;&#35777;&#25454;</button>
+          <p class="status">&#23558;&#21516;&#19968;&#22330;&#24050;&#39564;&#35777;&#35777;&#25454;&#21387;&#32553;&#25104;&#19968;&#26465;&#21487;&#35835;&#38142;&#36335;&#65292;&#19981;&#25226;&#20849;&#29616;&#21319;&#32423;&#20026;&#36187;&#26524;&#22240;&#26524;&#12290;</p>
+        </section>
         <div id="manager-world-navigator-current"></div>
         <div class="decision-preview" aria-labelledby="manager-world-influence-title">
           <h5 id="manager-world-influence-title">世界模型进入正式世界</h5>
@@ -2651,6 +2843,7 @@ const workspaceNav=document.querySelector('#workspace-nav'),workspaceViewDescrip
 const cards=document.querySelector('#cards'),setup=document.querySelector('#setup-form'),match=document.querySelector('#match-form'),pairPanel=document.querySelector('#pair-panel'),pairForm=document.querySelector('#pair-form'),forkPanel=document.querySelector('#fork-panel'),forkForm=document.querySelector('#fork-form'),studyPanel=document.querySelector('#study-panel'),studyForm=document.querySelector('#study-form'),seasonPanel=document.querySelector('#season-panel'),seasonForm=document.querySelector('#season-form'),seasonSummary=document.querySelector('#season-summary'),matchdayCommand=document.querySelector('#matchday-command-center'),matchdayJourney=document.querySelector('#matchday-journey'),matchdayBriefing=document.querySelector('#matchday-briefing'),matchdayIntelligence=document.querySelector('#matchday-intelligence'),matchdayDebrief=document.querySelector('#matchday-debrief'),matchdayAttribution=document.querySelector('#matchday-attribution'),managerDecisionLedger=document.querySelector('#manager-decision-ledger'),managerDecisionLedgerSummary=document.querySelector('#manager-decision-ledger-summary'),managerDecisionLedgerList=document.querySelector('#manager-decision-ledger-list'),managerDecisionForm=document.querySelector('#manager-decision-form'),managerFixture=document.querySelector('#manager-fixture'),managerTactic=managerDecisionForm.querySelector('[name="tactic"]'),managerRotation=managerDecisionForm.querySelector('[name="rotation"]'),managerManual=document.querySelector('#manager-manual-lineup'),managerSquadStatus=document.querySelector('#manager-squad-status'),managerSquad=document.querySelector('#manager-squad'),managerRules=[...managerDecisionForm.querySelectorAll('.manager-rule')],managerDecisionPreview=document.querySelector('#manager-decision-preview'),managerDecisionSubmit=managerDecisionForm.querySelector('button[type="submit"]'),managerWorldModelAdvice=document.querySelector('#manager-world-model-advice'),managerWorldModelAdviceSummary=document.querySelector('#manager-world-model-advice-summary'),managerWorldModelAdviceCandidates=document.querySelector('#manager-world-model-advice-candidates'),requestManagerAdvice=document.querySelector('#request-manager-advice'),adoptManagerAdvice=document.querySelector('#adopt-manager-advice'),seasonActions=document.querySelector('#season-actions'),playMatchday=document.querySelector('#play-matchday'),seasonStandings=document.querySelector('#season-standings'),seasonFixtures=document.querySelector('#season-fixtures');let activePoll='',restoreTrigger=null,currentSeason=null,managerPreviewTimer=0,managerPreviewSequence=0,managerPreviewBaseRevision=null,currentManagerAdvice=null,managerAdviceIntent=null;
 const managerCareerContract=document.querySelector('#manager-career-contract'),managerProfilePanel=document.querySelector('#manager-profile'),seasonHistorySummary=document.querySelector('#season-history-summary'),seasonHistory=document.querySelector('#season-history'),seasonObjective=seasonForm.querySelector('[name="manager_objective"]'),seasonPointsTarget=seasonForm.querySelector('[name="manager_points_target"]'),clubResourceSummary=document.querySelector('#club-resource-summary'),clubResourceInputs=[...seasonForm.querySelectorAll('[name^="resource_"]')];let currentCareer=null;
 const managerWorldNavigator=document.querySelector('#manager-world-navigator'),managerWorldNavigatorSummary=document.querySelector('#manager-world-navigator-summary'),managerWorldNavigatorCurrent=document.querySelector('#manager-world-navigator-current'),managerWorldInfluencePath=document.querySelector('#manager-world-influence-path'),managerWorldGapDiagnostics=document.querySelector('#manager-world-gap-diagnostics'),managerWorldGapSummary=document.querySelector('#manager-world-gap-summary'),managerWorldGapList=document.querySelector('#manager-world-gap-list'),managerWorldNavigatorAction=document.querySelector('#manager-world-navigator-action'),managerWorldNavigatorSecondary=document.querySelector('#manager-world-navigator-secondary'),managerWorldNavigatorGaps=document.querySelector('#manager-world-navigator-gaps'),managerWorldNavigatorHistory=document.querySelector('#manager-world-navigator-history');
+const managerWorldStory=document.querySelector('#manager-world-story'),managerWorldStorySummary=document.querySelector('#manager-world-story-summary'),managerWorldStoryStages=document.querySelector('#manager-world-story-stages'),managerWorldStoryOpen=document.querySelector('#manager-world-story-open');
 const managerWorldActionAdoptionMetrics=document.querySelector('#manager-world-action-adoption-metrics'),managerWorldActionAdoptionSummary=document.querySelector('#manager-world-action-adoption-summary'),managerWorldActionAdoptionDiagnostics=document.querySelector('#manager-world-action-adoption-diagnostics'),managerWorldActionAdoptionStates=document.querySelector('#manager-world-action-adoption-states');
 const managerWorldActionTransitionMap=document.querySelector('#manager-world-action-transition-map'),managerWorldActionTransitionMapSummary=document.querySelector('#manager-world-action-transition-map-summary'),managerWorldActionTransitionTable=document.querySelector('#manager-world-action-transition-table'),managerWorldActionTransitionTableBody=document.querySelector('#manager-world-action-transition-table-body'),managerWorldActionTransitionDetail=document.querySelector('#manager-world-action-transition-detail'),managerWorldActionTransitionSelection=document.querySelector('#manager-world-action-transition-selection'),managerWorldActionTransitionWorld=document.querySelector('#manager-world-action-transition-world'),managerWorldActionTransitionBoundary=document.querySelector('#manager-world-action-transition-boundary'),managerWorldActionTransitionOpen=document.querySelector('#manager-world-action-transition-open');
 const managerWorldTrajectory=document.querySelector('#manager-world-trajectory'),managerWorldTrajectorySummary=document.querySelector('#manager-world-trajectory-summary'),managerWorldTrajectoryList=document.querySelector('#manager-world-trajectory-list');
@@ -2949,6 +3142,9 @@ const renderManagerWorldActionAdoptionLedgerWithoutWorldPropagation=renderManage
 renderManagerWorldActionAdoptionLedger=season=>{renderManagerWorldActionAdoptionLedgerWithoutWorldPropagation(season);const navigator=season?.manager_world_navigator,ledger=navigator?.summary?.world_model_action_adoption_ledger;if(!ledger)return;const overall=ledger.descriptive_world_after;if(overall)managerWorldActionAdoptionSummary.textContent+=' · 后续赛果 '+Number(overall.results_available||0)+' 场 · 持久状态 '+Number(overall.persistent_state_chapters||0)+' 场';const rows=ledger.state_counts||[],nodes=[...managerWorldActionAdoptionStates.children];for(const [index,row] of rows.entries()){const node=nodes[index],world=row.descriptive_world_after;if(!node||!world)continue;const propagation=document.createElement('p');propagation.className='status';propagation.textContent=managerWorldPropagationText(world);node.insertBefore(propagation,node.lastChild)}const chapters=(navigator.history_chapters||[]).slice(0,6),history=[...managerWorldNavigatorHistory.children],outcomeLabels={win:'胜',draw:'平',loss:'负'};for(const [index,chapter] of chapters.entries()){const node=history[index],world=chapter.descriptive_world_after;if(!node||!world)continue;const line=document.createElement('p'),metrics=world.metrics_delta||{},changes=world.transition_summary||{};line.className='status';line.textContent='同章后续：'+(world.result_available?(outcomeLabels[world.outcome]||world.outcome)+' · '+Number(world.points_earned||0)+' 分':'赛果不可用')+' · '+(world.persistent_state_available?'疲劳 '+Number(metrics.team_fatigue_ema||0).toFixed(3)+' · 士气 '+Number(metrics.squad_morale_ema||0).toFixed(3)+' · 新伤 '+Number(changes.new_injuries||0):'持久状态不可用');node.insertBefore(line,node.lastChild)}};
 const renderManagerWorldActionAdoptionLedgerWithoutBoundedSemantics=renderManagerWorldActionAdoptionLedger;
 renderManagerWorldActionAdoptionLedger=season=>{renderManagerWorldActionAdoptionLedgerWithoutBoundedSemantics(season);const sample=season?.manager_world_navigator?.summary?.world_model_action_adoption_ledger?.bounded_semantic_examples;if(!sample)return;managerWorldActionAdoptionSummary.textContent+=' · 有界语义样例 '+Number(sample.retained_semantic_examples||0)+' · 覆盖完整 '+Number(sample.fixtures_with_complete_coverage||0)+' 场 · 截断 '+Number(sample.fixtures_with_truncated_examples||0)+' 场 · 传中 '+Number(sample.semantic_cross_action_examples||0)+' · 直接偏好 '+Number(sample.semantic_direct_preference_examples||0)+' · 仅抑制 '+Number(sample.semantic_suppression_only_examples||0)+' · 持球再分配 '+Number(sample.semantic_hold_reference_redistribution_examples||0)+' · 全量分布未授权'};
+function renderManagerWorldStory(season){const story=season?.manager_world_story;managerWorldStoryStages.replaceChildren();managerWorldStoryOpen.hidden=true;managerWorldStoryOpen.disabled=true;managerWorldStoryOpen.dataset.fixtureId='';managerWorldStoryOpen.dataset.chapterIdentity='';managerWorldStory.hidden=!story?.available;if(!story?.available){managerWorldStorySummary.textContent='';return}const stageLabels={manager_intervention:'\u7ecf\u7406\u5e72\u9884',counterfactual_review:'\u672a\u6765\u590d\u6838',official_action_adoption:'\u6b63\u5f0f\u52a8\u4f5c',persistent_world_transition:'\u4e16\u754c\u5ef6\u7eed',outcome_evidence:'\u8d5b\u679c\u8fb9\u754c'},statusLabels={complete:'\u5df2\u5b8c\u6210',selected:'\u5df2\u9009\u62e9',reviewed_not_selected:'\u5df2\u590d\u6838\u4f46\u672a\u91c7\u7528',not_used:'\u672c\u8f6e\u672a\u4f7f\u7528',changed:'\u52a8\u4f5c\u5df2\u6539\u53d8',influenced_only:'\u4ec5\u6982\u7387\u5f71\u54cd',no_influence:'\u65e0\u975e\u96f6\u5f71\u54cd',not_applicable:'\u7a33\u5b9a\u6a21\u5f0f\u4e0d\u9002\u7528',evidence_unavailable:'\u8bc1\u636e\u4e0d\u53ef\u7528',world_persisted:'\u5df2\u6301\u4e45\u5316',descriptive_result_only:'\u4ec5\u63cf\u8ff0\u8d5b\u679c',pending:'\u5f85\u6267\u884c',action_required:'\u9700\u8981\u51b3\u7b56',available:'\u53ef\u590d\u6838'};for(const stage of story.stages||[]){const item=document.createElement('li');item.className='world-story-step';item.dataset.status=String(stage.status||'pending');if(['action_required','available'].includes(stage.status))item.setAttribute('aria-current','step');item.textContent=(stageLabels[stage.stage_id]||stage.stage_id)+' \u00b7 '+(statusLabels[stage.status]||stage.status);managerWorldStoryStages.append(item)}const source=story.source||{},metrics=story.metrics||{},stateLabels={local_action_change_observed:'\u672c\u8f6e\u52a8\u4f5c\u6539\u53d8',probability_influence_only:'\u4e16\u754c\u6a21\u578b\u5f71\u54cd\u4e86\u52a8\u4f5c\u6982\u7387\u4f46\u672a\u8de8\u8fc7\u91c7\u6837\u8fb9\u754c',no_nonzero_influence:'\u672a\u89c2\u5bdf\u5230\u975e\u96f6\u52a8\u4f5c\u5f71\u54cd',not_applicable:'\u8be5\u6a21\u5f0f\u4e0d\u9002\u7528\u52a8\u4f5c\u91c7\u7528',evidence_gap:'\u8bc1\u636e\u94fe\u4e0d\u5b8c\u6574',awaiting_official_world:'\u7b49\u5f85\u6b63\u5f0f\u4e16\u754c'};managerWorldStorySummary.textContent=(source.chapter_identity?'\u6700\u8fd1\u5b8c\u6210\u4e16\u754c \u00b7 \u7b2c '+Number(source.matchday||0)+' \u8f6e \u00b7 '+String(source.fixture_id||''):'\u5c1a\u65e0\u5df2\u5b8c\u6210\u4e16\u754c\u7ae0\u8282\u3002')+' \u00b7 '+(stateLabels[story.story_state]||story.story_state)+' \u00b7 \u5c40\u90e8\u52a8\u4f5c\u6539\u53d8 '+Number(metrics.locally_attributable_action_changes||0)+' \u00b7 \u8d5b\u679c\u6539\u5584\u4ecd\u672a\u5efa\u7acb';if(source.chapter_identity&&source.fixture_id){managerWorldStoryOpen.hidden=false;managerWorldStoryOpen.disabled=false;managerWorldStoryOpen.dataset.fixtureId=String(source.fixture_id);managerWorldStoryOpen.dataset.chapterIdentity=String(source.chapter_identity);managerWorldStoryOpen.onclick=()=>navigateManagerWorldChapter(managerWorldStoryOpen.dataset.fixtureId,managerWorldStoryOpen.dataset.chapterIdentity)}}
+const renderManagerWorldNavigatorWithoutStory=renderManagerWorldNavigator;
+renderManagerWorldNavigator=season=>{renderManagerWorldNavigatorWithoutStory(season);renderManagerWorldStory(season)};
 const renderManagerWorldNavigatorWithoutActionAdoptionLedger=renderManagerWorldNavigator;
 renderManagerWorldNavigator=season=>{renderManagerWorldNavigatorWithoutActionAdoptionLedger(season);renderManagerWorldActionAdoptionLedger(season)};
 function renderManagerWorldTrajectory(season){managerWorldTrajectoryList.replaceChildren();const trajectory=season?.manager_world_navigator?.world_trajectory,points=trajectory?.points||[];managerWorldTrajectory.hidden=!points.length;if(!points.length)return;managerWorldTrajectorySummary.textContent='逐轮世界轨迹 · '+Number(trajectory.visible_points||0)+' / '+Number(trajectory.total_points||0)+' 个章节'+(trajectory.points_truncated?' · 仅显示最近窗口':'')+' · 赛果证据 '+Number(trajectory.results_available||0)+' · 持久状态 '+Number(trajectory.persistent_state_chapters||0);const outcomes={win:'胜',draw:'平',loss:'负'},states={realized_action_change:'动作已改变',probability_influence_only:'仅概率影响',no_nonzero_influence:'无非零影响',not_applicable_stable_mode:'稳定模式不适用',evidence_unavailable:'动作证据不可用'},markerLabels={local_action_change:'局部动作改变',result_evidence_unavailable:'赛果缺失',persistent_state_evidence_unavailable:'持久状态缺失',recovery_pending:'恢复待完成',new_injury:'新增伤病',new_suspension:'新增停赛',continuity_gap:'证据链断点'};for(const point of points){const cumulative=point.cumulative||{},metrics=point.match_metrics_delta||{},changes=point.match_transition_summary||{},node=card('第 '+Number(point.matchday||0)+' 轮 · '+String(point.fixture_id||''),(point.result_available?(outcomes[point.outcome]||point.outcome)+' · '+Number(point.points_earned||0)+' 分':'赛果不可用')),facts=document.createElement('p'),running=document.createElement('p'),markers=document.createElement('p'),open=document.createElement('button');node.setAttribute('role','listitem');facts.className=running.className=markers.className='status';facts.textContent=(states[point.action_adoption_state]||point.action_adoption_state)+' · 局部动作改变 '+Number(point.locally_attributable_action_changes||0)+' · '+(point.persistent_state_available?'疲劳 '+Number(metrics.team_fatigue_ema||0).toFixed(3)+' · 士气 '+Number(metrics.squad_morale_ema||0).toFixed(3)+' · 新伤 '+Number(changes.new_injuries||0):'持久状态不可用');running.textContent='赛季累计：'+Number(cumulative.points_earned||0)+' 分 · 赛果证据 '+Number(cumulative.results_available||0)+' 场 · 持久状态 '+Number(cumulative.persistent_state_chapters||0)+' 场 · 动作改变 '+Number(cumulative.locally_attributable_action_changes||0);const labels=(point.world_change_markers||[]).map(value=>markerLabels[value]||value);markers.textContent=labels.length?'变化标记：'+labels.join(' · '):'本章无已声明变化标记';open.type='button';open.className='secondary';open.textContent='打开该轮完整世界章节';open.dataset.fixtureId=String(point.fixture_id||'');open.dataset.chapterIdentity=String(point.chapter_identity||'');open.setAttribute('aria-pressed','false');open.disabled=!open.dataset.fixtureId||!/^[0-9a-f]{64}$/.test(open.dataset.chapterIdentity);open.addEventListener('click',()=>navigateManagerWorldChapter(open.dataset.fixtureId,open.dataset.chapterIdentity));node.append(facts,running,markers,open);managerWorldTrajectoryList.append(node)}}
