@@ -15,9 +15,9 @@ from src.match_engine.world_model.config import (
     default_checkpoint_path,
     default_shot_head_path,
 )
-from src.match_engine.world_model.action_codec import decode_action_kind
+from src.match_engine.world_model.action_codec import ACTION_DIM, decode_action_kind
 from src.match_engine.world_model.model import LatentWorldModel, WorldModelOutput, load_checkpoint
-from src.match_engine.world_model.observation import encode_observation
+from src.match_engine.world_model.observation import OBS_DIM, encode_observation
 from src.match_engine.world_model.schema import (
     HORIZON_INDEX,
     HORIZON_SCALE_SECONDS,
@@ -30,6 +30,7 @@ from src.match_engine.world_model.uncertainty import (
     compose_uncertainty,
     compound_uncertainty,
     ensemble_uncertainty_decomposition,
+    transition_ensemble_uncertainty,
 )
 from src.match_engine.world_model.state_scales import (
     FALSIFIABLE_SEMANTIC_EVENTS,
@@ -854,6 +855,121 @@ class WorldModelRuntime:
                 state_scales["semantic_event_probabilities"]
             ),
             "distributional_policy_utility": distributional_utility,
+        }
+
+    def predict_policy_utility_sequence(
+        self,
+        obs: np.ndarray,
+        actions: np.ndarray,
+        *,
+        action_kind: str,
+        attacking_home: bool,
+    ) -> dict[str, object]:
+        """Evaluate an explicit two-action plan with member-consistent dynamics.
+
+        This is deliberately separate from ``predict_policy_utility``. The
+        latter repeats one action when a long horizon spans several model
+        steps, while M2 sequence evidence is trained on observed action
+        sequences. Runtime action control must therefore supply both actions
+        explicitly and expose the exact sequence in its audit record.
+        """
+        clean_obs = np.clip(
+            np.nan_to_num(
+                np.asarray(obs, dtype=np.float32),
+                nan=0.0,
+                posinf=1.0,
+                neginf=0.0,
+            ),
+            0.0,
+            1.0,
+        )
+        if clean_obs.shape != (OBS_DIM,):
+            raise ValueError(
+                f"M2 sequence observation must have shape [{OBS_DIM}]"
+            )
+        raw_actions = np.asarray(actions, dtype=np.float32)
+        if raw_actions.ndim != 2 or raw_actions.shape != (2, ACTION_DIM):
+            raise ValueError(
+                f"M2 sequence actions must have shape [2, {ACTION_DIM}]"
+            )
+        if not np.isfinite(raw_actions).all():
+            raise ValueError("M2 sequence actions must be finite")
+        clean_actions = strip_outcome_leakage(raw_actions)
+        clean_actions[:, HORIZON_INDEX] = np.clip(
+            clean_actions[:, HORIZON_INDEX], 0.0, 1.0,
+        )
+        action_sequence = [
+            decode_action_kind(action) for action in clean_actions
+        ]
+        if any(kind == "other" for kind in action_sequence):
+            raise ValueError("M2 sequence actions must have explicit action kinds")
+        with torch.no_grad():
+            member_predictions = self.model.transition_rollout_predictions(
+                torch.from_numpy(clean_obs).unsqueeze(0),
+                torch.from_numpy(clean_actions).unsqueeze(0),
+            )
+        future_members = member_predictions.detach().cpu().numpy()
+        future = np.asarray(
+            future_members.mean(axis=0).squeeze(0), dtype=np.float64,
+        )
+        components = transition_policy_utility_numpy(
+            np.asarray(clean_obs, dtype=np.float64),
+            future,
+            attacking_home=attacking_home,
+        )
+        ensemble = transition_ensemble_uncertainty(
+            future_members,
+            trained=bool(getattr(
+                self.model, "transition_ensemble_trained", False,
+            )),
+        )
+        epistemic_uncertainty = float(ensemble["epistemic_uncertainty"])
+        aleatoric_uncertainty = compound_uncertainty(
+            self.progress_aleatoric_scale, 2,
+        )
+        uncertainty = compose_uncertainty(
+            epistemic_uncertainty, aleatoric_uncertainty,
+        )
+        self.last_decision_uncertainty = uncertainty
+        self.last_uncertainty = uncertainty
+        possession_home = float(np.clip(future[209], 0.0, 1.0))
+        segment_horizons_s = [
+            float(action[HORIZON_INDEX] * HORIZON_SCALE_SECONDS)
+            for action in clean_actions
+        ]
+        return {
+            "prediction_source": "explicit_changing_action_sequence_rollout",
+            "planning_mode": "open_loop_shared_continuation_policy",
+            "rollout_steps": 2,
+            "action_sequence": action_sequence,
+            "segment_horizons_s": segment_horizons_s,
+            "horizon_s": float(sum(segment_horizons_s)),
+            "policy_utility": float(np.asarray(
+                components["policy_utility"],
+            )),
+            "policy_utility_version": POLICY_UTILITY_VERSION,
+            "progress": float(np.asarray(
+                components["territorial_delta"],
+            )),
+            "retention_probability": (
+                possession_home if attacking_home else 1.0 - possession_home
+            ),
+            "possession_delta": float(np.asarray(
+                components["possession_delta"],
+            )),
+            "goal_diff_delta": float(np.asarray(
+                components["goal_diff_delta"],
+            )),
+            "uncertainty": uncertainty,
+            "epistemic_uncertainty": epistemic_uncertainty,
+            "aleatoric_uncertainty": aleatoric_uncertainty,
+            "uncertainty_source": (
+                "transition_ensemble_plus_compounded_progress_residual"
+            ),
+            "uncertainty_components": ensemble,
+            "sequence_gate": self.policy_utility_sequence_authority(
+                action_kind, rollout_steps=2,
+            ),
         }
 
     def semantic_event_head_gate(

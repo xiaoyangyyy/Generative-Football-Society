@@ -116,6 +116,7 @@ def validate_m2_candidate_receipt(
         sealed_validation = eligibility.get("sealed_validation") or {}
         if not (
             all_required_gates_open
+            and eligibility.get("sequence_predictor_available") is True
             and (eligibility.get("two_step_gate") or {}).get("active") is True
             and eligibility.get("dataset_manifest_identity_verified") is True
             and eligibility.get("sealed_test_unused_by_training") is True

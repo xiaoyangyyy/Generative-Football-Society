@@ -2784,6 +2784,34 @@ def main() -> int:
                 "policy_utility_two_step.pass",
             ]
         ),
+        "m2_runtime_consumes_explicit_shared_continuation_sequences": (
+            all(token in m2_runtime for token in (
+                "def predict_policy_utility_sequence(",
+                "self.model.transition_rollout_predictions(",
+                "strip_outcome_leakage(raw_actions)",
+                '"explicit_changing_action_sequence_rollout"',
+                '"open_loop_shared_continuation_policy"',
+                "self.policy_utility_sequence_authority(",
+            ))
+            and all(token in world_model_planner for token in (
+                "def _shared_pass_hold_continuation_policy(",
+                "continuation_policy=continuation_policy",
+                '"common_continuation_policy"',
+                '"policy_utility_sequence_runtime_contract_missing"',
+                "sequence_authority_method(",
+                "two_step_gate_method()",
+            ))
+            and all(token in m2_study for token in (
+                '"sequence_predictor_available"',
+                'runtime, "predict_policy_utility_sequence", None',
+                "and sequence_predictor_available",
+            ))
+            and (
+                'eligibility.get("sequence_predictor_available") is True'
+                in mirrored_policy_evaluation
+            )
+            and "temperature=context.temperature" in action_engine
+        ),
         "wheel_preserves_src_console_namespace": (
             pyproject.get("project", {}).get("scripts", {}).get("gfs") == "src.cli:main"
             and package_find.get("where") == ["."]

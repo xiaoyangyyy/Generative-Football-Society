@@ -369,6 +369,20 @@ not quality signals by themselves.
     top-level boolean. The complete 202-file regression passes 1,460 tests with
     three declared skips, and the architecture audit enforces the complete path
     while making no model-effect or outcome claim.
+63. Closed the remaining gap between M2 sequence qualification and runtime action
+    control. A dedicated runtime API now executes exactly two explicit cleaned
+    actions through member-consistent dynamics and reports sequence identity,
+    actor-centred utility and calibrated uncertainty. High-level pass and cross
+    comparisons marginalize every first action under one common pass/hold
+    continuation policy derived from pre-model utilities and the simulator's
+    actual temperature. One-step, sequence and two-step state gates must all be
+    open; missing interfaces, malformed outputs or incomplete continuation
+    support fail closed without a one-step fallback. Direct runtime and planner
+    tests cover explicit sequence calls, common weights, leakage removal and all
+    rejection paths. Candidate qualification and receipt replay require the
+    predictor before formal execution. No checkpoint was trained and no match
+    was executed. The complete 202-file regression passes 1,467 tests with three
+    declared skips.
 
 ## LLM Scope Decision
 
@@ -389,9 +403,10 @@ cleaning, or direct unaudited state mutation.
 ## Priority Research Queue
 
 1. When training is explicitly authorized, produce one frozen M2 checkpoint
-   with the joint changing-action utility objective and require every registered
-   development and sealed gate before the 360-run study. Do not retrofit the
-   new authority onto the current v9 checkpoint.
+   with the joint changing-action utility objective and explicit shared-
+   continuation runtime contract, then require every registered development and
+   sealed gate before the 360-run study. Do not retrofit the new authority onto
+   the current v9 checkpoint.
 2. Keep the completed `SocietyAgent` facade closed: new governance, tactics,
    reflection, condition, psychology, memory, social or match behavior belongs
    to its existing dedicated layer and must not re-enter the facade.

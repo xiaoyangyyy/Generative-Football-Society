@@ -4577,3 +4577,46 @@ with three declared skips; Ruff and the architecture audit are green. No
 training, match, formal study, participant session or provider call was
 executed, so this stage establishes code and qualification correctness only,
 not model efficacy.
+
+## 138. V4.20 Explicit shared-continuation M2 action planning
+
+V4.19 qualified two-step policy utility learned from observed changing-action
+sequences, but high-level runtime control still called the one-action predictor.
+That predictor normally used one step and repeated the same conditioned action
+whenever a longer horizon requested more steps. The sequence qualification gate
+therefore did not yet identify the quantity that changed the action simplex.
+
+Runtime now has a separate explicit sequence predictor. It accepts exactly two
+finite 18-dimensional actions, strips every outcome-label slot before inference,
+and calls the member-consistent changing-action rollout directly. The result
+records both action kinds, both segment horizons, the exact prediction source,
+actor-centred policy utility and transition-ensemble plus compounded-residual
+uncertainty. Malformed or implicit actions are rejected rather than repaired into
+a planning claim.
+
+For each high-level first action, M2 evaluates the same frozen continuation
+policy. That policy is derived from the simulator's pre-world-model pass/hold
+utilities with the real action temperature, so neither candidate receives a
+different downstream policy merely because the world model prefers it. The
+planner marginalizes utility and uncertainty across the shared continuation
+branches and records every branch weight, sequence and value. This is an
+open-loop common-continuation comparison, not closed-loop tree search; the
+boundary is explicit in both runtime output and action-adoption evidence.
+
+Direct M2 action authority now requires the legacy action-quality gate, the
+one-step policy-utility gate, the exact two-step sequence gate, the calibrated
+two-step state gate and the explicit sequence-predictor identity. Missing runtime
+methods, closed gates, malformed predictions or an incomplete common
+continuation policy all fail closed and cannot fall back to one-step control.
+The sequence gates authorize the evaluated depth but are not multiplied into a
+second continuous penalty after the established M2 authority weight.
+Candidate qualification and receipt replay also require the explicit sequence
+predictor to exist before sealed validation or any 360-run execution can start.
+
+Direct tests cover all four pass/hold first-action and continuation combinations,
+common weights, gate provenance, missing-runtime rejection, incomplete-policy
+rejection, real member rollout, result-label removal and malformed inputs. The
+architecture audit now rejects any return to qualification-only sequence support.
+This stage changes code and prospective M2 identity only. It does not train a
+checkpoint, execute a match or establish model efficacy. The complete 202-file
+regression passes 1,467 tests with three declared skips.

@@ -1091,6 +1091,7 @@ def test_standalone_m2_candidate_receipt_is_visible_without_running_study(
             "required_policy_utility_sequence_gates": {
                 "pass": {"authorized": True},
             },
+            "sequence_predictor_available": True,
             "two_step_gate": {"active": True},
             "dataset_manifest_identity_verified": True,
             "sealed_test_unused_by_training": True,

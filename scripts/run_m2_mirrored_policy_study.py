@@ -278,6 +278,9 @@ def candidate_eligibility(
     sequence_authority = getattr(
         runtime, "policy_utility_sequence_authority", None,
     )
+    sequence_predictor_available = callable(getattr(
+        runtime, "predict_policy_utility_sequence", None,
+    ))
     sequence_gates = {
         action: (
             sequence_authority(action, rollout_steps=2)
@@ -327,6 +330,7 @@ def candidate_eligibility(
     development_ready = bool(
         all(gate.get("authorized") for gate in gates.values())
         and all(gate.get("authorized") for gate in sequence_gates.values())
+        and sequence_predictor_available
         and two_step.get("active")
         and runtime.pass_quality >= runtime.cfg.min_planner_quality
         and training_configuration_verified
@@ -378,6 +382,7 @@ def candidate_eligibility(
         "eligible": eligible,
         "required_policy_utility_gates": gates,
         "required_policy_utility_sequence_gates": sequence_gates,
+        "sequence_predictor_available": sequence_predictor_available,
         "optional_policy_utility_gates": optional,
         "two_step_gate": two_step,
         "dataset_manifest": candidate["dataset_manifest"],

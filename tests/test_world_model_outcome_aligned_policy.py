@@ -27,8 +27,10 @@ from src.match_engine.world_model.action_adoption import (
 from src.match_engine.world_model.action_codec import (
     decode_action_kind,
     decode_action_kinds,
+    encode_high_level_action,
 )
 from src.match_engine.world_model.config import world_model_controls_side
+from src.match_engine.world_model.inference import WorldModelRuntime
 from src.match_engine.world_model.observation import OBS_DIM
 from src.match_engine.world_model.planner import action_imagination_adjustments
 from src.match_engine.world_model.mirrored_policy_evaluation import (
@@ -342,6 +344,7 @@ class _M2Runtime:
         )
         self.gate_open = gate_open
         self.last_uncertainty = 0.1
+        self.sequence_calls = []
 
     def encode_state(self, state, *, attacking_home):
         return _observation(attacking_home=attacking_home)
@@ -356,6 +359,50 @@ class _M2Runtime:
             "reason": (
                 "grouped_heldout_policy_utility_gain"
                 if self.gate_open else "policy_utility_evidence_gate_closed"
+            ),
+        }
+
+    def policy_utility_sequence_authority(self, action_kind, *, rollout_steps=2):
+        return {
+            "authorized": (
+                self.gate_open and action_kind == "pass" and rollout_steps == 2
+            ),
+            "authority": 0.70 if self.gate_open else 0.0,
+            "action_kind": action_kind,
+            "rollout_steps": rollout_steps,
+            "reason": (
+                "grouped_heldout_changing_action_policy_utility_gain"
+                if self.gate_open else "policy_utility_sequence_gate_closed"
+            ),
+        }
+
+    def two_step_planning_gate(self):
+        return {
+            "active": self.gate_open,
+            "authority": 0.5 if self.gate_open else 0.0,
+            "reason": (
+                "trained_calibrated_grouped_two_step_gain"
+                if self.gate_open else "two_step_evidence_gate_closed"
+            ),
+        }
+
+    def predict_policy_utility_sequence(
+        self, observation, actions, *, action_kind, attacking_home,
+    ):
+        sequence = [decode_action_kind(action) for action in actions]
+        self.sequence_calls.append(sequence)
+        return {
+            "prediction_source": "explicit_changing_action_sequence_rollout",
+            "planning_mode": "open_loop_shared_continuation_policy",
+            "rollout_steps": 2,
+            "action_sequence": sequence,
+            "policy_utility": (
+                0.30 if sequence[0] == "pass" else 0.0
+            ) + (0.04 if sequence[1] == "pass" else 0.0),
+            "policy_utility_version": POLICY_UTILITY_VERSION,
+            "uncertainty": 0.1,
+            "sequence_gate": self.policy_utility_sequence_authority(
+                action_kind, rollout_steps=2,
             ),
         }
 
@@ -387,8 +434,10 @@ def test_m2_changes_pass_utility_only_when_exact_gate_is_open(monkeypatch):
     base = np.zeros(4)
     carrier = SimpleNamespace(team_id="home", position=np.array([0.5, 0.5]))
 
+    runtime = _M2Runtime(gate_open=True)
+    state = _planner_state()
     opened = action_imagination_adjustments(
-        _M2Runtime(gate_open=True), _planner_state(), carrier, True,
+        runtime, state, carrier, True,
         base, labels, dist_goal=0.5, feasible_actions={"pass", "hold"},
     )
     closed = action_imagination_adjustments(
@@ -398,6 +447,219 @@ def test_m2_changes_pass_utility_only_when_exact_gate_is_open(monkeypatch):
 
     assert opened[0] > 0.0
     assert np.array_equal(closed, base)
+    assert runtime.sequence_calls == [
+        ["pass", "pass"],
+        ["pass", "hold"],
+        ["hold", "pass"],
+        ["hold", "hold"],
+    ]
+    gate = state._wm_pending_direct_action_adoption["quality_gates"]["pass"]
+    assert gate["value_source"] == "outcome_aligned_two_step_policy_utility"
+    assert gate["comparison_design"] == "common_continuation_policy"
+    assert gate["rollout_steps"] == 2
+    assert [row["weight"] for row in gate["continuation_policy"]] == [
+        pytest.approx(0.5), pytest.approx(0.5),
+    ]
+
+
+def test_m2_action_control_fails_closed_without_sequence_runtime(monkeypatch):
+    monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
+    monkeypatch.setenv("MATCH_WM_PLAN", "1")
+    monkeypatch.setenv("MATCH_WM_OUTCOME_ALIGNED_POLICY", "1")
+    runtime = _M2Runtime(gate_open=True)
+    runtime.policy_utility_sequence_authority = None
+    state = _planner_state()
+    base = np.zeros(4)
+
+    adjusted = action_imagination_adjustments(
+        runtime,
+        state,
+        SimpleNamespace(team_id="home", position=np.array([0.5, 0.5])),
+        True,
+        base,
+        ["pass", "shot", "cross", "hold"],
+        dist_goal=0.5,
+        feasible_actions={"pass", "hold"},
+    )
+
+    assert np.array_equal(adjusted, base)
+    gate = state._wm_pending_direct_action_adoption["quality_gates"]["pass"]
+    assert gate["open"] is False
+    assert gate["reason"] == "policy_utility_sequence_runtime_contract_missing"
+
+
+def test_m2_action_control_does_not_fall_back_when_continuation_is_incomplete(
+    monkeypatch,
+):
+    monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
+    monkeypatch.setenv("MATCH_WM_PLAN", "1")
+    monkeypatch.setenv("MATCH_WM_OUTCOME_ALIGNED_POLICY", "1")
+    runtime = _M2Runtime(gate_open=True)
+    state = _planner_state()
+    base = np.zeros(4)
+
+    adjusted = action_imagination_adjustments(
+        runtime,
+        state,
+        SimpleNamespace(team_id="home", position=np.array([0.5, 0.5])),
+        True,
+        base,
+        ["pass", "shot", "cross", "hold"],
+        dist_goal=0.5,
+        feasible_actions={"pass"},
+    )
+
+    assert np.array_equal(adjusted, base)
+    assert runtime.sequence_calls == []
+    gate = state._wm_pending_direct_action_adoption["quality_gates"]["pass"]
+    assert gate["open"] is False
+    assert gate["reason"] == "shared_continuation_policy_invalid"
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "reason"),
+    [
+        ("policy_utility_version", "stale", "sequence_prediction_identity_or_gate_invalid"),
+        ("action_sequence", ["pass", "shot"], "sequence_prediction_identity_or_gate_invalid"),
+        ("uncertainty", float("nan"), "sequence_prediction_non_finite"),
+    ],
+)
+def test_m2_action_control_rejects_stale_or_nonfinite_sequence_predictions(
+    monkeypatch, field, value, reason,
+):
+    monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
+    monkeypatch.setenv("MATCH_WM_PLAN", "1")
+    monkeypatch.setenv("MATCH_WM_OUTCOME_ALIGNED_POLICY", "1")
+    runtime = _M2Runtime(gate_open=True)
+    original = runtime.predict_policy_utility_sequence
+
+    def corrupted(*args, **kwargs):
+        prediction = original(*args, **kwargs)
+        prediction[field] = value
+        return prediction
+
+    runtime.predict_policy_utility_sequence = corrupted
+    state = _planner_state()
+    base = np.zeros(4)
+    adjusted = action_imagination_adjustments(
+        runtime,
+        state,
+        SimpleNamespace(team_id="home", position=np.array([0.5, 0.5])),
+        True,
+        base,
+        ["pass", "shot", "cross", "hold"],
+        dist_goal=0.5,
+        feasible_actions={"pass", "hold"},
+    )
+
+    assert np.array_equal(adjusted, base)
+    gate = state._wm_pending_direct_action_adoption["quality_gates"]["pass"]
+    assert gate["open"] is False
+    assert gate["reason"] == reason
+
+
+def test_runtime_sequence_prediction_uses_explicit_clean_member_rollout():
+    class SequenceModel:
+        transition_ensemble_trained = True
+
+        def __init__(self):
+            self.actions = None
+
+        def transition_rollout_predictions(self, observations, actions):
+            self.actions = actions.detach().clone()
+            assert tuple(observations.shape) == (1, OBS_DIM)
+            assert tuple(actions.shape) == (1, 2, 18)
+            members = observations.unsqueeze(0).repeat(3, 1, 1)
+            members[0, :, 200] += 0.10
+            members[1, :, 200] += 0.20
+            members[2, :, 200] += 0.30
+            return members
+
+    model = SequenceModel()
+    runtime = WorldModelRuntime.__new__(WorldModelRuntime)
+    runtime.model = model
+    runtime.progress_aleatoric_scale = 0.05
+    runtime.last_decision_uncertainty = 1.0
+    runtime.last_uncertainty = 1.0
+    runtime.meta = {
+        "validation": {
+            "policy_utility_two_step": {
+                "version": 1,
+                "target_version": POLICY_UTILITY_VERSION,
+                "trained_with_policy_utility_objective": True,
+                "configured_loss_weight": 0.2,
+                "optimization_steps": 8,
+                "objective_scope": "two_step_policy_utility",
+                "rollout_steps": 2,
+                "action_sequence": "observed_changing_actions",
+                "trained_with_action_sequence_objective": True,
+                "grouped_holdout": True,
+                "actions": {
+                    "pass": {
+                        "samples": 128,
+                        "groups": 8,
+                        "model_mse": 0.02,
+                        "persistence_mse": 0.04,
+                        "skill_vs_persistence": 0.5,
+                        "prediction_target_correlation": 0.4,
+                    },
+                },
+            },
+        },
+    }
+    first = encode_high_level_action(
+        "pass", np.array([0.65, 0.50]), horizon_s=1.0,
+    )
+    second = encode_high_level_action(
+        "hold", np.array([0.65, 0.50]), horizon_s=1.0,
+    )
+    first[14:17] = 1.0
+    second[14:17] = 1.0
+
+    prediction = runtime.predict_policy_utility_sequence(
+        _observation(attacking_home=True),
+        np.stack((first, second)),
+        action_kind="pass",
+        attacking_home=True,
+    )
+
+    assert prediction["prediction_source"] == (
+        "explicit_changing_action_sequence_rollout"
+    )
+    assert prediction["planning_mode"] == (
+        "open_loop_shared_continuation_policy"
+    )
+    assert prediction["action_sequence"] == ["pass", "hold"]
+    assert prediction["rollout_steps"] == 2
+    assert prediction["horizon_s"] == pytest.approx(2.0)
+    assert prediction["policy_utility"] == pytest.approx(0.07)
+    assert prediction["sequence_gate"]["authorized"] is True
+    assert 0.0 <= prediction["uncertainty"] <= 1.0
+    assert torch.count_nonzero(model.actions[0, :, 14:17]).item() == 0
+
+
+def test_runtime_sequence_prediction_rejects_malformed_actions():
+    runtime = WorldModelRuntime.__new__(WorldModelRuntime)
+    runtime.model = SimpleNamespace(transition_ensemble_trained=True)
+    runtime.progress_aleatoric_scale = 0.05
+    runtime.meta = {"validation": {}}
+    with pytest.raises(ValueError, match=r"shape \[2, 18\]"):
+        runtime.predict_policy_utility_sequence(
+            _observation(attacking_home=True),
+            np.zeros((1, 18), dtype=np.float32),
+            action_kind="pass",
+            attacking_home=True,
+        )
+    with pytest.raises(ValueError, match=r"observation must have shape \[307\]"):
+        runtime.predict_policy_utility_sequence(
+            np.zeros(306, dtype=np.float32),
+            np.stack((
+                encode_high_level_action("pass"),
+                encode_high_level_action("hold"),
+            )),
+            action_kind="pass",
+            attacking_home=True,
+        )
 
 
 def test_control_scope_supports_mirrored_one_sided_interventions(monkeypatch):
@@ -551,6 +813,9 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
                 "authority": 0.35,
             }
 
+        def predict_policy_utility_sequence(self, *_args, **_kwargs):
+            return {}
+
         def two_step_planning_gate(self):
             return {"active": True, "authority": 0.3}
 
@@ -588,6 +853,7 @@ def test_candidate_eligibility_reads_the_two_step_active_contract(
     assert eligibility["dataset_manifest_identity_verified"] is True
     assert eligibility["sealed_test_unused_by_training"] is True
     assert eligibility["sealed_two_step_active"] is True
+    assert eligibility["sequence_predictor_available"] is True
     assert eligibility["sealed_pass_policy_utility_gate"]["authorized"] is True
     assert eligibility["required_policy_utility_sequence_gates"]["pass"][
         "authorized"
@@ -669,6 +935,7 @@ def test_candidate_qualification_receipt_is_noncausal_and_identity_bound():
         "required_policy_utility_sequence_gates": {
             "pass": {"authorized": True},
         },
+        "sequence_predictor_available": True,
         "two_step_gate": {"active": True},
         "dataset_manifest_identity_verified": True,
         "sealed_test_unused_by_training": True,
@@ -728,6 +995,9 @@ def test_candidate_eligibility_rejects_sealed_policy_failure(
 
         def policy_utility_sequence_authority(self, action, *, rollout_steps=2):
             return {"authorized": action == "pass" and rollout_steps == 2}
+
+        def predict_policy_utility_sequence(self, *_args, **_kwargs):
+            return {}
 
         def two_step_planning_gate(self):
             return {"active": True}
@@ -813,6 +1083,7 @@ def test_candidate_eligibility_rejects_missing_sequence_authority(
     assert sequence_gate["reason"] == (
         "policy_utility_sequence_authority_unavailable"
     )
+    assert eligibility["sequence_predictor_available"] is False
 
 
 def test_formal_rows_prove_checkpoint_and_one_sided_runtime_identity():

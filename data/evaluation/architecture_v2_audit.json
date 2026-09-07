@@ -24,6 +24,7 @@
     "llm_transport_is_scope_bound_and_evidence_bearing": true,
     "local_action_transitions_have_noncausal_world_propagation_ledger": true,
     "m2_joint_changing_action_utility_is_trained_validated_and_gated": true,
+    "m2_runtime_consumes_explicit_shared_continuation_sequences": true,
     "managed_fixtures_bind_three_phase_world_state_evidence": true,
     "manager_action_adoption_uses_identity_bound_world_model_advice": true,
     "manager_action_transition_matrix_is_accessible_and_honest": true,
