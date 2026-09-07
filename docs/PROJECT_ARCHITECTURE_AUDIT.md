@@ -310,6 +310,17 @@ not quality signals by themselves.
     The complete 198-file regression passes 1,434 tests with three declared
     skips; touched Python files pass Ruff, the architecture audit is green,
     and zero-training recovery and M2 identity receipts are current.
+57. Extracted the 885-line `ProductWorkspace._session` implementation into a
+    dedicated stateless session-integrity repository. The facade keeps one
+    six-line compatibility delegation and the same authoritative JSON file;
+    the new function receives only root, path and two replay callbacks. A
+    normalized comparison proves its body is otherwise exact. Direct tests
+    cover valid loading, registry tamper rejection and callback forwarding,
+    while the machine audit pins all registry validators, forbids a reverse
+    workspace import, caps module size and rejects return of inline loading.
+    Recovery evidence also binds the new implementation file. No schema,
+    workflow, simulator behavior or research authority changes. The complete
+    199-file regression passes 1,437 tests with three declared skips.
 
 ## LLM Scope Decision
 

@@ -4358,3 +4358,46 @@ green, local process-crash recovery is reverified, and the M2 transitive code
 identity is refreshed. The generated receipts record zero training, zero
 checkpoint writes, zero matches, zero formal experiments, zero participant
 sessions, and zero provider calls.
+
+## 132. V4.14 Dedicated product-session integrity repository
+
+`ProductWorkspace` remained the largest source module at roughly 6,500 lines.
+Its single `_session` method occupied 885 lines and combined JSON loading with
+cross-registry replay validation for seasons, squads, finances, development,
+lifecycle, markets, scouting, sporting reviews, league transitions, promises,
+strategies, and completed match bindings. Although the checks were strict,
+keeping their implementation inside the orchestration facade made every new
+career feature enlarge the same file and obscured state ownership.
+
+The complete loader is now `load_workspace_session` in the dedicated
+`workspace_session` module. It receives only the resolved project root,
+session path, historical-season projection callback, and sporting-brief replay
+callback. It imports no workspace facade and owns no mutable state. The public
+`ProductWorkspace._session` compatibility method is a six-line delegation, so
+existing CLI, Web, task, recovery, season, and test call sites retain the same
+API and the product still has one authoritative session file.
+
+This was a mechanical behavior-preserving extraction. A normalized comparison
+against the previous commit proves the entire old method body is exact after
+only replacing four `self` dependencies with explicit parameters. Direct
+tests load a minimal valid session, reject a tampered finance registry at the
+dedicated boundary, and verify exact facade argument and bound-callback
+forwarding. The existing workspace and Web suites exercise the same replay
+checks through the compatibility entry point.
+
+The machine architecture audit requires all nine registry validators and both
+cross-state replay callbacks to remain in the dedicated repository, prohibits
+a reverse import of `ProductWorkspace`, caps the module size, verifies the
+small delegation shape, and rejects restoration of the former inline loader.
+This changes no session schema, serialized byte contract, product workflow,
+simulation rule, random stream, world-model authority, or research claim. It
+executes no training, product/formal match, participant session, future
+generation, or provider call.
+
+Final verification covers all 199 test files in four disjoint processes:
+1,437 tests pass and three declared tests skip, with no failures. Ruff passes
+for every Python file modified by V4.14, the complete architecture audit is
+green, and the real process-crash recovery receipt now binds both the facade
+and the dedicated session repository. The verification executes zero training,
+zero matches, zero formal experiments, zero participant sessions, and zero
+provider calls.

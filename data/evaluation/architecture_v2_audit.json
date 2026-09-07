@@ -51,6 +51,7 @@
     "product_does_not_import_training_implementation": true,
     "product_value_delivery_is_blinded_scoring_sealed_and_product_visible": true,
     "product_value_participant_session_is_isolated_timed_and_attested": true,
+    "product_workspace_session_repository_is_dedicated_and_replay_complete": true,
     "production_validation_is_deployable_serialized_and_identity_bound": true,
     "prospective_m2_identity_closes_transitive_runtime_dependencies": true,
     "public_tournament_lifecycle_shares_the_match_workspace_lease": true,

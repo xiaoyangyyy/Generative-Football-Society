@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_recovery",
-  "generated_at": "2026-09-07T05:20:47.832772+00:00",
+  "generated_at": "2026-09-07T05:44:21.236910+00:00",
   "status": "passed_local_recovery",
   "process_crash_verified": true,
   "passed": true,
@@ -30,11 +30,12 @@
   },
   "code_sha256": {
     "src/infrastructure/atomic_io.py": "c48c27e0739dcf1203e95f1869259ee17669bda3646cac4d946be2e44397c4d6",
-    "src/product/workspace.py": "782321d5fc0e4ea6db6bcf419c7e2e4923507fa31072dfec8ada9cbfe541713e",
+    "src/product/workspace.py": "fba295e97a4cf3a75cb53974c90aa580642d4c25accf73eb97dec47209db05cd",
+    "src/product/workspace_session.py": "ac1c1fe2a7673bbf111090ec91e632309a6cf34fcd28e18f051438e6da4dbbcb",
     "src/product/recovery.py": "8c664c22619a3a90f0875a1d50a5097a2464e9527e28b914f224bf96fa4fabcf",
     "src/product/web.py": "291f3ff469c5c0461480d80f1ab0e38cf49e4ffc68a28ebc7cc09afa71f2632e",
     "src/cli.py": "3b73f103325ab7a60bae04f0efeeb6da70f9e31da30173dfee2d3770c9808ab9",
-    "scripts/verify_product_recovery.py": "725e58bb0f1291246e6d83a1852960d5cc3b041565fd7741256bc7611bfd89ea"
+    "scripts/verify_product_recovery.py": "dc33c2eaffa9c28e9f901b59bd9863d46ba47095ee76169f8917f76f73e7e435"
   },
   "limitations": [
     "local process termination is not an operational deployment drill, deployment-volume test, or host-power-loss test",

@@ -153,6 +153,12 @@ def main() -> int:
     job = (ROOT / "src/training/job.py").read_text(encoding="utf-8")
     workspace = (ROOT / "src/product/workspace.py").read_text(encoding="utf-8")
     workspace = " ".join(workspace.split())
+    workspace_session = (
+        ROOT / "src/product/workspace_session.py"
+    ).read_text(encoding="utf-8")
+    workspace_session_tests = (
+        ROOT / "tests/test_product_workspace_session.py"
+    ).read_text(encoding="utf-8")
     web = (ROOT / "src/product/web.py").read_text(encoding="utf-8")
     decision_ledger = (
         ROOT / "src/product/decision_ledger.py"
@@ -189,6 +195,7 @@ def main() -> int:
     recovery_identity_files = (
         "src/infrastructure/atomic_io.py",
         "src/product/workspace.py",
+        "src/product/workspace_session.py",
         "src/product/recovery.py",
         "src/product/web.py",
         "src/cli.py",
@@ -550,6 +557,38 @@ def main() -> int:
         "infrastructure_has_no_upward_dependencies": not infrastructure_violations,
         "training_lifecycle_has_no_domain_or_product_dependencies": not training_violations,
         "product_does_not_import_training_implementation": not product_training_violations,
+        "product_workspace_session_repository_is_dedicated_and_replay_complete": (
+            all(token in workspace_session for token in (
+                "def load_workspace_session(",
+                "session_path.read_text",
+                "season_history_view(session)",
+                "sporting_brief_for_transition(",
+                "validate_development_registry(",
+                "validate_lifecycle_registry(",
+                "validate_market_registry(",
+                "validate_scouting_registry(",
+                "validate_scouting_outcome_registry(",
+                "validate_sporting_review_registry(",
+                "validate_squad_registry(",
+                "validate_finance_registry(",
+                "validate_league_ecosystem(",
+            ))
+            and "src.product.workspace" not in workspace_session
+            and len(workspace_session.splitlines()) <= 1100
+            and all(token in workspace for token in (
+                "from src.product.workspace_session import load_workspace_session",
+                "def _session(self) -> dict[str, Any]: return load_workspace_session(",
+                "season_history_view=self._season_history_view",
+                "sporting_brief_for_transition=self._sporting_brief_for_transition",
+            ))
+            and "session = json.loads(self.session_path" not in workspace
+            and all(token in workspace_session_tests for token in (
+                "test_workspace_session_repository_loads_a_minimal_valid_session",
+                "test_workspace_session_repository_fails_closed_on_registry_tampering",
+                "test_product_workspace_session_facade_forwards_exact_dependencies",
+                '"src/product/workspace_session.py" in CODE_IDENTITY_FILES',
+            ))
+        ),
         "society_agent_psychology_is_dedicated_and_inherited": (
             "from src.simulation.agent_psychology import AgentPsychologyMixin"
             in agent
