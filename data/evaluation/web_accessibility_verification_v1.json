@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_studio_code_level_accessibility",
-  "generated_at": "2026-09-09T08:26:02.113471+00:00",
+  "generated_at": "2026-09-09T09:09:08.564436+00:00",
   "status": "passed_automated_contract",
   "passed": true,
   "checks": {
@@ -32,6 +32,7 @@
     "workspace_progressive_disclosure_contract": true,
     "manager_product_journey_contract": true,
     "manager_world_dossier_contract": true,
+    "paired_society_divergence_contract": true,
     "workflow_navigation_reveals_target_before_focus": true,
     "manager_decision_preview_contract": true,
     "manager_world_model_advice_contract": true,

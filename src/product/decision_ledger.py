@@ -410,6 +410,11 @@ def _future_review_execution_trace(
             "outcome_causality_authorized": False,
             "real_football_causality_authorized": False,
         }
+        if scenario.get("schema_version") == 3:
+            archived["schema_version"] = 2
+            archived["society_divergence"] = copy.deepcopy(
+                scenario.get("society_divergence")
+            )
         archived["archive_identity"] = _identity(archived)
         reviewed_scenarios.append(archived)
     payload = {

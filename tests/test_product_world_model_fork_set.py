@@ -1,3 +1,4 @@
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -5,6 +6,7 @@ import pytest
 
 from src.product.manager_future import build_manager_future_context
 from src.product.match_plan import WorldModelForkSetPlan
+from src.product.paired_society_state import build_paired_society_divergence
 from src.product.season import ManagerDecision, SeasonPlan, new_season_state
 from src.product.world_model_fork_set import (
     aggregate_fork_set,
@@ -291,6 +293,48 @@ def test_scenario_v2_exposes_bounded_action_chain_and_windows():
         ])
 
 
+def test_scenario_v3_binds_terminal_society_divergence():
+    plan = WorldModelForkSetPlan(
+        "balanced", "low_block_counter", 42, (1800, 2700),
+    )
+    comparisons = [
+        _comparison(plan, branch, detailed=True)
+        for branch in plan.branch_times_sec
+    ]
+    for comparison in comparisons:
+        comparison["society_divergence"] = build_paired_society_divergence(
+            {"layers": {}},
+            {"layers": {}},
+            teams=["Brazil", "Argentina"],
+            pair_eligible=True,
+        )
+    aggregated = aggregate_fork_set(plan, comparisons)
+
+    scenarios = project_fork_set_scenario_evidence({
+        "plan": plan.as_dict(), "rows": aggregated["rows"],
+    })
+
+    assert {row["schema_version"] for row in scenarios} == {3}
+    assert scenarios[0]["society_divergence"]["available"] is False
+    assert scenarios[0]["society_divergence"]["reason"] == (
+        "legacy_or_missing_terminal_society_state"
+    )
+    validate_fork_set_scenario_evidence(scenarios, plan.branch_times_sec)
+
+    tampered = json.loads(json.dumps(scenarios))
+    tampered[0]["society_divergence"]["reason"] = "forged"
+    tampered[0].pop("scenario_identity")
+    payload = tampered[0]
+    tampered[0]["scenario_identity"] = hashlib.sha256(
+        json.dumps(
+            payload, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    with pytest.raises(ValueError, match="divergence values"):
+        validate_fork_set_scenario_evidence(
+            tampered, plan.branch_times_sec,
+        )
 class _Workspace:
     def __init__(self, root, *, fail_after=None):
         self.root = root

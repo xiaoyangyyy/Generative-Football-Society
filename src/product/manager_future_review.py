@@ -15,7 +15,9 @@ from src.product.world_model_fork_set import (
 )
 
 
-REVIEW_SCHEMA_VERSION = 3
+LEGACY_SCENARIO_REVIEW_SCHEMA_VERSION = 2
+MECHANISM_REVIEW_SCHEMA_VERSION = 3
+REVIEW_SCHEMA_VERSION = 4
 REVIEW_INTENTS = {"keep_after_review", "revise_after_review"}
 MAX_REVIEWS_PER_FIXTURE = 16
 _BOUNDARY = (
@@ -227,11 +229,14 @@ def build_manager_future_review(
     ):
         raise ValueError("manager future review intent does not match decision")
     fixture = context["fixture"]
-    receipt_version = (
-        1 if scenarios is None else
-        REVIEW_SCHEMA_VERSION
-        if all(row.get("schema_version") == 2 for row in scenarios) else 2
-    )
+    receipt_version = 1
+    if scenarios is not None:
+        scenario_version = scenarios[0]["schema_version"]
+        receipt_version = {
+            1: LEGACY_SCENARIO_REVIEW_SCHEMA_VERSION,
+            2: MECHANISM_REVIEW_SCHEMA_VERSION,
+            3: REVIEW_SCHEMA_VERSION,
+        }[scenario_version]
     payload = {
         "schema_version": receipt_version,
         "task_id": task_id,
@@ -292,11 +297,20 @@ def validate_manager_future_review(
     ) else None
     required = (
         base_required | {"scenario_evidence"}
-        if schema_version in {2, REVIEW_SCHEMA_VERSION} else base_required
+        if schema_version in {
+            LEGACY_SCENARIO_REVIEW_SCHEMA_VERSION,
+            MECHANISM_REVIEW_SCHEMA_VERSION,
+            REVIEW_SCHEMA_VERSION,
+        } else base_required
     )
     if (
         not isinstance(review, Mapping)
-        or schema_version not in {1, 2, REVIEW_SCHEMA_VERSION}
+        or schema_version not in {
+            1,
+            LEGACY_SCENARIO_REVIEW_SCHEMA_VERSION,
+            MECHANISM_REVIEW_SCHEMA_VERSION,
+            REVIEW_SCHEMA_VERSION,
+        }
         or set(review) != required
     ):
         raise ValueError("manager future review fields are invalid")
@@ -370,13 +384,19 @@ def validate_manager_future_review(
         for field in count_fields
     ):
         raise ValueError("manager future review summary is invalid")
-    if schema_version in {2, REVIEW_SCHEMA_VERSION}:
+    if schema_version in {
+        LEGACY_SCENARIO_REVIEW_SCHEMA_VERSION,
+        MECHANISM_REVIEW_SCHEMA_VERSION,
+        REVIEW_SCHEMA_VERSION,
+    }:
         scenarios = validate_fork_set_scenario_evidence(
             review.get("scenario_evidence"), branch_times,
         )
-        expected_scenario_version = (
-            2 if schema_version == REVIEW_SCHEMA_VERSION else 1
-        )
+        expected_scenario_version = {
+            LEGACY_SCENARIO_REVIEW_SCHEMA_VERSION: 1,
+            MECHANISM_REVIEW_SCHEMA_VERSION: 2,
+            REVIEW_SCHEMA_VERSION: 3,
+        }[schema_version]
         if any(
             row.get("schema_version") != expected_scenario_version
             for row in scenarios

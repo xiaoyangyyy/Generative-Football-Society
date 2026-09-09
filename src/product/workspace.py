@@ -4631,6 +4631,7 @@ class ProductWorkspace:
                         "away": raw.get("tactical_drift_away"),
                     },
                 },
+                "society": raw.get("society_public_state") or {},
                 "world_model": {
                     "configured": self.config.mode in {"research", "cognitive"},
                     "enabled": bool(observed_world_model.get("loaded")),

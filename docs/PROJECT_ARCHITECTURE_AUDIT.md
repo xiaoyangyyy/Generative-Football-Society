@@ -704,6 +704,23 @@ not quality signals by themselves.
     architecture checks are green. V4.40 remains the last full-suite baseline
     at 1,498 passing tests.
 
+88. Closed the paired-future gap between world-model action adoption and the
+    persistent football society. Micro summaries now retain validated,
+    content-free terminal society snapshots, and a dedicated pure boundary
+    compares the two canonical teams with at most eight signed record-count
+    deltas and 38 bounded state rows. The sealed evidence is carried through
+    fork scenario V3, review receipt V4, decision-ledger archive V2 and the
+    historical navigator, then rendered in the existing current, reviewed and
+    historical product surfaces using one named safe-DOM disclosure. Legacy
+    absence, unavailable evidence and exact zero remain distinct; invalid order,
+    fields, bounds, counts or identities fail closed. Local sampled-action
+    attribution is not promoted to society, psychology, score or real-football
+    causality. The change adds no competing store or screen and runs no match,
+    future, training, formal study, participant session or provider call.
+    The affected chain passes 255 focused tests; local HTTP passes 16/16,
+    accessibility passes 43/43, recovery passes every check and all 119
+    architecture checks are green. V4.40 remains the last full-suite baseline.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

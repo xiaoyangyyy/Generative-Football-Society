@@ -14,6 +14,9 @@ from typing import Any, Mapping
 
 from src.product.manager_future import validate_manager_future_context_shape
 from src.product.match_plan import WorldModelForkSetPlan
+from src.product.paired_society_state import (
+    validate_paired_society_divergence,
+)
 
 
 FUTURE_SET_SCENARIO_STATUSES = {
@@ -493,15 +496,16 @@ def validate_fork_set_scenario_evidence(
         schema_version = raw.get("schema_version") if isinstance(
             raw, Mapping,
         ) else None
-        required = (
-            base_required | {
+        required = base_required
+        if schema_version in {2, 3}:
+            required |= {
                 "mechanism_examples", "mechanism_examples_truncated",
             }
-            if schema_version == 2 else base_required
-        )
+        if schema_version == 3:
+            required |= {"society_divergence"}
         if (
             not isinstance(raw, Mapping)
-            or schema_version not in {1, 2}
+            or schema_version not in {1, 2, 3}
             or set(raw) != required
         ):
             raise ValueError("future-set scenario evidence fields are invalid")
@@ -575,7 +579,7 @@ def validate_fork_set_scenario_evidence(
             or status != semantic_status
         ):
             raise ValueError("future-set scenario evidence semantics are invalid")
-        if schema_version == 2:
+        if schema_version in {2, 3}:
             examples = _validate_mechanism_examples(
                 raw.get("mechanism_examples"), changed_actions=changed,
             )
@@ -600,6 +604,10 @@ def validate_fork_set_scenario_evidence(
                 raise ValueError(
                     "future-set mechanism example summary is invalid"
                 )
+        if schema_version == 3:
+            validate_paired_society_divergence(
+                raw.get("society_divergence"),
+            )
         frozen = dict(raw)
         observed = frozen.pop("scenario_identity")
         if (
@@ -730,6 +738,18 @@ def project_fork_set_scenario_evidence(
                 "mechanism_examples": examples,
                 "mechanism_examples_truncated": truncated,
             })
+        has_society = "society_divergence" in row
+        if has_society and not has_examples:
+            raise ValueError(
+                "future-set society evidence requires mechanism semantics"
+            )
+        if has_society:
+            payload.update({
+                "schema_version": 3,
+                "society_divergence": validate_paired_society_divergence(
+                    row.get("society_divergence"),
+                ),
+            })
         scenarios.append({
             **payload, "scenario_identity": _identity(payload),
         })
@@ -746,6 +766,14 @@ def _row(plan: WorldModelForkSetPlan, comparison: Mapping[str, Any]) -> dict[str
     future = comparison.get("counterfactual_future_summary") or {}
     future_summary = future.get("summary") or {}
     authority = future.get("claim_authority") or {}
+    raw_society = comparison.get("society_divergence")
+    society = (
+        validate_paired_society_divergence(
+            raw_society,
+            expected_teams=[fixture.get("home"), fixture.get("away")],
+        )
+        if raw_society is not None else None
+    )
     branch = intervention.get("branch_at_sec")
     if isinstance(branch, bool) or not isinstance(branch, (int, float)):
         raise ValueError("comparison branch time is invalid")
@@ -817,6 +845,12 @@ def _row(plan: WorldModelForkSetPlan, comparison: Mapping[str, Any]) -> dict[str
             "mechanism_examples": examples,
             "mechanism_examples_truncated": truncated,
         })
+    if society is not None:
+        if "mechanism_examples" not in row:
+            raise ValueError(
+                "comparison society evidence requires mechanism semantics"
+            )
+        row["society_divergence"] = society
     return row
 
 

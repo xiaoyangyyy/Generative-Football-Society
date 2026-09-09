@@ -315,6 +315,11 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "society.state_change_evidence" in document
     assert "查看社会状态精确变化" in document
     assert "同章社会与心理持久状态变化" in document
+    assert "function appendFutureSocietyDivergences(" in document
+    assert "基线世界与干预世界的终局社会状态分叉" in document
+    assert "renderManagerFutureSetsSocietyDivergence" in document
+    assert "renderManagerDecisionLedgerSocietyDivergence" in document
+    assert "renderManagerWorldReviewedSocietyDivergence" in document
     assert "managerWorldStoryDossier.append(" in document
     assert "function renderManagerWorldNavigatorBase(season)" in document
     assert "season?.manager_world_story" in document
@@ -747,6 +752,28 @@ def test_root_expands_exact_society_world_changes_with_safe_dom(tmp_path):
     assert "innerHTML" not in renderer
 
 
+def test_root_renders_paired_society_divergence_with_safe_dom(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    renderer = document.split(
+        "function appendFutureSocietyDivergences(host,scenarios,title)", 1
+    )[1].split("const FUTURE_MECHANISM_EXAMPLE_RENDER_STAGES", 1)[0]
+
+    assert response["status"].startswith("200")
+    assert "scenario?.society_divergence" in renderer
+    assert "document.createElement('details')" in renderer
+    assert "document.createElement('summary')" in renderer
+    assert "document.createElement('ol')" in renderer
+    assert "基线世界与干预世界的终局社会状态分叉" in renderer
+    assert "for(const row of divergence.count_deltas||[])" in renderer
+    assert "for(const row of divergence.state_changes||[])" in renderer
+    assert "已测终局社会状态完全一致" in renderer
+    assert "不能解释为零变化" in renderer
+    assert "局部动作归因不会自动传递到社会状态、心理状态或赛果" in renderer
+    assert "textContent=" in renderer
+    assert "innerHTML" not in renderer
+
+
 def test_root_uses_one_explicit_manager_world_render_pipeline(tmp_path):
     response = _request(ProductWebApp(tmp_path))
     document = response["body"].decode("utf-8")
@@ -757,7 +784,9 @@ def test_root_uses_one_explicit_manager_world_render_pipeline(tmp_path):
         "renderManagerWorldStorySocietyChanges,"
         "renderManagerWorldActionAdoptionLedger,renderManagerWorldTrajectory,"
         "renderManagerWorldReviewedFutureContinuity,"
-        "renderManagerWorldScenarioArchive,renderManagerWorldReviewCertificate,"
+        "renderManagerWorldScenarioArchive,"
+        "renderManagerWorldReviewedSocietyDivergence,"
+        "renderManagerWorldReviewCertificate,"
         "renderManagerWorldReviewInfluence,"
         "renderManagerWorldRetainedRecordSemantics,"
         "renderManagerWorldTransitionPropagation,"
@@ -788,6 +817,7 @@ def test_root_uses_one_explicit_manager_decision_ledger_render_pipeline(tmp_path
         "renderManagerDecisionLedgerFutureReviews,"
         "renderManagerDecisionLedgerFutureScenarioEvidence,"
         "renderManagerDecisionLedgerMechanismExamples,"
+        "renderManagerDecisionLedgerSocietyDivergence,"
         "renderManagerDecisionLedgerMechanismSemantics,"
         "renderManagerDecisionLedgerFutureReviewExecution,"
         "renderManagerDecisionLedgerOfficialActionExecution,"
@@ -891,7 +921,8 @@ def test_root_uses_one_explicit_manager_future_set_render_pipeline(tmp_path):
         "renderManagerFutureSetsBase,"
         "renderManagerFutureSetsReviewActions,"
         "renderManagerFutureSetsScenarioEvidence,"
-        "renderManagerFutureSetsMechanismExamples]);"
+        "renderManagerFutureSetsMechanismExamples,"
+        "renderManagerFutureSetsSocietyDivergence]);"
     )
 
     assert response["status"].startswith("200")

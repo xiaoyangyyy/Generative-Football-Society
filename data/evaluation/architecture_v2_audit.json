@@ -67,6 +67,7 @@
     "official_action_v3_preserves_counterfactual_transition_matrix": true,
     "official_action_v4_preserves_exact_shared_uniform_expectation": true,
     "official_manager_matches_surface_world_model_action_execution": true,
+    "paired_worlds_expose_terminal_society_state_divergence": true,
     "physics_official_score_path_fails_closed": true,
     "product_does_not_import_training_implementation": true,
     "product_render_pipeline_is_explicit": true,

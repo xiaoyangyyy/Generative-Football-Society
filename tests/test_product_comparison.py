@@ -3,6 +3,7 @@ import pytest
 from src.product.comparison import (
     PairingError, build_paired_comparison, render_paired_comparison_html,
 )
+from src.simulation.society_continuity import PUBLIC_BOUNDARY
 
 
 def _report(match_id, *, tactic="gegenpress", reuse=False, baseline=None):
@@ -51,6 +52,37 @@ def _replay_event(
     if link is not None:
         event["world_model_link"] = link
     return event
+
+
+def _society_snapshot(marker, *, morale=0.0):
+    return {
+        "available": True,
+        "state_identity": marker * 64,
+        "source_transaction_id": f"match-{marker}",
+        "memory_records": 2,
+        "cognitive_memory_records": 1,
+        "beliefs": 1,
+        "reflections": 1,
+        "tactical_controls": {
+            "pressing_intensity": 0.5, "risk_budget": 0.5,
+            "line_height": 0.5, "rotation_aggressiveness": 0.5,
+        },
+        "emotion_profile": {
+            "pride": 0.2, "anger": 0.1, "shame": 0.1, "fear": 0.1,
+            "determination": 0.6,
+        },
+        "social_narrative_state": {
+            "trust_index": 0.5, "polarization": 0.2,
+            "narrative_fatigue": 0.1,
+        },
+        "psychological_state": {
+            "morale": morale, "pressure": 0.0, "trust": 0.0,
+            "risk_appetite": 0.0, "conflict": 0.0,
+            "audience_activation": 0.0,
+        },
+        "referee_grievance": 0.05,
+        "claim_boundary": PUBLIC_BOUNDARY,
+    }
 
 
 def test_same_seed_single_side_pair_is_eligible_but_seed_local_only():
@@ -239,6 +271,7 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
     assert future["claim_authority"] == {
         "simulator_local_action_attribution": True,
         "downstream_trajectory_causality": False,
+        "downstream_society_state_causality": False,
         "match_outcome_causality": False,
         "population_effect": False,
         "real_football_causality": False,
@@ -277,6 +310,56 @@ def test_world_model_policy_fork_is_isolated_and_rendered_as_two_worlds():
     assert "直接轨迹已绑定" in document
     assert "越过“运行轨迹”后不自动继承因果资格" in document
     assert "只比较两场在同一比赛时钟区间内的事件计数" in document
+
+
+def test_world_model_fork_exposes_exact_terminal_society_divergence():
+    baseline = _report("m1")
+    treatment = _report("m2", reuse=True, baseline="m1")
+    for report, policy in (
+        (baseline, "predict_only"), (treatment, "action_policy"),
+    ):
+        report["match_plan"].update({
+            "experience": "world_model_lab",
+            "world_model_policy": policy,
+        })
+    baseline["layers"]["society"] = {
+        "Brazil": _society_snapshot("a"),
+        "Argentina": _society_snapshot("b"),
+    }
+    treatment["layers"]["society"] = {
+        "Brazil": _society_snapshot("c", morale=0.3),
+        "Argentina": _society_snapshot("d"),
+    }
+
+    comparison = build_paired_comparison(baseline, treatment)
+
+    divergence = comparison["society_divergence"]
+    assert divergence["available"] is True
+    assert divergence["state_change_count"] == 1
+    assert divergence["state_changes"][0] == {
+        "team": "Brazil",
+        "scope": "psychological_state",
+        "field": "morale",
+        "baseline": 0.0,
+        "treatment": 0.3,
+    }
+    future = comparison["counterfactual_future_summary"]
+    assert future["schema_version"] == 2
+    assert future["summary"][
+        "descriptive_society_state_difference_count"
+    ] == 1
+    assert next(
+        stage for stage in future["evidence_ladder"]
+        if stage["stage"] == "action_to_society_state"
+    )["claim_authorized"] is False
+    assert future["claim_authority"][
+        "downstream_society_state_causality"
+    ] is False
+    document = render_paired_comparison_html(comparison)
+    assert 'data-testid="society-divergence-panel"' in document
+    assert "复杂系统终局分叉" in document
+    assert "Brazil" in document and "士气" in document
+    assert "局部动作归因不会自动传递到社会状态" in document
 
 
 def test_world_model_policy_fork_rejects_tactical_or_policy_cointervention():

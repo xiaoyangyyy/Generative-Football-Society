@@ -9,6 +9,7 @@ from src.product.manager_world_navigator import (
     build_manager_world_navigator,
     validate_manager_world_navigator,
 )
+from src.product.paired_society_state import build_paired_society_divergence
 
 
 def _identity(payload):
@@ -970,6 +971,45 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
         key: value for key, value in first.items()
         if key != "trajectory_point_identity"
     }) == first["trajectory_point_identity"]
+
+
+def test_world_trajectory_replays_v2_terminal_society_divergence_archive():
+    entry = _entry(1)
+    divergence = build_paired_society_divergence(
+        baseline={},
+        treatment={},
+        teams=["Atlas", "Boreal"],
+        pair_eligible=True,
+    )
+    trace = entry["future_review_execution_trace"]
+    terminal = trace["terminal_review"]
+    for scenario in terminal["reviewed_scenarios"]:
+        scenario.pop("archive_identity")
+        scenario["schema_version"] = 2
+        scenario["society_divergence"] = copy.deepcopy(divergence)
+        scenario["archive_identity"] = _identity(scenario)
+    trace.pop("trace_identity")
+    trace["trace_identity"] = _identity(trace)
+
+    review = next(
+        row for row in entry["world_evolution_thread"]["stages"]
+        if row["stage_id"] == "prematch_future_review"
+    )
+    review["source_identity"] = trace["trace_identity"]
+    review["reviewed_scenarios"] = copy.deepcopy(terminal["reviewed_scenarios"])
+    review.pop("stage_identity")
+    review["stage_identity"] = _identity(review)
+    _refresh_review_world_certificate(entry)
+
+    season = _season(entries=[entry])
+    navigator = build_manager_world_navigator(season)
+    scenarios = navigator["world_trajectory"]["points"][0][
+        "reviewed_future_context"
+    ]["scenarios"]
+    assert len(scenarios) == 3
+    assert all(row["schema_version"] == 2 for row in scenarios)
+    assert all(row["society_divergence"] == divergence for row in scenarios)
+    validate_manager_world_navigator(navigator, season=season)
 
 
 def test_navigator_rejects_rehashed_manager_choice_drift():

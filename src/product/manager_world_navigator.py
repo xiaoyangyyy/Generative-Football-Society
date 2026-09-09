@@ -14,6 +14,9 @@ from src.product.manager_world_player_changes import (
 from src.product.manager_world_society_changes import (
     project_manager_world_society_changes,
 )
+from src.product.paired_society_state import (
+    validate_paired_society_divergence,
+)
 
 
 SCHEMA_VERSION = 1
@@ -98,6 +101,9 @@ _REVIEWED_SCENARIO_FIELDS = {
     "simulator_local_action_attribution", "outcome_causality_authorized",
     "real_football_causality_authorized", "archive_identity",
 }
+_REVIEWED_SCENARIO_V2_FIELDS = (
+    _REVIEWED_SCENARIO_FIELDS | {"society_divergence"}
+)
 
 
 def _player_counter_transitions(
@@ -445,7 +451,18 @@ def _validate_reviewed_scenarios(
     seen_archive: set[str] = set()
     normalized = []
     for raw in scenarios:
-        if not isinstance(raw, Mapping) or set(raw) != _REVIEWED_SCENARIO_FIELDS:
+        schema_version = raw.get("schema_version") if isinstance(
+            raw, Mapping,
+        ) else None
+        expected_fields = (
+            _REVIEWED_SCENARIO_V2_FIELDS
+            if schema_version == 2 else _REVIEWED_SCENARIO_FIELDS
+        )
+        if (
+            not isinstance(raw, Mapping)
+            or schema_version not in {1, 2}
+            or set(raw) != expected_fields
+        ):
             raise ValueError("reviewed future scenario archive fields are invalid")
         branch = raw.get("branch_at_sec")
         minute = raw.get("branch_minute")
@@ -454,8 +471,7 @@ def _validate_reviewed_scenarios(
         local = raw.get("locally_attributable_changes")
         differences = raw.get("descriptive_future_difference_count")
         if (
-            raw.get("schema_version") != 1
-            or not _is_identity(raw.get("source_scenario_identity"))
+            not _is_identity(raw.get("source_scenario_identity"))
             or not _identity_matches(raw, "archive_identity")
             or raw["source_scenario_identity"] in seen_source
             or raw["archive_identity"] in seen_archive
@@ -505,6 +521,10 @@ def _validate_reviewed_scenarios(
         )
         if raw["future_status"] != semantic_status:
             raise ValueError("reviewed future scenario archive semantics are invalid")
+        if schema_version == 2:
+            validate_paired_society_divergence(
+                raw.get("society_divergence"),
+            )
         prior_time = float(branch)
         seen_source.add(raw["source_scenario_identity"])
         seen_archive.add(raw["archive_identity"])

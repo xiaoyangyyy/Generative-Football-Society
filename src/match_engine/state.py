@@ -303,6 +303,7 @@ class MicroMatchSummary:
     in_match_management: Dict[str, Any] = field(default_factory=dict)
     tactical_execution: Dict[str, Any] = field(default_factory=dict)
     squad_provenance: Dict[str, Any] = field(default_factory=dict)
+    society_public_state: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -323,3 +324,4 @@ class AffectiveMatchSummary:
     controversy_integral: float
     meso_packets: List[Dict[str, Any]] = field(default_factory=list)
     timeline_snippet: List[str] = field(default_factory=list)
+    society_public_state: Dict[str, Any] = field(default_factory=dict)

@@ -8,6 +8,11 @@ from bisect import bisect_right
 from pathlib import Path
 from typing import Any, Mapping
 
+from src.product.paired_society_state import (
+    build_paired_society_divergence,
+    validate_paired_society_divergence,
+)
+
 from src.product.match_plan import PLAYABLE_TACTICS
 
 
@@ -540,8 +545,12 @@ def build_counterfactual_future_summary(
     *, baseline_id: str, treatment_id: str,
     metrics: Mapping[str, Any], propagation: Mapping[str, Any],
     eligibility: Mapping[str, Any], intervention: Mapping[str, Any],
+    society_divergence: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Unify one policy fork into one evidence-graded two-future view."""
+    society_divergence = (
+        society_divergence if isinstance(society_divergence, Mapping) else {}
+    )
     pair_eligible = bool(
         eligibility.get("eligible_for_world_model_policy_attribution")
     )
@@ -608,7 +617,7 @@ def build_counterfactual_future_summary(
     if not isinstance(failed_checks, (list, tuple)):
         failed_checks = []
     result = {
-        "schema_version": 1,
+        "schema_version": 2,
         "available": True,
         "status": status,
         "comparison_mode": "single_seed_paired_simulator_fork",
@@ -674,6 +683,10 @@ def build_counterfactual_future_summary(
         "no_measured_difference" if outcome_missing == 0 else
         "incomplete_measurement"
     )
+    society_available = society_divergence.get("available") is True
+    society_differences = int(
+        society_divergence.get("state_change_count") or 0
+    ) + int(society_divergence.get("count_delta_count") or 0)
     result["evidence_ladder"].extend([
         {
             "stage": "action_to_trajectory",
@@ -681,6 +694,18 @@ def build_counterfactual_future_summary(
                 "descriptive_windows_available"
                 if replay_available else "replay_unavailable"
             ),
+            "claim_authorized": False,
+        },
+        {
+            "stage": "action_to_society_state",
+            "status": (
+                "descriptive_terminal_state_divergence"
+                if society_available and society_differences else
+                "no_terminal_state_divergence"
+                if society_available else
+                "terminal_state_evidence_unavailable"
+            ),
+            "difference_count": society_differences,
             "claim_authorized": False,
         },
         {
@@ -697,6 +722,10 @@ def build_counterfactual_future_summary(
         "locally_attributable_actions": local,
         "descriptive_outcome_difference_count": outcome_differences,
         "missing_outcome_metric_count": outcome_missing,
+        "descriptive_society_state_difference_count": society_differences,
+        "teams_with_society_state_divergence": int(
+            society_divergence.get("teams_with_terminal_divergence") or 0
+        ),
     }
     result["eligibility"] = {
         "pair_eligible": pair_eligible,
@@ -707,6 +736,7 @@ def build_counterfactual_future_summary(
     result["claim_authority"] = {
         "simulator_local_action_attribution": bool(pair_eligible and local),
         "downstream_trajectory_causality": False,
+        "downstream_society_state_causality": False,
         "match_outcome_causality": False,
         "population_effect": False,
         "real_football_causality": False,
@@ -872,6 +902,15 @@ def build_paired_comparison(
             "decisions": [],
         }
     )
+    try:
+        society_divergence = build_paired_society_divergence(
+            baseline,
+            treatment,
+            teams=ordered_fixture,
+            pair_eligible=eligible,
+        )
+    except ValueError as exc:
+        raise PairingError("paired terminal society evidence is invalid") from exc
     comparison = {
         "schema_version": 1,
         "comparison_id": f"{treatment_id}-paired-vs-{baseline_id}",
@@ -931,6 +970,7 @@ def build_paired_comparison(
         "metrics": metrics,
         "paired_replay": paired_replay,
         "policy_propagation": policy_propagation,
+        "society_divergence": society_divergence,
         "claim_boundary": (
             "paired deterministic simulator-policy contrast for this fixture and "
             "seed only; not a population effect, significance test, real-football "
@@ -949,6 +989,7 @@ def build_paired_comparison(
                 propagation=policy_propagation,
                 eligibility=comparison["eligibility"],
                 intervention=comparison["intervention"],
+                society_divergence=society_divergence,
             )
         )
     else:
@@ -1205,6 +1246,68 @@ def _counterfactual_future_panel(comparison: Mapping[str, Any]) -> str:
 </section>"""
 
 
+def _society_divergence_panel(comparison: Mapping[str, Any]) -> str:
+    raw = comparison.get("society_divergence")
+    if raw is None:
+        return """<section class="card" data-testid="society-divergence-panel">
+<h2>复杂系统终局分叉</h2><p class="muted">旧版配对证据没有终局社会状态快照；缺失不能解释为零变化。</p></section>"""
+    try:
+        divergence = validate_paired_society_divergence(raw)
+    except ValueError:
+        return """<section class="card" data-testid="society-divergence-panel">
+<h2>复杂系统终局分叉</h2><p class="warn">社会状态证据校验失败，已拒绝展示。</p></section>"""
+    if not divergence["available"]:
+        reason = html.escape(str(divergence["reason"]))
+        return f"""<section class="card" data-testid="society-divergence-panel">
+<h2>复杂系统终局分叉</h2><p class="muted">终局社会状态证据不可用：{reason}。缺失不能解释为零变化。</p></section>"""
+    scope_labels = {
+        "tactical_controls": "战术控制",
+        "emotion_profile": "情绪",
+        "social_narrative_state": "社会叙事",
+        "psychological_state": "心理",
+        "referee_grievance": "裁判积怨",
+    }
+    field_labels = {
+        "pressing_intensity": "压迫强度", "risk_budget": "风险预算",
+        "line_height": "防线高度",
+        "rotation_aggressiveness": "轮换激进度", "pride": "自豪",
+        "anger": "愤怒", "shame": "羞耻", "fear": "恐惧",
+        "determination": "决心", "trust_index": "信任指数",
+        "polarization": "极化", "narrative_fatigue": "叙事疲劳",
+        "morale": "士气", "pressure": "压力", "trust": "信任",
+        "risk_appetite": "风险偏好", "conflict": "冲突",
+        "audience_activation": "观众激活", "value": "数值",
+    }
+    count_labels = {
+        "memory_records": "记忆记录", "cognitive_memory_records": "认知记忆",
+        "beliefs": "信念", "reflections": "反思",
+    }
+    rows = []
+    for row in divergence["count_deltas"]:
+        rows.append(
+            "<tr><td>" + html.escape(row["team"]) + "</td><td>社会记录</td><td>"
+            + html.escape(count_labels[row["field"]])
+            + "</td><td colspan='2'>Δ "
+            + html.escape(f"{row['delta']:+d}") + "</td></tr>"
+        )
+    for row in divergence["state_changes"]:
+        rows.append(
+            "<tr><td>" + html.escape(row["team"]) + "</td><td>"
+            + html.escape(scope_labels[row["scope"]]) + "</td><td>"
+            + html.escape(field_labels[row["field"]]) + "</td><td>"
+            + html.escape(f"{float(row['baseline']):.3f}") + "</td><td>"
+            + html.escape(f"{float(row['treatment']):.3f}") + "</td></tr>"
+        )
+    body = "".join(rows) or (
+        '<tr><td colspan="5">双方终局社会状态在已测字段中完全一致。</td></tr>'
+    )
+    return f"""<section class="card" data-testid="society-divergence-panel">
+<div class="pair-panel-head"><div><span class="eyebrow">Paired terminal state · descriptive only</span><h2>复杂系统终局分叉</h2></div><span class="pair-badge {'changed' if rows else ''}">{divergence['state_change_count'] + divergence['count_delta_count']} 项差异</span></div>
+<p class="muted">比较同一分叉时点下基线世界与干预世界最终写出的无文本社会、心理和战术控制状态。</p>
+<div class="scroll"><table><thead><tr><th>球队</th><th>状态域</th><th>字段</th><th>基线世界</th><th>干预世界</th></tr></thead><tbody>{body}</tbody></table></div>
+<p class="inference-boundary">这是身份绑定的终局状态差异。局部动作归因不会自动传递到社会状态、心理状态或赛果；不构成现实球队结论。</p></section>"""
+
+
 def _policy_propagation_panel(comparison: Mapping[str, Any]) -> str:
     propagation = comparison.get("policy_propagation") or {}
     if not isinstance(propagation, Mapping) or not propagation.get("available"):
@@ -1418,6 +1521,9 @@ def render_paired_comparison_html(comparison: Mapping[str, Any]) -> str:
     future_panel = (
         _counterfactual_future_panel(comparison) if world_model_fork else ""
     )
+    society_panel = (
+        _society_divergence_panel(comparison) if world_model_fork else ""
+    )
     replay_panel = _paired_replay_panel(comparison)
     return f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(str(fixture.get('home')))} vs {html.escape(str(fixture.get('away')))} · {page_title}</title>
@@ -1427,6 +1533,7 @@ def render_paired_comparison_html(comparison: Mapping[str, Any]) -> str:
 <section class="card"><h2>配对资格检查</h2><ul>{check_rows}</ul></section>
 {future_panel}
 {propagation_panel}
+{society_panel}
 {replay_panel}
 <section class="card"><h2>处理场减去基线场</h2><div class="scroll"><table><thead><tr><th>指标</th><th>基线</th><th>处理</th><th>差值</th></tr></thead><tbody>{''.join(metric_rows)}</tbody></table></div></section>
 <section class="card"><h2>推断边界</h2><p class="muted">{html.escape(str(comparison.get('claim_boundary') or ''))}</p></section>

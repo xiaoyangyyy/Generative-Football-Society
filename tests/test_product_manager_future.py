@@ -20,6 +20,7 @@ from src.product.manager_future_review import (
     validate_manager_future_review,
 )
 from src.product.match_plan import WorldModelForkSetPlan
+from src.product.paired_society_state import build_paired_society_divergence
 from src.product.season import (
     ManagerDecision,
     SeasonPlan,
@@ -509,6 +510,73 @@ def test_manager_future_review_receipt_distinguishes_keep_and_revise():
     tampered = copy.deepcopy(kept)
     tampered["evidence_summary"]["action_divergence_scenarios"] = 3
     with pytest.raises(ValueError, match="scenario summary mismatch"):
+        validate_manager_future_review(
+            tampered,
+            season_id=season["season_id"],
+            fixture_id=fixture["fixture_id"],
+            matchday=fixture["matchday"],
+            manager_team="A",
+        )
+
+
+def test_v4_future_review_seals_society_divergence_into_decision_ledger():
+    season, fixture = _season_with_decision()
+    context = build_manager_future_context(season)
+    request, result = _task_evidence(context)
+    divergence = build_paired_society_divergence(
+        {"layers": {}},
+        {"layers": {}},
+        teams=[context["fixture"]["home"], context["fixture"]["away"]],
+        pair_eligible=True,
+    )
+    for scenario in result["scenario_evidence"]:
+        scenario.pop("scenario_identity")
+        scenario["schema_version"] = 3
+        scenario["society_divergence"] = copy.deepcopy(divergence)
+        scenario["scenario_identity"] = _identity(scenario)
+
+    review = build_manager_future_review(
+        task_id="future123",
+        request=request,
+        result=result,
+        final_decision=fixture["manager_decision"],
+        intent="keep_after_review",
+    )
+
+    assert review["schema_version"] == 4
+    assert {row["schema_version"] for row in review["scenario_evidence"]} == {3}
+    validate_manager_future_review(
+        review,
+        season_id=season["season_id"],
+        fixture_id=fixture["fixture_id"],
+        matchday=fixture["matchday"],
+        manager_team="A",
+    )
+    fixture["manager_future_reviews"] = [review]
+    ledger = build_manager_decision_ledger(season)
+    entry = next(
+        row for row in ledger["entries"]
+        if row["fixture_id"] == fixture["fixture_id"]
+    )
+    archived = entry["future_review_execution_trace"]["terminal_review"][
+        "reviewed_scenarios"
+    ]
+    assert {row["schema_version"] for row in archived} == {2}
+    assert archived[0]["society_divergence"] == divergence
+    assert archived[0]["source_scenario_identity"] == review[
+        "scenario_evidence"
+    ][0]["scenario_identity"]
+    validate_manager_decision_ledger(ledger)
+
+    tampered = copy.deepcopy(review)
+    tampered["scenario_evidence"][0]["society_divergence"]["reason"] = "forged"
+    tampered["scenario_evidence"][0].pop("scenario_identity")
+    tampered["scenario_evidence"][0]["scenario_identity"] = _identity(
+        tampered["scenario_evidence"][0]
+    )
+    tampered.pop("review_identity")
+    tampered["review_identity"] = _identity(tampered)
+    with pytest.raises(ValueError, match="divergence values"):
         validate_manager_future_review(
             tampered,
             season_id=season["season_id"],

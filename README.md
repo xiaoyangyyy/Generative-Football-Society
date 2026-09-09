@@ -626,6 +626,26 @@ zero-training preflight identity was refreshed without writing a checkpoint.
 V4.40 remains the last full-suite baseline at 1,498 passing tests, three skips
 and one registered training-test deselection.
 
+V4.45 connects the paired world-model future to the persistent football
+society instead of stopping at action and aggregate match metrics. Every new
+paired comparison now carries identity-bound, content-free terminal snapshots
+for both teams and an exact bounded delta over record counts plus the 19 public
+tactical, emotional, social-narrative, psychological and referee-grievance
+fields. That evidence survives fork-set V3, review receipt V4, decision-ledger
+archive V2 and the historical manager-world navigator. The current future set,
+decision ledger and world trajectory expose the same accessible disclosure;
+legacy absence is explicitly different from a measured zero.
+
+This closes a product and evidence-chain gap, but it deliberately does not
+claim more than the data supports. Exact local action attribution remains
+local: terminal society divergence is a descriptive result of one matched-seed
+simulator pair, not proof that the policy caused downstream psychology, score
+or real-team effects. This code-only stage executes no match, future
+generation, training, formal study, participant session or provider call. Its
+focused regression passes 255 tests; local HTTP passes 16/16 checks,
+accessibility passes 43/43, crash recovery passes every declared check and the
+architecture audit passes 119/119. V4.40 remains the last full-suite baseline.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

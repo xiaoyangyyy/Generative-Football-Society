@@ -397,6 +397,13 @@ def test_match_settlement_captures_society_state_and_is_cognitively_idempotent(
     assert home.squad_carryover.society_state == first_state
     assert len(home.episodic_memory) == first_memory_count == 1
     assert away.episodic_memory == []
+    assert list(summary.society_public_state) == ["Alpha", "Beta"]
+    validate_society_public_snapshot(summary.society_public_state["Alpha"])
+    validate_society_public_snapshot(summary.society_public_state["Beta"])
+    assert summary.society_public_state["Alpha"]["state_identity"] == (
+        first_state["state_identity"]
+    )
+    assert "episodic_memory" not in summary.society_public_state["Alpha"]
     payload = json.loads((
         tmp_path / "data/persistence/squad_carryover.json"
     ).read_text(encoding="utf-8"))

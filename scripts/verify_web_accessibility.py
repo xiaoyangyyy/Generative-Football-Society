@@ -271,6 +271,21 @@ def verify_web_accessibility() -> dict:
             "managerWorldStoryDossier.append(",
         )
     )
+    checks["paired_society_divergence_contract"] = all(
+        token in index
+        for token in (
+            "function appendFutureSocietyDivergences(host,scenarios,title)",
+            "scenario?.society_divergence",
+            "list.setAttribute('aria-label','基线世界与干预世界的终局社会状态分叉')",
+            "changes.setAttribute('aria-label'",
+            "for(const row of divergence.count_deltas||[])",
+            "for(const row of divergence.state_changes||[])",
+            "renderManagerFutureSetsSocietyDivergence]",
+            "renderManagerDecisionLedgerSocietyDivergence,",
+            "renderManagerWorldReviewedSocietyDivergence,",
+            "局部动作归因不会自动传递到社会状态、心理状态或赛果",
+        )
+    )
     checks["workflow_navigation_reveals_target_before_focus"] = all(
         token in index
         for token in (

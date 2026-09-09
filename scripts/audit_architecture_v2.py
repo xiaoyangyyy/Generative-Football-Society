@@ -203,11 +203,18 @@ def main() -> int:
         "src/product/workspace.py",
         "src/product/workspace_session.py",
         "src/product/workspace_evidence.py",
+        "src/product/comparison.py",
+        "src/product/world_model_fork_set.py",
+        "src/product/manager_future_review.py",
+        "src/product/decision_ledger.py",
+        "src/product/paired_society_state.py",
         "src/product/manager_world_navigator.py",
         "src/product/manager_world_player_changes.py",
         "src/product/manager_world_society_changes.py",
         "src/product/manager_world_dossier.py",
         "src/product/manager_world_story.py",
+        "src/match_engine/state.py",
+        "src/simulation/match_pipeline.py",
         "src/product/recovery.py",
         "src/product/web.py",
         "src/cli.py",
@@ -276,6 +283,9 @@ def main() -> int:
     manager_world_society_changes = (
         ROOT / "src/product/manager_world_society_changes.py"
     ).read_text(encoding="utf-8")
+    paired_society_state = (
+        ROOT / "src/product/paired_society_state.py"
+    ).read_text(encoding="utf-8")
     manager_world_dossier = (
         ROOT / "src/product/manager_world_dossier.py"
     ).read_text(encoding="utf-8")
@@ -329,6 +339,9 @@ def main() -> int:
     ).read_text(encoding="utf-8")
     manager_world_society_changes_tests = (
         ROOT / "tests/test_product_manager_world_society_changes.py"
+    ).read_text(encoding="utf-8")
+    paired_society_state_tests = (
+        ROOT / "tests/test_product_paired_society_state.py"
     ).read_text(encoding="utf-8")
     manager_world_story_tests = (
         ROOT / "tests/test_product_manager_world_story.py"
@@ -1125,6 +1138,68 @@ def main() -> int:
             )
             and "innerHTML" not in web
         ),
+        "paired_worlds_expose_terminal_society_state_divergence": (
+            all(token in match_pipeline for token in (
+                "home_society_state = capture_society_continuity(",
+                "micro_summary.society_public_state = {",
+                "society_public_snapshot(",
+            ))
+            and '"society": raw.get("society_public_state") or {}' in workspace
+            and all(token in paired_society_state for token in (
+                "MAX_TERMINAL_STATE_CHANGES = 38",
+                "MAX_COUNT_DELTAS = 8",
+                "def build_paired_society_divergence(",
+                "def validate_paired_society_divergence(",
+                '"paired_terminal_state_comparison_authorized": True',
+                '"policy_to_state_causality_authorized": False',
+                '"outcome_causality_authorized": False',
+                '"real_football_causality_authorized": False',
+            ))
+            and "from src.product.web" not in paired_society_state
+            and paired_society_state.count("\n") < 390
+            and all(token in product_comparison for token in (
+                "build_paired_society_divergence(",
+                '"society_divergence": society_divergence',
+                '"stage": "action_to_society_state"',
+                '"downstream_society_state_causality": False',
+                "def _society_divergence_panel(",
+                'data-testid="society-divergence-panel"',
+            ))
+            and all(token in world_model_fork_set for token in (
+                "schema_version not in {1, 2, 3}",
+                'required |= {"society_divergence"}',
+                '"schema_version": 3',
+                "validate_paired_society_divergence(",
+            ))
+            and all(token in manager_future_review for token in (
+                "REVIEW_SCHEMA_VERSION = 4",
+                "MECHANISM_REVIEW_SCHEMA_VERSION = 3",
+                "3: REVIEW_SCHEMA_VERSION",
+            ))
+            and all(token in decision_ledger for token in (
+                'scenario.get("schema_version") == 3',
+                'archived["schema_version"] = 2',
+                'archived["society_divergence"]',
+            ))
+            and all(token in manager_world_navigator for token in (
+                "_REVIEWED_SCENARIO_V2_FIELDS",
+                "validate_paired_society_divergence(",
+            ))
+            and all(token in web for token in (
+                "function appendFutureSocietyDivergences(host,scenarios,title)",
+                "list.setAttribute('aria-label','基线世界与干预世界的终局社会状态分叉')",
+                "renderManagerFutureSetsSocietyDivergence]",
+                "renderManagerDecisionLedgerSocietyDivergence,",
+                "renderManagerWorldReviewedSocietyDivergence,",
+                "局部动作归因不会自动传递到社会状态、心理状态或赛果",
+            ))
+            and all(token in paired_society_state_tests for token in (
+                "test_paired_society_divergence_is_exact_bounded_and_noncausal",
+                "test_paired_society_divergence_preserves_zero_and_missing_distinction",
+                "test_paired_society_divergence_rejects_invalid_or_rehashed_tampering",
+            ))
+            and "innerHTML" not in web
+        ),
         "action_adoption_smoke_is_four_arm_and_zero_training": (
             all(token in action_adoption_study for token in (
                 'SMOKE_ARM_IDS = (',
@@ -1713,7 +1788,8 @@ def main() -> int:
             and all(token in match_pipeline for token in (
                 "operation_id=transaction_id",
                 "capture_society_continuity(",
-                ".society_state = capture_society_continuity(",
+                ".society_state = home_society_state",
+                ".society_state = away_society_state",
             ))
             and (
                 'transaction_id=f"{self.match_index}:{stage_name}:'

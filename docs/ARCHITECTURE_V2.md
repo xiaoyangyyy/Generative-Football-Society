@@ -5458,3 +5458,48 @@ passes every declared check and the expanded architecture audit passes
 118/118. The zero-training M2 preflight identity is refreshed without writing
 a checkpoint. V4.40 remains the last full-suite baseline at 1,498 passing
 tests, three skips and one registered training-test deselection.
+
+## 163. V4.45 Paired terminal society-state divergence
+
+The same-chapter V4.44 projection proved that one completed simulator world
+could retain exact public society transitions, but paired world-model forks
+still stopped at action changes and aggregate future metrics. A manager could
+not inspect whether the baseline and treatment worlds ended with different
+tactical control, emotion, social narrative, psychology, referee grievance or
+content-free social record counts. That left the most distinctive complex-
+system layer outside the action-adoption review chain.
+
+V4.45 captures each micro match's terminal `society_public_snapshot` in its
+summary and carries it through the existing workspace report. The pure
+`paired_society_state.py` boundary validates both terminal snapshots before
+comparing them. It exposes at most eight signed record-count deltas and 38
+numeric state rows across two canonical teams, validates every value against
+the authoritative simulator bounds, seals the complete payload, and rejects
+duplicates, noncanonical order, count mismatches and identity tampering. No
+memory, belief, reflection or narrative content is copied. Missing legacy
+snapshots, unavailable snapshots and measured zero divergence remain distinct.
+
+The existing paired comparison adds one evidence-ladder stage from action to
+terminal society state. Fork scenario V3 retains the sealed comparison; review
+receipt V4 binds it to the manager's intent; decision-ledger archive V2 and the
+historical navigator preserve it without introducing another store. Earlier
+scenario, receipt and archive schemas remain readable. Current future sets,
+decision receipts and historical world-trajectory points use one safe-DOM,
+accessible disclosure to show the same evidence.
+
+The authority boundary is intentionally asymmetric. The existing runtime
+identity can still attribute an individual locally retained action to the
+simulator policy switch. It cannot automatically extend that attribution to a
+terminal society or psychology delta, a match outcome or a real football team.
+Those downstream rows are descriptive facts from one matched-seed simulator
+pair and would require a separately designed intervention study for causal
+promotion.
+
+This is a code-only stage: no match, future generation, training, formal study,
+participant session or provider request is executed. The tracked zero-training
+preflight, recovery, Web and accessibility reports bind the final code
+identity. The affected chain passes 255 focused tests; local HTTP passes 16/16,
+automated accessibility passes 43/43, crash recovery passes every declared
+check and the architecture audit passes 119/119. V4.40 remains the last
+full-suite baseline at 1,498 passing tests, three skips and one registered
+training-test deselection.

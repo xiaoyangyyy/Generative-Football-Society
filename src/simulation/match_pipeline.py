@@ -352,14 +352,28 @@ def finalize_match_feedback(
     )
 
     from src.simulation.cross_match_state import ensure_team_carryover
-    from src.simulation.society_continuity import capture_society_continuity
+    from src.simulation.society_continuity import (
+        capture_society_continuity,
+        society_public_snapshot,
+    )
 
-    ensure_team_carryover(home).society_state = capture_society_continuity(
+    home_society_state = capture_society_continuity(
         home, source_transaction_id=source_transaction_id,
     )
-    ensure_team_carryover(away).society_state = capture_society_continuity(
+    away_society_state = capture_society_continuity(
         away, source_transaction_id=source_transaction_id,
     )
+    ensure_team_carryover(home).society_state = home_society_state
+    ensure_team_carryover(away).society_state = away_society_state
+    if micro_summary is not None:
+        micro_summary.society_public_state = {
+            home.team_name: society_public_snapshot(
+                home_society_state, team_id=home.team_name,
+            ),
+            away.team_name: society_public_snapshot(
+                away_society_state, team_id=away.team_name,
+            ),
+        }
 
     if env_bool(environment_snapshot(), "SAVE_CARRYOVER", True):
         from src.simulation.cross_match_state import save_persistence
