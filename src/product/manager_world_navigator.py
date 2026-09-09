@@ -8,6 +8,10 @@ import json
 import math
 from typing import Any, Mapping
 
+from src.product.manager_world_player_changes import (
+    project_manager_world_player_changes,
+)
+
 
 SCHEMA_VERSION = 1
 MAX_HISTORY_CHAPTERS = 64
@@ -91,6 +95,60 @@ _REVIEWED_SCENARIO_FIELDS = {
     "simulator_local_action_attribution", "outcome_causality_authorized",
     "real_football_causality_authorized", "archive_identity",
 }
+
+
+def _player_counter_transitions(
+    rows: list[Mapping[str, Any]], field: str,
+) -> tuple[int, int]:
+    started = 0
+    cleared = 0
+    for row in rows:
+        fields = row.get("fields")
+        fields = fields if isinstance(fields, Mapping) else {}
+        change = fields.get(field)
+        change = change if isinstance(change, Mapping) else {}
+        before = change.get("before", 0)
+        after = change.get("after", 0)
+        started += before == 0 and after > 0
+        cleared += before > 0 and after == 0
+    return started, cleared
+
+
+def _validated_player_changes(
+    source_match_delta: Mapping[str, Any],
+    transition_summary: Mapping[str, Any],
+    *,
+    persistent_state_available: bool,
+) -> list[dict[str, Any]] | None:
+    if not persistent_state_available:
+        return None
+    raw = source_match_delta.get("players_changed")
+    projection = project_manager_world_player_changes(
+        raw, expected_total=transition_summary["changed_players"],
+    )
+    injuries = (
+        _player_counter_transitions(raw, "injury_matches_left")
+        if projection["available"] else (-1, -1)
+    )
+    suspensions = (
+        _player_counter_transitions(raw, "suspension_matches_left")
+        if projection["available"] else (-1, -1)
+    )
+    if (
+        projection["available"] is not True
+        or injuries != (
+            transition_summary["new_injuries"],
+            transition_summary["injuries_cleared"],
+        )
+        or suspensions != (
+            transition_summary["new_suspensions"],
+            transition_summary["suspensions_cleared"],
+        )
+    ):
+        raise ValueError(
+            "manager world navigator player transition facts are invalid"
+        )
+    return copy.deepcopy(raw)
 _REVIEWED_SCENARIO_STATUSES = {
     "descriptive_only_ineligible", "no_realized_action_divergence",
     "action_divergence_without_local_attribution",
@@ -1292,6 +1350,11 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         or len(gaps) != len(set(gaps))
     ):
         raise ValueError("manager world navigator chapter facts are invalid")
+    player_changes = _validated_player_changes(
+        source_match_delta,
+        transition_summary,
+        persistent_state_available=persistent_state_available,
+    )
     if review_available:
         _validate_reviewed_scenarios(
             reviewed_scenarios,
@@ -1481,6 +1544,7 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
                 copy.deepcopy(dict(transition_summary))
                 if persistent_state_available else None
             ),
+            "players_changed": player_changes,
             "society_transition": (
                 copy.deepcopy(dict(society_transition))
                 if persistent_state_available

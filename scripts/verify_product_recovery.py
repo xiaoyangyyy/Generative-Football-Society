@@ -26,6 +26,8 @@ CODE_IDENTITY_FILES = (
     "src/product/workspace.py",
     "src/product/workspace_session.py",
     "src/product/workspace_evidence.py",
+    "src/product/manager_world_navigator.py",
+    "src/product/manager_world_player_changes.py",
     "src/product/manager_world_dossier.py",
     "src/product/manager_world_story.py",
     "src/product/recovery.py",

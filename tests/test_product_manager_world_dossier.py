@@ -20,6 +20,25 @@ def _local_transition_matrix() -> dict:
     return matrix
 
 
+def _player_changes() -> list[dict]:
+    return [{
+        "player_id": "p01",
+        "name": "Alex One",
+        "change": "updated",
+        "fields": {
+            "matches_played": {"before": 4, "after": 5},
+            "injury_matches_left": {"before": 0, "after": 2},
+        },
+    }, {
+        "player_id": "p02",
+        "name": "Blake Two",
+        "change": "updated",
+        "fields": {
+            "form_ema": {"before": 0.1, "after": 0.2},
+        },
+    }]
+
+
 def _completed_sources() -> dict:
     return {
         "phase": "completed",
@@ -79,12 +98,13 @@ def _completed_sources() -> dict:
                 "unavailable_players": 1.0,
             },
             "transition_summary": {
-                "changed_players": 7,
+                "changed_players": 2,
                 "new_injuries": 1,
                 "injuries_cleared": 0,
                 "new_suspensions": 0,
                 "suspensions_cleared": 0,
             },
+            "players_changed": _player_changes(),
             "society_transition": {
                 "available": True,
                 "memory_record_delta": 3,
@@ -108,7 +128,7 @@ def test_dossier_unifies_one_chapter_without_mutating_or_authorizing_effect():
     dossier = build_manager_world_dossier(**sources)
 
     assert sources == original
-    assert dossier["schema_version"] == 2
+    assert dossier["schema_version"] == 3
     assert dossier["phase"] == "completed"
     assert dossier["manager_choice"]["selected_tactic"] == "gegenpress"
     assert dossier["future_review"]["registered_scenarios"] == 3
@@ -139,6 +159,16 @@ def test_dossier_unifies_one_chapter_without_mutating_or_authorizing_effect():
         "outcome_attribution_authorized": False,
     }
     assert dossier["world_after"]["metrics_delta"]["squad_morale_ema"] == 0.02
+    player_changes = dossier["world_after"]["player_changes"]
+    assert player_changes["available"] is True
+    assert player_changes["total_changed"] == 2
+    assert player_changes["players"][0]["name"] == "Alex One"
+    assert player_changes["players"][0]["fields"] == [{
+        "field": "matches_played", "before": 4, "after": 5,
+    }, {
+        "field": "injury_matches_left", "before": 0, "after": 2,
+    }]
+    assert player_changes["manager_or_action_effect_authorized"] is False
     assert dossier["world_after"]["society_transition"][
         "changed_state_fields"
     ] == ["emotion_profile", "tactical_controls"]
@@ -181,6 +211,21 @@ def test_dossier_bounds_invalid_public_values_without_inventing_evidence():
         "changed_state_fields"
     ] == ["valid"]
     assert dossier["continuity_gaps"] == ["known_gap"]
+
+
+def test_dossier_keeps_missing_player_detail_distinct_from_zero_change():
+    sources = _completed_sources()
+    sources["world"].pop("players_changed")
+
+    dossier = build_manager_world_dossier(**sources)
+
+    player_changes = dossier["world_after"]["player_changes"]
+    assert player_changes["available"] is False
+    assert player_changes["reason"] == (
+        "legacy_or_missing_player_change_evidence"
+    )
+    assert player_changes["total_changed"] == 2
+    assert player_changes["players"] == []
 
 
 def test_dossier_fails_closed_on_invalid_transition_matrix():

@@ -203,6 +203,8 @@ def main() -> int:
         "src/product/workspace.py",
         "src/product/workspace_session.py",
         "src/product/workspace_evidence.py",
+        "src/product/manager_world_navigator.py",
+        "src/product/manager_world_player_changes.py",
         "src/product/manager_world_dossier.py",
         "src/product/manager_world_story.py",
         "src/product/recovery.py",
@@ -267,6 +269,9 @@ def main() -> int:
     manager_world_navigator = (
         ROOT / "src/product/manager_world_navigator.py"
     ).read_text(encoding="utf-8")
+    manager_world_player_changes = (
+        ROOT / "src/product/manager_world_player_changes.py"
+    ).read_text(encoding="utf-8")
     manager_world_dossier = (
         ROOT / "src/product/manager_world_dossier.py"
     ).read_text(encoding="utf-8")
@@ -314,6 +319,9 @@ def main() -> int:
     ).read_text(encoding="utf-8")
     manager_world_navigator_tests = (
         ROOT / "tests/test_product_manager_world_navigator.py"
+    ).read_text(encoding="utf-8")
+    manager_world_player_changes_tests = (
+        ROOT / "tests/test_product_manager_world_player_changes.py"
     ).read_text(encoding="utf-8")
     manager_world_story_tests = (
         ROOT / "tests/test_product_manager_world_story.py"
@@ -986,6 +994,64 @@ def main() -> int:
                 "不能把缺失解释为零改变",
             ))
             and "test_root_surfaces_same_chapter_exact_action_transitions_safely" in (
+                web_tests
+            )
+            and "innerHTML" not in web
+        ),
+        "manager_world_story_exposes_bounded_player_state_trace": (
+            all(token in world_state_evidence for token in (
+                '"players_changed": changes',
+                '"changed_players": len(changes)',
+            ))
+            and all(token in manager_world_navigator for token in (
+                "from src.product.manager_world_player_changes import (",
+                "project_manager_world_player_changes(",
+                'expected_total=transition_summary["changed_players"]',
+                '"injury_matches_left"',
+                '"suspension_matches_left"',
+                '"players_changed": player_changes',
+                "manager world navigator player transition facts are invalid",
+            ))
+            and all(token in manager_world_player_changes for token in (
+                "MAX_SOURCE_PLAYERS = 100",
+                "MAX_VISIBLE_PLAYERS = 12",
+                "MAX_VISIBLE_FIELDS = 12",
+                "def project_manager_world_player_changes(",
+                '"player_change_total_mismatch"',
+                '"noncanonical_player_change_identities"',
+                '"descriptive_persisted_state_only": True',
+                '"manager_or_action_effect_authorized": False',
+                '"outcome_attribution_authorized": False',
+            ))
+            and "from src.product.web" not in manager_world_player_changes
+            and manager_world_player_changes.count("\n") < 280
+            and all(token in manager_world_dossier for token in (
+                "from src.product.manager_world_player_changes import (",
+                'world.get("players_changed")',
+                'expected_total=transition_summary["changed_players"]',
+            ))
+            and all(token in manager_world_player_changes_tests for token in (
+                "test_player_changes_project_scalar_and_condition_evidence_without_mutation",
+                "test_player_changes_validate_full_source_before_bounding_public_rows",
+                "test_player_changes_fail_closed_on_invalid_full_source",
+                "test_player_changes_keep_legacy_absence_distinct_from_zero_change",
+                '"src/product/manager_world_player_changes.py" in CODE_IDENTITY_FILES',
+            ))
+            and "test_navigator_rejects_rehashed_player_transition_drift" in (
+                manager_world_navigator_tests
+            )
+            and all(token in web for token in (
+                "function appendManagerWorldStoryPlayerChanges(host,world)",
+                "world?.player_changes",
+                "document.createElement('details')",
+                "document.createElement('summary')",
+                "list.setAttribute('aria-label','同章球员级持久世界变化')",
+                "for(const row of evidence.players||[])",
+                "appendManagerWorldStoryPlayerChanges(worldNode,world)",
+                "汇总计数不会被解释成球员明细",
+                "不证明经理选择或世界模型动作导致这些变化",
+            ))
+            and "test_root_expands_bounded_player_world_changes_with_safe_dom" in (
                 web_tests
             )
             and "innerHTML" not in web

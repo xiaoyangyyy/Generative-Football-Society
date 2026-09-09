@@ -5,8 +5,11 @@ from __future__ import annotations
 import math
 from typing import Any, Mapping
 
+from src.product.manager_world_player_changes import (
+    project_manager_world_player_changes,
+)
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 CLAIM_BOUNDARY = (
     "same_simulator_chapter_descriptive_chain_not_outcome_causality"
 )
@@ -283,6 +286,10 @@ def _world_after(raw: Any, *, status: str) -> dict[str, Any]:
     transitions = (
         transitions if persistent and isinstance(transitions, Mapping) else {}
     )
+    transition_summary = {
+        field: _bounded_count(transitions.get(field))
+        for field in _WORLD_TRANSITIONS
+    } if persistent else None
     return {
         "status": status,
         "result_available": world.get("result_available") is True,
@@ -297,10 +304,14 @@ def _world_after(raw: Any, *, status: str) -> dict[str, Any]:
             field: _finite_number(metrics.get(field))
             for field in _WORLD_METRICS
         } if persistent else None,
-        "transition_summary": {
-            field: _bounded_count(transitions.get(field))
-            for field in _WORLD_TRANSITIONS
-        } if persistent else None,
+        "transition_summary": transition_summary,
+        "player_changes": (
+            project_manager_world_player_changes(
+                world.get("players_changed"),
+                expected_total=transition_summary["changed_players"],
+            )
+            if persistent and transition_summary is not None else None
+        ),
         "society_transition": _society_summary(
             world.get("society_transition")
         ),

@@ -586,6 +586,25 @@ automated accessibility passes 42/42, process-crash recovery passes every
 declared check and the expanded architecture audit passes 116/116. V4.40's
 1,498 passing tests remain the last full-suite baseline.
 
+V4.43 carries the same chapter into the individual players who persist beyond
+the match. The navigator now validates the authoritative `players_changed`
+list against its changed-player total and independently reconstructs new and
+cleared injury and suspension counts before preserving it in the chapter. A
+dedicated pure projector validates the complete canonical source list before
+bounding the public view to 12 players and 12 changed fields per player. The
+existing fourth dossier card offers an accessible disclosure showing each
+player's added, removed or updated state and exact before/after values for
+availability, workload, form, media sentiment and other carryover fields.
+Missing detail remains distinct from zero change, and every row is labelled as
+persisted simulator state rather than manager, model, score or medical
+causality. The recovery code identity now closes over the navigator and player
+projector as well as the dossier, story and Web surface. This code-only change
+executes no match, future, training, formal study, participant session or
+provider call. The affected chain passes 153 focused tests; local HTTP passes
+16/16, automated accessibility passes 42/42, process-crash recovery passes
+every declared check and the expanded architecture audit passes 117/117.
+V4.40's 1,498 passing tests remain the last full-suite baseline.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

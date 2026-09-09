@@ -670,6 +670,22 @@ not quality signals by themselves.
     every check and all 116 architecture checks are green. V4.40 remains the
     last full-suite baseline at 1,498 passing tests.
 
+86. Preserved the authoritative per-player carryover changes through the
+    derived navigator and existing same-chapter dossier. The navigator now
+    validates complete player rows, changed-player totals and independently
+    reconstructed injury/suspension transitions before copying the source.
+    A pure projector validates up to 100 canonical source players before
+    exposing at most 12 players and 12 fields each. The fourth existing card
+    uses a named accessible disclosure and safe DOM text to show exact
+    before/after carryover state. Missing detail is not treated as zero, and no
+    manager, model, score or medical causality is authorized. Recovery identity
+    coverage was also closed over the navigator and projector. No match,
+    future, training, study, participant session or external call is executed.
+    The affected chain passes 153 focused tests; local HTTP passes 16/16,
+    accessibility passes 42/42, recovery passes every check and all 117
+    architecture checks are green. V4.40 remains the last full-suite baseline
+    at 1,498 passing tests.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

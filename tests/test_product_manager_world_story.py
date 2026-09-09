@@ -21,6 +21,25 @@ def _local_transition_matrix() -> dict:
     return matrix
 
 
+def _player_changes() -> list[dict]:
+    return [{
+        "player_id": "p01",
+        "name": "Alex One",
+        "change": "updated",
+        "fields": {
+            "matches_played": {"before": 4, "after": 5},
+            "injury_matches_left": {"before": 0, "after": 2},
+        },
+    }, {
+        "player_id": "p02",
+        "name": "Blake Two",
+        "change": "updated",
+        "fields": {
+            "form_ema": {"before": 0.1, "after": 0.2},
+        },
+    }]
+
+
 def _completed_navigator() -> dict:
     return {
         "available": True,
@@ -87,12 +106,13 @@ def _completed_navigator() -> dict:
                     "unavailable_players": 1.0,
                 },
                 "transition_summary": {
-                    "changed_players": 7,
+                    "changed_players": 2,
                     "new_injuries": 1,
                     "injuries_cleared": 0,
                     "new_suspensions": 0,
                     "suspensions_cleared": 0,
                 },
+                "players_changed": _player_changes(),
                 "society_transition": {
                     "available": True,
                     "memory_record_delta": 3,
@@ -119,7 +139,7 @@ def test_world_story_uses_one_latest_chapter_and_stays_noncausal():
     validate_manager_world_story(story, navigator=navigator)
 
     assert navigator == original
-    assert story["schema_version"] == 4
+    assert story["schema_version"] == 5
     assert story["view_mode"] == "latest_completed_chapter"
     assert story["story_state"] == "local_action_change_observed"
     assert story["source"] == {
@@ -186,7 +206,17 @@ def test_world_story_uses_one_latest_chapter_and_stays_noncausal():
     ] == 1.75
     assert dossier["world_after"]["outcome"] == "win"
     assert dossier["world_after"]["metrics_delta"]["team_fatigue_ema"] == 0.08
-    assert dossier["world_after"]["transition_summary"]["changed_players"] == 7
+    assert dossier["world_after"]["transition_summary"]["changed_players"] == 2
+    assert dossier["world_after"]["player_changes"]["available"] is True
+    assert dossier["world_after"]["player_changes"]["players"][1] == {
+        "player_id": "p02",
+        "name": "Blake Two",
+        "change": "updated",
+        "fields": [{
+            "field": "form_ema", "before": 0.1, "after": 0.2,
+        }],
+        "fields_truncated": False,
+    }
     assert dossier["world_after"]["society_transition"][
         "changed_state_fields"
     ] == ["emotion_profile", "tactical_controls"]
@@ -253,6 +283,7 @@ def test_world_story_exposes_current_review_without_fake_result():
         "available"
     ] is False
     assert dossier["world_after"]["status"] == "pending"
+    assert dossier["world_after"]["player_changes"] is None
     assert story["outcome_improvement_authorized"] is False
 
 

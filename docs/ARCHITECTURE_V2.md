@@ -5367,3 +5367,48 @@ process-crash recovery passes every declared check and the expanded
 architecture audit passes 116/116. V4.40 remains the last full-suite baseline
 at 1,498 passing tests with three skips and one registered training-test
 deselection.
+
+## 161. V4.43 Bounded player-level world propagation
+
+The same-chapter dossier connected concrete action transitions to aggregate
+team and society state, but the authoritative world-state transition already
+contained a richer `players_changed` list that disappeared after long-term
+accounting. The manager could see that seven players changed without seeing
+which players or which persisted fields changed.
+
+V4.43 carries that existing evidence into the derived navigator chapter. The
+navigator requires the source list to pass the product projector, requires its
+length to equal `transition_summary.changed_players`, and independently
+reconstructs new/cleared injury and suspension counts from the player rows.
+These checks occur before the raw source rows are copied into the chapter, so a
+semantically altered and consistently rehashed ledger entry still fails
+closed. No persisted manager-world thread schema changes and no competing
+state store are introduced.
+
+`manager_world_player_changes.py` validates the full canonical source before
+building a bounded public projection. It accepts at most 100 unique,
+lexicographically ordered player identities; exact added/removed/updated row
+shapes; the known carryover field alphabet; finite scalar before/after pairs;
+and bounded condition-delta keys. Only after full validation does it expose at
+most 12 players and 12 changed fields per player. Truncation is explicit.
+Legacy absence, malformed rows, count mismatches and noncanonical identities
+produce an unavailable projection with no invented detail.
+
+The existing fourth dossier card now contains an accessible `details` control
+with a named ordered list. Each player row shows an identity-backed name,
+change type and exact persisted before/after values for appearances, workload,
+goals, cards, injury, suspension, recovery, form, media sentiment, rating or
+condition fields. It is not a new screen. Its boundary states that these are
+simulator carryover facts, not proof that the manager choice or world-model
+action caused the changes and not a real-world medical judgment.
+
+The recovery identity closure now includes both the manager-world navigator
+and the new player projector, alongside the dossier, story and served Web
+surface. This code-only change executes no match, future generation, training,
+formal study, participant session or provider call. The affected navigator,
+projection, dossier, story, Web and accessibility chain passes 153 focused
+tests. Local HTTP Beta passes 16/16 checks, automated accessibility passes
+42/42 checks, process-crash recovery passes every declared check and the
+expanded architecture audit passes 117/117. V4.40 remains the last full-suite
+baseline at 1,498 passing tests with three skips and one registered
+training-test deselection.

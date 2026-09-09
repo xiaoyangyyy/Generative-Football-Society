@@ -53,6 +53,7 @@
     "manager_world_dossier_preserves_exact_local_action_transitions": true,
     "manager_world_evolution_render_pipeline_is_explicit": true,
     "manager_world_model_advice_render_pipeline_is_explicit": true,
+    "manager_world_story_exposes_bounded_player_state_trace": true,
     "manager_world_story_has_one_same_chapter_dossier": true,
     "match_runtime_inputs_are_side_isolated_and_root_bound": true,
     "matchday_command_render_pipeline_is_explicit": true,

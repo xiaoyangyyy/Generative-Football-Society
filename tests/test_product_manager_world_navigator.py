@@ -313,6 +313,21 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None, exact=False):
     }, "thread_identity")
 
 
+def _player_changes() -> list[dict]:
+    rows = [{
+        "player_id": f"p{index:02d}",
+        "name": f"Player {index}",
+        "change": "updated",
+        "fields": {
+            "matches_played": {"before": index - 1, "after": index},
+        },
+    } for index in range(1, 8)]
+    rows[0]["fields"]["injury_matches_left"] = {
+        "before": 0, "after": 2,
+    }
+    return rows
+
+
 def _entry(index=1, *, pending=False, gaps=None, exact=False):
     fixture_id = f"md{index:02d}-fx01"
     payload = {
@@ -357,6 +372,7 @@ def _entry(index=1, *, pending=False, gaps=None, exact=False):
                         "new_suspensions": 0,
                         "suspensions_cleared": 0,
                     },
+                    "players_changed": _player_changes(),
                 },
             },
         },
@@ -588,6 +604,13 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
         "runtime_verified": True,
         "runtime_matches_selection": True,
     }
+    player_changes = navigator["history_chapters"][0][
+        "descriptive_world_after"
+    ]["players_changed"]
+    assert player_changes == _player_changes()
+    assert len(player_changes) == navigator["history_chapters"][0][
+        "descriptive_world_after"
+    ]["transition_summary"]["changed_players"]
     assert navigator["summary"] == {
         "completed_world_chapters": 2,
         "visible_world_chapters": 2,
@@ -966,6 +989,22 @@ def test_navigator_rejects_rehashed_manager_choice_drift():
     entry["entry_identity"] = _identity(entry)
 
     with pytest.raises(ValueError, match="chapter facts are invalid"):
+        build_manager_world_navigator(season)
+
+
+def test_navigator_rejects_rehashed_player_transition_drift():
+    season = _season(entries=[_entry(1)])
+    entry = season["manager_decision_ledger"]["entries"][0]
+    player_changes = entry["long_term_accounting"][
+        "persistent_team_state_delta"
+    ]["match_delta"]["players_changed"]
+    player_changes[0]["fields"]["injury_matches_left"] = {
+        "before": 0, "after": 0,
+    }
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    with pytest.raises(ValueError, match="player transition facts are invalid"):
         build_manager_world_navigator(season)
 
 

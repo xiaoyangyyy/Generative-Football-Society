@@ -307,6 +307,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "实际动作转移：" in document
     assert "共享采样期望" in document
     assert "同章共现，不归因赛果" in document
+    assert "function appendManagerWorldStoryPlayerChanges(" in document
+    assert "world?.player_changes" in document
+    assert "查看球员级持久变化" in document
+    assert "同章球员级持久世界变化" in document
     assert "managerWorldStoryDossier.append(" in document
     assert "function renderManagerWorldNavigatorBase(season)" in document
     assert "season?.manager_world_story" in document
@@ -686,6 +690,32 @@ def test_root_surfaces_same_chapter_exact_action_transitions_safely(tmp_path):
     assert "不能把缺失解释为零改变" in renderer
     assert "actionNode.append(trace)" in renderer
     assert "actionNode.append(gap)" in renderer
+    assert "textContent=" in renderer
+    assert "innerHTML" not in renderer
+
+
+def test_root_expands_bounded_player_world_changes_with_safe_dom(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    renderer = document.split(
+        "function appendManagerWorldStoryPlayerChanges(host,world)", 1
+    )[1].split("function renderManagerWorldStoryDossier", 1)[0]
+
+    assert response["status"].startswith("200")
+    assert "const evidence=world?.player_changes" in renderer
+    assert "document.createElement('details')" in renderer
+    assert "document.createElement('summary')" in renderer
+    assert "document.createElement('ol')" in renderer
+    assert "list.setAttribute('aria-label','同章球员级持久世界变化')" in renderer
+    assert "for(const row of evidence.players||[])" in renderer
+    assert "row.name||row.player_id" in renderer
+    assert "field.before" in renderer
+    assert "field.after" in renderer
+    assert "row.fields_truncated" in renderer
+    assert "evidence.players_truncated" in renderer
+    assert "不能把缺失解释为球员明细" not in renderer
+    assert "汇总计数不会被解释成球员明细" in renderer
+    assert "不证明经理选择或世界模型动作导致这些变化" in renderer
     assert "textContent=" in renderer
     assert "innerHTML" not in renderer
 
