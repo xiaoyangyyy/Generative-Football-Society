@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_recovery",
-  "generated_at": "2026-09-09T07:49:35.306374+00:00",
+  "generated_at": "2026-09-09T08:20:56.474830+00:00",
   "status": "passed_local_recovery",
   "process_crash_verified": true,
   "passed": true,
@@ -33,14 +33,15 @@
     "src/product/workspace.py": "05cc4784682ec3ae852ff3eb256aefd2e452024e36b9961bb36430e005d0b844",
     "src/product/workspace_session.py": "ac1c1fe2a7673bbf111090ec91e632309a6cf34fcd28e18f051438e6da4dbbcb",
     "src/product/workspace_evidence.py": "dd5661d5778ef6bdc681165245efc5e13bb6247bc9a51447db777d0da770674b",
-    "src/product/manager_world_navigator.py": "b2d897c63c08b5ad03bececb2439be0ece0ea5800df0eabac04ad657eaa3f4c4",
+    "src/product/manager_world_navigator.py": "7f3413283c612ebbd56e2490441f8ef945ebca8dbe314cc497eea50d59a77940",
     "src/product/manager_world_player_changes.py": "5b5b924f91cb2d593fa26b2d5f133552fe53b589f7945bd6a2accbff36d4beed",
-    "src/product/manager_world_dossier.py": "fd0e01bf453d4967121c6159fc7c67aed990789021bb2c7106c9094b607da0ef",
-    "src/product/manager_world_story.py": "4e2939134c89a588610b69063e5af750640a34e0e1e86ef7890f242a2ad2b057",
+    "src/product/manager_world_society_changes.py": "8383fecc8f092efb1a9238778672680a577c4ecc6c87ef36505fc669923c0434",
+    "src/product/manager_world_dossier.py": "a97989f2a8c9fd16227d9a0c27a032d6e208fbe656d455c1dff0382f8517bd0f",
+    "src/product/manager_world_story.py": "22f5c0697c13befadf31b4f39b88dae2292d72b533a6782ad9cc40fe072595d7",
     "src/product/recovery.py": "8c664c22619a3a90f0875a1d50a5097a2464e9527e28b914f224bf96fa4fabcf",
-    "src/product/web.py": "707de50c690b272e64d1d4723e2e4100f220ab2fd8b59408174d9b48ec5f22b7",
+    "src/product/web.py": "933bdded0a7791566fa638e1110075d5fb065ca0dee4bd3cd307c09761fcc5ac",
     "src/cli.py": "3b73f103325ab7a60bae04f0efeeb6da70f9e31da30173dfee2d3770c9808ab9",
-    "scripts/verify_product_recovery.py": "5f1099d734beb15ea281ad3f86d4e1dfbf343e2d654dd33039e24205341a626b"
+    "scripts/verify_product_recovery.py": "de615cbfba186df6e3d0bfe7f9902978d109c5cafed177b2cc8dacb10dcc0360"
   },
   "limitations": [
     "local process termination is not an operational deployment drill, deployment-volume test, or host-power-loss test",

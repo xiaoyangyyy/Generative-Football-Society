@@ -22,7 +22,8 @@ from src.simulation.squad_registry import load_effective_roster
 LEGACY_WORLD_STATE_SCHEMA_VERSION = 1
 SOCIETY_WORLD_STATE_SCHEMA_VERSION = 2
 META_COUNTS_WORLD_STATE_SCHEMA_VERSION = 3
-WORLD_STATE_SCHEMA_VERSION = 4
+META_GOVERNANCE_WORLD_STATE_SCHEMA_VERSION = 4
+WORLD_STATE_SCHEMA_VERSION = 5
 _METRICS = (
     "team_fatigue_ema", "squad_morale_ema", "team_media_pressure",
     "injured_players", "suspended_players", "unavailable_players",
@@ -171,6 +172,7 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
     if schema_version in {
         SOCIETY_WORLD_STATE_SCHEMA_VERSION,
         META_COUNTS_WORLD_STATE_SCHEMA_VERSION,
+        META_GOVERNANCE_WORLD_STATE_SCHEMA_VERSION,
         WORLD_STATE_SCHEMA_VERSION,
     }:
         expected_fields.add("society")
@@ -180,6 +182,7 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
             LEGACY_WORLD_STATE_SCHEMA_VERSION,
             SOCIETY_WORLD_STATE_SCHEMA_VERSION,
             META_COUNTS_WORLD_STATE_SCHEMA_VERSION,
+            META_GOVERNANCE_WORLD_STATE_SCHEMA_VERSION,
             WORLD_STATE_SCHEMA_VERSION,
         }
         or snapshot.get("team_id") != team
@@ -199,6 +202,7 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
     if schema_version in {
         SOCIETY_WORLD_STATE_SCHEMA_VERSION,
         META_COUNTS_WORLD_STATE_SCHEMA_VERSION,
+        META_GOVERNANCE_WORLD_STATE_SCHEMA_VERSION,
         WORLD_STATE_SCHEMA_VERSION,
     }:
         validate_society_public_snapshot(snapshot["society"])
@@ -210,6 +214,7 @@ def validate_team_state_snapshot(snapshot: Mapping[str, Any], *, team: str) -> N
         expected_projection = {
             SOCIETY_WORLD_STATE_SCHEMA_VERSION: "none",
             META_COUNTS_WORLD_STATE_SCHEMA_VERSION: "counts",
+            META_GOVERNANCE_WORLD_STATE_SCHEMA_VERSION: "governance",
             WORLD_STATE_SCHEMA_VERSION: "governance",
         }[schema_version]
         if meta_projection != expected_projection:
@@ -294,6 +299,7 @@ def _team_diff(
     after: Mapping[str, Any],
     *,
     include_society: bool,
+    include_society_details: bool,
 ) -> dict[str, Any]:
     before_players = {row["player_id"]: row for row in before["players"]}
     after_players = {row["player_id"]: row for row in after["players"]}
@@ -359,6 +365,7 @@ def _team_diff(
         result["society_transition"] = society_public_transition(
             before.get("society", unavailable),
             after.get("society", unavailable),
+            include_state_changes=include_society_details,
         )
     return result
 
@@ -398,6 +405,7 @@ def _build_fixture_world_state_transition(
             phases["before_match"][team],
             phases["after_match"][team],
             include_society=schema_version >= SOCIETY_WORLD_STATE_SCHEMA_VERSION,
+            include_society_details=(schema_version >= WORLD_STATE_SCHEMA_VERSION),
         )
         for team in teams
     }
@@ -408,6 +416,9 @@ def _build_fixture_world_state_transition(
                 phases["after_recovery"][team],
                 include_society=(
                     schema_version >= SOCIETY_WORLD_STATE_SCHEMA_VERSION
+                ),
+                include_society_details=(
+                    schema_version >= WORLD_STATE_SCHEMA_VERSION
                 ),
             )
             for team in teams
@@ -464,6 +475,7 @@ def validate_fixture_world_state_transition(
             LEGACY_WORLD_STATE_SCHEMA_VERSION,
             SOCIETY_WORLD_STATE_SCHEMA_VERSION,
             META_COUNTS_WORLD_STATE_SCHEMA_VERSION,
+            META_GOVERNANCE_WORLD_STATE_SCHEMA_VERSION,
             WORLD_STATE_SCHEMA_VERSION,
         }
         or transition.get("season_id") != season_id

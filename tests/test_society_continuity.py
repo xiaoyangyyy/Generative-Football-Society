@@ -321,6 +321,12 @@ def test_public_society_transition_reports_creation_and_removal():
 
     created = society_public_transition(unavailable, available)
     removed = society_public_transition(available, unavailable)
+    created_detailed = society_public_transition(
+        unavailable, available, include_state_changes=True,
+    )
+    removed_detailed = society_public_transition(
+        available, unavailable, include_state_changes=True,
+    )
 
     assert created["available"] is True
     assert created["before_available"] is False
@@ -328,6 +334,17 @@ def test_public_society_transition_reports_creation_and_removal():
     assert removed["available"] is True
     assert removed["before_available"] is True
     assert removed["after_available"] is False
+    assert "state_changes" not in created
+    assert "state_changes" not in removed
+    assert len(created_detailed["state_changes"]) == 19
+    assert created_detailed["state_changes"][0]["before"] is None
+    assert created_detailed["state_changes"][0]["after"] is not None
+    assert created_detailed["state_changes"][-1]["scope"] == (
+        "referee_grievance"
+    )
+    assert removed_detailed["state_changes"][0]["before"] is not None
+    assert removed_detailed["state_changes"][0]["after"] is None
+    assert "PRIVATE" not in json.dumps(created_detailed)
 
     invalid = copy.deepcopy(available)
     invalid["memory_records"] = 97

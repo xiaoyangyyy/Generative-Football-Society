@@ -115,13 +115,26 @@ def _completed_navigator() -> dict:
                 "players_changed": _player_changes(),
                 "society_transition": {
                     "available": True,
+                    "before_available": True,
+                    "after_available": True,
                     "memory_record_delta": 3,
                     "cognitive_memory_delta": 2,
                     "belief_delta": 1,
                     "reflection_delta": 0,
                     "changed_state_fields": [
-                        "emotion_profile", "tactical_controls",
+                        "tactical_controls", "emotion_profile",
                     ],
+                    "state_changes": [{
+                        "scope": "tactical_controls",
+                        "field": "risk_budget",
+                        "before": 0.5,
+                        "after": 0.45,
+                    }, {
+                        "scope": "emotion_profile",
+                        "field": "determination",
+                        "before": 0.5,
+                        "after": 0.6,
+                    }],
                 },
             },
             "locally_attributable_action_changes": 2,
@@ -139,7 +152,7 @@ def test_world_story_uses_one_latest_chapter_and_stays_noncausal():
     validate_manager_world_story(story, navigator=navigator)
 
     assert navigator == original
-    assert story["schema_version"] == 5
+    assert story["schema_version"] == 6
     assert story["view_mode"] == "latest_completed_chapter"
     assert story["story_state"] == "local_action_change_observed"
     assert story["source"] == {
@@ -219,7 +232,15 @@ def test_world_story_uses_one_latest_chapter_and_stays_noncausal():
     }
     assert dossier["world_after"]["society_transition"][
         "changed_state_fields"
-    ] == ["emotion_profile", "tactical_controls"]
+    ] == ["tactical_controls", "emotion_profile"]
+    assert dossier["world_after"]["society_transition"][
+        "state_change_evidence"
+    ]["changes"][1] == {
+        "scope": "emotion_profile",
+        "field": "determination",
+        "before": 0.5,
+        "after": 0.6,
+    }
     assert dossier["outcome_improvement_authorized"] is False
     assert dossier["causal_effect_authorized"] is False
 

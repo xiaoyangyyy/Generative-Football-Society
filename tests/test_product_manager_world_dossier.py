@@ -107,13 +107,26 @@ def _completed_sources() -> dict:
             "players_changed": _player_changes(),
             "society_transition": {
                 "available": True,
+                "before_available": True,
+                "after_available": True,
                 "memory_record_delta": 3,
                 "cognitive_memory_delta": 2,
                 "belief_delta": 1,
                 "reflection_delta": 0,
                 "changed_state_fields": [
-                    "emotion_profile", "tactical_controls",
+                    "tactical_controls", "emotion_profile",
                 ],
+                "state_changes": [{
+                    "scope": "tactical_controls",
+                    "field": "risk_budget",
+                    "before": 0.5,
+                    "after": 0.45,
+                }, {
+                    "scope": "emotion_profile",
+                    "field": "determination",
+                    "before": 0.5,
+                    "after": 0.6,
+                }],
             },
         },
         "world_status": "world_persisted",
@@ -128,7 +141,7 @@ def test_dossier_unifies_one_chapter_without_mutating_or_authorizing_effect():
     dossier = build_manager_world_dossier(**sources)
 
     assert sources == original
-    assert dossier["schema_version"] == 3
+    assert dossier["schema_version"] == 4
     assert dossier["phase"] == "completed"
     assert dossier["manager_choice"]["selected_tactic"] == "gegenpress"
     assert dossier["future_review"]["registered_scenarios"] == 3
@@ -171,7 +184,19 @@ def test_dossier_unifies_one_chapter_without_mutating_or_authorizing_effect():
     assert player_changes["manager_or_action_effect_authorized"] is False
     assert dossier["world_after"]["society_transition"][
         "changed_state_fields"
-    ] == ["emotion_profile", "tactical_controls"]
+    ] == ["tactical_controls", "emotion_profile"]
+    society_changes = dossier["world_after"]["society_transition"][
+        "state_change_evidence"
+    ]
+    assert society_changes["available"] is True
+    assert society_changes["total_changes"] == 2
+    assert society_changes["changes"][0] == {
+        "scope": "tactical_controls",
+        "field": "risk_budget",
+        "before": 0.5,
+        "after": 0.45,
+    }
+    assert society_changes["manager_or_action_effect_authorized"] is False
     assert dossier["same_chapter_evidence"] is True
     assert dossier["outcome_improvement_authorized"] is False
     assert dossier["causal_effect_authorized"] is False
@@ -209,7 +234,10 @@ def test_dossier_bounds_invalid_public_values_without_inventing_evidence():
     assert dossier["world_after"]["metrics_delta"]["team_fatigue_ema"] is None
     assert dossier["world_after"]["society_transition"][
         "changed_state_fields"
-    ] == ["valid"]
+    ] == []
+    assert dossier["world_after"]["society_transition"][
+        "state_change_evidence"
+    ]["available"] is False
     assert dossier["continuity_gaps"] == ["known_gap"]
 
 
@@ -226,6 +254,24 @@ def test_dossier_keeps_missing_player_detail_distinct_from_zero_change():
     )
     assert player_changes["total_changed"] == 2
     assert player_changes["players"] == []
+
+
+def test_dossier_keeps_signed_society_deltas_and_legacy_detail_gap():
+    sources = _completed_sources()
+    society = sources["world"]["society_transition"]
+    society["memory_record_delta"] = -2
+    society["belief_delta"] = -1
+    society.pop("state_changes")
+
+    dossier = build_manager_world_dossier(**sources)
+
+    projected = dossier["world_after"]["society_transition"]
+    assert projected["memory_record_delta"] == -2
+    assert projected["belief_delta"] == -1
+    assert projected["state_change_evidence"]["available"] is False
+    assert projected["state_change_evidence"]["reason"] == (
+        "legacy_or_missing_society_state_change_evidence"
+    )
 
 
 def test_dossier_fails_closed_on_invalid_transition_matrix():

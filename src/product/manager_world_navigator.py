@@ -11,6 +11,9 @@ from typing import Any, Mapping
 from src.product.manager_world_player_changes import (
     project_manager_world_player_changes,
 )
+from src.product.manager_world_society_changes import (
+    project_manager_world_society_changes,
+)
 
 
 SCHEMA_VERSION = 1
@@ -149,6 +152,27 @@ def _validated_player_changes(
             "manager world navigator player transition facts are invalid"
         )
     return copy.deepcopy(raw)
+
+
+def _validated_society_transition(
+    source_match_delta: Mapping[str, Any], *,
+    persistent_state_available: bool,
+) -> dict[str, Any] | None:
+    if not persistent_state_available:
+        return None
+    raw = source_match_delta.get("society_transition")
+    if raw is None:
+        return None
+    if not isinstance(raw, Mapping):
+        raise ValueError(
+            "manager world navigator society transition facts are invalid"
+        )
+    projection = project_manager_world_society_changes(raw)
+    if "state_changes" in raw and projection["available"] is not True:
+        raise ValueError(
+            "manager world navigator society transition facts are invalid"
+        )
+    return copy.deepcopy(dict(raw))
 _REVIEWED_SCENARIO_STATUSES = {
     "descriptive_only_ineligible", "no_realized_action_divergence",
     "action_divergence_without_local_attribution",
@@ -1353,6 +1377,10 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     player_changes = _validated_player_changes(
         source_match_delta,
         transition_summary,
+        persistent_state_available=persistent_state_available,
+    )
+    society_transition = _validated_society_transition(
+        source_match_delta,
         persistent_state_available=persistent_state_available,
     )
     if review_available:

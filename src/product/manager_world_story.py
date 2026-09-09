@@ -11,7 +11,7 @@ from src.product.manager_world_dossier import (
 )
 
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 def _bounded_count(value: Any) -> int:

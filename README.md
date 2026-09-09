@@ -605,6 +605,27 @@ provider call. The affected chain passes 153 focused tests; local HTTP passes
 every declared check and the expanded architecture audit passes 117/117.
 V4.40's 1,498 passing tests remain the last full-suite baseline.
 
+V4.44 makes the persistent football society equally concrete without adding a
+new screen. World-state V5 records the exact content-free before/after values
+for the 19 bounded tactical-control, emotion, social-narrative, psychological
+and referee-grievance fields; V1-V4 evidence remains replayable and explicitly
+lacks this detail. A pure projector validates the complete canonical field
+sequence, numeric bounds, creation/removal null direction and agreement with
+the changed-state scope summary before the existing fourth dossier card shows
+a named disclosure. Missing or malformed detail is never displayed as zero.
+Signed memory, cognitive-memory, belief and reflection deltas now retain
+negative values instead of being silently floored. The navigator rejects
+invalid detailed evidence even when both source and display records have been
+rehash-modified, while all visible rows remain descriptive simulator state and
+authorize no manager, model, score or real-football causality. This code-only
+stage executes no match, future generation, training, formal study,
+participant session or provider call. The affected chain passes 189 focused
+tests; local HTTP passes 16/16, automated accessibility passes 42/42, recovery
+passes every declared check and the architecture audit passes 118/118. The M2
+zero-training preflight identity was refreshed without writing a checkpoint.
+V4.40 remains the last full-suite baseline at 1,498 passing tests, three skips
+and one registered training-test deselection.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

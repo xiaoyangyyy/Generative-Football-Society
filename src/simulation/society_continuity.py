@@ -1078,8 +1078,39 @@ def validate_society_public_snapshot(payload: Mapping[str, Any]) -> None:
         raise ValueError("society public referee grievance is invalid")
 
 
-def society_public_transition(
+def _public_state_changes(
     before: Mapping[str, Any], after: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    changes = []
+    for scope in (
+        "tactical_controls", "emotion_profile", "social_narrative_state",
+        "psychological_state",
+    ):
+        left = before.get(scope)
+        right = after.get(scope)
+        left = left if isinstance(left, Mapping) else {}
+        right = right if isinstance(right, Mapping) else {}
+        for field in sorted(set(left) | set(right)):
+            if left.get(field) != right.get(field):
+                changes.append({
+                    "scope": scope,
+                    "field": field,
+                    "before": left.get(field),
+                    "after": right.get(field),
+                })
+    if before.get("referee_grievance") != after.get("referee_grievance"):
+        changes.append({
+            "scope": "referee_grievance",
+            "field": "value",
+            "before": before.get("referee_grievance"),
+            "after": after.get("referee_grievance"),
+        })
+    return changes
+
+
+def society_public_transition(
+    before: Mapping[str, Any], after: Mapping[str, Any], *,
+    include_state_changes: bool = False,
 ) -> dict[str, Any]:
     """Describe direct persisted changes without assigning outcome causality."""
     validate_society_public_snapshot(before)
@@ -1100,7 +1131,7 @@ def society_public_transition(
     ):
         if before.get(field) != after.get(field):
             changed.append(field)
-    return {
+    transition = {
         "available": True,
         "before_available": before_available,
         "after_available": after_available,
@@ -1152,6 +1183,9 @@ def society_public_transition(
             if "meta_learning" in before or "meta_learning" in after else {}
         ),
     }
+    if include_state_changes:
+        transition["state_changes"] = _public_state_changes(before, after)
+    return transition
 
 
 __all__ = [

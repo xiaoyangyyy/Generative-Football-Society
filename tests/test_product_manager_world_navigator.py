@@ -1008,6 +1008,41 @@ def test_navigator_rejects_rehashed_player_transition_drift():
         build_manager_world_navigator(season)
 
 
+def test_navigator_rejects_rehashed_society_state_transition_drift():
+    season = _season(entries=[_entry(1)])
+    entry = season["manager_decision_ledger"]["entries"][0]
+    society = {
+        "available": True,
+        "before_available": True,
+        "after_available": True,
+        "changed_state_fields": ["psychological_state"],
+        "state_changes": [{
+            "scope": "psychological_state",
+            "field": "pressure",
+            "before": 0.2,
+            "after": 0.2,
+        }],
+    }
+    entry["long_term_accounting"]["persistent_team_state_delta"][
+        "match_delta"
+    ]["society_transition"] = copy.deepcopy(society)
+    thread = entry["world_evolution_thread"]
+    persistent = next(
+        row for row in thread["stages"]
+        if row["stage_id"] == "persistent_world_state"
+    )
+    persistent["society_transition"] = copy.deepcopy(society)
+    persistent.pop("stage_identity")
+    persistent["stage_identity"] = _identity(persistent)
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    with pytest.raises(ValueError, match="society transition facts are invalid"):
+        build_manager_world_navigator(season)
+
+
 def test_world_trajectory_marks_missing_evidence_without_imputation():
     unavailable = _entry(2, gaps=[
         "observed_result_unavailable",

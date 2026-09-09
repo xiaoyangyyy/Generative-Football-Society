@@ -153,7 +153,9 @@ def test_world_state_snapshot_rejects_malformed_player_as_validation_error(tmp_p
         validate_team_state_snapshot(snapshot, team="Brazil")
 
 
-def test_world_state_v4_exposes_replayable_content_free_meta_governance(tmp_path):
+def test_world_state_v5_exposes_replayable_society_values_and_meta_governance(
+    tmp_path,
+):
     for team in ("Brazil", "Argentina"):
         _roster(tmp_path, team)
     before = capture_world_state(tmp_path, ("Brazil", "Argentina"))
@@ -190,7 +192,7 @@ def test_world_state_v4_exposes_replayable_content_free_meta_governance(tmp_path
         after_match=after,
     )
 
-    assert transition["schema_version"] == WORLD_STATE_SCHEMA_VERSION == 4
+    assert transition["schema_version"] == WORLD_STATE_SCHEMA_VERSION == 5
     society = transition["match_delta"]["Brazil"]["society_transition"]
     assert society["available"] is True
     assert society["before_available"] is False
@@ -212,6 +214,18 @@ def test_world_state_v4_exposes_replayable_content_free_meta_governance(tmp_path
     assert len(updates) == 1
     assert updates[0]["update_kind"] == "created"
     assert updates[0]["after_status"] == "shadow"
+    state_changes = society["state_changes"]
+    assert len(state_changes) == 19
+    assert list(dict.fromkeys(
+        row["scope"] for row in state_changes
+    )) == society["changed_state_fields"]
+    risk = next(
+        row for row in state_changes
+        if row["scope"] == "tactical_controls"
+        and row["field"] == "risk_budget"
+    )
+    assert risk["before"] is None
+    assert risk["after"] == 0.5
     assert "private prior-world narrative" not in json.dumps(
         transition, ensure_ascii=False,
     ).lower()
@@ -246,6 +260,53 @@ def test_world_state_v4_exposes_replayable_content_free_meta_governance(tmp_path
             away="Argentina",
         )
 
+
+def test_legacy_world_state_v4_governance_remains_replayable_without_values(
+    tmp_path,
+):
+    for team in ("Brazil", "Argentina"):
+        _roster(tmp_path, team)
+    before = capture_world_state(tmp_path, ("Brazil", "Argentina"))
+    agent = SocietyAgent(
+        "Brazil", {"final_status_score": 55.0}, random_root_seed=73,
+    )
+    state = capture_society_continuity(
+        agent, source_transaction_id="season-legacy-v4:md01-fx01",
+    )
+    carry = TeamSquadCarryover(team_id="Brazil", society_state=state)
+    path = tmp_path / "data/persistence/squad_carryover.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"Brazil": carry.to_dict()}), encoding="utf-8")
+    after = capture_world_state(tmp_path, ("Brazil", "Argentina"))
+    for phase in (before, after):
+        for snapshot in phase.values():
+            snapshot["schema_version"] = 4
+            _rehash_snapshot(snapshot)
+
+    transition = _build_fixture_world_state_transition(
+        season_id="season-legacy-v4",
+        fixture_id="md01-fx01",
+        match_id="legacy-v4-match",
+        home="Brazil",
+        away="Argentina",
+        before_match=before,
+        after_match=after,
+        schema_version=4,
+    )
+
+    society = transition["match_delta"]["Brazil"]["society_transition"]
+    assert society["available"] is True
+    assert "meta_learning_updates" in society
+    assert "state_changes" not in society
+    validate_fixture_world_state_transition(
+        transition,
+        season_id="season-legacy-v4",
+        fixture_id="md01-fx01",
+        match_id="legacy-v4-match",
+        home="Brazil",
+        away="Argentina",
+    )
+
     tampered = copy.deepcopy(transition)
     tampered["match_delta"]["Brazil"]["society_transition"][
         "memory_record_delta"
@@ -254,9 +315,9 @@ def test_world_state_v4_exposes_replayable_content_free_meta_governance(tmp_path
     with pytest.raises(ValueError, match="replay mismatch"):
         validate_fixture_world_state_transition(
             tampered,
-            season_id="season-0001",
+            season_id="season-legacy-v4",
             fixture_id="md01-fx01",
-            match_id="0001-match",
+            match_id="legacy-v4-match",
             home="Brazil",
             away="Argentina",
         )

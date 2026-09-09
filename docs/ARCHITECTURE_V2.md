@@ -5412,3 +5412,49 @@ tests. Local HTTP Beta passes 16/16 checks, automated accessibility passes
 expanded architecture audit passes 117/117. V4.40 remains the last full-suite
 baseline at 1,498 passing tests with three skips and one registered
 training-test deselection.
+
+## 162. V4.44 Exact society-state propagation in the same chapter
+
+The fourth same-chapter dossier card could already show that tactical,
+emotional, social-narrative, psychological or referee-grievance domains had
+changed, but it discarded the actual public numeric transition. It also used
+a non-negative count projection for memory, cognitive-memory, belief and
+reflection deltas, incorrectly turning legitimate negative deltas into zero.
+
+World-state evidence V5 adds `state_changes` only to its society transition.
+The source list is derived directly from the validated content-free snapshots
+and contains at most 19 rows across the fixed tactical-control, emotion,
+social-narrative, psychological and referee-grievance alphabets. Each row
+contains only scope, field and exact before/after numeric values. State
+creation and removal use `null` only on the unavailable side. No memory,
+reflection, belief or narrative text is copied. Schema V4 remains the
+governance-capable compatibility version and replays without `state_changes`;
+V1-V3 behavior is unchanged.
+
+`manager_world_society_changes.py` validates the complete source before public
+projection. It requires canonical scope/field order, unique known fields,
+finite values inside the simulation bounds, correct creation/removal null
+direction, actual value change and exact agreement between observed scopes and
+`changed_state_fields`. Valid evidence exposes every bounded row; malformed,
+noncanonical, mismatched and legacy evidence returns an explicit unavailable
+reason with no invented rows. The manager-world navigator invokes the same
+projector before copying V5 detail, so an attacker cannot preserve invalid
+detail by changing both the accounting source and persistent stage and then
+recomputing their outer identities.
+
+The dossier schema advances to V4 and the story schema to V6. The existing
+fourth card gains one accessible disclosure whose ordered list shows labelled
+before/after values. It also renders signed count deltas correctly. This is not
+a fifth card, new page, state store or causal edge: every row is a persisted
+simulator fact and explicitly denies manager/action, outcome and real-football
+causality. Missing legacy detail is distinct from zero change.
+
+Recovery identity now includes the society projector as well as the navigator,
+dossier, story and Web surface. This code-only stage executes no match, future
+generation, training, formal study, participant session or provider call. A
+deduplicated 12-file affected regression passes 189 tests. Local HTTP Beta
+passes 16/16, automated accessibility passes 42/42, process-crash recovery
+passes every declared check and the expanded architecture audit passes
+118/118. The zero-training M2 preflight identity is refreshed without writing
+a checkpoint. V4.40 remains the last full-suite baseline at 1,498 passing
+tests, three skips and one registered training-test deselection.

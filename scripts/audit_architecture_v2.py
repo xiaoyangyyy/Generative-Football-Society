@@ -205,6 +205,7 @@ def main() -> int:
         "src/product/workspace_evidence.py",
         "src/product/manager_world_navigator.py",
         "src/product/manager_world_player_changes.py",
+        "src/product/manager_world_society_changes.py",
         "src/product/manager_world_dossier.py",
         "src/product/manager_world_story.py",
         "src/product/recovery.py",
@@ -272,6 +273,9 @@ def main() -> int:
     manager_world_player_changes = (
         ROOT / "src/product/manager_world_player_changes.py"
     ).read_text(encoding="utf-8")
+    manager_world_society_changes = (
+        ROOT / "src/product/manager_world_society_changes.py"
+    ).read_text(encoding="utf-8")
     manager_world_dossier = (
         ROOT / "src/product/manager_world_dossier.py"
     ).read_text(encoding="utf-8")
@@ -322,6 +326,9 @@ def main() -> int:
     ).read_text(encoding="utf-8")
     manager_world_player_changes_tests = (
         ROOT / "tests/test_product_manager_world_player_changes.py"
+    ).read_text(encoding="utf-8")
+    manager_world_society_changes_tests = (
+        ROOT / "tests/test_product_manager_world_society_changes.py"
     ).read_text(encoding="utf-8")
     manager_world_story_tests = (
         ROOT / "tests/test_product_manager_world_story.py"
@@ -1056,6 +1063,68 @@ def main() -> int:
             )
             and "innerHTML" not in web
         ),
+        "manager_world_story_exposes_exact_society_state_trace": (
+            all(token in society_continuity for token in (
+                "def _public_state_changes(",
+                "include_state_changes: bool = False",
+                'transition["state_changes"] = _public_state_changes(before, after)',
+            ))
+            and all(token in world_state_evidence for token in (
+                "META_GOVERNANCE_WORLD_STATE_SCHEMA_VERSION = 4",
+                "WORLD_STATE_SCHEMA_VERSION = 5",
+                "include_society_details: bool",
+                "include_state_changes=include_society_details",
+                "schema_version >= WORLD_STATE_SCHEMA_VERSION",
+            ))
+            and all(token in manager_world_society_changes for token in (
+                "MAX_SOURCE_STATE_CHANGES = 19",
+                "MAX_VISIBLE_STATE_CHANGES = 19",
+                "def project_manager_world_society_changes(",
+                '"legacy_or_missing_society_state_change_evidence"',
+                '"noncanonical_society_state_changes"',
+                '"society_state_scope_mismatch"',
+                '"descriptive_persisted_state_only": True',
+                '"manager_or_action_effect_authorized": False',
+                '"outcome_attribution_authorized": False',
+            ))
+            and "from src.product.web" not in manager_world_society_changes
+            and manager_world_society_changes.count("\n") < 240
+            and all(token in manager_world_navigator for token in (
+                "from src.product.manager_world_society_changes import (",
+                "def _validated_society_transition(",
+                'if "state_changes" in raw and projection["available"] is not True:',
+                "manager world navigator society transition facts are invalid",
+            ))
+            and all(token in manager_world_dossier for token in (
+                "from src.product.manager_world_society_changes import (",
+                "def _bounded_signed_count(",
+                '"state_change_evidence": evidence',
+            ))
+            and "SCHEMA_VERSION = 6" in manager_world_story
+            and all(token in manager_world_society_changes_tests for token in (
+                "test_society_changes_project_exact_values_without_mutation",
+                "test_society_changes_support_state_creation_and_removal",
+                "test_society_changes_fail_closed_on_invalid_full_source",
+                "test_society_changes_keep_legacy_absence_distinct_from_zero_change",
+                '"src/product/manager_world_society_changes.py" in CODE_IDENTITY_FILES',
+            ))
+            and "test_navigator_rejects_rehashed_society_state_transition_drift" in (
+                manager_world_navigator_tests
+            )
+            and all(token in web for token in (
+                "function appendManagerWorldStorySocietyChanges(host,society)",
+                "society.state_change_evidence",
+                "for(const row of evidence.changes||[])",
+                "list.setAttribute('aria-label','同章社会与心理持久状态变化')",
+                "renderManagerWorldStorySocietyChanges,",
+                "不能把明细缺失解释为零变化",
+                "不证明经理选择、世界模型动作或赛果导致这些变化",
+            ))
+            and "test_root_expands_exact_society_world_changes_with_safe_dom" in (
+                web_tests
+            )
+            and "innerHTML" not in web
+        ),
         "action_adoption_smoke_is_four_arm_and_zero_training": (
             all(token in action_adoption_study for token in (
                 'SMOKE_ARM_IDS = (',
@@ -1656,7 +1725,7 @@ def main() -> int:
                 'continuity.get("psychological_decision_modifiers")',
             ))
             and all(token in world_state_evidence for token in (
-                "WORLD_STATE_SCHEMA_VERSION = 4",
+                "WORLD_STATE_SCHEMA_VERSION = 5",
                 "society_public_snapshot(",
                 "society_public_transition(",
                 'result["society_transition"]',
@@ -1714,7 +1783,8 @@ def main() -> int:
             and all(token in world_state_evidence for token in (
                 "SOCIETY_WORLD_STATE_SCHEMA_VERSION = 2",
                 "META_COUNTS_WORLD_STATE_SCHEMA_VERSION = 3",
-                "WORLD_STATE_SCHEMA_VERSION = 4",
+                "META_GOVERNANCE_WORLD_STATE_SCHEMA_VERSION = 4",
+                "WORLD_STATE_SCHEMA_VERSION = 5",
                 "society projection version mismatch",
             ))
             and all(token in manager_world_thread for token in (
@@ -1757,9 +1827,11 @@ def main() -> int:
             ))
             and all(token in world_state_evidence for token in (
                 "META_COUNTS_WORLD_STATE_SCHEMA_VERSION = 3",
-                "WORLD_STATE_SCHEMA_VERSION = 4",
+                "META_GOVERNANCE_WORLD_STATE_SCHEMA_VERSION = 4",
+                "WORLD_STATE_SCHEMA_VERSION = 5",
                 '"governance" if isinstance(meta, Mapping) and "records" in meta',
                 'META_COUNTS_WORLD_STATE_SCHEMA_VERSION: "counts"',
+                'META_GOVERNANCE_WORLD_STATE_SCHEMA_VERSION: "governance"',
                 'WORLD_STATE_SCHEMA_VERSION: "governance"',
                 "fixture world-state phase schema version mismatch",
             ))
@@ -1776,7 +1848,8 @@ def main() -> int:
                 "appendMetaLearningGovernance(details,society)",
             ))
             and all(token in world_state_evidence_tests for token in (
-                "test_world_state_v4_exposes_replayable_content_free_meta_governance",
+                "test_world_state_v5_exposes_replayable_society_values_and_meta_governance",
+                "test_legacy_world_state_v4_governance_remains_replayable_without_values",
                 "test_legacy_world_state_v3_count_only_meta_remains_replayable",
                 'record["changes"][0]["proposed_delta"] = 9.0',
                 'match="phase schema version mismatch"',

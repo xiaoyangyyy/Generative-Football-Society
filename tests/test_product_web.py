@@ -311,6 +311,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "world?.player_changes" in document
     assert "查看球员级持久变化" in document
     assert "同章球员级持久世界变化" in document
+    assert "function appendManagerWorldStorySocietyChanges(" in document
+    assert "society.state_change_evidence" in document
+    assert "查看社会状态精确变化" in document
+    assert "同章社会与心理持久状态变化" in document
     assert "managerWorldStoryDossier.append(" in document
     assert "function renderManagerWorldNavigatorBase(season)" in document
     assert "season?.manager_world_story" in document
@@ -720,6 +724,29 @@ def test_root_expands_bounded_player_world_changes_with_safe_dom(tmp_path):
     assert "innerHTML" not in renderer
 
 
+def test_root_expands_exact_society_world_changes_with_safe_dom(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    renderer = document.split(
+        "function appendManagerWorldStorySocietyChanges(host,society)", 1
+    )[1].split("function renderManagerWorldStorySocietyChanges", 1)[0]
+
+    assert response["status"].startswith("200")
+    assert "society.state_change_evidence" in renderer
+    assert "document.createElement('details')" in renderer
+    assert "document.createElement('summary')" in renderer
+    assert "document.createElement('ol')" in renderer
+    assert "list.setAttribute('aria-label','同章社会与心理持久状态变化')" in renderer
+    assert "for(const row of evidence.changes||[])" in renderer
+    assert "row.before" in renderer
+    assert "row.after" in renderer
+    assert "社会状态精确前后值不可用" in renderer
+    assert "不能把明细缺失解释为零变化" in renderer
+    assert "不证明经理选择、世界模型动作或赛果导致这些变化" in renderer
+    assert "textContent=" in renderer
+    assert "innerHTML" not in renderer
+
+
 def test_root_uses_one_explicit_manager_world_render_pipeline(tmp_path):
     response = _request(ProductWebApp(tmp_path))
     document = response["body"].decode("utf-8")
@@ -727,6 +754,7 @@ def test_root_uses_one_explicit_manager_world_render_pipeline(tmp_path):
         "const MANAGER_WORLD_RENDER_STAGES=Object.freeze(["
         "renderManagerWorldNavigatorBase,renderManagerWorldStory,"
         "renderManagerWorldStoryDossier,"
+        "renderManagerWorldStorySocietyChanges,"
         "renderManagerWorldActionAdoptionLedger,renderManagerWorldTrajectory,"
         "renderManagerWorldReviewedFutureContinuity,"
         "renderManagerWorldScenarioArchive,renderManagerWorldReviewCertificate,"

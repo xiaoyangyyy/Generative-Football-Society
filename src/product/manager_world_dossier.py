@@ -8,8 +8,11 @@ from typing import Any, Mapping
 from src.product.manager_world_player_changes import (
     project_manager_world_player_changes,
 )
+from src.product.manager_world_society_changes import (
+    project_manager_world_society_changes,
+)
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 CLAIM_BOUNDARY = (
     "same_simulator_chapter_descriptive_chain_not_outcome_causality"
 )
@@ -36,6 +39,13 @@ def _bounded_count(value: Any) -> int:
         return 0
     number = float(value)
     return max(0, min(100_000, int(number))) if math.isfinite(number) else 0
+
+
+def _bounded_signed_count(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0
+    number = float(value)
+    return max(-100_000, min(100_000, int(number))) if math.isfinite(number) else 0
 
 
 def _safe_text(value: Any) -> str | None:
@@ -258,22 +268,21 @@ def _official_action(raw: Any, *, status: str) -> dict[str, Any]:
 
 def _society_summary(raw: Any) -> dict[str, Any]:
     society = raw if isinstance(raw, Mapping) else {}
-    fields = society.get("changed_state_fields")
-    fields = fields if isinstance(fields, list) else []
+    evidence = project_manager_world_society_changes(raw)
     return {
         "available": society.get("available") is True,
-        "memory_record_delta": _bounded_count(
+        "memory_record_delta": _bounded_signed_count(
             society.get("memory_record_delta")
         ),
-        "cognitive_memory_delta": _bounded_count(
+        "cognitive_memory_delta": _bounded_signed_count(
             society.get("cognitive_memory_delta")
         ),
-        "belief_delta": _bounded_count(society.get("belief_delta")),
-        "reflection_delta": _bounded_count(society.get("reflection_delta")),
-        "changed_state_fields": [
-            text for value in fields[:12]
-            if (text := _safe_text(value)) is not None
-        ],
+        "belief_delta": _bounded_signed_count(society.get("belief_delta")),
+        "reflection_delta": _bounded_signed_count(
+            society.get("reflection_delta")
+        ),
+        "changed_state_fields": evidence["changed_state_fields"],
+        "state_change_evidence": evidence,
     }
 
 

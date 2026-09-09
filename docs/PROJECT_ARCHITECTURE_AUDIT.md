@@ -686,6 +686,24 @@ not quality signals by themselves.
     architecture checks are green. V4.40 remains the last full-suite baseline
     at 1,498 passing tests.
 
+87. Preserved exact content-free society-state changes through world-state V5,
+    the derived navigator and the existing fourth same-chapter dossier card.
+    The source contains at most 19 fixed tactical, emotion, social-narrative,
+    psychological and referee-grievance fields; V1-V4 replay compatibility is
+    retained. A pure projector validates full canonical order, uniqueness,
+    finite simulation bounds, creation/removal null direction and exact scope
+    agreement before exposing any row. Invalid rehashed detail fails closed,
+    while legacy absence stays distinct from zero. Signed memory, cognitive,
+    belief and reflection deltas are no longer floored. The named ordered-list
+    disclosure uses safe DOM text and adds no new surface, store or causal
+    claim. Recovery identity includes the projector; M2's zero-training
+    transitive preflight identity is refreshed without a checkpoint. No match,
+    future, training, study, participant session or external call is executed.
+    The affected chain passes 189 focused tests; local HTTP passes 16/16,
+    accessibility passes 42/42, recovery passes every check and all 118
+    architecture checks are green. V4.40 remains the last full-suite baseline
+    at 1,498 passing tests.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model
