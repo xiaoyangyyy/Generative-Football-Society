@@ -436,6 +436,20 @@ passes 67 tests; CI-equivalent regression passes 1,483 tests with three
 declared skips and one registered training-test deselection. Local HTTP,
 accessibility, recovery and all 98 architecture checks pass.
 
+V4.33 makes the evidence-library surface explicit. Three implicit overrides
+become named stages in one frozen four-stage sequence: the base match, paired
+comparison, fork and study library; deterministic branch identity; unified
+counterfactual-future summaries; and multi-timepoint future sets. Filters,
+list ordering, resume controls, direct artifact links and non-causal wording
+retain their prior behavior, but the complete evidence catalogue no longer
+depends on JavaScript reassignment order. A dedicated Web contract and
+architecture gate reject legacy wrappers and duplicate roots. This
+behavior-preserving refactor executes no match, future, training, study,
+participant session or provider call. Focused Web regression passes 68 tests;
+CI-equivalent regression passes 1,484 tests with three declared skips and one
+registered training-test deselection. Local HTTP, accessibility, recovery and
+all 99 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

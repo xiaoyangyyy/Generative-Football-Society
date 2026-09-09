@@ -1757,6 +1757,18 @@ def main() -> int:
                 "renderSeason=(season,configured,history=[],historySummary={})=>{for("
             ) == 1
         ),
+        "library_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderLibraryBase(library)",
+                "function renderLibraryBranchIdentity(",
+                "function renderLibraryUnifiedFuture(",
+                "function renderLibraryForkSets(",
+                "const LIBRARY_RENDER_STAGES=Object.freeze([",
+                "function renderLibrary(library){for(",
+            ))
+            and "renderLibraryWithout" not in web
+            and web.count("function renderLibrary(library)") == 1
+        ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (
                 "def build_manager_intervention_workspace(",

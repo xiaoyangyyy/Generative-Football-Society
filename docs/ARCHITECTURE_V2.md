@@ -5031,3 +5031,35 @@ tests. The CI-equivalent suite passes 1,483 tests with three declared skips and
 one registered training-test deselection. Local HTTP Beta passes 16/16 checks,
 automated accessibility passes 41/41 checks, process-crash recovery passes
 every declared check and the expanded architecture audit passes 98/98.
+
+## 151. V4.33 Explicit evidence-library composition
+
+The evidence library is the common catalogue for completed matches, paired
+tactical comparisons, single-timepoint world-model forks, fixed-budget studies
+and multi-timepoint future sets. Its base renderer was followed by three
+implicit compositions: deterministic branch-state identity, unified
+counterfactual-future summaries and multi-timepoint future-set cards.
+Successive reassignment made the final evidence catalogue depend on declaration
+order and left the complete execution path implicit.
+
+V4.33 replaces that chain with one frozen four-stage sequence:
+
+1. base match, pair, fork and study cards plus filter-aware ordering;
+2. branch minute, verified prefix anchor and deterministic replay identity;
+3. bounded counterfactual-future status, local action attribution and
+   descriptive downstream differences; and
+4. multi-timepoint future-set progress, evidence links and safe resume controls.
+
+The single root renderer forwards the same library projection through every
+named stage. Each stage retains its previous filter eligibility, DOM ownership,
+link construction, resume behavior and explicit refusal to infer score or
+real-football causality. Direct Web tests bind the exact stage order, require
+one root and reject the complete legacy wrapper family; a dedicated
+architecture gate enforces the same contract. This refactor changes no match,
+pair, fork, future-set, study or persisted workspace evidence and executes no
+match, future generation, training, formal study, participant session or
+provider call. Focused Web regression passes 68 tests. The CI-equivalent suite
+passes 1,484 tests with three declared skips and one registered training-test
+deselection. Local HTTP Beta passes 16/16 checks, automated accessibility
+passes 41/41 checks, process-crash recovery passes every declared check and the
+expanded architecture audit passes 99/99.

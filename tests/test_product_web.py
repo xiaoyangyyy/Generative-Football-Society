@@ -165,7 +165,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "row.world_model_future_reviews" in document
     assert "keep_after_review" in document
     assert "revise_after_review" in document
-    assert document.count("const renderLibraryWithoutForkSets=") == 1
+    assert "function renderLibraryForkSets(" in document
     assert "前缀锚点" in document
     assert "确定性重放（非进程快照）" in document
     assert "反事实未来：" in document
@@ -851,6 +851,27 @@ def test_root_uses_one_explicit_season_render_pipeline(tmp_path):
         "renderStage(season,configured,history,historySummary)};"
     ) in document
     assert "renderSeasonWithout" not in document
+
+
+def test_root_uses_one_explicit_library_render_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const LIBRARY_RENDER_STAGES=Object.freeze(["
+        "renderLibraryBase,"
+        "renderLibraryBranchIdentity,"
+        "renderLibraryUnifiedFuture,"
+        "renderLibraryForkSets]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function renderLibrary(library)") == 1
+    assert (
+        "function renderLibrary(library){for(const renderStage of "
+        "LIBRARY_RENDER_STAGES)renderStage(library)}"
+    ) in document
+    assert "renderLibraryWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):

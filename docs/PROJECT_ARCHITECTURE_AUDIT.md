@@ -536,6 +536,18 @@ not quality signals by themselves.
     1,483 with three skips and one registered deselection, and local HTTP,
     accessibility, recovery and all 98 architecture checks are green.
 
+76. Replaced three implicit evidence-library overrides with one frozen, named
+    four-stage composition. Base match/pair/fork/study cards, deterministic
+    branch identity, unified counterfactual-future summaries and
+    multi-timepoint future sets now share one visible order and input
+    projection. Direct tests and a dedicated architecture gate require one root
+    pipeline and reject every legacy library wrapper. Filters, list ordering,
+    artifact links, resume controls and non-causal boundaries remain unchanged;
+    no match, future, training, study, participant session or external call is
+    executed. Focused Web regression passes 68 tests, CI-equivalent regression
+    passes 1,484 with three skips and one registered deselection, and local
+    HTTP, accessibility, recovery and all 99 architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model
