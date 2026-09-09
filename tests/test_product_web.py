@@ -223,10 +223,13 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "reference.redistribution_opportunities" in document
     assert "reference.mean_probability_gain" in document
     assert "function renderActionAdoptionHoldReference(studio)" in document
-    assert "appendOfficialActionExecutionWithoutPolicySemantics" in document
+    assert "function appendOfficialActionExecutionPolicySemantics(context)" in document
     assert "example.policy_signal" in document
     assert "reference.received_redistributed_probability" in document
-    assert "appendOfficialActionExecutionWithoutRetainedRecordSemantics" in document
+    assert (
+        "function appendOfficialActionExecutionRetainedRecordSemantics(context)"
+        in document
+    )
     assert "evidence?.retained_record_semantics" in document
     assert "function retainedActionSemanticText(" in document
     assert "semantic.actual_action_counts||{}" in document
@@ -899,6 +902,31 @@ def test_root_uses_one_explicit_future_mechanism_example_pipeline(tmp_path):
         "appendStage(context)"
     ) in document
     assert "appendFutureMechanismExamplesWithout" not in document
+
+
+def test_root_uses_one_explicit_official_action_execution_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const OFFICIAL_ACTION_EXECUTION_RENDER_STAGES=Object.freeze(["
+        "appendOfficialActionExecutionBase,"
+        "appendOfficialActionExecutionPolicySemantics,"
+        "appendOfficialActionExecutionRetainedRecordSemantics]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count(
+        "function appendOfficialActionExecution(host,evidence,title)"
+    ) == 1
+    assert "const context={host,evidence,title,details:null}" in document
+    assert "context.details=details" in document
+    assert document.count("const {evidence,details}=context") == 2
+    assert (
+        "for(const appendStage of OFFICIAL_ACTION_EXECUTION_RENDER_STAGES)"
+        "appendStage(context)"
+    ) in document
+    assert "appendOfficialActionExecutionWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):

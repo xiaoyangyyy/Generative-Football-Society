@@ -5095,3 +5095,36 @@ call. Focused Web regression passes 69 tests. The CI-equivalent suite passes
 deselection. Local HTTP Beta passes 16/16 checks, automated accessibility
 passes 41/41 checks, process-crash recovery passes every declared check and the
 expanded architecture audit passes 100/100.
+
+## 153. V4.35 Explicit official-action execution composition
+
+Official action-execution evidence is shared by the post-match intelligence
+surface and every completed decision-ledger entry. Its base renderer creates
+the retained-action counts, local shared-randomness attribution and direct
+ball-event identity links. Two later implicit overrides added V2
+direct-preference, suppression-only and hold-reference signal semantics, then
+the complete retained-record summary. The wrappers hid the final order and
+rediscovered the target through the host's last child.
+
+V4.35 replaces that chain with one frozen three-stage sequence:
+
+1. create the official action details node, counts, bounded examples and claim
+   boundary;
+2. append per-example policy-signal and reference-action semantics; and
+3. append the full retained-record semantic summary.
+
+The root creates a fresh context containing the host, evidence, title and a
+null details reference. Only the base stage binds the new node; both semantic
+stages consume that exact reference. Unavailable evidence therefore fails
+closed without mutating an older decision or matchday card. Direct Web tests
+bind the exact order, unique root, context initialization and two bound
+enrichments while rejecting the complete legacy wrapper family. A dedicated
+architecture gate enforces the same contract. Counts, wording, consumers and
+the refusal to infer tactical quality, score improvement or real-football
+causality remain unchanged. This code-only change executes no match, future
+generation, training, formal study, participant session or provider call.
+Focused Web regression passes 70 tests. The CI-equivalent suite passes 1,486
+tests with three declared skips and one registered training-test deselection.
+Local HTTP Beta passes 16/16 checks, automated accessibility passes 41/41
+checks, process-crash recovery passes every declared check and the expanded
+architecture audit passes 101/101.

@@ -1451,7 +1451,7 @@ def main() -> int:
                 "Mean primary-signal shift",
             ))
             and all(token in web for token in (
-                "appendOfficialActionExecutionWithoutPolicySemantics",
+                "function appendOfficialActionExecutionPolicySemantics(context)",
                 "example.policy_signal",
                 "reference.received_redistributed_probability",
             ))
@@ -1785,6 +1785,23 @@ def main() -> int:
                 "function appendFutureMechanismExamples(host,scenarios,title)"
             ) == 1
         ),
+        "official_action_execution_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function appendOfficialActionExecutionBase(context)",
+                "function appendOfficialActionExecutionPolicySemantics(context)",
+                "function appendOfficialActionExecutionRetainedRecordSemantics("
+                "context)",
+                "const OFFICIAL_ACTION_EXECUTION_RENDER_STAGES=Object.freeze([",
+                "function appendOfficialActionExecution(host,evidence,title)",
+                "const context={host,evidence,title,details:null}",
+                "context.details=details",
+                "appendStage(context)",
+            ))
+            and "appendOfficialActionExecutionWithout" not in web
+            and web.count(
+                "function appendOfficialActionExecution(host,evidence,title)"
+            ) == 1
+        ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (
                 "def build_manager_intervention_workspace(",
@@ -1999,7 +2016,8 @@ def main() -> int:
             ))
             and all(token in web for token in (
                 "function retainedActionSemanticText(",
-                "appendOfficialActionExecutionWithoutRetainedRecordSemantics",
+                "function appendOfficialActionExecutionRetainedRecordSemantics("
+                "context)",
                 "function renderManagerDecisionLedgerRetainedRecordSemantics(season)",
                 "function appendManagerWorldEvolutionThreadRetainedRecordSemantics(",
                 "function renderManagerWorldRetainedRecordSemantics(season)",

@@ -463,6 +463,20 @@ Web regression passes 69 tests; CI-equivalent regression passes 1,485 tests
 with three declared skips and one registered training-test deselection. Local
 HTTP, accessibility, recovery and all 100 architecture checks pass.
 
+V4.35 makes official world-model action-execution evidence explicit. Two
+implicit augmentations become named stages in one frozen three-stage sequence:
+the base official action and direct ball-event identity trace, V2 policy-signal
+semantics, and the full retained-record semantic summary. A per-call context
+owns the evidence details node, so unavailable evidence cannot attach policy or
+aggregate semantics to an older product card. Both the decision ledger and
+matchday intelligence continue to consume the same renderer. A direct Web
+contract and architecture gate reject legacy wrappers, duplicate roots and
+missing node binding. This code-only change executes no match, future,
+training, study, participant session or provider call. Focused Web regression
+passes 70 tests; CI-equivalent regression passes 1,486 tests with three
+declared skips and one registered training-test deselection. Local HTTP,
+accessibility, recovery and all 101 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

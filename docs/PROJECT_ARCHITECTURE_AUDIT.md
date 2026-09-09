@@ -561,6 +561,20 @@ not quality signals by themselves.
     registered deselection, and local HTTP, accessibility, recovery and all 100
     architecture checks are green.
 
+78. Replaced two implicit official-action execution overrides with one frozen,
+    named three-stage composition. Base retained-action and direct ball-event
+    identity evidence, V2 policy-signal semantics and the full retained-record
+    summary now share one visible order across matchday intelligence and the
+    decision ledger. A per-call context binds only the details node created for
+    the current evidence, so unavailable evidence cannot mutate an older card.
+    Direct tests and a dedicated architecture gate require one root, exact
+    order, null context initialization and two bound semantic stages while
+    rejecting every legacy wrapper. No match, future, training, study,
+    participant session or external call is executed. Focused Web regression
+    passes 70 tests, CI-equivalent regression passes 1,486 with three skips and
+    one registered deselection, and local HTTP, accessibility, recovery and all
+    101 architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model
