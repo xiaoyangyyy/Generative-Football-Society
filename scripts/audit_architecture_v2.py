@@ -1855,6 +1855,48 @@ def main() -> int:
             and "renderManagerWorldModelAdviceWithout" not in web
             and web.count("function renderManagerWorldModelAdvice(...args)") == 1
         ),
+        "manager_squad_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderManagerSquadBase(season,managed)",
+                "function renderManagerSquadRules(season,managed)",
+                "const MANAGER_SQUAD_RENDER_STAGES=Object.freeze([",
+                "function renderManagerSquad(season,managed)",
+                "renderStage(season,managed)",
+            ))
+            and "renderManagerSquadWithout" not in web
+            and web.count("function renderManagerSquad(season,managed)") == 1
+        ),
+        "matchday_command_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderMatchdayCommandBase(season,configured)",
+                "function renderMatchdayCommandIntelligence(season,configured)",
+                "function renderMatchdayCommandClubStrategy(season,configured)",
+                "const MATCHDAY_COMMAND_RENDER_STAGES=Object.freeze([",
+                "function renderMatchdayCommand(season,configured)",
+                "renderStage(season,configured)",
+            ))
+            and "renderMatchdayCommandWithout" not in web
+            and web.count(
+                "function renderMatchdayCommand(season,configured)"
+            ) == 1
+        ),
+        "manager_career_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderManagerCareerBase("
+                "season,history,historySummary,configured)",
+                "function renderManagerCareerRecruitment("
+                "season,history,historySummary,configured)",
+                "const MANAGER_CAREER_RENDER_STAGES=Object.freeze([",
+                "function renderManagerCareer("
+                "season,history,historySummary,configured)",
+                "renderStage(season,history,historySummary,configured)",
+            ))
+            and "renderManagerCareerWithout" not in web
+            and web.count(
+                "function renderManagerCareer("
+                "season,history,historySummary,configured)"
+            ) == 1
+        ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (
                 "def build_manager_intervention_workspace(",

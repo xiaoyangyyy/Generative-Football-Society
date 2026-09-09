@@ -5219,3 +5219,33 @@ tests with three declared skips and one registered training-test deselection.
 Local HTTP Beta passes 16/16 checks, automated accessibility passes 41/41
 checks, process-crash recovery passes every declared check and the expanded
 architecture audit passes 105/105.
+
+## 157. V4.39 Explicit manager squad, matchday and career composition
+
+Three remaining manager-product entrypoints still captured an earlier renderer
+and reassigned the public name. The squad surface appended in-match rules, the
+matchday command appended intelligence and club-strategy context, and the
+career surface appended recruitment configuration and historical transfer
+transactions. Their behavior was integrated in the product but their
+composition remained implicit.
+
+V4.39 introduces three frozen pipelines:
+
+1. squad base followed by managed in-match rules;
+2. matchday command base, manager intelligence and club-strategy briefing; and
+3. career/history base followed by recruitment and archived transaction state.
+
+Every public root now forwards one stable argument set through named stages.
+The order makes it explicit that rules enrich a valid squad, evidence enriches
+the current command center, and recruitment state enriches the same career and
+history projection. Existing roster-unavailable, unconfigured workspace,
+missing recruitment transaction and season-transition paths retain their
+previous fail-closed behavior. Direct Web tests bind all three orders, require
+one root per surface and reject the legacy wrappers. Three architecture gates
+enforce the same contracts. This code-only change executes no match, future
+generation, recruitment transaction, training, formal study, participant
+session or provider call. Focused Web regression passes 77 tests. The
+CI-equivalent suite passes 1,493 tests with three declared skips and one
+registered training-test deselection. Local HTTP Beta passes 16/16 checks,
+automated accessibility passes 41/41 checks, process-crash recovery passes
+every declared check and the expanded architecture audit passes 108/108.

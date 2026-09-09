@@ -520,6 +520,21 @@ declared skips and one registered training-test deselection. Local HTTP passes
 16/16, automated accessibility passes 41/41, process-crash recovery passes
 every declared check and the expanded architecture audit passes 105/105.
 
+V4.39 makes three manager-product compositions explicit. Squad rendering now
+has one frozen sequence for roster selection followed by in-match rules.
+Matchday command rendering has one sequence for the command center, evidence
+intelligence and club-strategy briefing. Manager-career rendering has one
+sequence for the career/history surface followed by recruitment configuration
+and archived transaction cards. Each root forwards one stable input set,
+direct Web contracts and three architecture gates reject the legacy wrapper
+families, and all existing unavailable-state behavior remains fail-closed. This
+code-only change executes no match, future, training, study, participant
+session or provider call. Focused Web regression passes 77 tests;
+CI-equivalent regression passes 1,493 tests with three declared skips and one
+registered training-test deselection. Local HTTP passes 16/16, automated
+accessibility passes 41/41, process-crash recovery passes every declared check
+and the expanded architecture audit passes 108/108.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

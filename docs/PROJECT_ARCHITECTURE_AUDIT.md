@@ -613,6 +613,19 @@ not quality signals by themselves.
     one registered deselection, and local HTTP, accessibility, recovery and all
     105 architecture checks are green.
 
+82. Replaced the implicit manager squad, matchday command and career
+    reassignments with three frozen, named pipelines. Roster state now precedes
+    in-match rules; the command center precedes intelligence and club strategy;
+    career/history state precedes recruitment configuration and archived
+    transactions. Direct tests and three architecture gates require one root
+    per surface and reject all three legacy wrapper families. Existing
+    unavailable paths and product boundaries are unchanged. No match, future,
+    recruitment transaction, training, study, participant session or external
+    call is executed. Focused Web regression passes 77 tests, CI-equivalent
+    regression passes 1,493 with three skips and one registered deselection,
+    and local HTTP, accessibility, recovery and all 108 architecture checks are
+    green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

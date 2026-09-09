@@ -1028,6 +1028,63 @@ def test_root_uses_one_explicit_manager_world_model_advice_pipeline(tmp_path):
     assert "renderManagerWorldModelAdviceWithout" not in document
 
 
+def test_root_uses_one_explicit_manager_squad_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_SQUAD_RENDER_STAGES=Object.freeze(["
+        "renderManagerSquadBase,renderManagerSquadRules]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function renderManagerSquad(season,managed)") == 1
+    assert (
+        "for(const renderStage of MANAGER_SQUAD_RENDER_STAGES)"
+        "renderStage(season,managed)"
+    ) in document
+    assert "renderManagerSquadWithout" not in document
+
+
+def test_root_uses_one_explicit_matchday_command_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MATCHDAY_COMMAND_RENDER_STAGES=Object.freeze(["
+        "renderMatchdayCommandBase,renderMatchdayCommandIntelligence,"
+        "renderMatchdayCommandClubStrategy]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function renderMatchdayCommand(season,configured)") == 1
+    assert (
+        "for(const renderStage of MATCHDAY_COMMAND_RENDER_STAGES)"
+        "renderStage(season,configured)"
+    ) in document
+    assert "renderMatchdayCommandWithout" not in document
+
+
+def test_root_uses_one_explicit_manager_career_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_CAREER_RENDER_STAGES=Object.freeze(["
+        "renderManagerCareerBase,renderManagerCareerRecruitment]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count(
+        "function renderManagerCareer(season,history,historySummary,configured)"
+    ) == 1
+    assert (
+        "for(const renderStage of MANAGER_CAREER_RENDER_STAGES)"
+        "renderStage(season,history,historySummary,configured)"
+    ) in document
+    assert "renderManagerCareerWithout" not in document
+
+
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
     response = _request(ProductWebApp(tmp_path), path="/healthz")
     assert response["json"] == {
