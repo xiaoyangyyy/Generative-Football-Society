@@ -395,6 +395,20 @@ CI-equivalent regression passes 1,480 tests with three declared skips and one
 registered training-test deselection. Local HTTP, accessibility, recovery and
 all 95 architecture checks pass.
 
+V4.30 makes the manager's multi-timepoint counterfactual future surface
+explicit. Three implicit overrides become named stages in one frozen
+four-stage sequence: the base identity-bound future-set cards, keep-or-revise
+review actions, per-scenario evidence and bounded action-mechanism examples
+with interrupted-task recovery. The UI keeps the same evidence order,
+historical/current binding distinction and non-causal claim boundary, while
+declaration placement can no longer detach a future evidence layer. A
+dedicated architecture gate rejects legacy wrappers and duplicate pipeline
+roots. This behavior-preserving refactor executes no match, future, training,
+study, participant session or provider call. Focused Web regression passes 65
+tests; CI-equivalent regression passes 1,481 tests with three declared skips
+and one registered training-test deselection. Local HTTP, accessibility,
+recovery and all 96 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

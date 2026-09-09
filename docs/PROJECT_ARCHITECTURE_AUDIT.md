@@ -497,6 +497,20 @@ not quality signals by themselves.
     passes 1,480 with three skips and one registered deselection, and local
     HTTP, accessibility, recovery and all 95 architecture checks are green.
 
+73. Replaced three implicit manager future-set overrides with one frozen,
+    named four-stage renderer. Base identity-bound cards, explicit manager
+    review controls, per-timepoint scenario evidence and bounded action
+    mechanisms now have one reviewable order, including the existing
+    interrupted-task recovery control. Direct tests and a dedicated
+    architecture gate require one root pipeline and reject every legacy future
+    wrapper. Binding semantics, DOM ownership and non-causal wording remain
+    unchanged; the refactor generates no future, changes no review receipt or
+    world state and executes no match, training, study, participant session or
+    external call. Focused Web regression passes 65 tests, CI-equivalent
+    regression passes 1,481 with three skips and one registered deselection,
+    and local HTTP, accessibility, recovery and all 96 architecture checks are
+    green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

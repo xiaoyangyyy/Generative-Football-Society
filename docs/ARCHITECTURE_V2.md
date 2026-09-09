@@ -4939,3 +4939,33 @@ The CI-equivalent suite passes 1,480 tests with three declared skips and one
 registered training-test deselection. Local HTTP Beta passes 16/16 checks,
 automated accessibility passes 41/41 checks, process-crash recovery passes
 every declared check and the expanded architecture audit passes 95/95.
+
+## 148. V4.30 Explicit manager future-set composition
+
+The manager future-set surface is the interactive entry point for the
+product's multi-timepoint counterfactual workflow. Its base identity-bound
+cards were followed by three implicit enrichments: keep-or-revise review
+controls, per-scenario divergence evidence and bounded action-mechanism
+examples with interrupted-task recovery. Although runtime behavior was stable,
+the evidence order depended on successive function reassignment.
+
+V4.30 replaces that chain with one frozen four-stage sequence:
+
+1. base future-set identity, state, binding and artifact links;
+2. aggregate mechanism evidence plus keep-or-revise review controls;
+3. the preregistered per-timepoint scenario evidence; and
+4. bounded concrete action-mechanism examples and safe resume control.
+
+The original base function is captured once before the named enrichment
+stages, and the single root assignment only iterates the frozen sequence.
+Every stage retains its prior DOM target, index alignment, early return,
+binding semantics and non-causal wording. Direct Web tests bind the exact
+order and reject the complete legacy wrapper family; a dedicated architecture
+gate enforces the same boundary. This refactor generates no future, changes no
+review receipt, action authority, world state, evidence schema, outcome or
+causal claim and executes no match, training, formal study, participant
+session or provider call. Focused Web regression passes 65 tests. The
+CI-equivalent suite passes 1,481 tests with three declared skips and one
+registered training-test deselection. Local HTTP Beta passes 16/16 checks,
+automated accessibility passes 41/41 checks, process-crash recovery passes
+every declared check and the expanded architecture audit passes 96/96.

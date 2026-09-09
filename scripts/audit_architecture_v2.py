@@ -1296,7 +1296,7 @@ def main() -> int:
             ))
             and all(token in web for token in (
                 '"scenario_evidence": scenario_evidence',
-                "renderManagerFutureSetsWithoutScenarioEvidence",
+                "function renderManagerFutureSetsScenarioEvidence(",
                 "function renderManagerDecisionLedgerFutureScenarioEvidence(season)",
                 "scenario.scenario_identity",
                 "时点之间不排名",
@@ -1324,7 +1324,7 @@ def main() -> int:
             ))
             and all(token in web for token in (
                 "function appendFutureMechanismExamples(",
-                "renderManagerFutureSetsWithoutMechanismExamples",
+                "function renderManagerFutureSetsMechanismExamples(",
                 "function renderManagerDecisionLedgerMechanismExamples(season)",
                 "不授予下游因果",
                 "v3_preserves_bounded_action_mechanism_examples",
@@ -1710,6 +1710,21 @@ def main() -> int:
             and "renderManagerIntelligenceWithout" not in web
             and web.count(
                 "function renderManagerIntelligence(command,configured)"
+            ) == 1
+        ),
+        "manager_future_set_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderManagerFutureSets(season,managed)",
+                "const renderManagerFutureSetsBase=renderManagerFutureSets;",
+                "function renderManagerFutureSetsReviewActions(",
+                "function renderManagerFutureSetsScenarioEvidence(",
+                "function renderManagerFutureSetsMechanismExamples(",
+                "const MANAGER_FUTURE_SET_RENDER_STAGES=Object.freeze([",
+                "renderManagerFutureSets=(season,managed)=>{for(",
+            ))
+            and "renderManagerFutureSetsWithout" not in web
+            and web.count(
+                "renderManagerFutureSets=(season,managed)=>{for("
             ) == 1
         ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (

@@ -155,9 +155,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "function reviewManagerFutureEvidence(" in document
     assert "function renderManagerDecisionLedgerFutureReviews(season)" in document
     assert "function renderManagerDecisionLedgerFutureScenarioEvidence(season)" in document
-    assert "renderManagerFutureSetsWithoutScenarioEvidence" in document
+    assert "function renderManagerFutureSetsScenarioEvidence(" in document
     assert "function appendFutureMechanismExamples(" in document
-    assert "renderManagerFutureSetsWithoutMechanismExamples" in document
+    assert "function renderManagerFutureSetsMechanismExamples(" in document
     assert "function renderManagerDecisionLedgerMechanismExamples(season)" in document
     assert "已封存的具体动作采用链" in document
     assert "scenario.scenario_identity" in document
@@ -781,6 +781,29 @@ def test_root_uses_one_explicit_manager_intelligence_render_pipeline(tmp_path):
         "renderStage(command,configured)}"
     ) in document
     assert "renderManagerIntelligenceWithout" not in document
+
+
+def test_root_uses_one_explicit_manager_future_set_render_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_FUTURE_SET_RENDER_STAGES=Object.freeze(["
+        "renderManagerFutureSetsBase,"
+        "renderManagerFutureSetsReviewActions,"
+        "renderManagerFutureSetsScenarioEvidence,"
+        "renderManagerFutureSetsMechanismExamples]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count(
+        "renderManagerFutureSets=(season,managed)=>{for("
+    ) == 1
+    assert (
+        "renderManagerFutureSets=(season,managed)=>{for(const renderStage of "
+        "MANAGER_FUTURE_SET_RENDER_STAGES)renderStage(season,managed)};"
+    ) in document
+    assert "renderManagerFutureSetsWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
