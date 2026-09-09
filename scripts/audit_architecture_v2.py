@@ -1235,7 +1235,7 @@ def main() -> int:
                 "function renderManagerDecisionLedgerExecutionTrace(season)",
                 "trace.runtime_binding",
                 "binding.initial_vector",
-                "renderManagerIntelligenceWithoutTacticalBinding",
+                "function renderManagerIntelligenceTacticalBinding(",
                 "binding.changed_controls",
             ))
         ),
@@ -1427,7 +1427,7 @@ def main() -> int:
             and all(token in web for token in (
                 "function appendOfficialActionExecution(",
                 "function renderManagerDecisionLedgerOfficialActionExecution(season)",
-                "renderManagerIntelligenceWithoutOfficialActionExecution",
+                "function renderManagerIntelligenceOfficialActionExecution(",
                 "不比较比分、不证明战术质量",
             ))
             and "innerHTML" not in web
@@ -1670,7 +1670,7 @@ def main() -> int:
             and all(token in web for token in (
                 "function appendManagerWorldEvolutionThread(",
                 "function renderManagerDecisionLedgerWorldEvolutionThread(season)",
-                "renderManagerIntelligenceWithoutWorldEvolutionThread",
+                "function renderManagerIntelligenceWorldEvolutionThread(",
                 "function appendManagerWorldEvolutionThreadReviewedFutures(",
                 "function appendReviewWorldContinuity(",
                 "function appendManagerWorldEvolutionThreadReviewWorldCertificate(",
@@ -1695,6 +1695,21 @@ def main() -> int:
             and "appendManagerWorldEvolutionThreadWithout" not in web
             and web.count(
                 "function appendManagerWorldEvolutionThread(host,thread)"
+            ) == 1
+        ),
+        "manager_intelligence_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderManagerIntelligenceBase(command,configured)",
+                "const MANAGER_INTELLIGENCE_RENDER_STAGES=Object.freeze([",
+                "renderManagerIntelligenceClubSupport",
+                "renderManagerIntelligenceTacticalBinding",
+                "renderManagerIntelligenceOfficialActionExecution",
+                "renderManagerIntelligenceWorldEvolutionThread",
+                "function renderManagerIntelligence(command,configured){for(",
+            ))
+            and "renderManagerIntelligenceWithout" not in web
+            and web.count(
+                "function renderManagerIntelligence(command,configured)"
             ) == 1
         ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (

@@ -758,6 +758,31 @@ def test_root_uses_one_explicit_manager_world_evolution_thread_pipeline(tmp_path
     assert "appendManagerWorldEvolutionThreadWithout" not in document
 
 
+def test_root_uses_one_explicit_manager_intelligence_render_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_INTELLIGENCE_RENDER_STAGES=Object.freeze(["
+        "renderManagerIntelligenceBase,"
+        "renderManagerIntelligenceClubSupport,"
+        "renderManagerIntelligenceTacticalBinding,"
+        "renderManagerIntelligenceOfficialActionExecution,"
+        "renderManagerIntelligenceWorldEvolutionThread]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count(
+        "function renderManagerIntelligence(command,configured)"
+    ) == 1
+    assert (
+        "function renderManagerIntelligence(command,configured){for(const "
+        "renderStage of MANAGER_INTELLIGENCE_RENDER_STAGES)"
+        "renderStage(command,configured)}"
+    ) in document
+    assert "renderManagerIntelligenceWithout" not in document
+
+
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
     response = _request(ProductWebApp(tmp_path), path="/healthz")
     assert response["json"] == {

@@ -484,6 +484,19 @@ not quality signals by themselves.
     deselection, and local HTTP, accessibility, recovery and all 94
     architecture checks are green.
 
+72. Replaced four implicit manager-intelligence overrides with one frozen,
+    named five-stage renderer. Base matchday evidence, club support, tactical
+    runtime binding, official world-model action execution and the unified
+    world-evolution thread now have one visible manager-facing order. Direct
+    tests and a dedicated architecture gate require one root renderer and
+    reject every legacy intelligence wrapper. The refactor preserves all DOM
+    targets, early returns, evidence identities and non-causal wording; it
+    changes no manager decision, action authority, world state or claim and
+    executes no match, future, training, study, participant session or external
+    call. Focused Web regression passes 64 tests, CI-equivalent regression
+    passes 1,480 with three skips and one registered deselection, and local
+    HTTP, accessibility, recovery and all 95 architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

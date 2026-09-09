@@ -381,6 +381,20 @@ CI-equivalent regression passes 1,479 tests with three declared skips and one
 registered training-test deselection. Local HTTP, accessibility, recovery and
 all 94 architecture checks pass.
 
+V4.29 makes the manager matchday-intelligence surface explicit. Four implicit
+overrides become named stages in one frozen five-stage sequence: base pre- and
+post-match evidence, club support, tactical runtime binding, official
+world-model action execution and the unified world-evolution thread. The
+manager now has one reviewable composition path from evidence-backed briefing
+to persistent post-match world consequences, while each stage keeps its prior
+DOM target, early-return behavior and non-causal wording. A dedicated
+architecture gate rejects legacy wrappers and duplicate roots. This
+behavior-preserving refactor executes no match, future, training, study,
+participant session or provider call. Focused Web regression passes 64 tests;
+CI-equivalent regression passes 1,480 tests with three declared skips and one
+registered training-test deselection. Local HTTP, accessibility, recovery and
+all 95 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

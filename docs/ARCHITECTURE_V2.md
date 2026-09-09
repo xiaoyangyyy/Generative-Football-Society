@@ -4908,3 +4908,34 @@ passes 1,479 tests with three declared skips and one registered training-test
 deselection. Local HTTP Beta passes 16/16 checks, automated accessibility
 passes 41/41 checks, process-crash recovery passes every declared check and the
 expanded architecture audit passes 94/94.
+
+## 147. V4.29 Explicit manager-intelligence composition
+
+The manager matchday-intelligence surface joins evidence from five product
+boundaries: the base pre-match briefing and post-match debrief, long-term club
+support, tactical runtime binding, official world-model action execution and
+the unified world-evolution thread. Four successive function overrides made
+that order implicit even though the sequence is the manager's main path from
+decision context to visible football-world consequences.
+
+V4.29 replaces those overrides with named functions and one frozen five-stage
+sequence:
+
+1. base pre-match intelligence and direct post-match execution evidence;
+2. persistent club-support effects;
+3. the exact tactical vector bound into the match engine;
+4. identity-bound official world-model action adoption; and
+5. the matching unified world-evolution thread.
+
+Every stage retains its original DOM target, order, early return and claim
+boundary. The root renderer is now unique and declaration placement can no
+longer omit or reorder an evidence layer. Direct Web tests bind the exact
+sequence and reject the legacy wrapper family; a dedicated architecture gate
+enforces the same contract. This refactor changes no manager decision, tactic,
+action probability, world state, evidence schema, model authority, outcome or
+causal claim and executes no match, future generation, training, formal study,
+participant session or provider call. Focused Web regression passes 64 tests.
+The CI-equivalent suite passes 1,480 tests with three declared skips and one
+registered training-test deselection. Local HTTP Beta passes 16/16 checks,
+automated accessibility passes 41/41 checks, process-crash recovery passes
+every declared check and the expanded architecture audit passes 95/95.

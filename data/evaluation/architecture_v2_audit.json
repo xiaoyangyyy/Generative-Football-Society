@@ -39,6 +39,7 @@
     "manager_future_review_closes_to_runtime_selection_without_outcome_claim": true,
     "manager_future_review_is_identity_bound_and_non_causal": true,
     "manager_future_scenarios_are_replayable_and_product_visible": true,
+    "manager_intelligence_render_pipeline_is_explicit": true,
     "manager_product_exposes_one_replayable_world_evolution_thread": true,
     "manager_season_has_one_current_and_historical_world_navigator": true,
     "manager_world_evolution_render_pipeline_is_explicit": true,
