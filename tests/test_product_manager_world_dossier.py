@@ -9,6 +9,17 @@ from src.product.manager_world_dossier import (
 )
 
 
+def _local_transition_matrix() -> dict:
+    actions = ("hold", "pass", "cross", "shot", "none")
+    matrix = {
+        before: {after: 0 for after in actions}
+        for before in actions
+    }
+    matrix["hold"]["pass"] = 1
+    matrix["pass"]["cross"] = 1
+    return matrix
+
+
 def _completed_sources() -> dict:
     return {
         "phase": "completed",
@@ -39,6 +50,18 @@ def _completed_sources() -> dict:
             "locally_attributable_action_changes": 2,
             "direct_ball_event_links": 3,
             "manager_record_coverage_complete": True,
+            "retained_record_semantics": {
+                "schema_version": 3,
+                "locally_attributable_action_transition_counts": (
+                    _local_transition_matrix()
+                ),
+                "expected_change_estimator": (
+                    "shared_uniform_inverse_cdf_overlap_v1"
+                ),
+                "expected_counterfactual_action_changes": 1.75,
+                "full_source_distribution_authorized": True,
+                "full_source_expectation_authorized": True,
+            },
         },
         "action_status": "changed",
         "world": {
@@ -85,11 +108,36 @@ def test_dossier_unifies_one_chapter_without_mutating_or_authorizing_effect():
     dossier = build_manager_world_dossier(**sources)
 
     assert sources == original
-    assert dossier["schema_version"] == 1
+    assert dossier["schema_version"] == 2
     assert dossier["phase"] == "completed"
     assert dossier["manager_choice"]["selected_tactic"] == "gegenpress"
     assert dossier["future_review"]["registered_scenarios"] == 3
     assert dossier["official_action"]["locally_attributable_action_changes"] == 2
+    transitions = dossier["official_action"]["transition_evidence"]
+    assert transitions == {
+        "available": True,
+        "reason": None,
+        "schema_version": 3,
+        "transitions": [{
+            "transition_id": "hold_to_pass",
+            "baseline_action": "hold",
+            "actual_action": "pass",
+            "count": 1,
+        }, {
+            "transition_id": "pass_to_cross",
+            "baseline_action": "pass",
+            "actual_action": "cross",
+            "count": 1,
+        }],
+        "observed_transition_total": 2,
+        "counts_match_official": True,
+        "expectation_available": True,
+        "expected_counterfactual_action_changes": 1.75,
+        "full_source_transition_distribution_authorized": True,
+        "full_source_expectation_authorized": True,
+        "same_chapter_cooccurrence_only": True,
+        "outcome_attribution_authorized": False,
+    }
     assert dossier["world_after"]["metrics_delta"]["squad_morale_ema"] == 0.02
     assert dossier["world_after"]["society_transition"][
         "changed_state_fields"
@@ -122,11 +170,46 @@ def test_dossier_bounds_invalid_public_values_without_inventing_evidence():
     assert dossier["official_action"][
         "locally_attributable_action_changes"
     ] == 0
+    assert dossier["official_action"]["transition_evidence"][
+        "available"
+    ] is False
+    assert dossier["official_action"]["transition_evidence"][
+        "reason"
+    ] == "transition_total_mismatch"
     assert dossier["world_after"]["metrics_delta"]["team_fatigue_ema"] is None
     assert dossier["world_after"]["society_transition"][
         "changed_state_fields"
     ] == ["valid"]
     assert dossier["continuity_gaps"] == ["known_gap"]
+
+
+def test_dossier_fails_closed_on_invalid_transition_matrix():
+    sources = _completed_sources()
+    matrix = sources["action"]["retained_record_semantics"][
+        "locally_attributable_action_transition_counts"
+    ]
+    matrix["hold"]["hold"] = 1
+
+    dossier = build_manager_world_dossier(**sources)
+
+    evidence = dossier["official_action"]["transition_evidence"]
+    assert evidence["available"] is False
+    assert evidence["reason"] == "invalid_or_incomplete_transition_matrix"
+    assert evidence["transitions"] == []
+    assert evidence["counts_match_official"] is False
+    assert evidence["outcome_attribution_authorized"] is False
+
+
+def test_dossier_keeps_legacy_transition_absence_explicit():
+    sources = _completed_sources()
+    sources["action"].pop("retained_record_semantics")
+
+    dossier = build_manager_world_dossier(**sources)
+
+    evidence = dossier["official_action"]["transition_evidence"]
+    assert evidence["available"] is False
+    assert evidence["reason"] == "legacy_or_missing_transition_semantics"
+    assert evidence["expected_counterfactual_action_changes"] is None
 
 
 def test_dossier_rejects_unknown_chapter_phase():

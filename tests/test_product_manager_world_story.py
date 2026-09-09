@@ -10,6 +10,17 @@ from src.product.manager_world_story import (
 )
 
 
+def _local_transition_matrix() -> dict:
+    actions = ("hold", "pass", "cross", "shot", "none")
+    matrix = {
+        before: {after: 0 for after in actions}
+        for before in actions
+    }
+    matrix["hold"]["pass"] = 1
+    matrix["pass"]["cross"] = 1
+    return matrix
+
+
 def _completed_navigator() -> dict:
     return {
         "available": True,
@@ -48,6 +59,18 @@ def _completed_navigator() -> dict:
                 "locally_attributable_action_changes": 2,
                 "direct_ball_event_links": 3,
                 "manager_record_coverage_complete": True,
+                "retained_record_semantics": {
+                    "schema_version": 3,
+                    "locally_attributable_action_transition_counts": (
+                        _local_transition_matrix()
+                    ),
+                    "expected_change_estimator": (
+                        "shared_uniform_inverse_cdf_overlap_v1"
+                    ),
+                    "expected_counterfactual_action_changes": 1.75,
+                    "full_source_distribution_authorized": True,
+                    "full_source_expectation_authorized": True,
+                },
             },
             "descriptive_world_after": {
                 "result_available": True,
@@ -96,7 +119,7 @@ def test_world_story_uses_one_latest_chapter_and_stays_noncausal():
     validate_manager_world_story(story, navigator=navigator)
 
     assert navigator == original
-    assert story["schema_version"] == 3
+    assert story["schema_version"] == 4
     assert story["view_mode"] == "latest_completed_chapter"
     assert story["story_state"] == "local_action_change_observed"
     assert story["source"] == {
@@ -145,6 +168,22 @@ def test_world_story_uses_one_latest_chapter_and_stays_noncausal():
     assert dossier["official_action"][
         "locally_attributable_action_changes"
     ] == 2
+    assert dossier["official_action"]["transition_evidence"][
+        "transitions"
+    ] == [{
+        "transition_id": "hold_to_pass",
+        "baseline_action": "hold",
+        "actual_action": "pass",
+        "count": 1,
+    }, {
+        "transition_id": "pass_to_cross",
+        "baseline_action": "pass",
+        "actual_action": "cross",
+        "count": 1,
+    }]
+    assert dossier["official_action"]["transition_evidence"][
+        "expected_counterfactual_action_changes"
+    ] == 1.75
     assert dossier["world_after"]["outcome"] == "win"
     assert dossier["world_after"]["metrics_delta"]["team_fatigue_ema"] == 0.08
     assert dossier["world_after"]["transition_summary"]["changed_players"] == 7
@@ -210,6 +249,9 @@ def test_world_story_exposes_current_review_without_fake_result():
     assert dossier["future_review"]["intent"] == "revise_after_review"
     assert dossier["future_review"]["registered_scenarios"] == 3
     assert dossier["official_action"]["status"] == "pending"
+    assert dossier["official_action"]["transition_evidence"][
+        "available"
+    ] is False
     assert dossier["world_after"]["status"] == "pending"
     assert story["outcome_improvement_authorized"] is False
 

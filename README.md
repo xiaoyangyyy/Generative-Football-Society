@@ -569,6 +569,23 @@ previous V4.40 CI-equivalent 1,498-test result remains the last full-suite
 baseline; the current full suite was not rerun because training-bearing tests
 were deliberately excluded from this stage.
 
+V4.42 makes the official-action link in that same chapter concrete. The
+dossier now projects the exact nonzero local transitions from the validated
+retained-record matrix, for example `hold -> pass` or `pass -> cross`, alongside
+the observed transition total and the V4 shared-uniform sampling expectation.
+The projection accepts only V2/V3 matrices with the complete action alphabet,
+zero diagonal and `none` edges, bounded integer counts, and a total exactly
+matching the official locally attributable changes. Legacy, malformed or
+inconsistent evidence remains visibly unavailable and is never rendered as
+zero influence. The existing third dossier card shows transition coverage and
+the same-chapter/non-outcome boundary; no additional product surface or state
+store is introduced. This code-only change executes no match, future,
+training, formal study, participant session or provider call. The affected
+decision/story/Web surface passes 142 focused tests; local HTTP passes 16/16,
+automated accessibility passes 42/42, process-crash recovery passes every
+declared check and the expanded architecture audit passes 116/116. V4.40's
+1,498 passing tests remain the last full-suite baseline.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

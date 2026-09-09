@@ -655,6 +655,21 @@ not quality signals by themselves.
     recovery passes every check and all 115 architecture checks are green. The
     V4.40 result of 1,498 passing tests remains the last full-suite baseline.
 
+85. Added exact single-chapter local action transitions to the existing
+    manager decision-impact dossier. The projection accepts only complete V2
+    or V3 matrices with the fixed five-action alphabet, bounded integer counts,
+    zero diagonal and `none` edges, and a total equal to the official local
+    action-change count. Valid V3 evidence also carries the exact shared-sampler
+    expectation and independent source-coverage authority. Legacy, malformed
+    and mismatched evidence fails closed with an explicit reason instead of a
+    false zero. The third existing card renders the transition trace safely and
+    keeps the adjacent world consequence descriptive and non-causal. No new
+    product surface, match, future, training, study, participant session or
+    external call is introduced. The affected surface passes 142 focused
+    tests; local HTTP passes 16/16, accessibility passes 42/42, recovery passes
+    every check and all 116 architecture checks are green. V4.40 remains the
+    last full-suite baseline at 1,498 passing tests.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

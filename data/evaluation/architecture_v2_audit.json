@@ -50,6 +50,7 @@
     "manager_squad_render_pipeline_is_explicit": true,
     "manager_world_action_adoption_ledger_render_pipeline_is_explicit": true,
     "manager_world_chapter_selection_pipeline_is_explicit": true,
+    "manager_world_dossier_preserves_exact_local_action_transitions": true,
     "manager_world_evolution_render_pipeline_is_explicit": true,
     "manager_world_model_advice_render_pipeline_is_explicit": true,
     "manager_world_story_has_one_same_chapter_dossier": true,

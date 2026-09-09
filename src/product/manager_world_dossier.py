@@ -6,7 +6,7 @@ import math
 from typing import Any, Mapping
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 CLAIM_BOUNDARY = (
     "same_simulator_chapter_descriptive_chain_not_outcome_causality"
 )
@@ -25,6 +25,7 @@ _WORLD_TRANSITIONS = (
     "new_suspensions",
     "suspensions_cleared",
 )
+_ACTIONS = ("hold", "pass", "cross", "shot", "none")
 
 
 def _bounded_count(value: Any) -> int:
@@ -43,6 +44,125 @@ def _finite_number(value: Any) -> float | None:
         return None
     number = float(value)
     return number if math.isfinite(number) else None
+
+
+def _public_count(value: Any) -> int | None:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not 0 <= value <= 100_000
+    ):
+        return None
+    return value
+
+
+def _unavailable_transition_evidence(reason: str) -> dict[str, Any]:
+    return {
+        "available": False,
+        "reason": reason,
+        "schema_version": None,
+        "transitions": [],
+        "observed_transition_total": 0,
+        "counts_match_official": False,
+        "expectation_available": False,
+        "expected_counterfactual_action_changes": None,
+        "full_source_transition_distribution_authorized": False,
+        "full_source_expectation_authorized": False,
+        "same_chapter_cooccurrence_only": True,
+        "outcome_attribution_authorized": False,
+    }
+
+
+def _action_transition_evidence(
+    raw: Any, *, expected_changes: int,
+) -> dict[str, Any]:
+    semantic = raw if isinstance(raw, Mapping) else {}
+    schema_version = semantic.get("schema_version")
+    matrix = semantic.get("locally_attributable_action_transition_counts")
+    if schema_version not in {2, 3} or not isinstance(matrix, Mapping):
+        return _unavailable_transition_evidence(
+            "legacy_or_missing_transition_semantics"
+        )
+    if (
+        set(matrix) != set(_ACTIONS)
+        or any(
+            not isinstance(matrix.get(before), Mapping)
+            or set(matrix[before]) != set(_ACTIONS)
+            for before in _ACTIONS
+        )
+    ):
+        return _unavailable_transition_evidence(
+            "invalid_or_incomplete_transition_matrix"
+        )
+    counts = {
+        before: {
+            after: _public_count(matrix[before][after])
+            for after in _ACTIONS
+        }
+        for before in _ACTIONS
+    }
+    values = [
+        count for row in counts.values() for count in row.values()
+    ]
+    if (
+        any(count is None for count in values)
+        or any(counts[action][action] != 0 for action in _ACTIONS)
+        or any(
+            counts["none"][action] != 0
+            or counts[action]["none"] != 0
+            for action in _ACTIONS
+        )
+    ):
+        return _unavailable_transition_evidence(
+            "invalid_or_incomplete_transition_matrix"
+        )
+    total = sum(int(count) for count in values)
+    if total != expected_changes:
+        return _unavailable_transition_evidence(
+            "transition_total_mismatch"
+        )
+    transitions = [
+        {
+            "transition_id": f"{before}_to_{after}",
+            "baseline_action": before,
+            "actual_action": after,
+            "count": counts[before][after],
+        }
+        for before in _ACTIONS
+        for after in _ACTIONS
+        if counts[before][after]
+    ]
+    expected = _finite_number(
+        semantic.get("expected_counterfactual_action_changes")
+    )
+    expectation_available = bool(
+        schema_version == 3
+        and semantic.get("expected_change_estimator")
+        == "shared_uniform_inverse_cdf_overlap_v1"
+        and expected is not None
+        and 0.0 <= expected <= 100_000.0
+    )
+    return {
+        "available": True,
+        "reason": None,
+        "schema_version": schema_version,
+        "transitions": transitions,
+        "observed_transition_total": total,
+        "counts_match_official": True,
+        "expectation_available": expectation_available,
+        "expected_counterfactual_action_changes": (
+            expected if expectation_available else None
+        ),
+        "full_source_transition_distribution_authorized": (
+            semantic.get("full_source_distribution_authorized") is True
+        ),
+        "full_source_expectation_authorized": bool(
+            expectation_available
+            and semantic.get("full_source_expectation_authorized") is True
+        ),
+        "same_chapter_cooccurrence_only": True,
+        "outcome_attribution_authorized": False,
+    }
 
 
 def _manager_choice(raw: Any) -> dict[str, Any]:
@@ -107,6 +227,9 @@ def _future_review(
 
 def _official_action(raw: Any, *, status: str) -> dict[str, Any]:
     action = raw if isinstance(raw, Mapping) else {}
+    locally_attributable_changes = _bounded_count(
+        action.get("locally_attributable_action_changes")
+    )
     return {
         "status": status,
         "retained_records": _bounded_count(action.get("retained_records")),
@@ -116,14 +239,16 @@ def _official_action(raw: Any, *, status: str) -> dict[str, Any]:
         "attribution_eligible_decisions": _bounded_count(
             action.get("attribution_eligible_decisions")
         ),
-        "locally_attributable_action_changes": _bounded_count(
-            action.get("locally_attributable_action_changes")
-        ),
+        "locally_attributable_action_changes": locally_attributable_changes,
         "direct_ball_event_links": _bounded_count(
             action.get("direct_ball_event_links")
         ),
         "manager_record_coverage_complete": (
             action.get("manager_record_coverage_complete") is True
+        ),
+        "transition_evidence": _action_transition_evidence(
+            action.get("retained_record_semantics"),
+            expected_changes=locally_attributable_changes,
         ),
     }
 

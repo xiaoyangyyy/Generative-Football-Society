@@ -302,7 +302,11 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "dossier.manager_choice||{}" in document
     assert "dossier.future_review||{}" in document
     assert "dossier.official_action||{}" in document
+    assert "action.transition_evidence||{}" in document
     assert "dossier.world_after||{}" in document
+    assert "实际动作转移：" in document
+    assert "共享采样期望" in document
+    assert "同章共现，不归因赛果" in document
     assert "managerWorldStoryDossier.append(" in document
     assert "function renderManagerWorldNavigatorBase(season)" in document
     assert "season?.manager_world_story" in document
@@ -660,6 +664,29 @@ def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_
     assert "heading.scope='row'" in renderer
     assert "cell.textContent=String(count)" in renderer
     assert "cell.setAttribute('aria-label'" in renderer
+    assert "innerHTML" not in renderer
+
+
+def test_root_surfaces_same_chapter_exact_action_transitions_safely(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    renderer = document.split(
+        "function renderManagerWorldStoryDossier(season)", 1
+    )[1].split("function renderManagerWorldActionAdoptionLedger", 1)[0]
+
+    assert response["status"].startswith("200")
+    assert "const choice=dossier.manager_choice||{}" in renderer
+    assert "transition=action.transition_evidence||{}" in renderer
+    assert "transition.transitions||[]" in renderer
+    assert "row.baseline_action" in renderer
+    assert "row.actual_action" in renderer
+    assert "transition.expectation_available" in renderer
+    assert "transition.expected_counterfactual_action_changes" in renderer
+    assert "transition.full_source_transition_distribution_authorized" in renderer
+    assert "不能把缺失解释为零改变" in renderer
+    assert "actionNode.append(trace)" in renderer
+    assert "actionNode.append(gap)" in renderer
+    assert "textContent=" in renderer
     assert "innerHTML" not in renderer
 
 
@@ -2458,6 +2485,9 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
     assert reviewed_story["chapter_dossier"]["manager_choice"]["available"] is True
     assert reviewed_story["chapter_dossier"]["future_review"]["status"] == "selected"
     assert reviewed_story["chapter_dossier"]["official_action"]["status"] == "pending"
+    assert reviewed_story["chapter_dossier"]["official_action"][
+        "transition_evidence"
+    ]["available"] is False
     assert reviewed_story["chapter_dossier"]["world_after"]["status"] == "pending"
     assert reviewed_story["chapter_dossier"][
         "outcome_improvement_authorized"

@@ -5329,3 +5329,41 @@ every declared check and the expanded architecture audit passes 115/115. The
 last full-suite baseline remains V4.40's 1,498 passing tests with three skips
 and one registered training-test deselection; no training-bearing full suite
 was run in this stage.
+
+## 160. V4.42 Exact local action transitions in the chapter dossier
+
+V4.41's official-action card exposed how many decisions were influenced and
+how many locally attributable actions changed, but a manager still had to
+leave the chapter story and inspect the season matrix to learn which actions
+changed. That kept the most concrete evidence of world-model adoption one
+navigation step away from the manager choice and subsequent world state.
+
+V4.42 projects the exact nonzero local action-transition rows already validated
+by the completed navigator chapter into `official_action.transition_evidence`.
+The projection admits only V2 or V3 retained semantics with all five action
+rows and columns, bounded integer counts, zero diagonal, no transition to or
+from the `none` sentinel, and a matrix total equal to the chapter's official
+locally attributable action-change count. It preserves fixed action order,
+does not rank transitions and does not copy or mutate the source matrix.
+
+For V3 evidence, the same projection exposes the shared-uniform inverse-CDF
+expected change count only when its estimator and finite bounds are valid.
+Full-source transition and expectation authorization remain separate flags.
+Legacy absence, malformed matrices and count mismatches each fail closed with
+an explicit reason, empty transition list and no inferred zero effect.
+
+The existing third dossier card now renders concrete transitions such as
+`hold -> pass`, the exact sampling expectation and source-coverage status via
+DOM `textContent`. The fourth card remains the same chapter's descriptive
+world and society continuation. Their adjacency communicates chronology and
+evidence coverage, not a claim that an action transition caused the result.
+No new screen, persistence path or competing product state is introduced.
+
+This code-only change executes no match, future generation, training, formal
+study, participant session or provider call. The affected navigator,
+dossier, story, Web and accessibility surface passes 142 focused tests. Local
+HTTP Beta passes 16/16 checks, automated accessibility passes 42/42 checks,
+process-crash recovery passes every declared check and the expanded
+architecture audit passes 116/116. V4.40 remains the last full-suite baseline
+at 1,498 passing tests with three skips and one registered training-test
+deselection.

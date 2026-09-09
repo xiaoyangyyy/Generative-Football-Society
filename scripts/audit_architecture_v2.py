@@ -919,7 +919,7 @@ def main() -> int:
                 '"causal_effect_authorized": False',
             ))
             and "from src.product.web" not in manager_world_dossier
-            and manager_world_dossier.count("\n") < 260
+            and manager_world_dossier.count("\n") < 380
             and all(token in manager_world_story for token in (
                 "from src.product.manager_world_dossier import (",
                 "build_manager_world_dossier(",
@@ -949,6 +949,44 @@ def main() -> int:
             ))
             and "test_navigator_rejects_rehashed_manager_choice_drift" in (
                 manager_world_navigator_tests
+            )
+            and "innerHTML" not in web
+        ),
+        "manager_world_dossier_preserves_exact_local_action_transitions": (
+            all(token in manager_world_dossier for token in (
+                "def _action_transition_evidence(",
+                'semantic.get("locally_attributable_action_transition_counts")',
+                'schema_version not in {2, 3}',
+                'counts[action][action] != 0',
+                'counts["none"][action] != 0',
+                'if total != expected_changes:',
+                '"counts_match_official": True',
+                '"expectation_available": expectation_available',
+                '"same_chapter_cooccurrence_only": True',
+                '"outcome_attribution_authorized": False',
+                'action.get("retained_record_semantics")',
+            ))
+            and all(token in manager_world_dossier_tests for token in (
+                "test_dossier_fails_closed_on_invalid_transition_matrix",
+                "test_dossier_keeps_legacy_transition_absence_explicit",
+                '"transition_total_mismatch"',
+                '"expected_counterfactual_action_changes": 1.75',
+                '"full_source_transition_distribution_authorized": True',
+            ))
+            and all(token in web for token in (
+                "transition=action.transition_evidence||{}",
+                "transition.transitions||[]",
+                "row.baseline_action",
+                "row.actual_action",
+                "transition.expectation_available",
+                "transition.expected_counterfactual_action_changes",
+                "transition.full_source_transition_distribution_authorized",
+                "actionNode.append(trace)",
+                "actionNode.append(gap)",
+                "不能把缺失解释为零改变",
+            ))
+            and "test_root_surfaces_same_chapter_exact_action_transitions_safely" in (
+                web_tests
             )
             and "innerHTML" not in web
         ),
