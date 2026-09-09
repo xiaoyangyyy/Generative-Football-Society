@@ -5000,3 +5000,34 @@ skips and one registered training-test deselection. Local HTTP Beta passes
 16/16 checks, automated accessibility passes 41/41 checks, process-crash
 recovery passes every declared check and the expanded architecture audit
 passes 97/97.
+
+## 150. V4.32 Explicit manager-season composition
+
+The manager-season surface is the product-level junction for the current
+competition, matchday workflow, club history and world-model intervention
+experience. Its base season renderer was followed by three implicit
+compositions: matchday command plus manager career, club situation/timeline
+plus decision evidence, and counterfactual future sets plus the unified world
+navigator. Successive reassignment made the complete season experience depend
+on declaration order.
+
+V4.32 captures the base renderer once and freezes one four-stage sequence:
+
+1. base season identity, standings, fixtures and squad state;
+2. matchday command center and manager career;
+3. club situation, completed timeline, commitments, promises, decision ledger
+   and manager advice; and
+4. manager future sets, intervention workspace and world navigator.
+
+The root assignment forwards the same season, history and history-summary
+inputs through every stage. Each named stage retains its original DOM targets,
+early returns, advice reset, preview scheduling and claim boundaries. Direct
+Web tests bind the exact order and reject the complete legacy wrapper family;
+a dedicated architecture gate enforces the same contract. This refactor
+changes no season, decision, club, advice, future, world state, evidence schema
+or causal claim and executes no match, future generation, training, formal
+study, participant session or provider call. Focused Web regression passes 67
+tests. The CI-equivalent suite passes 1,483 tests with three declared skips and
+one registered training-test deselection. Local HTTP Beta passes 16/16 checks,
+automated accessibility passes 41/41 checks, process-crash recovery passes
+every declared check and the expanded architecture audit passes 98/98.

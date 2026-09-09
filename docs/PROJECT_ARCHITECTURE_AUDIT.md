@@ -524,6 +524,18 @@ not quality signals by themselves.
     deselection, and local HTTP, accessibility, recovery and all 97
     architecture checks are green.
 
+75. Replaced three implicit season-render overrides with one frozen, named
+    four-stage composition. Base season state, matchday command and manager
+    career, club situation/timeline/decision evidence, and counterfactual
+    futures plus world navigation now share one visible order and one input
+    flow. Direct tests and a dedicated architecture gate require one root
+    pipeline and reject every legacy season wrapper. DOM ownership, advice
+    reset, preview scheduling and claim boundaries remain unchanged; no match,
+    future, training, study, participant session or external call is executed.
+    Focused Web regression passes 67 tests, CI-equivalent regression passes
+    1,483 with three skips and one registered deselection, and local HTTP,
+    accessibility, recovery and all 98 architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

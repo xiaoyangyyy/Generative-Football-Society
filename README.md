@@ -423,6 +423,19 @@ regression passes 66 tests; CI-equivalent regression passes 1,482 tests with
 three declared skips and one registered training-test deselection. Local HTTP,
 accessibility, recovery and all 97 architecture checks pass.
 
+V4.32 makes the manager-season surface explicit. Three implicit overrides
+become named stages in one frozen four-stage sequence: base season state,
+matchday command and manager career, club situation/timeline/decision evidence,
+and the counterfactual future plus world navigator. The same season, history
+and history-summary inputs now flow through one visible product path, while
+each stage retains its prior DOM ownership, eligibility checks and non-causal
+wording. A dedicated architecture gate rejects legacy wrappers and duplicate
+pipeline roots. This behavior-preserving refactor executes no match, future,
+training, study, participant session or provider call. Focused Web regression
+passes 67 tests; CI-equivalent regression passes 1,483 tests with three
+declared skips and one registered training-test deselection. Local HTTP,
+accessibility, recovery and all 98 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

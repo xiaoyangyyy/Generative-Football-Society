@@ -829,6 +829,30 @@ def test_root_uses_one_explicit_recruitment_window_configure_pipeline(tmp_path):
     assert "configureRecruitmentWindowWithout" not in document
 
 
+def test_root_uses_one_explicit_season_render_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const SEASON_RENDER_STAGES=Object.freeze(["
+        "renderSeasonBase,"
+        "renderSeasonCommandCenter,"
+        "renderSeasonClubTimeline,"
+        "renderSeasonManagerFutureSets]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count(
+        "renderSeason=(season,configured,history=[],historySummary={})=>{for("
+    ) == 1
+    assert (
+        "renderSeason=(season,configured,history=[],historySummary={})=>{for("
+        "const renderStage of SEASON_RENDER_STAGES)"
+        "renderStage(season,configured,history,historySummary)};"
+    ) in document
+    assert "renderSeasonWithout" not in document
+
+
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
     response = _request(ProductWebApp(tmp_path), path="/healthz")
     assert response["json"] == {

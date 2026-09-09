@@ -1742,6 +1742,21 @@ def main() -> int:
                 "configureRecruitmentWindow=season=>{for("
             ) == 1
         ),
+        "season_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderSeason(season,configured)",
+                "const renderSeasonBase=renderSeason;",
+                "function renderSeasonCommandCenter(",
+                "function renderSeasonClubTimeline(",
+                "function renderSeasonManagerFutureSets(",
+                "const SEASON_RENDER_STAGES=Object.freeze([",
+                "renderSeason=(season,configured,history=[],historySummary={})=>{for(",
+            ))
+            and "renderSeasonWithout" not in web
+            and web.count(
+                "renderSeason=(season,configured,history=[],historySummary={})=>{for("
+            ) == 1
+        ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (
                 "def build_manager_intervention_workspace(",
