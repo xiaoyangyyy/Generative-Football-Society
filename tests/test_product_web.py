@@ -239,9 +239,9 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "semantic.fixtures_with_v3_transition_semantics" in document
     assert "semantic.full_source_transition_distribution_authorized" in document
     assert "不授权赛果归因" in document
-    assert "appendFutureMechanismExamplesWithoutCrossMetrics" in document
+    assert "function appendFutureMechanismExamplesCrossMetrics(context)" in document
     assert "window?.delta?.crosses" in document
-    assert "appendFutureMechanismExamplesWithoutPolicySemantics" in document
+    assert "function appendFutureMechanismExamplesPolicySemantics(context)" in document
     assert "example.hold_reference_redistributed" in document
     assert "example.primary_signal_action" in document
     assert "mean_applied_authority" in document
@@ -872,6 +872,33 @@ def test_root_uses_one_explicit_library_render_pipeline(tmp_path):
         "LIBRARY_RENDER_STAGES)renderStage(library)}"
     ) in document
     assert "renderLibraryWithout" not in document
+
+
+def test_root_uses_one_explicit_future_mechanism_example_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const FUTURE_MECHANISM_EXAMPLE_RENDER_STAGES=Object.freeze(["
+        "appendFutureMechanismExamplesBase,"
+        "appendFutureMechanismExamplesCrossMetrics,"
+        "appendFutureMechanismExamplesPolicySemantics]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count(
+        "function appendFutureMechanismExamples(host,scenarios,title)"
+    ) == 1
+    assert (
+        "const context={host,scenarios:scenarios||[],title,details:null}"
+    ) in document
+    assert "context.details=details" in document
+    assert document.count("const {scenarios,details}=context") == 2
+    assert (
+        "for(const appendStage of FUTURE_MECHANISM_EXAMPLE_RENDER_STAGES)"
+        "appendStage(context)"
+    ) in document
+    assert "appendFutureMechanismExamplesWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):

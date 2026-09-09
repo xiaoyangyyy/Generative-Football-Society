@@ -1349,9 +1349,9 @@ def main() -> int:
                 '"schema_version": 2',
             ))
             and all(token in web for token in (
-                "appendFutureMechanismExamplesWithoutCrossMetrics",
+                "function appendFutureMechanismExamplesCrossMetrics(context)",
                 "window?.delta?.crosses",
-                "appendFutureMechanismExamplesWithoutPolicySemantics",
+                "function appendFutureMechanismExamplesPolicySemantics(context)",
                 "example.hold_reference_redistributed",
             ))
         ),
@@ -1768,6 +1768,22 @@ def main() -> int:
             ))
             and "renderLibraryWithout" not in web
             and web.count("function renderLibrary(library)") == 1
+        ),
+        "future_mechanism_example_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function appendFutureMechanismExamplesBase(context)",
+                "function appendFutureMechanismExamplesCrossMetrics(context)",
+                "function appendFutureMechanismExamplesPolicySemantics(context)",
+                "const FUTURE_MECHANISM_EXAMPLE_RENDER_STAGES=Object.freeze([",
+                "function appendFutureMechanismExamples(host,scenarios,title)",
+                "const context={host,scenarios:scenarios||[],title,details:null}",
+                "context.details=details",
+                "appendStage(context)",
+            ))
+            and "appendFutureMechanismExamplesWithout" not in web
+            and web.count(
+                "function appendFutureMechanismExamples(host,scenarios,title)"
+            ) == 1
         ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (

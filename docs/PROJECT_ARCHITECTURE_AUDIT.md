@@ -548,6 +548,19 @@ not quality signals by themselves.
     passes 1,484 with three skips and one registered deselection, and local
     HTTP, accessibility, recovery and all 99 architecture checks are green.
 
+77. Replaced two implicit future-mechanism example overrides with one frozen,
+    named three-stage composition. Base action/window evidence, independent
+    cross metrics and V2 policy-signal semantics now share one visible order.
+    A per-call context binds only the details node created for the current
+    examples, preventing an empty scenario set from enhancing an older sibling.
+    Direct tests and a dedicated architecture gate require one root, exact
+    order, null context initialization and explicit node binding while rejecting
+    every legacy wrapper. No match, future, training, study, participant
+    session or external call is executed. Focused Web regression passes 69
+    tests, CI-equivalent regression passes 1,485 with three skips and one
+    registered deselection, and local HTTP, accessibility, recovery and all 100
+    architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

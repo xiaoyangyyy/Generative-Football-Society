@@ -450,6 +450,19 @@ CI-equivalent regression passes 1,484 tests with three declared skips and one
 registered training-test deselection. Local HTTP, accessibility, recovery and
 all 99 architecture checks pass.
 
+V4.34 makes bounded future-mechanism examples explicit. Two implicit
+augmentations become named stages in one frozen three-stage sequence: base
+action and downstream-window evidence, independent cross metrics, and V2
+policy-signal semantics. A per-call context owns the newly created details
+node, so an empty scenario set cannot accidentally augment an older sibling.
+The visible evidence, ordering and non-causal boundaries remain unchanged.
+A dedicated Web contract and architecture gate reject legacy wrappers,
+duplicate roots and missing context binding. This code-only change executes no
+match, future, training, study, participant session or provider call. Focused
+Web regression passes 69 tests; CI-equivalent regression passes 1,485 tests
+with three declared skips and one registered training-test deselection. Local
+HTTP, accessibility, recovery and all 100 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

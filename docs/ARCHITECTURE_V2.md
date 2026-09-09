@@ -5063,3 +5063,35 @@ passes 1,484 tests with three declared skips and one registered training-test
 deselection. Local HTTP Beta passes 16/16 checks, automated accessibility
 passes 41/41 checks, process-crash recovery passes every declared check and the
 expanded architecture audit passes 99/99.
+
+## 152. V4.34 Explicit future-mechanism example composition
+
+The same bounded action-adoption examples are rendered inside manager future
+sets and the frozen decision ledger. Their base renderer creates the action
+transition, direct runtime binding, local attribution and descriptive
+downstream windows. Two later implicit overrides added independent cross
+metrics and V2 direct-preference, suppression-only and hold-reference
+semantics. Besides hiding the complete order, the wrappers rediscovered the
+target through the host's last child; an empty current scenario set could
+therefore point at an older details node.
+
+V4.34 replaces that chain with one frozen three-stage sequence:
+
+1. build the bounded example details node and descriptive windows;
+2. append independent non-zero cross-window evidence; and
+3. append V2 policy-signal and hold-reference semantics.
+
+The root creates a fresh per-call context with a null details reference. Only
+the base stage may bind that reference, and both enrichment stages consume the
+bound node directly. If no current examples exist, every stage fails closed
+without touching a previous DOM sibling. Direct Web tests bind the exact stage
+order, unique root, context initialization and node binding while rejecting the
+complete legacy wrapper family; a dedicated architecture gate enforces the
+same contract. Visible example text, ordering and the refusal to infer
+downstream causality remain unchanged. This code-only change executes no match,
+future generation, training, formal study, participant session or provider
+call. Focused Web regression passes 69 tests. The CI-equivalent suite passes
+1,485 tests with three declared skips and one registered training-test
+deselection. Local HTTP Beta passes 16/16 checks, automated accessibility
+passes 41/41 checks, process-crash recovery passes every declared check and the
+expanded architecture audit passes 100/100.
