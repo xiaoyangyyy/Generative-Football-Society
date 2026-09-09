@@ -491,6 +491,20 @@ tests; CI-equivalent regression passes 1,487 tests with three declared skips
 and one registered training-test deselection. Local HTTP, accessibility,
 recovery and all 102 architecture checks pass.
 
+V4.37 makes the manager-world action-adoption ledger explicit. Two implicit
+reassignments become named stages in one frozen three-stage sequence: base
+adoption counts and state navigation, descriptive downstream world
+propagation, and bounded official-action semantics. The single root passes the
+same season projection through every stage, while unavailable evidence keeps
+the existing fail-closed behavior. Direct Web tests and an architecture gate
+bind the exact order, require one root and reject the full legacy wrapper
+family. This code-only change executes no match, future, training, study,
+participant session or provider call. Focused Web regression passes 72 tests;
+CI-equivalent regression passes 1,488 tests with three declared skips and one
+registered training-test deselection. Local HTTP passes 16/16, automated
+accessibility passes 41/41, process-crash recovery passes every declared check
+and the expanded architecture audit passes 103/103.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

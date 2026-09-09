@@ -326,10 +326,10 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "summary.world_model_action_adoption_ledger" in document
     assert "function renderManagerWorldActionAdoptionLedger(" in document
     assert "function managerWorldPropagationText(" in document
-    assert "renderManagerWorldActionAdoptionLedgerWithoutWorldPropagation" in document
+    assert "function renderManagerWorldActionAdoptionLedgerWorldPropagation(" in document
     assert "ledger.state_counts||[]" in document
     assert "row.descriptive_world_after" in document
-    assert "renderManagerWorldActionAdoptionLedgerWithoutBoundedSemantics" in document
+    assert "function renderManagerWorldActionAdoptionLedgerBoundedSemantics(" in document
     assert "ledger?.bounded_semantic_examples" in document
     assert "sample.fixtures_with_truncated_examples" in document
     assert "function renderManagerWorldRetainedRecordSemantics(season)" in document
@@ -959,6 +959,31 @@ def test_root_uses_one_explicit_retained_action_semantic_text_pipeline(tmp_path)
         "textStage(context);return context.text"
     ) in document
     assert "retainedActionSemanticTextWithout" not in document
+
+
+def test_root_uses_one_explicit_manager_world_action_adoption_ledger_pipeline(
+    tmp_path,
+):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_WORLD_ACTION_ADOPTION_LEDGER_RENDER_STAGES=Object.freeze(["
+        "renderManagerWorldActionAdoptionLedgerBase,"
+        "renderManagerWorldActionAdoptionLedgerWorldPropagation,"
+        "renderManagerWorldActionAdoptionLedgerBoundedSemantics]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count(
+        "function renderManagerWorldActionAdoptionLedger(season)"
+    ) == 1
+    assert (
+        "for(const renderStage of "
+        "MANAGER_WORLD_ACTION_ADOPTION_LEDGER_RENDER_STAGES)"
+        "renderStage(season)"
+    ) in document
+    assert "renderManagerWorldActionAdoptionLedgerWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):

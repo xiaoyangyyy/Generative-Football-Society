@@ -5160,3 +5160,31 @@ The CI-equivalent suite passes 1,487 tests with three declared skips and one
 registered training-test deselection. Local HTTP Beta passes 16/16 checks,
 automated accessibility passes 41/41 checks, process-crash recovery passes
 every declared check and the expanded architecture audit passes 102/102.
+
+## 155. V4.37 Explicit manager-world action-adoption ledger composition
+
+The manager-world action-adoption ledger combines season-level retained-action
+counts, state-specific navigation, descriptive downstream world propagation
+and bounded official-action semantic coverage. The base renderer was followed
+by two implicit reassignments that added world propagation and bounded semantic
+examples. The final execution path therefore depended on declaration order.
+
+V4.37 replaces that chain with one frozen three-stage sequence:
+
+1. render base adoption metrics, state counts and identity-bound navigation;
+2. append descriptive result and persistent-world propagation; and
+3. append bounded retained-example semantic coverage.
+
+The single root forwards the same season projection through all three named
+stages. Each stage retains its previous DOM ownership and early-return
+behavior. Missing ledgers or semantic samples still fail closed, and
+descriptive downstream state remains explicitly separate from outcome or
+real-football causality. Direct Web tests bind the exact order, require one
+root and reject the complete legacy wrapper family; a dedicated architecture
+gate enforces the same contract. This code-only change executes no match,
+future generation, training, formal study, participant session or provider
+call. Focused Web regression passes 72 tests. The CI-equivalent suite passes
+1,488 tests with three declared skips and one registered training-test
+deselection. Local HTTP Beta passes 16/16 checks, automated accessibility
+passes 41/41 checks, process-crash recovery passes every declared check and the
+expanded architecture audit passes 103/103.

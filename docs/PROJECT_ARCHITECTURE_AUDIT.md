@@ -589,6 +589,18 @@ not quality signals by themselves.
     deselection, and local HTTP, accessibility, recovery and all 102
     architecture checks are green.
 
+80. Replaced two implicit manager-world action-adoption ledger reassignments
+    with one frozen, named three-stage renderer. Base adoption metrics and
+    state navigation, descriptive downstream world propagation, and bounded
+    official-action semantics now share one visible order. Direct tests and a
+    dedicated architecture gate require one root and reject the complete legacy
+    wrapper family. Missing evidence remains fail-closed, and downstream state
+    remains descriptive rather than causal. No match, future, training, study,
+    participant session or external call is executed. Focused Web regression
+    passes 72 tests, CI-equivalent regression passes 1,488 with three skips and
+    one registered deselection, and local HTTP, accessibility, recovery and all
+    103 architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

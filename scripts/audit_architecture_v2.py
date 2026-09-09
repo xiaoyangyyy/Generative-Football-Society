@@ -1816,6 +1816,23 @@ def main() -> int:
             and "retainedActionSemanticTextWithout" not in web
             and web.count("function retainedActionSemanticText(semantic)") == 1
         ),
+        "manager_world_action_adoption_ledger_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderManagerWorldActionAdoptionLedgerBase(season)",
+                "function renderManagerWorldActionAdoptionLedgerWorldPropagation("
+                "season)",
+                "function renderManagerWorldActionAdoptionLedgerBoundedSemantics("
+                "season)",
+                "const MANAGER_WORLD_ACTION_ADOPTION_LEDGER_RENDER_STAGES="
+                "Object.freeze([",
+                "function renderManagerWorldActionAdoptionLedger(season)",
+                "renderStage(season)",
+            ))
+            and "renderManagerWorldActionAdoptionLedgerWithout" not in web
+            and web.count(
+                "function renderManagerWorldActionAdoptionLedger(season)"
+            ) == 1
+        ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (
                 "def build_manager_intervention_workspace(",
@@ -1913,7 +1930,7 @@ def main() -> int:
                 "function renderManagerWorldNavigator(",
                 "function renderManagerWorldActionAdoptionLedger(",
                 "function managerWorldPropagationText(",
-                "renderManagerWorldActionAdoptionLedgerWithoutWorldPropagation",
+                "function renderManagerWorldActionAdoptionLedgerWorldPropagation(",
                 "summary.world_model_influence_path||{}",
                 "summary.world_model_action_adoption_ledger",
                 "diagnosticRows=gapRows.concat(stateRows,trajectoryRows)",
@@ -1994,7 +2011,7 @@ def main() -> int:
             ))
             and all(token in web for token in (
                 "function appendManagerWorldEvolutionThreadOfficialActionSemantics(",
-                "renderManagerWorldActionAdoptionLedgerWithoutBoundedSemantics",
+                "function renderManagerWorldActionAdoptionLedgerBoundedSemantics(",
                 "function renderManagerWorldReviewedFutureOfficialActionSemantics(season)",
                 "sample.semantic_examples_truncated",
                 "point.bounded_official_action_semantics",
