@@ -5188,3 +5188,34 @@ call. Focused Web regression passes 72 tests. The CI-equivalent suite passes
 deselection. Local HTTP Beta passes 16/16 checks, automated accessibility
 passes 41/41 checks, process-crash recovery passes every declared check and the
 expanded architecture audit passes 103/103.
+
+## 156. V4.38 Explicit manager world-model advice composition
+
+Two manager-facing paths still depended on implicit reassignment. The decision
+preview first rendered deterministic lineup, commitment, player-promise and
+opponent-preparation effects, then appended the world-model comparison. The
+advice panel used a later wrapper to clear stale error styling before invoking
+its original renderer. Their final order was correct but hidden in declaration
+history.
+
+V4.38 introduces two independent frozen pipelines:
+
+1. manager decision preview base, followed by the bounded world-model
+   comparison; and
+2. advice status reset, followed by identity-bound advice content.
+
+Each root forwards the same input to its named stages in one reviewable order.
+The comparison still distinguishes exploratory-only from bounded-review
+authority, never authorizes automatic adoption and describes short-horizon
+simulator proxy differences rather than score, win probability or causal
+effects. Resetting status before every advice render preserves recovery from a
+prior request error without allowing stale styling to leak into current
+evidence. Direct Web tests bind both exact orders and reject the legacy wrapper
+families. Two architecture gates and the automated accessibility verifier
+enforce the same contracts. This code-only change executes no match, future
+generation, training, formal study, participant session or provider call.
+Focused Web regression passes 74 tests. The CI-equivalent suite passes 1,490
+tests with three declared skips and one registered training-test deselection.
+Local HTTP Beta passes 16/16 checks, automated accessibility passes 41/41
+checks, process-crash recovery passes every declared check and the expanded
+architecture audit passes 105/105.

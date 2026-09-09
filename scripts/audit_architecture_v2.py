@@ -1833,6 +1833,28 @@ def main() -> int:
                 "function renderManagerWorldActionAdoptionLedger(season)"
             ) == 1
         ),
+        "manager_decision_preview_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderManagerDecisionPreviewBase(preview)",
+                "function renderManagerDecisionPreviewWorldModelComparison(preview)",
+                "const MANAGER_DECISION_PREVIEW_RENDER_STAGES=Object.freeze([",
+                "function renderManagerDecisionPreview(preview)",
+                "renderStage(preview)",
+            ))
+            and "renderManagerDecisionPreviewWithout" not in web
+            and web.count("function renderManagerDecisionPreview(preview)") == 1
+        ),
+        "manager_world_model_advice_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderManagerWorldModelAdviceStatusReset()",
+                "function renderManagerWorldModelAdviceBase(advice,season,managed)",
+                "const MANAGER_WORLD_MODEL_ADVICE_RENDER_STAGES=Object.freeze([",
+                "function renderManagerWorldModelAdvice(...args)",
+                "renderStage(...args)",
+            ))
+            and "renderManagerWorldModelAdviceWithout" not in web
+            and web.count("function renderManagerWorldModelAdvice(...args)") == 1
+        ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (
                 "def build_manager_intervention_workspace(",
@@ -2266,7 +2288,7 @@ def main() -> int:
                 "advice, selected_tactic=frozen[\"tactic\"]",
             ))
             and all(token in web for token in (
-                "renderManagerDecisionPreviewWithoutWorldModelComparison",
+                "function renderManagerDecisionPreviewWorldModelComparison(",
                 "authority.level==='exploratory_only'",
                 "comparison.recommended_tactic",
                 "comparison.selected_tactic",

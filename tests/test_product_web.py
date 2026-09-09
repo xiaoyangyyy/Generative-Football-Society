@@ -454,7 +454,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "单场赛果不证明决策效果" in document
     assert "世界状态：比赛后疲劳" in document
     assert "伤停为模拟状态" in document
-    assert "renderManagerDecisionPreviewWithoutWorldModelComparison" in document
+    assert "function renderManagerDecisionPreviewWorldModelComparison(" in document
     assert "comparison.recommended_tactic" in document
     assert "comparison.selected_tactic" in document
     assert "deltas.risk_adjusted_value" in document
@@ -984,6 +984,48 @@ def test_root_uses_one_explicit_manager_world_action_adoption_ledger_pipeline(
         "renderStage(season)"
     ) in document
     assert "renderManagerWorldActionAdoptionLedgerWithout" not in document
+
+
+def test_root_uses_one_explicit_manager_decision_preview_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_DECISION_PREVIEW_RENDER_STAGES=Object.freeze(["
+        "renderManagerDecisionPreviewBase,"
+        "renderManagerDecisionPreviewWorldModelComparison]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function renderManagerDecisionPreview(preview)") == 1
+    assert (
+        "for(const renderStage of MANAGER_DECISION_PREVIEW_RENDER_STAGES)"
+        "renderStage(preview)"
+    ) in document
+    assert "renderManagerDecisionPreviewWithout" not in document
+
+
+def test_root_uses_one_explicit_manager_world_model_advice_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_WORLD_MODEL_ADVICE_RENDER_STAGES=Object.freeze(["
+        "renderManagerWorldModelAdviceStatusReset,"
+        "renderManagerWorldModelAdviceBase]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function renderManagerWorldModelAdvice(...args)") == 1
+    assert (
+        "function renderManagerWorldModelAdviceStatusReset(){"
+        "managerWorldModelAdviceSummary.className='status'}"
+    ) in document
+    assert (
+        "for(const renderStage of MANAGER_WORLD_MODEL_ADVICE_RENDER_STAGES)"
+        "renderStage(...args)"
+    ) in document
+    assert "renderManagerWorldModelAdviceWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):

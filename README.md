@@ -505,6 +505,21 @@ registered training-test deselection. Local HTTP passes 16/16, automated
 accessibility passes 41/41, process-crash recovery passes every declared check
 and the expanded architecture audit passes 103/103.
 
+V4.38 makes the manager's world-model advice presentation explicit. The
+decision preview now has one frozen two-stage sequence for the deterministic
+manager-impact preview followed by the bounded world-model comparison. The
+advice panel has a separate frozen two-stage sequence that clears stale error
+styling before rendering the current identity-bound advice. Both roots have
+direct Web contracts, architecture gates and accessibility coverage; legacy
+reassignment wrappers are rejected. Authority labels, candidate ordering,
+adoption eligibility and the explicit refusal to infer score, win probability
+or causality remain unchanged. This code-only change executes no match, future,
+training, study, participant session or provider call. Focused Web regression
+passes 74 tests; CI-equivalent regression passes 1,490 tests with three
+declared skips and one registered training-test deselection. Local HTTP passes
+16/16, automated accessibility passes 41/41, process-crash recovery passes
+every declared check and the expanded architecture audit passes 105/105.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

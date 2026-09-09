@@ -601,6 +601,18 @@ not quality signals by themselves.
     one registered deselection, and local HTTP, accessibility, recovery and all
     103 architecture checks are green.
 
+81. Replaced the implicit manager decision-preview and world-model advice
+    reassignments with two frozen, named two-stage pipelines. Deterministic
+    manager-impact facts now precede the bounded world-model comparison in one
+    visible order; advice status reset precedes identity-bound advice content
+    in another. Direct tests, two architecture gates and accessibility
+    verification reject both legacy wrapper families. Authority, adoption and
+    non-causal wording are unchanged. No match, future, training, study,
+    participant session or external call is executed. Focused Web regression
+    passes 74 tests, CI-equivalent regression passes 1,490 with three skips and
+    one registered deselection, and local HTTP, accessibility, recovery and all
+    105 architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_recovery",
-  "generated_at": "2026-09-09T04:55:15.567712+00:00",
+  "generated_at": "2026-09-09T05:52:14.291395+00:00",
   "status": "passed_local_recovery",
   "process_crash_verified": true,
   "passed": true,
@@ -35,7 +35,7 @@
     "src/product/workspace_evidence.py": "dd5661d5778ef6bdc681165245efc5e13bb6247bc9a51447db777d0da770674b",
     "src/product/manager_world_story.py": "58728a50fea28543761c1bbf87b040ee2cb0fa8bbc1b4d6bade816b99d1e914e",
     "src/product/recovery.py": "8c664c22619a3a90f0875a1d50a5097a2464e9527e28b914f224bf96fa4fabcf",
-    "src/product/web.py": "caf042b1bfe0f70a6d69a06587f4f4eac73351632c752a142e540906e7b839c5",
+    "src/product/web.py": "f7f6232fb30126c2d4b2dae8a162ec5892f1d8e22bd3e85d3f03a6bbc152d52e",
     "src/cli.py": "3b73f103325ab7a60bae04f0efeeb6da70f9e31da30173dfee2d3770c9808ab9",
     "scripts/verify_product_recovery.py": "e77e98a45f764bfea4d6ffb306e8a4874aa08a22ccd070e4268e764d92eb19fb"
   },
