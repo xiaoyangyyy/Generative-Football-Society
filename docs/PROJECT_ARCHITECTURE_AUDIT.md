@@ -575,6 +575,20 @@ not quality signals by themselves.
     one registered deselection, and local HTTP, accessibility, recovery and all
     101 architecture checks are green.
 
+79. Replaced two implicit retained-action text reassignments with one frozen,
+    named three-stage pure-text composition. V2 action/signal distribution,
+    V3 locally attributable transitions and V4 exact shared-sampler expectation
+    now share one order across official cards, decision ledgers, world
+    trajectories and history chapters. A single text context also fixes the
+    previous missing-input path that could return an orphaned V4 legacy marker.
+    Direct tests and a dedicated architecture gate require one root, exact
+    order, empty-input guards and final context return while rejecting every
+    legacy wrapper. No match, future, training, study, participant session or
+    external call is executed. Focused Web regression passes 71 tests,
+    CI-equivalent regression passes 1,487 with three skips and one registered
+    deselection, and local HTTP, accessibility, recovery and all 102
+    architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

@@ -235,7 +235,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "semantic.actual_action_counts||{}" in document
     assert "semantic.primary_signal_action_counts||{}" in document
     assert "semantic.signal_mode_counts||{}" in document
-    assert "retainedActionSemanticTextWithoutTransitions" in document
+    assert "function retainedActionSemanticTextTransitions(context)" in document
     assert "semantic?.locally_attributable_action_transition_counts" in document
     assert "世界模型局部动作转移" in document
     assert "semantic.retained_records_with_v2_semantics" in document
@@ -610,7 +610,10 @@ def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_
     assert '.transition-map td[data-active="true"]' in document
     assert "function renderManagerWorldActionTransitionMap(season)" in document
     assert "renderManagerWorldActionTransitionMap," in document
-    assert "retainedActionSemanticTextWithoutExactExpectation" in document
+    assert (
+        "function retainedActionSemanticTextExactExpectation(context)"
+        in document
+    )
     assert "function renderManagerDecisionLedgerExactActionExpectation(season)" in document
     assert "function renderManagerWorldExactActionExpectation(season)" in document
     assert "fixtures_with_v4_expectation_semantics" in document
@@ -634,7 +637,7 @@ def test_root_exposes_accessible_action_transition_map_with_honest_fallback(tmp_
     renderer = document.split(
         "function renderManagerWorldActionTransitionMap(season)", 1
     )[1].split(
-        "const retainedActionSemanticTextWithoutExactExpectation", 1
+        "function retainedActionSemanticTextExactExpectation", 1
     )[0]
     assert "managerWorldActionTransitionTableBody.replaceChildren()" in renderer
     assert "managerWorldActionTransitionTable.hidden=true" in renderer
@@ -927,6 +930,35 @@ def test_root_uses_one_explicit_official_action_execution_pipeline(tmp_path):
         "appendStage(context)"
     ) in document
     assert "appendOfficialActionExecutionWithout" not in document
+
+
+def test_root_uses_one_explicit_retained_action_semantic_text_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const RETAINED_ACTION_SEMANTIC_TEXT_STAGES=Object.freeze(["
+        "retainedActionSemanticTextBase,"
+        "retainedActionSemanticTextTransitions,"
+        "retainedActionSemanticTextExactExpectation]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function retainedActionSemanticText(semantic)") == 1
+    assert "const context={semantic,text:''}" in document
+    assert (
+        "function retainedActionSemanticTextBase(context){"
+        "const {semantic}=context;if(!semantic)return;"
+    ) in document
+    assert (
+        "function retainedActionSemanticTextExactExpectation(context){"
+        "const {semantic}=context;if(!semantic)return;"
+    ) in document
+    assert (
+        "for(const textStage of RETAINED_ACTION_SEMANTIC_TEXT_STAGES)"
+        "textStage(context);return context.text"
+    ) in document
+    assert "retainedActionSemanticTextWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):

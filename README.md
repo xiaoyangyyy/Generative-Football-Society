@@ -477,6 +477,20 @@ passes 70 tests; CI-equivalent regression passes 1,486 tests with three
 declared skips and one registered training-test deselection. Local HTTP,
 accessibility, recovery and all 101 architecture checks pass.
 
+V4.36 makes retained-action explanation text explicit. Two implicit
+reassignments become named stages in one frozen three-stage pure-text sequence:
+the V2 retained action/signal distribution, the V3 locally attributable action
+transition matrix, and the V4 exact shared-sampler expectation. Every official
+action card, decision ledger, world trajectory and history chapter now uses the
+same visible ordering. The root initializes one text context and returns an
+empty string for absent semantics, fixing the former orphaned legacy-warning
+suffix. A direct Web contract and architecture gate reject legacy wrappers and
+duplicate roots. This code-only change executes no match, future, training,
+study, participant session or provider call. Focused Web regression passes 71
+tests; CI-equivalent regression passes 1,487 tests with three declared skips
+and one registered training-test deselection. Local HTTP, accessibility,
+recovery and all 102 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

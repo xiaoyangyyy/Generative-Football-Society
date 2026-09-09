@@ -68,6 +68,7 @@
     "recruitment_window_configure_pipeline_is_explicit": true,
     "release_readiness_separates_code_contract_from_external_results": true,
     "research_checkpoint_identity_chain_verified": true,
+    "retained_action_semantic_text_pipeline_is_explicit": true,
     "runtime_random_draws_are_identity_scoped": true,
     "season_render_pipeline_is_explicit": true,
     "shot_head_decision_binds_promoted_artifact": true,

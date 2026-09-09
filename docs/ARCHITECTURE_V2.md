@@ -5128,3 +5128,35 @@ tests with three declared skips and one registered training-test deselection.
 Local HTTP Beta passes 16/16 checks, automated accessibility passes 41/41
 checks, process-crash recovery passes every declared check and the expanded
 architecture audit passes 101/101.
+
+## 154. V4.36 Explicit retained-action semantic text composition
+
+Retained-action text is reused by official action cards, world-evolution
+threads, trajectory points and historical chapters. Its base function rendered
+the V2 actual-action, primary-signal, signal-mode, hold-reference and cross
+coverage summary. Two later implicit reassignments added the V3 local action
+transition matrix and V4 exact shared-sampler expectation. The final meaning
+therefore depended on declaration order, and a missing semantic object could
+still receive an isolated V4 legacy-warning suffix after the base returned an
+empty string.
+
+V4.36 replaces that chain with one frozen three-stage pure-text sequence:
+
+1. establish the V2 retained-record distribution and coverage boundary;
+2. append the V3 locally attributable action transitions when available; and
+3. append the V4 exact shared-sampler expectation or its bounded legacy marker.
+
+The root owns one context containing the semantic object and an initially empty
+text value. Every stage mutates only that value and the root returns it after
+the fixed sequence. Both the base and exact-expectation stages fail closed on
+an absent semantic object, so missing evidence now remains an empty string.
+Direct Web tests bind the exact order, unique root, context initialization,
+empty-input guards and final return while rejecting the complete legacy wrapper
+family; a dedicated architecture gate enforces the same contract. Valid V2,
+V3 and V4 wording and all existing consumers remain unchanged. This code-only
+change executes no match, future generation, training, formal study,
+participant session or provider call. Focused Web regression passes 71 tests.
+The CI-equivalent suite passes 1,487 tests with three declared skips and one
+registered training-test deselection. Local HTTP Beta passes 16/16 checks,
+automated accessibility passes 41/41 checks, process-crash recovery passes
+every declared check and the expanded architecture audit passes 102/102.

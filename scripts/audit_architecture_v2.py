@@ -1802,6 +1802,20 @@ def main() -> int:
                 "function appendOfficialActionExecution(host,evidence,title)"
             ) == 1
         ),
+        "retained_action_semantic_text_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function retainedActionSemanticTextBase(context)",
+                "function retainedActionSemanticTextTransitions(context)",
+                "function retainedActionSemanticTextExactExpectation(context)",
+                "const RETAINED_ACTION_SEMANTIC_TEXT_STAGES=Object.freeze([",
+                "function retainedActionSemanticText(semantic)",
+                "const context={semantic,text:''}",
+                "textStage(context)",
+                "return context.text",
+            ))
+            and "retainedActionSemanticTextWithout" not in web
+            and web.count("function retainedActionSemanticText(semantic)") == 1
+        ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (
                 "def build_manager_intervention_workspace(",
@@ -2046,7 +2060,7 @@ def main() -> int:
                 '"full_source_transition_distribution_authorized"',
             ))
             and all(token in web for token in (
-                "retainedActionSemanticTextWithoutTransitions",
+                "function retainedActionSemanticTextTransitions(context)",
                 "semantic?.locally_attributable_action_transition_counts",
                 "semantic.retained_records_with_v2_semantics",
                 "semantic.fixtures_with_v3_transition_semantics",
@@ -2140,7 +2154,7 @@ def main() -> int:
                 "manager world navigator retained action expectation is invalid",
             ))
             and all(token in web for token in (
-                "retainedActionSemanticTextWithoutExactExpectation",
+                "function retainedActionSemanticTextExactExpectation(context)",
                 "function renderManagerDecisionLedgerExactActionExpectation(season)",
                 "function renderManagerWorldExactActionExpectation(season)",
                 "V4共享采样期望不可用",
