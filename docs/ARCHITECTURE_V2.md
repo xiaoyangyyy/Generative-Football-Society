@@ -5249,3 +5249,39 @@ CI-equivalent suite passes 1,493 tests with three declared skips and one
 registered training-test deselection. Local HTTP Beta passes 16/16 checks,
 automated accessibility passes 41/41 checks, process-crash recovery passes
 every declared check and the expanded architecture audit passes 108/108.
+
+## 158. V4.40 Zero-legacy Web composition
+
+Seven final product paths still relied on capturing an earlier function and
+reassigning its public name: the product root, sporting-plan population, club
+situation submission, unified-workflow area and manager-journey enrichment,
+recruitment submission, and manager-world chapter trajectory selection. Their
+runtime behavior was correct, but declaration history still encoded part of
+the application order.
+
+V4.40 replaces those wrappers with five explicit frozen pipelines:
+
+1. product base rendering, product extensions and navigation;
+2. sporting-plan base population followed by continuity restoration;
+3. unified-workflow base, area state and manager journey;
+4. recruitment validation, club-situation normalization and request transport;
+   and
+5. manager-world chapter base selection followed by trajectory selection.
+
+The submit pipeline carries one request context and retains the existing
+fail-closed boundary: invalid recruitment input marks the context aborted,
+stops all later stages and resolves without transport. Every other pipeline
+forwards the same stable input through named stages in its prior order. Direct
+Web contracts bind the sequences and root uniqueness, while six architecture
+gates require the explicit compositions and reject any legacy `Without` alias
+in the served Web source.
+
+This is a behavior-preserving maintainability change. It changes no product
+schema, manager decision, model authority, match state, evidence, outcome or
+causal claim and executes no match, future generation, recruitment
+transaction, training, formal study, participant session or provider call.
+Focused Web regression passes 82 tests. The CI-equivalent suite passes 1,498
+tests with three declared skips and one registered training-test deselection.
+Local HTTP Beta passes 16/16 checks, automated accessibility passes 41/41
+checks, process-crash recovery passes every declared check and the expanded
+architecture audit passes 114/114.

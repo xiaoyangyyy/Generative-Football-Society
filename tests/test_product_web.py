@@ -287,7 +287,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-product-journey"' in document
     assert 'class="manager-product-journey"' in document
     assert "function renderManagerProductJourney(" in document
-    assert "renderUnifiedWorkflowWithoutManagerJourney" in document
+    assert "function renderUnifiedWorkflowManagerJourney(data)" in document
     assert "item.dataset.status=status" in document
     assert "item.setAttribute('aria-current','step')" in document
     assert 'id="matchday-command-center"' in document
@@ -510,7 +510,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "review_sporting_plan" in document
     assert "function renderSportingReview" in document
     assert "data.studio?.sporting_reviews" in document
-    assert "populateSportingPlanWithoutContinuity" in document
+    assert "function populateSportingPlanContinuity(plan)" in document
     assert "previous_strategy_review" in document
     assert 'id="club-situation-fieldset"' in document
     assert "function renderClubSituation" in document
@@ -1083,6 +1083,100 @@ def test_root_uses_one_explicit_manager_career_pipeline(tmp_path):
         "renderStage(season,history,historySummary,configured)"
     ) in document
     assert "renderManagerCareerWithout" not in document
+
+
+def test_root_uses_one_explicit_product_render_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const PRODUCT_RENDER_STAGES=Object.freeze(["
+        "renderBase,renderProductExtensions,renderProductNavigation]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function render(data)") == 1
+    assert (
+        "for(const renderStage of PRODUCT_RENDER_STAGES)renderStage(data)"
+    ) in document
+
+
+def test_root_uses_one_explicit_sporting_plan_populate_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const SPORTING_PLAN_POPULATE_STAGES=Object.freeze(["
+        "populateSportingPlanBase,populateSportingPlanContinuity]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function populateSportingPlan(plan)") == 1
+    assert (
+        "for(const populateStage of SPORTING_PLAN_POPULATE_STAGES)"
+        "populateStage(plan)"
+    ) in document
+
+
+def test_root_uses_one_explicit_unified_workflow_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const UNIFIED_WORKFLOW_RENDER_STAGES=Object.freeze(["
+        "renderUnifiedWorkflowBase,renderUnifiedWorkflowArea,"
+        "renderUnifiedWorkflowManagerJourney]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function renderUnifiedWorkflow(data)") == 1
+    assert (
+        "for(const renderStage of UNIFIED_WORKFLOW_RENDER_STAGES)"
+        "renderStage(data)"
+    ) in document
+
+
+def test_root_uses_one_explicit_submit_pipeline_with_fail_closed_abort(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const SUBMIT_STAGES=Object.freeze(["
+        "submitRecruitmentPlan,submitClubSituation,submitRequestTransport]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count("function submit(form,path,payload,headers={})") == 1
+    assert "async function submitRequestBase(form,path,payload,headers={})" in document
+    assert (
+        "const context={form,path,payload,headers,aborted:false,result:null}"
+    ) in document
+    assert "context.aborted=true;context.result=Promise.resolve();return" in document
+    assert (
+        "for(const submitStage of SUBMIT_STAGES){submitStage(context);"
+        "if(context.aborted)break}return context.result"
+    ) in document
+
+
+def test_root_uses_one_explicit_world_chapter_selection_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_WORLD_CHAPTER_SELECTION_STAGES=Object.freeze(["
+        "syncManagerWorldChapterSelectionBase,"
+        "syncManagerWorldChapterTrajectorySelection]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count(
+        "function syncManagerWorldChapterSelection(fixtureId)"
+    ) == 1
+    assert (
+        "for(const syncStage of MANAGER_WORLD_CHAPTER_SELECTION_STAGES)"
+        "syncStage(fixtureId)"
+    ) in document
+    assert "Without" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):

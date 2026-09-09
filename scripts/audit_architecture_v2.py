@@ -836,7 +836,7 @@ def main() -> int:
                 'id="manager-product-journey"',
                 "function renderManagerProductJourney(",
                 "season?.matchday_command_center",
-                "renderUnifiedWorkflowWithoutManagerJourney",
+                "function renderUnifiedWorkflowManagerJourney(data)",
                 "item.dataset.stage=id",
                 "item.dataset.status=status",
                 "from src.product.manager_world_story import (",
@@ -1897,6 +1897,65 @@ def main() -> int:
                 "season,history,historySummary,configured)"
             ) == 1
         ),
+        "product_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderBase(data)",
+                "function renderProductExtensions(data)",
+                "function renderProductNavigation(data)",
+                "const PRODUCT_RENDER_STAGES=Object.freeze([",
+                "function render(data)",
+                "renderStage(data)",
+            ))
+            and web.count("function render(data)") == 1
+        ),
+        "sporting_plan_populate_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function populateSportingPlanBase(plan)",
+                "function populateSportingPlanContinuity(plan)",
+                "const SPORTING_PLAN_POPULATE_STAGES=Object.freeze([",
+                "function populateSportingPlan(plan)",
+                "populateStage(plan)",
+            ))
+            and web.count("function populateSportingPlan(plan)") == 1
+        ),
+        "unified_workflow_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function renderUnifiedWorkflowBase(data)",
+                "function renderUnifiedWorkflowArea(data)",
+                "function renderUnifiedWorkflowManagerJourney(data)",
+                "const UNIFIED_WORKFLOW_RENDER_STAGES=Object.freeze([",
+                "function renderUnifiedWorkflow(data)",
+                "renderStage(data)",
+            ))
+            and web.count("function renderUnifiedWorkflow(data)") == 1
+        ),
+        "submit_pipeline_is_explicit_and_fail_closed": (
+            all(token in web for token in (
+                "function submitRecruitmentPlan(context)",
+                "function submitClubSituation(context)",
+                "function submitRequestTransport(context)",
+                "async function submitRequestBase(form,path,payload,headers={})",
+                "const SUBMIT_STAGES=Object.freeze([",
+                "function submit(form,path,payload,headers={})",
+                "context.aborted=true;context.result=Promise.resolve();return",
+                "if(context.aborted)break",
+                "return context.result",
+            ))
+            and web.count("function submit(form,path,payload,headers={})") == 1
+        ),
+        "manager_world_chapter_selection_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function syncManagerWorldChapterSelectionBase(fixtureId)",
+                "function syncManagerWorldChapterTrajectorySelection(fixtureId)",
+                "const MANAGER_WORLD_CHAPTER_SELECTION_STAGES=Object.freeze([",
+                "function syncManagerWorldChapterSelection(fixtureId)",
+                "syncStage(fixtureId)",
+            ))
+            and web.count(
+                "function syncManagerWorldChapterSelection(fixtureId)"
+            ) == 1
+        ),
+        "web_composition_has_no_legacy_without_aliases": "Without" not in web,
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (
                 "def build_manager_intervention_workspace(",

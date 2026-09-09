@@ -626,6 +626,20 @@ not quality signals by themselves.
     and local HTTP, accessibility, recovery and all 108 architecture checks are
     green.
 
+83. Removed the final seven implicit Web composition wrappers and replaced
+    them with five frozen, named pipelines for the product root, sporting-plan
+    population, unified workflow, request submission and manager-world chapter
+    selection. The submission context preserves recruitment validation before
+    club-situation normalization and transport, and an invalid recruitment
+    request still aborts before any later stage. Direct Web tests and six
+    architecture gates bind all stage orders, require one public root per path
+    and reject every legacy `Without` alias in the served source. No match,
+    future, recruitment transaction, training, study, participant session or
+    external call is executed. Focused Web regression passes 82 tests,
+    CI-equivalent regression passes 1,498 with three skips and one registered
+    deselection, and local HTTP, accessibility, recovery and all 114
+    architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

@@ -535,6 +535,22 @@ registered training-test deselection. Local HTTP passes 16/16, automated
 accessibility passes 41/41, process-crash recovery passes every declared check
 and the expanded architecture audit passes 108/108.
 
+V4.40 removes the final seven implicit Web composition wrappers. The product
+root now renders through base, extension and navigation stages; sporting-plan
+population, unified-workflow rendering and manager-world chapter selection
+each use one frozen named sequence. Request submission now uses an explicit
+context pipeline that preserves recruitment validation, club-situation
+normalization and transport order, including the original fail-closed abort
+before any request is sent. Direct Web contracts and six architecture gates
+bind those orders and reject every remaining legacy `Without` alias in the
+served source. This behavior-preserving code-only change executes no match,
+future generation, recruitment transaction, training, formal study,
+participant session or provider call. Focused Web regression passes 82 tests;
+CI-equivalent regression passes 1,498 tests with three declared skips and one
+registered training-test deselection. Local HTTP passes 16/16, automated
+accessibility passes 41/41, process-crash recovery passes every declared check
+and the expanded architecture audit passes 114/114.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 
