@@ -203,6 +203,7 @@ def main() -> int:
         "src/product/workspace.py",
         "src/product/workspace_session.py",
         "src/product/workspace_evidence.py",
+        "src/product/manager_world_dossier.py",
         "src/product/manager_world_story.py",
         "src/product/recovery.py",
         "src/product/web.py",
@@ -266,6 +267,9 @@ def main() -> int:
     manager_world_navigator = (
         ROOT / "src/product/manager_world_navigator.py"
     ).read_text(encoding="utf-8")
+    manager_world_dossier = (
+        ROOT / "src/product/manager_world_dossier.py"
+    ).read_text(encoding="utf-8")
     manager_world_story = (
         ROOT / "src/product/manager_world_story.py"
     ).read_text(encoding="utf-8")
@@ -308,8 +312,14 @@ def main() -> int:
     manager_world_thread_tests = (
         ROOT / "tests/test_product_manager_world_thread.py"
     ).read_text(encoding="utf-8")
+    manager_world_navigator_tests = (
+        ROOT / "tests/test_product_manager_world_navigator.py"
+    ).read_text(encoding="utf-8")
     manager_world_story_tests = (
         ROOT / "tests/test_product_manager_world_story.py"
+    ).read_text(encoding="utf-8")
+    manager_world_dossier_tests = (
+        ROOT / "tests/test_product_manager_world_dossier.py"
     ).read_text(encoding="utf-8")
     web_tests = (
         ROOT / "tests/test_product_web.py"
@@ -855,7 +865,7 @@ def main() -> int:
             and "renderManagerWorldReviewedFutureContinuityWithout" not in web
             and web.count("function renderManagerWorldNavigator(season)") == 1
             and "from src.product.web" not in manager_world_story
-            and manager_world_story.count("\n") < 260
+            and manager_world_story.count("\n") < 320
             and all(token in manager_world_story for token in (
                 "def build_manager_world_story(",
                 "def validate_manager_world_story(",
@@ -887,6 +897,59 @@ def main() -> int:
                 "const openSource=source.navigable?source:previous?.source",
                 "openSource?.navigable&&openSource.chapter_identity",
             ))
+            and "innerHTML" not in web
+        ),
+        "manager_world_story_has_one_same_chapter_dossier": (
+            all(token in manager_world_navigator for token in (
+                '"manager_choice": {',
+                '"selected_tactic": decision_stage.get("tactic")',
+                '"runtime_matches_selection": bool(',
+                'decision_stage.get("source_identity") != entry.get("decision_identity")',
+                'decision_stage.get("tactic") != entry_decision.get("tactic")',
+                'decision_stage.get("rotation") != entry_decision.get("rotation")',
+            ))
+            and all(token in manager_world_dossier for token in (
+                "def build_manager_world_dossier(",
+                '"manager_choice": _manager_choice(choice)',
+                '"future_review": _future_review(',
+                '"official_action": _official_action(action, status=action_status)',
+                '"world_after": _world_after(world, status=world_status)',
+                '"same_chapter_evidence": True',
+                '"outcome_improvement_authorized": False',
+                '"causal_effect_authorized": False',
+            ))
+            and "from src.product.web" not in manager_world_dossier
+            and manager_world_dossier.count("\n") < 260
+            and all(token in manager_world_story for token in (
+                "from src.product.manager_world_dossier import (",
+                "build_manager_world_dossier(",
+                '"chapter_dossier": dossier',
+                '"chapter_dossier": completed["chapter_dossier"]',
+            ))
+            and all(token in web for token in (
+                'id="manager-world-story-dossier" class="cards" role="list"',
+                "function renderManagerWorldStoryDossier(season)",
+                "dossier.manager_choice||{}",
+                "dossier.future_review||{}",
+                "dossier.official_action||{}",
+                "dossier.world_after||{}",
+                "managerWorldStoryDossier.append(",
+            ))
+            and all(token in manager_world_dossier_tests for token in (
+                "test_dossier_unifies_one_chapter_without_mutating_or_authorizing_effect",
+                "test_dossier_bounds_invalid_public_values_without_inventing_evidence",
+                "test_dossier_rejects_unknown_chapter_phase",
+                '"src/product/manager_world_dossier.py" in CODE_IDENTITY_FILES',
+            ))
+            and all(token in web_tests for token in (
+                '"chapter_dossier"]["phase"] == "active"',
+                '"chapter_dossier"]["manager_choice"]["available"] is True',
+                '"chapter_dossier"]["official_action"]["status"] == "pending"',
+                '"chapter_dossier"]["world_after"]["status"] == "pending"',
+            ))
+            and "test_navigator_rejects_rehashed_manager_choice_drift" in (
+                manager_world_navigator_tests
+            )
             and "innerHTML" not in web
         ),
         "action_adoption_smoke_is_four_arm_and_zero_training": (

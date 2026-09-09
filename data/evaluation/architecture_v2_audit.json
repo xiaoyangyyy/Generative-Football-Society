@@ -52,6 +52,7 @@
     "manager_world_chapter_selection_pipeline_is_explicit": true,
     "manager_world_evolution_render_pipeline_is_explicit": true,
     "manager_world_model_advice_render_pipeline_is_explicit": true,
+    "manager_world_story_has_one_same_chapter_dossier": true,
     "match_runtime_inputs_are_side_isolated_and_root_bound": true,
     "matchday_command_render_pipeline_is_explicit": true,
     "meta_learning_governance_is_content_free_replayable_and_visible": true,

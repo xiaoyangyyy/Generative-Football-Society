@@ -23,17 +23,67 @@ def _completed_navigator() -> dict:
             "reviewed_future_context": {
                 "available": True,
                 "selected_for_fixture": True,
+                "intent": "keep_after_review",
+                "evidence_level": "scenario_evidence",
+                "fixed_scenario_budget": 3,
+                "eligible_scenarios": 2,
+                "action_divergence_scenarios": 2,
+                "local_attribution_scenarios": 1,
+                "descriptive_future_difference_scenarios": 1,
+                "timing_sensitivity_observed": True,
+            },
+            "manager_choice": {
+                "decision_identity": "d" * 64,
+                "selected_tactic": "gegenpress",
+                "rotation": "balanced",
+                "applied_tactic": "gegenpress",
+                "runtime_verified": True,
+                "runtime_matches_selection": True,
             },
             "action_adoption": {
                 "state": "realized_action_change",
+                "retained_records": 6,
                 "influenced_decisions": 4,
+                "attribution_eligible_decisions": 3,
+                "locally_attributable_action_changes": 2,
+                "direct_ball_event_links": 3,
+                "manager_record_coverage_complete": True,
             },
             "descriptive_world_after": {
                 "result_available": True,
+                "outcome": "win",
+                "points_earned": 3,
                 "persistent_state_available": True,
+                "recovery_complete": True,
+                "metrics_delta": {
+                    "team_fatigue_ema": 0.08,
+                    "squad_morale_ema": 0.02,
+                    "team_media_pressure": 0.01,
+                    "injured_players": 1.0,
+                    "suspended_players": 0.0,
+                    "unavailable_players": 1.0,
+                },
+                "transition_summary": {
+                    "changed_players": 7,
+                    "new_injuries": 1,
+                    "injuries_cleared": 0,
+                    "new_suspensions": 0,
+                    "suspensions_cleared": 0,
+                },
+                "society_transition": {
+                    "available": True,
+                    "memory_record_delta": 3,
+                    "cognitive_memory_delta": 2,
+                    "belief_delta": 1,
+                    "reflection_delta": 0,
+                    "changed_state_fields": [
+                        "emotion_profile", "tactical_controls",
+                    ],
+                },
             },
             "locally_attributable_action_changes": 2,
             "persistent_transition_identity": "c" * 64,
+            "continuity_gaps": [],
         }],
     }
 
@@ -46,7 +96,7 @@ def test_world_story_uses_one_latest_chapter_and_stays_noncausal():
     validate_manager_world_story(story, navigator=navigator)
 
     assert navigator == original
-    assert story["schema_version"] == 2
+    assert story["schema_version"] == 3
     assert story["view_mode"] == "latest_completed_chapter"
     assert story["story_state"] == "local_action_change_observed"
     assert story["source"] == {
@@ -76,6 +126,33 @@ def test_world_story_uses_one_latest_chapter_and_stays_noncausal():
     assert story["outcome_improvement_authorized"] is False
     assert story["causal_effect_authorized"] is False
     assert story["claim_boundary"] == CLAIM_BOUNDARY
+    dossier = story["chapter_dossier"]
+    assert dossier["phase"] == "completed"
+    assert dossier["manager_choice"] == {
+        "available": True,
+        "decision_identity": "d" * 64,
+        "selected_tactic": "gegenpress",
+        "rotation": "balanced",
+        "applied_tactic": "gegenpress",
+        "runtime_verified": True,
+        "runtime_matches_selection": True,
+    }
+    assert dossier["future_review"]["registered_scenarios"] == 3
+    assert dossier["future_review"]["local_attribution_scenarios"] == 1
+    assert dossier["future_review"]["ranking_performed"] is False
+    assert dossier["official_action"]["retained_records"] == 6
+    assert dossier["official_action"]["influenced_decisions"] == 4
+    assert dossier["official_action"][
+        "locally_attributable_action_changes"
+    ] == 2
+    assert dossier["world_after"]["outcome"] == "win"
+    assert dossier["world_after"]["metrics_delta"]["team_fatigue_ema"] == 0.08
+    assert dossier["world_after"]["transition_summary"]["changed_players"] == 7
+    assert dossier["world_after"]["society_transition"][
+        "changed_state_fields"
+    ] == ["emotion_profile", "tactical_controls"]
+    assert dossier["outcome_improvement_authorized"] is False
+    assert dossier["causal_effect_authorized"] is False
 
 
 def test_world_story_exposes_current_review_without_fake_result():
@@ -93,9 +170,23 @@ def test_world_story_exposes_current_review_without_fake_result():
                 "matchday": 1,
             },
             "stages": [{
+                "stage_id": "freeze_intervention",
+                "status": "decision_frozen",
+                "tactic": "possession",
+                "rotation": "fresh",
+            }, {
                 "stage_id": "record_manager_review",
                 "status": "review_recorded",
+                "intent": "revise_after_review",
             }],
+            "evidence_summary": {
+                "registered_scenarios": 3,
+                "eligible_scenarios": 2,
+                "action_divergence_scenarios": 1,
+                "local_attribution_scenarios": 1,
+                "descriptive_future_difference_scenarios": 1,
+            },
+            "continuity_gaps": [],
         },
     }
 
@@ -111,6 +202,15 @@ def test_world_story_exposes_current_review_without_fake_result():
         "complete", "selected", "pending", "pending", "pending",
     ]
     assert story["metrics"]["result_available"] is False
+    dossier = story["chapter_dossier"]
+    assert dossier["phase"] == "active"
+    assert dossier["manager_choice"]["selected_tactic"] == "possession"
+    assert dossier["manager_choice"]["rotation"] == "fresh"
+    assert dossier["future_review"]["status"] == "selected"
+    assert dossier["future_review"]["intent"] == "revise_after_review"
+    assert dossier["future_review"]["registered_scenarios"] == 3
+    assert dossier["official_action"]["status"] == "pending"
+    assert dossier["world_after"]["status"] == "pending"
     assert story["outcome_improvement_authorized"] is False
 
 
@@ -123,6 +223,7 @@ def test_world_story_unavailable_state_is_fresh_and_fail_closed():
     assert second["available"] is False
     assert second["view_mode"] == "unavailable"
     assert second["previous_completed"] is None
+    assert second["chapter_dossier"] is None
     assert second["metrics"]["influenced_decisions"] == 0
     assert second["outcome_improvement_authorized"] is False
     assert second["causal_effect_authorized"] is False
@@ -184,6 +285,7 @@ def test_world_story_bounds_public_counts_and_never_infers_missing_world():
     chapter = navigator["history_chapters"][0]
     chapter["matchday"] = float("inf")
     chapter["action_adoption"]["influenced_decisions"] = 1_000_001
+    chapter["action_adoption"]["locally_attributable_action_changes"] = -8
     chapter["locally_attributable_action_changes"] = -8
     chapter["persistent_transition_identity"] = None
     chapter["descriptive_world_after"] = {
@@ -198,6 +300,13 @@ def test_world_story_bounds_public_counts_and_never_infers_missing_world():
     assert story["metrics"]["locally_attributable_action_changes"] == 0
     assert story["stages"][3]["status"] == "evidence_unavailable"
     assert story["stages"][4]["status"] == "evidence_unavailable"
+    assert story["chapter_dossier"]["official_action"][
+        "influenced_decisions"
+    ] == 100_000
+    assert story["chapter_dossier"]["official_action"][
+        "locally_attributable_action_changes"
+    ] == 0
+    assert story["chapter_dossier"]["world_after"]["metrics_delta"] is None
 
 
 def test_world_story_prioritizes_active_chapter_and_binds_previous_world():
@@ -235,6 +344,9 @@ def test_world_story_prioritizes_active_chapter_and_binds_previous_world():
     assert previous["persistent_world_status"] == "world_persisted"
     assert previous["outcome_status"] == "descriptive_result_only"
     assert previous["metrics"]["locally_attributable_action_changes"] == 2
+    assert previous["chapter_dossier"]["manager_choice"][
+        "selected_tactic"
+    ] == "gegenpress"
     assert previous["same_chapter_evidence"] is True
 
 

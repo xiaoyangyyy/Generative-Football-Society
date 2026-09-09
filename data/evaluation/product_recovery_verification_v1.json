@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_product_recovery",
-  "generated_at": "2026-09-09T06:35:09.153569+00:00",
+  "generated_at": "2026-09-09T07:09:50.259902+00:00",
   "status": "passed_local_recovery",
   "process_crash_verified": true,
   "passed": true,
@@ -33,11 +33,12 @@
     "src/product/workspace.py": "05cc4784682ec3ae852ff3eb256aefd2e452024e36b9961bb36430e005d0b844",
     "src/product/workspace_session.py": "ac1c1fe2a7673bbf111090ec91e632309a6cf34fcd28e18f051438e6da4dbbcb",
     "src/product/workspace_evidence.py": "dd5661d5778ef6bdc681165245efc5e13bb6247bc9a51447db777d0da770674b",
-    "src/product/manager_world_story.py": "58728a50fea28543761c1bbf87b040ee2cb0fa8bbc1b4d6bade816b99d1e914e",
+    "src/product/manager_world_dossier.py": "7a31b956e7f8d391d3d00a87117b57d44ddaedd0e2eff58092c4216df0700aed",
+    "src/product/manager_world_story.py": "b6fe7ae3e260a1aff9491fad1d768401d49b12e79d34ebc6b13fb3bc10eb8c52",
     "src/product/recovery.py": "8c664c22619a3a90f0875a1d50a5097a2464e9527e28b914f224bf96fa4fabcf",
-    "src/product/web.py": "7c72862104a14e177cd3a019897d09ad971121da24caccebdf33acefba1ea8a9",
+    "src/product/web.py": "44f06a743bfef97f0d825f6445cb057105c3cecf96800c7b1372523aa6646be4",
     "src/cli.py": "3b73f103325ab7a60bae04f0efeeb6da70f9e31da30173dfee2d3770c9808ab9",
-    "scripts/verify_product_recovery.py": "e77e98a45f764bfea4d6ffb306e8a4874aa08a22ccd070e4268e764d92eb19fb"
+    "scripts/verify_product_recovery.py": "4038ba64c5016ee1b5c70f423457cc64f6a5bae3d8657e656b049328d223c4d1"
   },
   "limitations": [
     "local process termination is not an operational deployment drill, deployment-volume test, or host-power-loss test",

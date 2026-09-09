@@ -640,6 +640,21 @@ not quality signals by themselves.
     deselection, and local HTTP, accessibility, recovery and all 114
     architecture checks are green.
 
+84. Unified the previously distributed manager-choice, future-review,
+    official-action and world-consequence evidence into one same-chapter
+    dossier inside the existing manager-world story. The pure dossier
+    projection is separate from Web composition, bounds exposed values and
+    explicitly denies outcome-improvement and causal authority. Navigator
+    validation binds the frozen choice identity, tactic and rotation back to
+    the authoritative decision ledger, so a semantically altered and rehashed
+    choice fails closed. Four accessible cards expose the complete descriptive
+    chain, including persistent team and society continuation, without adding
+    another product surface. No match, future, training, study, participant
+    session or external call is executed. The changed surface passes 139
+    focused tests; local HTTP passes 16/16, accessibility passes 42/42,
+    recovery passes every check and all 115 architecture checks are green. The
+    V4.40 result of 1,498 passing tests remains the last full-suite baseline.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

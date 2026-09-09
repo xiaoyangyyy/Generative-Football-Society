@@ -900,6 +900,11 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
     observed = observed if isinstance(observed, Mapping) else {}
     result_stage = stage_by_id["observed_match_result"]
     review_stage = stage_by_id["prematch_future_review"]
+    decision_stage = stage_by_id["frozen_manager_decision"]
+    entry_decision = entry.get("decision")
+    entry_decision = (
+        entry_decision if isinstance(entry_decision, Mapping) else {}
+    )
     tactical = stage_by_id["official_tactical_runtime"]
     action = stage_by_id["official_world_model_actions"]
     persistent = stage_by_id["persistent_world_state"]
@@ -992,7 +997,16 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         if review_available else "not_reviewed"
     )
     if (
-        isinstance(matchday, bool)
+        decision_stage.get("status") != "frozen"
+        or decision_stage.get("source_identity") != entry.get("decision_identity")
+        or not _is_identity(decision_stage.get("source_identity"))
+        or not isinstance(decision_stage.get("tactic"), str)
+        or not decision_stage.get("tactic")
+        or not isinstance(decision_stage.get("rotation"), str)
+        or not decision_stage.get("rotation")
+        or decision_stage.get("tactic") != entry_decision.get("tactic")
+        or decision_stage.get("rotation") != entry_decision.get("rotation")
+        or isinstance(matchday, bool)
         or not isinstance(matchday, int)
         or matchday < 1
         or any(
@@ -1417,6 +1431,17 @@ def _history_chapter(entry: Mapping[str, Any]) -> dict[str, Any]:
         },
         "score": copy.deepcopy(score),
         "outcome": outcome,
+        "manager_choice": {
+            "decision_identity": decision_stage.get("source_identity"),
+            "selected_tactic": decision_stage.get("tactic"),
+            "rotation": decision_stage.get("rotation"),
+            "applied_tactic": tactical.get("applied_tactic"),
+            "runtime_verified": tactical.get("status") == "runtime_verified",
+            "runtime_matches_selection": bool(
+                tactical.get("status") == "runtime_verified"
+                and tactical.get("applied_tactic") == decision_stage.get("tactic")
+            ),
+        },
         "reviewed_future_context": {
             "available": review_available,
             "selected_for_fixture": (

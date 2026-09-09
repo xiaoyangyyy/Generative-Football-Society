@@ -551,6 +551,24 @@ registered training-test deselection. Local HTTP passes 16/16, automated
 accessibility passes 41/41, process-crash recovery passes every declared check
 and the expanded architecture audit passes 114/114.
 
+V4.41 closes a product-level fragmentation gap without creating another
+surface. The existing manager-world story now presents one same-chapter
+four-part dossier: the frozen manager choice, the reviewed counterfactual
+future, official action adoption, and the resulting descriptive world and
+persistent society transition. The manager choice is bound to the decision
+ledger identity and the runtime-applied tactic; even a consistently rehashed
+but semantically changed choice fails closed. A dedicated pure projection
+module keeps the dossier separate from Web composition, while the interface
+uses bounded, accessible cards and explicitly withholds outcome-improvement and
+causal-effect authority. This code-only change executes no match, future
+generation, training, formal study, participant session or provider call. The
+changed decision/story/Web surface passes 139 focused tests; local HTTP passes
+16/16, automated accessibility passes 42/42, process-crash recovery passes
+every declared check and the expanded architecture audit passes 115/115. The
+previous V4.40 CI-equivalent 1,498-test result remains the last full-suite
+baseline; the current full suite was not rerun because training-bearing tests
+were deliberately excluded from this stage.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

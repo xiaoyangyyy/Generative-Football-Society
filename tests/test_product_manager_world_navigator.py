@@ -167,10 +167,16 @@ def _thread(fixture_id="md01-fx01", *, complete=True, gaps=None, exact=False):
             reviewed_scenarios=terminal["reviewed_scenarios"],
             evidence_authority="simulator_mechanism_review_only",
         ),
-        _stage("frozen_manager_decision", "frozen"),
+        _stage(
+            "frozen_manager_decision", "frozen",
+            source_identity="d" * 64,
+            tactic="gegenpress",
+            rotation="balanced",
+        ),
         _stage(
             "official_tactical_runtime", "runtime_verified",
             source_identity="b" * 64, match_id="match-1",
+            applied_tactic="gegenpress",
         ),
         _stage(
             "official_world_model_actions",
@@ -314,6 +320,10 @@ def _entry(index=1, *, pending=False, gaps=None, exact=False):
         "fixture_id": fixture_id,
         "matchday": index,
         "decision_identity": "d" * 64,
+        "decision": {
+            "tactic": "gegenpress",
+            "rotation": "balanced",
+        },
         "lifecycle_state": (
             "frozen_awaiting_execution"
             if pending else "executed_with_direct_evidence"
@@ -570,6 +580,14 @@ def test_navigator_joins_current_review_and_completed_world_chapters():
     assert navigator["history_chapters"][0][
         "persistent_transition_identity"
     ] == "f" * 64
+    assert navigator["history_chapters"][0]["manager_choice"] == {
+        "decision_identity": "d" * 64,
+        "selected_tactic": "gegenpress",
+        "rotation": "balanced",
+        "applied_tactic": "gegenpress",
+        "runtime_verified": True,
+        "runtime_matches_selection": True,
+    }
     assert navigator["summary"] == {
         "completed_world_chapters": 2,
         "visible_world_chapters": 2,
@@ -929,6 +947,26 @@ def test_world_trajectory_is_chronological_identity_bound_and_cumulative():
         key: value for key, value in first.items()
         if key != "trajectory_point_identity"
     }) == first["trajectory_point_identity"]
+
+
+def test_navigator_rejects_rehashed_manager_choice_drift():
+    season = _season(entries=[_entry(1)])
+    entry = season["manager_decision_ledger"]["entries"][0]
+    thread = entry["world_evolution_thread"]
+    decision_stage = next(
+        row for row in thread["stages"]
+        if row["stage_id"] == "frozen_manager_decision"
+    )
+    decision_stage["tactic"] = "low_block"
+    decision_stage.pop("stage_identity")
+    decision_stage["stage_identity"] = _identity(decision_stage)
+    thread.pop("thread_identity")
+    thread["thread_identity"] = _identity(thread)
+    entry.pop("entry_identity")
+    entry["entry_identity"] = _identity(entry)
+
+    with pytest.raises(ValueError, match="chapter facts are invalid"):
+        build_manager_world_navigator(season)
 
 
 def test_world_trajectory_marks_missing_evidence_without_imputation():

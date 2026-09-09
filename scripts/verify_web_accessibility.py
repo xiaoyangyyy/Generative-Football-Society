@@ -243,6 +243,18 @@ def verify_web_accessibility() -> dict:
             ".row,.matchday-journey,.manager-product-journey",
         )
     )
+    checks["manager_world_dossier_contract"] = all(
+        token in index
+        for token in (
+            'id="manager-world-story-dossier" class="cards" role="list"',
+            'aria-label="&#21516;&#31456;&#20915;&#31574;&#24433;&#21709;&#26723;&#26696;"',
+            "function renderManagerWorldStoryDossier(season)",
+            "managerWorldStoryDossier.replaceChildren()",
+            "for(const node of [choiceNode,reviewNode,actionNode,worldNode])",
+            "node.setAttribute('role','listitem')",
+            "managerWorldStoryDossier.append(",
+        )
+    )
     checks["workflow_navigation_reveals_target_before_focus"] = all(
         token in index
         for token in (

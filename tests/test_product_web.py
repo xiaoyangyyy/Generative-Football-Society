@@ -294,8 +294,16 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert 'id="manager-world-navigator"' in document
     assert 'id="manager-world-story" class="world-story"' in document
     assert 'id="manager-world-story-stages" class="world-story-rail"' in document
+    assert 'id="manager-world-story-dossier" class="cards" role="list"' in document
     assert 'id="manager-world-story-open"' in document
     assert "function renderManagerWorldStory(" in document
+    assert "function renderManagerWorldStoryDossier(season)" in document
+    assert "manager_world_story?.chapter_dossier" in document
+    assert "dossier.manager_choice||{}" in document
+    assert "dossier.future_review||{}" in document
+    assert "dossier.official_action||{}" in document
+    assert "dossier.world_after||{}" in document
+    assert "managerWorldStoryDossier.append(" in document
     assert "function renderManagerWorldNavigatorBase(season)" in document
     assert "season?.manager_world_story" in document
     assert "story.view_mode==='active_chapter'" in document
@@ -661,6 +669,7 @@ def test_root_uses_one_explicit_manager_world_render_pipeline(tmp_path):
     expected = (
         "const MANAGER_WORLD_RENDER_STAGES=Object.freeze(["
         "renderManagerWorldNavigatorBase,renderManagerWorldStory,"
+        "renderManagerWorldStoryDossier,"
         "renderManagerWorldActionAdoptionLedger,renderManagerWorldTrajectory,"
         "renderManagerWorldReviewedFutureContinuity,"
         "renderManagerWorldScenarioArchive,renderManagerWorldReviewCertificate,"
@@ -2445,6 +2454,14 @@ def test_manager_future_review_runs_end_to_end_without_a_second_state(
         "complete", "selected", "pending", "pending", "pending",
     ]
     assert reviewed_story["source"]["fixture_id"] == fixture_id
+    assert reviewed_story["chapter_dossier"]["phase"] == "active"
+    assert reviewed_story["chapter_dossier"]["manager_choice"]["available"] is True
+    assert reviewed_story["chapter_dossier"]["future_review"]["status"] == "selected"
+    assert reviewed_story["chapter_dossier"]["official_action"]["status"] == "pending"
+    assert reviewed_story["chapter_dossier"]["world_after"]["status"] == "pending"
+    assert reviewed_story["chapter_dossier"][
+        "outcome_improvement_authorized"
+    ] is False
     assert reviewed_story["outcome_improvement_authorized"] is False
     assert (
         reviewed_projection["matchday_command_center"]["manager_world_story"]

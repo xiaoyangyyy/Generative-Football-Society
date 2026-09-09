@@ -5,11 +5,13 @@ from __future__ import annotations
 import math
 from typing import Any, Mapping
 
-
-SCHEMA_VERSION = 2
-CLAIM_BOUNDARY = (
-    "same_simulator_chapter_descriptive_chain_not_outcome_causality"
+from src.product.manager_world_dossier import (
+    CLAIM_BOUNDARY,
+    build_manager_world_dossier,
 )
+
+
+SCHEMA_VERSION = 3
 
 
 def _bounded_count(value: Any) -> int:
@@ -27,6 +29,7 @@ def _unavailable_story() -> dict[str, Any]:
         "story_state": "unavailable",
         "source": None,
         "previous_completed": None,
+        "chapter_dossier": None,
         "stages": [],
         "metrics": {
             "influenced_decisions": 0,
@@ -46,9 +49,13 @@ def _active_projection(
 ) -> dict[str, Any]:
     current_stages = current.get("stages")
     current_stages = current_stages if isinstance(current_stages, list) else []
-    stage_status = {
-        str(row.get("stage_id")): str(row.get("status"))
+    stage_by_id = {
+        str(row.get("stage_id")): row
         for row in current_stages if isinstance(row, Mapping)
+    }
+    stage_status = {
+        stage_id: str(row.get("status"))
+        for stage_id, row in stage_by_id.items()
     }
     intervention = (
         "complete" if current.get("frozen_decision_identity") else
@@ -62,6 +69,35 @@ def _active_projection(
         in {"scenario_evidence_available", "aggregate_only"} else "pending"
     )
     fixture = current["fixture"]
+    frozen = stage_by_id.get("freeze_intervention")
+    frozen = frozen if isinstance(frozen, Mapping) else {}
+    review_stage = stage_by_id.get("record_manager_review")
+    review_stage = review_stage if isinstance(review_stage, Mapping) else {}
+    evidence = current.get("evidence_summary")
+    evidence = evidence if isinstance(evidence, Mapping) else {}
+    dossier = build_manager_world_dossier(
+        phase="active",
+        choice={
+            "decision_identity": current.get("frozen_decision_identity"),
+            "selected_tactic": frozen.get("tactic"),
+            "rotation": frozen.get("rotation"),
+            "applied_tactic": None,
+            "runtime_verified": False,
+            "runtime_matches_selection": False,
+        },
+        review={
+            **evidence,
+            "intent": review_stage.get("intent"),
+            "evidence_level": None,
+            "timing_sensitivity_observed": None,
+        },
+        review_status=future,
+        action={},
+        action_status="pending",
+        world={},
+        world_status="pending",
+        continuity_gaps=current.get("continuity_gaps"),
+    )
     return {
         "story_state": "awaiting_official_world",
         "source": {
@@ -86,6 +122,7 @@ def _active_projection(
             "result_available": False,
             "persistent_state_available": False,
         },
+        "chapter_dossier": dossier,
     }
 
 
@@ -106,6 +143,27 @@ def _completed_projection(
         "not_applicable_stable_mode": "not_applicable",
         "evidence_unavailable": "evidence_unavailable",
     }.get(action_state, "evidence_unavailable")
+    review_status = (
+        "selected" if reviewed.get("selected_for_fixture") is True else
+        "reviewed_not_selected" if reviewed.get("available") is True
+        else "not_used"
+    )
+    world_status = (
+        "world_persisted" if chapter.get("persistent_transition_identity")
+        and world.get("persistent_state_available") is True
+        else "evidence_unavailable"
+    )
+    dossier = build_manager_world_dossier(
+        phase="completed",
+        choice=chapter.get("manager_choice"),
+        review=reviewed,
+        review_status=review_status,
+        action=adoption,
+        action_status=action_status,
+        world=world,
+        world_status=world_status,
+        continuity_gaps=chapter.get("continuity_gaps"),
+    )
     return {
         "story_state": {
             "realized_action_change": "local_action_change_observed",
@@ -124,17 +182,9 @@ def _completed_projection(
         },
         "stages": [
             {"stage_id": "manager_intervention", "status": "complete"},
-            {"stage_id": "counterfactual_review", "status": (
-                "selected" if reviewed.get("selected_for_fixture") is True else
-                "reviewed_not_selected" if reviewed.get("available") is True
-                else "not_used"
-            )},
+            {"stage_id": "counterfactual_review", "status": review_status},
             {"stage_id": "official_action_adoption", "status": action_status},
-            {"stage_id": "persistent_world_transition", "status": (
-                "world_persisted" if chapter.get("persistent_transition_identity")
-                and world.get("persistent_state_available") is True
-                else "evidence_unavailable"
-            )},
+            {"stage_id": "persistent_world_transition", "status": world_status},
             {"stage_id": "outcome_evidence", "status": (
                 "descriptive_result_only" if world.get("result_available") is True
                 else "evidence_unavailable"
@@ -152,6 +202,7 @@ def _completed_projection(
                 "persistent_state_available"
             ) is True,
         },
+        "chapter_dossier": dossier,
     }
 
 
@@ -185,6 +236,7 @@ def build_manager_world_story(
             "persistent_world_status": completed["stages"][3]["status"],
             "outcome_status": completed["stages"][4]["status"],
             "metrics": completed["metrics"],
+            "chapter_dossier": completed["chapter_dossier"],
             "same_chapter_evidence": True,
         } if completed else None)
         view_mode = "active_chapter"
@@ -204,6 +256,7 @@ def build_manager_world_story(
         "previous_completed": previous_completed,
         "stages": primary["stages"],
         "metrics": primary["metrics"],
+        "chapter_dossier": primary["chapter_dossier"],
         "same_chapter_evidence": True,
         "outcome_improvement_authorized": False,
         "causal_effect_authorized": False,

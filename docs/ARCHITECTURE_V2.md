@@ -5285,3 +5285,47 @@ tests with three declared skips and one registered training-test deselection.
 Local HTTP Beta passes 16/16 checks, automated accessibility passes 41/41
 checks, process-crash recovery passes every declared check and the expanded
 architecture audit passes 114/114.
+
+## 159. V4.41 Same-chapter manager decision impact dossier
+
+The product already exposed manager choices, future review, action-adoption
+evidence and world evolution, but those facts were distributed across several
+surfaces. A user could inspect each subsystem without receiving one bounded
+answer to the central product question: what was chosen, what future was
+reviewed, what the official runtime changed and what happened next in the same
+world chapter.
+
+V4.41 adds no new workspace or competing state. The existing manager-world
+story composes one four-part chapter dossier:
+
+1. the frozen manager tactic and rotation, plus runtime tactic verification;
+2. the identity-bound counterfactual review and its bounded scenario evidence;
+3. the official action-adoption counts and retained semantic mechanisms; and
+4. the observed match/world deltas, persistent team state and society
+   continuation.
+
+`manager_world_dossier.py` is a pure 202-line projection module. It accepts
+only active or completed chapter facts, bounds public counts and text, rejects
+non-finite metrics, never imports the Web layer and exposes no causal or
+outcome-improvement authority. `manager_world_story.py` remains a 259-line
+orchestrator and embeds the dossier in active, completed and previous-completed
+story states. The navigator now validates the frozen decision-stage identity,
+its source ledger identity, tactic and rotation against the authoritative
+decision entry. Rehashing a semantically altered tactic therefore cannot make
+tampered history acceptable.
+
+The existing story surface renders four accessible list-item cards rather than
+opening another product area. Active chapters state which later links are
+pending; completed chapters bind manager choice, review, official execution,
+world deltas and persistent society transition to one chapter identity. The
+chain is descriptive chronology, not proof that the manager choice caused the
+result or improved the score.
+
+This code-only change executes no match, future generation, training, formal
+study, participant session or provider call. The changed decision/story/Web
+surface passes 139 focused tests. Local HTTP Beta passes 16/16 checks,
+automated accessibility passes 42/42 checks, process-crash recovery passes
+every declared check and the expanded architecture audit passes 115/115. The
+last full-suite baseline remains V4.40's 1,498 passing tests with three skips
+and one registered training-test deselection; no training-bearing full suite
+was run in this stage.
