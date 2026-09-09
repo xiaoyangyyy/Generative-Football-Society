@@ -511,6 +511,19 @@ not quality signals by themselves.
     and local HTTP, accessibility, recovery and all 96 architecture checks are
     green.
 
+74. Replaced three implicit post-season recruitment overrides with one frozen,
+    named four-stage configuration. The base transfer market, player-contract
+    lifecycle, global free-agent market and sporting-director plan now share
+    one visible order while retaining independent stale-state resets and
+    team-bound loads. Direct tests and a dedicated architecture gate require
+    one root pipeline and reject every legacy recruitment wrapper. No market,
+    shortlist, contract, budget, season or club state changes, and no match,
+    recruitment transaction, future, training, study, participant session or
+    external call is executed. Focused Web regression passes 66 tests,
+    CI-equivalent regression passes 1,482 with three skips and one registered
+    deselection, and local HTTP, accessibility, recovery and all 97
+    architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

@@ -806,6 +806,29 @@ def test_root_uses_one_explicit_manager_future_set_render_pipeline(tmp_path):
     assert "renderManagerFutureSetsWithout" not in document
 
 
+def test_root_uses_one_explicit_recruitment_window_configure_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const RECRUITMENT_WINDOW_CONFIGURE_STAGES=Object.freeze(["
+        "configureRecruitmentWindowBase,"
+        "configureRecruitmentWindowLifecycle,"
+        "configureRecruitmentWindowGlobalMarket,"
+        "configureRecruitmentWindowSportingPlan]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count(
+        "configureRecruitmentWindow=season=>{for("
+    ) == 1
+    assert (
+        "configureRecruitmentWindow=season=>{for(const configureStage of "
+        "RECRUITMENT_WINDOW_CONFIGURE_STAGES)configureStage(season)};"
+    ) in document
+    assert "configureRecruitmentWindowWithout" not in document
+
+
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):
     response = _request(ProductWebApp(tmp_path), path="/healthz")
     assert response["json"] == {

@@ -4969,3 +4969,34 @@ CI-equivalent suite passes 1,481 tests with three declared skips and one
 registered training-test deselection. Local HTTP Beta passes 16/16 checks,
 automated accessibility passes 41/41 checks, process-crash recovery passes
 every declared check and the expanded architecture audit passes 96/96.
+
+## 149. V4.31 Explicit recruitment-window composition
+
+The post-season recruitment window combines four independent club-building
+surfaces. The base transfer market was followed by implicit overrides for
+player-contract lifecycle decisions, the global free-agent market and the
+sporting-director plan. Each surface already used the same completed-season
+and non-empty manager-team eligibility boundary, but successive reassignment
+made completeness depend on declaration order.
+
+V4.31 captures the base configuration once and replaces the three overrides
+with one frozen four-stage sequence:
+
+1. the team-bound transfer market;
+2. contract renewal and release lifecycle;
+3. global free-agent scouting and signing; and
+4. sporting-director diagnostics and planning.
+
+Each named stage retains its original fieldset visibility, stale-state reset,
+request-team identity check, load behavior and early return. The single root
+assignment only iterates the frozen sequence. Direct Web tests bind the exact
+order and reject the legacy wrapper family; a dedicated architecture gate
+enforces the same contract. This refactor changes no market, shortlist,
+contract, budget, scouting result, sporting plan, season or club state and
+executes no match, recruitment transaction, future generation, training,
+formal study, participant session or provider call. Focused Web regression
+passes 66 tests. The CI-equivalent suite passes 1,482 tests with three declared
+skips and one registered training-test deselection. Local HTTP Beta passes
+16/16 checks, automated accessibility passes 41/41 checks, process-crash
+recovery passes every declared check and the expanded architecture audit
+passes 97/97.

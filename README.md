@@ -409,6 +409,20 @@ tests; CI-equivalent regression passes 1,481 tests with three declared skips
 and one registered training-test deselection. Local HTTP, accessibility,
 recovery and all 96 architecture checks pass.
 
+V4.31 makes the post-season recruitment window explicit. Three implicit
+overrides become named stages in one frozen four-stage sequence: the base
+transfer market, player-contract lifecycle, global free-agent market and
+sporting-director plan. All four surfaces still share the same completed-season
+and manager-team eligibility boundary, clear stale state independently and
+load only their own team-bound projection. A dedicated architecture gate
+rejects legacy wrappers and duplicate pipeline roots, so declaration placement
+can no longer detach one part of the club-building loop. This
+behavior-preserving refactor executes no match, recruitment transaction,
+future, training, study, participant session or provider call. Focused Web
+regression passes 66 tests; CI-equivalent regression passes 1,482 tests with
+three declared skips and one registered training-test deselection. Local HTTP,
+accessibility, recovery and all 97 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 

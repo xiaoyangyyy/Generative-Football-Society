@@ -62,6 +62,7 @@
     "production_validation_is_deployable_serialized_and_identity_bound": true,
     "prospective_m2_identity_closes_transitive_runtime_dependencies": true,
     "public_tournament_lifecycle_shares_the_match_workspace_lease": true,
+    "recruitment_window_configure_pipeline_is_explicit": true,
     "release_readiness_separates_code_contract_from_external_results": true,
     "research_checkpoint_identity_chain_verified": true,
     "runtime_random_draws_are_identity_scoped": true,

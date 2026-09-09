@@ -1727,6 +1727,21 @@ def main() -> int:
                 "renderManagerFutureSets=(season,managed)=>{for("
             ) == 1
         ),
+        "recruitment_window_configure_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function configureRecruitmentWindow(season)",
+                "const configureRecruitmentWindowBase=configureRecruitmentWindow;",
+                "function configureRecruitmentWindowLifecycle(",
+                "function configureRecruitmentWindowGlobalMarket(",
+                "function configureRecruitmentWindowSportingPlan(",
+                "const RECRUITMENT_WINDOW_CONFIGURE_STAGES=Object.freeze([",
+                "configureRecruitmentWindow=season=>{for(",
+            ))
+            and "configureRecruitmentWindowWithout" not in web
+            and web.count(
+                "configureRecruitmentWindow=season=>{for("
+            ) == 1
+        ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (
                 "def build_manager_intervention_workspace(",
