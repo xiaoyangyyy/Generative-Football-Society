@@ -1378,7 +1378,7 @@ def main() -> int:
             ))
             and all(token in web for token in (
                 "function renderManagerDecisionLedgerMechanismSemantics(season)",
-                "appendManagerWorldEvolutionThreadWithoutMechanismSemantics",
+                "function appendManagerWorldEvolutionThreadMechanismSemantics(",
                 "evidence.cross_action_mechanism_examples",
                 "stage.nonzero_cross_descriptive_windows",
             ))
@@ -1499,7 +1499,7 @@ def main() -> int:
                 '"society_continuity_transitions": sum(',
             ))
             and all(token in web for token in (
-                "appendManagerWorldEvolutionThreadWithoutSocietyContinuity",
+                "function appendManagerWorldEvolutionThreadSocietyContinuity(",
                 "stage?.society_transition",
             ))
             and all(token in society_continuity_tests for token in (
@@ -1671,13 +1671,31 @@ def main() -> int:
                 "function appendManagerWorldEvolutionThread(",
                 "function renderManagerDecisionLedgerWorldEvolutionThread(season)",
                 "renderManagerIntelligenceWithoutWorldEvolutionThread",
-                "appendManagerWorldEvolutionThreadWithoutReviewedFutures",
+                "function appendManagerWorldEvolutionThreadReviewedFutures(",
                 "function appendReviewWorldContinuity(",
-                "appendManagerWorldEvolutionThreadWithoutReviewWorldCertificate",
+                "function appendManagerWorldEvolutionThreadReviewWorldCertificate(",
                 "stage.local_attribution_scenarios",
                 "同场出现不等于因果",
             ))
             and "innerHTML" not in web
+        ),
+        "manager_world_evolution_render_pipeline_is_explicit": (
+            all(token in web for token in (
+                "function appendManagerWorldEvolutionThreadBase(host,thread)",
+                "const MANAGER_WORLD_EVOLUTION_THREAD_STAGES=Object.freeze([",
+                "appendManagerWorldEvolutionThreadSocietyContinuity",
+                "appendManagerWorldEvolutionThreadReviewedFutures",
+                "appendManagerWorldEvolutionThreadMechanismSemantics",
+                "appendManagerWorldEvolutionThreadOfficialActionSemantics",
+                "appendManagerWorldEvolutionThreadScenarioArchive",
+                "appendManagerWorldEvolutionThreadReviewWorldCertificate",
+                "appendManagerWorldEvolutionThreadRetainedRecordSemantics",
+                "function appendManagerWorldEvolutionThread(host,thread){for(",
+            ))
+            and "appendManagerWorldEvolutionThreadWithout" not in web
+            and web.count(
+                "function appendManagerWorldEvolutionThread(host,thread)"
+            ) == 1
         ),
         "manager_counterfactual_workbench_is_one_replayable_workflow": (
             all(token in manager_intervention_workspace for token in (
@@ -1856,7 +1874,7 @@ def main() -> int:
                 "not a full-record action or signal distribution when any ",
             ))
             and all(token in web for token in (
-                "appendManagerWorldEvolutionThreadWithoutOfficialActionSemantics",
+                "function appendManagerWorldEvolutionThreadOfficialActionSemantics(",
                 "renderManagerWorldActionAdoptionLedgerWithoutBoundedSemantics",
                 "function renderManagerWorldReviewedFutureOfficialActionSemantics(season)",
                 "sample.semantic_examples_truncated",
@@ -1895,7 +1913,7 @@ def main() -> int:
                 "function retainedActionSemanticText(",
                 "appendOfficialActionExecutionWithoutRetainedRecordSemantics",
                 "function renderManagerDecisionLedgerRetainedRecordSemantics(season)",
-                "appendManagerWorldEvolutionThreadWithoutRetainedRecordSemantics",
+                "function appendManagerWorldEvolutionThreadRetainedRecordSemantics(",
                 "function renderManagerWorldRetainedRecordSemantics(season)",
                 "point.official_retained_record_semantics",
             ))

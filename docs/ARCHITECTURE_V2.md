@@ -4873,3 +4873,38 @@ CI-equivalent suite passes 1,478 tests with three declared skips and one
 registered training-test deselection. Local HTTP Beta passes 16/16 checks,
 automated accessibility passes 41/41 checks, process-crash recovery passes
 every declared check and the expanded architecture audit passes 93/93.
+
+## 146. V4.28 Explicit unified world-evolution composition
+
+The unified world-evolution thread is the product boundary that turns separate
+research mechanisms into one chronological football-world chapter. Its base
+timeline was followed by seven implicit enrichments for society continuity,
+reviewed futures, action-signal semantics, official action examples, scenario
+archives, review-to-official continuity and full retained-record semantics.
+Their closure order was stable at runtime but distributed across the page.
+
+V4.28 replaces those overrides with named functions and one frozen eight-stage
+sequence:
+
+1. the base six-stage world timeline;
+2. persistent society and cognitive continuity;
+3. reviewed multi-time future evidence;
+4. future action-signal semantics;
+5. bounded official-action semantics;
+6. the reviewed scenario archive;
+7. review-to-official-world continuity; and
+8. full retained-record semantics.
+
+The separate meta-learning governance helper remains between the base and its
+society enrichment, but composition no longer depends on declaration
+placement. Every stage retains its original target, order, early return and
+non-causal wording. Direct Web tests bind the exact sequence, require one root
+appender and reject all legacy thread wrappers. A dedicated architecture gate
+enforces the same contract. This refactor changes no world state, evidence
+schema, action authority, decision, outcome or causal claim and executes no
+match, future generation, training, formal study, participant session or
+provider call. Focused Web regression passes 63 tests. The CI-equivalent suite
+passes 1,479 tests with three declared skips and one registered training-test
+deselection. Local HTTP Beta passes 16/16 checks, automated accessibility
+passes 41/41 checks, process-crash recovery passes every declared check and the
+expanded architecture audit passes 94/94.

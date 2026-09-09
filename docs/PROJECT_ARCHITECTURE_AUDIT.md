@@ -471,6 +471,19 @@ not quality signals by themselves.
     1,478 with three skips and one registered deselection, and local HTTP,
     accessibility, recovery and all 93 architecture checks are green.
 
+71. Replaced seven implicit unified world-evolution thread overrides with a
+    frozen, named eight-stage composition. The product now has one visible
+    order from reviewed futures and action semantics through official execution
+    to persistent society state and retained records. Meta-learning governance
+    remains a separate read-only helper rather than hidden composition state.
+    Tests and a dedicated architecture gate require one root appender and
+    reject every legacy thread wrapper. No world state, evidence, authority or
+    claim changes, and no match, future, training, study, participant session
+    or external call is executed. Focused Web regression passes 63 tests,
+    CI-equivalent regression passes 1,479 with three skips and one registered
+    deselection, and local HTTP, accessibility, recovery and all 94
+    architecture checks are green.
+
 ## LLM Scope Decision
 
 Do not add more LLM roles now. Keep the current role agents because they model

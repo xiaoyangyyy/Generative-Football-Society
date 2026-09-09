@@ -352,8 +352,8 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "function renderManagerWorldReviewedFutureOfficialActionSemantics(season)" in document
     assert "point.bounded_official_action_semantics" in document
     assert "sample.semantic_example_coverage_complete" in document
-    assert "appendManagerWorldEvolutionThreadWithoutReviewedFutures" in document
-    assert "appendManagerWorldEvolutionThreadWithoutOfficialActionSemantics" in document
+    assert "function appendManagerWorldEvolutionThreadReviewedFutures(" in document
+    assert "function appendManagerWorldEvolutionThreadOfficialActionSemantics(" in document
     assert "function renderManagerDecisionLedgerMetaLearningSummary(season)" in document
     assert "summary?.meta_learning_pending" in document
     assert "meta_learning_after" in document
@@ -365,23 +365,25 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "appendMetaLearningGovernance(details,society)" in document
     governance_renderer = document.split(
         "function appendMetaLearningGovernance(", 1,
-    )[1].split("appendManagerWorldEvolutionThread=", 1)[0]
+    )[1].split(
+        "function appendManagerWorldEvolutionThreadSocietyContinuity(", 1,
+    )[0]
     assert ".textContent" in governance_renderer
     assert ".innerHTML" not in governance_renderer
     assert "createElement('button')" not in governance_renderer
     assert "stage.retained_semantic_examples" in document
     assert "stage.semantic_direct_cross_ball_event_examples" in document
-    assert "appendManagerWorldEvolutionThreadWithoutRetainedRecordSemantics" in document
+    assert "function appendManagerWorldEvolutionThreadRetainedRecordSemantics(" in document
     assert "stage?.retained_record_semantics" in document
     assert "function appendReviewedScenarioArchive(" in document
-    assert "appendManagerWorldEvolutionThreadWithoutScenarioArchive" in document
+    assert "function appendManagerWorldEvolutionThreadScenarioArchive(" in document
     assert "function renderManagerWorldScenarioArchive(season)" in document
     assert "reviewed_scenario_archives" in document
     assert "source_scenario_identity" in document
     assert "archive_identity" in document
     assert "不排名、不与观察比分匹配" in document
     assert "function appendReviewWorldContinuity(" in document
-    assert "appendManagerWorldEvolutionThreadWithoutReviewWorldCertificate" in document
+    assert "function appendManagerWorldEvolutionThreadReviewWorldCertificate(" in document
     assert "function renderManagerWorldReviewCertificate(season)" in document
     assert "function renderManagerWorldReviewInfluence(season)" in document
     assert "complete_reviewed_world_model_chains" in document
@@ -726,6 +728,34 @@ def test_root_uses_one_explicit_action_adoption_render_pipeline(tmp_path):
         "ACTION_ADOPTION_RENDER_STAGES)renderStage(studio)}"
     ) in document
     assert "renderActionAdoptionWithout" not in document
+
+
+def test_root_uses_one_explicit_manager_world_evolution_thread_pipeline(tmp_path):
+    response = _request(ProductWebApp(tmp_path))
+    document = response["body"].decode("utf-8")
+    expected = (
+        "const MANAGER_WORLD_EVOLUTION_THREAD_STAGES=Object.freeze(["
+        "appendManagerWorldEvolutionThreadBase,"
+        "appendManagerWorldEvolutionThreadSocietyContinuity,"
+        "appendManagerWorldEvolutionThreadReviewedFutures,"
+        "appendManagerWorldEvolutionThreadMechanismSemantics,"
+        "appendManagerWorldEvolutionThreadOfficialActionSemantics,"
+        "appendManagerWorldEvolutionThreadScenarioArchive,"
+        "appendManagerWorldEvolutionThreadReviewWorldCertificate,"
+        "appendManagerWorldEvolutionThreadRetainedRecordSemantics]);"
+    )
+
+    assert response["status"].startswith("200")
+    assert expected in document
+    assert document.count(
+        "function appendManagerWorldEvolutionThread(host,thread)"
+    ) == 1
+    assert (
+        "function appendManagerWorldEvolutionThread(host,thread){for(const "
+        "appendStage of MANAGER_WORLD_EVOLUTION_THREAD_STAGES)"
+        "appendStage(host,thread)}"
+    ) in document
+    assert "appendManagerWorldEvolutionThreadWithout" not in document
 
 
 def test_health_is_liveness_only_and_never_calls_provider(tmp_path):

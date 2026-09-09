@@ -368,6 +368,19 @@ Focused Web regression passes 62 tests; CI-equivalent regression passes 1,478
 tests with three declared skips and one registered training-test deselection.
 Local HTTP, accessibility, recovery and all 93 architecture checks pass.
 
+V4.28 makes the unified world-evolution thread explicit. Seven overrides become
+named stages in one frozen eight-stage sequence covering the base timeline,
+society continuity, reviewed futures, mechanism semantics, official action
+semantics, scenario archives, review-to-official continuity and retained-record
+semantics. The product now has one reviewable composition path from simulated
+future through official action to persistent football society state. A
+dedicated architecture gate rejects legacy wrappers and duplicate roots. This
+behavior-preserving refactor executes no match, future, training, study,
+participant session or provider call. Focused Web regression passes 63 tests;
+CI-equivalent regression passes 1,479 tests with three declared skips and one
+registered training-test deselection. Local HTTP, accessibility, recovery and
+all 94 architecture checks pass.
+
 Current deployed simulator: **v7.0.0**. Frozen rollback: **v6.0.0**. See
 `data/releases/current.json` for the only authoritative deployment pointer.
 
