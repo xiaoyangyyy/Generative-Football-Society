@@ -2,6 +2,10 @@
 
 ## Unreleased - v7 candidate
 
+- Removed the unused dual LLM-council stack (`src/agents`, council/journey
+  routers, chart helpers), `scripts/legacy` entrypoints, and leftover
+  `config` / chaos / media-lab modules so the live path is only `gfs.py` /
+  `SocietyAgent`.
 - Split the remaining `TournamentManager` orchestration debt into two cohesive,
   behavior-preserving boundaries. `TournamentLifecycleMixin` owns tournament
   scheduling, advancement and receipted reflection; `TournamentStateMixin`

@@ -142,7 +142,7 @@ def main() -> int:
     stochastic_runtime_paths = sorted(
         (ROOT / "src" / "simulation").rglob("*.py")
     ) + sorted((ROOT / "src" / "memory_engine").rglob("*.py")) + [
-        ROOT / "src" / "app.py", ROOT / "src" / "journey_router.py",
+        ROOT / "src" / "app.py",
     ]
     global_rng_draw_violations = _direct_global_rng_draws(
         stochastic_runtime_paths,

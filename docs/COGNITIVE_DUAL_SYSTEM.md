@@ -19,7 +19,7 @@ BASE_URL=https://api.deepseek.com
 MODEL_NAME=deepseek-v4-flash
 ```
 
-`src/config.py` 通过 `python-dotenv` 加载；`SimulationLLM` 使用 `openai` SDK 的 `base_url` + `model`。
+`src/simulation/llm_gateway.py` 通过 `environment_snapshot()` 读取这些变量；`SimulationLLM` 使用 `openai` SDK 的 `base_url` + `model`。
 
 ## 环境变量
 

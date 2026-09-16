@@ -98,33 +98,18 @@ Event → Appraisal → Emotion → Coping → Memory → Belief → State/Tacti
 ## 3. 仓库结构
 
 ```
-sim/
-├── run_world_cup_2026_full.py    # 全赛主入口
-├── run_match_micro.py            # 单场微观测试
-├── run_affective_phase1b.py      # 情感层单测入口
-├── main_monte_carlo.py           # 蒙特卡洛实验
-│
-├── src/
-│   ├── simulation/               # 锦标赛、Agent、LLM、融合、赛程
-│   ├── match_engine/             # 微观物理 + 校准 + 认知 + WM
-│   ├── memory_engine/            # 宏观 λ、Poisson、status_score
-│   ├── data_engine/              # 名单、教练、FM、实体动力学
-│   ├── agents/                   # 社会角色 Agent（Prophet 等）
-│   └── visualization/            # 图表
-│
-├── data/
-│   ├── rosters/                  # 48 队 JSON 名单
-│   ├── coaches/                  # 教练 preset / 心理
-│   ├── calibration/              # StatsBomb 基准、contract、param_registry
-│   ├── persistence/              # checkpoint、squad_carryover、cognitive_log
-│   ├── world_model/              # latent_wm.pt、traces/
-│   └── schemas/                  # player/coach JSON schema
-│
-├── scripts/                      # 构建、训练、基准、校准、分析
-├── tests/                        # 单元 + slow 校准测试
-├── docs/                         # 设计与本手册
-├── reports/                      # gate、ablation、baseline 报告
-└── outputs/                      # full_run log、ball_log
+gfs.py                            # 统一 CLI 入口
+src/
+├── app.py / cli.py               # 稳定集成 API 与命令
+├── simulation/                   # 锦标赛、SocietyAgent、LLM、融合、赛程
+├── match_engine/                 # 微观物理 + 校准 + 认知 + WM
+├── memory_engine/                # 宏观 λ、Poisson、status_score
+├── data_engine/                  # 名单、教练、FM、实体动力学
+└── product/                      # Studio / Web / 经理产品
+data/                             # 名单、校准、检查点、发布清单
+scripts/                          # 构建、训练、基准、校准、分析
+tests/                            # 单元 + smoke
+docs/                             # 设计与本手册
 ```
 
 ---

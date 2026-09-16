@@ -670,7 +670,7 @@ src/memory_engine/     Status, macro xG, Poisson, tournament probability
 src/data_engine/       Raw data, roster, coach, FM import helpers
 data/                  Required bundled datasets and model checkpoint
 docs/                  Design and technical references
-scripts/               Maintenance, calibration, benchmark, and legacy scripts
+scripts/               Maintenance, calibration, and benchmark scripts
 tests/                 Unit and smoke tests
 ```
 
@@ -948,7 +948,8 @@ causality.
 
 ## Legacy Entrypoints
 
-Older root scripts were moved to `scripts/legacy/`. Prefer `python gfs.py ...` for new usage.
+The old dual LLM-council stack (`src/agents`, council/journey routers, chart
+scripts) was removed. Use `python gfs.py ...` and `src.simulation.SocietyAgent`.
 
 ## Tests
 
