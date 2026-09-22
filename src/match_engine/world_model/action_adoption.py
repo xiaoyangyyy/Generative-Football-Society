@@ -10,8 +10,27 @@ import numpy as np
 _MAX_SAMPLED_RECORDS = 96
 _DIRECTLY_VALIDATED_ACTIONS = frozenset({"pass", "shot", "cross"})
 _REFERENCE_ACTION = "hold"
-_PROBABILITY_POLICY_VERSION = "validated_action_simplex_v3"
+_PROBABILITY_POLICY_VERSION = "validated_action_simplex_v4"
 _EXPECTED_CHANGE_ESTIMATOR = "shared_uniform_inverse_cdf_overlap_v1"
+_MAX_DIRECT_ACTION_BLEND = 0.35
+_MINIMUM_ATTRIBUTABLE_EXPECTED_CHANGE = 1e-9
+
+
+def _direct_action_authority(policy_blend: float, certainty: float) -> float:
+    """Open gates spend the configured blend, scaled only by remaining certainty."""
+    budget = min(max(0.0, float(policy_blend)), _MAX_DIRECT_ACTION_BLEND)
+    return float(np.clip(policy_blend * certainty, 0.0, budget))
+
+
+def _mixable_action_gate(action: str, gate: dict[str, Any], feasible: set[str]) -> bool:
+    if str(action) not in feasible or not gate.get("open", False):
+        return False
+    if str(action) in _DIRECTLY_VALIDATED_ACTIONS:
+        return True
+    return (
+        str(action) == _REFERENCE_ACTION
+        and gate.get("reference_alternative") is True
+    )
 
 
 def mask_infeasible_action_probabilities(
@@ -116,11 +135,7 @@ def mix_direct_action_probabilities(
     signals: list[tuple[int, dict[str, Any], float, float]] = []
     for index, action in enumerate(labels):
         gate = gates.get(str(action)) or {}
-        if (
-            str(action) not in feasible
-            or str(action) not in _DIRECTLY_VALIDATED_ACTIONS
-            or not gate.get("open", False)
-        ):
+        if not _mixable_action_gate(str(action), gate, feasible):
             continue
         try:
             advantage = float(gate.get("model_advantage", 0.0))
@@ -133,9 +148,9 @@ def mix_direct_action_probabilities(
             policy_blend = float(gate.get("policy_blend", 0.0))
         except (TypeError, ValueError):
             continue
-        authority = float(np.clip(
-            policy_blend * min(confidence, certainty), 0.0, 0.35,
-        ))
+        if confidence <= 0.0 or certainty <= 0.0 or policy_blend <= 0.0:
+            continue
+        authority = _direct_action_authority(policy_blend, certainty)
         if np.isfinite(advantage) and abs(advantage) > 1e-12 and authority > 0.0:
             signals.append((index, gate, advantage, authority))
     if not signals:
@@ -158,6 +173,11 @@ def mix_direct_action_probabilities(
     record["probability_policy_version"] = _PROBABILITY_POLICY_VERSION
     record["applied_policy_actions"] = [
         str(labels[index]) for index, _gate, _advantage, _authority in signals
+        if str(labels[index]) in _DIRECTLY_VALIDATED_ACTIONS
+    ]
+    record["applied_reference_alternative_actions"] = [
+        str(labels[index]) for index, gate, _advantage, _authority in signals
+        if gate.get("reference_alternative") is True
     ]
     for index, gate, _advantage, authority in signals:
         gate["model_target_action_probability"] = float(target[index])
@@ -204,6 +224,7 @@ def register_action_policy_opportunity(
             "reference_realized_actions": 0,
             "reference_counterfactual_changes": 0,
             "reference_probability_gain_sum": 0.0,
+            "influenced_without_expected_change": 0,
             "action_signal_breakdown": {}, "records": [],
         }
         state._wm_direct_action_adoption = store
@@ -215,10 +236,8 @@ def register_action_policy_opportunity(
     policy_signals: list[tuple[int, float]] = []
     for index in feasible_indices:
         action = str(labels[index])
-        if action not in _DIRECTLY_VALIDATED_ACTIONS:
-            continue
         gate = quality_gates.get(action) or {}
-        if not gate.get("open", False):
+        if not _mixable_action_gate(action, gate, set(str(item) for item in feasible_actions)):
             continue
         confidence = float(gate.get(
             "decision_confidence", gate.get("confidence", 0.0),
@@ -245,6 +264,18 @@ def register_action_policy_opportunity(
     recommended = (
         str(labels[recommended_index]) if recommended_index is not None else "none"
     )
+    recommended_gate = (
+        quality_gates.get(recommended) or {}
+        if recommended != "none" else {}
+    )
+    if positive_policy and recommended_gate.get("reference_alternative") is True:
+        signal_mode = "validated_reference_alternative"
+    elif positive_policy:
+        signal_mode = "direct_preference"
+    elif policy_signals:
+        signal_mode = "suppression_only"
+    else:
+        signal_mode = "none"
     # Internal utility movement is diagnostic. An opportunity is influenced
     # only when the probability controller accepts an authorized direct signal.
     influenced = bool(policy_signals)
@@ -260,10 +291,7 @@ def register_action_policy_opportunity(
             str(labels[primary_signal_index])
             if primary_signal_index is not None else "none"
         ),
-        "signal_mode": (
-            "direct_preference" if positive_policy
-            else "suppression_only" if policy_signals else "none"
-        ),
+        "signal_mode": signal_mode,
         "base_utilities": {
             str(action): float(base[index]) for index, action in enumerate(labels)
         },
@@ -283,6 +311,7 @@ def register_action_policy_opportunity(
         "total_variation_distance": None,
         "probability_policy_version": _PROBABILITY_POLICY_VERSION,
         "applied_policy_actions": [],
+        "applied_reference_alternative_actions": [],
         "redistribution_recipient_actions": [],
         "reference_action": _REFERENCE_ACTION,
         "reference_action_role": "counterfactual_baseline_only",
@@ -343,8 +372,18 @@ def record_action_policy_sample(
     )
     actual = str(actual_action).lower()
     adopted = recommended != "none" and actual == recommended
+    total_variation = float(0.5 * np.abs(adjusted - base).sum())
+    shared_uniform_change = shared_uniform_action_change_probability(
+        base, adjusted,
+    )
+    behavior_changed = (
+        shared_uniform_change > _MINIMUM_ATTRIBUTABLE_EXPECTED_CHANGE
+    )
     attribution_eligible = bool(
-        record["influenced"] and not externally_overridden and not cointervention
+        record["influenced"]
+        and behavior_changed
+        and not externally_overridden
+        and not cointervention
     )
     counterfactual = (
         str(counterfactual_baseline_action).lower()
@@ -353,10 +392,6 @@ def record_action_policy_sample(
     changed_action = bool(
         attribution_eligible and counterfactual is not None
         and actual != counterfactual
-    )
-    total_variation = float(0.5 * np.abs(adjusted - base).sum())
-    shared_uniform_change = shared_uniform_action_change_probability(
-        base, adjusted,
     )
     reference_index = (
         labels.index(_REFERENCE_ACTION)
@@ -381,6 +416,7 @@ def record_action_policy_sample(
         "policy_changed_action": changed_action,
         "total_variation_distance": total_variation,
         "shared_uniform_change_probability": shared_uniform_change,
+        "expected_behavior_changed": behavior_changed,
         "adopted": adopted, "attribution_eligible": attribution_eligible,
         "resolution": (
             "external_schedule_override" if externally_overridden
@@ -403,6 +439,10 @@ def record_action_policy_sample(
     store["adopted"] += int(adopted)
     store.setdefault("attribution_eligible_opportunities", 0)
     store["attribution_eligible_opportunities"] += int(attribution_eligible)
+    store.setdefault("influenced_without_expected_change", 0)
+    store["influenced_without_expected_change"] += int(
+        record["influenced"] and not behavior_changed
+    )
     store["attributable_adoptions"] += int(adopted and attribution_eligible)
     store.setdefault("counterfactual_action_changes", 0)
     store["counterfactual_action_changes"] += int(changed_action)
@@ -684,6 +724,9 @@ def direct_action_adoption_diagnostics(state) -> dict[str, Any]:
         "attributable_adoptions": int(store["attributable_adoptions"]),
         "attribution_eligible_opportunities": int(
             store.get("attribution_eligible_opportunities", 0)
+        ),
+        "influenced_without_expected_change": int(
+            store.get("influenced_without_expected_change", 0)
         ),
         "counterfactual_action_changes": int(
             store.get("counterfactual_action_changes", 0)

@@ -46,6 +46,8 @@ from src.match_engine.world_model.policy_utility import (
     POLICY_UTILITY_VERSION,
     build_continuation_support_evidence,
     continuation_support_validation_gate,
+    policy_utility_aggregate_gate_integrity,
+    policy_utility_perspective_gate_integrity,
     policy_utility_validation_gate,
     policy_utility_sequence_validation_gate,
     transition_policy_utility_numpy,
@@ -279,6 +281,14 @@ def test_policy_utility_evidence_gate_is_action_specific_and_fail_closed():
     )
     assert opened["authorized"] is True
     assert 0.0 < opened["authority"] <= 1.0
+    assert policy_utility_aggregate_gate_integrity(opened) is True
+    for label in ("home", "away"):
+        child = opened["perspective_gates"][label]
+        assert child["perspective_conditioned"] is True
+        assert child["perspective_profile_identity_verified"] is True
+        assert policy_utility_perspective_gate_integrity(
+            child, actor_perspective=label,
+        ) is True
 
 
 def test_perspective_policy_gate_rejects_legacy_pooled_checkpoint():
@@ -713,16 +723,44 @@ def _planner_state():
     )
 
 
+def _pass_carrier():
+    return SimpleNamespace(
+        team_id="home",
+        player_id="carrier",
+        on_pitch=True,
+        role="CM",
+        position=np.array([0.5, 0.5]),
+    )
+
+
+def _attach_executable_pass_candidates(state, carrier=None):
+    carrier = carrier or _pass_carrier()
+    if getattr(carrier, "player_id", None) is None:
+        carrier.player_id = "carrier"
+    carrier.on_pitch = True
+    receiver = SimpleNamespace(
+        team_id=getattr(carrier, "team_id", "home"),
+        player_id="receiver-1",
+        on_pitch=True,
+        role="ST",
+        position=np.array([0.64, 0.5]),
+    )
+    team = SimpleNamespace(players=[carrier, receiver])
+    state.team = lambda team_id: team
+    return carrier
+
+
 def test_m2_changes_pass_utility_only_when_exact_gate_is_open(monkeypatch):
     monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
     monkeypatch.setenv("MATCH_WM_PLAN", "1")
     monkeypatch.setenv("MATCH_WM_OUTCOME_ALIGNED_POLICY", "1")
     labels = ["pass", "shot", "cross", "hold"]
     base = np.zeros(4)
-    carrier = SimpleNamespace(team_id="home", position=np.array([0.5, 0.5]))
+    carrier = _pass_carrier()
 
     runtime = _M2Runtime(gate_open=True)
     state = _planner_state()
+    _attach_executable_pass_candidates(state, carrier)
     opened = action_imagination_adjustments(
         runtime, state, carrier, True,
         base, labels, dist_goal=0.5, feasible_actions={"pass", "hold"},
@@ -749,6 +787,9 @@ def test_m2_changes_pass_utility_only_when_exact_gate_is_open(monkeypatch):
     assert gate["hold_value_gate"]["reason"] == (
         "exact_zero_persistence_reference"
     )
+    assert gate["pass_encoding"] == "encode_pass_candidate"
+    assert gate["selected_receiver_id"] == "receiver-1"
+    assert gate["scored_pass_candidates"] == 1
 
 
 def _pass_target_state():
@@ -864,12 +905,13 @@ def test_m2_action_control_fails_closed_without_sequence_runtime(monkeypatch):
     runtime = _M2Runtime(gate_open=True)
     runtime.policy_utility_sequence_authority = None
     state = _planner_state()
+    carrier = _attach_executable_pass_candidates(state)
     base = np.zeros(4)
 
     adjusted = action_imagination_adjustments(
         runtime,
         state,
-        SimpleNamespace(team_id="home", position=np.array([0.5, 0.5])),
+        carrier,
         True,
         base,
         ["pass", "shot", "cross", "hold"],
@@ -905,12 +947,13 @@ def test_m2_action_control_rejects_invalid_evidence_continuation_prototype(
 
     runtime.policy_utility_sequence_authority = invalid_authority
     state = _planner_state()
+    carrier = _attach_executable_pass_candidates(state)
     base = np.zeros(4)
 
     adjusted = action_imagination_adjustments(
         runtime,
         state,
-        SimpleNamespace(team_id="home", position=np.array([0.5, 0.5])),
+        carrier,
         True,
         base,
         ["pass", "shot", "cross", "hold"],
@@ -949,11 +992,12 @@ def test_m2_action_control_rejects_stale_or_nonfinite_sequence_predictions(
 
     runtime.predict_policy_utility_sequence = corrupted
     state = _planner_state()
+    carrier = _attach_executable_pass_candidates(state)
     base = np.zeros(4)
     adjusted = action_imagination_adjustments(
         runtime,
         state,
-        SimpleNamespace(team_id="home", position=np.array([0.5, 0.5])),
+        carrier,
         True,
         base,
         ["pass", "shot", "cross", "hold"],
@@ -1116,11 +1160,12 @@ def test_m2_action_control_fails_closed_when_sequence_prediction_raises(
 
     runtime.predict_policy_utility_sequence = failed_prediction
     state = _planner_state()
+    carrier = _attach_executable_pass_candidates(state)
     base = np.zeros(4)
     adjusted = action_imagination_adjustments(
         runtime,
         state,
-        SimpleNamespace(team_id="home", position=np.array([0.5, 0.5])),
+        carrier,
         True,
         base,
         ["pass", "shot", "cross", "hold"],
@@ -1130,6 +1175,83 @@ def test_m2_action_control_fails_closed_when_sequence_prediction_raises(
     assert np.array_equal(adjusted, base)
     gate = state._wm_pending_direct_action_adoption["quality_gates"]["pass"]
     assert gate["reason"] == "sequence_prediction_failed_closed"
+
+
+def test_m2_high_level_pass_fails_closed_without_executable_candidates(
+    monkeypatch,
+):
+    monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
+    monkeypatch.setenv("MATCH_WM_PLAN", "1")
+    monkeypatch.setenv("MATCH_WM_OUTCOME_ALIGNED_POLICY", "1")
+    state = _planner_state()
+    carrier = _pass_carrier()
+    adjusted = action_imagination_adjustments(
+        _M2Runtime(gate_open=True),
+        state,
+        carrier,
+        True,
+        np.zeros(4),
+        ["pass", "shot", "cross", "hold"],
+        dist_goal=0.5,
+        feasible_actions={"pass", "hold"},
+    )
+    gate = state._wm_pending_direct_action_adoption["quality_gates"]["pass"]
+    assert np.array_equal(adjusted, np.zeros(4))
+    assert gate["open"] is False
+    assert gate["reason"] == "no_executable_pass_candidates"
+    assert gate["pass_encoding"] == "encode_pass_candidate"
+
+
+def test_m2_suppressed_pass_boosts_zero_persistence_hold(monkeypatch):
+    monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
+    monkeypatch.setenv("MATCH_WM_PLAN", "1")
+    monkeypatch.setenv("MATCH_WM_OUTCOME_ALIGNED_POLICY", "1")
+
+    class NegativePassRuntime(_M2Runtime):
+        def predict_policy_utility_sequence(
+            self, observation, actions, *, action_kind, attacking_home,
+        ):
+            sequence = [decode_action_kind(action) for action in actions]
+            self.sequence_calls.append(sequence)
+            return {
+                "prediction_source": "explicit_changing_action_sequence_rollout",
+                "planning_mode": "open_loop_evidence_supported_continuation_policy",
+                "rollout_steps": 2,
+                "action_sequence": sequence,
+                "policy_utility": (
+                    -0.20 if sequence[0] == "pass" else 0.0
+                ),
+                "policy_utility_version": POLICY_UTILITY_VERSION,
+                "uncertainty": 0.1,
+                "sequence_gate": self.policy_utility_sequence_authority(
+                    action_kind,
+                    rollout_steps=2,
+                    attacking_home=attacking_home,
+                ),
+            }
+
+    state = _planner_state()
+    carrier = _attach_executable_pass_candidates(state)
+    action_imagination_adjustments(
+        NegativePassRuntime(gate_open=True),
+        state,
+        carrier,
+        True,
+        np.zeros(4),
+        ["pass", "shot", "cross", "hold"],
+        dist_goal=0.5,
+        feasible_actions={"pass", "hold"},
+    )
+    record = state._wm_pending_direct_action_adoption
+    pass_gate = record["quality_gates"]["pass"]
+    hold_gate = record["quality_gates"]["hold"]
+    assert pass_gate["open"] is True
+    assert pass_gate["model_advantage"] < 0.0
+    assert hold_gate["reference_alternative"] is True
+    assert hold_gate["direct_action_authorized"] is False
+    assert hold_gate["reason"] == "validated_zero_persistence_alternative"
+    assert record["recommended_action"] == "hold"
+    assert record["signal_mode"] == "validated_reference_alternative"
 
 
 def test_control_scope_supports_mirrored_one_sided_interventions(monkeypatch):
@@ -1935,7 +2057,7 @@ def test_m2_protocol_validator_rejects_preregistered_threshold_drift():
     assert protocol["integrity"]["code_identity_mode"] == (
         "transitive_local_imports_v1"
     )
-    assert protocol["integrity"]["identity_amendment"]["version"] == 5
+    assert protocol["integrity"]["identity_amendment"]["version"] == 6
     assert protocol["candidate"]["required_sealed_validation"] == [
         "two_step",
         "policy_utility.pass",

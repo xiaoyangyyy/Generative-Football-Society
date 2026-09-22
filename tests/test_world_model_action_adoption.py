@@ -5,6 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from src.match_engine.action_engine import ActionEngine
 from src.match_engine.aerial_duel import AerialDuelEngine
@@ -221,7 +222,7 @@ def test_controller_competes_across_validated_actions_on_one_simplex():
         sampling_uniform=0.5, counterfactual_baseline_action="pass",
     )
     audit = direct_action_adoption_diagnostics(state)
-    assert audit["probability_policy_version"] == "validated_action_simplex_v3"
+    assert audit["probability_policy_version"] == "validated_action_simplex_v4"
     assert audit["expected_change_estimator"] == (
         "shared_uniform_inverse_cdf_overlap_v1"
     )
@@ -290,13 +291,34 @@ def _planner_state():
     )
 
 
+def _attach_executable_pass_candidates(state, carrier):
+    if getattr(carrier, "player_id", None) is None:
+        carrier.player_id = "carrier"
+    carrier.on_pitch = True
+    receiver = SimpleNamespace(
+        team_id=carrier.team_id,
+        player_id="receiver-1",
+        on_pitch=True,
+        role="ST",
+        position=np.array([0.64, 0.5], dtype=float),
+    )
+    team = SimpleNamespace(players=[carrier, receiver])
+    state.team = lambda team_id: team
+    return carrier
+
+
 def test_validated_pass_evidence_changes_high_level_utility_and_is_audited(
     monkeypatch,
 ):
     monkeypatch.setenv("MATCH_WORLD_MODEL", "1")
     monkeypatch.setenv("MATCH_WM_PLAN", "1")
     state = _planner_state()
-    carrier = SimpleNamespace(team_id="home", position=state.ball.position)
+    carrier = SimpleNamespace(
+        team_id="home",
+        player_id="carrier",
+        position=state.ball.position,
+    )
+    _attach_executable_pass_candidates(state, carrier)
     base = np.array([0.1, 0.2, -0.1, 0.0], dtype=float)
 
     adjusted = action_imagination_adjustments(
@@ -313,6 +335,12 @@ def test_validated_pass_evidence_changes_high_level_utility_and_is_audited(
     record = audit["records"][0]
     assert record["quality_gates"]["pass"]["open"] is True
     assert record["quality_gates"]["pass"]["model_advantage"] == 0.30
+    assert record["quality_gates"]["pass"]["pass_encoding"] == (
+        "encode_pass_candidate"
+    )
+    assert record["quality_gates"]["pass"]["selected_receiver_id"] == (
+        "receiver-1"
+    )
     assert record["quality_gates"]["shot"]["reason"] == "action_infeasible"
     assert record["quality_gates"]["cross"]["reason"] == "action_infeasible"
 
@@ -731,3 +759,111 @@ def test_benchmark_row_exports_action_adoption_mechanism_metrics():
     assert row["wm_checkpoint_signature"] == "sha256:test"
     assert row["wm_control_scope"] == "home"
     assert row["wm_outcome_aligned_policy"] is True
+
+
+def test_open_gate_authority_uses_certainty_not_compounded_confidence():
+    state = SimpleNamespace()
+    labels = ["pass", "hold"]
+    baseline = np.array([0.5, 0.5], dtype=float)
+    register_action_policy_opportunity(
+        state, team_id="home", t_sec=14.0,
+        feasible_actions=set(labels),
+        base_utilities=[0.0, 0.0],
+        adjusted_utilities=[0.2, 0.0],
+        labels=labels,
+        model_adjustments={"pass": 0.2, "hold": 0.0},
+        quality_gates={
+            "pass": {
+                "open": True,
+                "decision_confidence": 0.2,
+                "decision_certainty": 1.0,
+                "policy_blend": 0.30,
+                "model_advantage": 0.20,
+            },
+            "hold": {"open": False},
+        },
+    )
+    mix_direct_action_probabilities(
+        state, labels=labels, probabilities=baseline,
+    )
+    gate = state._wm_pending_direct_action_adoption["quality_gates"]["pass"]
+    assert gate["applied_action_authority"] == pytest.approx(0.30)
+    assert gate["applied_probability_blend_weight"] == pytest.approx(0.30)
+
+
+def test_influenced_zero_expected_change_is_not_attribution_eligible():
+    state = SimpleNamespace()
+    labels = ["pass", "hold"]
+    probabilities = np.array([0.5, 0.5], dtype=float)
+    register_action_policy_opportunity(
+        state, team_id="home", t_sec=15.0,
+        feasible_actions=set(labels),
+        base_utilities=[0.0, 0.0],
+        adjusted_utilities=[0.2, 0.0],
+        labels=labels,
+        model_adjustments={"pass": 0.2, "hold": 0.0},
+        quality_gates={
+            "pass": {
+                "open": True,
+                "decision_confidence": 1.0,
+                "decision_certainty": 1.0,
+                "policy_blend": 0.3,
+                "model_advantage": 0.2,
+            },
+            "hold": {"open": False},
+        },
+    )
+    record_action_policy_sample(
+        state,
+        actual_action="pass",
+        labels=labels,
+        base_probabilities=probabilities,
+        adjusted_probabilities=probabilities,
+        sampling_uniform=0.1,
+        counterfactual_baseline_action="pass",
+    )
+    audit = direct_action_adoption_diagnostics(state)
+    record = audit["records"][0]
+    assert record["influenced"] is True
+    assert record["expected_behavior_changed"] is False
+    assert record["attribution_eligible"] is False
+    assert audit["influenced_without_expected_change"] == 1
+    assert audit["attribution_eligible_opportunities"] == 0
+
+
+def test_validated_reference_alternative_recommends_hold():
+    state = SimpleNamespace()
+    labels = ["pass", "hold"]
+    baseline = np.array([0.9, 0.1], dtype=float)
+    register_action_policy_opportunity(
+        state, team_id="home", t_sec=16.0,
+        feasible_actions=set(labels),
+        base_utilities=[1.0, 0.0],
+        adjusted_utilities=[1.0, 0.0],
+        labels=labels,
+        model_adjustments={"pass": 0.0, "hold": 0.0},
+        quality_gates={
+            "pass": {
+                "open": True, "confidence": 1.0, "certainty": 1.0,
+                "policy_blend": 0.3, "model_advantage": -0.35,
+            },
+            "hold": {
+                "open": True,
+                "reference_alternative": True,
+                "decision_confidence": 1.0,
+                "decision_certainty": 1.0,
+                "policy_blend": 0.3,
+                "model_advantage": 0.35,
+            },
+        },
+    )
+    adjusted = mix_direct_action_probabilities(
+        state, labels=labels, probabilities=baseline,
+    )
+    record = state._wm_pending_direct_action_adoption
+    assert record["recommended_action"] == "hold"
+    assert record["signal_mode"] == "validated_reference_alternative"
+    assert record["applied_policy_actions"] == ["pass"]
+    assert record["applied_reference_alternative_actions"] == ["hold"]
+    assert adjusted[1] > baseline[1]
+    assert record["reference_action_directly_authorized"] is False

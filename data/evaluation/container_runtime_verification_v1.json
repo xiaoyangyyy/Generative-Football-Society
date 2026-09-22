@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "verification": "gfs_pinned_container_build_and_runtime_smoke",
+  "generated_at": "2026-09-18T14:27:17.251240+00:00",
+  "status": "docker_unavailable",
+  "passed": false,
+  "image_built": false,
+  "deployment_started": false,
+  "docker_available": false,
+  "source_revision": "9eb7491654843ef121913403773d871f2a43f59e",
+  "execution_context": {
+    "github_actions": false,
+    "repository": null,
+    "workflow_ref": null,
+    "run_id": null
+  },
+  "image_reference": null,
+  "image_id": null,
+  "docker_server": null,
+  "checks": {
+    "docker_cli_available": false,
+    "execution_explicitly_authorized": false,
+    "source_revision_is_commit": false,
+    "docker_daemon_reachable": false,
+    "image_build_passed": false,
+    "image_id_is_content_addressed": false,
+    "image_revision_label_matches_source": false,
+    "image_declares_non_root_user": false,
+    "runtime_uid_gid_are_non_root": false,
+    "direct_dependency_import_smoke_passed": false,
+    "runtime_security_options_verified": false,
+    "health_response_contract_passed": false,
+    "docker_health_status_passed": false,
+    "ephemeral_container_removed": false,
+    "verification_image_removed": false
+  },
+  "artifact_sha256": {
+    ".dockerignore": "db57f63920622e03c828348b4463f413cee4602ef4803ee81f5df9f295b2ac6c",
+    "Dockerfile": "a4dd0b6ebdf030377edfa4b35a60c59c97e64957e51eb7a6f10652e54c8e2408",
+    "gfs.py": "9c585dadc450cb1a0d5c49f68d7f9ed6f5a1519c7b00f8e131da6d604d0f5cd9",
+    "pyproject.toml": "cfb0aa9bb0e29dad2c73273c7af7f397fb964fe45894bdbd0af7dca7fede4ecf",
+    "requirements.txt": "810ba7d3a1e0b4e9724ac97be34d6b799958b6288841274b547fec796cf6c1b3",
+    "requirements-linux-py312.lock": "df662d50a9cace72ebb48199850081586c1e90574b1476b8b4f64014b1009460",
+    "data/evaluation/container_image_contract_v1.json": "e2bd5134e849ad38fb525a3fdb1a7f359cc4370f2096df8223e2a5bd99b703e9",
+    "scripts/verify_container_runtime.py": "c5c13d7527656345d64d29f46d562a4932a79e8be1e9f2281023dbe76181a4d7"
+  },
+  "provider_calls_made": false,
+  "registry_access_attempted": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false,
+  "limitations": [
+    "Docker CLI is unavailable; no image build or container launch occurred."
+  ]
+}

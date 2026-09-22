@@ -1,5 +1,5 @@
 {
-  "all_pass": true,
+  "all_pass": false,
   "architecture": "gfs-layered-product-v2.1",
   "checks": {
     "action_adoption_product_render_pipeline_is_explicit": true,
@@ -98,7 +98,7 @@
     "studio_previews_authoritative_decision_effects_without_persistence": true,
     "studio_progressively_discloses_product_areas": true,
     "studio_replays_manager_decision_lifecycle_without_second_state": true,
-    "studio_restore_is_crash_convergent": true,
+    "studio_restore_is_crash_convergent": false,
     "studio_status_projection_is_typed_layered_and_noncausal": true,
     "studio_uses_context_local_configuration": true,
     "submit_pipeline_is_explicit_and_fail_closed": true,

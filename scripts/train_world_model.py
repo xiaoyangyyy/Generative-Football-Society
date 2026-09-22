@@ -38,6 +38,7 @@ from src.match_engine.world_model.policy_utility import (
     transition_policy_utility_tensor,
 )
 from src.match_engine.world_model.action_codec import decode_action_kinds
+from src.match_engine.world_model.rollout_calibration import select_rollout_blend
 
 
 def _merge(*arrays):
@@ -148,6 +149,39 @@ def _multi_step_curriculum_weight(
         return 0.0
     progress = (epoch - warmup + 1) / max(1, total - warmup)
     return float(base * np.clip(progress, 0.0, 1.0))
+
+
+def _calibrate_grouped_two_step_rollout(
+    initial: np.ndarray,
+    rollout_members,
+    target: np.ndarray,
+    feature_weights: np.ndarray,
+):
+    """Shrink two-step forecasts on grouped development pairs only."""
+    import torch
+
+    raw_mean = rollout_members.mean(dim=0).detach().cpu().numpy()
+    calibration = select_rollout_blend(
+        initial, raw_mean, target, feature_weights,
+    )
+    blend = float(calibration["selected_blend"])
+    initial_t = torch.as_tensor(
+        initial, dtype=rollout_members.dtype, device=rollout_members.device,
+    )
+    calibrated = initial_t.unsqueeze(0) + blend * (
+        rollout_members - initial_t.unsqueeze(0)
+    )
+    compact = {
+        "method": calibration["method"],
+        "selected_blend": blend,
+        "weighted_mse": float(calibration["weighted_mse"]),
+        "persistence_weighted_mse": float(
+            calibration["persistence_weighted_mse"]
+        ),
+        "skill_vs_persistence": float(calibration["skill_vs_persistence"]),
+        "split": "dev",
+    }
+    return calibrated, compact
 
 
 def _policy_utility_validation(
@@ -1016,6 +1050,18 @@ def main() -> None:
                 torch.from_numpy(obs[pair_left]),
                 torch.from_numpy(pair_actions),
             )
+            rollout_members, residual_calibration = (
+                _calibrate_grouped_two_step_rollout(
+                    obs[pair_left],
+                    rollout_members,
+                    nxt[pair_left + 1],
+                    obs_weights.numpy(),
+                )
+            )
+            cfg.rollout_residual_blend = float(
+                residual_calibration["selected_blend"]
+            )
+            model.cfg.rollout_residual_blend = cfg.rollout_residual_blend
             rollout_mean = rollout_members.mean(dim=0)
             rollout_target = torch.from_numpy(nxt[pair_left + 1])
             rollout_initial = torch.from_numpy(obs[pair_left])
@@ -1115,6 +1161,11 @@ def main() -> None:
             two_step_member_mean_mse = two_step_ensemble_gain = 0.0
             two_step_disagreement_error_correlation = 0.0
             two_step_groups = 0
+            residual_calibration = {
+                "method": "bounded_residual_grid_on_grouped_dev",
+                "selected_blend": 1.0,
+                "split": "dev",
+            }
             two_step_event_validation = {"version": 1, "events": {}}
             two_step_path_validation = {"version": 1, "paths": {}}
             two_step_policy_utility_validation = _policy_utility_validation(
@@ -1257,6 +1308,7 @@ def main() -> None:
             "configured_loss_weight": float(args.multi_step_loss_weight),
             "max_curriculum_weight_applied": max_sequence_weight_applied,
             "warmup_fraction": float(args.multi_step_warmup_fraction),
+            "residual_calibration": residual_calibration,
         },
         "semantic_event_heads": {
             "version": 1,

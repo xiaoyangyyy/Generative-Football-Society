@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "protocol_id": "gfs-all-known-exposed-credential-closure-v2",
+  "incidents": [
+    {
+      "incident_id": "deepseek_api_credential",
+      "provider": "deepseek",
+      "credential_revoked": true,
+      "revoked_at": "2026-09-16T14:00:00+00:00",
+      "revocation_evidence": "data/evaluation/security_closure_v2/deepseek_api_credential_receipt.json",
+      "revocation_evidence_sha256": "5cb790068bb81f2689a793cc17d0a5a3c29dfd635adb49c417bca68218f18b3a",
+      "evidence_contains_secret": false,
+      "replacement_credential_generated": false,
+      "replacement_storage": "not_generated"
+    },
+    {
+      "incident_id": "github_classic_pat",
+      "provider": "github",
+      "credential_revoked": true,
+      "revoked_at": "2026-09-16T14:05:00+00:00",
+      "revocation_evidence": "data/evaluation/security_closure_v2/github_classic_pat_receipt.json",
+      "revocation_evidence_sha256": "e200d22f964c0ccd5da603b65ea68e36fcb5b02f07151437768a2bb094d394ce",
+      "evidence_contains_secret": false,
+      "replacement_credential_generated": false,
+      "replacement_storage": "not_generated"
+    }
+  ],
+  "repository_secret_scan": {
+    "commit_sha": "9eb7491654843ef121913403773d871f2a43f59e",
+    "secret_pattern_version": "gfs_known_credentials_v2",
+    "boundary_aware_secret_match_count": 0,
+    "boundary_aware_secret_matches_by_family": {
+      "openai_compatible_api_key": 0,
+      "github_classic_pat": 0,
+      "github_fine_grained_pat": 0
+    }
+  },
+  "signed_at": "2026-09-16T16:35:45+00:00",
+  "attestation": "I revoked every known exposed credential, stored no credential value in evidence, and confined every replacement to the local environment"
+}

@@ -144,10 +144,43 @@ def test_m2_control_only_surfaces_promotion_after_complete_current_result():
 
     assert control["status"] == "completed_promotion_supported"
     assert control["next_action"]["id"] == "request_independent_reproduction"
+    assert control["next_action"]["commands"] == []
+    assert control["diagnosis_artifact"] is None
     assert control["promotion_gate_results"] == {
         "all_preregistered_gates": True,
     }
 
+def test_m2_control_points_no_promotion_at_frozen_diagnosis():
+    control = _control(
+        candidate_evidence_available=True,
+        candidate_evidence_current=True,
+        candidate_eligible=True,
+        checkpoint_path="data/world_model/m2.pt",
+        execution_state="completed",
+        runs_executed=360,
+        result_current=True,
+        result_status="research_only_default_off",
+        promotion_supported=False,
+        promotion_gates={
+            "controlled_micro_xg_effect_is_meaningful": False,
+        },
+    )
+
+    assert control["status"] == "completed_no_promotion"
+    assert control["next_action"]["id"] == "retain_research_only_and_diagnose"
+    assert control["next_action"]["training_required"] is False
+    assert control["next_action"]["formal_matches_required"] is False
+    assert control["next_action"]["commands"] == [
+        "data/evaluation/m2_mirrored_policy_diagnosis_v1.json",
+        "docs/M2_MIRRORED_POLICY_DIAGNOSIS_V1.md",
+    ]
+    assert control["diagnosis_artifact"] == (
+        "data/evaluation/m2_mirrored_policy_diagnosis_v1.json"
+    )
+    assert control["zero_execution_projection"] is True
+
+
+def test_m2_control_requires_resume_rejects_partial_budget_with_result():
     with pytest.raises(ValueError, match="complete fixed run budget"):
         _control(
             candidate_evidence_available=True,

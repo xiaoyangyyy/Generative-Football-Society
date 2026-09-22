@@ -261,6 +261,7 @@ def test_root_is_accessible_and_hardened(tmp_path):
     assert "function renderM2ResearchControl(" in document
     assert "m2?.research_control" in document
     assert "control.next_action||{}" in document
+    assert "control.diagnosis_artifact" in document
     assert "m2ResearchControlCommandList.append" in document
     assert "不会从网页启动训练或正式实验" in document
     assert 'name="experience"' in document

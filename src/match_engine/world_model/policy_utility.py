@@ -378,11 +378,10 @@ def policy_utility_validation_gate(
     )
     if attacking_home is None and set(perspective_profiles) == {"home", "away"}:
         perspective_gates = {
-            label: _policy_utility_profile_gate(
+            label: policy_utility_validation_gate(
                 contract,
-                perspective_profiles.get(label) or {},
                 action_kind=action_kind,
-                actor_perspective=label,
+                attacking_home=(label == "home"),
                 minimum_samples=minimum_samples,
                 minimum_groups=minimum_groups,
                 minimum_skill=minimum_skill,

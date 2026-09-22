@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "state": "completed",
+  "updated_at": "2026-09-16T18:22:31.491593+00:00",
+  "pid": 2672,
+  "hostname": "DESKTOP-HG1CIML",
+  "config_fingerprint": "b5581e3ba3c2a6c9df9ba5b15b122df7961b00cfe932040a578b0566100c4eb2",
+  "config": {
+    "trainer": "world_model_v9",
+    "training_contract_sha256": "845f4edf6e7b85be2618962b9fd1f8ac1697a10393f513abb9463f695ddd1b1a",
+    "dataset_identity_sha256": "53f987b096c13cfff2c7de17846d5aba12081c7a75e6acebdbc7dc1b8ca0eac9",
+    "epochs": 45,
+    "batch_size": 128,
+    "learning_rate": 0.0003,
+    "transition": "gru",
+    "transition_ensemble_size": 3,
+    "multi_step_loss_weight": 0.25,
+    "multi_step_warmup_fraction": 0.2,
+    "semantic_event_loss_weight": 0.2,
+    "policy_utility_loss_weight": 0.25,
+    "dataset_manifest": "D:\\Generative-Football-Society\\data\\world_model\\dataset_manifest_formal_v8_candidate.json",
+    "output": "D:\\Generative-Football-Society\\data\\world_model\\m2_outcome_aligned_candidate.pt"
+  },
+  "total_epochs": 45,
+  "resumed": false,
+  "current_attempt_id": "d671634210694e079a25ee6cb8b61ab1",
+  "attempts": [
+    {
+      "attempt_id": "d671634210694e079a25ee6cb8b61ab1",
+      "started_at": "2026-09-16T17:18:48.367162+00:00",
+      "resumed": false,
+      "resume_from_epoch": 0
+    }
+  ],
+  "started_at": "2026-09-16T17:18:48.367162+00:00",
+  "last_checkpoint_epoch": 45,
+  "resumable_from_epoch": 45,
+  "last_completed_epoch": 45,
+  "last_metrics": {
+    "loss": 0.3922200307652757,
+    "batches": 74,
+    "train_rows": 9497,
+    "validation_rows": 1793,
+    "two_step_pairs": 9444,
+    "two_step_weight": 0.25,
+    "two_step_loss": 0.010358350351452827,
+    "semantic_event_weight": 0.2,
+    "policy_utility_weight": 0.25
+  },
+  "artifact": "D:\\Generative-Football-Society\\data\\world_model\\m2_outcome_aligned_candidate.pt"
+}

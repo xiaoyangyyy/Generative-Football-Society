@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_python313_windows_reference_lock",
-  "generated_at": "2026-08-10T01:34:27+08:00",
+  "generated_at": "2026-09-18T14:24:26.573464+00:00",
   "status": "passed_resolution_and_hash_dry_run",
   "passed": true,
   "target": {
@@ -16,9 +16,9 @@
     "pip_dry_run": "python -m pip install --dry-run --ignore-installed --require-hashes --only-binary=:all: -r requirements-windows-py313.lock"
   },
   "artifact_sha256": {
-    "requirements-windows-py313.in": "a29ec616000be4152ddb122e75409922ae18b874294013dc9fb7baa82e2e207b",
-    "requirements-windows-py313.lock": "ee8b00e688ab1f11127feff03b323731ab0cfcf94ff959e5caca9ec54e59146c",
-    "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json": "9a93c841f80e129493dea9bf91d6ea0ee3ee47a0b1a2548070115c5bb4aaed8b"
+    "requirements-windows-py313.in": "ad9129ee2df0d52e1bfec4222c6f3f10b618f93464e6f855cde0f99017a54e93",
+    "requirements-windows-py313.lock": "c18466d12f29f0fef2183945622c2dc7ad3852f4884829bcb92f47067edced32",
+    "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json": "2f238933ca5694500276708ddbfd28f2cf0030552548cdae932cb1d713194323"
   },
   "observations": {
     "all_packages_exact": true,

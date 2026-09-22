@@ -54,6 +54,185 @@ def _decision_certainty(runtime) -> float:
     return 1.0 - float(np.clip(uncertainty, 0.0, 1.0))
 
 
+_MAX_HIGH_LEVEL_PASS_CANDIDATES = 4
+
+
+def _team_players(state, team_id) -> list:
+    resolver = getattr(state, "team", None)
+    try:
+        team = resolver(team_id) if callable(resolver) else resolver
+    except (TypeError, AttributeError, KeyError):
+        return []
+    players = getattr(team, "players", None)
+    if players is None:
+        return []
+    return list(players)
+
+
+def _executable_pass_receivers(state, carrier) -> list:
+    carrier_id = getattr(carrier, "player_id", None)
+    teammates = []
+    for player in _team_players(state, getattr(carrier, "team_id", None)):
+        if not bool(getattr(player, "on_pitch", True)):
+            continue
+        if getattr(player, "player_id", None) == carrier_id:
+            continue
+        if str(getattr(player, "role", "")).upper() == "GK":
+            continue
+        teammates.append(player)
+    return teammates
+
+
+def _select_high_level_pass_receivers(state, carrier, attacking_home: bool) -> list:
+    teammates = _executable_pass_receivers(state, carrier)
+    if not teammates:
+        return []
+    carrier_xy = np.asarray(getattr(carrier, "position", [0.5, 0.5]), dtype=float)[:2]
+
+    def attacking_progress(player) -> float:
+        x = float(np.asarray(player.position, dtype=float)[0])
+        return x if attacking_home else (1.0 - x)
+
+    def distance(player) -> float:
+        xy = np.asarray(player.position, dtype=float)[:2]
+        return float(np.linalg.norm(xy - carrier_xy))
+
+    ranked = sorted(
+        teammates,
+        key=lambda player: (-attacking_progress(player), distance(player)),
+    )
+    return ranked[:_MAX_HIGH_LEVEL_PASS_CANDIDATES]
+
+
+def _score_executable_pass_candidates(
+    runtime,
+    state,
+    carrier,
+    observation: np.ndarray,
+    *,
+    attacking_home: bool,
+    horizon_s: float,
+    legacy_authority: dict,
+    sequence_policy: bool,
+) -> tuple[tuple[np.ndarray, float, float, dict] | None, dict]:
+    receivers = _select_high_level_pass_receivers(
+        state, carrier, attacking_home,
+    )
+    encoding_meta = {
+        "pass_encoding": "encode_pass_candidate",
+        "scored_pass_candidates": 0,
+    }
+    if not receivers:
+        return None, {
+            **encoding_meta,
+            "reason": "no_executable_pass_candidates",
+        }
+    carrier_x = float(np.asarray(carrier.position, dtype=float)[0])
+    best: tuple[np.ndarray, float, float, dict, object] | None = None
+    last_fail: dict | None = None
+    scored = 0
+    for receiver in receivers:
+        target = np.asarray(receiver.position, dtype=np.float32)
+        receiver_x = float(target[0])
+        progressed = (
+            receiver_x > carrier_x + 0.08 if attacking_home
+            else receiver_x < carrier_x - 0.08
+        )
+        action = encode_pass_candidate(
+            state, carrier, receiver,
+            "through" if progressed else "short",
+            target,
+            success_p=0.72,
+            horizon_s=horizon_s,
+        )
+        value, certainty, value_gate = _policy_value(
+            runtime, observation, action,
+            action_kind="pass",
+            attacking_home=attacking_home,
+            legacy_authority=legacy_authority,
+            sequence_policy=sequence_policy,
+        )
+        if value is None:
+            last_fail = dict(value_gate)
+            continue
+        scored += 1
+        if best is None or value > best[1]:
+            best = (action, value, certainty, dict(value_gate), receiver)
+    encoding_meta["scored_pass_candidates"] = scored
+    if best is None:
+        fail = last_fail or {}
+        return None, {
+            **fail,
+            **encoding_meta,
+            "reason": str(fail.get(
+                "reason", "policy_utility_evidence_gate_closed",
+            )),
+        }
+    action, value, certainty, value_gate, receiver = best
+    value_gate.update(encoding_meta)
+    value_gate["selected_receiver_id"] = str(
+        getattr(receiver, "player_id", ""),
+    )
+    return (action, value, certainty, value_gate), encoding_meta
+
+
+def _activate_zero_persistence_alternative(
+    gates: dict[str, dict],
+    labels: List[str],
+    feasible: set[str],
+    *,
+    planner_blend: float,
+) -> None:
+    if not world_model_outcome_aligned_policy_enabled():
+        return
+    if "hold" not in labels or "hold" not in feasible:
+        return
+    pass_gate = gates.get("pass") or {}
+    try:
+        pass_advantage = float(pass_gate.get("model_advantage", 0.0))
+    except (TypeError, ValueError):
+        return
+    if not pass_gate.get("open") or pass_advantage >= 0.0:
+        return
+    for action in ("shot", "cross"):
+        alt = gates.get(action) or {}
+        try:
+            alt_advantage = float(alt.get("model_advantage", 0.0))
+        except (TypeError, ValueError):
+            alt_advantage = 0.0
+        if (
+            alt.get("open")
+            and alt.get("direct_action_authorized")
+            and alt_advantage > 1e-12
+        ):
+            return
+    hold_advantage = float(np.clip(-pass_advantage, 0.0, 0.35))
+    hold_gate = gates.setdefault("hold", {})
+    hold_gate.update({
+        "open": True,
+        "reference_alternative": True,
+        "direct_action_authorized": False,
+        "authority_type": "counterfactual_reference_only",
+        "quality_kind": "reference",
+        "reason": "validated_zero_persistence_alternative",
+        "model_advantage": hold_advantage,
+        "policy_blend": float(pass_gate.get("policy_blend", planner_blend)),
+        "decision_confidence": float(pass_gate.get(
+            "decision_confidence", pass_gate.get("confidence", 0.0),
+        )),
+        "decision_certainty": float(pass_gate.get(
+            "decision_certainty", pass_gate.get("certainty", 0.0),
+        )),
+        "confidence": float(pass_gate.get(
+            "decision_confidence", pass_gate.get("confidence", 0.0),
+        )),
+        "certainty": float(pass_gate.get(
+            "decision_certainty", pass_gate.get("certainty", 0.0),
+        )),
+        "value_source": "same_state_zero_transition_utility",
+    })
+
+
 def _policy_value(
     runtime,
     observation: np.ndarray,
@@ -428,7 +607,7 @@ def pass_candidate_policy_probabilities(
         )
     blend = float(getattr(runtime.cfg, "planner_blend", 0.0))
     blend_weight = float(np.clip(
-        blend * min(confidence, certainty), 0.0, 0.35,
+        blend * certainty, 0.0, min(max(0.0, blend), 0.35),
     ))
     if spread <= 1e-9 or blend_weight <= 0.0:
         return base, {
@@ -527,18 +706,6 @@ def action_imagination_adjustments(
     out = utils.copy()
     feasible = set(feasible_actions or labels)
     horizon_s = float(getattr(state, "_wm_horizon_s", 10.0))
-    shared_pass_target = np.asarray(
-        state.ball.position, dtype=np.float32,
-    ).copy()
-    shared_pass_target[0] = np.clip(
-        shared_pass_target[0] + (0.14 if attacking_home else -0.14),
-        0.02,
-        0.98,
-    )
-    shared_pass_action = encode_high_level_action(
-        "pass", target=shared_pass_target, horizon_s=horizon_s,
-    )
-    shared_pass_action[13] = 0.72
     shared_hold_action = encode_high_level_action(
         "hold", target=np.asarray(state.ball.position), horizon_s=horizon_s,
     )
@@ -571,80 +738,89 @@ def action_imagination_adjustments(
         gates["pass"]["confidence"] = confidence
         gates["pass"].update(authority)
         if authority["authorized"] and confidence > 0.0:
-            pass_action = shared_pass_action
-            hold_action = shared_hold_action
             m2_enabled = world_model_outcome_aligned_policy_enabled()
-            pass_value, pass_certainty, value_gate = _policy_value(
-                runtime, observation, pass_action,
-                action_kind="pass",
+            scored, encoding_meta = _score_executable_pass_candidates(
+                runtime, state, carrier, observation,
                 attacking_home=attacking_home,
+                horizon_s=horizon_s,
                 legacy_authority=authority,
                 sequence_policy=m2_enabled,
             )
-            if m2_enabled:
-                hold_value = 0.0
-                hold_certainty = 1.0
-                hold_gate = {
-                    "authorized": False,
-                    "authority": 0.0,
-                    "authority_type": "counterfactual_reference_only",
-                    "reason": "exact_zero_persistence_reference",
-                    "value_source": "same_state_zero_transition_utility",
-                    "baseline": "same_state_zero_transition_utility",
-                }
-            else:
-                hold_value, hold_certainty, hold_gate = _policy_value(
-                    runtime, observation, hold_action,
-                    action_kind="pass",
-                    attacking_home=attacking_home,
-                    legacy_authority=authority,
-                )
-            if pass_value is None or hold_value is None:
+            if scored is None:
                 gates["pass"].update({
-                    **value_gate,
+                    **encoding_meta,
                     "open": False,
                     "direct_action_authorized": False,
-                    "reason": str(value_gate.get(
-                        "reason", "policy_utility_evidence_gate_closed",
+                    "reason": str(encoding_meta.get(
+                        "reason", "no_executable_pass_candidates",
                     )),
                 })
             else:
-                confidence = min(
-                    confidence,
-                    float(value_gate.get(
-                        "decision_confidence", confidence,
-                    )),
-                )
-                certainty = min(pass_certainty, hold_certainty)
-                advantage = float(np.clip(
-                    pass_value - hold_value, -0.35, 0.35,
-                ))
-                adjustment = finite_float(
-                    float(runtime.cfg.planner_blend)
-                    * confidence * certainty * advantage,
-                    0.0,
-                )
-                adjustment = float(np.clip(adjustment, -0.35, 0.35))
-                out[pass_index] += adjustment
-                adjustments["pass"] = adjustment
-                gates["pass"].update({
-                    **value_gate,
-                    "open": True,
-                    "direct_action_authorized": True,
-                    "reason": (
-                        "validated_outcome_aligned_pass_vs_zero_persistence"
-                        if world_model_outcome_aligned_policy_enabled()
-                        else "validated_pass_vs_hold_advantage"
-                    ),
-                    "pass_value": pass_value,
-                    "hold_value": hold_value,
-                    "model_advantage": advantage,
-                    "certainty": certainty,
-                    "decision_certainty": certainty,
-                    "decision_confidence": confidence,
-                    "policy_blend": float(runtime.cfg.planner_blend),
-                    "hold_value_gate": hold_gate,
-                })
+                _pass_action, pass_value, pass_certainty, value_gate = scored
+                if m2_enabled:
+                    hold_value = 0.0
+                    hold_certainty = 1.0
+                    hold_gate = {
+                        "authorized": False,
+                        "authority": 0.0,
+                        "authority_type": "counterfactual_reference_only",
+                        "reason": "exact_zero_persistence_reference",
+                        "value_source": "same_state_zero_transition_utility",
+                        "baseline": "same_state_zero_transition_utility",
+                    }
+                else:
+                    hold_value, hold_certainty, hold_gate = _policy_value(
+                        runtime, observation, shared_hold_action,
+                        action_kind="pass",
+                        attacking_home=attacking_home,
+                        legacy_authority=authority,
+                    )
+                if pass_value is None or hold_value is None:
+                    gates["pass"].update({
+                        **value_gate,
+                        "open": False,
+                        "direct_action_authorized": False,
+                        "reason": str(value_gate.get(
+                            "reason", "policy_utility_evidence_gate_closed",
+                        )),
+                    })
+                else:
+                    confidence = min(
+                        confidence,
+                        float(value_gate.get(
+                            "decision_confidence", confidence,
+                        )),
+                    )
+                    certainty = min(pass_certainty, hold_certainty)
+                    advantage = float(np.clip(
+                        pass_value - hold_value, -0.35, 0.35,
+                    ))
+                    adjustment = finite_float(
+                        float(runtime.cfg.planner_blend)
+                        * confidence * certainty * advantage,
+                        0.0,
+                    )
+                    adjustment = float(np.clip(adjustment, -0.35, 0.35))
+                    out[pass_index] += adjustment
+                    adjustments["pass"] = adjustment
+                    gates["pass"].update({
+                        **value_gate,
+                        "open": True,
+                        "direct_action_authorized": True,
+                        "reason": (
+                            "validated_outcome_aligned_pass_vs_zero_persistence"
+                            if world_model_outcome_aligned_policy_enabled()
+                            else "validated_pass_vs_hold_advantage"
+                        ),
+                        "pass_value": pass_value,
+                        "hold_value": hold_value,
+                        "model_advantage": advantage,
+                        "certainty": certainty,
+                        "decision_certainty": certainty,
+                        "decision_confidence": confidence,
+                        "policy_blend": float(runtime.cfg.planner_blend),
+                        "hold_value_gate": hold_gate,
+                    })
         else:
             gates["pass"]["reason"] = "pass_quality_gate_closed"
     if "shot" in labels and "shot" in feasible:
@@ -804,6 +980,10 @@ def action_imagination_adjustments(
             gates["cross"]["reason"] = "cross_quality_gate_closed"
     elif "cross" in labels:
         gates["cross"]["reason"] = "action_infeasible"
+    _activate_zero_persistence_alternative(
+        gates, labels, feasible,
+        planner_blend=float(runtime.cfg.planner_blend),
+    )
     from src.match_engine.world_model.action_adoption import (
         register_action_policy_opportunity,
     )

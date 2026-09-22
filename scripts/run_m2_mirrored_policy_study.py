@@ -251,22 +251,30 @@ def validate_protocol(protocol: dict[str, Any]) -> dict[str, int]:
     if integrity.get("code_identity_mode") != "transitive_local_imports_v1":
         raise ValueError("M2 transitive code identity mode changed")
     if integrity.get("identity_amendment") != {
-        "version": 5,
+        "version": 6,
         "reasons": [
-            "manual_roots_did_not_bind_local_import_closure",
-            "joint_changing_action_policy_utility_was_not_trained_or_validated",
-            "runtime_continuation_branches_were_not_support_qualified",
-            "m2_pass_target_ranking_bypassed_sequence_utility",
             (
-                "pooled_home_away_continuation_support_was_not_valid_"
-                "for_mirrored_control"
+                "influenced_authorization_was_not_attributable_"
+                "expected_counterfactual_change"
+            ),
+            (
+                "high_level_pass_used_synthetic_encoding_instead_of_"
+                "executable_pass_candidates"
+            ),
+            (
+                "pass_suppression_versus_zero_persistence_had_no_"
+                "validated_alternative"
+            ),
+            (
+                "authority_blend_compounded_decision_confidence_below_"
+                "counterfactual_floor"
             ),
         ],
         "timing": "before_candidate_binding_training_and_formal_execution",
         "candidate_bound_before_amendment": False,
         "training_runs_before_amendment": 0,
         "formal_runs_before_amendment": 0,
-        "supersedes_version": 4,
+        "supersedes_version": 5,
     }:
         raise ValueError("M2 pre-execution identity amendment changed")
     power = protocol.get("power_analysis") or {}

@@ -507,8 +507,8 @@
     "code_sha256": {
       "scripts/estimate_m2_policy_power.py": "7e455529549df27b8e6318a99774f28bbaa5ed97a1b3afc485ba96de52532e18",
       "scripts/preflight_m2_training.py": "cc7e899df05129974bd911c8a55f9d78ea1fd5336408d3ffb3aa69fb14a1385b",
-      "scripts/run_m2_mirrored_policy_study.py": "17125774cdd10ed69898bc2e740b71fef3c2f8f1479163ed9640957b5a1346a4",
-      "scripts/train_world_model.py": "db4651132a64a9c952e6948d4300c008dd8bce75c9cea9b837458bb33723c67e",
+      "scripts/run_m2_mirrored_policy_study.py": "cc8cb1423554e5007796c55f2e1e0f48acd526b9a82c621cd259bb2dea7253ce",
+      "scripts/train_world_model.py": "84b9fefca6a59ec832c10179ed428c88590356c88a38e769753002bd03ae4ac5",
       "scripts/validate_world_model.py": "81b7c61d9fa05ec7cd6966c255c82af3ec3c2d6b8d4ee8f2e9262deea9fa9fcc",
       "src/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "src/data_engine/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -598,7 +598,7 @@
       "src/match_engine/tactical_profile.py": "5b9390c7b353479970c1a90d30fdab2c949cb0d64d62892f191e8d34c5e21c8d",
       "src/match_engine/wall_pass.py": "578fdb2a79e48971b75d87cbfdf280f044eabab647583c9a829729c5fe389f8d",
       "src/match_engine/world_model/__init__.py": "b84bdb6db3c5029fd9df60504db1b7eb2070c8ac2afcd3cdac31bcaa2009ed5e",
-      "src/match_engine/world_model/action_adoption.py": "92c3d63f2764e3ed4f49e273ed28df72f77ba98f591b1a84f3883e229f4669ee",
+      "src/match_engine/world_model/action_adoption.py": "836ad4e1903d357ab4c68504785a39803922bbafc727e7a290f0bd0f3fd21c1b",
       "src/match_engine/world_model/action_codec.py": "3c55bd740c05523a7e987adbe7db9bd914e831afb6411bf538b64bccc5000b2d",
       "src/match_engine/world_model/active_learning.py": "4a2a6ebd06c7118d15f88bbbe63f8f9639bd40c3aefc7cb373f6fb8b62f4c4fe",
       "src/match_engine/world_model/active_probe.py": "3e54e54b752cba0b658c8030dda58ef77cd7b149bfa24b0502b0142a9318f19a",
@@ -655,11 +655,11 @@
       "src/match_engine/world_model/opponent_meta_memory.py": "9c6f73b8c30025acf5e94c2fa16dc6010d43220632dad983b7ba001ae11ec584",
       "src/match_engine/world_model/opponent_response.py": "edf8cc42b3e69a18654dc34f472077975102b6b8d822b90ca20445a111969287",
       "src/match_engine/world_model/outcome_calibration.py": "1a5f6227a9e7e7495da490a11a5df5b738673b072a3dd8886ad951135aeb76b5",
-      "src/match_engine/world_model/planner.py": "3d965055e724dc43d4129313d48052e322cbbd023057289a9f011be07b9e9739",
+      "src/match_engine/world_model/planner.py": "7e65cab3c58f2dbf793d107777257c3e79a94499600a51453542d50adabae9a1",
       "src/match_engine/world_model/policy_experiment.py": "779f2c70af850a038611ea4a391bc1e26f099d3a6bcb236f53fa0116e4bf5953",
       "src/match_engine/world_model/policy_outcomes.py": "211d99e3a7e28ea773ef269356c2133d3e85ede665ec7c822831f3e7d4940888",
       "src/match_engine/world_model/policy_prediction.py": "b34fae84ebee6436d0bd3ad9c5595a08a5df8e97ec8e38f9fb92d1a9201cae52",
-      "src/match_engine/world_model/policy_utility.py": "48fc7bc18d8d024b1a62473c178993a5db23e4dcf05cadbbee6b4284e8ddf0b7",
+      "src/match_engine/world_model/policy_utility.py": "5b8b06898b0d2353bd772f8582b2230cbc49c5dad1e3180c00726425c6acfd3a",
       "src/match_engine/world_model/predictive_distribution.py": "dbe9cacb77697433e3698f251356c0ae4713bebe831f4fa3fe1b7fdf33079092",
       "src/match_engine/world_model/predictive_mechanism.py": "a623e794df6281fc97ec5ec21737f415c93b9b2d1ce459c5e5d144417e742bed",
       "src/match_engine/world_model/predictive_mechanism_chain.py": "8dbcad69b461d8fd97031d0e130c7c64dbfad4b17cd951364639cc2d93c66bec",
@@ -675,6 +675,7 @@
       "src/match_engine/world_model/risk_certificate.py": "68bb6707cc9af78efe41d042423877a55c1e0235486a3501a11e726b971ba0ee",
       "src/match_engine/world_model/risk_preference.py": "751f16fff55f76cd733eb9cd081bcff79e32ef64c8c00473f2b9838c686203be",
       "src/match_engine/world_model/risk_preference_evaluation.py": "202ac5d881baee8d66cbf70485fefa1147ad9d71294c73d1b76df26a19fcc91c",
+      "src/match_engine/world_model/rollout_calibration.py": "ab9ddd27c2de8f1ea77c600c66afa7ddea1b9619241bd85422ef6c1de99f36b9",
       "src/match_engine/world_model/schema.py": "e527a782135ec15394c6fc0fb275c194ccd89b2c7fda77091044a56ca09ef6d9",
       "src/match_engine/world_model/semantic_event_training.py": "6742494e6aa64395f9146d970776d454c11c9be773f1c2e560f46c577282a795",
       "src/match_engine/world_model/shot_head.py": "9867da1c6cac562d57ba09de18f1e489835a796f99b5ddceedc50027c8bb00a6",
@@ -757,9 +758,9 @@
       "src/training/job.py": "1a2df225ecce16529231320f7e4e9a3a646d80363797e0cb8a1f23015c817bf1"
     },
     "manifest_path": "data/world_model/dataset_manifest_formal_v8_candidate.json",
-    "manifest_sha256": "1f3b957ca4fd756c32d30dad2b8ce87c73edab4bb497d8bc12f604a16b717f8d",
+    "manifest_sha256": "753120101b7cb9c7cd44c34aefced23cc5339d62be341405554612a705ac8ee9",
     "protocol_path": "data/evaluation/m2_mirrored_policy_protocol_v1.json",
-    "protocol_sha256": "7fc0eb3a276f2f411242d8bfe72b85474230e33de564c1e30445a425cfe02e54"
+    "protocol_sha256": "2d3f806c6e1e005a627c7f01c7848547b0a20ffeeb2a43b091e1a71cc4559727"
   },
   "frozen_training_command": "python scripts/train_world_model.py --trace-dir data/world_model/traces --dataset-manifest data/world_model/dataset_manifest_formal_v8_candidate.json --epochs 45 --batch-size 128 --lr 0.0003 --transition gru --transition-ensemble-size 3 --multi-step-loss-weight 0.25 --multi-step-warmup-fraction 0.2 --semantic-event-loss-weight 0.2 --policy-utility-loss-weight 0.25 --out data/world_model/m2_outcome_aligned_candidate.pt --run-dir data/training/runs/m2_outcome_aligned_candidate",
   "manifest": "data/world_model/dataset_manifest_formal_v8_candidate.json",
@@ -789,7 +790,7 @@
   "next_action": "run the frozen M2 training command",
   "protocol_id": "m2-mirrored-policy-v1",
   "ready": true,
-  "recorded_at": "2026-09-09T09:09:54.230310+00:00",
+  "recorded_at": "2026-09-18T15:16:12.713605+00:00",
   "schema_version": 1,
   "sealed_test": {
     "rows_loaded_for_model_selection": 0,
@@ -1260,8 +1261,8 @@
         "version": 2
       }
     },
-    "pass_utility_persistence_mse": 0.00854591196204976,
-    "pass_utility_standard_deviation": 0.07675295880354169,
+    "pass_utility_persistence_mse": 0.008545911962049759,
+    "pass_utility_standard_deviation": 0.0767529588035417,
     "rows": 9497,
     "two_step_groups": 53,
     "two_step_pairs": 9444

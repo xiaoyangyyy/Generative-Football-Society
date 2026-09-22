@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
-  "serialNumber": "urn:uuid:7de0dcbc-eec4-50f8-9ed4-f916e71e3d32",
+  "serialNumber": "urn:uuid:9e178ed6-c32a-5b75-95ea-a15329210567",
   "version": 1,
   "metadata": {
     "tools": {
@@ -38,7 +38,7 @@
         },
         {
           "name": "gfs:lock-sha256",
-          "value": "ee8b00e688ab1f11127feff03b323731ab0cfcf94ff959e5caca9ec54e59146c"
+          "value": "c18466d12f29f0fef2183945622c2dc7ad3852f4884829bcb92f47067edced32"
         },
         {
           "name": "gfs:dependency-edge-scope",

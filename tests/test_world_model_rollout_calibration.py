@@ -60,3 +60,22 @@ def test_runtime_imagination_applies_blend_only_to_multi_step_rollout():
         observation + 0.4 * (raw_two.next_obs - observation),
         atol=1e-6,
     )
+
+
+def test_trainer_dev_calibration_shrinks_two_step_toward_persistence():
+    pytest.importorskip("torch")
+    import torch
+    from scripts.train_world_model import _calibrate_grouped_two_step_rollout
+
+    initial = np.zeros((8, 4), dtype=np.float32)
+    raw = np.ones((8, 4), dtype=np.float32)
+    target = np.full((8, 4), 0.32, dtype=np.float32)
+    members = torch.from_numpy(np.stack([raw, raw], axis=0))
+    calibrated, report = _calibrate_grouped_two_step_rollout(
+        initial, members, target, np.ones(4, dtype=np.float32),
+        )
+    assert report["selected_blend"] == pytest.approx(0.32, abs=0.02)
+    assert report["skill_vs_persistence"] > 0.02
+    assert report["split"] == "dev"
+    mean = calibrated.mean(dim=0).numpy()
+    assert np.mean(np.abs(mean - target)) < np.mean(np.abs(raw - target))

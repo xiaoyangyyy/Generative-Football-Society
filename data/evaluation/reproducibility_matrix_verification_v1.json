@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_supported_reproducibility_profile_matrix",
-  "generated_at": "2026-08-09T17:41:34.180238+00:00",
+  "generated_at": "2026-09-18T14:24:36.139997+00:00",
   "status": "passed",
   "passed": true,
   "profile_count": 2,
@@ -40,14 +40,14 @@
     }
   ],
   "artifact_sha256": {
-    "requirements-linux-py312.in": "277f4281f1050cbf9df63e7455c08b95e10e2a4056ab5d3c4458de9a5c307b3f",
-    "requirements-linux-py312.lock": "690cf8411748689ae98b179913d21149d34c8fa2d1174be8845280781bae8bf1",
-    "data/evaluation/target_lock_validation_v1.json": "9f91850dcf9cc1b3aeab53c23b78d4c158a581365ee2ca82f77384080e297315",
-    "data/evaluation/supply_chain_sbom_v1.cdx.json": "78db773e9fd36b1307ba371695b026598af0866558201eacaadc569174fa4aa1",
-    "requirements-windows-py313.in": "a29ec616000be4152ddb122e75409922ae18b874294013dc9fb7baa82e2e207b",
-    "requirements-windows-py313.lock": "ee8b00e688ab1f11127feff03b323731ab0cfcf94ff959e5caca9ec54e59146c",
-    "data/evaluation/windows_lock_validation_v1.json": "48b7c895a77a74685909a78bccec8d92a95471526c1f1a6f5e83ef6f5bd24655",
-    "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json": "9a93c841f80e129493dea9bf91d6ea0ee3ee47a0b1a2548070115c5bb4aaed8b"
+    "requirements-linux-py312.in": "cfd2b64fdc860bfdfae207645c036958c9715843a72eecbc3bc2d11d2a1a6960",
+    "requirements-linux-py312.lock": "df662d50a9cace72ebb48199850081586c1e90574b1476b8b4f64014b1009460",
+    "data/evaluation/target_lock_validation_v1.json": "b34dccd3138efa3b9e7b007ed1607cfd8746d41f8df8f8b42c5e496ef5f34363",
+    "data/evaluation/supply_chain_sbom_v1.cdx.json": "9f340f0b4c489d63940485bbfb39572a1ffb46940d9d1fbfec2b2658ab7b51bd",
+    "requirements-windows-py313.in": "ad9129ee2df0d52e1bfec4222c6f3f10b618f93464e6f855cde0f99017a54e93",
+    "requirements-windows-py313.lock": "c18466d12f29f0fef2183945622c2dc7ad3852f4884829bcb92f47067edced32",
+    "data/evaluation/windows_lock_validation_v1.json": "92654c4fedc2a85288f1a0028ecaf144a0714963c54d55f3a475e7649afb51a7",
+    "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json": "2f238933ca5694500276708ddbfd28f2cf0030552548cdae932cb1d713194323"
   },
   "external_calls_made": false,
   "matches_executed": 0,

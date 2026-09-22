@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "verification": "gfs_python312_linux_target_lock",
-  "generated_at": "2026-08-10T01:20:00+08:00",
+  "generated_at": "2026-09-18T14:23:29.510610+00:00",
   "status": "passed_resolution_and_hash_dry_run",
   "passed": true,
   "target": {
@@ -16,9 +16,9 @@
     "pip_dry_run": "python -m pip install --dry-run --ignore-installed --require-hashes --only-binary=:all: --platform manylinux_2_28_x86_64 --platform manylinux_2_27_x86_64 --platform manylinux_2_17_x86_64 --platform manylinux2014_x86_64 --platform manylinux2010_x86_64 --platform manylinux1_x86_64 --python-version 3.12 --implementation cp --abi cp312 --target <temporary-directory> -r requirements-linux-py312.lock"
   },
   "artifact_sha256": {
-    "requirements-linux-py312.in": "277f4281f1050cbf9df63e7455c08b95e10e2a4056ab5d3c4458de9a5c307b3f",
-    "requirements-linux-py312.lock": "690cf8411748689ae98b179913d21149d34c8fa2d1174be8845280781bae8bf1",
-    "data/evaluation/supply_chain_sbom_v1.cdx.json": "78db773e9fd36b1307ba371695b026598af0866558201eacaadc569174fa4aa1"
+    "requirements-linux-py312.in": "cfd2b64fdc860bfdfae207645c036958c9715843a72eecbc3bc2d11d2a1a6960",
+    "requirements-linux-py312.lock": "df662d50a9cace72ebb48199850081586c1e90574b1476b8b4f64014b1009460",
+    "data/evaluation/supply_chain_sbom_v1.cdx.json": "9f340f0b4c489d63940485bbfb39572a1ffb46940d9d1fbfec2b2658ab7b51bd"
   },
   "observations": {
     "all_packages_exact": true,

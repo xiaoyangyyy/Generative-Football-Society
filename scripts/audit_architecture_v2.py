@@ -1242,7 +1242,7 @@ def main() -> int:
         ),
         "world_model_action_authority_uses_validated_feasible_simplex": (
             all(token in action_adoption_controller for token in (
-                "validated_action_simplex_v3",
+                "validated_action_simplex_v4",
                 "applied_policy_actions",
                 "action_signal_breakdown",
                 "applied_action_authority",
@@ -1300,7 +1300,9 @@ def main() -> int:
             all(token in action_adoption_controller for token in (
                 '_DIRECTLY_VALIDATED_ACTIONS = frozenset({"pass", "shot", "cross"})',
                 '_REFERENCE_ACTION = "hold"',
-                'or str(action) not in _DIRECTLY_VALIDATED_ACTIONS',
+                "def _mixable_action_gate(",
+                'gate.get("reference_alternative") is True',
+                "str(labels[index]) in _DIRECTLY_VALIDATED_ACTIONS",
                 '"reference_action_directly_authorized": False',
                 '"reference_action_breakdown": {',
                 '"direct_signal_opportunities": 0',
@@ -3424,7 +3426,17 @@ def main() -> int:
             and m2_preflight.get("checks", {}).get(
                 "two_step_policy_utility_sequence_objective_will_activate"
             ) is True
-            and (m2_integrity.get("identity_amendment") or {}).get("version") == 5
+            and (m2_integrity.get("identity_amendment") or {}).get("version") == 6
+            and all(token in world_model_planner for token in (
+                '"no_executable_pass_candidates"',
+                '"pass_encoding": "encode_pass_candidate"',
+                "validated_zero_persistence_alternative",
+            ))
+            and all(token in action_adoption_controller for token in (
+                "_MINIMUM_ATTRIBUTABLE_EXPECTED_CHANGE",
+                "reference_alternative",
+                "policy_blend * certainty",
+            ))
             and (m2_protocol.get("candidate") or {}).get(
                 "required_sealed_validation"
             ) == [

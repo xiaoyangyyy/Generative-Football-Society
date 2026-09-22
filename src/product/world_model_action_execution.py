@@ -502,7 +502,10 @@ def project_world_model_action_execution(
     estimator = adoption.get("expected_change_estimator")
     exact_source = estimator == _EXPECTED_CHANGE_ESTIMATOR
     if estimator not in {None, "", _EXPECTED_CHANGE_ESTIMATOR} or (
-        probability_policy_version == "validated_action_simplex_v3"
+        probability_policy_version in {
+            "validated_action_simplex_v3",
+            "validated_action_simplex_v4",
+        }
         and not exact_source
     ):
         raise ValueError("world-model expected action-change estimator is invalid")

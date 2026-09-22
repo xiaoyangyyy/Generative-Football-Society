@@ -17,6 +17,8 @@ _PREFLIGHT_COMMAND = (
     "python scripts/preflight_m2_training.py --out "
     "data/evaluation/m2_training_preflight_v1.json"
 )
+_DIAGNOSIS_JSON = "data/evaluation/m2_mirrored_policy_diagnosis_v1.json"
+_DIAGNOSIS_DOC = "docs/M2_MIRRORED_POLICY_DIAGNOSIS_V1.md"
 
 
 def _stage(stage_id: str, status: str, evidence: str) -> dict[str, str]:
@@ -239,7 +241,9 @@ def build_m2_research_control(
                 if promotion_supported else
                 "Retain research-only status and diagnose without post-hoc promotion."
             ),
-            "commands": [],
+            "commands": (
+                [] if promotion_supported else [_DIAGNOSIS_JSON, _DIAGNOSIS_DOC]
+            ),
             "requires_explicit_authorization": False,
             "training_required": False,
             "formal_matches_required": False,
@@ -293,6 +297,10 @@ def build_m2_research_control(
         "progress_fraction": round(runs / budget, 6) if budget else 0.0,
         "checkpoint_path": checkpoint_path if candidate_evidence_current else None,
         "next_action": next_action,
+        "diagnosis_artifact": (
+            _DIAGNOSIS_JSON
+            if status == "completed_no_promotion" else None
+        ),
         "promotion_gate_results": (
             dict(promotion_gates or {}) if result_current else {}
         ),

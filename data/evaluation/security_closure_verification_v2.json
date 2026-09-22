@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "verification": "gfs_all_known_credential_closure",
+  "generated_at": "2026-09-16T16:36:07.791370+00:00",
+  "status": "verified_closed",
+  "passed": true,
+  "closure_complete": true,
+  "known_incident_count": 2,
+  "revoked_incident_count": 2,
+  "known_incidents_complete": true,
+  "incident_ids": [
+    "deepseek_api_credential",
+    "github_classic_pat"
+  ],
+  "providers": [
+    "deepseek",
+    "github"
+  ],
+  "checks": {
+    "protocol_is_valid": true,
+    "attestation_schema_and_fields_are_exact": true,
+    "all_known_incidents_are_present_exactly_once": true,
+    "every_incident_is_explicitly_revoked_and_signed": true,
+    "revocation_and_signature_timestamps_are_chronological": true,
+    "every_redacted_receipt_is_distinct_confined_and_content_addressed": true,
+    "every_replacement_location_is_safe": true,
+    "current_revision_has_zero_boundary_aware_matches": true,
+    "origin_remote_contains_no_embedded_credential": true
+  },
+  "artifact_sha256": {
+    "data/evaluation/security_closure_v2/attestation.json": "171122d330215c3422c5e62ca35a83595d69b8e94c38a4da41a2be2f3301654b",
+    "data/evaluation/security_closure_v2/deepseek_api_credential_receipt.json": "5cb790068bb81f2689a793cc17d0a5a3c29dfd635adb49c417bca68218f18b3a",
+    "data/evaluation/security_closure_v2/github_classic_pat_receipt.json": "e200d22f964c0ccd5da603b65ea68e36fcb5b02f07151437768a2bb094d394ce"
+  },
+  "secret_pattern_version": "gfs_known_credentials_v2",
+  "maximum_receipt_bytes": 10485760,
+  "boundary_aware_secret_match_count": 0,
+  "boundary_aware_secret_matches_by_family": {
+    "openai_compatible_api_key": 0,
+    "github_classic_pat": 0,
+    "github_fine_grained_pat": 0
+  },
+  "origin_has_embedded_credential": false,
+  "credential_value_stored": false,
+  "provider_calls_made": false,
+  "training_executed": false,
+  "matches_executed": 0
+}
