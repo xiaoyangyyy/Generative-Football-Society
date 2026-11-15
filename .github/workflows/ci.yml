@@ -58,7 +58,7 @@ jobs:
 
       - name: Supply-chain and runtime audits
         run: |
-          python scripts/validate_supply_chain_locks.py --write
+          python scripts/validate_supply_chain_locks.py --profile linux-py312-x86_64-cpu --write
           python scripts/verify_reproducibility_matrix.py
           python scripts/verify_container_images.py
           python scripts/verify_local_runtime.py
@@ -67,12 +67,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: supply-chain-lock-validation
+          name: supply-chain-lock-validation-linux
           if-no-files-found: error
           retention-days: 30
-          path: |
-            data/evaluation/target_lock_validation_v1.json
-            data/evaluation/windows_lock_validation_v1.json
+          path: data/evaluation/target_lock_validation_v1.json
 
       - name: Test suite
         run: |
@@ -96,6 +94,36 @@ jobs:
           python scripts/verify_continuous_v97.py
           python scripts/verify_large_shadow_v98.py
           python scripts/verify_strict_mirror_v99.py
+
+  windows-lock-validation:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: "0.11.13"
+          enable-cache: false
+
+      - name: Validate native Windows hashed install plan
+        run: python scripts/validate_supply_chain_locks.py --profile windows-py313-x86_64-cpu --write
+
+      - name: Upload Windows lock validation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: supply-chain-lock-validation-windows
+          if-no-files-found: error
+          retention-days: 30
+          path: data/evaluation/windows_lock_validation_v1.json
 
   pinned-container-runtime:
     runs-on: ubuntu-24.04

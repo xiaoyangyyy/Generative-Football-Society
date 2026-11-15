@@ -90,22 +90,32 @@ def _commands(profile: dict[str, Any], uv: str) -> tuple[list[str], list[str], l
         "--python-platform", platform, "--require-hashes", "--dry-run", "--system",
         "--torch-backend", "cpu", "--index-strategy", "unsafe-best-match",
     ]
-    abi = "cp" + python.replace(".", "")
     pip_dry_run = [
         sys.executable, "-m", "pip", "install", "--dry-run", "--ignore-installed",
-        "--require-hashes", "--only-binary=:all:", "--python-version", python,
-        "--implementation", "cp", "--abi", abi,
+        "--require-hashes", "--only-binary=:all:",
         "--target", "<temporary-directory>", "-r", lock,
     ]
-    platform_index = pip_dry_run.index("--python-version")
-    targets = LINUX_PLATFORMS if profile["id"].startswith("linux-") else ("win_amd64",)
-    pip_dry_run[platform_index:platform_index] = [
-        part for target in targets for part in ("--platform", target)
-    ]
+    if profile["id"].startswith("linux-"):
+        abi = "cp" + python.replace(".", "")
+        target_options = [
+            part for target in LINUX_PLATFORMS for part in ("--platform", target)
+        ]
+        target_options.extend([
+            "--python-version", python, "--implementation", "cp", "--abi", abi,
+        ])
+        target_index = pip_dry_run.index("--target")
+        pip_dry_run[target_index:target_index] = target_options
     return resolve, uv_dry_run, pip_dry_run
 
 
 def validate_profile(profile: dict[str, Any], uv: str) -> dict[str, Any]:
+    if not profile["id"].startswith("linux-") and (
+        sys.platform != "win32" or sys.version_info[:2] != (3, 13)
+    ):
+        raise RuntimeError(
+            "Windows lock validation requires native Windows with CPython 3.13; "
+            "pip --platform does not retarget dependency environment markers"
+        )
     lock = ROOT / str(profile["lock"])
     packages = parse_hashed_lock(lock.read_text(encoding="utf-8"))
     locked_names = {row["name"] for row in packages}

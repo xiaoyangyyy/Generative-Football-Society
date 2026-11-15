@@ -102,7 +102,12 @@ pip dry-run resolution. `tzdata` and `colorama` are deliberate shims so pip can
 also audit the Linux lock from a Windows host whose marker evaluation follows
 the host. The separate CI-only Linux lock contains exact hashed pytest and Ruff
 closures, so neither test execution nor the `src` static gate depends on tools
-that happen to be preinstalled on the GitHub runner. The matrix intentionally
+that happen to be preinstalled on the GitHub runner. Refresh the observed
+validation evidence with `python scripts/validate_supply_chain_locks.py --profile
+linux-py312-x86_64-cpu --write` on Linux, and the corresponding `windows-py313-x86_64-cpu`
+profile on native Windows with CPython 3.13. The Windows check deliberately does
+not use pip's `--platform`: that option filters wheels but does not retarget
+environment markers. The matrix intentionally
 defines two runtime reference profiles; it does not
 claim every Python/OS combination permitted by `pyproject.toml`. The observed
 Windows import smoke is direct runtime evidence, but it is not a Linux import
