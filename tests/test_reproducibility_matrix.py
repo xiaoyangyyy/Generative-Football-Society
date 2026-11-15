@@ -89,6 +89,13 @@ def test_container_runtime_requires_real_identity_hardening_health_and_cleanup(
         if command[1] == "run" and "--entrypoint" in command:
             return completed(command, '{"uid":10001,"gid":10001,"imports":"ok"}')
         if command[1] == "run" and "--detach" in command:
+            writable_mounts = [
+                command[index + 1]
+                for index, value in enumerate(command)
+                if value == "--tmpfs"
+            ]
+            assert len(writable_mounts) == 4
+            assert all("mode=1777" in mount for mount in writable_mounts)
             return completed(command, "container-id\n")
         if command[1:3] == ["container", "inspect"] and "--format" not in command:
             return completed(
