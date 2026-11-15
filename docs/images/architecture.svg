@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="690" viewBox="0 0 1200 690" role="img" aria-labelledby="title desc">
+  <title id="title">GFS Core 与 Studio 分层架构</title>
+  <desc id="desc">Core 提供稳定比赛能力，Studio 通过契约和能力容器复用，不复制内核。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#eef4fb"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#1769aa"/><stop offset="1" stop-color="#2794c7"/>
+    </linearGradient>
+    <linearGradient id="studio" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#176b60"/><stop offset="1" stop-color="#2b9b83"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#52677d"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="690" rx="22" fill="url(#bg)"/>
+  <text x="600" y="55" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="30" font-weight="700" fill="#16283d">Generative Football Society</text>
+  <text x="600" y="90" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="18" fill="#52677d">两个独立 Python 包，一套轻量插件契约</text>
+
+  <rect x="55" y="125" width="500" height="415" rx="18" fill="url(#core)"/>
+  <text x="305" y="175" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="29" font-weight="700" fill="white">gfs-core</text>
+  <text x="305" y="205" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#e0f2ff">稳定、可恢复的比赛内核</text>
+  <g font-family="Arial,'Microsoft YaHei',sans-serif" font-size="18" fill="#173a5e">
+    <rect x="90" y="235" width="180" height="60" rx="10" fill="#e5f3ff"/><text x="180" y="272" text-anchor="middle">contracts</text>
+    <rect x="335" y="235" width="180" height="60" rx="10" fill="#e5f3ff"/><text x="425" y="272" text-anchor="middle">kernel</text>
+    <rect x="90" y="325" width="180" height="60" rx="10" fill="#e5f3ff"/><text x="180" y="362" text-anchor="middle">match / tournament</text>
+    <rect x="335" y="325" width="180" height="60" rx="10" fill="#e5f3ff"/><text x="425" y="362" text-anchor="middle">society / memory</text>
+    <rect x="90" y="415" width="180" height="60" rx="10" fill="#e5f3ff"/><text x="180" y="452" text-anchor="middle">persistence</text>
+    <rect x="335" y="415" width="180" height="60" rx="10" fill="#e5f3ff"/><text x="425" y="452" text-anchor="middle">bootstrap / api</text>
+  </g>
+  <text x="305" y="515" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#e0f2ff">无 PyTorch · 无 LLM · 无 Web 依赖</text>
+
+  <rect x="645" y="125" width="500" height="415" rx="18" fill="url(#studio)"/>
+  <text x="895" y="175" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="29" font-weight="700" fill="white">gfs-studio</text>
+  <text x="895" y="205" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#e0fff5">研究、训练与产品工作流</text>
+  <g font-family="Arial,'Microsoft YaHei',sans-serif" font-size="18" fill="#15483e">
+    <rect x="680" y="235" width="180" height="60" rx="10" fill="#e4faf1"/><text x="770" y="272" text-anchor="middle">world model</text>
+    <rect x="925" y="235" width="180" height="60" rx="10" fill="#e4faf1"/><text x="1015" y="272" text-anchor="middle">training</text>
+    <rect x="680" y="325" width="180" height="60" rx="10" fill="#e4faf1"/><text x="770" y="362" text-anchor="middle">research / evidence</text>
+    <rect x="925" y="325" width="180" height="60" rx="10" fill="#e4faf1"/><text x="1015" y="362" text-anchor="middle">cognition</text>
+    <rect x="680" y="415" width="180" height="60" rx="10" fill="#e4faf1"/><text x="770" y="452" text-anchor="middle">product / tasks</text>
+    <rect x="925" y="415" width="180" height="60" rx="10" fill="#e4faf1"/><text x="1015" y="452" text-anchor="middle">participants / web</text>
+  </g>
+  <text x="895" y="515" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="17" fill="#e0fff5">模型与认知只作为证据受限的顾问层</text>
+
+  <path d="M570 330 H625" stroke="#52677d" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+  <text x="598" y="305" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="15" fill="#52677d">能力容器</text>
+  <text x="598" y="355" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="15" fill="#52677d">稳定契约</text>
+
+  <rect x="115" y="575" width="970" height="70" rx="14" fill="#ffffff" stroke="#b9c9da"/>
+  <text x="600" y="606" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="18" font-weight="600" fill="#243b53">contracts → kernel → plugins → bootstrap → api</text>
+  <text x="600" y="632" text-anchor="middle" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="15" fill="#52677d">manifest 声明依赖 · 不跨插件 import 实现 · 不反向依赖组合根</text>
+</svg>
