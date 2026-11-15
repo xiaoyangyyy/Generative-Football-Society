@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="520" viewBox="0 0 1600 520" role="img" aria-labelledby="title desc">
+  <title id="title">Generative Football Society 封面海报</title>
+  <desc id="desc">深色球场与战术网络背景，展示 GFS Core、GFS Studio 和物理驱动的足球仿真。</desc>
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071526"/>
+      <stop offset="0.55" stop-color="#0b2741"/>
+      <stop offset="1" stop-color="#073e47"/>
+    </linearGradient>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d8d75"/>
+      <stop offset="1" stop-color="#0a5b59"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#48e5d0"/>
+      <stop offset="1" stop-color="#58b9ff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#52e2cd" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#52e2cd" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="9" stdDeviation="13" flood-color="#000a14" flood-opacity=".45"/>
+    </filter>
+    <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+    <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M80 0H0V80" fill="none" stroke="#80bfd0" stroke-opacity=".08" stroke-width="1"/>
+    </pattern>
+    <marker id="motion" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,8 L11,4 z" fill="#51dec8"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="520" rx="26" fill="url(#night)"/>
+  <rect width="1600" height="520" rx="26" fill="url(#grid)"/>
+  <ellipse cx="1240" cy="235" rx="530" ry="370" fill="url(#glow)"/>
+  <path d="M930 520 L1600 0 V520 Z" fill="#062b3e" opacity=".66"/>
+
+  <g transform="translate(1045 18) rotate(-10 260 260)" opacity=".96">
+    <ellipse cx="265" cy="460" rx="360" ry="56" fill="#001a28" opacity=".55" filter="url(#softGlow)"/>
+    <rect x="-10" y="24" width="550" height="425" rx="32" fill="url(#field)" stroke="#61dac5" stroke-opacity=".42" stroke-width="2"/>
+    <rect x="24" y="58" width="482" height="358" rx="4" fill="none" stroke="#b6fff0" stroke-opacity=".58" stroke-width="2"/>
+    <path d="M265 58V416M24 237H506" stroke="#b6fff0" stroke-opacity=".58" stroke-width="2"/>
+    <circle cx="265" cy="237" r="58" fill="none" stroke="#b6fff0" stroke-opacity=".58" stroke-width="2"/>
+    <circle cx="265" cy="237" r="5" fill="#b6fff0"/>
+    <path d="M24 146H103V328H24M506 146H427V328H506" fill="none" stroke="#b6fff0" stroke-opacity=".58" stroke-width="2"/>
+    <path d="M24 185H65V289H24M506 185H465V289H506" fill="none" stroke="#b6fff0" stroke-opacity=".58" stroke-width="2"/>
+    <path d="M177 237H353" stroke="#59e8d0" stroke-width="3" stroke-dasharray="9 11" opacity=".75"/>
+    <path d="M265 237 C325 173 385 153 458 144" stroke="#59e8d0" stroke-width="4" fill="none" marker-end="url(#motion)"/>
+    <path d="M265 237 C337 266 386 293 437 352" stroke="#59b9ff" stroke-width="3" fill="none" opacity=".85" marker-end="url(#motion)"/>
+    <g fill="#ecfffa" stroke="#57ddc8" stroke-width="3">
+      <circle cx="168" cy="157" r="10"/><circle cx="232" cy="320" r="10"/>
+      <circle cx="342" cy="144" r="10"/><circle cx="374" cy="307" r="10"/>
+      <circle cx="451" cy="143" r="10"/><circle cx="438" cy="352" r="10"/>
+    </g>
+    <circle cx="265" cy="237" r="21" fill="#f4fff9" filter="url(#shadow)"/>
+    <path d="M265 221l15 11-6 18h-18l-6-18z" fill="#183d5c"/>
+    <path d="M265 221l5-9M280 232l10-4M274 250l6 10M256 250l-6 10M250 232l-10-4" stroke="#183d5c" stroke-width="3"/>
+  </g>
+
+  <g font-family="Arial,'Microsoft YaHei',sans-serif">
+    <text x="90" y="72" fill="#62e5d1" font-size="17" font-weight="700" letter-spacing="3">PLUGIN-BASED FOOTBALL SIMULATION</text>
+    <text x="90" y="174" fill="#f4fbff" font-size="68" font-weight="800" letter-spacing="2">Generative</text>
+    <text x="90" y="249" fill="url(#cyan)" font-size="68" font-weight="800" letter-spacing="2">Football Society</text>
+    <text x="94" y="300" fill="#c7e2ed" font-size="26" font-weight="400" letter-spacing="4">生成式足球社会</text>
+    <path d="M94 333H555" stroke="url(#cyan)" stroke-width="3"/>
+    <text x="94" y="375" fill="#d1e9f2" font-size="22">动力学驱动的比赛 · 可恢复的社会记忆 · 可验证的研究证据</text>
+
+    <g filter="url(#shadow)">
+      <rect x="94" y="411" width="245" height="60" rx="30" fill="#103e5b" stroke="#43c8db" stroke-width="1.5"/>
+      <text x="216" y="449" text-anchor="middle" fill="#ebfbff" font-size="23" font-weight="700">GFS CORE</text>
+      <rect x="357" y="411" width="245" height="60" rx="30" fill="#0b4e51" stroke="#4ce1c5" stroke-width="1.5"/>
+      <text x="479" y="449" text-anchor="middle" fill="#eafff7" font-size="23" font-weight="700">GFS STUDIO</text>
+    </g>
+    <text x="640" y="449" fill="#87b6c8" font-size="17">scheduled / physics / hybrid</text>
+  </g>
+</svg>

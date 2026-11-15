@@ -1,4 +1,4 @@
-# Generative Football Society
+![Generative Football Society 封面海报](docs/images/cover.svg)
 
 一个可插拔、可恢复的足球社会仿真平台。项目分为两个独立 Python 包：`gfs-core` 负责比赛与锦标赛，`gfs-studio` 负责世界模型、研究证据、训练和产品工作流。
 
