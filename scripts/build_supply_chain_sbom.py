@@ -13,8 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.infrastructure.supply_chain import build_cyclonedx_sbom  # noqa: E402
-
+from src.infrastructure.supply_chain import build_cyclonedx_sbom
 
 LOCK = ROOT / "requirements-linux-py312.lock"
 DEFAULT_OUTPUT = ROOT / "data/evaluation/supply_chain_sbom_v1.cdx.json"
@@ -50,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     rendered = json.dumps(expected, ensure_ascii=False, indent=2) + "\n"
     if args.write:
         args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(rendered, encoding="utf-8")
+        args.out.write_text(rendered, encoding="utf-8", newline="\n")
         print(json.dumps({
             "status": "written",
             "path": str(args.out),

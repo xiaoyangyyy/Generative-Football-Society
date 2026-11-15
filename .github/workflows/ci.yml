@@ -52,9 +52,21 @@ jobs:
 
       - name: Supply-chain and runtime audits
         run: |
+          python scripts/validate_supply_chain_locks.py --write
           python scripts/verify_reproducibility_matrix.py
           python scripts/verify_container_images.py
           python scripts/verify_local_runtime.py
+
+      - name: Upload lock validation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: supply-chain-lock-validation
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            data/evaluation/target_lock_validation_v1.json
+            data/evaluation/windows_lock_validation_v1.json
 
       - name: Test suite
         run: |

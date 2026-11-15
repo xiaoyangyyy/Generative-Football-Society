@@ -378,6 +378,26 @@ def verify_container_runtime(*, execute: bool = False) -> dict:
         failure = "docker_command_timeout"
         diagnostic = str(exc)
     finally:
+        if container_created and not (
+            checks["health_response_contract_passed"]
+            and checks["docker_health_status_passed"]
+        ):
+            container_state = _run(
+                [
+                    docker, "container", "inspect", container,
+                    "--format", "{{json .State}}",
+                ],
+                timeout=30,
+            )
+            container_logs = _run(
+                [docker, "logs", "--tail", "80", container], timeout=30,
+            )
+            report["runtime_diagnostics"] = {
+                "container_state": _json_output(container_state),
+                "health_probe": _diagnostic(health) if "health" in locals() else None,
+                "container_logs": _diagnostic(container_logs),
+            }
+            failure = failure or "health_check_failed"
         if container_created:
             try:
                 removed = _run([docker, "rm", "--force", container], timeout=60)
