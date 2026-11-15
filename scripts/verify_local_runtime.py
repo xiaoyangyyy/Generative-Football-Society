@@ -70,7 +70,9 @@ def verify_local_runtime() -> dict:
         packages[name] = {
             "expected": version,
             "observed": observed,
-            "version_matches": observed == version,
+            "version_matches": (
+                observed is not None and observed.split("+", 1)[0] == version
+            ),
             "import_name": import_name,
             "imported": imported,
             "import_error": import_error,
