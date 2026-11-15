@@ -217,6 +217,7 @@ def _ci_workflow_is_locked(action_lock: dict, workflow: str) -> bool:
         == {
             "checkout",
             "setup_python",
+            "setup_uv",
             "upload_artifact",
             "attest_build_provenance",
         }
@@ -239,7 +240,10 @@ def _ci_workflow_is_locked(action_lock: dict, workflow: str) -> bool:
                 "python -m ruff check scripts/action_adoption_study.py scripts/run_formal_experiment.py",
                 "python -m ruff check scripts/action_adoption_study.py scripts/run_formal_experiment.py --select C901,PLR0912,PLR0915",
                 'python-version: "3.12.11"',
+                'python-version: "3.13"',
                 "runs-on: ubuntu-24.04",
+                "runs-on: windows-latest",
+                "--profile windows-py313-x86_64-cpu --write",
                 "--deselect tests/test_world_model_semantic_event_training.py::test_trainer_persists_real_one_and_two_step_event_evidence",
                 "deployment_contract_ci_verification_v1.json",
                 "attestations: write",
@@ -250,6 +254,7 @@ def _ci_workflow_is_locked(action_lock: dict, workflow: str) -> bool:
             for mutable in (
                 "actions/checkout@v",
                 "actions/setup-python@v",
+                "astral-sh/setup-uv@v",
                 "actions/upload-artifact@v",
                 "actions/attest-build-provenance@v",
                 "ubuntu-latest",
@@ -258,6 +263,7 @@ def _ci_workflow_is_locked(action_lock: dict, workflow: str) -> bool:
         )
         and workflow.count('python-version: "3.12.11"') == 2
         and workflow.count("runs-on: ubuntu-24.04") == 2
+        and workflow.count("runs-on: windows-latest") == 1
     )
 
 

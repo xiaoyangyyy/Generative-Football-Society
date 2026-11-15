@@ -56,6 +56,7 @@ def test_container_runtime_default_is_non_executing_preflight():
 def test_container_runtime_requires_real_identity_hardening_health_and_cleanup(
     monkeypatch,
 ):
+    monkeypatch.setenv("GITHUB_SHA", "1" * 40)
     image_id = "sha256:" + "a" * 64
 
     def completed(command, stdout="", returncode=0):

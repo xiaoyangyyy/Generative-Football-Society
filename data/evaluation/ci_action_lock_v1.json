@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract_id": "gfs-github-actions-immutable-references-v1",
-  "observed_on": "2026-08-10",
+  "observed_on": "2026-11-15",
   "observation_method": "git ls-remote against each official actions repository and named major tag",
   "actions": [
     {
@@ -10,7 +10,7 @@
       "official_source_url": "https://github.com/actions/checkout",
       "observed_ref": "refs/tags/v4",
       "resolved_commit": "11d5960a326750d5838078e36cf38b85af677262",
-      "expected_workflow_occurrences": 2
+      "expected_workflow_occurrences": 3
     },
     {
       "id": "setup_python",
@@ -18,6 +18,14 @@
       "official_source_url": "https://github.com/actions/setup-python",
       "observed_ref": "refs/tags/v5",
       "resolved_commit": "a26af69be951a213d495a4c3e4e4022e16d87065",
+      "expected_workflow_occurrences": 3
+    },
+    {
+      "id": "setup_uv",
+      "repository": "astral-sh/setup-uv",
+      "official_source_url": "https://github.com/astral-sh/setup-uv",
+      "observed_ref": "refs/tags/v7",
+      "resolved_commit": "94527f2e458b27549849d47d273a16bec83a01e9",
       "expected_workflow_occurrences": 2
     },
     {
@@ -26,7 +34,7 @@
       "official_source_url": "https://github.com/actions/upload-artifact",
       "observed_ref": "refs/tags/v4",
       "resolved_commit": "ea165f8d65b6e75b540449e92b4886f43607fa02",
-      "expected_workflow_occurrences": 1
+      "expected_workflow_occurrences": 3
     },
     {
       "id": "attest_build_provenance",
