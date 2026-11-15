@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.world-model.frame"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.world_model"
+provides = ["frame-models"]
+requires = []
+implementation = "gfs_studio.plugins.world_model.frame.service:FrameModelPlugin"

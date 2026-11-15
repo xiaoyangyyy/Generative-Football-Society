@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.product.studio"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.product"
+provides = ["studio-workflows"]
+requires = ["gfs.core.match.workflow"]
+implementation = "gfs_studio.plugins.product.studio.workflow:ProductStudioPlugin"

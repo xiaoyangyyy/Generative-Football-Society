@@ -1,0 +1,9 @@
+[profile]
+id = "cognitive"
+plugin-api = 1
+strict = true
+plugins = [
+  "gfs.studio.cognition",
+  "gfs.studio.world-model",
+  "gfs.studio.evidence",
+]

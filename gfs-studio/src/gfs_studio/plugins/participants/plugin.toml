@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.participants"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.participants"
+provides = ["participants-bundle"]
+requires = ["gfs.studio.participants.sessions", "gfs.studio.participants.delivery", "gfs.studio.participants.scoring"]
+implementation = "gfs_studio.plugins.participants.plugin:ParticipantsBundlePlugin"

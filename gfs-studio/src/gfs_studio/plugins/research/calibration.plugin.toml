@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.research.calibration"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.research"
+provides = ["calibration"]
+requires = ["gfs.studio.evidence.receipts", "gfs.studio.training.evaluation", "gfs.core.match.workflow"]
+implementation = "gfs_studio.plugins.research.calibration.study:CalibrationPlugin"

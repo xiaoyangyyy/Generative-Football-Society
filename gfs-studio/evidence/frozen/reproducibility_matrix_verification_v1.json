@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_supported_reproducibility_profile_matrix",
+  "generated_at": "2026-09-18T14:24:36.139997+00:00",
+  "status": "passed",
+  "passed": true,
+  "profile_count": 2,
+  "profiles": [
+    {
+      "id": "linux-py312-x86_64-cpu",
+      "python": "3.12",
+      "platform": "x86_64-manylinux_2_28",
+      "package_count": 64,
+      "checks": {
+        "all_artifacts_exist": true,
+        "lock_has_64_exact_hashed_packages": true,
+        "direct_dependencies_match": true,
+        "validation_passed_both_resolvers": true,
+        "validation_hashes_are_current": true,
+        "cyclonedx_sbom_is_current": true,
+        "safe_indices_are_explicit": true
+      },
+      "passed": true
+    },
+    {
+      "id": "windows-py313-x86_64-cpu",
+      "python": "3.13",
+      "platform": "x86_64-pc-windows-msvc",
+      "package_count": 64,
+      "checks": {
+        "all_artifacts_exist": true,
+        "lock_has_64_exact_hashed_packages": true,
+        "direct_dependencies_match": true,
+        "validation_passed_both_resolvers": true,
+        "validation_hashes_are_current": true,
+        "cyclonedx_sbom_is_current": true,
+        "safe_indices_are_explicit": true
+      },
+      "passed": true
+    }
+  ],
+  "artifact_sha256": {
+    "requirements-linux-py312.in": "cfd2b64fdc860bfdfae207645c036958c9715843a72eecbc3bc2d11d2a1a6960",
+    "requirements-linux-py312.lock": "df662d50a9cace72ebb48199850081586c1e90574b1476b8b4f64014b1009460",
+    "data/evaluation/target_lock_validation_v1.json": "b34dccd3138efa3b9e7b007ed1607cfd8746d41f8df8f8b42c5e496ef5f34363",
+    "data/evaluation/supply_chain_sbom_v1.cdx.json": "9f340f0b4c489d63940485bbfb39572a1ffb46940d9d1fbfec2b2658ab7b51bd",
+    "requirements-windows-py313.in": "ad9129ee2df0d52e1bfec4222c6f3f10b618f93464e6f855cde0f99017a54e93",
+    "requirements-windows-py313.lock": "c18466d12f29f0fef2183945622c2dc7ad3852f4884829bcb92f47067edced32",
+    "data/evaluation/windows_lock_validation_v1.json": "92654c4fedc2a85288f1a0028ecaf144a0714963c54d55f3a475e7649afb51a7",
+    "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json": "2f238933ca5694500276708ddbfd28f2cf0030552548cdae932cb1d713194323"
+  },
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false,
+  "scope": "Reference deployment and development profiles; this does not claim support for every Python/OS combination allowed by pyproject.toml."
+}

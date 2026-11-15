@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.match.scoring"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.match"
+provides = ["scoring"]
+requires = []
+implementation = "gfs_core.plugins.match.scoring.plugin:ScoringPlugin"

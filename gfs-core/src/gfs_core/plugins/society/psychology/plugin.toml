@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.society.psychology"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.society"
+provides = ["psychology"]
+requires = ["gfs.core.match.actions"]
+implementation = "gfs_core.plugins.society.psychology.plugin:PsychologyPlugin"

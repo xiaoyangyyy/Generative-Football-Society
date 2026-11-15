@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.presentation.json"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.presentation"
+provides = ["json-reports"]
+requires = []
+implementation = "gfs_core.plugins.presentation.json.plugin:JsonPresentationPlugin"

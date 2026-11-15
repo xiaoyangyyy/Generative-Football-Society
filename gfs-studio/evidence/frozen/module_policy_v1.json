@@ -1,0 +1,58 @@
+{
+  "schema_version": 2,
+  "policy_id": "formal-evidence-first-module-policy-v2",
+  "stable_runtime": {
+    "release": "7.0.0",
+    "world_model_default": "off",
+    "llm_cognition_default": "off"
+  },
+  "formal_evidence": "data/evaluation/formal_ablation_summary_v1.json",
+  "modules": {
+    "shot_model_v7": {
+      "status": "retain_validated",
+      "reason": "held-out non-leaking Brier gate remains authoritative"
+    },
+    "narrative_memory_meta_learning": {
+      "status": "research_only_no_real_world_claim",
+      "reason": "external longitudinal causal evidence remains absent"
+    },
+    "affective_coupling": {
+      "status": "retain_core",
+      "reason": "removal breaks at least one formal external-validity gate",
+      "evidence": "data\\evaluation\\formal_ablation\\no_affective.json"
+    },
+    "spatial_intelligence": {
+      "status": "retain_core",
+      "reason": "removal breaks at least one formal external-validity gate",
+      "evidence": "data\\evaluation\\formal_ablation\\no_spatial.json"
+    },
+    "statsbomb_pass_logit_blend": {
+      "status": "optional_default_off",
+      "reason": "removal passes all gates and the paired loss difference is unresolved",
+      "evidence": "data\\evaluation\\formal_ablation\\no_blend.json"
+    },
+    "tick_discipline": {
+      "status": "retain_core",
+      "reason": "removal breaks at least one formal external-validity gate",
+      "evidence": "data\\evaluation\\formal_ablation\\no_discipline_tick.json"
+    },
+    "tactical_bias": {
+      "status": "retain_core",
+      "reason": "removal breaks at least one formal external-validity gate",
+      "evidence": "data\\evaluation\\formal_ablation\\no_tactical_bias.json"
+    },
+    "advanced_world_model": {
+      "status": "research_only_default_off",
+      "reason": "the calibrated v9 successor passed sealed prediction gates, but its full 18-match M1 rerun produced no measurable behavior or external-loss improvement in 8550.7 seconds",
+      "evidence": "data/evaluation/formal_ablation/M1_calibrated_decision.json",
+      "original_evidence": "data\\evaluation\\formal_ablation\\M1.json",
+      "phase5_evidence": "data/evaluation/phase5_research_layer_validation_v1.json"
+    },
+    "llm_cognition": {
+      "status": "research_only_default_off",
+      "reason": "no statistically resolved formal external-loss improvement; contracts pass but no live-provider logs exist for a benefit claim",
+      "evidence": "data\\evaluation\\formal_ablation\\C1.json",
+      "phase5_evidence": "data/evaluation/phase5_research_layer_validation_v1.json"
+    }
+  }
+}

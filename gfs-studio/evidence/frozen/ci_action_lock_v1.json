@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "contract_id": "gfs-github-actions-immutable-references-v1",
+  "observed_on": "2026-08-10",
+  "observation_method": "git ls-remote against each official actions repository and named major tag",
+  "actions": [
+    {
+      "id": "checkout",
+      "repository": "actions/checkout",
+      "official_source_url": "https://github.com/actions/checkout",
+      "observed_ref": "refs/tags/v4",
+      "resolved_commit": "11d5960a326750d5838078e36cf38b85af677262",
+      "expected_workflow_occurrences": 2
+    },
+    {
+      "id": "setup_python",
+      "repository": "actions/setup-python",
+      "official_source_url": "https://github.com/actions/setup-python",
+      "observed_ref": "refs/tags/v5",
+      "resolved_commit": "a26af69be951a213d495a4c3e4e4022e16d87065",
+      "expected_workflow_occurrences": 2
+    },
+    {
+      "id": "upload_artifact",
+      "repository": "actions/upload-artifact",
+      "official_source_url": "https://github.com/actions/upload-artifact",
+      "observed_ref": "refs/tags/v4",
+      "resolved_commit": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "expected_workflow_occurrences": 1
+    },
+    {
+      "id": "attest_build_provenance",
+      "repository": "actions/attest-build-provenance",
+      "official_source_url": "https://github.com/actions/attest-build-provenance",
+      "observed_ref": "refs/tags/v3",
+      "resolved_commit": "43d14bc2b83dec42d39ecae14e916627a18bb661",
+      "expected_workflow_occurrences": 1
+    }
+  ],
+  "external_repository_calls_made": true,
+  "provider_api_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false
+}

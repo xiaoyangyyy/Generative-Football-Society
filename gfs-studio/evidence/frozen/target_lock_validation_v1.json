@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_python312_linux_target_lock",
+  "generated_at": "2026-09-18T14:23:29.510610+00:00",
+  "status": "passed_resolution_and_hash_dry_run",
+  "passed": true,
+  "target": {
+    "python": "3.12",
+    "platform": "x86_64 manylinux compatible through 2.28",
+    "torch_backend": "cpu",
+    "package_count": 64
+  },
+  "commands": {
+    "resolve": "uv pip compile requirements-linux-py312.in --output-file requirements-linux-py312.lock --python-version 3.12 --python-platform x86_64-manylinux_2_28 --torch-backend cpu --only-binary :all: --generate-hashes --no-annotate --emit-index-url --emit-index-annotation --exclude-newer 2026-08-10T00:00:00Z --no-cache --no-python-downloads",
+    "uv_dry_run": "uv pip sync requirements-linux-py312.lock --python-version 3.12 --python-platform x86_64-manylinux_2_28 --require-hashes --dry-run --system --torch-backend cpu --index-strategy unsafe-best-match",
+    "pip_dry_run": "python -m pip install --dry-run --ignore-installed --require-hashes --only-binary=:all: --platform manylinux_2_28_x86_64 --platform manylinux_2_27_x86_64 --platform manylinux_2_17_x86_64 --platform manylinux2014_x86_64 --platform manylinux2010_x86_64 --platform manylinux1_x86_64 --python-version 3.12 --implementation cp --abi cp312 --target <temporary-directory> -r requirements-linux-py312.lock"
+  },
+  "artifact_sha256": {
+    "requirements-linux-py312.in": "cfd2b64fdc860bfdfae207645c036958c9715843a72eecbc3bc2d11d2a1a6960",
+    "requirements-linux-py312.lock": "df662d50a9cace72ebb48199850081586c1e90574b1476b8b4f64014b1009460",
+    "data/evaluation/supply_chain_sbom_v1.cdx.json": "9f340f0b4c489d63940485bbfb39572a1ffb46940d9d1fbfec2b2658ab7b51bd"
+  },
+  "observations": {
+    "all_packages_exact": true,
+    "all_packages_have_sha256": true,
+    "uv_target_resolution_passed": true,
+    "pip_require_hashes_target_plan_passed": true,
+    "would_install_package_count": 64,
+    "environment_installed": false,
+    "container_built": false
+  },
+  "external_package_index_calls_made": true,
+  "provider_api_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false,
+  "limitations": [
+    "tzdata and colorama are explicit portability shims because pip evaluates markers against the Windows audit host during cross-platform dry runs",
+    "the dry run verifies resolution and downloaded hashes but does not execute imports inside the Linux container",
+    "base-image and gateway-image digests are now pinned, but no container was built on this host"
+  ]
+}

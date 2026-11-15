@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.society"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.society"
+provides = ["society-bundle"]
+requires = ["gfs.core.society.agents", "gfs.core.society.psychology", "gfs.core.society.memory"]
+implementation = "gfs_core.bootstrap.bundles:BundlePlugin"

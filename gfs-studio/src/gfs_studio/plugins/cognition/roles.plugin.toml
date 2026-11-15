@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.cognition.roles"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.cognition"
+provides = ["coach-role", "player-role", "media-role"]
+requires = ["gfs.studio.cognition.gateway"]
+implementation = "gfs_studio.plugins.cognition.roles.service:RolesPlugin"

@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-studio-comparative-value-validation-v1",
+  "state": "preregistered_not_executed",
+  "objective": "Test whether the cohesive GFS Studio workflow improves evidence-correct football analysis decisions over the current manual baseline without reducing correctness or introducing critical errors.",
+  "design": {
+    "type": "randomized_within_participant_counterbalanced_crossover",
+    "conditions": ["gfs_studio", "manual_baseline"],
+    "sequences": ["AB", "BA"],
+    "case_packs": ["case_pack_alpha", "case_pack_beta"],
+    "maximum_seconds_per_condition": 900,
+    "incorrect_or_incomplete_penalty_seconds": 900,
+    "training_task_before_measurement": true,
+    "same_case_pack_in_both_conditions_forbidden": true,
+    "optional_stopping": false
+  },
+  "allocation": {
+    "method": "role_stratified_permuted_blocks_v1",
+    "seed": 20260905,
+    "block_size": 4,
+    "sequences": ["AB", "BA"],
+    "assignments_per_sequence_per_block": 2
+  },
+  "population": {
+    "target_roles": ["football_analyst", "research_engineer", "product_operator"],
+    "minimum_valid_participants": 24,
+    "minimum_per_role": 8,
+    "minimum_per_sequence": 12,
+    "minimum_per_role_sequence": 4,
+    "inclusion": ["adult_with_relevant_role_experience", "recorded_informed_consent"],
+    "predeclared_exclusions": ["consent_withdrawn", "infrastructure_failure_before_first_measured_condition"],
+    "performance_based_exclusion": false
+  },
+  "primary_endpoint": {
+    "name": "paired_penalized_time_geometric_mean_ratio_gfs_over_baseline",
+    "threshold": 0.8,
+    "decision_rule": "upper_bound_of_deterministic_participant_bootstrap_95_percent_ci_must_be_lte_threshold",
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 20260810
+  },
+  "safety_and_quality": {
+    "accuracy_noninferiority_margin": -0.05,
+    "accuracy_rule": "lower_bound_of_deterministic_paired_bootstrap_95_percent_ci_for_gfs_minus_baseline_must_be_gte_margin",
+    "gfs_critical_error_threshold": 0,
+    "all_valid_records_analyzed": true
+  },
+  "registration": {
+    "registry_kind": "gfs_human_study_session_registry_v1",
+    "participant_id_pattern": "^participant-[a-z0-9]{8,40}$",
+    "moderator_id_pattern": "^moderator-[a-z0-9]{8,40}$",
+    "registration_before_measurement": true,
+    "consent_required": true,
+    "duplicate_registration_policy": "idempotent_exact_match"
+  },
+  "session_execution": {
+    "runner_kind": "gfs_product_value_participant_session_v1",
+    "participant_runtime_is_external_to_repository": true,
+    "capability_token_minimum_characters": 32,
+    "capability_token_minimum_distinct_characters": 8,
+    "capability_plaintext_persistence_forbidden": true,
+    "launch_token_transport": "url_fragment_then_bearer_header",
+    "training_task_required_before_measurement": true,
+    "training_task_is_unscored": true,
+    "condition_content_revealed_only_after_server_start": true,
+    "future_condition_preexposure_forbidden": true,
+    "server_authoritative_deadline_seconds": 900,
+    "submission_policy": "first_valid_submission_wins_idempotent_by_submission_id",
+    "idempotent_retry_requires_exact_answers_and_verified_receipt": true,
+    "completion_commit_policy": "atomic_state_first_then_idempotent_derived_record",
+    "remote_transport_policy": "loopback_service_same_host_trusted_https_proxy",
+    "correctness_feedback_during_session": false,
+    "critical_error_policy": {
+      "field": "supported_claim",
+      "values": ["proven_real_world_tactic", "guaranteed_match_win"]
+    },
+    "completed_record_import_requires_moderator_attestation": true,
+    "participant_service_exposes_studio_routes": false
+  },
+  "evidence_archive": {
+    "layout": "content_addressed_flat_sha256_v1",
+    "file_name_is_exact_sha256": true,
+    "symlinks_allowed": false,
+    "all_referenced_content_verified_during_analysis": true,
+    "duplicate_digest_across_observations_allowed": false,
+    "archive_path_recorded_in_decision": false,
+    "structured_receipts_are_rescored_from_frozen_keys": true
+  },
+  "integrity": {
+    "protocol_changes_after_first_participant": false,
+    "participant_ids_are_pseudonymous": true,
+    "moderator_ids_are_pseudonymous": true,
+    "raw_free_text_forbidden": true,
+    "unknown_record_fields_forbidden": true,
+    "completed_conditions_require_sha256_evidence": true,
+    "duplicate_participant_ids_forbidden": true,
+    "negative_results_are_valid_outputs": true,
+    "interim_release_decisions": false,
+    "provider_calls_authorized": false,
+    "training_authorized": false,
+    "authoritative_session_registry_required": true,
+    "all_registrations_analyzed": true,
+    "record_identity_bound_to_registration": true,
+    "sequence_assigned_by_frozen_allocation": true,
+    "case_pack_identity_bound_at_registration": true,
+    "participant_delivery_excludes_scoring_material": true,
+    "scoring_seal_is_separate_and_case_hash_bound": true,
+    "evidence_hashes_verified_against_real_files": true,
+    "correctness_recomputed_from_structured_receipts": true,
+    "isolated_participant_session_required": true,
+    "server_authoritative_condition_timing": true,
+    "future_condition_preexposure_forbidden": true,
+    "participant_capability_plaintext_storage_forbidden": true,
+    "moderator_attestation_required_before_import": true,
+    "completion_record_recoverable_from_committed_state": true,
+    "remote_session_rejects_nonloopback_forwarded_headers": true
+  },
+  "outputs": {
+    "session_registry": "data/evaluation/product_value_validation_v1/session_registry.json",
+    "case_pack_manifest": "data/evaluation/product_value_case_packs_v1.json",
+    "scoring_seal": "data/evaluation/product_value_scoring_seal_v1.json",
+    "raw_records": "data/evaluation/product_value_validation_v1/participant_records.jsonl",
+    "decision": "data/evaluation/product_value_validation_v1/decision.json"
+  },
+  "preexecution_amendments": [
+    {
+      "amendment_id": "authoritative-randomized-value-study-v1",
+      "reason": "Freeze role-stratified allocation, concrete scored case packs, session identity and byte-level evidence verification before the first participant.",
+      "participants_observed_before_amendment": 0,
+      "sessions_executed_before_amendment": 0,
+      "results_available_before_amendment": false
+    },
+    {
+      "amendment_id": "blinded-delivery-and-scoring-seal-v1",
+      "reason": "Physically separate participant-visible case content from the case-hash-bound scoring keys and freeze a moderator delivery surface before the first participant.",
+      "participants_observed_before_amendment": 0,
+      "sessions_executed_before_amendment": 0,
+      "results_available_before_amendment": false
+    },
+    {
+      "amendment_id": "isolated-participant-session-runner-v1",
+      "reason": "Freeze capability isolation, server-authoritative timing, one-condition-at-a-time disclosure, structured submission and attested import before the first participant.",
+      "participants_observed_before_amendment": 0,
+      "sessions_executed_before_amendment": 0,
+      "results_available_before_amendment": false
+    },
+    {
+      "amendment_id": "participant-session-recovery-and-proxy-hardening-v1",
+      "reason": "Freeze state-first completion recovery, exact idempotent replay and a loopback-only trusted HTTPS proxy boundary before the first participant.",
+      "participants_observed_before_amendment": 0,
+      "sessions_executed_before_amendment": 0,
+      "results_available_before_amendment": false
+    }
+  ],
+  "current_execution": {
+    "participants_observed": 0,
+    "sessions_executed": 0,
+    "matches_executed": 0,
+    "training_executed": false,
+    "provider_calls_made": false,
+    "results_available": false
+  }
+}

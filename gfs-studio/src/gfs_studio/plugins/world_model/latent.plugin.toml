@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.world-model.latent"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.world_model"
+provides = ["latent-models", "checkpoint-codec", "trace-codec"]
+requires = []
+implementation = "gfs_studio.plugins.world_model.plugin:LatentWorldModelPlugin"

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools==81.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gfs-core"
+version = "7.0.0a1"
+description = "Plugin-based football simulation kernel and official runtime plugins"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "numpy==2.4.3",
+  "pandas==3.0.2",
+]
+
+[project.scripts]
+gfs-core = "gfs_core.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.toml"]
+
+[tool.gfs]
+plugin-api = 1
+plugin-group = "gfs_core.plugins"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

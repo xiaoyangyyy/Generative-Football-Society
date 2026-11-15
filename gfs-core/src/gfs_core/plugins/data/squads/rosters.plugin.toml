@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.data.rosters"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.data"
+provides = ["rosters"]
+requires = []
+implementation = "gfs_core.plugins.data.squads.rosters:RostersPlugin"

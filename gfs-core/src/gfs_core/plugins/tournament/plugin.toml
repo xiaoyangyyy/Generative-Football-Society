@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.tournament"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.tournament"
+provides = ["tournament-runner"]
+requires = ["gfs.core.tournament.scheduling", "gfs.core.tournament.checkpointing", "gfs.core.match.scoring", "gfs.core.persistence.transactions", "gfs.core.status.confidence", "gfs.core.data.tactics", "gfs.core.society.memory"]
+implementation = "gfs_core.plugins.tournament.runner:TournamentPlugin"

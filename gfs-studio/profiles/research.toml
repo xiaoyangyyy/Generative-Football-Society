@@ -1,0 +1,10 @@
+[profile]
+id = "research"
+plugin-api = 1
+strict = true
+plugins = [
+  "gfs.studio.world-model",
+  "gfs.studio.training",
+  "gfs.studio.evidence",
+  "gfs.studio.research",
+]

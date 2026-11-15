@@ -1,0 +1,16 @@
+[architecture]
+plugin-api = 1
+contract-version = 1
+external-entry-point = "gfs_studio.plugins"
+core-entry-point = "gfs_core.plugins"
+cross-plugin-imports = "forbidden-use-typed-contracts"
+simple-plugin-manifest = "*.plugin.toml"
+composite-plugin-manifest = "plugin.toml"
+
+[layers]
+core-contracts = []
+studio-contracts = ["core-contracts"]
+core-kernel = ["core-contracts"]
+studio-plugins = ["core-contracts", "studio-contracts"]
+studio-bootstrap = ["core-kernel", "core-contracts", "studio-contracts", "studio-plugins"]
+studio-api = ["studio-contracts", "studio-bootstrap"]

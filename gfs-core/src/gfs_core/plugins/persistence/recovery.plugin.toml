@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.persistence.recovery"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.persistence"
+provides = ["recovery"]
+requires = ["gfs.core.persistence.transactions"]
+implementation = "gfs_core.plugins.persistence.recovery.service:RecoveryPlugin"

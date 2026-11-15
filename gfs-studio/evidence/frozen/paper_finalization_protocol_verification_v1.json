@@ -1,0 +1,33 @@
+{
+  "artifact_sha256": {
+    "data/evaluation/paper_finalization_protocol_v1.json": "a6f0b3923623d0c954ed3056571e46a65af28d480934bfbf138f42906bdad3be",
+    "docs/PAPER_FINALIZATION.md": "8296a16bfc3e8f88c297d156f37af338187f0019fe8151c7998c0ba4ec4b7ba5",
+    "scripts/finalize_paper.py": "f2b596cd93c0e0f4d6d46dceca512d7c92587c54257fbd5720dca9094cc1e8c5"
+  },
+  "checks": {
+    "execution_remains_zero": true,
+    "inputs_are_exact_and_confined": true,
+    "integrity_is_fail_closed": true,
+    "ledger_requires_explicit_zero_compute_authority": true,
+    "manuscript_markers_and_sections_are_complete": true,
+    "outputs_are_exact_and_confined": true,
+    "schema_state_and_objective_are_frozen": true
+  },
+  "evidence_checks": {
+    "academic_replication_is_complete_and_branch_locked": false,
+    "confirmatory_decision_is_complete": false,
+    "full_study_independent_review_is_complete": false,
+    "preexecution_paper_package_is_current": true
+  },
+  "final_manuscript_available": false,
+  "generated_at": "2026-08-09T19:48:25.539769+00:00",
+  "matches_executed": 0,
+  "passed": true,
+  "provider_calls_made": false,
+  "ready_to_finalize": false,
+  "result_ledger_available": false,
+  "schema_version": 1,
+  "status": "registered_waiting_for_complete_evidence",
+  "training_executed": false,
+  "verification": "gfs_paper_finalization_preregistration"
+}

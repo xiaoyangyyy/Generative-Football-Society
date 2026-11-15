@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "review": "sealed_calibrated_world_model_formal_m1",
+  "protocol": "six_fixtures_three_seeds_full_90min_matched_to_m0",
+  "baseline": "data/evaluation/m0_formal_baseline_v1.json",
+  "candidate_report": "data/evaluation/formal_ablation/M1_calibrated.json",
+  "candidate": {
+    "checkpoint": "data/world_model/latent_wm_rollout_calibrated_candidate.pt",
+    "explicit_checkpoint": true,
+    "checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28"
+  },
+  "samples_total": 18,
+  "all_pass": true,
+  "loss": 8.634148950066319,
+  "baseline_loss": 8.634148951141071,
+  "observed_delta_loss": -1.0747527312560123e-09,
+  "paired_uncertainty": {
+    "method": "paired_match_bootstrap",
+    "draws": 2000,
+    "seed": 42,
+    "delta_loss": {
+      "mean": -1.0449474872054054e-09,
+      "ci95_low": -3.560838934824062e-09,
+      "ci95_high": 2.3568922369321397e-10
+    },
+    "metric_mean_deltas": {
+      "pass_completion": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "interceptions_per_pass": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "passes_per_team_match": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "long_pass_share": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "shots_per_team_match": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "shots_on_target_rate": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "goals_per_team_match": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "fouls_committed_per_team_match": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "yellow_cards_per_team_match": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "red_cards_per_team_match": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "possession_share": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "crosses_per_team_match": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "headers_per_team_match": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "tackles_per_team_match": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "micro_xg_per_team_match": {
+        "mean": 7.853518615430488e-10,
+        "ci95_low": -2.077108485210033e-10,
+        "ci95_high": 2.5817199489353015e-09
+      }
+    }
+  },
+  "behavior_changed_above_tolerance": false,
+  "metric_differences": {
+    "pass_completion": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "interceptions_per_pass": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "passes_per_team_match": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "long_pass_share": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "shots_per_team_match": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "shots_on_target_rate": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "goals_per_team_match": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "fouls_committed_per_team_match": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "yellow_cards_per_team_match": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "red_cards_per_team_match": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "possession_share": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "crosses_per_team_match": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "headers_per_team_match": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "tackles_per_team_match": {
+      "changed_samples": 0,
+      "max_absolute_delta": 0.0,
+      "mean_delta": 0.0
+    },
+    "micro_xg_per_team_match": {
+      "changed_samples": 0,
+      "max_absolute_delta": 1.5490319582589507e-08,
+      "mean_delta": 7.91336366804766e-10
+    }
+  },
+  "runtime": {
+    "elapsed_seconds": 8550.747057400004
+  },
+  "promotion_supported": false,
+  "decision": "research_only_default_off",
+  "decision_reason": "sealed prediction skill did not produce a measurable formal behavior or external-loss improvement"
+}

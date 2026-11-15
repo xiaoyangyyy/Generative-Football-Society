@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.data.results"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.data"
+provides = ["results"]
+requires = []
+implementation = "gfs_core.plugins.data.sources.results:ResultsPlugin"

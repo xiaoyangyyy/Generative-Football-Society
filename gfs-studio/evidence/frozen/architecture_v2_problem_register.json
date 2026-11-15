@@ -1,0 +1,26 @@
+{
+  "schema_version": 2,
+  "architecture": "gfs-layered-product-v2.1",
+  "status": "closed_by_code_and_verification",
+  "scope_note": "Code architecture is complete; this mutable worktree is not a newly promoted production release.",
+  "problems": [
+    {"id":"A01","problem":"产品入口分散","resolution":"GFS Studio 统一会话、比赛、任务、证据和报告","evidence":["src/product/workspace.py","src/product/control_plane.py","src/cli.py"]},
+    {"id":"A02","problem":"长训练不可观察且中断后丢失进度","resolution":"原子状态、epoch 日志、精确续训点和协作停止","evidence":["src/training/job.py","tests/test_training_job.py"]},
+    {"id":"A03","problem":"射门稀有事件与全量世界模型耦合","resolution":"冻结 backbone 的独立射门头与 sealed 晋级器","evidence":["src/match_engine/world_model/shot_head.py","scripts/validate_frozen_shot_head.py"]},
+    {"id":"A04","problem":"LLM 配置在导入时冻结且单例串扰","resolution":"调用时配置和按完整配置隔离、加锁的网关池","evidence":["src/simulation/llm_gateway.py","tests/test_llm_gateway_config.py"]},
+    {"id":"A05","problem":"规则 fallback 可能冒充真实 LLM","resolution":"认知产品模式 fail closed 并记录 cognitive_source","evidence":["src/match_engine/cognitive/executor.py","tests/test_cognitive_strict_provider.py"]},
+    {"id":"A06","problem":"包导入异常被静默吞掉","resolution":"世界模型包显式导入并暴露真实错误","evidence":["src/match_engine/world_model/__init__.py"]},
+    {"id":"A07","problem":"Studio 修改进程级环境导致并发串扰","resolution":"使用 ContextVar 调用上下文覆盖，不再修改 os.environ","evidence":["src/simulation/runtime.py","tests/test_runtime_environment_context.py"]},
+    {"id":"A08","problem":"死亡训练进程仍显示 running","resolution":"OS 文件租约与 observed_state/stale 检测","evidence":["src/infrastructure/locking.py","src/product/control_plane.py"]},
+    {"id":"A09","problem":"比赛报告无法判断智能来源","resolution":"报告记录运行时 checkpoint、射门来源、provider 和 integrity","evidence":["src/product/workspace.py","src/product/reporting.py"]},
+    {"id":"A10","problem":"层间边界缺少机器约束","resolution":"AST 审计领域、基础设施、训练和产品依赖方向","evidence":["scripts/audit_architecture_v2.py"]},
+    {"id":"A11","problem":"同一训练目录可被多个进程同时写入","resolution":"TrainingJob 持有自动释放的跨进程独占租约","evidence":["src/training/job.py","tests/test_infrastructure_locking.py"]},
+    {"id":"A12","problem":"停止可能发生在未保存 epoch，旧 STOP 使恢复再次停止","resolution":"停止强制保存当前 epoch，恢复消费 STOP，终态禁止再写","evidence":["scripts/train_world_model.py","tests/test_training_job.py"]},
+    {"id":"A13","problem":"报告结束前失败会复用 match id/seed 且丢失调用记录","resolution":"先预约 run，单调分配 id/seed，持久化 finalizing/completed/failed","evidence":["src/product/workspace.py","tests/test_product_workspace.py"]},
+    {"id":"A14","problem":"研究 checkpoint 只验证存在，文件可被替换","resolution":"正式 M1、阶段证据和运行时签名使用同一 SHA-256 身份链","evidence":["data/evaluation/formal_ablation/M1_calibrated_decision.json","src/product/workspace.py"]},
+    {"id":"A15","problem":"稳定发布只验证版本号或指针，不验证完整 artifact 链","resolution":"验证 current 指针、release manifest 和全部非空 artifacts，路径不可逃逸工作区","evidence":["src/infrastructure/integrity.py","tests/test_product_workspace.py"]},
+    {"id":"A16","problem":"ensure 脚本会隐式采集和训练，resume 未绑定数据/代码","resolution":"训练必须显式 --train，续训绑定 dataset 与 training contract 摘要","evidence":["scripts/ensure_world_model.py","scripts/train_world_model.py"]},
+    {"id":"A17","problem":"wheel 将包放到错误顶层且入口 src.cli 不存在","resolution":"显式发现 src/src.*，代码包通过 GFS_PROJECT_ROOT 连接外部工作区","evidence":["pyproject.toml","tests/test_packaging_contract.py"]},
+    {"id":"A18","problem":"LLM 调用计数包含无效响应且配置 repr 暴露密钥","resolution":"仅在内容验证后计数，api_key 从 repr 隐藏","evidence":["src/simulation/llm_gateway.py","tests/test_llm_gateway_config.py"]}
+  ]
+}

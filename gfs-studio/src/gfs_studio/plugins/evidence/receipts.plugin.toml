@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.evidence.receipts"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.evidence"
+provides = ["receipts"]
+requires = []
+implementation = "gfs_studio.plugins.evidence.receipts.store:ReceiptsPlugin"

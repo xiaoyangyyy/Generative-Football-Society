@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.tournament.advancement"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.tournament"
+provides = ["advancement", "monte-carlo"]
+requires = ["gfs.core.tournament.scheduling", "gfs.core.match.scoring", "gfs.core.status.confidence"]
+implementation = "gfs_core.plugins.tournament.advancement.plugin:AdvancementPlugin"

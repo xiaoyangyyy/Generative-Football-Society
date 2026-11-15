@@ -1,0 +1,7 @@
+[data]
+raw = "raw/"
+rosters = "rosters/"
+coaches = "coaches/"
+tactics = "tactics/"
+releases = "releases/"
+runtime-models = "models/"

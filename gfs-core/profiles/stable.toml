@@ -1,0 +1,14 @@
+[profile]
+id = "stable"
+plugin-api = 1
+strict = true
+plugins = [
+  "gfs.core.data",
+  "gfs.core.status",
+  "gfs.core.society",
+  "gfs.core.persistence",
+  "gfs.core.match",
+  "gfs.core.match.workflow",
+  "gfs.core.tournament",
+  "gfs.core.presentation",
+]

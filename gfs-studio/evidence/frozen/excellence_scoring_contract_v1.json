@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "contract_id": "gfs-evidence-derived-excellence-scoring-v1",
+  "objective": "Derive product and academic maturity from current evidence gates; plans, file presence, and favorable result direction alone never earn completion points.",
+  "rules": {
+    "all_track_weights_equal_100": true,
+    "base_points_require_existing_verified_evidence": true,
+    "completion_points_require_all_named_gates": true,
+    "negative_academic_results_can_complete_when_valid_and_reproduced": true,
+    "product_outcome_thresholds_remain_mandatory": true,
+    "score_100_requires_every_category_complete": true
+  },
+  "tracks": {
+    "product": [
+      {"id": "P1", "name": "architecture_and_workflow", "weight": 20, "base_points": 20, "completion_requires": []},
+      {"id": "P2", "name": "security_and_trust", "weight": 15, "base_points": 14, "completion_requires": ["external_security_review", "credential_security_closure"]},
+      {"id": "P3", "name": "functional_completeness", "weight": 15, "base_points": 15, "completion_requires": []},
+      {"id": "P4", "name": "reliability_and_recovery", "weight": 15, "base_points": 14, "completion_requires": ["production_operations_validation"]},
+      {"id": "P5", "name": "usability_and_accessibility", "weight": 15, "base_points": 11, "completion_requires": ["target_user_validation", "external_accessibility_review"]},
+      {"id": "P6", "name": "deployment_and_operations", "weight": 10, "base_points": 9, "completion_requires": ["container_build", "production_operations_validation"]},
+      {"id": "P7", "name": "user_value_validation", "weight": 10, "base_points": 0, "completion_requires": ["user_value_validation"]}
+    ],
+    "academic": [
+      {"id": "A1", "name": "question_and_protocol", "weight": 15, "base_points": 15, "completion_requires": []},
+      {"id": "A2", "name": "method_implementation", "weight": 15, "base_points": 13, "completion_requires": ["confirmatory_results"]},
+      {"id": "A3", "name": "confirmatory_statistics_and_results", "weight": 20, "base_points": 12, "completion_requires": ["confirmatory_results"]},
+      {"id": "A4", "name": "external_validity", "weight": 15, "base_points": 10, "completion_requires": ["confirmatory_results"]},
+      {"id": "A5", "name": "reproducibility", "weight": 15, "base_points": 15, "completion_requires": []},
+      {"id": "A6", "name": "mechanism_and_replication", "weight": 10, "base_points": 2, "completion_requires": ["confirmatory_results", "independent_reproduction"]},
+      {"id": "A7", "name": "manuscript_and_independent_review", "weight": 10, "base_points": 3, "completion_requires": ["independent_reproduction", "completed_manuscript"]}
+    ]
+  },
+  "current_execution": {
+    "scores_are_not_manually_overridden": true,
+    "matches_executed": 0,
+    "training_executed": false,
+    "provider_calls_made": false
+  }
+}

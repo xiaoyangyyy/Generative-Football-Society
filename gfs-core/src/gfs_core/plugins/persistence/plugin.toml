@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.persistence"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.persistence"
+provides = ["persistence-bundle"]
+requires = ["gfs.core.persistence.workspace", "gfs.core.persistence.transactions", "gfs.core.persistence.recovery", "gfs.core.persistence.micro-checkpointing"]
+implementation = "gfs_core.bootstrap.bundles:BundlePlugin"

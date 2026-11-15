@@ -1,0 +1,460 @@
+{
+  "schema_version": 1,
+  "package_id": "gfs-action-outcome-results-reproduction-v1",
+  "stage": "completed_action_outcome_results_package",
+  "scope": "Existing evidence, the completed 60-run action-policy outcome study, its deterministic replay, bounded manuscript claims, and the still-pending independent reproduction; package verification runs no simulation.",
+  "artifacts": {
+    "manuscript": "docs/PAPER_DRAFT.md",
+    "claims": "data/evaluation/paper_claims_v1.json",
+    "protocol": "data/evaluation/action_outcome_protocol_v1.json",
+    "protocol_documentation": "docs/ACTION_OUTCOME_RESULT_V1.md",
+    "mechanism_protocol": "data/evaluation/action_adoption_protocol_v1.json",
+    "mechanism_progress": "data/evaluation/action_adoption_v1/progress.json",
+    "mechanism_decision": "data/evaluation/action_adoption_v1/decision.json",
+    "mechanism_verifier": "scripts/verify_action_adoption_result.py",
+    "outcome_progress": "data/evaluation/action_outcome_v1/progress.json",
+    "outcome_decision": "data/evaluation/action_outcome_v1/decision.json",
+    "outcome_verifier": "scripts/verify_action_outcome_result.py",
+    "reproduction_guide": "docs/REPRODUCTION_GUIDE.md",
+    "model_card": "docs/RESEARCH_MODEL_CARD.md",
+    "data_card": "docs/RESEARCH_DATA_CARD.md",
+    "references": "docs/PAPER_REFERENCES.bib",
+    "environment_snapshot": "data/evaluation/reproduction_environment_v1.json",
+    "dependency_lock_contract": "data/evaluation/dependency_lock_contract_v1.json",
+    "target_lock_input": "requirements-linux-py312.in",
+    "target_runtime_lock": "requirements-linux-py312.lock",
+    "ci_tool_lock_input": "requirements-ci-linux-py312.in",
+    "ci_tool_lock": "requirements-ci-linux-py312.lock",
+    "target_lock_validation": "data/evaluation/target_lock_validation_v1.json",
+    "supply_chain_sbom": "data/evaluation/supply_chain_sbom_v1.cdx.json",
+    "windows_lock_input": "requirements-windows-py313.in",
+    "windows_runtime_lock": "requirements-windows-py313.lock",
+    "windows_lock_validation": "data/evaluation/windows_lock_validation_v1.json",
+    "windows_supply_chain_sbom": "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json",
+    "reproducibility_matrix_verification": "data/evaluation/reproducibility_matrix_verification_v1.json",
+    "local_runtime_verification": "data/evaluation/local_runtime_verification_v1.json",
+    "container_image_contract": "data/evaluation/container_image_contract_v1.json",
+    "container_image_verification": "data/evaluation/container_image_verification_v1.json",
+    "container_runtime_verifier": "scripts/verify_container_runtime.py",
+    "deployment_contract_verifier": "scripts/verify_deployment_contract.py",
+    "container_ci_workflow": ".github/workflows/ci.yml",
+    "ci_action_lock": "data/evaluation/ci_action_lock_v1.json",
+    "product_validation_protocol": "data/evaluation/product_validation_protocol_v1.json",
+    "product_validation_protocol_verification": "data/evaluation/product_validation_protocol_verification_v1.json",
+    "product_validation_guide": "docs/PRODUCT_VALIDATION_STUDY.md",
+    "product_validation_analyzer": "scripts/product_validation_study.py",
+    "human_study_integrity": "src/product/human_study.py",
+    "production_validation_protocol": "data/evaluation/production_validation_protocol_v1.json",
+    "production_validation_protocol_verification": "data/evaluation/production_validation_protocol_verification_v1.json",
+    "production_validation_guide": "docs/PRODUCTION_VALIDATION.md",
+    "production_validation_runner": "scripts/run_production_validation.py",
+    "product_value_validation_protocol": "data/evaluation/product_value_validation_protocol_v1.json",
+    "product_value_validation_protocol_verification": "data/evaluation/product_value_validation_protocol_verification_v1.json",
+    "product_value_validation_guide": "docs/PRODUCT_VALUE_STUDY.md",
+    "product_value_validation_analyzer": "scripts/product_value_study.py",
+    "product_value_case_pack_manifest": "data/evaluation/product_value_case_packs_v1.json",
+    "product_value_scoring_seal": "data/evaluation/product_value_scoring_seal_v1.json",
+    "product_value_study_delivery": "src/product/study_delivery.py",
+    "product_value_participant_session_runner": "src/product/study_session.py",
+    "independent_reproduction_protocol": "data/evaluation/independent_action_reproduction_protocol_v2.json",
+    "independent_reproduction_protocol_verification": "data/evaluation/independent_action_reproduction_protocol_verification_v2.json",
+    "independent_reproduction_guide": "docs/INDEPENDENT_REPRODUCTION.md",
+    "independent_reproduction_verifier": "scripts/verify_independent_reproduction.py",
+    "academic_replication_protocol": "data/evaluation/academic_action_replication_protocol_v2.json",
+    "academic_replication_protocol_verification": "data/evaluation/academic_action_replication_protocol_verification_v2.json",
+    "academic_replication_guide": "docs/ACADEMIC_REPLICATION_STUDY.md",
+    "academic_replication_runner": "scripts/academic_replication_study.py",
+    "paper_finalization_protocol": "data/evaluation/action_paper_finalization_protocol_v2.json",
+    "paper_finalization_protocol_verification": "data/evaluation/action_paper_finalization_protocol_verification_v2.json",
+    "paper_finalization_guide": "docs/PAPER_FINALIZATION.md",
+    "paper_finalization_verifier": "scripts/finalize_paper.py",
+    "excellence_scoring_contract": "data/evaluation/excellence_scoring_contract_v1.json",
+    "excellence_score_verification": "data/evaluation/excellence_score_verification_v1.json",
+    "excellence_score_module": "src/product/excellence.py",
+    "excellence_score_verifier": "scripts/verify_excellence_score.py",
+    "excellence_completion_plan": "src/product/completion_plan.py",
+    "excellence_evidence_kit_builder": "scripts/build_excellence_evidence_kit.py",
+    "excellence_evidence_kit_verification": "data/evaluation/excellence_evidence_kit_verification_v1.json",
+    "excellence_evidence_kit_guide": "docs/EXCELLENCE_EVIDENCE_KIT.md",
+    "product_control_plane": "src/product/control_plane.py",
+    "product_cli": "src/cli.py",
+    "product_web": "src/product/web.py",
+    "product_telemetry": "src/product/telemetry.py",
+    "security_closure_protocol": "data/evaluation/security_closure_protocol_v2.json",
+    "security_closure_protocol_verification": "data/evaluation/security_closure_protocol_verification_v2.json",
+    "security_closure_guide": "docs/SECURITY_CREDENTIAL_CLOSURE.md",
+    "security_closure_verifier": "scripts/verify_security_closure.py",
+    "sbom_builder": "scripts/build_supply_chain_sbom.py",
+    "data_license_registry": "data/evaluation/data_license_registry_v1.json",
+    "data_release_manifest": "data/evaluation/data_release_manifest_v1.json",
+    "data_release_verification": "data/evaluation/data_release_verification_v1.json",
+    "data_release_builder": "scripts/build_data_release_archive.py",
+    "data_release_verifier": "scripts/verify_data_release.py",
+    "idsse_attribution": "docs/IDSSE_ATTRIBUTION.md",
+    "existing_evidence": "data/evaluation/research_evidence_v1.json",
+    "prior_m1_decision": "data/evaluation/formal_ablation/M1_calibrated_decision.json",
+    "runner": "scripts/run_formal_experiment.py",
+    "package_verifier": "scripts/verify_paper_package.py",
+    "release_verifier": "scripts/verify_reproduction_release.py"
+  },
+  "commands": [
+    {
+      "id": "package_audit",
+      "command": "python scripts/verify_paper_package.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "evidence_audit",
+      "command": "python scripts/audit_research_evidence.py --check",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "reproduction_release_audit",
+      "command": "python scripts/verify_reproduction_release.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "source_health",
+      "command": "python -m ruff check src",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "supply_chain_sbom_check",
+      "command": "python scripts/build_supply_chain_sbom.py --check",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "reproducibility_matrix_audit",
+      "command": "python scripts/verify_reproducibility_matrix.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "local_runtime_audit",
+      "command": "python scripts/verify_local_runtime.py",
+      "effect": "read_only_import_smoke",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "container_image_audit",
+      "command": "python scripts/verify_container_images.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "container_runtime_execution",
+      "command": "python scripts/verify_container_runtime.py --execute --out data/evaluation/container_runtime_verification_v1.json",
+      "effect": "build_and_launch_ephemeral_container",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "data_release_audit",
+      "command": "python scripts/verify_data_release.py",
+      "effect": "read_only_hash_and_in_memory_archive_verification",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "data_release_materialization",
+      "command": "python scripts/build_data_release_archive.py --materialize build/gfs-idsse-data-supplement-v1.zip",
+      "effect": "write_deterministic_licensed_data_archive",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "product_validation_protocol_audit",
+      "command": "python scripts/product_validation_study.py",
+      "effect": "read_only_preregistered_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "product_validation_registration",
+      "command": "python scripts/product_validation_study.py --register --participant-id P-REPLACE00000 --target-role football_analyst --moderator-id M-REPLACE0 --confirm-consent",
+      "effect": "append_pseudonymous_protocol_bound_session_registration",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "product_validation_analysis",
+      "command": "python scripts/product_validation_study.py --analyze --records data/evaluation/product_validation_v1/participant_records.jsonl --registry data/evaluation/product_validation_v1/session_registry.json --evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE --external-review data/evaluation/product_validation_v1/external_review.json --out data/evaluation/product_validation_v1/decision.json",
+      "effect": "analyze_registered_human_and_byte_verified_external_review_evidence",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "production_validation_protocol_audit",
+      "command": "python scripts/run_production_validation.py",
+      "effect": "read_only_preregistered_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "production_validation_execution",
+      "command": "python scripts/run_production_validation.py --execute --workspace . --authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION --deployment-instance-id instance-replace",
+      "effect": "fixed_100_match_resumable_deployment_volume_workload",
+      "runs_simulation": true,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "production_validation_attestation",
+      "command": "python scripts/run_production_validation.py --record-attestation --workspace . --operator-id operator-replace --volume-id volume-replace --container-image-digest sha256:replace --attested-deployment-instance-id instance-first --attested-deployment-instance-id instance-second --confirm-forced-termination --confirm-same-volume",
+      "effect": "record_identity_bound_operator_observation_without_simulation",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "production_validation_finalization",
+      "command": "python scripts/run_production_validation.py --finalize --workspace . --restore-scratch REPLACE_EXTERNAL_SCRATCH --authorization I_AUTHORIZE_GFS_100_MATCH_PRODUCTION_VALIDATION",
+      "effect": "restore_drill_and_immutable_production_validation_decision",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "product_value_protocol_audit",
+      "command": "python scripts/product_value_study.py",
+      "effect": "read_only_preregistered_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "product_value_registration",
+      "command": "python scripts/product_value_study.py --register --participant-id participant-replace0001 --target-role football_analyst --moderator-id moderator-replace0001 --confirm-consent",
+      "effect": "append_pseudonymous_protocol_and_case_bound_randomized_registration",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "product_value_delivery_status",
+      "command": "python gfs.py --base-dir . studio value-study status",
+      "effect": "read_only_aggregate_blinded_delivery_status",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "product_value_packet_delivery",
+      "command": "python gfs.py --base-dir . studio value-study packet --registration-id REG-000000000000000000000000",
+      "effect": "materialize_identity_bound_scoring_key_free_participant_packet",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "product_value_analysis",
+      "command": "python scripts/product_value_study.py --analyze --records data/evaluation/product_value_validation_v1/participant_records.jsonl --registry data/evaluation/product_value_validation_v1/session_registry.json --evidence-root REPLACE_CONTROLLED_CONTENT_ARCHIVE --scoring-seal data/evaluation/product_value_scoring_seal_v1.json --out data/evaluation/product_value_validation_v1/decision.json",
+      "effect": "analyze_registered_randomized_byte_verified_rescored_human_evidence",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "independent_reproduction_protocol_audit",
+      "command": "python scripts/verify_independent_reproduction.py",
+      "effect": "read_only_preregistered_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "independent_reproduction_review_audit",
+      "command": "python scripts/verify_independent_reproduction.py --review data/evaluation/independent_action_reproduction_v2/review.json",
+      "effect": "read_only_signed_external_review_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "academic_replication_protocol_audit",
+      "command": "python scripts/academic_replication_study.py --protocol-audit",
+      "effect": "read_only_result_contingent_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "academic_replication_execution",
+      "command": "python scripts/academic_replication_study.py --execute --authorization I_AUTHORIZE_GFS_ACTION_REPLICATION_V2",
+      "effect": "fixed_72_run_disjoint_fixture_mechanism_replication",
+      "runs_simulation": true,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "academic_replication_analysis",
+      "command": "python scripts/academic_replication_study.py --analyze",
+      "effect": "analyze_completed_identity_matched_replication_only",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "paper_finalization_protocol_audit",
+      "command": "python scripts/finalize_paper.py",
+      "effect": "read_only_evidence_locked_finalization_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "paper_result_ledger_build",
+      "command": "python scripts/finalize_paper.py --build-ledger --authorization I_AUTHORIZE_GFS_ACTION_PAPER_LEDGER_V2",
+      "effect": "build_deterministic_ledger_from_complete_existing_results",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "paper_final_manuscript_audit",
+      "command": "python scripts/finalize_paper.py --verify-final",
+      "effect": "read_only_completed_manuscript_evidence_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "excellence_score_audit",
+      "command": "python scripts/verify_excellence_score.py",
+      "effect": "read_only_evidence_derived_product_and_academic_scoring",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "excellence_completion_plan",
+      "command": "python gfs.py studio excellence",
+      "effect": "read_only_dependency_aware_completion_plan",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "excellence_evidence_kit_audit",
+      "command": "python gfs.py studio evidence-kit",
+      "effect": "read_only_in_memory_template_kit_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "excellence_evidence_kit_materialization",
+      "command": "python gfs.py studio evidence-kit --materialize build/evidence-kits/gfs-excellence-evidence-kit-v1.zip",
+      "effect": "write_deterministic_template_only_archive",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "security_closure_protocol_audit",
+      "command": "python scripts/verify_security_closure.py",
+      "effect": "read_only_zero_secret_closure_protocol_audit",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "security_closure_attestation_audit",
+      "command": "python scripts/verify_security_closure.py --attestation data/evaluation/security_closure_v2/attestation.json --out data/evaluation/security_closure_verification_v2.json",
+      "effect": "verify_all_known_user_revocation_attestations_and_redacted_receipts",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "experiment_status",
+      "command": "python scripts/run_formal_experiment.py",
+      "effect": "read_only",
+      "runs_simulation": false,
+      "explicit_authority_required": false
+    },
+    {
+      "id": "confirmatory_execution",
+      "command": "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --execute --authorization I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2",
+      "effect": "fixed_60_run_simulation",
+      "runs_simulation": true,
+      "explicit_authority_required": true
+    },
+    {
+      "id": "complete_only_analysis",
+      "command": "python scripts/run_formal_experiment.py --protocol data/evaluation/action_outcome_protocol_v1.json --analyze --authorization I_AUTHORIZE_GFS_FORMAL_EXPERIMENT_V2",
+      "effect": "analysis_only_after_complete_identity_matched_evidence",
+      "runs_simulation": false,
+      "explicit_authority_required": true
+    }
+  ],
+  "expected_confirmatory_outputs": {
+    "progress": "data/evaluation/action_outcome_v1/progress.json",
+    "decision": "data/evaluation/action_outcome_v1/decision.json",
+    "current_status": "complete_research_only"
+  },
+  "data_distribution": {
+    "status": "source_specific_review_complete_idsse_subset_ready",
+    "redistribution_blanket_claim": false,
+    "license_review_complete": true,
+    "known_source_registry_complete": true,
+    "approved_source_count": 1,
+    "excluded_source_count": 4,
+    "registry": "data/evaluation/data_license_registry_v1.json",
+    "archive_manifest": "data/evaluation/data_release_manifest_v1.json",
+    "attribution": "docs/IDSSE_ATTRIBUTION.md",
+    "note": "Only the DFL-authorized CC BY 4.0 IDSSE/Sportec derived subset is approved; StatsBomb, Metrica, SkillCorner, and Transfermarkt-derived files remain excluded."
+  },
+  "environment": {
+    "status": "supported_profile_matrix_runtime_verified",
+    "container_base_pinned": "python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7",
+    "direct_dependencies_pinned": true,
+    "full_transitive_hash_lock": true,
+    "target_runtime_lock": "requirements-linux-py312.lock",
+    "ci_tooling_lock": "requirements-ci-linux-py312.lock",
+    "windows_reference_runtime_lock": "requirements-windows-py313.lock",
+    "cross_platform_lock_matrix": true,
+    "cyclonedx_sbom_current": true,
+    "container_images_digest_pinned": true,
+    "container_build_verified": false
+  },
+  "independent_reproduction": {
+    "status": "not_performed",
+    "scope": "action_outcome_and_v2_action_policy_replication",
+    "runs_total": 132,
+    "stages": {
+      "confirmatory_runs": 60,
+      "academic_replication_runs": 72
+    },
+    "protocol": "data/evaluation/independent_action_reproduction_protocol_v2.json",
+    "protocol_verification": "data/evaluation/independent_action_reproduction_protocol_verification_v2.json",
+    "reviewer_independent_of_implementation": null,
+    "report": null
+  },
+  "academic_replication": {
+    "status": "registered_ready_for_fixed_replication",
+    "protocol": "data/evaluation/academic_action_replication_protocol_v2.json",
+    "protocol_verification": "data/evaluation/academic_action_replication_protocol_verification_v2.json",
+    "confirmatory_decision_available": true,
+    "branch": "variance_diagnosis",
+    "runs_executed": 0,
+    "decision": null
+  },
+  "product_validation": {
+    "status": "preregistered_not_executed",
+    "protocol": "data/evaluation/product_validation_protocol_v1.json",
+    "protocol_verification": "data/evaluation/product_validation_protocol_verification_v1.json",
+    "session_registry": "data/evaluation/product_validation_v1/session_registry.json",
+    "participants_observed": 0,
+    "decision": null,
+    "production_protocol": "data/evaluation/production_validation_protocol_v1.json",
+    "production_status": "preregistered_not_executed",
+    "production_matches_executed": 0,
+    "product_value_protocol": "data/evaluation/product_value_validation_protocol_v1.json",
+    "product_value_case_packs": "data/evaluation/product_value_case_packs_v1.json",
+    "product_value_scoring_seal": "data/evaluation/product_value_scoring_seal_v1.json",
+    "product_value_delivery_service": "src/product/study_delivery.py",
+    "product_value_participant_session_runner": "src/product/study_session.py",
+    "product_value_session_registry": "data/evaluation/product_value_validation_v1/session_registry.json",
+    "product_value_status": "preregistered_not_executed",
+    "product_value_participants_observed": 0
+  },
+  "archive": {
+    "status": "manifest_addressed_subset_ready",
+    "manifest": "data/evaluation/data_release_manifest_v1.json",
+    "format": "deterministic_zip_stored",
+    "physical_materialization": "optional_on_demand",
+    "scope": "licensed IDSSE/Sportec derived data supplement only"
+  }
+}

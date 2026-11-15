@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.product"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.product"
+provides = ["product-bundle"]
+requires = ["gfs.studio.product.studio", "gfs.studio.product.manager", "gfs.studio.product.comparison", "gfs.studio.product.recovery", "gfs.studio.product.tasks"]
+implementation = "gfs_studio.plugins.product.plugin:ProductBundlePlugin"

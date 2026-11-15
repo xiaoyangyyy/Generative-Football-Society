@@ -1,0 +1,5 @@
+[data]
+external = "external/"
+frame-world = "frame-world/"
+training = "training/"
+world-models = "world-model/"

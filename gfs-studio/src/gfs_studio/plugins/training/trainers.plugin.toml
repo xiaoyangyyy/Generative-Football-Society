@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.training.trainers"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.training"
+provides = ["trainers"]
+requires = ["gfs.studio.world-model.latent", "gfs.studio.training.evaluation"]
+implementation = "gfs_studio.plugins.training.trainers.plugin:TrainersPlugin"

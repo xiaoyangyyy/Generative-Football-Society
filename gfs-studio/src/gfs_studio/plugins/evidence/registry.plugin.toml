@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.evidence.registry"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.evidence"
+provides = ["identity-registry"]
+requires = ["gfs.studio.evidence.receipts"]
+implementation = "gfs_studio.plugins.evidence.registry.identity:EvidenceRegistryPlugin"

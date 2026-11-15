@@ -1,0 +1,95 @@
+{
+  "schema_version": 2,
+  "protocol_id": "gfs-m0-vs-sealed-m1-confirmatory-v2",
+  "state": "preregistered_not_executed",
+  "research_question": "Does the sealed M1 world-model planner improve external calibration loss over frozen M0 while preserving all validity gates and changing match behavior?",
+  "hypothesis": {
+    "null": "M1 does not improve external calibration loss by the preregistered minimum meaningful amount.",
+    "alternative": "M1 improves external calibration loss by at least 0.10 and changes observable match behavior."
+  },
+  "arms": {
+    "baseline": "M0",
+    "candidate": "M1"
+  },
+  "candidate": {
+    "checkpoint": "data/world_model/latent_wm_rollout_calibrated_candidate.pt",
+    "checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28"
+  },
+  "design": {
+    "experimental_unit": "matched_fixture_seed_pair",
+    "fixtures": [
+      ["Mexico", "South Korea"],
+      ["Brazil", "Germany"],
+      ["France", "England"],
+      ["Argentina", "Netherlands"],
+      ["Spain", "Morocco"],
+      ["Portugal", "Uruguay"]
+    ],
+    "sample_indices": [0, 1, 2, 3, 4],
+    "seed_start": 260806,
+    "match_seconds": 5400.0,
+    "pairs_total": 30,
+    "runs_per_arm": 30,
+    "runs_total": 60,
+    "arm_order": ["M0", "M1"],
+    "rationale": "Thirty matched pairs balance a fixed compute ceiling with fixture-stratified paired inference; the arm order cannot affect deterministic seeded simulations."
+  },
+  "analysis": {
+    "primary_estimand": "candidate_minus_baseline_external_calibration_loss",
+    "primary_method": "fixture_stratified_paired_bootstrap",
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 260806,
+    "confidence_level": 0.95,
+    "minimum_meaningful_delta_loss": 0.10,
+    "behavior_change_tolerance": 1e-07,
+    "minimum_changed_pair_fraction": 0.10,
+    "secondary_metrics": [
+      "pass_completion",
+      "interceptions_per_pass",
+      "passes_per_team_match",
+      "long_pass_share",
+      "shots_per_team_match",
+      "shots_on_target_rate",
+      "goals_per_team_match",
+      "fouls_committed_per_team_match",
+      "yellow_cards_per_team_match",
+      "red_cards_per_team_match",
+      "possession_share",
+      "crosses_per_team_match",
+      "headers_per_team_match",
+      "tackles_per_team_match",
+      "micro_xg_per_team_match"
+    ],
+    "secondary_role": "descriptive_only_no_promotion_claim",
+    "promotion_rule": [
+      "candidate_passes_all_external_validity_gates",
+      "upper_95_percent_bootstrap_bound_is_below_negative_minimum_meaningful_delta_loss",
+      "changed_pair_fraction_meets_or_exceeds_preregistered_minimum",
+      "checkpoint_and_execution_identity_are_verified"
+    ],
+    "equivalence_rule": "The entire 95% interval lies within plus_or_minus the minimum meaningful delta and promotion criteria are not met.",
+    "multiplicity": "One confirmatory primary comparison only; secondary metrics are descriptive and cannot trigger promotion."
+  },
+  "integrity": {
+    "interim_analysis": false,
+    "optional_stopping": false,
+    "post_hoc_fixture_or_metric_selection": false,
+    "allowed_exclusions": [
+      "missing_or_corrupt_output",
+      "runtime_integrity_failure"
+    ],
+    "exclusion_action": "rerun_the_same_arm_fixture_sample_index_only",
+    "resume_requires_identical_protocol_checkpoint_and_code_identity": true,
+    "code_identity_files": [
+      "src/match_engine/calibration/ablation.py",
+      "src/match_engine/calibration/benchmark_core.py",
+      "src/match_engine/calibration/contract.py",
+      "src/match_engine/calibration/objective.py",
+      "scripts/run_formal_experiment.py"
+    ]
+  },
+  "outputs": {
+    "progress": "data/evaluation/formal_confirmatory_v2/progress.json",
+    "decision": "data/evaluation/formal_confirmatory_v2/decision.json"
+  }
+}

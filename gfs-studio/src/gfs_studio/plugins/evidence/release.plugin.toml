@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.evidence.release"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.evidence"
+provides = ["release-gates"]
+requires = ["gfs.studio.evidence.registry", "gfs.studio.research.experiments", "gfs.studio.participants.scoring"]
+implementation = "gfs_studio.plugins.evidence.release.gates:ReleasePlugin"

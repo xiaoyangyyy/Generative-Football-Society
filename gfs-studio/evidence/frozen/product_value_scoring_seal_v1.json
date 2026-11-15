@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "seal_id": "gfs-studio-product-value-scoring-seal-v1",
+  "protocol_id": "gfs-studio-comparative-value-validation-v1",
+  "state": "frozen_preexecution",
+  "case_pack_manifest_sha256": "2c683fe25545362661c3baa6600c2482b45cfcbe32fa908b5deebb8b5ed09173",
+  "scoring_keys": {
+    "case_pack_alpha": {
+      "recommended_intervention": "wide_overload",
+      "supported_claim": "best_frozen_simulator_branch",
+      "next_evidence_action": "preregistered_paired_validation"
+    },
+    "case_pack_beta": {
+      "recommended_intervention": "controlled_possession",
+      "supported_claim": "best_frozen_simulator_branch",
+      "next_evidence_action": "preregistered_paired_validation"
+    }
+  },
+  "access_contract": {
+    "participant_delivery_forbidden": true,
+    "moderator_analysis_only": true,
+    "repository_is_not_a_participant_delivery_channel": true
+  },
+  "current_execution": {
+    "participants_exposed": 0,
+    "measured_sessions": 0,
+    "results_available": false
+  }
+}

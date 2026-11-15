@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "diagnosis_id": "m2-mirrored-policy-diagnosis-v1",
+  "claim_scope": "diagnosis_only_no_promotion",
+  "zero_execution": true,
+  "post_hoc_promotion_forbidden": true,
+  "frozen_decision": "research_only_default_off",
+  "promotion_supported": false,
+  "generated_at": "2026-09-18T14:16:00+00:00",
+  "bound_identities": {
+    "protocol": "data/evaluation/m2_mirrored_policy_protocol_v1.json",
+    "protocol_sha256": "7fc0eb3a276f2f411242d8bfe72b85474230e33de564c1e30445a425cfe02e54",
+    "progress": "data/evaluation/m2_mirrored_policy_progress_v1.json",
+    "progress_sha256": "fde7498996225d2516e2e50792b400114902fb8cb5fa9edb5bd49c53eb556069",
+    "eligibility": "data/evaluation/m2_candidate_eligibility_v1.json",
+    "eligibility_sha256": "c09f4f516fca73a3650d761d2df2cc57510a717036c67180afec8ce81bd85886",
+    "preflight": "data/evaluation/m2_training_preflight_v1.json",
+    "preflight_sha256": "c00fca875306c0895ad1c0810597c17677b2af8a2c42d646b727999107a5f8ce",
+    "checkpoint": "data/world_model/m2_outcome_aligned_candidate.pt",
+    "checkpoint_sha256": "5e40c3e743afd083dbf2f686ef526ec28db885a81a203c5c90253988b8c6a46c"
+  },
+  "source": {
+    "analysis_path": "analysis",
+    "row_aggregation": "offline_sum_of_frozen_progress_rows",
+    "sealed_reopened_for_retuning": false,
+    "hyperparameters_changed": false,
+    "formal_matches_reexecuted": false
+  },
+  "promotion_gates": {
+    "execution_identity_verified": true,
+    "checkpoint_policy_utility_eligible": true,
+    "minimum_attributable_outcomes_observed": true,
+    "minimum_attributable_unit_coverage_observed": true,
+    "mechanism_realized_utility_ci_above_zero": false,
+    "minimum_expected_counterfactual_change_rate": false,
+    "controlled_micro_xg_effect_is_meaningful": false,
+    "external_continuous_loss_noninferior": true
+  },
+  "frozen_estimates": {
+    "primary_controlled_micro_xg_effect": {
+      "point_estimate": 0.005170961091614599,
+      "ci95_low": -0.012502084030080015,
+      "ci95_high": 0.022731704286541154,
+      "minimum_meaningful_delta": 0.1,
+      "requires_ci_low_above_zero": true
+    },
+    "mechanism_realized_policy_utility": {
+      "point_estimate": -0.05594533072754329,
+      "ci95_low": -0.05657272531886622,
+      "ci95_high": -0.05531513606361469
+    },
+    "mechanism_expected_counterfactual_changes": {
+      "point_estimate": 0.0006166410775875488,
+      "ci95_low": 0.0004940177997178542,
+      "ci95_high": 0.0007727128731786465,
+      "minimum_counterfactual_change_rate": 0.02
+    },
+    "mechanism_attributable_coverage": {
+      "outcomes": 117366,
+      "minimum_outcomes": 384,
+      "unit_fraction": 1.0,
+      "minimum_unit_fraction": 0.8
+    },
+    "external_continuous_calibration_noninferiority": {
+      "point_delta": -0.13733611677432478,
+      "ci95_low": -0.7759264023054058,
+      "ci95_high": 0.40590747381901926,
+      "external_noninferiority_margin": 1.0
+    },
+    "secondary_goal_difference_effect": {
+      "point_estimate": -0.025,
+      "ci95_low": -0.08333333333333333,
+      "ci95_high": 0.03333333333333333
+    }
+  },
+  "offline_row_aggregates": {
+    "candidate_rows": 240,
+    "m0_rows": 120,
+    "opportunities": 117366.0,
+    "influenced_opportunities": 117366.0,
+    "attribution_eligible_opportunities": 117366.0,
+    "high_level_counterfactual_action_changes": 65.0,
+    "expected_counterfactual_action_changes": 72.52843872277503,
+    "pass_target_opportunities": 116151.0,
+    "pass_target_influenced_opportunities": 116151.0,
+    "pass_target_changes": 201.0,
+    "pass_target_expected_changes": 189.06501708613407,
+    "by_arm": {
+      "M2_home": {
+        "rows": 120,
+        "opportunities": 58353.0,
+        "influenced_opportunities": 58353.0,
+        "high_level_counterfactual_action_changes": 43.0,
+        "expected_counterfactual_action_changes": 44.9647105973772,
+        "mean_expected_counterfactual_change_rate": 0.0007627013401866078,
+        "mean_recommended_probability_shift": 5.729127683984004e-10,
+        "pass_target_changes": 52.0
+      },
+      "M2_away": {
+        "rows": 120,
+        "opportunities": 59013.0,
+        "influenced_opportunities": 59013.0,
+        "high_level_counterfactual_action_changes": 22.0,
+        "expected_counterfactual_action_changes": 27.56372812539783,
+        "mean_expected_counterfactual_change_rate": 0.0004705808149884899,
+        "mean_recommended_probability_shift": 9.197067444742667e-05,
+        "pass_target_changes": 149.0
+      }
+    }
+  },
+  "failure_mode": "authorization_rich_behavior_poor",
+  "root_causes": [
+    {
+      "id": "influence_is_not_behavioral_change",
+      "summary": "Every opportunity is marked influenced when any authorized signal exists, so coverage gates pass while high-level action mass barely moves.",
+      "evidence": "117366/117366 influenced; 65 realized high-level counterfactual action changes; expected CF rate 0.000617 versus 0.02.",
+      "code": [
+        "src/match_engine/world_model/action_adoption.py"
+      ]
+    },
+    {
+      "id": "planner_utility_is_audit_only",
+      "summary": "Imagination deltas are recorded and not sampled. The probability blender is the only high-level adoption point, with authority capped at 0.35 and advantage scaled by 0.10.",
+      "code": [
+        "src/match_engine/action_engine.py",
+        "src/match_engine/world_model/action_adoption.py"
+      ]
+    },
+    {
+      "id": "zero_persistence_hold_yields_suppression",
+      "summary": "M2 forces hold value to exact zero persistence. Positive pass advantages are rare, so the home arm mean recommended probability shift is ~1e-9 (suppression-only).",
+      "code": [
+        "src/match_engine/world_model/planner.py"
+      ]
+    },
+    {
+      "id": "synthetic_shared_pass_encoding",
+      "summary": "High-level pass is scored on a synthetic shared encoding, not the executable receiver that pass_target_ranking later considers.",
+      "code": [
+        "src/match_engine/world_model/planner.py"
+      ]
+    },
+    {
+      "id": "target_ranking_is_a_weak_second_surface",
+      "summary": "Pass-target ranking fails closed on tiny spread or zero blend. 201 target changes across 240 candidate matches do not feed the high-level CF-rate gate.",
+      "code": [
+        "src/match_engine/world_model/planner.py"
+      ]
+    }
+  ],
+  "next_protocol_modifications": [
+    "Separate influenced (authorized signal present) from attribution-eligible behavioral change (TV / expected CF).",
+    "Score high-level pass on executable candidates consistent with pass_target_ranking.",
+    "When suppressing pass versus zero persistence, boost a validated alternative instead of suppression-only.",
+    "Specify an authority times blend contract that can reach the 0.02 CF floor; planner_blend 0.30 multiplied by sealed authority often yields ~0.06 effective blend.",
+    "Any controller or training change requires a new protocol and code identity before training or sealed qualification. Do not amend this bound study."
+  ],
+  "immutable": [
+    "data/evaluation/m2_mirrored_policy_progress_v1.json analysis.decision",
+    "data/evaluation/m2_mirrored_policy_progress_v1.json analysis.promotion_gates",
+    "checkpoint binding and sealed qualification of this candidate for promotion"
+  ],
+  "claim_boundary": "This diagnosis restates frozen 360-match aggregates and code-path findings. It is not a promotion, not a policy-effect claim, and not real-football causality. It does not authorize retraining, threshold changes, or re-execution of the bound budget."
+}

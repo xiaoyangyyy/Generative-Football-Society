@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.training"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.training"
+provides = ["training-bundle"]
+requires = ["gfs.studio.training.datasets", "gfs.studio.training.trainers", "gfs.studio.training.evaluation", "gfs.studio.training.checkpoints", "gfs.studio.training.trace-export"]
+implementation = "gfs_studio.plugins.training.plugin:TrainingBundlePlugin"

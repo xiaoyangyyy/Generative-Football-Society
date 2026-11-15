@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-world-model-action-adoption-mechanism-v1",
+  "state": "preregistered_not_executed",
+  "research_question": "Does the validated world-model action policy produce measurable, attributable action changes under shared-random-number counterfactual sampling?",
+  "claim_scope": "mechanism_confirmation_only_no_product_or_academic_promotion",
+  "arms": [
+    {
+      "arm_id": "M1_predict_only",
+      "world_model": true,
+      "planning": false,
+      "role": "same_checkpoint_negative_control"
+    },
+    {
+      "arm_id": "M1_action_policy",
+      "world_model": true,
+      "planning": true,
+      "role": "candidate_direct_action_policy"
+    }
+  ],
+  "candidate": {
+    "checkpoint": "data/world_model/latent_wm_rollout_calibrated_candidate.pt",
+    "checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28"
+  },
+  "design": {
+    "experimental_unit": "matched_fixture_seed_pair",
+    "fixtures": [
+      ["Mexico", "South Korea"],
+      ["Brazil", "Germany"],
+      ["France", "England"],
+      ["Argentina", "Netherlands"],
+      ["Spain", "Morocco"],
+      ["Portugal", "Uruguay"]
+    ],
+    "sample_indices": [0, 1],
+    "seed_start": 418260,
+    "match_seconds": 900.0,
+    "pairs_total": 12,
+    "runs_per_arm": 12,
+    "runs_total": 24,
+    "arm_order": ["M1_predict_only", "M1_action_policy"],
+    "compute_ceiling_reason": "A bounded 24-run mechanism screen precedes any new full-length outcome study."
+  },
+  "analysis": {
+    "primary_estimand": "shared_uniform_counterfactual_action_change_rate",
+    "behavior_change_tolerance": 1e-07,
+    "minimum_action_opportunities": 1000,
+    "minimum_influenced_opportunity_fraction": 0.90,
+    "minimum_attribution_eligible_fraction": 0.95,
+    "minimum_expected_counterfactual_changes": 3.0,
+    "minimum_realized_counterfactual_changes": 1,
+    "minimum_changed_match_pair_fraction": 0.08,
+    "maximum_probability_blend_weight": 0.35,
+    "negative_control_requires_zero_influenced_opportunities": true,
+    "secondary_match_metrics_role": "descriptive_only",
+    "pass_target_estimands": [
+      "shared_uniform_counterfactual_pass_target_change_rate",
+      "expected_pass_target_changes"
+    ],
+    "promotion_forbidden": true
+  },
+  "integrity": {
+    "interim_analysis": false,
+    "optional_stopping": false,
+    "post_hoc_threshold_changes": false,
+    "allowed_exclusions": [
+      "missing_or_corrupt_output",
+      "runtime_integrity_failure"
+    ],
+    "exclusion_action": "rerun_same_arm_fixture_sample_index_only",
+    "resume_requires_identical_protocol_checkpoint_and_code_identity": true,
+    "code_identity_files": [
+      "src/match_engine/action_engine.py",
+      "src/match_engine/passing_engine.py",
+      "src/match_engine/world_model/action_adoption.py",
+      "src/match_engine/world_model/inference.py",
+      "src/match_engine/world_model/planner.py",
+      "src/match_engine/calibration/ablation.py",
+      "src/match_engine/calibration/benchmark_core.py",
+      "scripts/action_adoption_study.py"
+    ]
+  },
+  "outputs": {
+    "progress": "data/evaluation/action_adoption_v1/progress.json",
+    "decision": "data/evaluation/action_adoption_v1/decision.json",
+    "rows_csv": "data/evaluation/action_adoption_v1/rows.csv",
+    "summary_markdown": "data/evaluation/action_adoption_v1/summary.md",
+    "smoke": "data/evaluation/action_adoption_v1/smoke_verification.json"
+  },
+  "current_execution": {
+    "authorized": false,
+    "runs_executed": 0,
+    "training_executed": false,
+    "provider_calls_made": false,
+    "results_available": false
+  }
+}

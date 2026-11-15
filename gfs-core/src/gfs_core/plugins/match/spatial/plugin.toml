@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.match.spatial"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.match"
+provides = ["spatial"]
+requires = []
+implementation = "gfs_core.plugins.match.spatial.plugin:SpatialPlugin"

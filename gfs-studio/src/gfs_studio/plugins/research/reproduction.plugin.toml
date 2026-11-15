@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.research.reproduction"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.research"
+provides = ["reproduction"]
+requires = ["gfs.studio.research.experiments", "gfs.studio.evidence.registry"]
+implementation = "gfs_studio.plugins.research.reproduction.verifier:ReproductionPlugin"

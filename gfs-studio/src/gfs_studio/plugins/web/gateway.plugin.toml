@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.web.gateway"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.web"
+provides = ["http-gateway"]
+requires = ["gfs.studio.product.studio", "gfs.studio.product.manager", "gfs.studio.product.recovery", "gfs.studio.product.tasks"]
+implementation = "gfs_studio.plugins.web.gateway.server:WebPlugin"

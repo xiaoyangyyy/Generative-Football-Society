@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-world-model-action-adoption-mechanism-v1",
+  "status": "mechanism_confirmed",
+  "passed": true,
+  "claim_scope": "mechanism_confirmation_only_no_product_or_academic_promotion",
+  "runs_executed": 24,
+  "pairs_per_arm": 12,
+  "mechanism": {
+    "action_opportunities": 1954.0,
+    "influenced_opportunities": 1951.0,
+    "attribution_eligible_opportunities": 1951.0,
+    "expected_counterfactual_action_changes": 25.246230364619564,
+    "realized_counterfactual_action_changes": 25.0,
+    "changed_match_pairs": 12,
+    "changed_match_pair_fraction": 1.0
+  },
+  "gates": {
+    "fixed_complete_paired_budget": true,
+    "execution_identity_verified": true,
+    "no_material_deviations": true,
+    "minimum_action_opportunities": true,
+    "minimum_influenced_opportunity_fraction": true,
+    "minimum_attribution_eligible_fraction": true,
+    "minimum_expected_counterfactual_changes": true,
+    "minimum_realized_counterfactual_changes": true,
+    "minimum_changed_match_pair_fraction": true,
+    "negative_control_has_zero_influenced_opportunities": true,
+    "training_not_executed": true,
+    "provider_calls_not_made": true,
+    "promotion_forbidden": true
+  },
+  "execution_identity": {
+    "protocol_sha256": "01cc61e0f23767c9cfd24fe467fbae85e2f3fd60c4fb2862acb8f287d65cd9a3",
+    "checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28",
+    "code_sha256": {
+      "src/match_engine/action_engine.py": "005947f70d7667a35915ade25f9a706611f608914fbf7783521fc69cf3b58b62",
+      "src/match_engine/passing_engine.py": "aab4a72d31f19710d4a7c9487d2a6b70a83b0d5a325e352295ccf96305550fc3",
+      "src/match_engine/world_model/action_adoption.py": "e4b6131e465881105a3d0b50a7f99131113c8226cb005c669def8e77fb8bf1de",
+      "src/match_engine/world_model/inference.py": "a9218656983a3dd546d02a68e61b2edc560e89217d91d6cc8860ddedadb2c52a",
+      "src/match_engine/world_model/planner.py": "b744af60eb30be01186472a5fddcb4beb51abba506807ba7ede03e5acf0a8334",
+      "src/match_engine/calibration/ablation.py": "ceafce6df973594225de9575e0aad5c91eb7ed9636cc4fdbc7c9314bd93c1856",
+      "src/match_engine/calibration/benchmark_core.py": "1c4bfbb82af96fc7e26cf1c2241c3ff3c427bb4804d3ad2af17ef691b6002444",
+      "scripts/action_adoption_study.py": "9eb7bbd5bfa28615f1642b212e97b6f0fa8270602c85ba43b0c7d2fa3f0c89a9"
+    }
+  },
+  "material_deviations": [],
+  "training_executed": false,
+  "provider_calls_made": false,
+  "promotion_authorized": false,
+  "exports": {
+    "rows_csv": {
+      "path": "data/evaluation/action_adoption_v1/rows.csv",
+      "sha256": "669b003ec15d69b161d655134b6b1a5c1857eef63e162b4daf9266cb416e6c49",
+      "rows": 24
+    },
+    "summary_markdown": {
+      "path": "data/evaluation/action_adoption_v1/summary.md",
+      "sha256": "3357a526cc252f88238551697a1ee75a3a6452cd97c944bed85acad10c48efb4"
+    }
+  }
+}

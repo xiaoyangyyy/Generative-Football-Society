@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_python313_windows_reference_lock",
+  "generated_at": "2026-09-18T14:24:26.573464+00:00",
+  "status": "passed_resolution_and_hash_dry_run",
+  "passed": true,
+  "target": {
+    "python": "3.13",
+    "platform": "x86_64-pc-windows-msvc",
+    "torch_backend": "cpu",
+    "package_count": 64
+  },
+  "commands": {
+    "resolve": "uv pip compile requirements-windows-py313.in --output-file requirements-windows-py313.lock --python-version 3.13 --python-platform x86_64-pc-windows-msvc --torch-backend cpu --only-binary :all: --generate-hashes --no-annotate --emit-index-url --emit-index-annotation --exclude-newer 2026-08-10T00:00:00Z --no-cache --no-python-downloads",
+    "uv_dry_run": "uv pip sync requirements-windows-py313.lock --python-version 3.13 --python-platform x86_64-pc-windows-msvc --require-hashes --dry-run --system --torch-backend cpu --index-strategy unsafe-best-match",
+    "pip_dry_run": "python -m pip install --dry-run --ignore-installed --require-hashes --only-binary=:all: -r requirements-windows-py313.lock"
+  },
+  "artifact_sha256": {
+    "requirements-windows-py313.in": "ad9129ee2df0d52e1bfec4222c6f3f10b618f93464e6f855cde0f99017a54e93",
+    "requirements-windows-py313.lock": "c18466d12f29f0fef2183945622c2dc7ad3852f4884829bcb92f47067edced32",
+    "data/evaluation/supply_chain_sbom_windows_py313_v1.cdx.json": "2f238933ca5694500276708ddbfd28f2cf0030552548cdae932cb1d713194323"
+  },
+  "observations": {
+    "all_packages_exact": true,
+    "all_packages_have_sha256": true,
+    "uv_target_resolution_passed": true,
+    "pip_require_hashes_target_plan_passed": true,
+    "would_install_package_count": 64,
+    "environment_installed": false,
+    "container_built": false
+  },
+  "external_package_index_calls_made": true,
+  "provider_api_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false,
+  "limitations": [
+    "The two dry runs validate the complete hashed install plan but do not create a second isolated environment.",
+    "The currently observed development environment was validated separately by scripts/verify_local_runtime.py.",
+    "A successful container build remains a separate deployment gate."
+  ]
+}

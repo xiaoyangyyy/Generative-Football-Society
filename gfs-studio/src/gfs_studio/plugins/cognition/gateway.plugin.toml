@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.cognition.gateway"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.cognition"
+provides = ["provider-gateway"]
+requires = []
+implementation = "gfs_studio.plugins.cognition.gateway.service:CognitionPlugin"

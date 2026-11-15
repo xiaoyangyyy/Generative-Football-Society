@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.world-model.policies"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.world_model"
+provides = ["policies"]
+requires = ["gfs.studio.world-model.planning"]
+implementation = "gfs_studio.plugins.world_model.policies.service:PoliciesPlugin"

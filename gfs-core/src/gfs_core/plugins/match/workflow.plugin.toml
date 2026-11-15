@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.match.workflow"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.match"
+provides = ["match-workflow"]
+requires = ["gfs.core.match", "gfs.core.status.confidence", "gfs.core.data.tactics", "gfs.core.society.memory"]
+implementation = "gfs_core.plugins.match.workflow:MatchWorkflowPlugin"

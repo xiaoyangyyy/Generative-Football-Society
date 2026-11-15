@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.society.agents"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.society"
+provides = ["agents"]
+requires = ["gfs.core.data.rosters", "gfs.core.match.spatial"]
+implementation = "gfs_core.plugins.society.agents.agent:AgentsPlugin"

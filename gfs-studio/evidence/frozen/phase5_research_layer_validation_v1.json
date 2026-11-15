@@ -1,0 +1,318 @@
+{
+  "schema_version": 1,
+  "phase": "world_model_mechanism_chain_and_llm_active_probe_revalidation",
+  "dataset": {
+    "manifest": "data/world_model/dataset_manifest_formal_v8_candidate.json",
+    "summary": {
+      "dev": {
+        "goals": 6,
+        "groups": 10,
+        "passes": 1723,
+        "rows": 1793,
+        "shots": 61
+      },
+      "sealed_test": {
+        "goals": 8,
+        "groups": 9,
+        "passes": 1545,
+        "rows": 1610,
+        "shots": 49
+      },
+      "train": {
+        "goals": 30,
+        "groups": 53,
+        "passes": 9166,
+        "rows": 9497,
+        "shots": 272
+      }
+    },
+    "group_safe_split": true
+  },
+  "world_model_candidate": {
+    "checkpoint": "data/world_model/latent_wm_rollout_calibrated_candidate.pt",
+    "checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28",
+    "checkpoint_identity_verified": true,
+    "strict_command": "scripts/validate_world_model.py --trace-dir data/world_model/traces --checkpoint data/world_model/latent_wm_rollout_calibrated_candidate.pt --manifest data/world_model/dataset_manifest_formal_v8_candidate.json --require-two-step-planning --require-semantic-event-heads",
+    "strict_exit_code": 0,
+    "accepted": true,
+    "checkpoint_version": 9,
+    "transition_quality": 0.7954664042116536,
+    "transition_ensemble_trained": true,
+    "transition_ensemble_size": 3,
+    "two_step_planning_gate": {
+      "version": 2,
+      "active": true,
+      "authority": 0.04639105242352125,
+      "reason": "trained_calibrated_grouped_two_step_gain",
+      "samples": 1783,
+      "groups": 10,
+      "weighted_mse": 0.007694121915847063,
+      "persistence_weighted_mse": 0.008327516727149487,
+      "skill_vs_persistence": 0.07606046701022173,
+      "transition_ensemble_trained": true,
+      "training_pairs": 9444,
+      "training_groups": 53,
+      "max_curriculum_weight_applied": 0.25,
+      "optimization_steps": 2960,
+      "trained_multi_step": true,
+      "ensemble_gain_vs_member_mean": 3.483518958091736e-05,
+      "disagreement_error_correlation": 0.08833825854760897,
+      "calibration_reported": true,
+      "action_sequence": "observed_changing_actions"
+    },
+    "sealed_test": {
+      "manifest": "E:\\\u5b9e\u9a8c\\GFS-sparse\\data\\world_model\\dataset_manifest_formal_v8_candidate.json",
+      "two_step": {
+        "samples": 1601,
+        "groups": 9,
+        "weighted_mse": 0.008166688494384289,
+        "persistence_weighted_mse": 0.008835890330374241,
+        "skill_vs_persistence": 0.07573677478652097,
+        "member_mean_weighted_mse": 0.008200137875974178,
+        "ensemble_gain_vs_member_mean": 3.3449381589889526e-05,
+        "disagreement_error_correlation": 0.16471257863896474,
+        "active": true
+      },
+      "shot": {
+        "samples": 49,
+        "goals": 8,
+        "model_brier": 0.12746542692184448,
+        "physics_xg_prior_brier": 0.12683667242527008,
+        "skill_vs_physics_xg_prior": -0.004957197981875883,
+        "learned_head_active": false
+      }
+    },
+    "semantic_event_heads_ready": true,
+    "active_semantic_events": {
+      "1_step": [
+        "enter_final_third",
+        "positive_territorial_shift",
+        "retain_possession"
+      ],
+      "2_step": [
+        "enter_final_third",
+        "retain_possession"
+      ]
+    },
+    "pass_planner_active": true,
+    "shot_planner_active": false,
+    "shot_fallback": "physics_xg_prior",
+    "formal_m1_review": {
+      "schema_version": 1,
+      "review": "sealed_calibrated_world_model_formal_m1",
+      "protocol": "six_fixtures_three_seeds_full_90min_matched_to_m0",
+      "baseline": "data/evaluation/m0_formal_baseline_v1.json",
+      "candidate_report": "data/evaluation/formal_ablation/M1_calibrated.json",
+      "candidate": {
+        "checkpoint": "data/world_model/latent_wm_rollout_calibrated_candidate.pt",
+        "explicit_checkpoint": true,
+        "checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28"
+      },
+      "samples_total": 18,
+      "all_pass": true,
+      "loss": 8.634148950066319,
+      "baseline_loss": 8.634148951141071,
+      "observed_delta_loss": -1.0747527312560123e-09,
+      "paired_uncertainty": {
+        "method": "paired_match_bootstrap",
+        "draws": 2000,
+        "seed": 42,
+        "delta_loss": {
+          "mean": -1.0449474872054054e-09,
+          "ci95_low": -3.560838934824062e-09,
+          "ci95_high": 2.3568922369321397e-10
+        },
+        "metric_mean_deltas": {
+          "pass_completion": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "interceptions_per_pass": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "passes_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "long_pass_share": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "shots_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "shots_on_target_rate": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "goals_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "fouls_committed_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "yellow_cards_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "red_cards_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "possession_share": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "crosses_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "headers_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "tackles_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "micro_xg_per_team_match": {
+            "mean": 7.853518615430488e-10,
+            "ci95_low": -2.077108485210033e-10,
+            "ci95_high": 2.5817199489353015e-09
+          }
+        }
+      },
+      "behavior_changed_above_tolerance": false,
+      "metric_differences": {
+        "pass_completion": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "interceptions_per_pass": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "passes_per_team_match": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "long_pass_share": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "shots_per_team_match": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "shots_on_target_rate": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "goals_per_team_match": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "fouls_committed_per_team_match": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "yellow_cards_per_team_match": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "red_cards_per_team_match": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "possession_share": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "crosses_per_team_match": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "headers_per_team_match": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "tackles_per_team_match": {
+          "changed_samples": 0,
+          "max_absolute_delta": 0.0,
+          "mean_delta": 0.0
+        },
+        "micro_xg_per_team_match": {
+          "changed_samples": 0,
+          "max_absolute_delta": 1.5490319582589507e-08,
+          "mean_delta": 7.91336366804766e-10
+        }
+      },
+      "runtime": {
+        "elapsed_seconds": 8550.747057400004
+      },
+      "promotion_supported": false,
+      "decision": "research_only_default_off",
+      "decision_reason": "sealed prediction skill did not produce a measurable formal behavior or external-loss improvement"
+    },
+    "decision": "research_only_after_formal_m1_review"
+  },
+  "mechanism_and_active_probe_contracts": {
+    "command": "-m pytest tests/test_world_model_active_probe.py tests/test_world_model_active_probe_memory.py tests/test_world_model_active_probe_portfolio.py tests/test_world_model_active_probe_sequential_policy.py tests/test_world_model_predictive_mechanism.py tests/test_world_model_predictive_mechanism_chain.py tests/test_world_model_mechanism_stress_test.py tests/test_world_model_llm_fusion.py tests/test_world_model_online_calibration.py tests/test_fusion_audit.py tests/test_fusion_reliability.py -q",
+    "exit_code": 0,
+    "passed": true,
+    "summary": "79 passed in 6.39s",
+    "test_files": [
+      "tests/test_world_model_active_probe.py",
+      "tests/test_world_model_active_probe_memory.py",
+      "tests/test_world_model_active_probe_portfolio.py",
+      "tests/test_world_model_active_probe_sequential_policy.py",
+      "tests/test_world_model_predictive_mechanism.py",
+      "tests/test_world_model_predictive_mechanism_chain.py",
+      "tests/test_world_model_mechanism_stress_test.py",
+      "tests/test_world_model_llm_fusion.py",
+      "tests/test_world_model_online_calibration.py",
+      "tests/test_fusion_audit.py",
+      "tests/test_fusion_reliability.py"
+    ]
+  },
+  "live_llm_evidence": {
+    "cognitive_log_files": 0,
+    "fusion_records": 0,
+    "evaluable": false,
+    "status": "not_evaluable_no_real_provider_logs",
+    "claim_boundary": "contract correctness only; no live-provider benefit claim without prospective logs"
+  },
+  "phase_complete": true,
+  "production_promotion_ready": false
+}

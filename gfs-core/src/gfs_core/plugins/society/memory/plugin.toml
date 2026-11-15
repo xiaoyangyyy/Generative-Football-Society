@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.society.memory"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.society"
+provides = ["memory"]
+requires = []
+implementation = "gfs_core.plugins.society.memory.service:MemoryPlugin"

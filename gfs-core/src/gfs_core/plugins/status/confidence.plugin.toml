@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.status.confidence"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.status"
+provides = ["sample-confidence"]
+requires = ["gfs.core.status.ranking"]
+implementation = "gfs_core.plugins.status.confidence:ConfidencePlugin"

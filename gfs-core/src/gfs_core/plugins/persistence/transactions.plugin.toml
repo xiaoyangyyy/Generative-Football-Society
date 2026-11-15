@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.persistence.transactions"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.persistence"
+provides = ["match-transactions"]
+requires = ["gfs.core.persistence.workspace"]
+implementation = "gfs_core.plugins.persistence.transactions.match:TransactionPlugin"

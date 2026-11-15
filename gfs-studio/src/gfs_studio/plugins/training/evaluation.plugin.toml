@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.training.evaluation"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.training"
+provides = ["model-evaluation"]
+requires = ["gfs.studio.world-model.latent"]
+implementation = "gfs_studio.plugins.training.evaluation.plugin:EvaluationPlugin"

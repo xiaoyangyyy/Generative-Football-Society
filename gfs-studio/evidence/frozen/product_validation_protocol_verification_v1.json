@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_product_validation_preregistration",
+  "generated_at": "2026-09-07T06:22:16.477632+00:00",
+  "status": "passed_preregistered_not_executed",
+  "passed": true,
+  "study_executed": false,
+  "result_available": false,
+  "checks": {
+    "schema_and_state_are_preregistered": true,
+    "population_and_sample_are_frozen": true,
+    "task_order_and_success_contract_are_frozen": true,
+    "decision_thresholds_are_frozen": true,
+    "external_reviews_are_independent_and_fail_closed": true,
+    "privacy_and_analysis_integrity_are_explicit": true,
+    "registration_is_authoritative_and_premeasurement": true,
+    "evidence_archive_requires_real_unique_bytes": true,
+    "preexecution_amendment_is_zero_participant": true,
+    "outputs_are_confined_and_exact": true,
+    "execution_remains_zero": true
+  },
+  "protocol_sha256": "3cdbc8c0569a822bbf97e094667d97645b44fedf2a830bf91d18ce7072e6d322",
+  "artifact_sha256": {
+    "data/evaluation/product_validation_protocol_v1.json": "3cdbc8c0569a822bbf97e094667d97645b44fedf2a830bf91d18ce7072e6d322",
+    "docs/PRODUCT_VALIDATION_STUDY.md": "79d2376dd0a5b225e72920f46048eaeb78014b4e06d423e486a800f1ed09c8c1",
+    "scripts/product_validation_study.py": "01e1a03c642b65118dc9bfc3e8cdedf7102719b6b901fee7001071905dcd1e92",
+    "src/product/human_study.py": "964a2ad4e5c9eee91619b922cd31f2d4b104667c92da95845f17a5b7d45e57db"
+  },
+  "external_calls_made": false,
+  "participants_observed": 0,
+  "matches_executed": 0,
+  "training_executed": false,
+  "provider_calls_made": false
+}

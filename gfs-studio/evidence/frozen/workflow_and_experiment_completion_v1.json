@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "objective": "Converge the product experience into one complete workflow and freeze a bounded statistically rigorous formal experiment.",
+  "status": "code_complete_experiment_preregistered_not_executed",
+  "scope": {
+    "new_model_or_research_modules_added": false,
+    "full_training_run": false,
+    "formal_simulation_run": false,
+    "real_llm_calls": false,
+    "release_promotion": false
+  },
+  "requirements": [
+    {
+      "id": "W01",
+      "requirement": "One normal end-to-end product entry",
+      "status": "implemented",
+      "evidence": ["src/cli.py", "tests/test_product_cli_workflow.py"]
+    },
+    {
+      "id": "W02",
+      "requirement": "Persisted guided product state and one next action",
+      "status": "implemented",
+      "evidence": ["src/product/workspace.py", "tests/test_product_workspace.py"]
+    },
+    {
+      "id": "E01",
+      "requirement": "One frozen confirmatory question with exactly M0 and sealed M1",
+      "status": "preregistered",
+      "evidence": ["data/evaluation/formal_experiment_protocol_v2.json"]
+    },
+    {
+      "id": "E02",
+      "requirement": "Fixed compute budget and no optional stopping",
+      "status": "machine_enforced",
+      "evidence": ["scripts/run_formal_experiment.py", "tests/test_formal_experiment_protocol.py"]
+    },
+    {
+      "id": "E03",
+      "requirement": "Matched fixture-seed units and fixture-stratified paired inference",
+      "status": "machine_enforced",
+      "evidence": ["scripts/run_formal_experiment.py", "tests/test_formal_experiment_protocol.py"]
+    },
+    {
+      "id": "E04",
+      "requirement": "Single primary endpoint, fixed minimum effect, descriptive-only secondary outcomes",
+      "status": "preregistered_and_machine_enforced",
+      "evidence": ["data/evaluation/formal_experiment_protocol_v2.json", "scripts/run_formal_experiment.py"]
+    },
+    {
+      "id": "E05",
+      "requirement": "Fail-closed protocol, checkpoint, code and completion identity",
+      "status": "machine_enforced",
+      "evidence": ["scripts/run_formal_experiment.py", "tests/test_formal_experiment_protocol.py"]
+    }
+  ]
+}

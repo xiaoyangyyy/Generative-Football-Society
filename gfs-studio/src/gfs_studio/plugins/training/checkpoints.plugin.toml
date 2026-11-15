@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.training.checkpoints"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.training"
+provides = ["checkpoint-registry"]
+requires = ["gfs.studio.evidence.receipts"]
+implementation = "gfs_studio.plugins.training.checkpoints.registry:CheckpointPlugin"

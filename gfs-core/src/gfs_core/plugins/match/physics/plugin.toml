@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.match.physics"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.match"
+provides = ["physics"]
+requires = ["gfs.core.match.spatial"]
+implementation = "gfs_core.plugins.match.physics.plugin:PhysicsPlugin"

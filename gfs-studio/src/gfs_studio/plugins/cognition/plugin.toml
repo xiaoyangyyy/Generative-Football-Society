@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.cognition"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.cognition"
+provides = ["cognition-bundle"]
+requires = ["gfs.studio.cognition.gateway", "gfs.studio.cognition.roles", "gfs.studio.cognition.reflection"]
+implementation = "gfs_studio.plugins.cognition.plugin:CognitionBundlePlugin"

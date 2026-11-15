@@ -1,0 +1,106 @@
+{
+  "schema_version": 2,
+  "protocol_id": "gfs-action-policy-full-match-outcome-v1",
+  "decision": "inconclusive_keep_research_only",
+  "promotion_supported": false,
+  "pairs_total": 30,
+  "primary": {
+    "method": "fixture_stratified_paired_bootstrap",
+    "draws": 10000,
+    "seed": 260806,
+    "point_delta": -0.03189252164278855,
+    "ci95_low": -26.061954645805613,
+    "ci95_high": 5.137429588662575
+  },
+  "minimum_meaningful_delta_loss": 0.1,
+  "behavior": {
+    "changed_pairs": 30,
+    "changed_pair_fraction": 1.0
+  },
+  "promotion_gates": {
+    "candidate_passes_all_external_validity_gates": false,
+    "upper_interval_below_negative_minimum_effect": false,
+    "minimum_behavior_change_met": true,
+    "execution_identity_verified": true
+  },
+  "secondary_metrics": {
+    "pass_completion": {
+      "mean_paired_delta": 0.0015651204712201123,
+      "role": "descriptive_only"
+    },
+    "interceptions_per_pass": {
+      "mean_paired_delta": 0.00038060289207508526,
+      "role": "descriptive_only"
+    },
+    "passes_per_team_match": {
+      "mean_paired_delta": -4.683333333333334,
+      "role": "descriptive_only"
+    },
+    "long_pass_share": {
+      "mean_paired_delta": -0.001770864278869562,
+      "role": "descriptive_only"
+    },
+    "shots_per_team_match": {
+      "mean_paired_delta": 0.7333333333333333,
+      "role": "descriptive_only"
+    },
+    "shots_on_target_rate": {
+      "mean_paired_delta": -0.09611518111518112,
+      "role": "descriptive_only"
+    },
+    "goals_per_team_match": {
+      "mean_paired_delta": 0.13333333333333333,
+      "role": "descriptive_only"
+    },
+    "fouls_committed_per_team_match": {
+      "mean_paired_delta": 0.016666666666666666,
+      "role": "descriptive_only"
+    },
+    "yellow_cards_per_team_match": {
+      "mean_paired_delta": 0.2,
+      "role": "descriptive_only"
+    },
+    "red_cards_per_team_match": {
+      "mean_paired_delta": 0.016666666666666666,
+      "role": "descriptive_only"
+    },
+    "possession_share": {
+      "mean_paired_delta": 0.011518858307849138,
+      "role": "descriptive_only"
+    },
+    "crosses_per_team_match": {
+      "mean_paired_delta": 0.6166666666666667,
+      "role": "descriptive_only"
+    },
+    "headers_per_team_match": {
+      "mean_paired_delta": -0.1,
+      "role": "descriptive_only"
+    },
+    "tackles_per_team_match": {
+      "mean_paired_delta": 0.43333333333333335,
+      "role": "descriptive_only"
+    },
+    "micro_xg_per_team_match": {
+      "mean_paired_delta": 0.05955436101753413,
+      "role": "descriptive_only"
+    }
+  },
+  "execution_identity": {
+    "protocol_sha256": "998e7a5d39ff18cee69e98294dd67d7657d76279f855914293b93802abff9ca8",
+    "checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28",
+    "code_sha256": {
+      "data/evaluation/action_adoption_v1/decision.json": "d25eb5ba34c949644d68fa98e5c1e9b17320ac01bfd46f24eb7c4e6c07ececb2",
+      "src/match_engine/action_engine.py": "005947f70d7667a35915ade25f9a706611f608914fbf7783521fc69cf3b58b62",
+      "src/match_engine/passing_engine.py": "aab4a72d31f19710d4a7c9487d2a6b70a83b0d5a325e352295ccf96305550fc3",
+      "src/match_engine/world_model/action_adoption.py": "e4b6131e465881105a3d0b50a7f99131113c8226cb005c669def8e77fb8bf1de",
+      "src/match_engine/world_model/inference.py": "a9218656983a3dd546d02a68e61b2edc560e89217d91d6cc8860ddedadb2c52a",
+      "src/match_engine/world_model/planner.py": "b744af60eb30be01186472a5fddcb4beb51abba506807ba7ede03e5acf0a8334",
+      "src/match_engine/calibration/ablation.py": "ceafce6df973594225de9575e0aad5c91eb7ed9636cc4fdbc7c9314bd93c1856",
+      "src/match_engine/calibration/benchmark_core.py": "1c4bfbb82af96fc7e26cf1c2241c3ff3c427bb4804d3ad2af17ef691b6002444",
+      "src/match_engine/calibration/contract.py": "21eaabd34bf224c8773853613206a65b30a77f446f3876e2fa9e6753864e2973",
+      "src/match_engine/calibration/objective.py": "9c3101911cb72319c790a7b3c9b6da3c0b633fee369c3e34df655cbda36c0c99",
+      "scripts/run_formal_experiment.py": "465b4b866a85705a8912aacc22ffdfaac99a1e4054f9106b02d8e0b9b89ac19d"
+    }
+  },
+  "analyzed_at": "2026-08-31T15:00:51.330579+00:00"
+}

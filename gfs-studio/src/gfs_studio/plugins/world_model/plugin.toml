@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.world-model"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.world_model"
+provides = ["world-model-bundle"]
+requires = ["gfs.studio.world-model.latent", "gfs.studio.world-model.frame", "gfs.studio.world-model.planning", "gfs.studio.world-model.policies"]
+implementation = "gfs_studio.plugins.world_model.bundle:WorldModelBundlePlugin"

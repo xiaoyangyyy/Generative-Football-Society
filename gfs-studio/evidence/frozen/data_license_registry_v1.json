@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "registry_id": "gfs-source-specific-data-license-decisions-v2",
+  "reviewed_on": "2026-08-10",
+  "scope": "Known external providers referenced by repository evidence and product data. This registry is a release-control record, not legal advice.",
+  "policy": {
+    "default": "exclude_from_distribution",
+    "unknown_or_ambiguous_terms": "exclude_from_distribution",
+    "source_access_is_not_redistribution_permission": true,
+    "repository_coverage_complete": true,
+    "source_specific_review_complete": true,
+    "blanket_redistribution_approved": false,
+    "approved_source_count": 1,
+    "release_subset_required": true
+  },
+  "sources": [
+    {
+      "source_id": "statsbomb_open_data",
+      "aliases": ["StatsBomb", "StatsBomb 360", "Hudl StatsBomb Open Data"],
+      "local_manifests": ["data/external/statsbomb360/derived/manifest.json"],
+      "official_source_url": "https://github.com/hudl/open-data",
+      "terms_evidence_url": "https://github.com/hudl/open-data#terms--conditions",
+      "terms_observed": "Public use for research is described; publication, sharing, or distribution of analysis requires source attribution and the StatsBomb logo.",
+      "license_status": "custom_source_terms_no_spdx_expression",
+      "verification_status": "official_terms_verified_excluded_custom_scope",
+      "review_outcome": "excluded",
+      "archive_eligible": false,
+      "archive_decision": "exclude_external_data",
+      "reason": "The observed terms do not establish a blanket SPDX redistribution license for an immutable project archive."
+    },
+    {
+      "source_id": "metrica_sample_data",
+      "aliases": ["Metrica Sports sample data"],
+      "local_manifests": [
+        "data/external/metrica/pass_candidates_game1.manifest.json",
+        "data/external/metrica/pass_candidates_game2.manifest.json"
+      ],
+      "official_source_url": "https://github.com/metrica-sports/sample-data",
+      "terms_evidence_url": "https://github.com/metrica-sports/sample-data#legal-stuff",
+      "terms_observed": "The official README requests acknowledgement for public use, while the repository exposes no detected license identifier.",
+      "license_status": "no_machine_detected_license",
+      "verification_status": "official_acknowledgement_verified_no_redistribution_license",
+      "review_outcome": "excluded",
+      "archive_eligible": false,
+      "archive_decision": "exclude_external_data",
+      "reason": "Acknowledgement guidance alone is not treated as redistribution permission."
+    },
+    {
+      "source_id": "skillcorner_open_data",
+      "aliases": ["SkillCorner Open Data"],
+      "local_manifests": ["data/external/skillcorner/derived/manifest.json"],
+      "official_source_url": "https://github.com/SkillCorner/opendata",
+      "terms_evidence_url": "https://github.com/SkillCorner/opendata/blob/master/LICENSE",
+      "terms_observed": "The root MIT text grants rights in Software and associated documentation, while the repository also contains match data; the reviewed text does not expressly identify the data as licensed material.",
+      "license_status": "MIT-software-data-scope-ambiguous",
+      "verification_status": "official_license_verified_data_scope_excluded",
+      "review_outcome": "excluded",
+      "archive_eligible": false,
+      "archive_decision": "exclude_external_data",
+      "reason": "The project conservatively requires a scope review before treating the repository license as permission for every upstream data artifact."
+    },
+    {
+      "source_id": "sportec_idsse",
+      "aliases": ["Sportec IDSSE", "IDSSE"],
+      "local_manifests": ["data/external/sportec/derived/manifest.json"],
+      "official_source_url": "https://www.nature.com/articles/s41597-025-04505-y",
+      "terms_evidence_url": "https://www.nature.com/articles/s41597-025-04505-y#Sec5",
+      "official_dataset_doi": "https://doi.org/10.6084/m9.figshare.28196177",
+      "official_publication_doi": "https://doi.org/10.1038/s41597-025-04505-y",
+      "terms_observed": "The authoritative publication states that the dataset was released with DFL authorization under CC BY 4.0 and identifies the Figshare dataset DOI.",
+      "license_status": "CC-BY-4.0",
+      "verification_status": "authoritative_publication_and_dataset_verified",
+      "review_outcome": "approved_with_attribution",
+      "archive_eligible": true,
+      "archive_decision": "include_derived_sportec_subset",
+      "required_attribution": "docs/IDSSE_ATTRIBUTION.md",
+      "reason": "CC BY 4.0 permits redistribution and adaptation when attribution, a license link, and a change notice are provided; the release subset supplies all three."
+    },
+    {
+      "source_id": "transfermarkt_dataset_mirror",
+      "aliases": ["Transfermarkt", "dcaribou/transfermarkt-datasets"],
+      "local_manifests": ["data/external/transfermarkt/manifest.json"],
+      "official_source_url": "https://github.com/dcaribou/transfermarkt-datasets",
+      "terms_evidence_url": "https://github.com/dcaribou/transfermarkt-datasets/blob/master/LICENSE",
+      "terms_observed": "The mirror declares CC0 1.0, but its files are built from Transfermarkt data and the mirror cannot waive rights it may not own in the upstream database.",
+      "license_status": "CC0-1.0-mirror-upstream-rights-unresolved",
+      "verification_status": "mirror_license_verified_upstream_scope_excluded",
+      "review_outcome": "excluded",
+      "archive_eligible": false,
+      "archive_decision": "exclude_external_data",
+      "reason": "No external files from this source may be packaged without a separate rights review."
+    }
+  ]
+}

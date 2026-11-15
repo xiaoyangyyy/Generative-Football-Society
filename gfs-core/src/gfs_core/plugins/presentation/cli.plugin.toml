@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.presentation.cli"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.presentation"
+provides = ["cli"]
+requires = ["gfs.core.presentation.json", "gfs.core.tournament.advancement", "gfs.core.match"]
+implementation = "gfs_core.plugins.presentation.cli.commands:CliPlugin"

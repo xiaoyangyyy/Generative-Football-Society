@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.participants.delivery"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.participants"
+provides = ["participant-delivery"]
+requires = ["gfs.studio.participants.sessions"]
+implementation = "gfs_studio.plugins.participants.delivery.packets:DeliveryPlugin"

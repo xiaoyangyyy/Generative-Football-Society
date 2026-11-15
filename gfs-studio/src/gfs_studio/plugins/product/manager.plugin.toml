@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.product.manager"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.product"
+provides = ["manager"]
+requires = ["gfs.studio.product.studio", "gfs.studio.cognition.roles"]
+implementation = "gfs_studio.plugins.product.manager.workspace:ProductManagerPlugin"

@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.status.ranking"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.status"
+provides = ["team-ranking"]
+requires = ["gfs.core.data.results"]
+implementation = "gfs_core.plugins.status.ranking:RankingPlugin"

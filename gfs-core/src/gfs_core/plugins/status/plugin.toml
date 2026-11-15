@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.status"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.status"
+provides = ["status-bundle"]
+requires = ["gfs.core.status.ranking", "gfs.core.status.confidence"]
+implementation = "gfs_core.bootstrap.bundles:BundlePlugin"

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-15T06:09:27.136160+00:00",
+  "source_identity": "6841adceda9a388b58989cfc041b6ff5f8ccc85c59510ec189ceb6cead770e27",
+  "code_ready": true,
+  "checks": {
+    "core_tests": true,
+    "core_ruff": true,
+    "core_wheel": true,
+    "studio_tests": true,
+    "studio_ruff": true,
+    "studio_wheel": true,
+    "static_deployment": true
+  },
+  "commands": {
+    "core": {
+      "tests": true,
+      "ruff": true,
+      "wheel": true
+    },
+    "studio": {
+      "tests": true,
+      "ruff": true,
+      "wheel": true
+    }
+  },
+  "deployment": {
+    "schema_version": 1,
+    "static_verified": true,
+    "runtime_verified": false,
+    "docker_available": false,
+    "errors": [],
+    "external_calls_made": false
+  },
+  "scope": "current_source_build_not_independent_reproduction_or_participant_evidence"
+}

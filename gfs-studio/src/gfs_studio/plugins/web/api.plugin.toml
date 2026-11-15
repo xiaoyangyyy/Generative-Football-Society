@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.web.api"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.web"
+provides = ["http-api"]
+requires = ["gfs.studio.web.gateway", "gfs.studio.product", "gfs.studio.world-model.latent"]
+implementation = "gfs_studio.plugins.web.api.routes:ApiPlugin"

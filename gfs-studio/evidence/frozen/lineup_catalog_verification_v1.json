@@ -1,0 +1,415 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_season_manager_lineup_catalog",
+  "generated_at": "2026-08-18T15:58:18.008540+00:00",
+  "status": "passed_bounded_lineup_coverage",
+  "passed": true,
+  "summary": {
+    "roster_teams": 48,
+    "player_level_ready": 46,
+    "safe_degraded": 2,
+    "invalid": 0
+  },
+  "safe_degradation_contract": [
+    "roster_missing_goalkeeper"
+  ],
+  "teams": [
+    {
+      "team": "Algeria",
+      "state": "safe_degraded",
+      "reason": "roster_missing_goalkeeper",
+      "selectable_players": 23,
+      "roster_fingerprint": "f8bc168bbe005459beec7afecdeffd3987b3f01986f5ab4c9ceb4a101ed15da4",
+      "issues": []
+    },
+    {
+      "team": "Argentina",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "803f14f861a585674709cc486ce496d80a13a72a5b1450210686ef21a13510c6",
+      "issues": []
+    },
+    {
+      "team": "Australia",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "84d97274581d33c4bef80ffa9634e02bffd60901b97ee2013f0b4e809495104a",
+      "issues": []
+    },
+    {
+      "team": "Austria",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "209c4d5d5e191392d0e7ea7e8c84930bb9b5906b0220e670ccf8b34fba299bf6",
+      "issues": []
+    },
+    {
+      "team": "Belgium",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "7105eb50c5c7fd515f56e5836b8adf01f14b3992eb4d29fe3a437fd26a40b963",
+      "issues": []
+    },
+    {
+      "team": "Bosnia and Herzegovina",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "98c44f4665acde93e351748a62e70b6d9ea10667a1ad6c59e7e03643a0dc8b38",
+      "issues": []
+    },
+    {
+      "team": "Brazil",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "5f527245eabbf6fb6e0da7a61d441e929fff0267878d4c46bcf9a01c413c435a",
+      "issues": []
+    },
+    {
+      "team": "Canada",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "d0c26bb8a5b312198d4cd5bc3be65213033d40da60dfed95351f31394f27ce96",
+      "issues": []
+    },
+    {
+      "team": "Cape Verde",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "066ae483bc2a2b8c979e28737c98bed0495445a7209e174752c5bea4205e2455",
+      "issues": []
+    },
+    {
+      "team": "Colombia",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "1a6bb40c90a39e289b84b3c2f5a61a8fe6cd2819550eb07c4797903d686db109",
+      "issues": []
+    },
+    {
+      "team": "Croatia",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "ebf10f1f628072c94547cb8b63a4df07873aa2f2936200ed669b1065631582e0",
+      "issues": []
+    },
+    {
+      "team": "Curaçao",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "eea48f78ef3c40e0b101544ed22058dd1122f2420cc34902148ec931c70893ce",
+      "issues": []
+    },
+    {
+      "team": "Czech Republic",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "9372d6762842229868fbbd14164b7db2fbb6ec5075af9497485a07bcc717944b",
+      "issues": []
+    },
+    {
+      "team": "DR Congo",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "71a42781c833c40984e90862666c36436cfdd625a55c0c238e30f45a5739fa89",
+      "issues": []
+    },
+    {
+      "team": "Ecuador",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "23790bfb869b1670db3388801d206a85ed688925214a98fc46de4ead6eb4fff9",
+      "issues": []
+    },
+    {
+      "team": "Egypt",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "1c355c68c53629f6c671a17ac09850ca331b0f1beb0bf6ab2953cdfa7515bc7d",
+      "issues": []
+    },
+    {
+      "team": "England",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "ec647670b88ca8fc5251638305498dc5d436fcae30068626c0a94664b504fcdc",
+      "issues": []
+    },
+    {
+      "team": "France",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "5d03d6ea1edd28372b38f02d99e79a54d6573a1bd549471b46ed138949d893fa",
+      "issues": []
+    },
+    {
+      "team": "Germany",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "ded8fddcd01d33adac9436647e767ff62d6cdaab01abd6653571268ccb9dc696",
+      "issues": []
+    },
+    {
+      "team": "Ghana",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "cd6241c127e67a904166ea7dbb2577e218d99e6d180d61977027c49ae544cc61",
+      "issues": []
+    },
+    {
+      "team": "Haiti",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 19,
+      "roster_fingerprint": "9aad8208fd9061428399774dd9b604410997aafb4ac49ffbfa269d5bd46db954",
+      "issues": []
+    },
+    {
+      "team": "Iran",
+      "state": "safe_degraded",
+      "reason": "roster_missing_goalkeeper",
+      "selectable_players": 23,
+      "roster_fingerprint": "320a9c1a145b751379e71d54b9a1a48d632a8a81395211815e7a24505003cc18",
+      "issues": []
+    },
+    {
+      "team": "Iraq",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "7297fbdacd5340acdd350fd3d7d74d63a8029275e09f5d06e3e6fdf320eb8615",
+      "issues": []
+    },
+    {
+      "team": "Ivory Coast",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "232a11a9a231e7c826d35824bc00892669bd48f7bed81a047412ab50e6037604",
+      "issues": []
+    },
+    {
+      "team": "Japan",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "0e98a8610129d901609169b61c22d59ec6423636af46733f2c17f897514bb7ff",
+      "issues": []
+    },
+    {
+      "team": "Jordan",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "ff54d15e4f8546e34584fc1d339c39ecd928b8c892a685e6506aa3306027d81e",
+      "issues": []
+    },
+    {
+      "team": "Mexico",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "12acf709bbf68dc7840f9588179fb69a3e91156e1472b7dab30f900145cfffd3",
+      "issues": []
+    },
+    {
+      "team": "Morocco",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "e562c265df2b16f7d4730274cfa92f346dd3461953e9cae8e115d51768067e5f",
+      "issues": []
+    },
+    {
+      "team": "Netherlands",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "43e1c8c9de41e93289ebaf528e461474657d19bbf17ce7aeb87c5b175b0fe10a",
+      "issues": []
+    },
+    {
+      "team": "New Zealand",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "3a53af2da0a33b000cd6b188cd82c5e69f36bf460e60cce8137c8006e1307517",
+      "issues": []
+    },
+    {
+      "team": "Norway",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "a8b0bdd136406cee95c9bf6a068d137ada84c9477f319bec00ca09af99de0d3d",
+      "issues": []
+    },
+    {
+      "team": "Panama",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "3030b132e8eb2a0030cc37f63b33a33bd6c5c863e4c31f24173bd4e071f90fa1",
+      "issues": []
+    },
+    {
+      "team": "Paraguay",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "83034ebb6480e79023ebcd0e0078b9fd037f3ccbe805b7188837fe2daceed038",
+      "issues": []
+    },
+    {
+      "team": "Portugal",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "277c37650f188d6e24ffe489e894e9391727a86b4344c0b24c27803263a6f7f2",
+      "issues": []
+    },
+    {
+      "team": "Qatar",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "8b49f6f50c4f01cc13856e4a0f656d56fcc435119836e270f3259b544bfc61c9",
+      "issues": []
+    },
+    {
+      "team": "Saudi Arabia",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "cf093dfa3fcb1e4b7937c8d7258562b8619dc327b5744c46969bfd08281b826a",
+      "issues": []
+    },
+    {
+      "team": "Scotland",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "e03552565f36453f98bf171b077e1b4cfafe018acb32554e89a87e25527f794f",
+      "issues": []
+    },
+    {
+      "team": "Senegal",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "d5932c6ed89ac5f6e5d868c95054017f9893e4d0c37836bd1eed8950fc1a3def",
+      "issues": []
+    },
+    {
+      "team": "South Africa",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "8ad9039231abd968cfd6c66a7d03a0ef54e407be3b1b7a5cd54eb3f00118d0f4",
+      "issues": []
+    },
+    {
+      "team": "South Korea",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "1fe97e77ef5409b05565ef0c67f3927f2865cda780b3a7cc59d90d8eca9beb07",
+      "issues": []
+    },
+    {
+      "team": "Spain",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "ed7523f3954df567bbbb25b013c28a79464d9f01492f5ac6bcce14fc32bf1418",
+      "issues": []
+    },
+    {
+      "team": "Sweden",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "5da1778ed4fcb0de9e08661ac048764a3c96ee4ebcd216e2e2da4b9b31b8543e",
+      "issues": []
+    },
+    {
+      "team": "Switzerland",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "1dfc848eb5742221416e775b174b4e51b2afdd7210f547b9ae3a478ac84a9475",
+      "issues": []
+    },
+    {
+      "team": "Tunisia",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "484088bf733e3d4ed7a44a0e3382a5a39d831283e385f223fd43775977ab3db3",
+      "issues": []
+    },
+    {
+      "team": "Turkey",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "fadafcc91125914daebc67aed7798931b918d5b383f9d7857443d94e1038b6a5",
+      "issues": []
+    },
+    {
+      "team": "United States",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "0d11717291870d2220aa6c7b0785d01f2af646cd32951837336867d1f847cd15",
+      "issues": []
+    },
+    {
+      "team": "Uruguay",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "b2e738f83f00a66993c9a1583a908909e88d3683e045a93048763192e23738d5",
+      "issues": []
+    },
+    {
+      "team": "Uzbekistan",
+      "state": "player_level_ready",
+      "reason": null,
+      "selectable_players": 23,
+      "roster_fingerprint": "7b0ac1cd3f610840c59ab0a1b3e6a075857923fe91d563db34de40a369abe197",
+      "issues": []
+    }
+  ],
+  "artifact_sha256": {
+    "roster_manifest": "ee66ed4ca71add742c3297fd808e86a624f0a02bd90800eecfc36448d47ffaee",
+    "src/simulation/lineup.py": "bf7a1013e1269e7f83da41111c4ad6184f51df6776539d16188ec7cab3b58e70",
+    "src/data_engine/roster_loader.py": "23d53072079f90b9feb59f68aefc92df5e6e5012d60d55e4bb862ceb8294b584"
+  },
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "limitations": [
+    "this audit validates roster completeness and frozen lineup construction, not match outcomes",
+    "safe degradation preserves team-level gameplay but does not claim a player-level lineup",
+    "source roster role accuracy still depends on the frozen roster data pipeline"
+  ]
+}

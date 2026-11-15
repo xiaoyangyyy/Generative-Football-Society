@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.tournament.checkpointing"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.tournament"
+provides = ["checkpointing"]
+requires = ["gfs.core.persistence.recovery"]
+implementation = "gfs_core.plugins.tournament.checkpointing.service:CheckpointPlugin"

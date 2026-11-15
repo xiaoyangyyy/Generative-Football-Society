@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.research.ablation"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.research"
+provides = ["ablation"]
+requires = ["gfs.studio.evidence.receipts"]
+implementation = "gfs_studio.plugins.research.ablation.study:AblationPlugin"

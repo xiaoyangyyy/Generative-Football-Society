@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_source_specific_external_data_release",
+  "generated_at": "2026-08-09T18:05:33.053803+00:00",
+  "status": "passed",
+  "passed": true,
+  "approved_source_count": 1,
+  "excluded_source_count": 4,
+  "archive_file_count": 37,
+  "archive_bytes": 57306526,
+  "archive_sha256": "df25a33dea93902bca965ba725ee72c67901015b5ed8808585a2e639d8dc7d79",
+  "checks": {
+    "registry_has_exact_source_coverage": true,
+    "review_is_complete_and_default_deny": true,
+    "only_idsse_is_archive_eligible": true,
+    "idsse_has_authoritative_cc_by_evidence": true,
+    "every_unapproved_source_is_excluded": true,
+    "manifest_is_current_and_content_addressed": true,
+    "archive_contains_only_idsse_paths_and_attribution": true,
+    "attribution_and_change_notice_are_complete": true,
+    "zero_execution_boundary": true
+  },
+  "artifact_sha256": {
+    "data/evaluation/data_license_registry_v1.json": "c4c15186c1826ae530685e48695500d710dae57072d0301ec624e66bd1634edf",
+    "data/evaluation/data_release_manifest_v1.json": "1412b447f8332332d2c30b1d8d9d4d3c1519b245cfbe14ee9a8e36c94ec73d6f",
+    "docs/IDSSE_ATTRIBUTION.md": "0d0613fec8f0ca886477e237b5f063981861a28ddef159bd1634549552c29f6b",
+    "scripts/build_data_release_archive.py": "141cb726a91623741b9868539d52de1667d19050eed376538b631998a6cbcc49",
+    "scripts/verify_data_release.py": "1f29ee861e9b1fc09264de602fa3e9f1a30304b7ec02d12dd6f9e441edc1eefc"
+  },
+  "external_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false,
+  "formal_experiment_executed": false,
+  "limitations": [
+    "Only the DFL-authorized IDSSE/Sportec derivative subset is approved.",
+    "StatsBomb, Metrica, SkillCorner, and Transfermarkt-derived files remain excluded.",
+    "The supplement boundary does not assert that excluded data is absent from repository history.",
+    "This engineering review records source evidence and is not legal advice."
+  ]
+}

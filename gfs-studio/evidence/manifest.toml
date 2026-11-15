@@ -1,0 +1,6 @@
+[evidence]
+protocols = "protocols/"
+receipts = "receipts/"
+frozen-results = "frozen/"
+reports = "reports/"
+historical-results-policy = "preserve-bytes-and-bound-identities"

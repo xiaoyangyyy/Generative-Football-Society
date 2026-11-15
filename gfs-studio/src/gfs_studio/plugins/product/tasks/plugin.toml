@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.product.tasks"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.product"
+provides = ["product-tasks"]
+requires = ["gfs.studio.product.studio"]
+implementation = "gfs_studio.plugins.product.tasks.service:TaskPlugin"

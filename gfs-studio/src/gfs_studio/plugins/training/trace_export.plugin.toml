@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.training.trace-export"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.training"
+provides = ["trace-export"]
+requires = ["gfs.core.match", "gfs.core.status.confidence", "gfs.core.data.tactics", "gfs.core.match.scoring", "gfs.studio.world-model.latent"]
+implementation = "gfs_studio.plugins.training.datasets.trace_export:TraceExportPlugin"

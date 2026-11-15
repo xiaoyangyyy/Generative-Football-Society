@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools==81.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gfs-studio"
+version = "0.1.0a1"
+description = "Research, cognition, training, evidence, and Web plugins for GFS Core"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "gfs-core>=7.0.0a1,<8",
+  "numpy==2.4.3",
+  "torch==2.12.1",
+]
+
+[project.scripts]
+gfs-studio = "gfs_studio.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.toml"]
+
+[tool.gfs]
+plugin-api = 1
+plugin-group = "gfs_studio.plugins"
+core-plugin-group = "gfs_core.plugins"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../gfs-core/src"]

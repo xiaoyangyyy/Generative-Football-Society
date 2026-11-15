@@ -1,0 +1,705 @@
+{
+  "schema_version": 1,
+  "protocol": "seven_variants_six_fixtures_three_matched_seeds_full_90min",
+  "baseline": "data/evaluation/m0_formal_baseline_v1.json",
+  "complete": true,
+  "variants": {
+    "no_affective": {
+      "samples_total": 18,
+      "all_pass": false,
+      "failed_metrics": [
+        "shots_per_team_match"
+      ],
+      "failed_soft": [],
+      "loss": 34.58818205504885,
+      "baseline_loss": 8.634148951141071,
+      "observed_delta_loss": 25.954033103907776,
+      "paired_uncertainty": {
+        "method": "paired_match_bootstrap",
+        "draws": 2000,
+        "seed": 42,
+        "delta_loss": {
+          "mean": 24.103418151191995,
+          "ci95_low": -1.981606425677785,
+          "ci95_high": 55.134996043161856
+        },
+        "metric_mean_deltas": {
+          "pass_completion": {
+            "mean": 0.019403846173593305,
+            "ci95_low": 0.011052837086141368,
+            "ci95_high": 0.02778180788535205
+          },
+          "interceptions_per_pass": {
+            "mean": -0.005596992486289507,
+            "ci95_low": -0.009227147853603986,
+            "ci95_high": -0.001655533729193981
+          },
+          "passes_per_team_match": {
+            "mean": 3.372444444444444,
+            "ci95_low": 2.5833333333333144,
+            "ci95_high": 4.1944444444444
+          },
+          "long_pass_share": {
+            "mean": -0.043012990492855306,
+            "ci95_low": -0.05526854157701359,
+            "ci95_high": -0.030227572416861064
+          },
+          "shots_per_team_match": {
+            "mean": -1.7774722222222221,
+            "ci95_low": -2.1666666666666665,
+            "ci95_high": -1.3611111111111112
+          },
+          "shots_on_target_rate": {
+            "mean": 0.00212162698412698,
+            "ci95_low": -0.11363095238095235,
+            "ci95_high": 0.13624999999999995
+          },
+          "goals_per_team_match": {
+            "mean": -0.05359722222222222,
+            "ci95_low": -0.25,
+            "ci95_high": 0.1388888888888889
+          },
+          "fouls_committed_per_team_match": {
+            "mean": -2.9714305555555556,
+            "ci95_low": -4.111111111111111,
+            "ci95_high": -1.6937500000000023
+          },
+          "yellow_cards_per_team_match": {
+            "mean": -0.05591666666666667,
+            "ci95_low": -0.27777777777777785,
+            "ci95_high": 0.16666666666666663
+          },
+          "red_cards_per_team_match": {
+            "mean": -0.029152777777777777,
+            "ci95_low": -0.08333333333333333,
+            "ci95_high": 0.0
+          },
+          "possession_share": {
+            "mean": -0.00597329822176917,
+            "ci95_low": -0.02367906897723407,
+            "ci95_high": 0.012007305470608274
+          },
+          "crosses_per_team_match": {
+            "mean": -0.3998055555555555,
+            "ci95_low": -1.5284722222222231,
+            "ci95_high": 0.6944444444444446
+          },
+          "headers_per_team_match": {
+            "mean": -0.029305555555555553,
+            "ci95_low": -0.11180555555555553,
+            "ci95_high": 0.05555555555555555
+          },
+          "tackles_per_team_match": {
+            "mean": -3.8542083333333332,
+            "ci95_low": -5.805555555555554,
+            "ci95_high": -1.7222222222222214
+          },
+          "micro_xg_per_team_match": {
+            "mean": -0.26353422464324205,
+            "ci95_low": -0.3380871713022282,
+            "ci95_high": -0.18205916661427496
+          }
+        }
+      },
+      "decision": "retain_core",
+      "decision_reason": "removal breaks at least one formal external-validity gate"
+    },
+    "no_spatial": {
+      "samples_total": 18,
+      "all_pass": false,
+      "failed_metrics": [
+        "long_pass_share"
+      ],
+      "failed_soft": [],
+      "loss": 37.30368444234625,
+      "baseline_loss": 8.634148951141071,
+      "observed_delta_loss": 28.66953549120518,
+      "paired_uncertainty": {
+        "method": "paired_match_bootstrap",
+        "draws": 2000,
+        "seed": 42,
+        "delta_loss": {
+          "mean": 30.33503783948217,
+          "ci95_low": 0.4616130910548375,
+          "ci95_high": 57.25476966625526
+        },
+        "metric_mean_deltas": {
+          "pass_completion": {
+            "mean": 0.07134164393230898,
+            "ci95_low": 0.060166405281732366,
+            "ci95_high": 0.0811848698073889
+          },
+          "interceptions_per_pass": {
+            "mean": -0.013653377172785239,
+            "ci95_low": -0.016195835559120013,
+            "ci95_high": -0.010592749607387306
+          },
+          "passes_per_team_match": {
+            "mean": -0.40240277777777683,
+            "ci95_low": -1.389583333333357,
+            "ci95_high": 0.5277777777777715
+          },
+          "long_pass_share": {
+            "mean": -0.14668753035089488,
+            "ci95_low": -0.1629212483432469,
+            "ci95_high": -0.12780807134354635
+          },
+          "shots_per_team_match": {
+            "mean": -0.3273611111111111,
+            "ci95_low": -0.9166666666666665,
+            "ci95_high": 0.2777777777777777
+          },
+          "shots_on_target_rate": {
+            "mean": -0.10043055555555555,
+            "ci95_low": -0.19180059523809523,
+            "ci95_high": -0.011030092592592654
+          },
+          "goals_per_team_match": {
+            "mean": -0.08691666666666667,
+            "ci95_low": -0.3333333333333333,
+            "ci95_high": 0.1388888888888889
+          },
+          "fouls_committed_per_team_match": {
+            "mean": 0.6896249999999999,
+            "ci95_low": -0.5555555555555554,
+            "ci95_high": 1.833333333333334
+          },
+          "yellow_cards_per_team_match": {
+            "mean": 0.05225,
+            "ci95_low": -0.24999999999999994,
+            "ci95_high": 0.3611111111111111
+          },
+          "red_cards_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "possession_share": {
+            "mean": 0.014087665647298664,
+            "ci95_low": -0.008949201495073042,
+            "ci95_high": 0.037999773473779475
+          },
+          "crosses_per_team_match": {
+            "mean": 1.3956388888888889,
+            "ci95_low": 0.05555555555555709,
+            "ci95_high": 2.75
+          },
+          "headers_per_team_match": {
+            "mean": -0.0002222222222222223,
+            "ci95_low": -0.1111111111111111,
+            "ci95_high": 0.1111111111111111
+          },
+          "tackles_per_team_match": {
+            "mean": -7.153888888888889,
+            "ci95_low": -8.75,
+            "ci95_high": -5.249305555555559
+          },
+          "micro_xg_per_team_match": {
+            "mean": 0.027986362019946028,
+            "ci95_low": -0.08463883430653371,
+            "ci95_high": 0.1417169025527124
+          }
+        }
+      },
+      "decision": "retain_core",
+      "decision_reason": "removal breaks at least one formal external-validity gate"
+    },
+    "no_blend": {
+      "samples_total": 18,
+      "all_pass": true,
+      "failed_metrics": [],
+      "failed_soft": [],
+      "loss": 8.499607084701136,
+      "baseline_loss": 8.634148951141071,
+      "observed_delta_loss": -0.13454186643993538,
+      "paired_uncertainty": {
+        "method": "paired_match_bootstrap",
+        "draws": 2000,
+        "seed": 42,
+        "delta_loss": {
+          "mean": -6.3945892279439365,
+          "ci95_low": -27.670807636572878,
+          "ci95_high": 3.0369027542727167
+        },
+        "metric_mean_deltas": {
+          "pass_completion": {
+            "mean": -0.050843928792330066,
+            "ci95_low": -0.06014471857230363,
+            "ci95_high": -0.04160599268767839
+          },
+          "interceptions_per_pass": {
+            "mean": 0.0026502212073600657,
+            "ci95_low": -0.0010554569357671011,
+            "ci95_high": 0.006882953525629848
+          },
+          "passes_per_team_match": {
+            "mean": -0.45790277777777666,
+            "ci95_low": -1.41666666666663,
+            "ci95_high": 0.4451388888888976
+          },
+          "long_pass_share": {
+            "mean": 0.033556295683805394,
+            "ci95_low": 0.025062315357106103,
+            "ci95_high": 0.04180089916901436
+          },
+          "shots_per_team_match": {
+            "mean": 0.2834027777777778,
+            "ci95_low": -0.25,
+            "ci95_high": 0.8055555555555558
+          },
+          "shots_on_target_rate": {
+            "mean": -0.027643876262626262,
+            "ci95_low": -0.1276536696328363,
+            "ci95_high": 0.06546576879910207
+          },
+          "goals_per_team_match": {
+            "mean": -0.05427777777777778,
+            "ci95_low": -0.25000000000000006,
+            "ci95_high": 0.1388888888888889
+          },
+          "fouls_committed_per_team_match": {
+            "mean": 0.3055972222222222,
+            "ci95_low": -1.1388888888888893,
+            "ci95_high": 1.75
+          },
+          "yellow_cards_per_team_match": {
+            "mean": 0.07693055555555556,
+            "ci95_low": -0.25000000000000006,
+            "ci95_high": 0.41666666666666663
+          },
+          "red_cards_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "possession_share": {
+            "mean": 0.0010323083021859711,
+            "ci95_low": -0.018579397440253727,
+            "ci95_high": 0.019029618303318598
+          },
+          "crosses_per_team_match": {
+            "mean": 0.041972222222222216,
+            "ci95_low": -1.75,
+            "ci95_high": 1.833333333333334
+          },
+          "headers_per_team_match": {
+            "mean": 0.24993055555555557,
+            "ci95_low": 0.08333333333333334,
+            "ci95_high": 0.4444444444444444
+          },
+          "tackles_per_team_match": {
+            "mean": 1.0551666666666668,
+            "ci95_low": -1.111805555555555,
+            "ci95_high": 3.5
+          },
+          "micro_xg_per_team_match": {
+            "mean": 0.04269262498196443,
+            "ci95_low": -0.044260661215333244,
+            "ci95_high": 0.13138327657211207
+          }
+        }
+      },
+      "decision": "optional_default_off",
+      "decision_reason": "removal passes all gates and the paired loss difference is unresolved"
+    },
+    "no_discipline_tick": {
+      "samples_total": 18,
+      "all_pass": false,
+      "failed_metrics": [
+        "yellow_cards_per_team_match",
+        "crosses_per_team_match"
+      ],
+      "failed_soft": [
+        "shots_goals_correlation"
+      ],
+      "loss": 91.0971445560744,
+      "baseline_loss": 8.634148951141071,
+      "observed_delta_loss": 82.46299560493333,
+      "paired_uncertainty": {
+        "method": "paired_match_bootstrap",
+        "draws": 2000,
+        "seed": 42,
+        "delta_loss": {
+          "mean": 54.1598091460906,
+          "ci95_low": 5.061845890537312,
+          "ci95_high": 86.85782987357271
+        },
+        "metric_mean_deltas": {
+          "pass_completion": {
+            "mean": -0.0025034759526980643,
+            "ci95_low": -0.011335167278117573,
+            "ci95_high": 0.007342486996501667
+          },
+          "interceptions_per_pass": {
+            "mean": -0.0008461271643564846,
+            "ci95_low": -0.004502974267884841,
+            "ci95_high": 0.0029250561178620835
+          },
+          "passes_per_team_match": {
+            "mean": 0.3543333333333344,
+            "ci95_low": -0.47291666666667276,
+            "ci95_high": 1.1666666666666303
+          },
+          "long_pass_share": {
+            "mean": 0.0009065852081715432,
+            "ci95_low": -0.006731167449633691,
+            "ci95_high": 0.008739720634840686
+          },
+          "shots_per_team_match": {
+            "mean": -0.083625,
+            "ci95_low": -0.6944444444444442,
+            "ci95_high": 0.4722222222222223
+          },
+          "shots_on_target_rate": {
+            "mean": -0.013244543650793649,
+            "ci95_low": -0.11402116402116402,
+            "ci95_high": 0.09980213844797181
+          },
+          "goals_per_team_match": {
+            "mean": -0.1654861111111111,
+            "ci95_low": -0.36111111111111116,
+            "ci95_high": 0.02777777777777779
+          },
+          "fouls_committed_per_team_match": {
+            "mean": -2.3913194444444446,
+            "ci95_low": -3.6673611111111124,
+            "ci95_high": -1.1388888888888893
+          },
+          "yellow_cards_per_team_match": {
+            "mean": 0.85425,
+            "ci95_low": 0.36111111111111116,
+            "ci95_high": 1.3895833333333298
+          },
+          "red_cards_per_team_match": {
+            "mean": -0.0013888888888888887,
+            "ci95_low": -0.08333333333333333,
+            "ci95_high": 0.08333333333333333
+          },
+          "possession_share": {
+            "mean": -0.010565607656586248,
+            "ci95_low": -0.02695662022879142,
+            "ci95_high": 0.008382885944048043
+          },
+          "crosses_per_team_match": {
+            "mean": -8.655625,
+            "ci95_low": -10.083333333333334,
+            "ci95_high": -7.138888888888889
+          },
+          "headers_per_team_match": {
+            "mean": 0.026041666666666668,
+            "ci95_low": -0.08333333333333331,
+            "ci95_high": 0.11111111111111112
+          },
+          "tackles_per_team_match": {
+            "mean": -4.500111111111111,
+            "ci95_low": -6.611111111111111,
+            "ci95_high": -2.305555555555557
+          },
+          "micro_xg_per_team_match": {
+            "mean": -0.07021804804547685,
+            "ci95_low": -0.16898491093735424,
+            "ci95_high": 0.02123769146854423
+          }
+        }
+      },
+      "decision": "retain_core",
+      "decision_reason": "removal breaks at least one formal external-validity gate"
+    },
+    "no_tactical_bias": {
+      "samples_total": 18,
+      "all_pass": false,
+      "failed_metrics": [],
+      "failed_soft": [
+        "shots_goals_correlation"
+      ],
+      "loss": 34.96300617071094,
+      "baseline_loss": 8.634148951141071,
+      "observed_delta_loss": 26.32885721956987,
+      "paired_uncertainty": {
+        "method": "paired_match_bootstrap",
+        "draws": 2000,
+        "seed": 42,
+        "delta_loss": {
+          "mean": 10.074116792452314,
+          "ci95_low": -27.68558247620743,
+          "ci95_high": 31.808377084696517
+        },
+        "metric_mean_deltas": {
+          "pass_completion": {
+            "mean": -0.0010400719922328062,
+            "ci95_low": -0.0070780378455319115,
+            "ci95_high": 0.005574319049979864
+          },
+          "interceptions_per_pass": {
+            "mean": -0.001729784112814843,
+            "ci95_low": -0.0049621083942200704,
+            "ci95_high": 0.001762474790236055
+          },
+          "passes_per_team_match": {
+            "mean": 0.6482222222222227,
+            "ci95_low": -0.30625000000004254,
+            "ci95_high": 1.6388888888888586
+          },
+          "long_pass_share": {
+            "mean": -0.0005762882849557595,
+            "ci95_low": -0.008529470814747107,
+            "ci95_high": 0.008394599378285487
+          },
+          "shots_per_team_match": {
+            "mean": -0.5783194444444445,
+            "ci95_low": -1.25,
+            "ci95_high": 0.11111111111111116
+          },
+          "shots_on_target_rate": {
+            "mean": 0.01616405423280424,
+            "ci95_low": -0.06982308201058202,
+            "ci95_high": 0.10314098324514984
+          },
+          "goals_per_team_match": {
+            "mean": -0.11318055555555556,
+            "ci95_low": -0.36111111111111116,
+            "ci95_high": 0.1388888888888889
+          },
+          "fouls_committed_per_team_match": {
+            "mean": 0.06216666666666665,
+            "ci95_low": -1.1944444444444446,
+            "ci95_high": 1.333333333333334
+          },
+          "yellow_cards_per_team_match": {
+            "mean": 0.11108333333333333,
+            "ci95_low": -0.11111111111111116,
+            "ci95_high": 0.38888888888888884
+          },
+          "red_cards_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "possession_share": {
+            "mean": -0.018373343527013253,
+            "ci95_low": -0.038004020840412274,
+            "ci95_high": 0.002108109638690575
+          },
+          "crosses_per_team_match": {
+            "mean": -0.6083888888888889,
+            "ci95_low": -1.666666666666666,
+            "ci95_high": 0.5
+          },
+          "headers_per_team_match": {
+            "mean": -0.0009999999999999998,
+            "ci95_low": -0.1111111111111111,
+            "ci95_high": 0.1111111111111111
+          },
+          "tackles_per_team_match": {
+            "mean": -1.7356944444444444,
+            "ci95_low": -3.500694444444444,
+            "ci95_high": 0.027777777777778567
+          },
+          "micro_xg_per_team_match": {
+            "mean": -0.10012677706021116,
+            "ci95_low": -0.20965591758185195,
+            "ci95_high": 0.01646625607439978
+          }
+        }
+      },
+      "decision": "retain_core",
+      "decision_reason": "removal breaks at least one formal external-validity gate"
+    },
+    "M1": {
+      "samples_total": 18,
+      "all_pass": true,
+      "failed_metrics": [],
+      "failed_soft": [],
+      "loss": 8.634148950066319,
+      "baseline_loss": 8.634148951141071,
+      "observed_delta_loss": -1.0747527312560123e-09,
+      "paired_uncertainty": {
+        "method": "paired_match_bootstrap",
+        "draws": 2000,
+        "seed": 42,
+        "delta_loss": {
+          "mean": -1.0449474872054054e-09,
+          "ci95_low": -3.560838934824062e-09,
+          "ci95_high": 2.3568922369321397e-10
+        },
+        "metric_mean_deltas": {
+          "pass_completion": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "interceptions_per_pass": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "passes_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "long_pass_share": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "shots_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "shots_on_target_rate": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "goals_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "fouls_committed_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "yellow_cards_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "red_cards_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "possession_share": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "crosses_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "headers_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "tackles_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "micro_xg_per_team_match": {
+            "mean": 7.853518615430488e-10,
+            "ci95_low": -2.077108485210033e-10,
+            "ci95_high": 2.5817199489353015e-09
+          }
+        }
+      },
+      "decision": "research_only_default_off",
+      "decision_reason": "no statistically resolved formal external-loss improvement"
+    },
+    "C1": {
+      "samples_total": 18,
+      "all_pass": true,
+      "failed_metrics": [],
+      "failed_soft": [],
+      "loss": 7.768575573779507,
+      "baseline_loss": 8.634148951141071,
+      "observed_delta_loss": -0.8655733773615646,
+      "paired_uncertainty": {
+        "method": "paired_match_bootstrap",
+        "draws": 2000,
+        "seed": 42,
+        "delta_loss": {
+          "mean": -5.407732635823357,
+          "ci95_low": -28.33665753187371,
+          "ci95_high": 26.18319655681891
+        },
+        "metric_mean_deltas": {
+          "pass_completion": {
+            "mean": -0.006910063730142867,
+            "ci95_low": -0.014978462028143118,
+            "ci95_high": 0.0017480807100812429
+          },
+          "interceptions_per_pass": {
+            "mean": -0.000574686923059012,
+            "ci95_low": -0.002668096058450179,
+            "ci95_high": 0.0013989644881614793
+          },
+          "passes_per_team_match": {
+            "mean": -0.21205555555555541,
+            "ci95_low": -0.8055555555555429,
+            "ci95_high": 0.4173611111111261
+          },
+          "long_pass_share": {
+            "mean": 0.004334169779597557,
+            "ci95_low": -0.005046312807702573,
+            "ci95_high": 0.013429485542826766
+          },
+          "shots_per_team_match": {
+            "mean": 0.028875,
+            "ci95_low": -0.36111111111111116,
+            "ci95_high": 0.4166666666666665
+          },
+          "shots_on_target_rate": {
+            "mean": -0.004405798059964727,
+            "ci95_low": -0.07956349206349206,
+            "ci95_high": 0.06879574514991174
+          },
+          "goals_per_team_match": {
+            "mean": 0.03230555555555556,
+            "ci95_low": -0.13888888888888895,
+            "ci95_high": 0.19444444444444448
+          },
+          "fouls_committed_per_team_match": {
+            "mean": -0.025597222222222254,
+            "ci95_low": -1.2222222222222232,
+            "ci95_high": 1.1944444444444446
+          },
+          "yellow_cards_per_team_match": {
+            "mean": 0.02959722222222222,
+            "ci95_low": -0.19444444444444448,
+            "ci95_high": 0.25
+          },
+          "red_cards_per_team_match": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "possession_share": {
+            "mean": -0.010489806320081549,
+            "ci95_low": -0.0244676633820364,
+            "ci95_high": 0.004813682183712753
+          },
+          "crosses_per_team_match": {
+            "mean": 0.39625,
+            "ci95_low": -1.0277777777777786,
+            "ci95_high": 1.916666666666666
+          },
+          "headers_per_team_match": {
+            "mean": -0.029222222222222222,
+            "ci95_low": -0.1388888888888889,
+            "ci95_high": 0.05555555555555555
+          },
+          "tackles_per_team_match": {
+            "mean": -0.38888888888888884,
+            "ci95_low": -1.4722222222222214,
+            "ci95_high": 0.7777777777777786
+          },
+          "micro_xg_per_team_match": {
+            "mean": 0.009339067096432587,
+            "ci95_low": -0.052949082270488015,
+            "ci95_high": 0.07272412082925778
+          }
+        }
+      },
+      "decision": "research_only_default_off",
+      "decision_reason": "no statistically resolved formal external-loss improvement"
+    }
+  }
+}

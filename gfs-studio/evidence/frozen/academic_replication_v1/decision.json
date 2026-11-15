@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-result-contingent-mechanism-replication-v1",
+  "generated_at": "2026-08-11T14:08:43.580345+00:00",
+  "status": "failed_academic_replication",
+  "passed": false,
+  "branch": "variance_diagnosis",
+  "confirmatory_decision": "inconclusive_keep_research_only",
+  "conclusion": "branch_conclusion_not_supported",
+  "runs_executed": 72,
+  "pairs_per_arm": 24,
+  "comparisons": {
+    "M1_minus_M0": {
+      "method": "fixture_stratified_paired_bootstrap",
+      "draws": 10000,
+      "seed": 361000,
+      "point_delta": 0.0,
+      "ci95_low": 0.0,
+      "ci95_high": 0.0,
+      "candidate_all_external_gates": false
+    },
+    "M1_minus_M1_predict_only": {
+      "method": "fixture_stratified_paired_bootstrap",
+      "draws": 10000,
+      "seed": 361001,
+      "point_delta": 0.0,
+      "ci95_low": 0.0,
+      "ci95_high": 0.0,
+      "candidate_all_external_gates": false
+    }
+  },
+  "mechanism": {
+    "changed_pairs": 0,
+    "changed_pair_fraction": 0.0,
+    "replicated_promotion": false,
+    "replicated_equivalence": true,
+    "replicated_harm": false,
+    "planning_contribution": false,
+    "planning_nonadoption": true,
+    "bounded_inconclusive": false
+  },
+  "external_validity": {
+    "source": "sportec_idsse",
+    "full_candidate_mean_passes_per_team_match": 485.2291666666667,
+    "full_candidate_mean_shots_per_team_match": 2.9583333333333335,
+    "checks": {
+      "passes_inside_idsse_observed_range": true,
+      "shots_inside_idsse_observed_range": false
+    }
+  },
+  "material_deviations": [],
+  "gates": {
+    "fixed_complete_paired_budget": true,
+    "execution_identity_verified": true,
+    "no_material_deviations": true,
+    "branch_conclusion_matches_confirmatory_decision": false,
+    "full_candidate_passes_internal_external_gates": false,
+    "licensed_idsse_external_scale_passes": false
+  },
+  "execution_identity": {
+    "protocol_sha256": "6787a66bb3dad072413ba9f5174e309cdf88da668f8695edd7a3c54383cf6621",
+    "confirmatory_decision_sha256": "44fc330e00bb1b08813a77ec2a630d33a14e414d191723116f9d68154ddbfd59",
+    "checkpoint_sha256": "0e58e49cff6cd6e11f3598fb8c624aabaa290870ca0d64daaf33b17771e3ce28",
+    "code_sha256": {
+      "src/match_engine/calibration/ablation.py": "ceafce6df973594225de9575e0aad5c91eb7ed9636cc4fdbc7c9314bd93c1856",
+      "src/match_engine/calibration/benchmark_core.py": "ef40a5c61607a2d5dd2680a753590766832fc1170f31547c2827880ddc5a6678",
+      "src/match_engine/calibration/contract.py": "21eaabd34bf224c8773853613206a65b30a77f446f3876e2fa9e6753864e2973",
+      "src/match_engine/calibration/objective.py": "9c3101911cb72319c790a7b3c9b6da3c0b633fee369c3e34df655cbda36c0c99",
+      "scripts/run_formal_experiment.py": "465b4b866a85705a8912aacc22ffdfaac99a1e4054f9106b02d8e0b9b89ac19d",
+      "scripts/academic_replication_study.py": "2eae6de9f537f92c25044e11ae481f945daa9cd305f32599c76129ae8894eea3"
+    },
+    "data_sha256": {
+      "data/rosters/Austria.json": "983cac04bd21a7fcb23032aec9651cd5ad5a7a4358bd9fdaf65c013e5dd5cf4e",
+      "data/rosters/Switzerland.json": "38474b25e822e94a6079a375edcad827ff632758e6905f9391dd72226eb891dd",
+      "data/rosters/Canada.json": "8eb16085148a9bafd3364c17cf00211f06195bcac9bd3f33020021851cb742f6",
+      "data/rosters/United_States.json": "c2bec074aa3b3f5aeedcf510ccfec9948f7da1fca0ed671e0d1139a3fceb2c14",
+      "data/rosters/Algeria.json": "150de97509cf6ac71f48797d79a0c46d6939008cb9b0eb1799c5fa0f8059a075",
+      "data/rosters/Ghana.json": "ac552d1943c8a90d61d9ed96b3774a3c8e4ce97b360d5d26f3e14230374148e8",
+      "data/rosters/Australia.json": "a6bef8b790d5b32d84b28d523dce35d0bcca96da2bfccf09f015082f8c2a2bbf",
+      "data/rosters/Japan.json": "a8958c5c5715bbcf7c5977a4d8cde8c5ffc4047eca91499bed80392894ec77d3",
+      "data/rosters/Norway.json": "713ee987b7ebed6cead4bcce3ef2a060a7bb742176d2b3cd50f7d991b469ecba",
+      "data/rosters/Sweden.json": "e145e011786940cd01d453912da34b538a9e807dea007f2b75373983460b70c5",
+      "data/rosters/Ecuador.json": "8d2f8774d787997fc2d05b77e708c01d67257709368b178cce4c9199a6c54302",
+      "data/rosters/Colombia.json": "96e3b147109261629f72c170945caf05fb8ba03e398948416bd7bce6ec1e9196",
+      "data/coaches/wc2026_coaches.json": "b2c00ea6f7bf07ce9151fefb6902f80ba776715a22b49a0538d0bbf2846b4171",
+      "data/tactics_master.json": "2f0fd2e388087a9fa2118012754731cf5793c7cba9507bd9f9a7ebd265698695",
+      "data/calibration/observable_contract.json": "1f80e9b68a3fac29a21eb335b7549564ad2aba851e5bd984929e9a1d36863ffa",
+      "data/calibration/statsbomb_match_baselines.json": "5c597fb313d55e7dc864b75d8249bfa3fd5e48cef3b95666ed001f96fb159fb5",
+      "data/calibration/joint_baselines.json": "db5e8fad166a33eefe6b2624f757d35d860cf58c4bec20fedaac9b78ea081d24",
+      "data/calibration/param_registry.json": "d082f6f2a259993bfd06845ff78c8124d0db122526b47ee3539f28af15095445",
+      "data/external/sportec/derived/manifest.json": "3f5fa17f1b863949f934bf49f4d761b579008f61515eef96ae412d9d817bb24e"
+    }
+  },
+  "training_executed": false,
+  "provider_calls_made": false,
+  "limitations": [
+    "IDSSE external validity uses seven observed matches and literal ranges, not a population-level tolerance interval.",
+    "M0 and prediction-only M1 are in-system baselines; this study does not claim comparison with every published football simulator.",
+    "A branch failure or negative external-scale result must remain a negative result and cannot be relabelled as replication success."
+  ]
+}

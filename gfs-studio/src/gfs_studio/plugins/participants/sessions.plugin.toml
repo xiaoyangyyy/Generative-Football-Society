@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.studio.participants.sessions"
+version = "0.1.0"
+api = 1
+contract = "gfs_studio.contracts.participants"
+provides = ["participant-sessions"]
+requires = ["gfs.studio.evidence.receipts"]
+implementation = "gfs_studio.plugins.participants.sessions.service:SessionsPlugin"

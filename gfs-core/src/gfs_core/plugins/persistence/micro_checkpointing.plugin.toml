@@ -1,0 +1,8 @@
+[plugin]
+id = "gfs.core.persistence.micro-checkpointing"
+version = "0.1.0"
+api = 1
+contract = "gfs_core.contracts.persistence"
+provides = ["micro-checkpoints"]
+requires = ["gfs.core.persistence.workspace"]
+implementation = "gfs_core.plugins.persistence.checkpointing.micro:MicroCheckpointPlugin"

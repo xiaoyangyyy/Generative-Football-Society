@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "protocol_id": "gfs-exposed-provider-credential-closure-v1",
+  "state": "registered_waiting_for_user_revocation",
+  "incident": {
+    "provider": "deepseek",
+    "credential_value_must_not_be_recorded": true,
+    "revocation_required": true,
+    "replacement_storage": "local_environment_only"
+  },
+  "required_attestation_fields": [
+    "schema_version",
+    "protocol_id",
+    "provider",
+    "credential_revoked",
+    "revoked_at",
+    "revocation_evidence",
+    "revocation_evidence_sha256",
+    "evidence_contains_secret",
+    "replacement_credential_generated",
+    "replacement_storage",
+    "repository_secret_scan",
+    "signed_at",
+    "attestation"
+  ],
+  "evidence_contract": {
+    "revocation_evidence_root": "data/evaluation/security_closure_v1",
+    "allowed_extensions": [".json", ".pdf", ".png"],
+    "redaction_required": true,
+    "current_commit_scan_required": true,
+    "boundary_aware_secret_matches_required": 0,
+    "attestation_text": "I revoked the exposed provider credential, stored no credential value in evidence, and confined any replacement to the local environment"
+  },
+  "output": "data/evaluation/security_closure_verification_v1.json",
+  "current_execution": {
+    "attestation_available": false,
+    "credential_value_stored": false,
+    "provider_calls_made": false,
+    "training_executed": false,
+    "matches_executed": 0
+  }
+}
