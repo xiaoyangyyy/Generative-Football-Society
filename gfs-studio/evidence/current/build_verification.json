@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-15T06:09:27.136160+00:00",
-  "source_identity": "6841adceda9a388b58989cfc041b6ff5f8ccc85c59510ec189ceb6cead770e27",
+  "generated_at": "2026-11-15T16:41:59.297987+00:00",
+  "source_identity": "d1b24cd9774e33b7bc3bc4949037e2c84b980e02ad896dca7ecd3cd3cfd69bed",
   "code_ready": true,
   "checks": {
     "core_tests": true,
