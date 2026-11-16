@@ -7,6 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     GFS_PROJECT_ROOT=/app
 
+USER root
 WORKDIR /app
 COPY pyproject.toml README.md requirements.txt requirements-linux-py312.lock ./
 COPY src ./src
