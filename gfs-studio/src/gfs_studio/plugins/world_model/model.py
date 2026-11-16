@@ -621,13 +621,13 @@ else:
     class LatentWorldModel:  # type: ignore
         def __init__(self, cfg: WorldModelConfig):
             raise RuntimeError(
-                "PyTorch is required for the latent world model. Install: pip install torch"
+                "PyTorch is required for the latent world model. Install: pip install 'gfs-studio[ml]'"
             )
 
 
 def build_model(cfg: WorldModelConfig | None = None) -> "LatentWorldModel":
     if not _TORCH:
-        raise RuntimeError("PyTorch is required. pip install torch")
+        raise RuntimeError("PyTorch is required. pip install 'gfs-studio[ml]'")
     return LatentWorldModel(cfg or WorldModelConfig())
 
 
@@ -659,7 +659,7 @@ def save_checkpoint(
 
 def load_checkpoint(path: str) -> Tuple["LatentWorldModel", WorldModelConfig, Dict]:
     if not _TORCH:
-        raise RuntimeError("PyTorch is required. pip install torch")
+        raise RuntimeError("PyTorch is required. pip install 'gfs-studio[ml]'")
     payload = torch.load(path, map_location="cpu", weights_only=True)
     cfg = WorldModelConfig(**payload.get("cfg", {}))
     model = LatentWorldModel(cfg)

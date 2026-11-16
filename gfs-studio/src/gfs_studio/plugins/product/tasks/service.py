@@ -4,13 +4,17 @@ import hashlib
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from gfs_core.contracts import PluginContext, PluginMetadata
 from gfs_core.kernel.identity import content_identity
 from gfs_core.kernel.workspace import WorkspaceRepository
 
-TERMINAL_STATES = {"review", "failed", "interrupted"}
+TERMINAL_STATES = {"review", "failed", "interrupted", "cancelled"}
+
+
+class TaskCancelled(RuntimeError):
+    pass
 
 
 class TaskService:
@@ -42,6 +46,7 @@ class TaskService:
                 "payload": dict(payload),
                 "payload_sha256": fingerprint,
                 "state": "running",
+                "cancel_requested": False,
                 "result": None,
                 "error_type": None,
                 "created_at": _now(),
@@ -98,6 +103,7 @@ class TaskService:
             ]
             for task in selected:
                 task["state"] = "running"
+                task["cancel_requested"] = False
                 task["updated_at"] = _now()
             if selected:
                 self.workspace.write("tasks.json", {"tasks": tasks})
@@ -105,24 +111,63 @@ class TaskService:
                 self._start(task)
             return len(selected)
 
-    def close(self) -> None:
+    def cancel(self, task_id: str) -> dict:
+        with self._condition, self.workspace.lease("tasks.lock", timeout=30.0):
+            tasks = self._read()
+            for task in tasks:
+                if task["task_id"] != task_id:
+                    continue
+                if task["state"] not in TERMINAL_STATES:
+                    task["cancel_requested"] = True
+                    task["updated_at"] = _now()
+                    self.workspace.write("tasks.json", {"tasks": tasks})
+                    self._condition.notify_all()
+                return task
+            raise KeyError(task_id)
+
+    def close(self, *, cancel: bool = False) -> None:
         with self._lock:
+            if self._closed:
+                return
             self._closed = True
+            active = list(self._running_ids)
+        if cancel:
+            for task_id in active:
+                try:
+                    self.cancel(task_id)
+                except KeyError:
+                    pass
         self._executor.shutdown(wait=True)
 
     def _start(self, task: dict) -> None:
         self._running_ids.add(task["task_id"])
-        self._executor.submit(self._execute, task)
+        try:
+            self._executor.submit(self._execute, task)
+        except RuntimeError:
+            self._running_ids.discard(task["task_id"])
+            raise
 
     def _execute(self, task: dict) -> None:
         try:
             payload = task["payload"]
+            if task.get("cancel_requested"):
+                raise TaskCancelled(task["task_id"])
             result = self.workflows.micro_match(
                 payload["home"], payload["away"], int(payload.get("seed", 42)),
+                before_tick=lambda: self._raise_if_cancelled(task["task_id"]),
             )
             self._finish(task["task_id"], "review", result=result)
-        except BaseException as error:
+        except TaskCancelled as error:
+            self._finish(task["task_id"], "cancelled", error=error)
+        except Exception as error:
             self._finish(task["task_id"], "failed", error=error)
+
+    def _raise_if_cancelled(self, task_id: str) -> None:
+        task = self.get(task_id)
+        if task is None:
+            raise KeyError(task_id)
+        if task.get("cancel_requested"):
+            raise TaskCancelled(task_id)
 
     def _finish(self, task_id: str, state: str, *, result=None, error=None) -> None:
         with self._condition, self.workspace.lease("tasks.lock", timeout=30.0):
@@ -166,14 +211,16 @@ class TaskPlugin:
         requires=("gfs.studio.product.studio",),
     )
 
-    def __init__(self, workflows) -> None:
+    def __init__(self, workflows, *, cancel_on_close: bool = True) -> None:
         self.service = TaskService(workflows.project_root, workflows)
+        self.cancel_on_close = cancel_on_close
 
     def activate(self, context: PluginContext) -> None:
+        self.service.recover()
         context.provide("product-tasks", self.service)
 
     def deactivate(self) -> None:
-        self.service.close()
+        self.service.close(cancel=self.cancel_on_close)
 
 
 def _key(value: str) -> str:
@@ -187,4 +234,4 @@ def _payload_hash(payload: dict) -> str:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

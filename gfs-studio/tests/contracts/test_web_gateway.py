@@ -48,11 +48,13 @@ def test_real_loopback_http_and_micro_match_submission():
         )
         response = connection.getresponse()
         payload = json.loads(response.read())
-        assert response.status == 200
-        assert payload["home"] == "Brazil"
-        assert payload["away"] == "Argentina"
-        assert payload["score"] == [0, 3]
-        assert payload["ticks"] == 180
+        assert response.status == 202
+        assert payload["state"] in {"running", "review"}
+        task = gateway.api.product["tasks"].wait(payload["task_id"], timeout=60)
+        assert task["result"]["home"] == "Brazil"
+        assert task["result"]["away"] == "Argentina"
+        assert task["result"]["score"] == [0, 3]
+        assert task["result"]["ticks"] == 180
         connection.close()
     finally:
         server.shutdown()

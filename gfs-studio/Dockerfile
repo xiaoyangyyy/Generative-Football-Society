@@ -8,10 +8,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     GFS_PROJECT_ROOT=/app
 
 WORKDIR /app
-COPY pyproject.toml requirements.txt requirements-linux-py312.lock ./
+COPY pyproject.toml README.md requirements.txt requirements-linux-py312.lock ./
 COPY src ./src
 RUN python -m pip install --require-hashes -r requirements-linux-py312.lock \
-    && python -m pip install --no-build-isolation --no-deps .
+    && python -m pip install --no-deps .
 COPY data ./data
 COPY evidence ./evidence
 COPY supply-chain ./supply-chain

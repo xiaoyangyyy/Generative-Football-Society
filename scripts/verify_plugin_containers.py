@@ -121,7 +121,7 @@ def verify(*, execute: bool = False) -> dict:
                 break
             built.append(image)
         if len(built) != 2:
-            return report
+            return _finalize(report, failure)
         images = {}
         for name, image in (("core", core_image), ("studio", studio_image)):
             result = _run([docker, "image", "inspect", image])
@@ -151,7 +151,7 @@ def verify(*, execute: bool = False) -> dict:
         if not checks["core_cli_executed"]:
             failure = "core_cli_failed"
             report["diagnostic"] = _diagnostic(core)
-            return report
+            return _finalize(report, failure)
         started = _run([
             docker, "run", "--detach", "--name", container, "--network", "none",
             "--read-only", "--cap-drop", "ALL", "--security-opt",
@@ -166,7 +166,7 @@ def verify(*, execute: bool = False) -> dict:
         if not running:
             failure = "studio_start_failed"
             report["diagnostic"] = _diagnostic(started)
-            return report
+            return _finalize(report, failure)
         inspected = _json(_run([docker, "container", "inspect", container]))
         host = inspected[0].get("HostConfig", {}) if inspected else {}
         checks["runtime_security_options_verified"] = (
@@ -221,10 +221,16 @@ def verify(*, execute: bool = False) -> dict:
             for image in built
         ]
         checks["verification_images_removed"] = len(removed) == len(built) and all(removed)
-    report["passed"] = all(checks.values())
+    return _finalize(report, failure)
+
+
+def _finalize(report: dict, failure: str | None) -> dict:
+    report["passed"] = all(report["checks"].values())
     report["status"] = "passed" if report["passed"] else failure or "failed"
     if not report["passed"]:
-        report["limitations"] = ["Every runtime check must pass before deployment evidence is current."]
+        report["limitations"] = [
+            "Every runtime check must pass before deployment evidence is current."
+        ]
     return report
 
 

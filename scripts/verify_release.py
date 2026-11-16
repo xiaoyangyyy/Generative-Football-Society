@@ -43,7 +43,7 @@ def main() -> int:
                 "src", "tests", "--output-format", "concise",
             ], project).returncode == 0
             checks[f"{name}_wheel"] = run([
-                "uv", "-q", "build", "--offline", "--wheel", ".",
+                "uv", "-q", "build", "--wheel", ".",
                 "--out-dir", temporary,
             ], project).returncode == 0
             commands[name] = {

@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "gfs-core"
 version = "7.0.0a1"
 description = "Plugin-based football simulation kernel and official runtime plugins"
+readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "numpy==2.4.3",

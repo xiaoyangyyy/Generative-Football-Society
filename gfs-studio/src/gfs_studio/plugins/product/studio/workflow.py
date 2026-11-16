@@ -26,9 +26,18 @@ class ProductWorkflows:
             self._closer()
             self._closer = None
 
-    def micro_summary(self, home: str, away: str, seed: int, *, home_tactics=None, trace_sink=None):
+    def micro_summary(
+        self, home: str, away: str, seed: int, *, home_tactics=None,
+        trace_sink=None, before_tick=None,
+    ):
         if self.match_workflow is None:
             raise RuntimeError("match workflow capability is not configured")
+        if before_tick is not None:
+            downstream = trace_sink
+            def trace_sink(record):
+                before_tick()
+                if downstream is not None:
+                    downstream(record)
         return self.match_workflow.run(
             home,
             away,
@@ -38,8 +47,8 @@ class ProductWorkflows:
             trace_sink=trace_sink,
         )
 
-    def micro_match(self, home: str, away: str, seed: int) -> dict:
-        summary = self.micro_summary(home, away, seed)
+    def micro_match(self, home: str, away: str, seed: int, *, before_tick=None) -> dict:
+        summary = self.micro_summary(home, away, seed, before_tick=before_tick)
         return {
             "home": summary.home_team,
             "away": summary.away_team,

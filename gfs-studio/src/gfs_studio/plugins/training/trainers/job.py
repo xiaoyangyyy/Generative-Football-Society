@@ -8,7 +8,11 @@ from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
-import torch
+
+try:
+    import torch
+except ImportError:
+    torch = None
 
 from gfs_core.kernel.lease import FileLease
 from gfs_studio.contracts.training import TrainingResult
@@ -34,6 +38,8 @@ class TrainingJob:
         resume: bool = False,
         run_seed: int = 42,
     ) -> TrainingResult:
+        if torch is None:
+            raise RuntimeError("Training requires the ML extra: pip install 'gfs-studio[ml]'")
         if (
             isinstance(epochs, bool) or epochs < 1
             or isinstance(batch_size, bool) or batch_size < 1

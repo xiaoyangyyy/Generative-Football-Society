@@ -4,6 +4,7 @@ from collections.abc import Iterable
 
 from gfs_core.kernel.context import PluginContext
 from gfs_core.kernel.errors import (
+    CapabilityError,
     PluginActivationError,
     PluginError,
     PluginStateError,
@@ -40,9 +41,22 @@ class PluginKernel:
         activated: list[str] = []
         for metadata in plan:
             plugin = self._registry.get(metadata.id)
+            before = set(self._context.capabilities)
             try:
                 plugin.activate(self._context)
+                provided = set(self._context.capabilities) - before
+                if provided != set(metadata.provides):
+                    raise CapabilityError(
+                        f"plugin {metadata.id} declared {sorted(metadata.provides)} "
+                        f"but provided {sorted(provided)}"
+                    )
             except Exception as error:
+                try:
+                    plugin.deactivate()
+                except Exception as cleanup_error:
+                    error.add_note(
+                        f"activation cleanup also failed: {type(cleanup_error).__name__}"
+                    )
                 self._deactivate_all(activated)
                 self._context.clear()
                 raise PluginActivationError(metadata.id) from error

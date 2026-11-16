@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -57,7 +58,15 @@ class WorkspaceRepository:
                 handle.write(encoded)
                 handle.flush()
                 os.fsync(handle.fileno())
-            os.replace(temporary, path)
+            deadline = time.monotonic() + 5.0
+            while True:
+                try:
+                    os.replace(temporary, path)
+                    break
+                except PermissionError:
+                    if os.name != "nt" or time.monotonic() >= deadline:
+                        raise
+                    time.sleep(0.01)
         finally:
             if os.path.exists(temporary):
                 os.remove(temporary)

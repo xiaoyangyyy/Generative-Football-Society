@@ -43,7 +43,7 @@ python -m venv .venv
 python -m pip install -e ./gfs-core -e ./gfs-studio
 ```
 
-首次安装 Studio 需要下载依赖，包括 PyTorch。
+普通 Studio 功能不需要 PyTorch；训练和世界模型使用 `python -m pip install -e "./gfs-studio[ml]"` 安装可选 ML 依赖。
 
 ## 运行一场比赛
 
@@ -191,6 +191,8 @@ curl -X POST http://127.0.0.1:8765/api/micro-match \
   -d '{"home":"Brazil","away":"Argentina","seed":42}'
 ```
 
+比赛接口返回 HTTP `202`、`task_id` 和 `status_url`，不再同步占用 Web 请求。查询任务直到进入 `review` 或其他终态；`/api/tasks/cancel` 可在 Core tick 边界请求协作取消。
+
 ## 当前仿真评估
 
 ```bash
@@ -216,7 +218,7 @@ cd ../gfs-studio
 python -m pytest tests -q
 ```
 
-完整发布验证会重新执行测试、Ruff、wheel 构建和静态部署检查，并生成当前源码绑定的报告：
+完整发布验证会重新执行测试、Ruff、供应链检查、wheel 构建、干净环境安装、真实 Core 比赛和静态部署检查，并生成按构建与仿真范围分别绑定源码身份的报告：
 
 ```bash
 python scripts/verify_release.py

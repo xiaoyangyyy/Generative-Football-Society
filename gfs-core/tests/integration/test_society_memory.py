@@ -34,7 +34,7 @@ def test_event_identity_decay_and_structured_recall(tmp_path):
     assert recalled[0]["event_id"] == "event-2"
     assert recalled[0]["strength"] > recalled[1]["strength"]
     assert [item["event_id"] for item in memory.recall("Brazil", as_of=1)] == ["event-1"]
-    assert memory.status()["retention_policy"] == "most_recent_match_index"
+    assert memory.status()["retention_policy"] == "immutable_history_with_indexed_recall"
     effects = memory.effects("Brazil", as_of=2)
     assert effects["pressure"] > 0
     assert set(effects["evidence_ids"]) == {"event-1", "event-2"}

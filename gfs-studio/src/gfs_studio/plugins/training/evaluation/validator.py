@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 import numpy as np
-import torch
+
+try:
+    import torch
+except ImportError:
+    torch = None
+
+
+def _require_torch() -> None:
+    if torch is None:
+        raise RuntimeError("Evaluation requires the ML extra: pip install 'gfs-studio[ml]'")
 
 
 class CandidateEvaluator:
     @staticmethod
     def evaluate(model, dataset) -> dict:
+        _require_torch()
         model_mse = _model_mse(model, dataset)
         persistence_mse = _persistence_mse(dataset)
         return {
@@ -20,6 +30,7 @@ class CandidateEvaluator:
 
     @staticmethod
     def evaluate_rollout(model, dataset, codec, *, horizons=(1, 2, 4)) -> dict:
+        _require_torch()
         horizons = sorted(set(horizons))
         if not horizons or any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in horizons):
             raise ValueError("rollout horizons must be positive integers")

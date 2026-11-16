@@ -10,10 +10,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN groupadd --system --gid 10001 gfs \
     && useradd --system --uid 10001 --gid gfs --home-dir /nonexistent --shell /usr/sbin/nologin gfs
 WORKDIR /app
-COPY pyproject.toml requirements.txt requirements-linux-py312.lock ./
+COPY pyproject.toml README.md requirements.txt requirements-linux-py312.lock ./
 COPY src ./src
 RUN python -m pip install --require-hashes -r requirements-linux-py312.lock \
-    && python -m pip install --no-build-isolation --no-deps .
+    && python -m pip install --no-deps .
 COPY data ./data
 COPY supply-chain ./supply-chain
 RUN mkdir -p data/persistence backups && chown -R gfs:gfs data/persistence backups

@@ -74,8 +74,31 @@ def test_activation_failure_rolls_back_and_clears_context():
     kernel.context.publish("event", {"value": 1})
     assert events == [
         "activate:example.alpha",
+        "deactivate:example.beta",
         "deactivate:example.alpha",
     ]
+
+
+def test_activation_rejects_undeclared_capabilities_and_cleans_current_plugin():
+    events = []
+
+    class ExtraCapabilityPlugin(StubPlugin):
+        def activate(self, context):
+            super().activate(context)
+            context.provide("undeclared", object())
+
+    plugin = ExtraCapabilityPlugin(
+        "example.extra", provides=("declared",), events=events,
+    )
+    kernel = PluginKernel(PluginRegistry([plugin]))
+    with pytest.raises(PluginActivationError) as caught:
+        kernel.start()
+    assert isinstance(caught.value.__cause__, CapabilityError)
+    assert events == [
+        "activate:example.extra", "deactivate:example.extra",
+    ]
+    assert kernel.running is False
+    assert kernel.context.capabilities == ()
 
 
 def test_stop_attempts_every_deactivation_and_can_restart():

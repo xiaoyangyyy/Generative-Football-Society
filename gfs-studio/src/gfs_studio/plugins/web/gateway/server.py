@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import json
-from wsgiref.simple_server import make_server
+import logging
+import secrets
+from socketserver import ThreadingMixIn
+from wsgiref.simple_server import WSGIServer, make_server
 
 from gfs_core.contracts import PluginContext, PluginMetadata
 from gfs_studio.contracts.web import HttpError, WebResponse
 
 MAX_BODY_BYTES = 64 * 1024
+LOGGER = logging.getLogger(__name__)
+
+
+class StudioWSGIServer(ThreadingMixIn, WSGIServer):
+    daemon_threads = True
 
 
 class WebGateway:
@@ -16,7 +24,11 @@ class WebGateway:
         self.views = None
         self.authentication = None
 
-    def handle(self, method: str, path: str, *, host: str, body: bytes = b"", headers: dict | None = None) -> WebResponse:
+    def handle(
+        self, method: str, path: str, *, host: str, body: bytes = b"",
+        headers: dict | None = None, request_id: str | None = None,
+    ) -> WebResponse:
+        request_id = request_id or secrets.token_hex(8)
         try:
             if len(body) > MAX_BODY_BYTES:
                 raise HttpError(413, "request body is too large")
@@ -29,27 +41,45 @@ class WebGateway:
                         return response
             raise HttpError(404, "route not found")
         except HttpError as error:
-            return self.json(error.status, {"error": error.message})
+            return self.json(error.status, {
+                "error": error.message, "request_id": request_id,
+            })
         except (ValueError, TypeError, KeyError) as error:
-            return self.json(400, {"error": str(error)})
+            return self.json(400, {"error": str(error), "request_id": request_id})
         except PermissionError:
-            return self.json(403, {"error": "request is not authorized"})
+            return self.json(403, {
+                "error": "request is not authorized", "request_id": request_id,
+            })
         except FileNotFoundError:
-            return self.json(404, {"error": "resource not found"})
+            return self.json(404, {
+                "error": "resource not found", "request_id": request_id,
+            })
         except TimeoutError:
-            return self.json(408, {"error": "request deadline expired"})
+            return self.json(408, {
+                "error": "request deadline expired", "request_id": request_id,
+            })
         except Exception:
-            return self.json(500, {"error": "internal server error"})
+            LOGGER.exception("Studio request failed request_id=%s", request_id)
+            return self.json(500, {
+                "error": "internal server error", "request_id": request_id,
+            })
 
     def __call__(self, environ, start_response):
+        request_id = secrets.token_hex(8)
         try:
             length = int(environ.get("CONTENT_LENGTH") or 0)
         except ValueError:
-            return _finish(start_response, 400, {"error": "invalid content length"})
+            return _finish(start_response, 400, {
+                "error": "invalid content length", "request_id": request_id,
+            }, request_id)
         if length < 0:
-            return _finish(start_response, 400, {"error": "invalid content length"})
+            return _finish(start_response, 400, {
+                "error": "invalid content length", "request_id": request_id,
+            }, request_id)
         if length > MAX_BODY_BYTES:
-            return _finish(start_response, 413, {"error": "request body is too large"})
+            return _finish(start_response, 413, {
+                "error": "request body is too large", "request_id": request_id,
+            }, request_id)
         body = environ["wsgi.input"].read(length) if length else b""
         headers = {
             name: environ[name]
@@ -62,10 +92,15 @@ class WebGateway:
             host=environ.get("HTTP_HOST", ""),
             body=body,
             headers=headers,
+            request_id=request_id,
         )
         start_response(
             f"{response.status} {_REASONS.get(response.status, 'Unknown')}",
-            [("Content-Type", response.content_type), *response.headers],
+            [
+                ("Content-Type", response.content_type),
+                *response.headers,
+                ("X-Request-ID", request_id),
+            ],
         )
         return [response.body]
 
@@ -76,7 +111,7 @@ class WebGateway:
     def serve(self, host="127.0.0.1", port=8765):
         if host != "127.0.0.1":
             raise ValueError("only loopback deployment is supported")
-        return make_server(host, port, self)
+        return make_server(host, port, self, server_class=StudioWSGIServer)
 
     @staticmethod
     def payload(body: bytes) -> dict:
@@ -126,6 +161,7 @@ class WebGateway:
                 ("X-Content-Type-Options", "nosniff"),
                 ("X-Frame-Options", "DENY"),
                 ("Content-Security-Policy", "default-src 'self'"),
+                ("Referrer-Policy", "no-referrer"),
             ),
         )
 
@@ -161,23 +197,22 @@ class WebPlugin:
             self.gateway = None
 
 
-def _finish(start_response, status, payload):
+def _finish(start_response, status, payload, request_id):
     response = WebGateway.json(status, payload)
     start_response(
         f"{status} {_REASONS.get(status, 'Unknown')}",
-        [("Content-Type", response.content_type), *response.headers],
+        [
+            ("Content-Type", response.content_type),
+            *response.headers,
+            ("X-Request-ID", request_id),
+        ],
     )
     return [response.body]
 
 
 _REASONS = {
-    200: "OK",
-    400: "Bad Request",
-    403: "Forbidden",
-    404: "Not Found",
-    405: "Method Not Allowed",
-    408: "Request Timeout",
-    413: "Payload Too Large",
-    500: "Internal Server Error",
-    503: "Service Unavailable",
+    200: "OK", 202: "Accepted",
+    400: "Bad Request", 403: "Forbidden", 404: "Not Found",
+    405: "Method Not Allowed", 408: "Request Timeout", 413: "Payload Too Large",
+    500: "Internal Server Error", 503: "Service Unavailable",
 }

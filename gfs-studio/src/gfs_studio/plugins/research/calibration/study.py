@@ -65,6 +65,45 @@ class CalibrationService:
             "scope": "descriptive_probability_calibration_no_causal_claim",
         }
 
+    def uncertainty_report(self, probabilities, outcomes, uncertainties) -> dict:
+        uncertainty = np.asarray(uncertainties, dtype=np.float64)
+        if uncertainty.ndim != 1 or not uncertainty.size:
+            raise ValueError("uncertainty must be a non-empty one-dimensional input")
+        if not np.isfinite(uncertainty).all() or (uncertainty < 0).any():
+            raise ValueError("uncertainty must be finite and non-negative")
+        probability = self.probability_report(
+            probabilities, outcomes, bins=min(10, len(uncertainty)),
+        )
+        predicted = np.asarray(probabilities, dtype=np.float64)
+        observed = np.asarray(outcomes, dtype=np.float64)
+        if predicted.shape != uncertainty.shape:
+            raise ValueError("uncertainty and probability inputs must have equal length")
+        errors = np.abs(predicted - observed)
+        order = np.argsort(uncertainty, kind="stable")
+        rows = []
+        overall = float(errors.mean())
+        for fraction in (0.5, 0.75, 1.0):
+            retained = max(1, int(np.ceil(len(errors) * fraction)))
+            risk = float(errors[order[:retained]].mean())
+            rows.append({
+                "selective_coverage": fraction,
+                "retained_samples": retained,
+                "mean_absolute_error": risk,
+                "relative_risk_reduction": (overall - risk) / overall if overall else 0.0,
+            })
+        correlation = None
+        if len(errors) >= 3 and errors.std() > 0 and uncertainty.std() > 0:
+            correlation = float(np.corrcoef(uncertainty, errors)[0, 1])
+        return {
+            **probability,
+            "uncertainty_error_correlation": correlation,
+            "risk_coverage": rows,
+            "scope": (
+                "descriptive_probability_and_selective_risk_"
+                "held_out_split_identity_must_be_supplied_by_protocol"
+            ),
+        }
+
     def history(self) -> dict:
         return {
             "plan": self._evidence.read_frozen("m0_calibration_plan_v1.json"),

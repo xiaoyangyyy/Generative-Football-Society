@@ -25,6 +25,15 @@ def test_probability_calibration_and_real_candidate_evaluation():
         )
         assert report["brier_score"] == pytest.approx(0.3125)
         assert report["expected_calibration_error"] == pytest.approx(0.25)
+        uncertainty = research["calibration"].uncertainty_report(
+            [0.1, 0.2, 0.8, 0.9], [0, 0, 0, 0],
+            [0.1, 0.2, 0.8, 0.9],
+        )
+        assert uncertainty["uncertainty_error_correlation"] == pytest.approx(1.0)
+        assert uncertainty["risk_coverage"][0]["mean_absolute_error"] < (
+            uncertainty["risk_coverage"][-1]["mean_absolute_error"]
+        )
+        assert "held_out_split_identity" in uncertainty["scope"]
         rng = np.random.default_rng(7)
         observations = rng.random((8, 307), dtype=np.float32)
         dataset = TraceDataset(

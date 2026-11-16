@@ -1,10 +1,15 @@
 from contextlib import contextmanager
 
-import torch
+try:
+    import torch
+except ImportError:
+    torch = None
 
 
 @contextmanager
 def reproducible(seed: int):
+    if torch is None:
+        raise RuntimeError("Training requires the ML extra: pip install 'gfs-studio[ml]'")
     threads = torch.get_num_threads()
     deterministic = torch.are_deterministic_algorithms_enabled()
     try:

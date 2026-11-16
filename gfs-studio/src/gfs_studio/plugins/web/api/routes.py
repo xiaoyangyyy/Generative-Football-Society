@@ -1,4 +1,5 @@
 from gfs_core.contracts import PluginContext, PluginMetadata
+from gfs_core.kernel.identity import content_identity
 from gfs_studio.contracts.web import HttpError
 
 
@@ -32,11 +33,15 @@ class ApiRoutes:
         if method == "POST":
             payload = self.gateway.payload(body)
             if path == "/api/micro-match":
-                return json(200, self.product["workflows"].micro_match(
-                    self.gateway.team(payload, "home"),
-                    self.gateway.team(payload, "away"),
-                    self.gateway.seed(payload),
-                ))
+                task_payload = {
+                    "home": self.gateway.team(payload, "home"),
+                    "away": self.gateway.team(payload, "away"),
+                    "seed": self.gateway.seed(payload),
+                }
+                key = payload.get("idempotency_key")
+                if key is None:
+                    key = "micro:" + content_identity(task_payload)
+                return self._submit_task(key, task_payload)
             if path == "/api/manager/briefing":
                 return json(200, self.product["manager"].briefing(
                     self.gateway.team(payload, "home"),
@@ -47,17 +52,22 @@ class ApiRoutes:
                 key = payload.get("idempotency_key")
                 if not isinstance(key, str):
                     raise HttpError(400, "idempotency_key is required")
-                return json(200, self.product["tasks"].submit(key, {
+                return self._submit_task(key, {
                     "home": self.gateway.team(payload, "home"),
                     "away": self.gateway.team(payload, "away"),
                     "seed": self.gateway.seed(payload),
-                }))
+                })
             if path == "/api/tasks/recover":
                 return json(200, {"recovered": self.product["tasks"].recover()})
             if path == "/api/tasks/resume":
                 return json(200, {"resumed": self.product["tasks"].resume(
                     payload.get("task_id"),
                 )})
+            if path == "/api/tasks/cancel":
+                task_id = payload.get("task_id")
+                if not isinstance(task_id, str):
+                    raise HttpError(400, "task_id is required")
+                return json(202, self.product["tasks"].cancel(task_id))
             if path == "/api/tasks/wait":
                 task_id = payload.get("task_id")
                 timeout = payload.get("timeout", 30.0)
@@ -97,6 +107,14 @@ class ApiRoutes:
             raise HttpError(405, "method not allowed")
         return None
 
+    def _submit_task(self, key: str, payload: dict):
+        task = self.product["tasks"].submit(key, payload)
+        return self.gateway.json(202, {
+            "task_id": task["task_id"],
+            "state": task["state"],
+            "status_url": f"/api/tasks/{task['task_id']}",
+        })
+
 
 class ApiPlugin:
     metadata = PluginMetadata(
@@ -126,5 +144,6 @@ _ROUTES = {
     "/health", "/api/studio", "/api/research/m2", "/api/world-model",
     "/api/micro-match", "/api/manager/briefing", "/api/backups",
     "/api/backups/verify", "/api/backups/restore", "/api/tasks",
-    "/api/tasks/recover", "/api/tasks/resume", "/api/tasks/wait", "/api/comparison",
+    "/api/tasks/recover", "/api/tasks/resume", "/api/tasks/cancel",
+    "/api/tasks/wait", "/api/comparison",
 }

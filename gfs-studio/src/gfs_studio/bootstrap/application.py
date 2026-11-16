@@ -17,8 +17,6 @@ from gfs_studio.bootstrap.builtin_plugins import (
     build_world_model_registry,
 )
 from gfs_studio.plugins.training.datasets.manifest import TraceDataset
-from gfs_studio.plugins.training.trainers.determinism import reproducible
-from gfs_studio.plugins.world_model.model import build_model
 
 _EXPERIMENTS_PLUGIN = "gfs.studio.research.experiments"
 _LATENT_PLUGIN = "gfs.studio.world-model.latent"
@@ -113,6 +111,9 @@ class StudioApplication:
             kernel.stop()
 
     def train(self, trace, run_name: str, *, epochs: int = 1, resume: bool = False, run_seed: int = 42) -> dict:
+        from gfs_studio.plugins.training.trainers.determinism import reproducible
+        from gfs_studio.plugins.world_model.model import build_model
+
         kernel = PluginKernel(build_training_registry(self.project_root))
         try:
             kernel.start([_TRAINERS_PLUGIN])
@@ -342,7 +343,15 @@ class StudioApplication:
             )
         if list(arguments) == ["web"]:
             gateway = self.web_gateway()
-            gateway.serve().serve_forever()
+            server = gateway.serve()
+            try:
+                server.serve_forever()
+            except KeyboardInterrupt:
+                pass
+            finally:
+                server.server_close()
+                self.close()
+            return ""
         if list(arguments) == ["cognition", "status"]:
             return json.dumps(self.cognition_status(), ensure_ascii=True, indent=2)
         if list(arguments[:2]) == ["traces", "export"]:

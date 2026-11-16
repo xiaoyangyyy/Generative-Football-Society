@@ -68,7 +68,7 @@ def test_http_task_submission_wait_and_duplicate(tmp_path):
         "idempotency_key": "http-match-42",
     }).encode()
     first_response = gateway.handle("POST", "/api/tasks", host="127.0.0.1", body=payload)
-    assert first_response.status == 200
+    assert first_response.status == 202
     first = json.loads(first_response.body)
     duplicate_response = gateway.handle("POST", "/api/tasks", host="127.0.0.1", body=payload)
     duplicate = json.loads(duplicate_response.body)

@@ -8,7 +8,9 @@ from gfs_studio.plugins.product.tasks.service import TaskService
 
 
 class ImmediateWorkflows:
-    def micro_match(self, home, away, seed):
+    def micro_match(self, home, away, seed, *, before_tick=None):
+        if before_tick is not None:
+            before_tick()
         time.sleep(0.002)
         return {"home": home, "away": away, "score": [seed % 2, 0]}
 

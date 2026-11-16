@@ -188,7 +188,7 @@ def build_task_registry(project_root: str | Path) -> PluginRegistry:
         *build_micro_registry(project_root.parent / "gfs-core"),
         ReceiptsPlugin(project_root),
         ProductStudioPlugin(project_root, workflows),
-        TaskPlugin(workflows),
+        TaskPlugin(workflows, cancel_on_close=False),
     ])
 
 
