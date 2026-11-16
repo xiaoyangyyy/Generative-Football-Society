@@ -37,7 +37,16 @@ class WorkspaceRepository:
             raise FileNotFoundError(path)
         if path.stat().st_size > MAX_DOCUMENT_BYTES:
             raise ValueError(f"workspace document is oversized: {name}")
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        deadline = time.monotonic() + 5.0
+        while True:
+            try:
+                text = path.read_text(encoding="utf-8")
+                break
+            except PermissionError:
+                if os.name != "nt" or time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.01)
+        payload = json.loads(text)
         if not isinstance(payload, dict):
             raise ValueError(f"workspace document must be an object: {name}")
         return payload

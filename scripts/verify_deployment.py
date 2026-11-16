@@ -1,16 +1,24 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import shutil
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts.verify_plugin_containers import ARTIFACTS
+
 EXPECTED_DIGEST = (
     "sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7"
 )
 CORE_IMAGE = "gfs-core:7.0.0a1"
 STUDIO_IMAGE = "gfs-studio:0.1.0a1"
+RUNTIME_REPORT = "gfs-studio/evidence/current/container_runtime.json"
 
 
 def verify(root: Path = ROOT) -> dict:
@@ -71,14 +79,57 @@ def verify(root: Path = ROOT) -> dict:
         errors.append("runtime verification requires separate executed evidence")
     if ":latest" in core + studio + compose + json.dumps(manifest):
         errors.append("mutable latest image references are forbidden")
-    return _result(errors)
+    return _result(errors, root)
 
 
-def _result(errors):
+def _runtime_evidence(root: Path) -> dict:
+    path = root / RUNTIME_REPORT
+    if not path.is_file():
+        return {"verified": False, "source_revision": None, "report": None}
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"verified": False, "source_revision": None, "report": None}
+    artifacts = report.get("artifact_sha256", {})
+    checks = report.get("checks", {})
+    current = set(artifacts) == set(ARTIFACTS)
+    for relative in ARTIFACTS:
+        candidate = (root / relative).resolve()
+        try:
+            candidate.relative_to(root.resolve())
+        except ValueError:
+            current = False
+            continue
+        if not candidate.is_file() or hashlib.sha256(
+            candidate.read_bytes()
+        ).hexdigest() != artifacts.get(relative):
+            current = False
+    verified = (
+        current
+        and report.get("schema_version") == 1
+        and report.get("verification") == "gfs_plugin_container_runtime_v1"
+        and report.get("passed") is True
+        and re.fullmatch(r"[0-9a-f]{40}", str(report.get("source_revision", "")))
+        is not None
+        and bool(checks)
+        and all(checks.values())
+    )
+    return {
+        "verified": verified,
+        "source_revision": report.get("source_revision"),
+        "report": report,
+    }
+
+
+def _result(errors, root: Path = ROOT):
+    runtime = _runtime_evidence(root) if not errors else {
+        "verified": False, "source_revision": None, "report": None,
+    }
     return {
         "schema_version": 2,
         "static_verified": not errors,
-        "runtime_verified": False,
+        "runtime_verified": runtime["verified"],
+        "runtime_evidence": runtime,
         "docker_available": bool(shutil.which("docker")),
         "errors": errors,
         "external_calls_made": False,

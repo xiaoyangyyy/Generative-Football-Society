@@ -103,11 +103,13 @@ def verify(*, execute: bool = False) -> dict:
     failure = None
     try:
         for image, context in ((core_image, "gfs-core"), (studio_image, "gfs-studio")):
-            command = [
-                docker, "build", "--pull", "--label",
-                f"org.opencontainers.image.revision={revision}",
+            command = [docker, "build"]
+            if image == core_image:
+                command.append("--pull")
+            command.extend([
+                "--label", f"org.opencontainers.image.revision={revision}",
                 "--tag", image,
-            ]
+            ])
             if image == studio_image:
                 command.extend(["--build-arg", f"CORE_IMAGE={core_image}"])
             command.append(context)
