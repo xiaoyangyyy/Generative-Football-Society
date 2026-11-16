@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from gfs_core.bootstrap.builtin_plugins import build_micro_registry
@@ -50,6 +51,19 @@ from gfs_studio.plugins.web.plugin import WebBundlePlugin
 from gfs_studio.plugins.world_model.bundle import WorldModelBundlePlugin
 
 
+def _core_root(project_root: str | Path) -> Path:
+    project_root = Path(project_root).resolve()
+    configured = os.environ.get("GFS_CORE_PROJECT_ROOT", "").strip()
+    if configured:
+        return Path(configured).expanduser().resolve()
+    sibling = project_root.parent / "gfs-core"
+    if (sibling / "data" / "raw" / "results.csv").is_file():
+        return sibling
+    if (project_root / "data" / "raw" / "results.csv").is_file():
+        return project_root
+    return sibling
+
+
 def build_evidence_registry(project_root: str | Path) -> PluginRegistry:
     evidence = ReceiptsPlugin(project_root)
     return PluginRegistry([
@@ -65,7 +79,7 @@ def build_evidence_registry(project_root: str | Path) -> PluginRegistry:
 
 def build_research_registry(project_root: str | Path) -> PluginRegistry:
     return PluginRegistry([
-        *build_micro_registry(project_root.parent / "gfs-core"),
+        *build_micro_registry(_core_root(project_root)),
         *build_evidence_registry(project_root),
         LatentWorldModelPlugin(),
         EvaluationPlugin(),
@@ -83,7 +97,7 @@ def build_world_model_registry(project_root: str | Path) -> PluginRegistry:
 
 def build_training_registry(project_root: str | Path, *, core_root: str | Path | None = None) -> PluginRegistry:
     return PluginRegistry([
-        *build_micro_registry(core_root or project_root.parent / "gfs-core"),
+        *build_micro_registry(core_root or _core_root(project_root)),
         ReceiptsPlugin(project_root),
         LatentWorldModelPlugin(),
         DatasetPlugin(),
@@ -119,7 +133,7 @@ def build_participants_registry(project_root: str | Path) -> PluginRegistry:
 def build_product_registry(project_root: str | Path) -> PluginRegistry:
     from .application import StudioApplication
 
-    core_root = project_root.parent / "gfs-core"
+    core_root = _core_root(project_root)
     application = StudioApplication(project_root)
     workflows = ProductWorkflows(
         project_root, overview=application.overview, closer=application.close,
@@ -175,7 +189,7 @@ def build_studio_registry(project_root: str | Path) -> PluginRegistry:
 
 def build_recovery_registry(project_root: str | Path) -> PluginRegistry:
     return PluginRegistry([
-        *build_micro_registry(project_root.parent / "gfs-core"),
+        *build_micro_registry(_core_root(project_root)),
         ReceiptsPlugin(project_root),
         ProductStudioPlugin(project_root),
         ProductRecoveryPlugin(project_root),
@@ -185,7 +199,7 @@ def build_recovery_registry(project_root: str | Path) -> PluginRegistry:
 def build_task_registry(project_root: str | Path) -> PluginRegistry:
     workflows = ProductWorkflows(project_root)
     return PluginRegistry([
-        *build_micro_registry(project_root.parent / "gfs-core"),
+        *build_micro_registry(_core_root(project_root)),
         ReceiptsPlugin(project_root),
         ProductStudioPlugin(project_root, workflows),
         TaskPlugin(workflows, cancel_on_close=False),
@@ -198,7 +212,7 @@ def build_planning_registry(project_root: str | Path) -> PluginRegistry:
     )
     planning = PlanningPlugin(runtime)
     return PluginRegistry([
-        *build_micro_registry(project_root.parent / "gfs-core"),
+        *build_micro_registry(_core_root(project_root)),
         LatentWorldModelPlugin(),
         planning,
         PoliciesPlugin(planning.service),
