@@ -1,0 +1,199 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:d86e8233-83fc-51fc-bfa6-ce3d667d0fad",
+  "version": 1,
+  "metadata": {
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "uv",
+          "version": "0.11.13"
+        },
+        {
+          "type": "application",
+          "name": "gfs-supply-chain-builder",
+          "version": "1"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:pypi/gfs-core@7.0.0a1",
+      "name": "gfs-core",
+      "version": "7.0.0a1",
+      "purl": "pkg:pypi/gfs-core@7.0.0a1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "gfs:lock-file",
+          "value": "requirements-linux-py312.lock"
+        },
+        {
+          "name": "gfs:lock-sha256",
+          "value": "242e65f27561e2b22c8f928d88270c6761b21be81c5097892ca7be81b4ad8bd3"
+        },
+        {
+          "name": "gfs:dependency-edge-scope",
+          "value": "root-to-resolved-runtime-closure"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/numpy@2.4.3",
+      "name": "numpy",
+      "version": "2.4.3",
+      "purl": "pkg:pypi/numpy@2.4.3",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "72"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pandas@3.0.2",
+      "name": "pandas",
+      "version": "3.0.2",
+      "purl": "pkg:pypi/pandas@3.0.2",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "48"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/python-dateutil@2.9.0.post0",
+      "name": "python-dateutil",
+      "version": "2.9.0.post0",
+      "purl": "pkg:pypi/python-dateutil@2.9.0.post0",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/six@1.17.0",
+      "name": "six",
+      "version": "1.17.0",
+      "purl": "pkg:pypi/six@1.17.0",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/tzdata@2026.3",
+      "name": "tzdata",
+      "version": "2026.3",
+      "purl": "pkg:pypi/tzdata@2026.3",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:pypi/gfs-core@7.0.0a1",
+      "dependsOn": [
+        "pkg:pypi/numpy@2.4.3",
+        "pkg:pypi/pandas@3.0.2",
+        "pkg:pypi/python-dateutil@2.9.0.post0",
+        "pkg:pypi/six@1.17.0",
+        "pkg:pypi/tzdata@2026.3"
+      ]
+    },
+    {
+      "ref": "pkg:pypi/numpy@2.4.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/pandas@3.0.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/python-dateutil@2.9.0.post0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/six@1.17.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/tzdata@2026.3",
+      "dependsOn": []
+    }
+  ]
+}

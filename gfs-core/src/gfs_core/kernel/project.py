@@ -5,27 +5,79 @@ from pathlib import Path
 
 from .identity import content_identity
 
+_VERIFICATION_SCRIPTS = (
+    "build_plugin_supply_chain.py",
+    "validate_supply_chain_locks.py",
+    "verify_deployment.py",
+    "verify_plugin_containers.py",
+    "verify_release.py",
+)
 
-def source_identity(root: str | Path) -> str:
+
+def _workspace(root: str | Path) -> Path:
     root = Path(root).resolve()
-    if root.name in {"gfs-core", "gfs-studio"}:
-        root = root.parent
-    files = []
-    for project in ("gfs-core", "gfs-studio"):
-        files.append(root / project / "pyproject.toml")
-        files.append(root / project / "architecture.toml")
-        files.extend((root / project / "src").rglob("*.py"))
-        files.extend((root / project / "profiles").glob("*.toml"))
-        files.append(root / project / "Dockerfile")
-    files.extend((root / "scripts").glob("*.py"))
-    files.extend((root / "deployment").rglob("*"))
+    return root.parent if root.name in {"gfs-core", "gfs-studio"} else root
+
+
+def _project_files(root: Path, project: str) -> list[Path]:
+    base = root / project
+    files = [
+        base / "pyproject.toml",
+        base / "architecture.toml",
+        base / "requirements.txt",
+        base / "requirements-linux-py312.in",
+        base / "requirements-linux-py312.lock",
+        base / "supply-chain" / "sbom.cdx.json",
+    ]
+    for directory, pattern in (
+        ("src", "*.py"), ("src", "*.toml"), ("profiles", "*.toml"),
+    ):
+        files.extend((base / directory).rglob(pattern))
+    return files
+
+
+def _identity(root: Path, files: list[Path]) -> str:
     identities = {}
-    for path in sorted(files, key=lambda item: str(item)):
+    for path in sorted(set(files), key=lambda item: str(item)):
         if path.is_file():
             identities[path.relative_to(root).as_posix()] = hashlib.sha256(
                 path.read_bytes()
             ).hexdigest()
     return content_identity(identities)
+
+
+def source_identities(root: str | Path) -> dict[str, str]:
+    root = _workspace(root)
+    core = _project_files(root, "gfs-core")
+    studio = _project_files(root, "gfs-studio")
+    verification = [root / "scripts" / name for name in _VERIFICATION_SCRIPTS]
+    verification.extend((root / "src" / "infrastructure").glob("*.py"))
+    for project in ("gfs-core", "gfs-studio"):
+        verification.extend((root / project / "tests").rglob("*.py"))
+    deployment = [
+        root / "gfs-core" / "Dockerfile",
+        root / "gfs-studio" / "Dockerfile",
+    ]
+    deployment.extend((root / "deployment").rglob("*"))
+    identities = {
+        "core": _identity(root, core),
+        "studio": _identity(root, studio),
+        "verification": _identity(root, verification),
+        "deployment": _identity(root, deployment),
+    }
+    identities["simulation"] = content_identity({
+        "core": identities["core"], "studio": identities["studio"],
+    })
+    identities["build"] = content_identity({
+        key: identities[key]
+        for key in ("core", "studio", "verification", "deployment")
+    })
+    identities["all"] = content_identity(identities)
+    return identities
+
+
+def source_identity(root: str | Path) -> str:
+    return source_identities(root)["all"]
 
 
 def data_identity(root: str | Path) -> str:

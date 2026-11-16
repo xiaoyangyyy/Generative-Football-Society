@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# pip evaluates dependency markers on the audit host during cross-platform dry runs.
+tzdata==2026.3

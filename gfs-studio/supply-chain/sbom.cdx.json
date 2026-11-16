@@ -1,0 +1,367 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:1c47ad35-7063-5053-9ab2-1713b188d302",
+  "version": 1,
+  "metadata": {
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "uv",
+          "version": "0.11.13"
+        },
+        {
+          "type": "application",
+          "name": "gfs-supply-chain-builder",
+          "version": "1"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:pypi/gfs-studio@0.1.0a1",
+      "name": "gfs-studio",
+      "version": "0.1.0a1",
+      "purl": "pkg:pypi/gfs-studio@0.1.0a1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "gfs:lock-file",
+          "value": "requirements-linux-py312.lock"
+        },
+        {
+          "name": "gfs:lock-sha256",
+          "value": "d42b10118f150dc351da5a401a067e4c0b447bdc9bad96c96b15598d8740b082"
+        },
+        {
+          "name": "gfs:dependency-edge-scope",
+          "value": "root-to-resolved-runtime-closure"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/filelock@3.32.2",
+      "name": "filelock",
+      "version": "3.32.2",
+      "purl": "pkg:pypi/filelock@3.32.2",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/fsspec@2026.7.0",
+      "name": "fsspec",
+      "version": "2026.7.0",
+      "purl": "pkg:pypi/fsspec@2026.7.0",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/jinja2@3.1.6",
+      "name": "jinja2",
+      "version": "3.1.6",
+      "purl": "pkg:pypi/jinja2@3.1.6",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/markupsafe@3.0.3",
+      "name": "markupsafe",
+      "version": "3.0.3",
+      "purl": "pkg:pypi/markupsafe@3.0.3",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "89"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/mpmath@1.3.0",
+      "name": "mpmath",
+      "version": "1.3.0",
+      "purl": "pkg:pypi/mpmath@1.3.0",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/networkx@3.6.1",
+      "name": "networkx",
+      "version": "3.6.1",
+      "purl": "pkg:pypi/networkx@3.6.1",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/numpy@2.4.3",
+      "name": "numpy",
+      "version": "2.4.3",
+      "purl": "pkg:pypi/numpy@2.4.3",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "72"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/setuptools@81.0.0",
+      "name": "setuptools",
+      "version": "81.0.0",
+      "purl": "pkg:pypi/setuptools@81.0.0",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/sympy@1.14.0",
+      "name": "sympy",
+      "version": "1.14.0",
+      "purl": "pkg:pypi/sympy@1.14.0",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/torch@2.12.1+cpu",
+      "name": "torch",
+      "version": "2.12.1+cpu",
+      "purl": "pkg:pypi/torch@2.12.1+cpu",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "25"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://download.pytorch.org/whl/cpu"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/typing-extensions@4.16.0",
+      "name": "typing-extensions",
+      "version": "4.16.0",
+      "purl": "pkg:pypi/typing-extensions@4.16.0",
+      "properties": [
+        {
+          "name": "gfs:locked-distribution-sha256-count",
+          "value": "2"
+        },
+        {
+          "name": "gfs:resolution-target",
+          "value": "CPython 3.12 / x86_64 manylinux_2_28 / CPU"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/simple"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:pypi/gfs-studio@0.1.0a1",
+      "dependsOn": [
+        "pkg:pypi/filelock@3.32.2",
+        "pkg:pypi/fsspec@2026.7.0",
+        "pkg:pypi/jinja2@3.1.6",
+        "pkg:pypi/markupsafe@3.0.3",
+        "pkg:pypi/mpmath@1.3.0",
+        "pkg:pypi/networkx@3.6.1",
+        "pkg:pypi/numpy@2.4.3",
+        "pkg:pypi/setuptools@81.0.0",
+        "pkg:pypi/sympy@1.14.0",
+        "pkg:pypi/torch@2.12.1+cpu",
+        "pkg:pypi/typing-extensions@4.16.0"
+      ]
+    },
+    {
+      "ref": "pkg:pypi/filelock@3.32.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/fsspec@2026.7.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/jinja2@3.1.6",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/markupsafe@3.0.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/mpmath@1.3.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/networkx@3.6.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/numpy@2.4.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/setuptools@81.0.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/sympy@1.14.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/torch@2.12.1+cpu",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/typing-extensions@4.16.0",
+      "dependsOn": []
+    }
+  ]
+}

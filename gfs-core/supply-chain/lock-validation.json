@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "verification": "gfs_core_linux_py312_hashed_lock",
+  "generated_at": "2026-11-16T15:19:41.168129+00:00",
+  "status": "passed_resolution_and_hash_dry_run",
+  "passed": true,
+  "package_count": 5,
+  "observations": {
+    "uv_target_resolution_passed": true,
+    "pip_require_hashes_target_plan_passed": true,
+    "would_install_package_count": 5,
+    "environment_installed": false
+  },
+  "artifact_sha256": {
+    "gfs-core/requirements-linux-py312.in": "9136b97772372ae281682d965982cc6ceaacd5eb025d0d32047d2d80e9d27543",
+    "gfs-core/requirements-linux-py312.lock": "242e65f27561e2b22c8f928d88270c6761b21be81c5097892ca7be81b4ad8bd3",
+    "gfs-core/supply-chain/sbom.cdx.json": "fe6e10eb801d9439c9283052bcd67f5a0f9da52afc8eb12fef2729b853762f63"
+  },
+  "external_package_index_calls_made": true,
+  "provider_api_calls_made": false,
+  "matches_executed": 0,
+  "training_executed": false
+}

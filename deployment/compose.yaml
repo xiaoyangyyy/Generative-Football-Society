@@ -1,34 +1,16 @@
 name: gfs-plugin-workspace
 
 services:
-  core:
-    build:
-      context: ../gfs-core
-      dockerfile: Dockerfile
-    image: gfs-core:latest
-    read_only: true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,size=128m
-    volumes:
-      - core_persistence:/app/data/persistence
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    networks:
-      - backend
-    restart: unless-stopped
-
   studio:
     build:
       context: ../gfs-studio
       dockerfile: Dockerfile
-    image: gfs-studio:latest
-    depends_on:
-      - core
+      args:
+        CORE_IMAGE: gfs-core:7.0.0a1
+    image: gfs-studio:0.1.0a1
     read_only: true
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=256m
+      - /tmp:rw,noexec,nosuid,size=256m,mode=1777
     volumes:
       - studio_persistence:/app/data/persistence
       - studio_backups:/app/backups
@@ -41,18 +23,19 @@ services:
     ports:
       - "127.0.0.1:8765:8765"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=3).read()"]
+      test: ["CMD", "python", "-c", "import json,urllib.request; payload=json.load(urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=3)); assert payload['status'] == 'ok' and payload['transport'] == 'loopback'"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
     restart: unless-stopped
+    init: true
+    pids_limit: 256
 
 networks:
   backend:
     internal: true
 
 volumes:
-  core_persistence: {}
   studio_persistence: {}
   studio_backups: {}

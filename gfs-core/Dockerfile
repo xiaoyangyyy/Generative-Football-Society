@@ -10,15 +10,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN groupadd --system --gid 10001 gfs \
     && useradd --system --uid 10001 --gid gfs --home-dir /nonexistent --shell /usr/sbin/nologin gfs
 WORKDIR /app
-COPY pyproject.toml requirements.txt ./
+COPY pyproject.toml requirements.txt requirements-linux-py312.lock ./
 COPY src ./src
-RUN python -m pip install -r requirements.txt \
-    && python -m pip install --no-deps .
+RUN python -m pip install --require-hashes -r requirements-linux-py312.lock \
+    && python -m pip install --no-build-isolation --no-deps .
 COPY data ./data
+COPY supply-chain ./supply-chain
 RUN mkdir -p data/persistence backups && chown -R gfs:gfs data/persistence backups
 USER 10001:10001
-EXPOSE 8765
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=3).read()"]
 ENTRYPOINT ["gfs-core"]
 CMD ["status", "--top", "20"]

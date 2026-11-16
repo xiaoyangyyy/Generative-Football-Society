@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import numpy as np
 
 from gfs_core.contracts.micro_config import MicroMatchConfig
-from gfs_core.kernel.project import data_identity, source_identity
+from gfs_core.kernel.project import data_identity, source_identities
 
 
 class CurrentSimulationEvaluator:
@@ -50,7 +50,8 @@ class CurrentSimulationEvaluator:
             "schema_version": 1,
             "state": "completed",
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "source_identity": source_identity(self.evidence.root),
+            "source_identity": source_identities(self.evidence.root)["simulation"],
+            "source_identities": source_identities(self.evidence.root),
             "data_identity": data_identity(self.evidence.root),
             "historical_baseline": "m0_formal_baseline_v1.json",
             "protocol": {

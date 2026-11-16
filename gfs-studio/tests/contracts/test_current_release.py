@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 
 from gfs_core.kernel import PluginKernel
-from gfs_core.kernel.project import data_identity
+from gfs_core.kernel.project import data_identity, source_identities
 from gfs_studio.bootstrap.builtin_plugins import build_evidence_registry
 from gfs_studio.plugins.evidence.release.current import (
     current_simulation_verification,
@@ -28,6 +28,7 @@ def prepare_project(tmp_path):
     report = {
         "code_ready": True,
         "source_identity": source_identity(tmp_path),
+        "source_identities": source_identities(tmp_path),
         "checks": {
             "core_tests": True,
             "studio_tests": True,
@@ -35,6 +36,12 @@ def prepare_project(tmp_path):
             "studio_ruff": True,
             "core_wheel": True,
             "studio_wheel": True,
+            "two_wheels_built": True,
+            "clean_venv_created": True,
+            "clean_wheel_install": True,
+            "installed_core_micro_match": True,
+            "installed_studio_release_route": True,
+            "plugin_supply_chain": True,
             "static_deployment": True,
         },
         "deployment": {"runtime_verified": False},
@@ -68,10 +75,12 @@ def test_current_build_proof_is_source_bound_and_not_release_proof(tmp_path):
 
 
 def test_complete_simulation_report_is_accepted_when_identity_matches(tmp_path):
+    identities = source_identities(tmp_path)
     report = {
         "state": "completed",
         "protocol_complete": True,
-        "source_identity": source_identity(tmp_path),
+        "source_identity": identities["simulation"],
+        "source_identities": identities,
         "data_identity": data_identity(tmp_path),
         "matches_executed": 2,
         "protocol": {"runs_total": 2},
@@ -81,6 +90,28 @@ def test_complete_simulation_report_is_accepted_when_identity_matches(tmp_path):
     path.parent.mkdir(parents=True)
     path.write_text(json.dumps(report))
     assert current_simulation_verification(tmp_path)["available"] is True
+
+
+def test_simulation_identity_excludes_unrelated_verifier_but_includes_plugins(tmp_path):
+    identities = source_identities(tmp_path)
+    report = {
+        "state": "completed", "protocol_complete": True,
+        "source_identities": identities,
+        "data_identity": data_identity(tmp_path),
+        "matches_executed": 1, "protocol": {"runs_total": 1},
+        "metrics": {"pass_completion": {"observed": 0.8}},
+    }
+    path = tmp_path / "evidence" / "current" / "simulation_evaluation.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(report))
+    unrelated = tmp_path / "scripts" / "run_formal_experiment.py"
+    unrelated.parent.mkdir(parents=True)
+    unrelated.write_text("VALUE = 1\n")
+    assert current_simulation_verification(tmp_path)["available"] is True
+    manifest = tmp_path / "gfs-core" / "src" / "gfs_core" / "plugins" / "match" / "plugin.toml"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text("[plugin]\nversion = 'changed'\n")
+    assert current_simulation_verification(tmp_path)["available"] is False
 
 
 def test_data_identity_changes_with_real_input_content(tmp_path):

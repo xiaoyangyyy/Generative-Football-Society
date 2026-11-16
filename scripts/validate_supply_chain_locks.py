@@ -40,7 +40,8 @@ def _run(command: list[str]) -> subprocess.CompletedProcess[str]:
         command,
         cwd=ROOT,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="backslashreplace",
         timeout=900,
         check=False,
     )

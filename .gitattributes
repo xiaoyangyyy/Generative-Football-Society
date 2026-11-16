@@ -4,6 +4,10 @@
 *.json text eol=lf
 *.csv text eol=lf
 *.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
 requirements*.in text eol=lf
 requirements*.lock text eol=lf
 *.ps1 text eol=crlf
