@@ -1,7 +1,16 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-11-15T16:41:59.297987+00:00",
-  "source_identity": "d1b24cd9774e33b7bc3bc4949037e2c84b980e02ad896dca7ecd3cd3cfd69bed",
+  "schema_version": 2,
+  "generated_at": "2026-11-16T17:38:20.965234+00:00",
+  "source_identity": "bcd1b71060005372641bcbebe8922471743b89c4c171188559e5f6cf56629bad",
+  "source_identities": {
+    "core": "838de69311df38aff7f9162f4114575a38c0dfec4d3e0919e1975a07dbfddb66",
+    "studio": "3df0330e257d92852f94fefa77e14544c32586af0f94940e71cc88c0483de666",
+    "verification": "919f779e06c4f02a6d7104ca57d4bd5abd123789a9e5b08fcd607125a70438d0",
+    "deployment": "55933ce7c77c97f57a57277e129ab5dd49849f3988bf7a95e610b0e5c0a85661",
+    "simulation": "d3522c07824731ae3089905ec7e2a7a452335ec37ed68a566c82f98dae67021e",
+    "build": "2fbf29a1e74a9fbc2f43dfa3e873f473e4591d174b86479264baa5433014a180",
+    "all": "bcd1b71060005372641bcbebe8922471743b89c4c171188559e5f6cf56629bad"
+  },
   "code_ready": true,
   "checks": {
     "core_tests": true,
@@ -10,6 +19,12 @@
     "studio_tests": true,
     "studio_ruff": true,
     "studio_wheel": true,
+    "two_wheels_built": true,
+    "clean_venv_created": true,
+    "clean_wheel_install": true,
+    "installed_core_micro_match": true,
+    "installed_studio_release_route": true,
+    "plugin_supply_chain": true,
     "static_deployment": true
   },
   "commands": {
@@ -24,13 +39,87 @@
       "wheel": true
     }
   },
-  "deployment": {
+  "supply_chain": {
     "schema_version": 1,
+    "passed": true,
+    "profiles": [
+      {
+        "id": "core",
+        "package_count": 5,
+        "checks": {
+          "artifacts_exist": true,
+          "hashed_exact_closure": true,
+          "sbom_current": true,
+          "validation_passed": true,
+          "validation_hashes_current": true
+        },
+        "passed": true
+      },
+      {
+        "id": "studio",
+        "package_count": 11,
+        "checks": {
+          "artifacts_exist": true,
+          "hashed_exact_closure": true,
+          "sbom_current": true,
+          "validation_passed": true,
+          "validation_hashes_current": true
+        },
+        "passed": true
+      }
+    ],
+    "external_calls_made": false
+  },
+  "deployment": {
+    "schema_version": 2,
     "static_verified": true,
-    "runtime_verified": false,
+    "runtime_verified": true,
+    "runtime_evidence": {
+      "verified": true,
+      "source_revision": "89372349d4fcc24c76a78248501bdafbc316fb86",
+      "report": {
+        "schema_version": 1,
+        "verification": "gfs_plugin_container_runtime_v1",
+        "generated_at": "2026-11-16T17:17:50.852386+00:00",
+        "source_revision": "89372349d4fcc24c76a78248501bdafbc316fb86",
+        "status": "passed",
+        "passed": true,
+        "checks": {
+          "execution_explicitly_authorized": true,
+          "source_revision_is_commit": true,
+          "docker_available": true,
+          "core_image_built": true,
+          "studio_image_built": true,
+          "image_ids_content_addressed": true,
+          "image_revision_labels_match": true,
+          "non_root_users_declared": true,
+          "core_cli_executed": true,
+          "studio_health_contract_passed": true,
+          "docker_health_status_passed": true,
+          "runtime_security_options_verified": true,
+          "ephemeral_container_removed": true,
+          "verification_images_removed": true
+        },
+        "artifact_sha256": {
+          "gfs-core/Dockerfile": "6b24c33eb553106d5cb94ae98722060b3b1015e536296faf3c31e4a4a5e62124",
+          "gfs-core/requirements-linux-py312.lock": "242e65f27561e2b22c8f928d88270c6761b21be81c5097892ca7be81b4ad8bd3",
+          "gfs-core/supply-chain/sbom.cdx.json": "fe6e10eb801d9439c9283052bcd67f5a0f9da52afc8eb12fef2729b853762f63",
+          "gfs-studio/Dockerfile": "b1fae1e79a3dbc8845fb902ccfb73118973179efa7d6880d5640a1a7f533e9ee",
+          "gfs-studio/requirements-linux-py312.lock": "d42b10118f150dc351da5a401a067e4c0b447bdc9bad96c96b15598d8740b082",
+          "gfs-studio/supply-chain/sbom.cdx.json": "605c0f20e6c0c177c22607638ce56ca2675d2db878fd9be025ea7f047db791e1",
+          "deployment/compose.yaml": "c590f6e69e2336829d6976405f191fb47959575af79df5ae04fdd992b7dd5fee",
+          "deployment/manifest.json": "447ada316ade0e74cd48d2c284566b150d052434b4066e5a902484310bbc392e",
+          "scripts/verify_plugin_containers.py": "8bd0f3395159c032ea4c4aad3fd0bf4e9e6b19e0baa89ccc0221a9d070f4e6d5"
+        },
+        "external_provider_calls_made": false,
+        "matches_executed": 0,
+        "training_executed": false,
+        "limitations": []
+      }
+    },
     "docker_available": false,
     "errors": [],
     "external_calls_made": false
   },
-  "scope": "current_source_build_not_independent_reproduction_or_participant_evidence"
+  "scope": "current_source_build_clean_wheel_install_not_external_research_evidence"
 }

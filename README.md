@@ -274,7 +274,7 @@ implementation = "gfs_studio.plugins.example.service:ExamplePlugin"
 
 - `code_ready` 只表示当前源码测试和构建通过。
 - 完整 18 场当前仿真协议尚未执行，不能据此宣称当前版本外部有效性。
-- Docker 运行时未验证。
+- 新 Core/Studio 容器已由 `plugin-projects` CI 完成真实构建与健康验证；证据绑定当前部署文件哈希。
 - 默认认知 Provider 为离线规则实现，不冒充真实 LLM 验证。
 - 真实参与者研究、独立复现和 M2 研究门禁尚未满足。
 - 历史证据只读，新实验不得覆盖或冒充旧结果。
