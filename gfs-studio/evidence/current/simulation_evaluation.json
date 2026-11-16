@@ -1,0 +1,967 @@
+{
+  "schema_version": 1,
+  "state": "completed",
+  "generated_at": "2026-11-16T18:41:08.306431+00:00",
+  "source_identity": "d3522c07824731ae3089905ec7e2a7a452335ec37ed68a566c82f98dae67021e",
+  "source_identities": {
+    "core": "838de69311df38aff7f9162f4114575a38c0dfec4d3e0919e1975a07dbfddb66",
+    "studio": "3df0330e257d92852f94fefa77e14544c32586af0f94940e71cc88c0483de666",
+    "verification": "919f779e06c4f02a6d7104ca57d4bd5abd123789a9e5b08fcd607125a70438d0",
+    "deployment": "55933ce7c77c97f57a57277e129ab5dd49849f3988bf7a95e610b0e5c0a85661",
+    "simulation": "d3522c07824731ae3089905ec7e2a7a452335ec37ed68a566c82f98dae67021e",
+    "build": "2fbf29a1e74a9fbc2f43dfa3e873f473e4591d174b86479264baa5433014a180",
+    "all": "bcd1b71060005372641bcbebe8922471743b89c4c171188559e5f6cf56629bad"
+  },
+  "data_identity": "b551998f2eb75c8c0fba704b2f54632b9594d556f4722e4f173d9fc27b007647",
+  "historical_baseline": "m0_formal_baseline_v1.json",
+  "protocol": {
+    "fixtures": [
+      "Argentina_vs_Netherlands",
+      "Brazil_vs_Germany",
+      "France_vs_England",
+      "Mexico_vs_South Korea",
+      "Portugal_vs_Uruguay",
+      "Spain_vs_Morocco"
+    ],
+    "sample_indices": [
+      0,
+      1,
+      2
+    ],
+    "seed_start": 260806,
+    "runs_total": 18,
+    "engine": "micro_full_90min"
+  },
+  "protocol_complete": true,
+  "matches_executed": 18,
+  "metrics": {
+    "pass_completion": {
+      "observed": 0.7530774890054021,
+      "target": 0.8083476444657731,
+      "scale": 0.1,
+      "diagnostic_z": 0.5527015546037106,
+      "diagnostic_score": 0.8583532900914854,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.9407866676717296
+    },
+    "interceptions_per_pass": {
+      "observed": 0.03377853321870547,
+      "target": 0.0226040273273468,
+      "scale": 0.1,
+      "diagnostic_z": 0.11174505891358669,
+      "diagnostic_score": 0.9937759709201681,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.9951813760965171
+    },
+    "passes_per_team_match": {
+      "observed": 482.0,
+      "target": 535.2734375,
+      "scale": 148.18571985953957,
+      "diagnostic_z": 0.359504529522117,
+      "diagnostic_score": 0.9374219730260797,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.9437754855137056
+    },
+    "through_share": {
+      "observed": 0.00011532058164182517,
+      "target": 0.0036970454089994705,
+      "scale": 0.1,
+      "diagnostic_z": 0.03581724827357645,
+      "diagnostic_score": 0.9993587680401969,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.9993168262317282
+    },
+    "long_pass_share": {
+      "observed": 0.2790793838295804,
+      "target": 0.19587162204268024,
+      "scale": 0.1,
+      "diagnostic_z": 0.8320776178690017,
+      "diagnostic_score": 0.7073875648177079,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.9875918753706967
+    },
+    "shots_per_team_match": {
+      "observed": 4.027777777777778,
+      "target": 11.671875,
+      "scale": 6.2426843542723365,
+      "diagnostic_z": 1.2244888237847225,
+      "diagnostic_score": 0.4725146913219475,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.3905226254774186
+    },
+    "shots_on_target_rate": {
+      "observed": 0.3124760270593604,
+      "target": 0.3506452640038837,
+      "scale": 0.17261968100828812,
+      "diagnostic_z": 0.22111752681718047,
+      "diagnostic_score": 0.9758499146834416,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.8711741607865991
+    },
+    "goals_per_team_match": {
+      "observed": 0.25,
+      "target": 1.5234375,
+      "scale": 1.4825796886582654,
+      "diagnostic_z": 0.85893359375,
+      "diagnostic_score": 0.691505994391357,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.7568094600844762
+    },
+    "fouls_committed_per_team_match": {
+      "observed": 11.527777777777779,
+      "target": 13.8671875,
+      "scale": 5.072181037846273,
+      "diagnostic_z": 0.4612236244658119,
+      "diagnostic_score": 0.8990976624407886,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.9960631036782615
+    },
+    "yellow_cards_per_team_match": {
+      "observed": 0.3888888888888889,
+      "target": 0.34375,
+      "scale": 0.5863019699779287,
+      "diagnostic_z": 0.07698914757285934,
+      "diagnostic_score": 0.9970407228961555,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.9651117669885164
+    },
+    "red_cards_per_team_match": {
+      "observed": 0.0,
+      "target": 0.015625,
+      "scale": 0.125,
+      "diagnostic_z": 0.125,
+      "diagnostic_score": 0.9922179382602435,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.9952850700976129
+    },
+    "possession_share": {
+      "observed": 0.4983576849020274,
+      "target": 0.5,
+      "scale": 0.13103012208214698,
+      "diagnostic_z": 0.01253387443951979,
+      "diagnostic_score": 0.9999214540806595,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.9995932344014623
+    },
+    "crosses_per_team_match": {
+      "observed": 8.916666666666666,
+      "target": 11.609375,
+      "scale": 5.462348809988295,
+      "diagnostic_z": 0.49295796130952396,
+      "diagnostic_score": 0.8855877095323148,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.954610485377242
+    },
+    "headers_per_team_match": {
+      "observed": 0.2222222222222222,
+      "target": 1.96875,
+      "scale": 1.5606710885680841,
+      "diagnostic_z": 1.119087673611111,
+      "diagnostic_score": 0.5346309353439451,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.4717103823406839
+    },
+    "tackles_per_team_match": {
+      "observed": 21.36111111111111,
+      "target": 17.0703125,
+      "scale": 5.969566913772921,
+      "diagnostic_z": 0.718778878449528,
+      "diagnostic_score": 0.7723468532743263,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.7800595307886664
+    },
+    "goals_to_micro_xg_ratio": {
+      "observed": 0.3141431169693238,
+      "target": 1.2488266677293303,
+      "scale": 1.1882826822992079,
+      "diagnostic_z": 0.7865834996025419,
+      "diagnostic_score": 0.7339188603770895,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.9101733880513818
+    },
+    "micro_xg_per_team_match": {
+      "observed": 0.7241662296822178,
+      "target": 1.4689222025796875,
+      "scale": 0.9708205023165307,
+      "diagnostic_z": 0.7671407547743013,
+      "diagnostic_score": 0.7450883561186791,
+      "samples": 18,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.6578196005852754
+    },
+    "possession_passes_correlation": {
+      "observed": 0.9954761037459842,
+      "target": 0.8868610792459731,
+      "scale": 0.15,
+      "diagnostic_z": 0.724100163333407,
+      "diagnostic_score": 0.7693875091956963,
+      "samples": 36,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.7772496000272413
+    },
+    "shots_goals_correlation": {
+      "observed": 0.14147125373193134,
+      "target": 0.892,
+      "scale": 0.28,
+      "diagnostic_z": 2.680459808100245,
+      "diagnostic_score": 0.02753128205810225,
+      "samples": 36,
+      "historical_baseline_pass": true,
+      "historical_baseline_score": 0.37999838385760654
+    }
+  },
+  "diagnostic_loss": 0.7678803761040399,
+  "regressed_metrics": [
+    "crosses_per_team_match",
+    "fouls_committed_per_team_match",
+    "goals_per_team_match",
+    "goals_to_micro_xg_ratio",
+    "interceptions_per_pass",
+    "long_pass_share",
+    "pass_completion",
+    "passes_per_team_match",
+    "possession_passes_correlation",
+    "red_cards_per_team_match",
+    "shots_goals_correlation",
+    "tackles_per_team_match"
+  ],
+  "rows": [
+    {
+      "fixture": "Argentina_vs_Netherlands",
+      "home": "Argentina",
+      "away": "Netherlands",
+      "seed": 260806,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.5565749235474006,
+        0.44342507645259943
+      ],
+      "passes_team": [
+        539,
+        422
+      ],
+      "shots_team": [
+        1,
+        2
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.7657721425493937,
+      "interceptions_per_pass": 0.023933402705515087,
+      "passes_per_team_match": 480.5,
+      "through_share": 0.0,
+      "long_pass_share": 0.2851196670135276,
+      "shots_per_team_match": 1.5,
+      "shots_on_target_rate": 0.3333333333333333,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 9.0,
+      "yellow_cards_per_team_match": 0.5,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.5565749235474006,
+      "crosses_per_team_match": 9.5,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 16.0,
+      "micro_xg_per_team_match": 0.3044215879164128,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "Argentina_vs_Netherlands",
+      "home": "Argentina",
+      "away": "Netherlands",
+      "seed": 260807,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.5178389398572885,
+        0.48216106014271154
+      ],
+      "passes_team": [
+        507,
+        462
+      ],
+      "shots_team": [
+        0,
+        6
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.7427188196418966,
+      "interceptions_per_pass": 0.0412796697626419,
+      "passes_per_team_match": 484.5,
+      "through_share": 0.0,
+      "long_pass_share": 0.30856553147574817,
+      "shots_per_team_match": 3.0,
+      "shots_on_target_rate": 0.5,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 9.5,
+      "yellow_cards_per_team_match": 0.5,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.5178389398572885,
+      "crosses_per_team_match": 8.0,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 22.5,
+      "micro_xg_per_team_match": 0.535163308575877,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "Argentina_vs_Netherlands",
+      "home": "Argentina",
+      "away": "Netherlands",
+      "seed": 260808,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.49133537206931704,
+        0.508664627930683
+      ],
+      "passes_team": [
+        479,
+        486
+      ],
+      "shots_team": [
+        0,
+        5
+      ],
+      "goals_team": [
+        0,
+        1
+      ],
+      "pass_completion": 0.7325682792511834,
+      "interceptions_per_pass": 0.03626943005181347,
+      "passes_per_team_match": 482.5,
+      "through_share": 0.0010362694300518134,
+      "long_pass_share": 0.31088082901554404,
+      "shots_per_team_match": 2.5,
+      "shots_on_target_rate": 0.4,
+      "goals_per_team_match": 0.5,
+      "fouls_committed_per_team_match": 11.5,
+      "yellow_cards_per_team_match": 1.0,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.49133537206931704,
+      "crosses_per_team_match": 12.5,
+      "headers_per_team_match": 0.5,
+      "tackles_per_team_match": 25.0,
+      "micro_xg_per_team_match": 0.47560591645534583,
+      "goals_to_micro_xg_ratio": 1.0512905384492721
+    },
+    {
+      "fixture": "Brazil_vs_Germany",
+      "home": "Brazil",
+      "away": "Germany",
+      "seed": 260806,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.48827726809378186,
+        0.5117227319062181
+      ],
+      "passes_team": [
+        477,
+        494
+      ],
+      "shots_team": [
+        0,
+        6
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.7680828219557116,
+      "interceptions_per_pass": 0.029866117404737384,
+      "passes_per_team_match": 485.5,
+      "through_share": 0.0,
+      "long_pass_share": 0.17610710607621008,
+      "shots_per_team_match": 3.0,
+      "shots_on_target_rate": 0.3333333333333333,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 7.5,
+      "yellow_cards_per_team_match": 0.0,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.48827726809378186,
+      "crosses_per_team_match": 6.0,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 21.5,
+      "micro_xg_per_team_match": 0.6197346914046916,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "Brazil_vs_Germany",
+      "home": "Brazil",
+      "away": "Germany",
+      "seed": 260807,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.45565749235474007,
+        0.5443425076452599
+      ],
+      "passes_team": [
+        445,
+        526
+      ],
+      "shots_team": [
+        1,
+        6
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.7992374076131072,
+      "interceptions_per_pass": 0.021627188465499485,
+      "passes_per_team_match": 485.5,
+      "through_share": 0.0,
+      "long_pass_share": 0.14933058702368693,
+      "shots_per_team_match": 3.5,
+      "shots_on_target_rate": 0.14285714285714285,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 10.0,
+      "yellow_cards_per_team_match": 0.5,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.45565749235474007,
+      "crosses_per_team_match": 8.5,
+      "headers_per_team_match": 0.5,
+      "tackles_per_team_match": 15.0,
+      "micro_xg_per_team_match": 0.6301552938230841,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "Brazil_vs_Germany",
+      "home": "Brazil",
+      "away": "Germany",
+      "seed": 260808,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.44648318042813456,
+        0.5535168195718654
+      ],
+      "passes_team": [
+        434,
+        534
+      ],
+      "shots_team": [
+        0,
+        4
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.7895761059044857,
+      "interceptions_per_pass": 0.025826446280991736,
+      "passes_per_team_match": 484.0,
+      "through_share": 0.0,
+      "long_pass_share": 0.14979338842975207,
+      "shots_per_team_match": 2.0,
+      "shots_on_target_rate": 0.25,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 13.5,
+      "yellow_cards_per_team_match": 1.0,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.44648318042813456,
+      "crosses_per_team_match": 8.5,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 17.5,
+      "micro_xg_per_team_match": 0.4490891933361147,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "France_vs_England",
+      "home": "France",
+      "away": "England",
+      "seed": 260806,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.5932721712538226,
+        0.4067278287461774
+      ],
+      "passes_team": [
+        576,
+        388
+      ],
+      "shots_team": [
+        0,
+        5
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.7321198453608248,
+      "interceptions_per_pass": 0.026970954356846474,
+      "passes_per_team_match": 482.0,
+      "through_share": 0.0,
+      "long_pass_share": 0.3433609958506224,
+      "shots_per_team_match": 2.5,
+      "shots_on_target_rate": 0.4,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 9.5,
+      "yellow_cards_per_team_match": 0.5,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.5932721712538226,
+      "crosses_per_team_match": 7.5,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 16.0,
+      "micro_xg_per_team_match": 0.4521135500918319,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "France_vs_England",
+      "home": "France",
+      "away": "England",
+      "seed": 260807,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.5382262996941896,
+        0.46177370030581044
+      ],
+      "passes_team": [
+        524,
+        441
+      ],
+      "shots_team": [
+        0,
+        6
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.7594662546952624,
+      "interceptions_per_pass": 0.03626943005181347,
+      "passes_per_team_match": 482.5,
+      "through_share": 0.0,
+      "long_pass_share": 0.31813471502590673,
+      "shots_per_team_match": 3.0,
+      "shots_on_target_rate": 0.5,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 14.5,
+      "yellow_cards_per_team_match": 0.0,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.5382262996941896,
+      "crosses_per_team_match": 12.0,
+      "headers_per_team_match": 0.5,
+      "tackles_per_team_match": 20.0,
+      "micro_xg_per_team_match": 0.6617499593253231,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "France_vs_England",
+      "home": "France",
+      "away": "England",
+      "seed": 260808,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.5219164118246687,
+        0.47808358817533125
+      ],
+      "passes_team": [
+        504,
+        451
+      ],
+      "shots_team": [
+        2,
+        5
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.7607521205082182,
+      "interceptions_per_pass": 0.03769633507853403,
+      "passes_per_team_match": 477.5,
+      "through_share": 0.0,
+      "long_pass_share": 0.33507853403141363,
+      "shots_per_team_match": 3.5,
+      "shots_on_target_rate": 0.2857142857142857,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 12.0,
+      "yellow_cards_per_team_match": 0.0,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.5219164118246687,
+      "crosses_per_team_match": 10.5,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 23.5,
+      "micro_xg_per_team_match": 0.7016285059298555,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "Mexico_vs_South Korea",
+      "home": "Mexico",
+      "away": "South Korea",
+      "seed": 260806,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.4750254841997961,
+        0.5249745158002039
+      ],
+      "passes_team": [
+        461,
+        507
+      ],
+      "shots_team": [
+        1,
+        6
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.7522943434006342,
+      "interceptions_per_pass": 0.03202479338842975,
+      "passes_per_team_match": 484.0,
+      "through_share": 0.0,
+      "long_pass_share": 0.30165289256198347,
+      "shots_per_team_match": 3.5,
+      "shots_on_target_rate": 0.42857142857142855,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 15.0,
+      "yellow_cards_per_team_match": 0.0,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.4750254841997961,
+      "crosses_per_team_match": 6.0,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 22.5,
+      "micro_xg_per_team_match": 0.57360781511584,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "Mexico_vs_South Korea",
+      "home": "Mexico",
+      "away": "South Korea",
+      "seed": 260807,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.46075433231396534,
+        0.5392456676860347
+      ],
+      "passes_team": [
+        444,
+        518
+      ],
+      "shots_team": [
+        7,
+        9
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.754021879021879,
+      "interceptions_per_pass": 0.04054054054054054,
+      "passes_per_team_match": 481.0,
+      "through_share": 0.0,
+      "long_pass_share": 0.29417879417879417,
+      "shots_per_team_match": 8.0,
+      "shots_on_target_rate": 0.0625,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 12.5,
+      "yellow_cards_per_team_match": 0.5,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.46075433231396534,
+      "crosses_per_team_match": 8.5,
+      "headers_per_team_match": 0.5,
+      "tackles_per_team_match": 21.5,
+      "micro_xg_per_team_match": 1.3200941354239406,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "Mexico_vs_South Korea",
+      "home": "Mexico",
+      "away": "South Korea",
+      "seed": 260808,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.4617737003058104,
+        0.5382262996941896
+      ],
+      "passes_team": [
+        446,
+        515
+      ],
+      "shots_team": [
+        4,
+        9
+      ],
+      "goals_team": [
+        2,
+        0
+      ],
+      "pass_completion": 0.7567329879402673,
+      "interceptions_per_pass": 0.03433922996878252,
+      "passes_per_team_match": 480.5,
+      "through_share": 0.0,
+      "long_pass_share": 0.2726326742976067,
+      "shots_per_team_match": 6.5,
+      "shots_on_target_rate": 0.38461538461538464,
+      "goals_per_team_match": 1.0,
+      "fouls_committed_per_team_match": 12.5,
+      "yellow_cards_per_team_match": 1.0,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.4617737003058104,
+      "crosses_per_team_match": 6.5,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 22.5,
+      "micro_xg_per_team_match": 1.1250084059726242,
+      "goals_to_micro_xg_ratio": 0.8888822471823681
+    },
+    {
+      "fixture": "Portugal_vs_Uruguay",
+      "home": "Portugal",
+      "away": "Uruguay",
+      "seed": 260806,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.4954128440366973,
+        0.5045871559633027
+      ],
+      "passes_team": [
+        476,
+        486
+      ],
+      "shots_team": [
+        3,
+        7
+      ],
+      "goals_team": [
+        1,
+        1
+      ],
+      "pass_completion": 0.7307293287685445,
+      "interceptions_per_pass": 0.038461538461538464,
+      "passes_per_team_match": 481.0,
+      "through_share": 0.0010395010395010396,
+      "long_pass_share": 0.2910602910602911,
+      "shots_per_team_match": 5.0,
+      "shots_on_target_rate": 0.4,
+      "goals_per_team_match": 1.0,
+      "fouls_committed_per_team_match": 14.0,
+      "yellow_cards_per_team_match": 0.0,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.4954128440366973,
+      "crosses_per_team_match": 9.0,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 23.5,
+      "micro_xg_per_team_match": 0.8518575377759985,
+      "goals_to_micro_xg_ratio": 1.1739052079186467
+    },
+    {
+      "fixture": "Portugal_vs_Uruguay",
+      "home": "Portugal",
+      "away": "Uruguay",
+      "seed": 260807,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.4475025484199796,
+        0.5524974515800204
+      ],
+      "passes_team": [
+        431,
+        533
+      ],
+      "shots_team": [
+        2,
+        6
+      ],
+      "goals_team": [
+        1,
+        0
+      ],
+      "pass_completion": 0.7393817771838258,
+      "interceptions_per_pass": 0.04253112033195021,
+      "passes_per_team_match": 482.0,
+      "through_share": 0.0,
+      "long_pass_share": 0.31742738589211617,
+      "shots_per_team_match": 4.0,
+      "shots_on_target_rate": 0.25,
+      "goals_per_team_match": 0.5,
+      "fouls_committed_per_team_match": 9.0,
+      "yellow_cards_per_team_match": 0.5,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.4475025484199796,
+      "crosses_per_team_match": 12.5,
+      "headers_per_team_match": 0.5,
+      "tackles_per_team_match": 23.5,
+      "micro_xg_per_team_match": 0.677411713033652,
+      "goals_to_micro_xg_ratio": 0.738103564464291
+    },
+    {
+      "fixture": "Portugal_vs_Uruguay",
+      "home": "Portugal",
+      "away": "Uruguay",
+      "seed": 260808,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.5168195718654435,
+        0.4831804281345565
+      ],
+      "passes_team": [
+        499,
+        460
+      ],
+      "shots_team": [
+        0,
+        8
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.7455715779384857,
+      "interceptions_per_pass": 0.027111574556830033,
+      "passes_per_team_match": 479.5,
+      "through_share": 0.0,
+      "long_pass_share": 0.29927007299270075,
+      "shots_per_team_match": 4.0,
+      "shots_on_target_rate": 0.375,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 13.0,
+      "yellow_cards_per_team_match": 0.0,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.5168195718654435,
+      "crosses_per_team_match": 8.0,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 21.0,
+      "micro_xg_per_team_match": 0.7385425177048646,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "Spain_vs_Morocco",
+      "home": "Spain",
+      "away": "Morocco",
+      "seed": 260806,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.48216106014271154,
+        0.5178389398572885
+      ],
+      "passes_team": [
+        461,
+        500
+      ],
+      "shots_team": [
+        5,
+        6
+      ],
+      "goals_team": [
+        1,
+        1
+      ],
+      "pass_completion": 0.7332559652928416,
+      "interceptions_per_pass": 0.03433922996878252,
+      "passes_per_team_match": 480.5,
+      "through_share": 0.0,
+      "long_pass_share": 0.30801248699271594,
+      "shots_per_team_match": 5.5,
+      "shots_on_target_rate": 0.18181818181818182,
+      "goals_per_team_match": 1.0,
+      "fouls_committed_per_team_match": 6.5,
+      "yellow_cards_per_team_match": 0.0,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.48216106014271154,
+      "crosses_per_team_match": 8.0,
+      "headers_per_team_match": 0.0,
+      "tackles_per_team_match": 21.0,
+      "micro_xg_per_team_match": 0.8018611302203911,
+      "goals_to_micro_xg_ratio": 1.2470987335739177
+    },
+    {
+      "fixture": "Spain_vs_Morocco",
+      "home": "Spain",
+      "away": "Morocco",
+      "seed": 260807,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.5025484199796126,
+        0.49745158002038736
+      ],
+      "passes_team": [
+        486,
+        476
+      ],
+      "shots_team": [
+        3,
+        11
+      ],
+      "goals_team": [
+        0,
+        0
+      ],
+      "pass_completion": 0.75471608396445,
+      "interceptions_per_pass": 0.04261954261954262,
+      "passes_per_team_match": 481.0,
+      "through_share": 0.0,
+      "long_pass_share": 0.2806652806652807,
+      "shots_per_team_match": 7.0,
+      "shots_on_target_rate": 0.2857142857142857,
+      "goals_per_team_match": 0.0,
+      "fouls_committed_per_team_match": 13.5,
+      "yellow_cards_per_team_match": 0.5,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.5025484199796126,
+      "crosses_per_team_match": 7.0,
+      "headers_per_team_match": 1.0,
+      "tackles_per_team_match": 26.0,
+      "micro_xg_per_team_match": 1.216525893804046,
+      "goals_to_micro_xg_ratio": 0.0
+    },
+    {
+      "fixture": "Spain_vs_Morocco",
+      "home": "Spain",
+      "away": "Morocco",
+      "seed": 260808,
+      "engine": "micro_full_90min",
+      "possession_team": [
+        0.5188583078491336,
+        0.48114169215086644
+      ],
+      "passes_team": [
+        502,
+        462
+      ],
+      "shots_team": [
+        1,
+        8
+      ],
+      "goals_team": [
+        0,
+        1
+      ],
+      "pass_completion": 0.7383970611062245,
+      "interceptions_per_pass": 0.03630705394190872,
+      "passes_per_team_match": 482.0,
+      "through_share": 0.0,
+      "long_pass_share": 0.2821576763485477,
+      "shots_per_team_match": 4.5,
+      "shots_on_target_rate": 0.1111111111111111,
+      "goals_per_team_match": 0.5,
+      "fouls_committed_per_team_match": 14.5,
+      "yellow_cards_per_team_match": 0.5,
+      "red_cards_per_team_match": 0.0,
+      "possession_share": 0.5188583078491336,
+      "crosses_per_team_match": 12.0,
+      "headers_per_team_match": 0.5,
+      "tackles_per_team_match": 26.0,
+      "micro_xg_per_team_match": 0.900420978370027,
+      "goals_to_micro_xg_ratio": 0.5552958138593319
+    }
+  ],
+  "scope": "current_descriptive_external_metric_comparison_not_preregistered_confirmatory"
+}
