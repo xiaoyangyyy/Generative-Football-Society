@@ -149,6 +149,14 @@ redistributing data.
 Repository-derived hashes establish file identity only when the referenced
 source files are lawfully available; they do not grant a license.
 
+Derived frame-world `.npz`/`.jsonl` payloads and mutable training-run state are
+not bundled in current `main`; manifests, model candidates and frozen evidence
+remain tracked. After placing licensed raw provider data under their documented
+`data/external/*/raw/` paths, use the corresponding `scripts/build_*` and
+`scripts/train_*` entry points to regenerate them. Historical acceptance reports
+describe the original pinned artifacts, not a claim that every derived payload
+is present in a fresh checkout. Git history has not been rewritten.
+
 The approved IDSSE/Sportec-only supplement is content-addressed but not stored
 as a second 55 MiB repository blob. After the read-only verifier passes, an
 authorized release operator can materialize it deterministically with:

@@ -1,4 +1,4 @@
-﻿# Python cache and build artifacts
+# Python cache and build artifacts
 __pycache__/
 *.py[cod]
 *.pyo
@@ -40,6 +40,9 @@ data/cache/
 data/world_model/traces/
 
 # Large external dumps (re-fetch via scripts/fetch_football_baseline.py)
+data/frame_world/**/*.npz
+data/frame_world/**/*.jsonl
+data/training/runs/
 data/external/transfermarkt/*.csv.gz
 data/external/transfermarkt/players.csv.gz
 data/external/*/raw/
